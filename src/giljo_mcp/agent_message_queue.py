@@ -25,14 +25,14 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Optional
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, func, literal, or_, select, update
 
 from .database import DatabaseManager
 
 # Import from centralized exceptions
-from .exceptions import ConsistencyError, QueueException
+from .exceptions import ConsistencyError, QueueError
 from .models import Message
-from .models.agent_identity import AgentJob, AgentExecution
+from .models.agent_identity import AgentExecution, AgentJob
 from .tenant import TenantManager
 
 
@@ -102,8 +102,8 @@ class AgentMessageQueue:
             return str(message.id)
 
         except Exception as e:
-            logger.exception(f"Failed to enqueue message: {e}")
-            raise QueueException(f"Enqueue failed: {e}")
+            logger.exception("Failed to enqueue message")
+            raise QueueError(f"Enqueue failed: {e}") from e
 
     async def dequeue(self, agent_name: str, batch_size: Optional[int] = None) -> list[Message]:
         """
@@ -160,8 +160,8 @@ class AgentMessageQueue:
 
             except Exception as e:
                 await session.rollback()
-                logger.exception(f"Failed to dequeue messages: {e}")
-                raise QueueException(f"Dequeue failed: {e}")
+                logger.exception("Failed to dequeue messages")
+                raise QueueError(f"Dequeue failed: {e}") from e
 
     async def process_message(self, message_id: str, agent_name: str) -> bool:
         """
@@ -184,7 +184,7 @@ class AgentMessageQueue:
                 message = result.scalar_one_or_none()
 
                 if not message:
-                    raise QueueException(f"Message {message_id} not found")
+                    raise QueueError(f"Message {message_id} not found")
 
                 # Validate state transition
                 if message.status not in ["pending", "acknowledged"]:
@@ -202,9 +202,9 @@ class AgentMessageQueue:
                 await session.commit()
                 return True
 
-            except Exception as e:
+            except Exception:
                 await session.rollback()
-                logger.exception(f"Failed to process message: {e}")
+                logger.exception("Failed to process message")
                 return False
 
     async def detect_stuck_messages(self, timeout_seconds: Optional[int] = None) -> list[Message]:
@@ -271,9 +271,9 @@ class AgentMessageQueue:
                 logger.info(f"Message {message_id} scheduled for retry #{retry_count + 1}")
                 return True
 
-            except Exception as e:
+            except Exception:
                 await session.rollback()
-                logger.exception(f"Failed to retry message: {e}")
+                logger.exception("Failed to retry message")
                 return False
 
     async def get_statistics(self) -> dict[str, Any]:
@@ -310,7 +310,7 @@ class AgentMessageQueue:
                     .where(Message.status == "processing")
                     .values(
                         status="pending",
-                        meta_data=func.json_set(Message.meta_data, "$.recovered_from_crash", True),
+                        meta_data=func.json_set(Message.meta_data, "$.recovered_from_crash", literal(value=True)),
                     )
                 )
                 result = await session.execute(stmt)
@@ -330,8 +330,8 @@ class AgentMessageQueue:
 
             except Exception as e:
                 await session.rollback()
-                logger.exception(f"Crash recovery failed: {e}")
-                raise QueueException(f"Recovery failed: {e}")
+                logger.exception("Crash recovery failed")
+                raise QueueError(f"Recovery failed: {e}") from e
 
     async def checkpoint(self):
         """
@@ -439,7 +439,7 @@ class AgentMessageQueue:
             return {"status": "success", "message_id": str(message.id)}
 
         except Exception as e:
-            logger.exception(f"[Compat] Failed to send message: {e}")
+            logger.exception("[Compat] Failed to send message")
             return {"status": "error", "error": str(e)}
 
     async def send_message_batch(
@@ -514,7 +514,7 @@ class AgentMessageQueue:
             return {"status": "success", "sent_count": sent_count}
 
         except Exception as e:
-            logger.exception(f"[Compat] Failed to send message batch: {e}")
+            logger.exception("[Compat] Failed to send message batch")
             return {"status": "error", "error": str(e)}
 
     async def get_messages(
@@ -569,7 +569,7 @@ class AgentMessageQueue:
                 query = query.where(
                     or_(
                         Message.to_agents.contains([to_agent]),  # Direct messages
-                        Message.to_agents.contains(['all'])       # Broadcast messages
+                        Message.to_agents.contains(["all"]),  # Broadcast messages
                     )
                 )
 
@@ -612,7 +612,7 @@ class AgentMessageQueue:
             return {"status": "success", "messages": messages_list}
 
         except Exception as e:
-            logger.exception(f"[Compat] Failed to get messages: {e}")
+            logger.exception("[Compat] Failed to get messages")
             return {"status": "error", "error": str(e)}
 
     async def get_unread_count(
@@ -645,11 +645,15 @@ class AgentMessageQueue:
                 return {"status": "error", "error": "Tenant key mismatch - access denied"}
 
             # Build query
-            query = select(func.count()).select_from(Message).where(
-                and_(
-                    Message.tenant_key == tenant_key,
-                    Message.project_id == job.project_id,
-                    Message.status == "pending",
+            query = (
+                select(func.count())
+                .select_from(Message)
+                .where(
+                    and_(
+                        Message.tenant_key == tenant_key,
+                        Message.project_id == job.project_id,
+                        Message.status == "pending",
+                    )
                 )
             )
 
@@ -666,7 +670,7 @@ class AgentMessageQueue:
             return {"status": "success", "unread_count": unread_count}
 
         except Exception as e:
-            logger.exception(f"[Compat] Failed to get unread count: {e}")
+            logger.exception("[Compat] Failed to get unread count")
             return {"status": "error", "error": str(e)}
 
     async def acknowledge_all_messages(
@@ -736,7 +740,7 @@ class AgentMessageQueue:
             return {"status": "success", "acknowledged_count": acknowledged_count}
 
         except Exception as e:
-            logger.exception(f"[Compat] Failed to acknowledge all messages: {e}")
+            logger.exception("[Compat] Failed to acknowledge all messages")
             return {"status": "error", "error": str(e)}
 
     # ==================================================================================
@@ -793,9 +797,7 @@ class RoutingEngine:
         # Step 2: Filter by agent capabilities
         if not candidates:
             # No specific rules, check capabilities
-            for agent in available_agents:
-                if self._can_handle(agent, message):
-                    candidates.append(agent.agent_name)
+            candidates = [agent.agent_name for agent in available_agents if self._can_handle(agent, message)]
 
         # Step 3: Remove duplicates while preserving order
         seen = set()
@@ -1159,9 +1161,9 @@ class DeadLetterQueue:
 
                 logger.error(f"Message {message.id} moved to DLQ: {reason}")
 
-            except Exception as e:
+            except Exception:
                 await session.rollback()
-                logger.exception(f"Failed to move message to DLQ: {e}")
+                logger.exception("Failed to move message to DLQ")
 
     async def get_size(self) -> int:
         """Get number of messages in DLQ"""
@@ -1191,9 +1193,9 @@ class DeadLetterQueue:
                     logger.info(f"Message {message_id} reprocessed from DLQ")
                     return True
 
-            except Exception as e:
+            except Exception:
                 await session.rollback()
-                logger.exception(f"Failed to reprocess DLQ message: {e}")
+                logger.exception("Failed to reprocess DLQ message")
 
         return False
 

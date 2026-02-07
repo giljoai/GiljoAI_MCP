@@ -99,9 +99,9 @@
             :key="status.value"
             :color="filterStatus === status.value ? 'primary' : 'default'"
             :variant="filterStatus === status.value ? 'tonal' : 'outlined'"
-            @click="filterStatus = status.value"
             :aria-label="`Filter by ${status.label}`"
             class="cursor-pointer"
+            @click="filterStatus = status.value"
           >
             {{ status.label }} ({{ status.count }})
           </v-chip>
@@ -122,8 +122,8 @@
             color="#ffc300"
             variant="flat"
             prepend-icon="mdi-rocket-launch"
-            @click="launchProject(activeProject.id)"
             :title="isWorking(activeProject) ? 'View running jobs' : 'Launch active project'"
+            @click="launchProject(activeProject.id)"
           >
             {{ isWorking(activeProject) ? 'Working' : 'Launch Project' }}
           </v-btn>
@@ -135,9 +135,9 @@
             color="primary"
             variant="flat"
             prepend-icon="mdi-plus"
-            @click="showCreateDialog = true"
             :disabled="!activeProduct"
             aria-label="Create new project"
+            @click="showCreateDialog = true"
           >
             New Project
           </v-btn>
@@ -146,9 +146,9 @@
           <v-btn
             variant="outlined"
             prepend-icon="mdi-delete-restore"
-            @click="showDeletedDialog = true"
             :disabled="deletedCount === 0"
             aria-label="View deleted projects"
+            @click="showDeletedDialog = true"
           >
             Deleted ({{ deletedCount }})
           </v-btn>
@@ -158,9 +158,9 @@
           <!-- Date Format Toggle -->
           <v-btn
             variant="outlined"
-            @click="toggleDateLocale"
             :title="`Switch to ${dateLocale === 'US' ? 'EU' : 'US'} date format`"
             prepend-icon="mdi-calendar"
+            @click="toggleDateLocale"
           >
             {{ dateLocale }} Format
           </v-btn>
@@ -175,13 +175,13 @@
           :loading="loading"
           :items-per-page="itemsPerPage"
           :page="currentPage"
-          @update:page="currentPage = $event"
           :sort-by="sortConfig"
-          @update:sort-by="sortConfig = $event"
           class="elevation-0"
           item-key="id"
           fixed-header
           :item-props="() => ({ 'data-testid': 'project-card' })"
+          @update:page="currentPage = $event"
+          @update:sort-by="sortConfig = $event"
           @click:row="handleRowClick"
         >
           <!-- Name Column with ID -->
@@ -267,15 +267,15 @@
 
                 <v-list density="compact" min-width="150">
                   <v-list-item
-                    @click="editProject(item)"
                     prepend-icon="mdi-pencil"
                     title="Edit Project"
+                    @click="editProject(item)"
                   ></v-list-item>
                   <v-divider class="my-1" />
                   <v-list-item
-                    @click="confirmDelete(item)"
                     prepend-icon="mdi-delete"
                     title="Delete Project"
+                    @click="confirmDelete(item)"
                   ></v-list-item>
                 </v-list>
               </v-menu>
@@ -287,7 +287,7 @@
             <div class="text-center py-8">
               <v-icon size="48" color="medium-emphasis" class="mb-4">mdi-folder-open</v-icon>
               <p class="text-body-2 text-medium-emphasis">No projects found</p>
-              <v-btn size="small" color="primary" @click="showCreateDialog = true" class="mt-4">
+              <v-btn size="small" color="primary" class="mt-4" @click="showCreateDialog = true">
                 Create First Project
               </v-btn>
             </div>
@@ -302,7 +302,7 @@
         <v-card-title class="d-flex align-center">
           <span>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="cancelEdit" aria-label="Close dialog" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close dialog" @click="cancelEdit" />
         </v-card-title>
 
         <v-card-text>
@@ -379,10 +379,10 @@
                     />
                   </template>
                   <v-list>
-                    <v-list-item @click="viewFullMission" :disabled="!projectData.mission">
+                    <v-list-item :disabled="!projectData.mission" @click="viewFullMission">
                       <v-list-item-title>View Full Mission</v-list-item-title>
                     </v-list-item>
-                    <v-list-item @click="clearMission" :disabled="!projectData.mission">
+                    <v-list-item :disabled="!projectData.mission" @click="clearMission">
                       <v-list-item-title>Clear Mission</v-list-item-title>
                     </v-list-item>
                   </v-list>
@@ -432,8 +432,8 @@
           <v-btn
             icon="mdi-close"
             variant="text"
-            @click="showDeletedDialog = false"
             aria-label="Close dialog"
+            @click="showDeletedDialog = false"
           />
         </v-card-title>
 
@@ -468,10 +468,10 @@
                     icon="mdi-restore"
                     size="small"
                     variant="text"
-                    @click="restoreFromDelete(project)"
                     :disabled="purgingProjectId === project.id || purgingAllDeleted"
                     title="Restore project"
                     aria-label="Restore deleted project"
+                    @click="restoreFromDelete(project)"
                   ></v-btn>
                   <v-btn
                     icon="mdi-trash-can"
@@ -480,10 +480,10 @@
                     color="error"
                     :loading="purgingProjectId === project.id"
                     :disabled="purgingAllDeleted"
-                    @click="confirmPurgeDeleted(project)"
                     title="Permanently delete project"
                     aria-label="Permanently delete project"
                     data-testid="purge-project"
+                    @click="confirmPurgeDeleted(project)"
                   ></v-btn>
                 </div>
               </template>
@@ -506,8 +506,8 @@
             prepend-icon="mdi-delete-forever"
             :disabled="deletedProjects.length === 0 || purgingAllDeleted"
             :loading="purgingAllDeleted"
-            @click="confirmPurgeAllDeleted"
             data-testid="purge-projects-all"
+            @click="confirmPurgeAllDeleted"
           >
             Delete All
           </v-btn>
@@ -525,8 +525,8 @@
           <v-btn
             icon="mdi-close"
             variant="text"
-            @click="showMissionDialog = false"
             aria-label="Close dialog"
+            @click="showMissionDialog = false"
           />
         </v-card-title>
 

@@ -85,9 +85,8 @@ class AdapterIPDetector:
                         logger.info(f"IP changed from initial: {initial_ip} -> {current_ip}")
                         return True, current_ip, adapter_id
                     return False, current_ip, adapter_id
-                else:
-                    logger.warning("Auto-detect mode but no suitable adapters found")
-                    return False, None, None
+                logger.warning("Auto-detect mode but no suitable adapters found")
+                return False, None, None
 
             if not adapter_id:
                 logger.debug("No network adapter configured in security.network section")
@@ -131,15 +130,14 @@ class AdapterIPDetector:
                     if addr.family == 2:  # AF_INET
                         ip = addr.address
 
-                        if not ip.startswith("127."):
-                            if is_active and not is_loopback:
-                                candidates.append(
-                                    {
-                                        "name": interface_name,
-                                        "ip": ip,
-                                        "is_virtual": is_virtual,
-                                    }
-                                )
+                        if not ip.startswith("127.") and is_active and not is_loopback:
+                            candidates.append(
+                                {
+                                    "name": interface_name,
+                                    "ip": ip,
+                                    "is_virtual": is_virtual,
+                                }
+                            )
 
             if not candidates:
                 logger.warning("No suitable network adapters found")

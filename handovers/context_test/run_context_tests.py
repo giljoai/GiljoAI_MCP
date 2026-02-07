@@ -23,10 +23,9 @@ Requirements:
 import asyncio
 import json
 import os
-import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, List
 
 import httpx
 
@@ -103,9 +102,8 @@ class GiljoAPIClient:
                 self.headers["Authorization"] = f"Bearer {self.access_token}"
                 print(f"  [OK] Logged in as {self.username}")
                 return True
-            else:
-                print("  [FAIL] No access token cookie in response")
-                return False
+            print("  [FAIL] No access token cookie in response")
+            return False
         except Exception as e:
             print(f"  [FAIL] Login failed: {e}")
             return False
@@ -114,9 +112,7 @@ class GiljoAPIClient:
         """Close HTTP client."""
         await self.client.aclose()
 
-    async def update_field_priority_config(
-        self, priorities: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    async def update_field_priority_config(self, priorities: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         """
         Update field priority configuration.
 
@@ -195,9 +191,7 @@ class GiljoAPIClient:
 
         # MCP uses X-API-Key, not JWT
         mcp_headers = {"X-API-Key": api_key, "Content-Type": "application/json"}
-        response = await self.client.post(
-            f"{self.base_url}/mcp", headers=mcp_headers, json=payload
-        )
+        response = await self.client.post(f"{self.base_url}/mcp", headers=mcp_headers, json=payload)
         response.raise_for_status()
         data = response.json()
 
@@ -256,9 +250,7 @@ class TestConfigGenerator:
                 else:
                     # ON + priority level
                     config[field] = {"toggle": True, "priority": priority_level}
-                    level_name = {1: "Critical", 2: "Important", 3: "Reference"}[
-                        priority_level
-                    ]
+                    level_name = {1: "Critical", 2: "Important", 3: "Reference"}[priority_level]
 
                 tests.append(
                     {
@@ -366,10 +358,7 @@ class TestConfigGenerator:
         )
 
         # All Critical
-        all_critical = {
-            field: {"toggle": True, "priority": 1}
-            for field in DEFAULT_FIELD_PRIORITIES.keys()
-        }
+        all_critical = {field: {"toggle": True, "priority": 1} for field in DEFAULT_FIELD_PRIORITIES}
         tests.append(
             {
                 "name": "Edge Case - All Critical (maximum priority)",
@@ -432,9 +421,7 @@ class ContextTestRunner:
         self.results_dir = results_dir
         self.results: List[Dict[str, Any]] = []
 
-    async def run_single_test(
-        self, combo_id: int, test_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def run_single_test(self, combo_id: int, test_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Run a single test configuration.
 
@@ -446,16 +433,14 @@ class ContextTestRunner:
             Test result dict
         """
         test_name = test_config["name"]
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"Test {combo_id}: {test_name}")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
         try:
             # Update field priority config
             print("  -> Updating field priority configuration...")
-            await self.client.update_field_priority_config(
-                test_config["field_priorities"]
-            )
+            await self.client.update_field_priority_config(test_config["field_priorities"])
             await asyncio.sleep(DELAY_BETWEEN_CALLS)
 
             # Update depth config
@@ -465,9 +450,7 @@ class ContextTestRunner:
 
             # Get orchestrator instructions
             print("  -> Fetching orchestrator instructions...")
-            instructions = await self.client.get_orchestrator_instructions(
-                ORCHESTRATOR_ID, TENANT_KEY, API_KEY
-            )
+            instructions = await self.client.get_orchestrator_instructions(ORCHESTRATOR_ID, TENANT_KEY, API_KEY)
 
             # Parse instructions (may be JSON string)
             if isinstance(instructions, str):
@@ -486,9 +469,7 @@ class ContextTestRunner:
                     "depth_config": test_config["depth_config"],
                 },
                 "output": instructions,
-                "validation": self._validate_output(
-                    instructions, test_config["field_priorities"]
-                ),
+                "validation": self._validate_output(instructions, test_config["field_priorities"]),
                 "success": True,
                 "error": None,
             }
@@ -515,9 +496,7 @@ class ContextTestRunner:
                 "error": str(e),
             }
 
-    def _validate_output(
-        self, output: Dict[str, Any], field_priorities: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    def _validate_output(self, output: Dict[str, Any], field_priorities: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         """
         Validate orchestrator instructions output.
 
@@ -554,9 +533,7 @@ class ContextTestRunner:
                 else:
                     expected_priorities[field] = config.get("priority", 2)
 
-            validation["field_priorities_match"] = (
-                output_priorities == expected_priorities
-            )
+            validation["field_priorities_match"] = output_priorities == expected_priorities
 
         return validation
 
@@ -626,9 +603,7 @@ class ContextTestRunner:
                     "combo_id": r["combo_id"],
                     "test_name": r["test_name"],
                     "success": r["success"],
-                    "estimated_tokens": (
-                        r["output"].get("estimated_tokens", 0) if r["output"] else 0
-                    ),
+                    "estimated_tokens": (r["output"].get("estimated_tokens", 0) if r["output"] else 0),
                     "validation": r["validation"],
                 }
                 for r in self.results
@@ -654,7 +629,7 @@ class ContextTestRunner:
         print(f"Total Tests: {total}")
         print(f"Successful: {successful}")
         print(f"Failed: {failed}")
-        print(f"Success Rate: {(successful/total*100):.1f}%")
+        print(f"Success Rate: {(successful / total * 100):.1f}%")
 
         if failed > 0:
             print("\nFailed Tests:")
@@ -663,13 +638,9 @@ class ContextTestRunner:
                     print(f"  - {r['test_name']}: {r['error']}")
 
         # Token statistics
-        tokens = [
-            r["output"].get("estimated_tokens", 0)
-            for r in self.results
-            if r["success"] and r["output"]
-        ]
+        tokens = [r["output"].get("estimated_tokens", 0) for r in self.results if r["success"] and r["output"]]
         if tokens:
-            print(f"\nToken Statistics:")
+            print("\nToken Statistics:")
             print(f"  Min: {min(tokens)}")
             print(f"  Max: {max(tokens)}")
             print(f"  Average: {sum(tokens) / len(tokens):.0f}")

@@ -64,7 +64,7 @@ def create_test_template(
         name=name,
         role=role,
         category="role",
-        template_content=system_prompt,
+        system_instructions=system_prompt,
         is_active=is_active,
         variables=[],
         behavioral_rules=[],
@@ -441,7 +441,16 @@ class TestCanActivateRole:
         tenant_key = str(uuid.uuid4())
 
         # Create 8 active roles
-        active_roles = ["orchestrator", "analyzer", "implementer", "tester", "reviewer", "documenter", "designer", "frontend"]
+        active_roles = [
+            "orchestrator",
+            "analyzer",
+            "implementer",
+            "tester",
+            "reviewer",
+            "documenter",
+            "designer",
+            "frontend",
+        ]
         for role in active_roles:
             create_test_template(sync_db_session, tenant_key, name=f"{role}-1", role=role, is_active=True)
 
@@ -460,7 +469,16 @@ class TestCanActivateRole:
         tenant_key = str(uuid.uuid4())
 
         # Create 8 active roles
-        active_roles = ["orchestrator", "analyzer", "implementer", "tester", "reviewer", "documenter", "designer", "frontend"]
+        active_roles = [
+            "orchestrator",
+            "analyzer",
+            "implementer",
+            "tester",
+            "reviewer",
+            "documenter",
+            "designer",
+            "frontend",
+        ]
         for role in active_roles:
             create_test_template(sync_db_session, tenant_key, name=f"{role}-1", role=role, is_active=True)
 

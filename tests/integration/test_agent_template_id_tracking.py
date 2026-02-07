@@ -5,14 +5,15 @@ Tests that template_id is properly captured and persisted when spawning agents
 using the real PostgreSQL database.
 """
 
-import pytest
 from pathlib import Path
 
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import AgentTemplate, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+import pytest
 from sqlalchemy import select
+
+from src.giljo_mcp.config_manager import get_config
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import AgentTemplate, Product, Project
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest.mark.asyncio
@@ -55,7 +56,6 @@ async def test_spawn_agent_job_captures_template_id():
             role="implementer",
             cli_tool="claude",
             description="Test implementation agent",
-            template_content="Test template content",
             system_instructions="System instructions",
             user_instructions="User instructions",
         )
@@ -83,9 +83,7 @@ async def test_spawn_agent_job_captures_template_id():
         assert agent_job.template_id == template.id
 
         # Verify we can query by template_id
-        result = await session.execute(
-            select(AgentExecution).where(AgentExecution.template_id == template.id)
-        )
+        result = await session.execute(select(AgentExecution).where(AgentExecution.template_id == template.id))
         retrieved_job = result.scalar_one()
         assert retrieved_job.id == agent_job.id
         assert retrieved_job.template_id == template.id
@@ -201,7 +199,7 @@ async def test_multiple_jobs_same_template():
             role="implementer",
             cli_tool="claude",
             description="Shared template",
-            template_content="Content",
+            system_instructions="Content",
         )
         session.add(template)
         await session.commit()
@@ -233,9 +231,7 @@ async def test_multiple_jobs_same_template():
         await session.commit()
 
         # Query all jobs with this template
-        result = await session.execute(
-            select(AgentExecution).where(AgentExecution.template_id == template.id)
-        )
+        result = await session.execute(select(AgentExecution).where(AgentExecution.template_id == template.id))
         jobs = result.scalars().all()
 
         assert len(jobs) >= 2  # At least our two jobs

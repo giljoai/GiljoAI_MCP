@@ -63,7 +63,6 @@ def upgrade() -> None:
     sa.Column('project_type', sa.String(length=50), nullable=True),
     sa.Column('system_instructions', sa.Text(), nullable=False, comment='Protected MCP coordination instructions (non-editable by users)'),
     sa.Column('user_instructions', sa.Text(), nullable=True, comment='User-customizable role-specific guidance (editable)'),
-    sa.Column('template_content', sa.Text(), nullable=False, comment='DEPRECATED (v3.1): Use system_instructions + user_instructions. Kept for backward compatibility.'),
     sa.Column('variables', sa.JSON(), nullable=True),
     sa.Column('behavioral_rules', sa.JSON(), nullable=True),
     sa.Column('success_criteria', sa.JSON(), nullable=True),
@@ -113,8 +112,6 @@ def upgrade() -> None:
     sa.Column('tenant_key', sa.String(length=36), nullable=False, comment='Tenant key for multi-tenant isolation'),
     sa.Column('download_type', sa.String(length=50), nullable=False, comment="Type of download: 'slash_commands', 'agent_templates'"),
     sa.Column('meta_data', postgresql.JSONB(astext_type=sa.Text()), nullable=False, comment='Additional metadata (filename, file_count, file_size, etc.)'),
-    sa.Column('is_used', sa.Boolean(), nullable=False, comment='Deprecated: legacy one-time download flag (not enforced)'),
-    sa.Column('downloaded_at', sa.DateTime(timezone=True), nullable=True, comment='Deprecated: legacy single-use timestamp (not enforced)'),
     sa.Column('staging_status', sa.String(length=20), nullable=False, comment='Staging lifecycle status: pending|ready|failed'),
     sa.Column('staging_error', sa.Text(), nullable=True, comment='Staging error details when status=failed'),
     sa.Column('download_count', sa.Integer(), nullable=False, comment='Number of successful downloads for this token'),
@@ -238,7 +235,7 @@ def upgrade() -> None:
     sa.Column('meta_data', sa.JSON(), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False, comment='Active product for token estimation and mission planning (one per tenant)'),
     sa.Column('config_data', postgresql.JSONB(astext_type=sa.Text()), nullable=True, comment='Rich project configuration: architecture, tech_stack, features, etc.'),
-    sa.Column('product_memory', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text('\'{"github": {}, "sequential_history": [], "context": {}}\'::jsonb'), nullable=False, comment="Product memory storage. NOTE: 'sequential_history' field is DEPRECATED as of v3.3 (Handover 0390). Use product_memory_entries table instead. Only 'git_integration' config remains in use. WILL BE MODIFIED in v4.0 to remove sequential_history."),
+    sa.Column('product_memory', postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text('\'{"github": {}, "context": {}}\'::jsonb'), nullable=False, comment="Product memory storage for git integration config only. 'sequential_history' removed in v3.3 (Handover 0700c) - use product_memory_entries table."),
     sa.Column('target_platforms', sa.ARRAY(sa.String()), server_default=sa.text("'{all}'::text[]"), nullable=False, comment='Target platforms: windows, linux, macos, or all'),
     # Consolidated vision summaries (Handover 0377)
     sa.Column('consolidated_vision_light', sa.Text(), nullable=True, comment='33% summary of all active vision documents (consolidated)'),
@@ -421,12 +418,12 @@ def upgrade() -> None:
     sa.Column('mission', sa.Text(), nullable=False),
     sa.Column('status', sa.String(length=50), nullable=True),
     sa.Column('staging_status', sa.String(length=50), nullable=True, comment='Staging workflow status: null, staging, staged, cancelled, launching, active'),
-    sa.Column('context_budget', sa.Integer(), nullable=True),
     sa.Column('context_used', sa.Integer(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('activated_at', sa.DateTime(timezone=True), nullable=True, comment='First activation timestamp (only set once on first activation)'),
+    sa.Column('implementation_launched_at', sa.DateTime(timezone=True), nullable=True, comment='Timestamp when user clicked Implement button. NULL = staging only.'),
     sa.Column('paused_at', sa.DateTime(timezone=True), nullable=True, comment='Timestamp when project was last paused/deactivated'),
     sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True, comment='Timestamp when project was soft deleted (NULL for active projects)'),
     sa.Column('meta_data', sa.JSON(), nullable=True),
@@ -454,7 +451,6 @@ def upgrade() -> None:
     sa.Column('role', sa.String(length=50), nullable=True),
     sa.Column('system_instructions', sa.Text(), nullable=True),
     sa.Column('user_instructions', sa.Text(), nullable=True),
-    sa.Column('template_content', sa.Text(), nullable=False),
     sa.Column('variables', sa.JSON(), nullable=True),
     sa.Column('behavioral_rules', sa.JSON(), nullable=True),
     sa.Column('success_criteria', sa.JSON(), nullable=True),
@@ -703,7 +699,6 @@ def upgrade() -> None:
     sa.Column('failure_reason', sa.String(length=50), nullable=True, comment='Reason for failure: error, timeout, system_error (Handover 0113)'),
     sa.Column('spawned_by', sa.String(length=36), nullable=True, comment='Agent ID that spawned this job'),
     sa.Column('context_chunks', sa.JSON(), nullable=True, comment='Array of chunk_ids from mcp_context_index for context loading'),
-    sa.Column('messages', postgresql.JSONB(astext_type=sa.Text()), nullable=True, comment='Array of message objects for agent communication'),
     sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
@@ -713,7 +708,6 @@ def upgrade() -> None:
     sa.Column('estimated_completion', sa.DateTime(timezone=True), nullable=True, comment='Estimated completion timestamp'),
     sa.Column('tool_type', sa.String(length=20), nullable=False, comment='AI coding tool assigned to this agent job (claude-code, codex, gemini, universal)'),
     sa.Column('agent_name', sa.String(length=255), nullable=True, comment='Human-readable agent display name (e.g., Backend Agent, Database Agent)'),
-    sa.Column('instance_number', sa.Integer(), nullable=False, comment='Sequential instance number for orchestrator succession (1, 2, 3, ...)'),
     sa.Column('handover_to', sa.String(length=36), nullable=True, comment='UUID of successor orchestrator job (NULL if no handover)'),
     sa.Column('handover_summary', postgresql.JSONB(astext_type=sa.Text()), nullable=True, comment='Compressed state transfer for successor orchestrator'),
     sa.Column('handover_context_refs', sa.JSON(), nullable=True, comment='Array of context chunk IDs referenced in handover summary'),
@@ -736,7 +730,6 @@ def upgrade() -> None:
     sa.CheckConstraint("tool_type IN ('claude-code', 'codex', 'gemini', 'universal')", name='ck_mcp_agent_job_tool_type'),
     sa.CheckConstraint('context_used >= 0 AND context_used <= context_budget', name='ck_mcp_agent_job_context_usage'),
     sa.CheckConstraint('health_failure_count >= 0', name='ck_mcp_agent_job_health_failure_count'),
-    sa.CheckConstraint('instance_number >= 1', name='ck_mcp_agent_job_instance_positive'),
     sa.CheckConstraint('progress >= 0 AND progress <= 100', name='ck_mcp_agent_job_progress_range'),
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
     sa.ForeignKeyConstraint(['template_id'], ['agent_templates.id'], ),
@@ -744,7 +737,6 @@ def upgrade() -> None:
     sa.UniqueConstraint('job_id')
     )
     op.create_index('idx_agent_jobs_handover', 'mcp_agent_jobs', ['handover_to'], unique=False)
-    op.create_index('idx_agent_jobs_instance', 'mcp_agent_jobs', ['project_id', 'agent_type', 'instance_number'], unique=False)
     op.create_index('idx_mcp_agent_jobs_composite_status', 'mcp_agent_jobs', ['project_id', 'status', 'last_progress_at'], unique=False)
     op.create_index('idx_mcp_agent_jobs_health_status', 'mcp_agent_jobs', ['health_status'], unique=False)
     op.create_index('idx_mcp_agent_jobs_job_id', 'mcp_agent_jobs', ['job_id'], unique=False)
@@ -926,13 +918,10 @@ def upgrade() -> None:
     sa.Column('job_id', sa.String(length=36), nullable=False, comment='Foreign key to parent AgentJob'),
     sa.Column('tenant_key', sa.String(length=50), nullable=False),
     sa.Column('agent_display_name', sa.String(length=100), nullable=False, comment='Human-readable display name for UI'),
-    sa.Column('instance_number', sa.Integer(), nullable=False, comment='Sequential instance number for succession (1, 2, 3, ...)'),
-    sa.Column('status', sa.String(length=50), nullable=False, comment='Execution status: waiting, working, blocked, complete, failed, cancelled, decommissioned'),
+    sa.Column('status', sa.String(length=50), nullable=False, comment='Execution status: waiting, working, blocked, complete, failed, cancelled'),
     sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('decommissioned_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('spawned_by', sa.String(length=36), nullable=True, comment='Agent ID of parent executor (clear: agent, not job)'),
-    sa.Column('succeeded_by', sa.String(length=36), nullable=True, comment='Agent ID of successor executor (clear: agent, not job)'),
     sa.Column('progress', sa.Integer(), nullable=False, comment='Execution completion progress (0-100%)'),
     sa.Column('current_task', sa.Text(), nullable=True, comment='Description of current task'),
     sa.Column('block_reason', sa.Text(), nullable=True, comment='Explanation of why execution is blocked (NULL if not blocked)'),
@@ -945,9 +934,6 @@ def upgrade() -> None:
     sa.Column('tool_type', sa.String(length=20), nullable=False, comment='AI coding tool assigned (claude-code, codex, gemini, universal)'),
     sa.Column('context_used', sa.Integer(), nullable=False, comment='Current context window usage in tokens'),
     sa.Column('context_budget', sa.Integer(), nullable=False, comment='Maximum context window budget in tokens'),
-    sa.Column('succession_reason', sa.String(length=100), nullable=True, comment='Reason for succession: context_limit, manual, phase_transition'),
-    sa.Column('handover_summary', postgresql.JSONB(astext_type=sa.Text()), nullable=True, comment='Compressed state transfer for successor orchestrator'),
-    sa.Column('messages', postgresql.JSONB(astext_type=sa.Text()), nullable=False, comment='DEPRECATED: Use counter columns instead. Scheduled for removal in v4.0.'),
     sa.Column('messages_sent_count', sa.Integer(), nullable=False, server_default='0', comment='Count of outbound messages sent by this agent'),
     sa.Column('messages_waiting_count', sa.Integer(), nullable=False, server_default='0', comment='Count of inbound messages waiting to be read'),
     sa.Column('messages_read_count', sa.Integer(), nullable=False, server_default='0', comment='Count of inbound messages that have been acknowledged/read'),
@@ -957,14 +943,11 @@ def upgrade() -> None:
     sa.CheckConstraint("status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned')", name='ck_agent_execution_status'),
     sa.CheckConstraint("tool_type IN ('claude-code', 'codex', 'gemini', 'universal')", name='ck_agent_execution_tool_type'),
     sa.CheckConstraint('context_used >= 0 AND context_used <= context_budget', name='ck_agent_execution_context_usage'),
-    sa.CheckConstraint('instance_number >= 1', name='ck_agent_execution_instance_positive'),
     sa.CheckConstraint('progress >= 0 AND progress <= 100', name='ck_agent_execution_progress_range'),
     sa.ForeignKeyConstraint(['job_id'], ['agent_jobs.job_id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('agent_id', 'instance_number', name='uq_agent_instance')
     )
     op.create_index('idx_agent_executions_health', 'agent_executions', ['health_status'], unique=False)
-    op.create_index('idx_agent_executions_instance', 'agent_executions', ['job_id', 'instance_number'], unique=False)
     op.create_index('idx_agent_executions_job', 'agent_executions', ['job_id'], unique=False)
     op.create_index('idx_agent_executions_last_progress', 'agent_executions', ['last_progress_at'], unique=False)
     op.create_index('idx_agent_executions_status', 'agent_executions', ['status'], unique=False)
@@ -1070,7 +1053,7 @@ def downgrade() -> None:
     op.drop_index('idx_agent_executions_status', table_name='agent_executions')
     op.drop_index('idx_agent_executions_last_progress', table_name='agent_executions')
     op.drop_index('idx_agent_executions_job', table_name='agent_executions')
-    op.drop_index('idx_agent_executions_instance', table_name='agent_executions')
+    # Removed: op.drop_index('idx_agent_executions_instance', ...) - column removed in 0700i
     op.drop_index('idx_agent_executions_health', table_name='agent_executions')
     op.drop_table('agent_executions')
     op.drop_index('idx_vision_tenant', table_name='visions')

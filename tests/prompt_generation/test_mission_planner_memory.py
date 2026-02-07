@@ -7,9 +7,9 @@ instead of JSONB column, while maintaining identical output format.
 Handover: 0390b Phase 4
 """
 
-import pytest
 from datetime import datetime, timezone
-from uuid import uuid4
+
+import pytest
 
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import Product, ProductMemoryEntry
@@ -36,7 +36,6 @@ async def product_with_table_memory(db_session, test_tenant_key):
     # Add 3 memory entries to table
     entries = [
         ProductMemoryEntry(
-            
             product_id=str(product.id),
             tenant_key=test_tenant_key,
             sequence=1,
@@ -50,7 +49,6 @@ async def product_with_table_memory(db_session, test_tenant_key):
             timestamp=datetime(2025, 1, 10, 10, 0, 0, tzinfo=timezone.utc),
         ),
         ProductMemoryEntry(
-            
             product_id=str(product.id),
             tenant_key=test_tenant_key,
             sequence=2,
@@ -64,7 +62,6 @@ async def product_with_table_memory(db_session, test_tenant_key):
             timestamp=datetime(2025, 1, 15, 14, 30, 0, tzinfo=timezone.utc),
         ),
         ProductMemoryEntry(
-            
             product_id=str(product.id),
             tenant_key=test_tenant_key,
             sequence=3,
@@ -200,9 +197,7 @@ class TestMissionPlannerMemoryIntegration:
         assert "**Key Outcomes:**" not in minimal_result
         assert "**Decisions Made:**" not in minimal_result
 
-    async def test_extract_product_history_no_memory(
-        self, db_session, product_no_memory, test_tenant_key, db_manager
-    ):
+    async def test_extract_product_history_no_memory(self, db_session, product_no_memory, test_tenant_key, db_manager):
         """Should handle products with no memory entries gracefully."""
         planner = MissionPlanner(db_manager)
 
@@ -263,9 +258,7 @@ class TestMissionPlannerMemoryIntegration:
         assert summaries[1]["sequence"] in [2, 3]
         assert summaries[0]["sequence"] != summaries[1]["sequence"]
 
-    async def test_get_memory_summary_no_memory(
-        self, db_session, product_no_memory, test_tenant_key, db_manager
-    ):
+    async def test_get_memory_summary_no_memory(self, db_session, product_no_memory, test_tenant_key, db_manager):
         """_get_memory_summary should handle no memory gracefully."""
         planner = MissionPlanner(db_manager)
 

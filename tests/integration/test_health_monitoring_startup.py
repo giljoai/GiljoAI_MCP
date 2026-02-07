@@ -8,14 +8,15 @@ Handover 0107: Agent Health Monitoring Integration
 """
 
 import asyncio
-import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, Mock
 
-from src.giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
-from src.giljo_mcp.monitoring.health_config import HealthCheckConfig, AgentHealthStatus
-from src.giljo_mcp.database import DatabaseManager
+import pytest
+
 from api.websocket import WebSocketManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
+from src.giljo_mcp.monitoring.health_config import HealthCheckConfig
 
 
 class TestHealthMonitoringStartup:
@@ -67,20 +68,18 @@ class TestHealthMonitoringStartup:
     async def test_health_monitor_respects_disabled_config(self):
         """Verify monitor doesn't start when disabled in config."""
         # Simulate disabled configuration
-        health_config_dict = {
-            'enabled': False
-        }
+        health_config_dict = {"enabled": False}
 
         # Mock config manager
         mock_config = MagicMock()
-        mock_config.data = {'health_monitoring': health_config_dict}
+        mock_config.data = {"health_monitoring": health_config_dict}
 
         # Verify no monitor would be created (test configuration logic)
-        if health_config_dict.get('enabled', True):
+        if health_config_dict.get("enabled", True):
             pytest.fail("Health monitoring should be disabled")
 
         # Test passes if we reach here (config properly disabled)
-        assert health_config_dict['enabled'] is False
+        assert health_config_dict["enabled"] is False
 
     @pytest.mark.asyncio
     async def test_health_monitor_uses_config_timeouts(self):
@@ -92,10 +91,7 @@ class TestHealthMonitoringStartup:
             waiting_timeout_minutes=3,
             active_no_progress_minutes=7,
             heartbeat_timeout_minutes=12,
-            timeout_overrides={
-                'orchestrator': 20,
-                'implementer': 15
-            }
+            timeout_overrides={"orchestrator": 20, "implementer": 15},
         )
 
         monitor = AgentHealthMonitor(db_manager, ws_manager, config)
@@ -103,8 +99,8 @@ class TestHealthMonitoringStartup:
         # Verify config applied
         assert monitor.config.waiting_timeout_minutes == 3
         assert monitor.config.active_no_progress_minutes == 7
-        assert monitor.config.get_timeout_for_agent('orchestrator') == 20
-        assert monitor.config.get_timeout_for_agent('implementer') == 15
+        assert monitor.config.get_timeout_for_agent("orchestrator") == 20
+        assert monitor.config.get_timeout_for_agent("implementer") == 15
 
     @pytest.mark.asyncio
     async def test_health_monitor_error_recovery(self):
@@ -113,6 +109,7 @@ class TestHealthMonitoringStartup:
 
         # Mock get_session to raise error on first call, then work
         call_count = 0
+
         async def mock_get_session():
             nonlocal call_count
             call_count += 1
@@ -148,38 +145,38 @@ class TestHealthMonitoringStartup:
         """Test loading health monitoring config from config.yaml structure."""
         # Simulate config.yaml structure
         config_dict = {
-            'health_monitoring': {
-                'enabled': True,
-                'scan_interval_seconds': 300,
-                'timeouts': {
-                    'waiting_timeout': 2,
-                    'active_no_progress': 5,
-                    'heartbeat_timeout': 10,
-                    'orchestrator': 15,
-                    'implementer': 10,
-                    'tester': 8
+            "health_monitoring": {
+                "enabled": True,
+                "scan_interval_seconds": 300,
+                "timeouts": {
+                    "waiting_timeout": 2,
+                    "active_no_progress": 5,
+                    "heartbeat_timeout": 10,
+                    "orchestrator": 15,
+                    "implementer": 10,
+                    "tester": 8,
                 },
-                'auto_fail_on_timeout': False,
-                'notify_orchestrator': True
+                "auto_fail_on_timeout": False,
+                "notify_orchestrator": True,
             }
         }
 
-        health_config_dict = config_dict['health_monitoring']
-        timeout_config = health_config_dict['timeouts']
+        health_config_dict = config_dict["health_monitoring"]
+        timeout_config = health_config_dict["timeouts"]
 
         # Build HealthCheckConfig as done in app.py
         health_config = HealthCheckConfig(
-            waiting_timeout_minutes=timeout_config.get('waiting_timeout', 2),
-            active_no_progress_minutes=timeout_config.get('active_no_progress', 5),
-            heartbeat_timeout_minutes=timeout_config.get('heartbeat_timeout', 10),
+            waiting_timeout_minutes=timeout_config.get("waiting_timeout", 2),
+            active_no_progress_minutes=timeout_config.get("active_no_progress", 5),
+            heartbeat_timeout_minutes=timeout_config.get("heartbeat_timeout", 10),
             timeout_overrides={
-                'orchestrator': timeout_config.get('orchestrator', 15),
-                'implementer': timeout_config.get('implementer', 10),
-                'tester': timeout_config.get('tester', 8),
+                "orchestrator": timeout_config.get("orchestrator", 15),
+                "implementer": timeout_config.get("implementer", 10),
+                "tester": timeout_config.get("tester", 8),
             },
-            scan_interval_seconds=health_config_dict.get('scan_interval_seconds', 300),
-            auto_fail_on_timeout=health_config_dict.get('auto_fail_on_timeout', False),
-            notify_orchestrator=health_config_dict.get('notify_orchestrator', True)
+            scan_interval_seconds=health_config_dict.get("scan_interval_seconds", 300),
+            auto_fail_on_timeout=health_config_dict.get("auto_fail_on_timeout", False),
+            notify_orchestrator=health_config_dict.get("notify_orchestrator", True),
         )
 
         # Verify all values loaded correctly
@@ -189,9 +186,9 @@ class TestHealthMonitoringStartup:
         assert health_config.scan_interval_seconds == 300
         assert health_config.auto_fail_on_timeout is False
         assert health_config.notify_orchestrator is True
-        assert health_config.get_timeout_for_agent('orchestrator') == 15
-        assert health_config.get_timeout_for_agent('implementer') == 10
-        assert health_config.get_timeout_for_agent('tester') == 8
+        assert health_config.get_timeout_for_agent("orchestrator") == 15
+        assert health_config.get_timeout_for_agent("implementer") == 10
+        assert health_config.get_timeout_for_agent("tester") == 8
 
     @pytest.mark.asyncio
     async def test_startup_integration_with_mocked_dependencies(self):
@@ -237,11 +234,11 @@ class TestHealthMonitoringStartup:
         import os
 
         # Set environment variable
-        os.environ['HEALTH_MONITORING_ENABLED'] = 'false'
+        os.environ["HEALTH_MONITORING_ENABLED"] = "false"
 
         try:
             # Check if environment variable would be respected
-            enabled = os.getenv('HEALTH_MONITORING_ENABLED', 'true').lower() == 'true'
+            enabled = os.getenv("HEALTH_MONITORING_ENABLED", "true").lower() == "true"
             assert enabled is False
 
             # Verify config would not start monitor
@@ -250,7 +247,7 @@ class TestHealthMonitoringStartup:
                 assert True  # Test passes
         finally:
             # Clean up
-            os.environ.pop('HEALTH_MONITORING_ENABLED', None)
+            os.environ.pop("HEALTH_MONITORING_ENABLED", None)
 
     @pytest.mark.asyncio
     async def test_multiple_start_stop_cycles(self):
@@ -276,7 +273,7 @@ class TestHealthMonitoringStartup:
     @pytest.mark.asyncio
     async def test_health_check_with_unhealthy_job(self):
         """Test health monitor detects unhealthy jobs."""
-        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+        from src.giljo_mcp.models.agent_identity import AgentExecution
 
         # Mock database manager with unhealthy job
         db_manager = Mock(spec=DatabaseManager)
@@ -334,7 +331,7 @@ class TestHealthMonitoringStartup:
         # Create monitor with short timeout
         config = HealthCheckConfig(
             waiting_timeout_minutes=1,  # Very short for testing
-            scan_interval_seconds=0.5
+            scan_interval_seconds=0.5,
         )
 
         monitor = AgentHealthMonitor(db_manager, ws_manager, config)
@@ -370,25 +367,20 @@ class TestHealthMonitoringConfiguration:
         config = HealthCheckConfig()
 
         # Orchestrator should have longer timeout
-        assert config.get_timeout_for_agent('orchestrator') == 15
+        assert config.get_timeout_for_agent("orchestrator") == 15
 
         # Implementer should have moderate timeout
-        assert config.get_timeout_for_agent('implementer') == 10
+        assert config.get_timeout_for_agent("implementer") == 10
 
         # Unknown agent type should use default
-        assert config.get_timeout_for_agent('unknown_agent') == 10
+        assert config.get_timeout_for_agent("unknown_agent") == 10
 
     def test_custom_timeout_overrides(self):
         """Test custom timeout overrides can be specified."""
-        config = HealthCheckConfig(
-            timeout_overrides={
-                'custom_agent': 25,
-                'fast_agent': 3
-            }
-        )
+        config = HealthCheckConfig(timeout_overrides={"custom_agent": 25, "fast_agent": 3})
 
-        assert config.get_timeout_for_agent('custom_agent') == 25
-        assert config.get_timeout_for_agent('fast_agent') == 3
+        assert config.get_timeout_for_agent("custom_agent") == 25
+        assert config.get_timeout_for_agent("fast_agent") == 3
 
     def test_auto_fail_configuration(self):
         """Test auto-fail configuration."""

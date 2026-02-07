@@ -44,7 +44,8 @@ class Organization(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
-        DateTime(timezone=True), nullable=True  # FIXED: Remove server_default and onupdate (0424m)
+        DateTime(timezone=True),
+        nullable=True,  # FIXED: Remove server_default and onupdate (0424m)
     )
     settings = Column(JSONB, default=dict, nullable=False)
 
@@ -79,6 +80,9 @@ class Organization(Base):
         Index("idx_org_active", "is_active"),  # Match migration name (0424m)
     )
 
+    def __repr__(self) -> str:
+        return f"<Organization(id={self.id}, name='{self.name}', slug='{self.slug}')>"
+
 
 class OrgMembership(Base):
     """
@@ -110,13 +114,13 @@ class OrgMembership(Base):
     )
     tenant_key = Column(String(36), nullable=False, index=True)  # ADDED: Multi-tenant isolation (0424m)
     role = Column(
-        String(32), nullable=False, default="member"  # FIXED: 20 -> 32 (0424m)
+        String(32),
+        nullable=False,
+        default="member",  # FIXED: 20 -> 32 (0424m)
     )  # owner, admin, member, viewer
     is_active = Column(Boolean, default=True, nullable=False)
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
-    invited_by = Column(
-        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    invited_by = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     organization = relationship("Organization", back_populates="members")
@@ -133,3 +137,6 @@ class OrgMembership(Base):
         Index("idx_membership_user", "user_id"),  # FIXED: Match migration (0424m)
         Index("idx_membership_tenant", "tenant_key"),  # ADDED: Match migration (0424m)
     )
+
+    def __repr__(self) -> str:
+        return f"<OrgMembership(id={self.id}, org_id='{self.org_id}', user_id='{self.user_id}', role='{self.role}')>"

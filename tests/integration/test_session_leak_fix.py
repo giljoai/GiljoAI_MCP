@@ -29,10 +29,8 @@ Files to be Fixed:
 
 import asyncio
 import gc
-import logging
-import warnings
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException, Request
@@ -92,7 +90,7 @@ async def test_session_cleanup_on_http_exception():
             raise
         finally:
             # Match the state checking logic we added to database.py
-            if hasattr(mock_session, 'is_active') and mock_session.is_active:
+            if hasattr(mock_session, "is_active") and mock_session.is_active:
                 await mock_session.rollback()
             await mock_session.close()
 
@@ -333,8 +331,7 @@ async def test_no_illegal_state_change_error():
         if mock_session.is_active:
             # This is what happens in production when state isn't checked
             raise IllegalStateChangeError(
-                "Method 'close()' can't be called here; "
-                "method '_connection_for_bind()' is already in progress"
+                "Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress"
             )
         # Close is OK when not active
 
@@ -357,7 +354,7 @@ async def test_no_illegal_state_change_error():
             raise
         finally:
             # AFTER FIX: Check state first (this is what we implemented)
-            if hasattr(mock_session, 'is_active') and mock_session.is_active:
+            if hasattr(mock_session, "is_active") and mock_session.is_active:
                 await mock_session.rollback()
             await mock_session.close()
 
@@ -538,7 +535,7 @@ async def test_session_state_checked_before_close():
     #     await session.rollback()
     # await session.close()
 
-    pass  # Placeholder - will be filled when implementing fix
+    # Placeholder - will be filled when implementing fix
 
 
 if __name__ == "__main__":

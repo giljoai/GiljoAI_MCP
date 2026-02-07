@@ -11,18 +11,19 @@ WebSocket event integration for real-time alerting.
 """
 
 import asyncio
+import contextlib
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
-from sqlalchemy import select, and_, or_
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.models import Project
+from sqlalchemy import and_, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
-from src.giljo_mcp.database import DatabaseManager
+
 from api.websocket import WebSocketManager
-from src.giljo_mcp.monitoring.health_config import HealthCheckConfig, AgentHealthStatus
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Project
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.monitoring.health_config import AgentHealthStatus, HealthCheckConfig
 
 
 logger = logging.getLogger(__name__)
@@ -37,10 +38,7 @@ class AgentHealthMonitor:
     """
 
     def __init__(
-        self,
-        db_manager: DatabaseManager,
-        ws_manager: WebSocketManager,
-        config: Optional[HealthCheckConfig] = None
+        self, db_manager: DatabaseManager, ws_manager: WebSocketManager, config: HealthCheckConfig | None = None
     ):
         """
         Initialize health monitor.
@@ -54,7 +52,7 @@ class AgentHealthMonitor:
         self.ws = ws_manager
         self.config = config or HealthCheckConfig()
         self.running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._first_scan = True  # Suppress verbose logging on first scan
 
     async def start(self):
@@ -72,10 +70,8 @@ class AgentHealthMonitor:
         self.running = False
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
         logger.info("Agent health monitor stopped")
 
     async def _monitoring_loop(self):
@@ -102,7 +98,9 @@ class AgentHealthMonitor:
 
                 # On first scan, just log a summary instead of individual alerts
                 if self._first_scan and unhealthy_jobs:
-                    logger.info(f"Initial health scan: Found {len(unhealthy_jobs)} stale jobs (alerts suppressed on first scan)")
+                    logger.info(
+                        f"Initial health scan: Found {len(unhealthy_jobs)} stale jobs (alerts suppressed on first scan)"
+                    )
                     self._first_scan = False
                     continue
 
@@ -111,11 +109,7 @@ class AgentHealthMonitor:
 
         logger.debug("Health check cycle completed")
 
-    async def _scan_tenant_jobs(
-        self,
-        session: AsyncSession,
-        tenant_key: str
-    ) -> List[AgentHealthStatus]:
+    async def _scan_tenant_jobs(self, session: AsyncSession, tenant_key: str) -> list[AgentHealthStatus]:
         """
         Scan all jobs for a tenant and detect unhealthy states.
 
@@ -142,11 +136,7 @@ class AgentHealthMonitor:
 
         return unhealthy
 
-    async def _detect_waiting_timeouts(
-        self,
-        session: AsyncSession,
-        tenant_key: str
-    ) -> List[AgentHealthStatus]:
+    async def _detect_waiting_timeouts(self, session: AsyncSession, tenant_key: str) -> list[AgentHealthStatus]:
         """
         Find jobs stuck in 'waiting' state.
 
@@ -157,21 +147,16 @@ class AgentHealthMonitor:
         Returns:
             List of jobs with waiting timeouts
         """
-        timeout_threshold = datetime.now(timezone.utc) - timedelta(
-            minutes=self.config.waiting_timeout_minutes
-        )
+        timeout_threshold = datetime.now(timezone.utc) - timedelta(minutes=self.config.waiting_timeout_minutes)
 
         # Filter out jobs from deleted projects and inactive projects using LEFT JOIN
         # Handover 0424: Only monitor jobs from active projects
-        # Only check latest instance per job to avoid alerts on old succession instances
+        # Only check latest execution per job to avoid alerts on old executions
         from sqlalchemy import func
 
-        # Subquery to get latest instance_number per job_id
+        # Subquery to get latest started_at per job_id
         latest_instance_subq = (
-            select(
-                AgentExecution.job_id,
-                func.max(AgentExecution.instance_number).label('max_instance')
-            )
+            select(AgentExecution.job_id, func.max(AgentExecution.started_at).label("latest_started"))
             .where(AgentExecution.tenant_key == tenant_key)
             .group_by(AgentExecution.job_id)
             .subquery()
@@ -185,8 +170,8 @@ class AgentHealthMonitor:
                 latest_instance_subq,
                 and_(
                     AgentExecution.job_id == latest_instance_subq.c.job_id,
-                    AgentExecution.instance_number == latest_instance_subq.c.max_instance
-                )
+                    AgentExecution.started_at == latest_instance_subq.c.latest_started,
+                ),
             )
             .outerjoin(Project, AgentJob.project_id == Project.id)
             .where(
@@ -198,9 +183,9 @@ class AgentHealthMonitor:
                         AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
                         and_(
                             Project.deleted_at.is_(None),
-                            Project.status == "active"  # Only active projects
-                        )
-                    )
+                            Project.status == "active",  # Only active projects
+                        ),
+                    ),
                 )
             )
         )
@@ -223,16 +208,12 @@ class AgentHealthMonitor:
                     else float(self.config.waiting_timeout_minutes)
                 ),
                 issue_description=f"Job never acknowledged after {self.config.waiting_timeout_minutes} minutes",
-                recommended_action="Check if agent received job, manual intervention may be required"
+                recommended_action="Check if agent received job, manual intervention may be required",
             )
             for execution in executions
         ]
 
-    async def _detect_stalled_jobs(
-        self,
-        session: AsyncSession,
-        tenant_key: str
-    ) -> List[AgentHealthStatus]:
+    async def _detect_stalled_jobs(self, session: AsyncSession, tenant_key: str) -> list[AgentHealthStatus]:
         """
         Find active jobs without progress updates.
 
@@ -243,21 +224,16 @@ class AgentHealthMonitor:
         Returns:
             List of stalled jobs
         """
-        timeout_threshold = datetime.now(timezone.utc) - timedelta(
-            minutes=self.config.active_no_progress_minutes
-        )
+        timeout_threshold = datetime.now(timezone.utc) - timedelta(minutes=self.config.active_no_progress_minutes)
 
         # Query active jobs, filtering out jobs from deleted projects and inactive projects
         # Handover 0424: Only monitor jobs from active projects
-        # Only check latest instance per job to avoid alerts on old succession instances
+        # Only check latest execution per job to avoid alerts on old executions
         from sqlalchemy import func
 
-        # Subquery to get latest instance_number per job_id
+        # Subquery to get latest started_at per job_id
         latest_instance_subq = (
-            select(
-                AgentExecution.job_id,
-                func.max(AgentExecution.instance_number).label('max_instance')
-            )
+            select(AgentExecution.job_id, func.max(AgentExecution.started_at).label("latest_started"))
             .where(AgentExecution.tenant_key == tenant_key)
             .group_by(AgentExecution.job_id)
             .subquery()
@@ -271,8 +247,8 @@ class AgentHealthMonitor:
                 latest_instance_subq,
                 and_(
                     AgentExecution.job_id == latest_instance_subq.c.job_id,
-                    AgentExecution.instance_number == latest_instance_subq.c.max_instance
-                )
+                    AgentExecution.started_at == latest_instance_subq.c.latest_started,
+                ),
             )
             .outerjoin(Project, AgentJob.project_id == Project.id)
             .where(
@@ -283,9 +259,9 @@ class AgentHealthMonitor:
                         AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
                         and_(
                             Project.deleted_at.is_(None),
-                            Project.status == "active"  # Only active projects
-                        )
-                    )
+                            Project.status == "active",  # Only active projects
+                        ),
+                    ),
                 )
             )
         )
@@ -307,26 +283,24 @@ class AgentHealthMonitor:
                 else:
                     health_state = "warning"
 
-                stalled.append(AgentHealthStatus(
-                    execution_id=execution.id,  # Primary key - guaranteed unique
-                    job_id=execution.job_id,
-                    agent_id=execution.agent_id,
-                    agent_display_name=execution.agent_display_name,
-                    current_status="active",
-                    health_state=health_state,
-                    last_update=last_progress,
-                    minutes_since_update=minutes_stalled,
-                    issue_description=f"No progress update for {minutes_stalled:.1f} minutes",
-                    recommended_action="Check agent logs, may need manual restart"
-                ))
+                stalled.append(
+                    AgentHealthStatus(
+                        execution_id=execution.id,  # Primary key - guaranteed unique
+                        job_id=execution.job_id,
+                        agent_id=execution.agent_id,
+                        agent_display_name=execution.agent_display_name,
+                        current_status="active",
+                        health_state=health_state,
+                        last_update=last_progress,
+                        minutes_since_update=minutes_stalled,
+                        issue_description=f"No progress update for {minutes_stalled:.1f} minutes",
+                        recommended_action="Check agent logs, may need manual restart",
+                    )
+                )
 
         return stalled
 
-    async def _detect_heartbeat_failures(
-        self,
-        session: AsyncSession,
-        tenant_key: str
-    ) -> List[AgentHealthStatus]:
+    async def _detect_heartbeat_failures(self, session: AsyncSession, tenant_key: str) -> list[AgentHealthStatus]:
         """
         Find jobs with extended silence (heartbeat timeout).
 
@@ -339,15 +313,12 @@ class AgentHealthMonitor:
         """
         # Query waiting and active jobs, filtering out jobs from deleted projects and inactive projects
         # Handover 0424: Only monitor jobs from active projects
-        # Only check latest instance per job to avoid alerts on old succession instances
+        # Only check latest execution per job to avoid alerts on old executions
         from sqlalchemy import func
 
-        # Subquery to get latest instance_number per job_id
+        # Subquery to get latest started_at per job_id
         latest_instance_subq = (
-            select(
-                AgentExecution.job_id,
-                func.max(AgentExecution.instance_number).label('max_instance')
-            )
+            select(AgentExecution.job_id, func.max(AgentExecution.started_at).label("latest_started"))
             .where(AgentExecution.tenant_key == tenant_key)
             .group_by(AgentExecution.job_id)
             .subquery()
@@ -361,8 +332,8 @@ class AgentHealthMonitor:
                 latest_instance_subq,
                 and_(
                     AgentExecution.job_id == latest_instance_subq.c.job_id,
-                    AgentExecution.instance_number == latest_instance_subq.c.max_instance
-                )
+                    AgentExecution.started_at == latest_instance_subq.c.latest_started,
+                ),
             )
             .outerjoin(Project, AgentJob.project_id == Project.id)
             .where(
@@ -373,9 +344,9 @@ class AgentHealthMonitor:
                         AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
                         and_(
                             Project.deleted_at.is_(None),
-                            Project.status == "active"  # Only active projects
-                        )
-                    )
+                            Project.status == "active",  # Only active projects
+                        ),
+                    ),
                 )
             )
         )
@@ -393,27 +364,24 @@ class AgentHealthMonitor:
             if last_activity < threshold:
                 minutes_silent = (datetime.now(timezone.utc) - last_activity).total_seconds() / 60
 
-                failures.append(AgentHealthStatus(
-                    execution_id=execution.id,  # Primary key - guaranteed unique
-                    job_id=execution.job_id,
-                    agent_id=execution.agent_id,
-                    agent_display_name=execution.agent_display_name,
-                    current_status=execution.status,
-                    health_state="timeout",
-                    last_update=last_activity,
-                    minutes_since_update=minutes_silent,
-                    issue_description=f"Complete silence for {minutes_silent:.1f} minutes (timeout: {timeout_minutes}m)",
-                    recommended_action="Auto-fail job or manual intervention required"
-                ))
+                failures.append(
+                    AgentHealthStatus(
+                        execution_id=execution.id,  # Primary key - guaranteed unique
+                        job_id=execution.job_id,
+                        agent_id=execution.agent_id,
+                        agent_display_name=execution.agent_display_name,
+                        current_status=execution.status,
+                        health_state="timeout",
+                        last_update=last_activity,
+                        minutes_since_update=minutes_silent,
+                        issue_description=f"Complete silence for {minutes_silent:.1f} minutes (timeout: {timeout_minutes}m)",
+                        recommended_action="Auto-fail job or manual intervention required",
+                    )
+                )
 
         return failures
 
-    async def _handle_unhealthy_job(
-        self,
-        session: AsyncSession,
-        health_status: AgentHealthStatus,
-        tenant_key: str
-    ):
+    async def _handle_unhealthy_job(self, session: AsyncSession, health_status: AgentHealthStatus, tenant_key: str):
         """
         Handle detected unhealthy job.
 
@@ -430,8 +398,8 @@ class AgentHealthMonitor:
                 "job_id": health_status.job_id,
                 "agent_display_name": health_status.agent_display_name,
                 "health_state": health_status.health_state,
-                "minutes_since_update": health_status.minutes_since_update
-            }
+                "minutes_since_update": health_status.minutes_since_update,
+            },
         )
 
         # Get execution from database by primary key (guaranteed unique)
@@ -462,7 +430,7 @@ class AgentHealthMonitor:
                 tenant_key=tenant_key,
                 job_id=health_status.job_id,
                 agent_display_name=health_status.agent_display_name,
-                reason=health_status.issue_description
+                reason=health_status.issue_description,
             )
         else:
             # Broadcast health alert
@@ -470,7 +438,7 @@ class AgentHealthMonitor:
                 tenant_key=tenant_key,
                 job_id=health_status.job_id,
                 agent_display_name=health_status.agent_display_name,
-                health_status=health_status
+                health_status=health_status,
             )
 
         await session.commit()
@@ -507,14 +475,14 @@ class AgentHealthMonitor:
             execution.started_at,
             execution.last_progress_at,
             execution.last_message_check_at,
-            self._get_last_progress_time(execution)
+            self._get_last_progress_time(execution),
         ]
 
         # Filter out None values and return max
         valid_timestamps = [ts for ts in candidates if ts is not None]
         return max(valid_timestamps) if valid_timestamps else datetime.now(timezone.utc)
 
-    async def _get_all_tenants(self, session: AsyncSession) -> List[str]:
+    async def _get_all_tenants(self, session: AsyncSession) -> list[str]:
         """
         Get list of all tenant keys.
 
@@ -536,8 +504,8 @@ class AgentHealthMonitor:
                     AgentJob.project_id.is_(None),  # Jobs without project (orphaned)
                     and_(
                         Project.deleted_at.is_(None),
-                        Project.status == "active"  # Only active projects
-                    )
+                        Project.status == "active",  # Only active projects
+                    ),
                 )
             )
         )

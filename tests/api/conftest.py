@@ -14,7 +14,6 @@ import pytest_asyncio
 from httpx import ASGITransport
 from httpx import AsyncClient as HTTPXAsyncClient
 from passlib.hash import bcrypt
-from sqlalchemy import select
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -56,6 +55,7 @@ async def api_client(db_manager):
 
     # Set up tool_accessor for message endpoints
     from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+
     state.tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=state.tenant_manager)
     app.state.tool_accessor = state.tool_accessor
 
@@ -64,10 +64,12 @@ async def api_client(db_manager):
     mock_config.jwt.secret_key = "test_secret_key"
     mock_config.jwt.algorithm = "HS256"
     mock_config.jwt.expiration_minutes = 30
-    mock_config.get = MagicMock(side_effect=lambda key, default=None: {
-        "security.auth_enabled": True,
-        "security.api_keys_required": False,
-    }.get(key, default))
+    mock_config.get = MagicMock(
+        side_effect=lambda key, default=None: {
+            "security.auth_enabled": True,
+            "security.api_keys_required": False,
+        }.get(key, default)
+    )
 
     # Set up config in state (for endpoints that use state.config)
     state.config = mock_config
@@ -85,7 +87,7 @@ async def api_client(db_manager):
         transport=transport,
         base_url="http://test",
         cookies=None,  # Explicitly no cookies to start
-        follow_redirects=True
+        follow_redirects=True,
     ) as client:
         # Clear any cookies before yielding to test
         client.cookies.clear()
@@ -123,12 +125,12 @@ async def auth_headers(db_manager, api_client) -> dict:
     """
     import os
 
+    # Create a unique test user for each test run (prevents fixture collisions)
+    from uuid import uuid4
+
     from src.giljo_mcp.auth.jwt_manager import JWTManager
     from src.giljo_mcp.models import User
     from src.giljo_mcp.models.organizations import Organization
-
-    # Create a unique test user for each test run (prevents fixture collisions)
-    from uuid import uuid4
     from src.giljo_mcp.tenant import TenantManager
 
     async with db_manager.get_session_async() as session:
@@ -147,7 +149,7 @@ async def auth_headers(db_manager, api_client) -> dict:
             name=f"Test Org {unique_suffix}",
             slug=f"test-org-{unique_suffix}",
             tenant_key=tenant_key,  # 0424m: Required NOT NULL
-            is_active=True
+            is_active=True,
         )
         session.add(org)
         await session.flush()
@@ -158,7 +160,7 @@ async def auth_headers(db_manager, api_client) -> dict:
             password_hash=password_hash,
             tenant_key=tenant_key,
             role="developer",
-            org_id=org.id
+            org_id=org.id,
         )
         session.add(user)
         await session.commit()
@@ -216,7 +218,7 @@ async def admin_user(db_manager):
             name=f"Admin Org {unique_id}",
             slug=f"admin-org-{unique_id}",
             tenant_key=tenant_key,  # 0424m: Required NOT NULL
-            is_active=True
+            is_active=True,
         )
         session.add(org)
         await session.flush()
@@ -228,7 +230,7 @@ async def admin_user(db_manager):
             tenant_key=tenant_key,
             role="admin",  # ADMIN ROLE for admin-only endpoints
             is_active=True,
-            org_id=org.id
+            org_id=org.id,
         )
         session.add(user)
         await session.commit()
@@ -271,10 +273,11 @@ async def admin_token(admin_user):
 async def test_user(db_manager):
     """
     Create test user for depth config tests.
-    
+
     Returns the User object for assertions and token generation.
     """
     from uuid import uuid4
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.models.organizations import Organization
     from src.giljo_mcp.tenant import TenantManager
@@ -289,7 +292,7 @@ async def test_user(db_manager):
             name=f"Test Org {unique_suffix}",
             slug=f"test-org-{unique_suffix}",
             tenant_key=tenant_key,  # 0424m: Required NOT NULL
-            is_active=True
+            is_active=True,
         )
         session.add(org)
         await session.flush()
@@ -301,7 +304,7 @@ async def test_user(db_manager):
             tenant_key=tenant_key,
             role="developer",
             is_active=True,
-            org_id=org.id
+            org_id=org.id,
         )
         session.add(user)
         await session.commit()
@@ -315,9 +318,10 @@ async def auth_headers_tenant_a(db_manager):
     Authentication headers for tenant A (multi-tenant isolation tests).
     """
     from uuid import uuid4
+
+    from src.giljo_mcp.auth.jwt_manager import JWTManager
     from src.giljo_mcp.models import User
     from src.giljo_mcp.models.organizations import Organization
-    from src.giljo_mcp.auth.jwt_manager import JWTManager
     from src.giljo_mcp.tenant import TenantManager
 
     unique_suffix = uuid4().hex[:8]
@@ -330,7 +334,7 @@ async def auth_headers_tenant_a(db_manager):
             name=f"Tenant A Org {unique_suffix}",
             slug=f"tenant-a-org-{unique_suffix}",
             tenant_key=tenant_key,  # 0424m: Required NOT NULL
-            is_active=True
+            is_active=True,
         )
         session.add(org)
         await session.flush()
@@ -342,16 +346,13 @@ async def auth_headers_tenant_a(db_manager):
             tenant_key=tenant_key,
             role="developer",
             is_active=True,
-            org_id=org.id
+            org_id=org.id,
         )
         session.add(user)
         await session.commit()
 
         token = JWTManager.create_access_token(
-            user_id=user.id,
-            username=user.username,
-            role=user.role,
-            tenant_key=user.tenant_key
+            user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
         )
 
         return {"Cookie": f"access_token={token}"}
@@ -363,9 +364,10 @@ async def auth_headers_tenant_b(db_manager):
     Authentication headers for tenant B (multi-tenant isolation tests).
     """
     from uuid import uuid4
+
+    from src.giljo_mcp.auth.jwt_manager import JWTManager
     from src.giljo_mcp.models import User
     from src.giljo_mcp.models.organizations import Organization
-    from src.giljo_mcp.auth.jwt_manager import JWTManager
     from src.giljo_mcp.tenant import TenantManager
 
     unique_suffix = uuid4().hex[:8]
@@ -378,7 +380,7 @@ async def auth_headers_tenant_b(db_manager):
             name=f"Tenant B Org {unique_suffix}",
             slug=f"tenant-b-org-{unique_suffix}",
             tenant_key=tenant_key,  # 0424m: Required NOT NULL
-            is_active=True
+            is_active=True,
         )
         session.add(org)
         await session.flush()
@@ -390,16 +392,13 @@ async def auth_headers_tenant_b(db_manager):
             tenant_key=tenant_key,
             role="developer",
             is_active=True,
-            org_id=org.id
+            org_id=org.id,
         )
         session.add(user)
         await session.commit()
 
         token = JWTManager.create_access_token(
-            user_id=user.id,
-            username=user.username,
-            role=user.role,
-            tenant_key=user.tenant_key
+            user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
         )
 
         return {"Cookie": f"access_token={token}"}
@@ -417,7 +416,6 @@ async def websocket_listener():
     Provides get_events() method that always returns empty list (WebSocket events
     are integration-level concerns, not unit test concerns).
     """
-    from unittest.mock import AsyncMock, MagicMock
 
     class MockWebSocketListener:
         def __init__(self):

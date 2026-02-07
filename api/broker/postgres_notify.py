@@ -4,11 +4,11 @@ import asyncio
 import json
 import logging
 from collections.abc import Callable
-from typing import Optional
 
 import asyncpg
 
 from api.broker.base import BrokerHandler, WebSocketBrokerMessage, WebSocketEventBroker
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +24,8 @@ class PostgresNotifyWebSocketEventBroker(WebSocketEventBroker):
         self._dsn = dsn
         self._channel = channel
         self._handlers: set[BrokerHandler] = set()
-        self._listen_conn: Optional[asyncpg.Connection] = None
-        self._publish_pool: Optional[asyncpg.Pool] = None
+        self._listen_conn: asyncpg.Connection | None = None
+        self._publish_pool: asyncpg.Pool | None = None
         self._lock = asyncio.Lock()
 
     async def start(self) -> None:
@@ -40,19 +40,19 @@ class PostgresNotifyWebSocketEventBroker(WebSocketEventBroker):
         if self._listen_conn:
             try:
                 self._listen_conn.remove_listener(self._channel, self._on_notification)
-            except Exception:
-                logger.debug("Failed removing postgres listener", exc_info=True)
+            except (asyncpg.PostgresError, RuntimeError) as e:
+                logger.debug(f"Failed removing postgres listener: {e}")
             try:
                 await self._listen_conn.close()
-            except Exception:
-                logger.debug("Failed closing postgres listen connection", exc_info=True)
+            except (asyncpg.PostgresError, RuntimeError) as e:
+                logger.debug(f"Failed closing postgres listen connection: {e}")
             self._listen_conn = None
 
         if self._publish_pool:
             try:
                 await self._publish_pool.close()
-            except Exception:
-                logger.debug("Failed closing postgres pool", exc_info=True)
+            except (asyncpg.PostgresError, RuntimeError) as e:
+                logger.debug(f"Failed closing postgres pool: {e}")
             self._publish_pool = None
 
     def subscribe(self, handler: BrokerHandler) -> Callable[[], None]:
@@ -93,13 +93,18 @@ class PostgresNotifyWebSocketEventBroker(WebSocketEventBroker):
         )
 
     def _on_notification(self, _connection: asyncpg.Connection, _pid: int, _channel: str, payload: str) -> None:
-        asyncio.create_task(self._handle_payload(payload))
+        # Fire and forget - task will run in background
+        task = asyncio.create_task(self._handle_payload(payload))
+        # Store reference to prevent task from being garbage collected
+        self._background_tasks = getattr(self, "_background_tasks", set())
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     async def _handle_payload(self, payload: str) -> None:
         try:
             message = self._deserialize(payload)
-        except Exception:
-            logger.warning("Failed to deserialize broker payload", exc_info=True)
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
+            logger.warning(f"Failed to deserialize broker payload: {e}", exc_info=True)
             return
 
         async with self._lock:
@@ -108,5 +113,5 @@ class PostgresNotifyWebSocketEventBroker(WebSocketEventBroker):
         for handler in handlers_snapshot:
             try:
                 await handler(message)
-            except Exception:
-                logger.warning("Broker handler failed", exc_info=True)
+            except Exception as e:  # noqa: BLE001, PERF203 - Handler resilience: continue loop on any error
+                logger.warning(f"Broker handler failed: {e}", exc_info=True)

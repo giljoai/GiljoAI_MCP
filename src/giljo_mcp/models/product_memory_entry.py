@@ -9,22 +9,22 @@ This table is the SINGLE SOURCE OF TRUTH for 360 memory entries as of v3.3.
 """
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import (
+    Boolean,
     Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
     String,
     Text,
-    Integer,
-    Float,
-    Boolean,
-    DateTime,
-    ForeignKey,
     UniqueConstraint,
-    Index,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -221,7 +221,7 @@ class ProductMemoryEntry(Base):
     def __repr__(self) -> str:
         return f"<ProductMemoryEntry(id={self.id}, product_id={self.product_id}, sequence={self.sequence}, type={self.entry_type})>"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary (matching JSONB entry format for compatibility)."""
         return {
             "id": str(self.id),

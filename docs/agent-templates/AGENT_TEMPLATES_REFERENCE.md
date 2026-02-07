@@ -290,7 +290,8 @@ CREATE TABLE agent_templates (
     name VARCHAR(100) NOT NULL,
     category VARCHAR(50),
     role VARCHAR(100),
-    template_content TEXT,
+    system_instructions TEXT NOT NULL,
+    user_instructions TEXT,
     variables JSON,
     behavioral_rules JSON,
     success_criteria JSON,
@@ -326,7 +327,7 @@ template = AgentTemplate(
     name="orchestrator",
     category="role",
     role="orchestrator",
-    template_content=orchestrator_content,
+    system_instructions=orchestrator_content,
     variables=["project_name", "project_mission", "product_name"],
     behavioral_rules=[
         "Coordinate all agents effectively",

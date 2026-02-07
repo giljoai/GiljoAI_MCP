@@ -12,14 +12,16 @@ Token Budget by Depth:
 - 100: Last 100 commits (~5000 tokens)
 """
 
+from typing import Any
+
 import structlog
-from typing import Any, Dict, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+
 
 logger = structlog.get_logger(__name__)
 
@@ -27,6 +29,7 @@ logger = structlog.get_logger(__name__)
 def estimate_tokens(data: Any) -> int:
     """Rough token estimation (1 token ≈ 4 chars)."""
     import json
+
     text = json.dumps(data) if not isinstance(data, str) else data
     return len(text) // 4
 
@@ -37,9 +40,9 @@ async def get_git_history(
     commits: int = 25,
     offset: int = 0,
     limit: int = None,
-    db_manager: Optional[DatabaseManager] = None,
-    session: Optional[AsyncSession] = None  # For testing only
-) -> Dict[str, Any]:
+    db_manager: DatabaseManager | None = None,
+    session: AsyncSession | None = None,  # For testing only
+) -> dict[str, Any]:
     """
     Fetch git commit history for given product with depth control.
 
@@ -92,12 +95,7 @@ async def get_git_history(
             commits=25
         )
     """
-    logger.info(
-        "fetching_git_history_context",
-        product_id=product_id,
-        tenant_key=tenant_key,
-        depth=commits
-    )
+    logger.info("fetching_git_history_context", product_id=product_id, tenant_key=tenant_key, depth=commits)
 
     if db_manager is None and session is None:
         logger.error("db_manager or session is required", operation="get_git_history")
@@ -115,19 +113,13 @@ async def get_git_history(
 
     try:
         # Verify product exists for tenant isolation
-        stmt = select(Product).where(
-            Product.id == product_id,
-            Product.tenant_key == tenant_key
-        )
+        stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
         result = await session_to_use.execute(stmt)
         product = result.scalar_one_or_none()
 
         if not product:
             logger.warning(
-                "product_not_found",
-                product_id=product_id,
-                tenant_key=tenant_key,
-                operation="get_git_history"
+                "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_git_history"
             )
             return {
                 "source": "git_history",
@@ -139,8 +131,8 @@ async def get_git_history(
                     "total_commits": 0,
                     "returned_commits": 0,
                     "git_integration_enabled": False,
-                    "error": "product_not_found"
-                }
+                    "error": "product_not_found",
+                },
             }
 
         # Check if GitHub integration is enabled (still in JSONB)
@@ -148,11 +140,7 @@ async def get_git_history(
         git_enabled = git_config.get("enabled", False)
 
         if not git_enabled:
-            logger.debug(
-                "git_integration_disabled",
-                product_id=product_id,
-                operation="get_git_history"
-            )
+            logger.debug("git_integration_disabled", product_id=product_id, operation="get_git_history")
             return {
                 "source": "git_history",
                 "depth": commits,
@@ -163,8 +151,8 @@ async def get_git_history(
                     "total_commits": 0,
                     "returned_commits": 0,
                     "git_integration_enabled": False,
-                    "reason": "git_integration_disabled"
-                }
+                    "reason": "git_integration_disabled",
+                },
             }
 
         # Use repository to fetch git commits from table
@@ -177,11 +165,7 @@ async def get_git_history(
         )
 
         if not all_commits:
-            logger.debug(
-                "no_git_commits_found",
-                product_id=product_id,
-                operation="get_git_history"
-            )
+            logger.debug("no_git_commits_found", product_id=product_id, operation="get_git_history")
             return {
                 "source": "git_history",
                 "depth": commits,
@@ -191,8 +175,8 @@ async def get_git_history(
                     "tenant_key": tenant_key,
                     "total_commits": 0,
                     "returned_commits": 0,
-                    "git_integration_enabled": True
-                }
+                    "git_integration_enabled": True,
+                },
             }
 
         # Repository already returns sorted commits (newest first) and limited
@@ -208,7 +192,7 @@ async def get_git_history(
             depth=commits,
             total_commits=len(all_commits),
             returned_commits=len(filtered_commits),
-            estimated_tokens=total_tokens
+            estimated_tokens=total_tokens,
         )
 
         return {
@@ -221,8 +205,8 @@ async def get_git_history(
                 "total_commits": len(all_commits),
                 "returned_commits": len(filtered_commits),
                 "git_integration_enabled": True,
-                "pagination_supported": False  # Reserved for future implementation
-            }
+                "pagination_supported": False,  # Reserved for future implementation
+            },
         }
     finally:
         if should_close and session_to_use:

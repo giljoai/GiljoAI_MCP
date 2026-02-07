@@ -4,17 +4,16 @@ Integration tests for MessageService.receive_messages and list_messages.
 Tests proper database queries without legacy AgentMessageQueue dependency.
 """
 
-import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import select
+
+import pytest
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models.tasks import Message
-from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.tenant import TenantManager
 
 
 @pytest.fixture
@@ -41,7 +40,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
             name="Test Project",
             description="Test project for message service",
             mission="Test mission for message service integration tests",
-            status="active"
+            status="active",
         )
         session.add(project)
 
@@ -53,7 +52,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
             agent_display_name="implementer",
             agent_name="Implementer Agent",
             mission="Implement features",
-            status="working"
+            status="working",
         )
         agent2 = AgentExecution(
             job_id=agent2_id,
@@ -62,7 +61,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
             agent_display_name="tester",
             agent_name="Tester Agent",
             mission="Run tests",
-            status="working"
+            status="working",
         )
         agent3 = AgentExecution(
             job_id=agent3_id,
@@ -71,7 +70,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
             agent_display_name="analyzer",
             agent_name="Analyzer Agent",
             mission="Analyze code",
-            status="working"
+            status="working",
         )
         session.add_all([agent1, agent2, agent3])
 
@@ -87,7 +86,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 content="Direct message to agent 1",
                 priority="normal",
                 status="pending",
-                meta_data={"_from_agent": "orchestrator"}
+                meta_data={"_from_agent": "orchestrator"},
             ),
             # Broadcast message to all
             Message(
@@ -99,7 +98,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 content="Broadcast to all agents",
                 priority="high",
                 status="pending",
-                meta_data={"_from_agent": "orchestrator"}
+                meta_data={"_from_agent": "orchestrator"},
             ),
             # Direct message to agent-2
             Message(
@@ -111,7 +110,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 content="Direct message to agent 2",
                 priority="normal",
                 status="pending",
-                meta_data={"_from_agent": agent1_id}
+                meta_data={"_from_agent": agent1_id},
             ),
             # Acknowledged message to agent-1
             Message(
@@ -125,7 +124,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 status="acknowledged",
                 acknowledged_by=[agent1_id],
                 acknowledged_at=datetime.now(timezone.utc),
-                meta_data={"_from_agent": "orchestrator"}
+                meta_data={"_from_agent": "orchestrator"},
             ),
             # Multiple recipients (not broadcast)
             Message(
@@ -137,7 +136,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
                 content="Message to multiple agents",
                 priority="high",
                 status="pending",
-                meta_data={"_from_agent": "orchestrator"}
+                meta_data={"_from_agent": "orchestrator"},
             ),
         ]
         session.add_all(messages)
@@ -278,7 +277,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             name="Tenant 1 Project",
             description="Test project for tenant 1",
             mission="Test mission for tenant 1",
-            status="active"
+            status="active",
         )
         project2 = Project(
             id=project2_id,
@@ -286,7 +285,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             name="Tenant 2 Project",
             description="Test project for tenant 2",
             mission="Test mission for tenant 2",
-            status="active"
+            status="active",
         )
         session.add_all([project1, project2])
 
@@ -298,7 +297,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             agent_display_name="implementer",
             agent_name="Tenant 1 Agent",
             mission="Work for tenant 1",
-            status="working"
+            status="working",
         )
         agent2 = AgentExecution(
             job_id=agent2_id,
@@ -307,7 +306,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             agent_display_name="implementer",
             agent_name="Tenant 2 Agent",
             mission="Work for tenant 2",
-            status="working"
+            status="working",
         )
         session.add_all([agent1, agent2])
 
@@ -318,7 +317,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             project_id=project1.id,
             to_agents=[agent1_id],
             content="Message for tenant 1",
-            status="pending"
+            status="pending",
         )
         msg2 = Message(
             id=msg2_id,
@@ -326,7 +325,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             project_id=project2.id,
             to_agents=[agent2_id],
             content="Message for tenant 2",
-            status="pending"
+            status="pending",
         )
         session.add_all([msg1, msg2])
 
@@ -335,10 +334,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
         # Cleanup after test
         try:
             # Tenant 1 should only see their messages
-            result1 = await service.receive_messages(
-                agent_id=agent1_id,
-                tenant_key=tenant_key_1
-            )
+            result1 = await service.receive_messages(agent_id=agent1_id, tenant_key=tenant_key_1)
 
             assert result1["success"] is True
             message_ids = {msg["id"] for msg in result1["messages"]}
@@ -346,10 +342,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             assert msg2_id not in message_ids
 
             # Tenant 2 should only see their messages
-            result2 = await service.receive_messages(
-                agent_id=agent2_id,
-                tenant_key=tenant_key_2
-            )
+            result2 = await service.receive_messages(agent_id=agent2_id, tenant_key=tenant_key_2)
 
             assert result2["success"] is True
             message_ids = {msg["id"] for msg in result2["messages"]}
@@ -406,19 +399,13 @@ async def test_list_messages_by_status(db_manager, tenant_manager, setup_test_da
     data = setup_test_data
 
     # Filter for pending messages only
-    result = await service.list_messages(
-        project_id=data["project"].id,
-        status="pending"
-    )
+    result = await service.list_messages(project_id=data["project"].id, status="pending")
 
     assert result["success"] is True
     assert result["count"] == 4  # 4 pending messages (msg-1, msg-2, msg-3, msg-5)
 
     # Filter for acknowledged messages
-    result = await service.list_messages(
-        project_id=data["project"].id,
-        status="acknowledged"
-    )
+    result = await service.list_messages(project_id=data["project"].id, status="acknowledged")
 
     assert result["success"] is True
     assert result["count"] == 1  # 1 acknowledged message (msg-4)
@@ -479,7 +466,7 @@ async def test_broadcast_excludes_sender(db_manager, tenant_manager, test_tenant
             name="Broadcast Test Project",
             description="Test project for broadcast self-exclusion",
             mission="Test mission",
-            status="active"
+            status="active",
         )
         session.add(project)
 
@@ -491,7 +478,7 @@ async def test_broadcast_excludes_sender(db_manager, tenant_manager, test_tenant
             agent_display_name="orchestrator",
             agent_name="Orchestrator",
             mission="Coordinate agents",
-            status="working"
+            status="working",
         )
 
         # Create other agent
@@ -502,7 +489,7 @@ async def test_broadcast_excludes_sender(db_manager, tenant_manager, test_tenant
             agent_display_name="implementer",
             agent_name="Implementer",
             mission="Implement features",
-            status="working"
+            status="working",
         )
         session.add_all([sender_agent, other_agent])
 
@@ -515,34 +502,30 @@ async def test_broadcast_excludes_sender(db_manager, tenant_manager, test_tenant
         content="Status update: All agents complete staging",
         project_id=project_id,
         from_agent=sender_agent.agent_display_name,
-        message_type="broadcast"
+        message_type="broadcast",
     )
 
     assert broadcast_result["success"] is True
 
     # CRITICAL TEST: Sender agent receives messages
     # Should NOT get their own broadcast
-    sender_messages = await service.receive_messages(
-        agent_id=sender_agent_id,
-        limit=10
-    )
+    sender_messages = await service.receive_messages(agent_id=sender_agent_id, limit=10)
 
     assert sender_messages["success"] is True
     # Sender should NOT receive own broadcast
-    assert sender_messages["count"] == 0, \
+    assert sender_messages["count"] == 0, (
         f"Sender should not receive own broadcast, but got {sender_messages['count']} messages"
+    )
 
     # Other agent receives messages
     # SHOULD get the broadcast
-    other_messages = await service.receive_messages(
-        agent_id=other_agent_id,
-        limit=10
-    )
+    other_messages = await service.receive_messages(agent_id=other_agent_id, limit=10)
 
     assert other_messages["success"] is True
     # Other agent SHOULD receive the broadcast
-    assert other_messages["count"] == 1, \
+    assert other_messages["count"] == 1, (
         f"Other agent should receive broadcast, but got {other_messages['count']} messages"
+    )
 
     # Verify it's the broadcast message
     if other_messages["count"] > 0:

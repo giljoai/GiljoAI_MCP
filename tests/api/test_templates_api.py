@@ -21,20 +21,22 @@ Test Coverage:
 Phase 2 Progress: API Layer Testing (4/10 groups)
 """
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import uuid4
 
 
 # ============================================================================
 # FIXTURES - Test Users and Authentication
 # ============================================================================
 
+
 @pytest.fixture
 async def tenant_a_user(db_manager):
     """Create Tenant A user for multi-tenant isolation testing."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -66,6 +68,7 @@ async def tenant_a_user(db_manager):
 async def tenant_b_user(db_manager):
     """Create Tenant B user for cross-tenant access testing."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -97,8 +100,7 @@ async def tenant_b_user(db_manager):
 async def tenant_a_token(api_client: AsyncClient, tenant_a_user):
     """Get JWT token for Tenant A user."""
     response = await api_client.post(
-        "/api/auth/login",
-        json={"username": tenant_a_user._test_username, "password": tenant_a_user._test_password}
+        "/api/auth/login", json={"username": tenant_a_user._test_username, "password": tenant_a_user._test_password}
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -110,8 +112,7 @@ async def tenant_a_token(api_client: AsyncClient, tenant_a_user):
 async def tenant_b_token(api_client: AsyncClient, tenant_b_user):
     """Get JWT token for Tenant B user."""
     response = await api_client.post(
-        "/api/auth/login",
-        json={"username": tenant_b_user._test_username, "password": tenant_b_user._test_password}
+        "/api/auth/login", json={"username": tenant_b_user._test_username, "password": tenant_b_user._test_password}
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -130,11 +131,11 @@ async def tenant_a_template(api_client: AsyncClient, tenant_a_token: str):
             "role": "orchestrator",
             "cli_tool": "claude",
             "description": "Test orchestrator template",
-            "template_content": "You are a test orchestrator agent for coordinating development.",
+            "system_instructions": "You are a test orchestrator agent for coordinating development.",
             "model": "sonnet",
-            "is_active": True
+            "is_active": True,
         },
-        cookies={"access_token": tenant_a_token}
+        cookies={"access_token": tenant_a_token},
     )
     assert response.status_code == 201
     return response.json()
@@ -151,11 +152,11 @@ async def tenant_b_template(api_client: AsyncClient, tenant_b_token: str):
             "role": "developer",
             "cli_tool": "codex",
             "description": "Test developer template",
-            "template_content": "You are a test developer agent for implementing features.",
+            "system_instructions": "You are a test developer agent for implementing features.",
             "model": "gpt-4",
-            "is_active": True
+            "is_active": True,
         },
-        cookies={"access_token": tenant_b_token}
+        cookies={"access_token": tenant_b_token},
     )
     assert response.status_code == 201
     return response.json()
@@ -165,13 +166,12 @@ async def tenant_b_template(api_client: AsyncClient, tenant_b_token: str):
 # CRUD ENDPOINTS TESTS
 # ============================================================================
 
+
 class TestTemplateCRUD:
     """Test CRUD operations: create, list, get, update, delete, active_count"""
 
     @pytest.mark.asyncio
-    async def test_create_template_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_create_template_happy_path(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/templates/ - Create template successfully."""
         unique_id = uuid4().hex[:8]
         response = await api_client.post(
@@ -181,13 +181,13 @@ class TestTemplateCRUD:
                 "role": "architect",
                 "cli_tool": "claude",
                 "description": "Test architect template",
-                "template_content": "You are an architect agent responsible for system design and architecture decisions.",
+                "system_instructions": "You are an architect agent responsible for system design and architecture decisions.",
                 "model": "sonnet",
                 "behavioral_rules": ["Design before coding", "Document architecture decisions"],
                 "success_criteria": ["Architecture is scalable", "Design is well-documented"],
-                "is_active": True
+                "is_active": True,
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 201
@@ -207,9 +207,7 @@ class TestTemplateCRUD:
         assert "updated_at" in data
 
     @pytest.mark.asyncio
-    async def test_create_template_minimal_data(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_create_template_minimal_data(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/templates/ - Create with minimal required data."""
         unique_id = uuid4().hex[:8]
         response = await api_client.post(
@@ -218,10 +216,10 @@ class TestTemplateCRUD:
                 "name": f"tester-{unique_id}",
                 "role": "tester",
                 "cli_tool": "gemini",
-                "template_content": "You are a test agent for writing and executing tests.",
-                "model": "gemini-pro"
+                "system_instructions": "You are a test agent for writing and executing tests.",
+                "model": "gemini-pro",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 201
@@ -239,9 +237,9 @@ class TestTemplateCRUD:
                 "name": "test-template",
                 "role": "developer",
                 "cli_tool": "claude",
-                "template_content": "Test content",
-                "model": "sonnet"
-            }
+                "system_instructions": "Test content",
+                "model": "sonnet",
+            },
         )
         assert response.status_code == 401
 
@@ -256,10 +254,10 @@ class TestTemplateCRUD:
                 "name": tenant_a_template["name"],
                 "role": "developer",
                 "cli_tool": "claude",
-                "template_content": "Test content",
-                "model": "sonnet"
+                "system_instructions": "Test content",
+                "model": "sonnet",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert response.status_code == 400
 
@@ -268,10 +266,7 @@ class TestTemplateCRUD:
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
     ):
         """Test GET /api/v1/templates/ - List all templates."""
-        response = await api_client.get(
-            "/api/v1/templates/",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get("/api/v1/templates/", cookies={"access_token": tenant_a_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -288,10 +283,7 @@ class TestTemplateCRUD:
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
     ):
         """Test GET /api/v1/templates/?cli_tool=... - Filter by CLI tool."""
-        response = await api_client.get(
-            "/api/v1/templates/?cli_tool=claude",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get("/api/v1/templates/?cli_tool=claude", cookies={"access_token": tenant_a_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -305,10 +297,7 @@ class TestTemplateCRUD:
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
     ):
         """Test GET /api/v1/templates/?is_active=true - Filter by active status."""
-        response = await api_client.get(
-            "/api/v1/templates/?is_active=true",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get("/api/v1/templates/?is_active=true", cookies={"access_token": tenant_a_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -324,33 +313,25 @@ class TestTemplateCRUD:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_get_template_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
-    ):
+    async def test_get_template_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict):
         """Test GET /api/v1/templates/{id} - Get template by ID."""
         response = await api_client.get(
-            f"/api/v1/templates/{tenant_a_template['id']}",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/templates/{tenant_a_template['id']}", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == tenant_a_template["id"]
         assert data["name"] == tenant_a_template["name"]
-        assert "template_content" in data
+        assert "system_instructions" in data
         assert "system_instructions" in data
         assert "user_instructions" in data
 
     @pytest.mark.asyncio
-    async def test_get_template_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_get_template_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test GET /api/v1/templates/{id} - Return 404 for nonexistent template."""
         fake_id = 99999
-        response = await api_client.get(
-            f"/api/v1/templates/{fake_id}",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get(f"/api/v1/templates/{fake_id}", cookies={"access_token": tenant_a_token})
         assert response.status_code == 404
 
     @pytest.mark.asyncio
@@ -367,47 +348,31 @@ class TestTemplateCRUD:
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
     ):
         """Test PUT /api/v1/templates/{id} - Update template successfully."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be modified")
     @pytest.mark.asyncio
-    async def test_update_template_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_update_template_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test PUT /api/v1/templates/{id} - Return 404 for nonexistent template."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be modified")
     @pytest.mark.asyncio
-    async def test_update_template_unauthorized(
-        self, api_client: AsyncClient, tenant_a_template: dict
-    ):
+    async def test_update_template_unauthorized(self, api_client: AsyncClient, tenant_a_template: dict):
         """Test PUT /api/v1/templates/{id} - Reject without authentication."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be deleted")
     @pytest.mark.asyncio
-    async def test_delete_template_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_delete_template_happy_path(self, api_client: AsyncClient, tenant_a_token: str):
         """Test DELETE /api/v1/templates/{id} - Delete template successfully."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be deleted")
     @pytest.mark.asyncio
-    async def test_delete_template_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_delete_template_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test DELETE /api/v1/templates/{id} - Return 404 for nonexistent template."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be deleted")
     @pytest.mark.asyncio
-    async def test_delete_template_unauthorized(
-        self, api_client: AsyncClient, tenant_a_template: dict
-    ):
+    async def test_delete_template_unauthorized(self, api_client: AsyncClient, tenant_a_template: dict):
         """Test DELETE /api/v1/templates/{id} - Reject without authentication."""
-        pass
 
     @pytest.mark.asyncio
     async def test_get_active_count_happy_path(
@@ -415,8 +380,7 @@ class TestTemplateCRUD:
     ):
         """Test GET /api/v1/templates/stats/active-count - Get active template count."""
         response = await api_client.get(
-            "/api/v1/templates/stats/active-count",
-            cookies={"access_token": tenant_a_token}
+            "/api/v1/templates/stats/active-count", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -436,6 +400,7 @@ class TestTemplateCRUD:
 # HISTORY ENDPOINTS TESTS
 # ============================================================================
 
+
 class TestTemplateHistory:
     """Test history operations: history, restore, reset, reset_system
 
@@ -445,27 +410,18 @@ class TestTemplateHistory:
 
     @pytest.mark.skip(reason="Templates are system-managed - no history generated without updates")
     @pytest.mark.asyncio
-    async def test_get_history_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
-    ):
+    async def test_get_history_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict):
         """Test GET /api/v1/templates/{id}/history - Get template edit history."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed - history endpoint not applicable")
     @pytest.mark.asyncio
-    async def test_get_history_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_get_history_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test GET /api/v1/templates/{id}/history - Return 404 for nonexistent template."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed - history endpoint not applicable")
     @pytest.mark.asyncio
-    async def test_get_history_unauthorized(
-        self, api_client: AsyncClient, tenant_a_template: dict
-    ):
+    async def test_get_history_unauthorized(self, api_client: AsyncClient, tenant_a_template: dict):
         """Test GET /api/v1/templates/{id}/history - Reject without authentication."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be restored")
     @pytest.mark.asyncio
@@ -473,23 +429,16 @@ class TestTemplateHistory:
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
     ):
         """Test POST /api/v1/templates/{id}/restore/{archive_id} - Restore template version."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be restored")
     @pytest.mark.asyncio
-    async def test_restore_template_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_restore_template_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/templates/{id}/restore/{archive_id} - Return 404 for nonexistent template."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be restored")
     @pytest.mark.asyncio
-    async def test_restore_template_unauthorized(
-        self, api_client: AsyncClient, tenant_a_template: dict
-    ):
+    async def test_restore_template_unauthorized(self, api_client: AsyncClient, tenant_a_template: dict):
         """Test POST /api/v1/templates/{id}/restore/{archive_id} - Reject without authentication."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be reset")
     @pytest.mark.asyncio
@@ -497,23 +446,16 @@ class TestTemplateHistory:
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
     ):
         """Test POST /api/v1/templates/{id}/reset - Reset template to defaults."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be reset")
     @pytest.mark.asyncio
-    async def test_reset_template_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_reset_template_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/templates/{id}/reset - Return 404 for nonexistent template."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be reset")
     @pytest.mark.asyncio
-    async def test_reset_template_unauthorized(
-        self, api_client: AsyncClient, tenant_a_template: dict
-    ):
+    async def test_reset_template_unauthorized(self, api_client: AsyncClient, tenant_a_template: dict):
         """Test POST /api/v1/templates/{id}/reset - Reject without authentication."""
-        pass
 
     @pytest.mark.asyncio
     async def test_reset_system_instructions_happy_path(
@@ -522,8 +464,7 @@ class TestTemplateHistory:
         """Test POST /api/v1/templates/{id}/reset-system - Reset system instructions only."""
         # Reset system instructions
         response = await api_client.post(
-            f"/api/v1/templates/{tenant_a_template['id']}/reset-system",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/templates/{tenant_a_template['id']}/reset-system", cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
@@ -532,14 +473,11 @@ class TestTemplateHistory:
         # System instructions should be populated with defaults
 
     @pytest.mark.asyncio
-    async def test_reset_system_instructions_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_reset_system_instructions_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/templates/{id}/reset-system - Return 404 for nonexistent template."""
         fake_id = 99999
         response = await api_client.post(
-            f"/api/v1/templates/{fake_id}/reset-system",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/templates/{fake_id}/reset-system", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
@@ -556,27 +494,20 @@ class TestTemplateHistory:
 # PREVIEW ENDPOINTS TESTS
 # ============================================================================
 
+
 class TestTemplatePreview:
     """Test preview operations: diff, preview"""
 
     @pytest.mark.skip(reason="Templates are system-managed - diff requires updates which are not allowed")
     @pytest.mark.asyncio
-    async def test_get_diff_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
-    ):
+    async def test_get_diff_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict):
         """Test GET /api/v1/templates/{id}/diff - Get diff between template and default."""
-        pass
 
     @pytest.mark.asyncio
-    async def test_get_diff_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_get_diff_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test GET /api/v1/templates/{id}/diff - Return 404 for nonexistent template."""
         fake_id = 99999
-        response = await api_client.get(
-            f"/api/v1/templates/{fake_id}/diff",
-            cookies={"access_token": tenant_a_token}
-        )
+        response = await api_client.get(f"/api/v1/templates/{fake_id}/diff", cookies={"access_token": tenant_a_token})
         assert response.status_code == 404
 
     @pytest.mark.asyncio
@@ -594,13 +525,8 @@ class TestTemplatePreview:
         """Test POST /api/v1/templates/{id}/preview/ - Preview template with context."""
         response = await api_client.post(
             f"/api/v1/templates/{tenant_a_template['id']}/preview/",
-            json={
-                "context": {
-                    "product_name": "Test Product",
-                    "project_name": "Test Project"
-                }
-            },
-            cookies={"access_token": tenant_a_token}
+            json={"context": {"product_name": "Test Product", "project_name": "Test Project"}},
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 200
@@ -609,15 +535,11 @@ class TestTemplatePreview:
         assert "cli_tool" in data  # Response includes cli_tool instead of format
 
     @pytest.mark.asyncio
-    async def test_preview_template_not_found(
-        self, api_client: AsyncClient, tenant_a_token: str
-    ):
+    async def test_preview_template_not_found(self, api_client: AsyncClient, tenant_a_token: str):
         """Test POST /api/v1/templates/{id}/preview/ - Return 404 for nonexistent template."""
         fake_id = 99999
         response = await api_client.post(
-            f"/api/v1/templates/{fake_id}/preview/",
-            json={"context": {}},
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/templates/{fake_id}/preview/", json={"context": {}}, cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
@@ -626,10 +548,7 @@ class TestTemplatePreview:
         """Test POST /api/v1/templates/{id}/preview/ - Reject without authentication."""
         # Use a fake ID - auth check should happen before resource lookup
         fake_id = str(uuid4())
-        response = await api_client.post(
-            f"/api/v1/templates/{fake_id}/preview/",
-            json={"context": {}}
-        )
+        response = await api_client.post(f"/api/v1/templates/{fake_id}/preview/", json={"context": {}})
         assert response.status_code == 401
 
 
@@ -637,20 +556,22 @@ class TestTemplatePreview:
 # MULTI-TENANT ISOLATION TESTS
 # ============================================================================
 
+
 class TestMultiTenantIsolation:
     """Test multi-tenant isolation - zero cross-tenant leakage"""
 
     @pytest.mark.asyncio
     async def test_list_templates_tenant_isolation(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_b_token: str,
-        tenant_a_template: dict, tenant_b_template: dict
+        self,
+        api_client: AsyncClient,
+        tenant_a_token: str,
+        tenant_b_token: str,
+        tenant_a_template: dict,
+        tenant_b_template: dict,
     ):
         """Test GET /api/v1/templates/ - Verify tenant isolation in list."""
         # Tenant A should only see their templates
-        response_a = await api_client.get(
-            "/api/v1/templates/",
-            cookies={"access_token": tenant_a_token}
-        )
+        response_a = await api_client.get("/api/v1/templates/", cookies={"access_token": tenant_a_token})
         assert response_a.status_code == 200
         data_a = response_a.json()
         template_ids_a = [t["id"] for t in data_a]
@@ -658,10 +579,7 @@ class TestMultiTenantIsolation:
         assert tenant_b_template["id"] not in template_ids_a
 
         # Tenant B should only see their templates
-        response_b = await api_client.get(
-            "/api/v1/templates/",
-            cookies={"access_token": tenant_b_token}
-        )
+        response_b = await api_client.get("/api/v1/templates/", cookies={"access_token": tenant_b_token})
         assert response_b.status_code == 200
         data_b = response_b.json()
         template_ids_b = [t["id"] for t in data_b]
@@ -674,8 +592,7 @@ class TestMultiTenantIsolation:
     ):
         """Test GET /api/v1/templates/{id} - Block cross-tenant access."""
         response = await api_client.get(
-            f"/api/v1/templates/{tenant_b_template['id']}",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/templates/{tenant_b_template['id']}", cookies={"access_token": tenant_a_token}
         )
         # Should return 404 (not 403) to avoid leaking existence
         assert response.status_code == 404
@@ -686,7 +603,6 @@ class TestMultiTenantIsolation:
         self, api_client: AsyncClient, tenant_a_token: str, tenant_b_template: dict
     ):
         """Test PUT /api/v1/templates/{id} - Block cross-tenant update."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed and cannot be deleted")
     @pytest.mark.asyncio
@@ -694,7 +610,6 @@ class TestMultiTenantIsolation:
         self, api_client: AsyncClient, tenant_a_token: str, tenant_b_template: dict
     ):
         """Test DELETE /api/v1/templates/{id} - Block cross-tenant deletion."""
-        pass
 
     @pytest.mark.asyncio
     async def test_history_cross_tenant_blocked(
@@ -702,8 +617,7 @@ class TestMultiTenantIsolation:
     ):
         """Test GET /api/v1/templates/{id}/history - Block cross-tenant history access."""
         response = await api_client.get(
-            f"/api/v1/templates/{tenant_b_template['id']}/history",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/templates/{tenant_b_template['id']}/history", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
@@ -713,7 +627,6 @@ class TestMultiTenantIsolation:
         self, api_client: AsyncClient, tenant_a_token: str, tenant_b_template: dict
     ):
         """Test POST /api/v1/templates/{id}/reset - Block cross-tenant reset."""
-        pass
 
     @pytest.mark.asyncio
     async def test_diff_cross_tenant_blocked(
@@ -721,8 +634,7 @@ class TestMultiTenantIsolation:
     ):
         """Test GET /api/v1/templates/{id}/diff - Block cross-tenant diff access."""
         response = await api_client.get(
-            f"/api/v1/templates/{tenant_b_template['id']}/diff",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/templates/{tenant_b_template['id']}/diff", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
 
@@ -734,7 +646,7 @@ class TestMultiTenantIsolation:
         response = await api_client.post(
             f"/api/v1/templates/{tenant_b_template['id']}/preview/",
             json={"context": {}},
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert response.status_code == 404
 
@@ -742,6 +654,7 @@ class TestMultiTenantIsolation:
 # ============================================================================
 # CACHE BEHAVIOR TESTS
 # ============================================================================
+
 
 class TestCacheBehavior:
     """Test template caching and invalidation"""
@@ -752,7 +665,6 @@ class TestCacheBehavior:
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
     ):
         """Test that cache is invalidated when template is updated."""
-        pass
 
     @pytest.mark.skip(reason="Templates are system-managed - cache invalidation on reset not applicable")
     @pytest.mark.asyncio
@@ -760,4 +672,3 @@ class TestCacheBehavior:
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
     ):
         """Test that cache is invalidated when template is reset."""
-        pass

@@ -34,8 +34,8 @@
           variant="text"
           size="small"
           color="primary"
-          @click="handleMarkAllRead"
           aria-label="Mark all notifications as read"
+          @click="handleMarkAllRead"
         >
           Mark all read
         </v-btn>

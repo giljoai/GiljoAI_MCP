@@ -234,7 +234,9 @@ class TestProductAPIEndpoints:
 
         # Mock authentication and validation
         with patch("api.dependencies.get_tenant_key", return_value="test_tenant_001"):
-            with patch("src.giljo_mcp.services.product_service.ProductService.validate_project_path", return_value=True):
+            with patch(
+                "src.giljo_mcp.services.product_service.ProductService.validate_project_path", return_value=True
+            ):
                 response = client.post("/api/v1/products/", data=form_data)
 
         # Note: This test would need proper API setup to run fully
@@ -249,7 +251,9 @@ class TestProductAPIEndpoints:
 
         # Mock authentication and validation
         with patch("api.dependencies.get_tenant_key", return_value="test_tenant_001"):
-            with patch("src.giljo_mcp.services.product_service.ProductService.validate_project_path", return_value=True):
+            with patch(
+                "src.giljo_mcp.services.product_service.ProductService.validate_project_path", return_value=True
+            ):
                 response = client.put("/api/v1/products/prod_001", data=form_data)
 
         # Note: This test would need proper API setup to run fully

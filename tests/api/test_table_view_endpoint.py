@@ -13,15 +13,17 @@ Tests for GET /api/agent-jobs/table-view endpoint covering:
 TDD Approach: Tests describe WHAT the endpoint should do (behavior), not HOW (implementation).
 """
 
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
-from datetime import datetime, timezone, timedelta
 
 
 # ============================================================================
 # FIXTURES - Test Data Setup
 # ============================================================================
+
 
 @pytest.fixture
 async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
@@ -71,7 +73,6 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                     {"id": "msg2", "status": "acknowledged", "content": "Update 2"},
                     {"id": "msg3", "status": "pending", "content": "Update 3"},
                 ],
-                instance_number=1,
             ),
             # Job 2: Implementer, waiting, warning health, no messages
             AgentExecution(
@@ -88,7 +89,6 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 last_progress_at=now - timedelta(minutes=15),
                 created_at=now - timedelta(minutes=30),
                 messages=[],
-                instance_number=1,
             ),
             # Job 3: Tester, working, critical health, stale (>10 min no progress)
             AgentExecution(
@@ -109,7 +109,6 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 messages=[
                     {"id": "msg4", "status": "acknowledged", "content": "Test started"},
                 ],
-                instance_number=1,
             ),
             # Job 4: Analyzer, complete, healthy (terminal state)
             AgentExecution(
@@ -131,7 +130,6 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                     {"id": "msg5", "status": "acknowledged", "content": "Analysis complete"},
                     {"id": "msg6", "status": "acknowledged", "content": "Results ready"},
                 ],
-                instance_number=1,
             ),
             # Job 5: Implementer, failed, timeout health
             AgentExecution(
@@ -153,7 +151,6 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 messages=[
                     {"id": "msg7", "status": "pending", "content": "Error occurred"},
                 ],
-                instance_number=1,
             ),
             # Job 6: Orchestrator instance 2 (succession)
             AgentExecution(
@@ -172,7 +169,6 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
                 created_at=now - timedelta(minutes=10),
                 started_at=now - timedelta(minutes=9),
                 messages=[],
-                instance_number=2,
             ),
         ]
 
@@ -192,6 +188,7 @@ async def test_jobs_with_varied_data(db_manager, tenant_a_admin):
 # ============================================================================
 # BASIC FUNCTIONALITY TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_get_table_view_basic(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
@@ -279,7 +276,6 @@ async def test_table_row_structure(async_client: AsyncClient, test_jobs_with_var
         "created_at",
         "started_at",
         "completed_at",
-        "instance_number",
         "is_orchestrator",
     ]
 
@@ -290,6 +286,7 @@ async def test_table_row_structure(async_client: AsyncClient, test_jobs_with_var
 # ============================================================================
 # FILTERING TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_filter_by_status_single(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
@@ -511,6 +508,7 @@ async def test_combined_filters(async_client: AsyncClient, test_jobs_with_varied
 # SORTING TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_sort_by_last_progress_desc(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
     """Test sorting by last_progress_at (descending - most recent first)."""
@@ -648,12 +646,15 @@ async def test_sort_by_agent_display_name(async_client: AsyncClient, test_jobs_w
 
     # Verify reverse alphabetical sorting
     agent_display_names = [row["agent_display_name"] for row in rows]
-    assert agent_display_names == sorted(agent_display_names, reverse=True), "Rows not sorted by agent_display_name descending"
+    assert agent_display_names == sorted(agent_display_names, reverse=True), (
+        "Rows not sorted by agent_display_name descending"
+    )
 
 
 # ============================================================================
 # PAGINATION TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_pagination_basic(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
@@ -746,6 +747,7 @@ async def test_pagination_limit_validation(async_client: AsyncClient, test_jobs_
 # MESSAGE COUNT AGGREGATION TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_message_count_aggregation(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
     """Test that message counts are correctly aggregated."""
@@ -784,6 +786,7 @@ async def test_message_count_aggregation(async_client: AsyncClient, test_jobs_wi
 # ============================================================================
 # STALENESS DETECTION TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_staleness_detection(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin):
@@ -830,8 +833,11 @@ async def test_staleness_detection(async_client: AsyncClient, test_jobs_with_var
 # MULTI-TENANT ISOLATION TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
-async def test_multi_tenant_isolation(async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin, tenant_b_admin):
+async def test_multi_tenant_isolation(
+    async_client: AsyncClient, test_jobs_with_varied_data, tenant_a_admin, tenant_b_admin
+):
     """Test that tenant B cannot see tenant A's jobs."""
     # Login as tenant B admin
     login_response = await async_client.post(
@@ -864,6 +870,7 @@ async def test_multi_tenant_isolation(async_client: AsyncClient, test_jobs_with_
 # AUTHENTICATION TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_authentication_required(async_client: AsyncClient, test_jobs_with_varied_data):
     """Test that authentication is required."""
@@ -879,6 +886,7 @@ async def test_authentication_required(async_client: AsyncClient, test_jobs_with
 # ============================================================================
 # VALIDATION TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_missing_project_id(async_client: AsyncClient, tenant_a_admin):

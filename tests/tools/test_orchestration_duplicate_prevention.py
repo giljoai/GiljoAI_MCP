@@ -9,12 +9,12 @@ Tests that:
 Following TDD discipline from QUICK_LAUNCH.txt
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+import pytest
+
 from src.giljo_mcp.models import Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 @pytest.mark.asyncio
@@ -25,8 +25,8 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_during_staging(db_ses
     BEHAVIOR: When an orchestrator with status 'waiting' exists,
     attempting to spawn another orchestrator should fail with appropriate error.
     """
-    from src.giljo_mcp.tools.orchestration import spawn_agent_job
     from src.giljo_mcp.models import Project
+    from src.giljo_mcp.tools.orchestration import spawn_agent_job
 
     # Setup
     tenant_key = "test_tenant_123"
@@ -39,7 +39,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_during_staging(db_ses
         description="Test project for orchestrator duplication",
         mission="Test mission for orchestrator duplication",
         tenant_key=tenant_key,
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
@@ -55,7 +55,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_during_staging(db_ses
         tenant_key=tenant_key,
         job_type="orchestrator",
         status="active",
-        mission="Existing orchestrator mission"
+        mission="Existing orchestrator mission",
     )
     db_session.add(existing_job)
 
@@ -66,10 +66,9 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_during_staging(db_ses
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
         agent_name="Orchestrator",
-        instance_number=1,
         status="waiting",  # Staging status
         context_budget=10000,
-        context_used=0
+        context_used=0,
     )
     db_session.add(existing_execution)
     await db_session.commit()
@@ -81,7 +80,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_during_staging(db_ses
         mission="Should not be created",
         project_id=project_id,
         tenant_key=tenant_key,
-        session=db_session
+        session=db_session,
     )
 
     # BEHAVIOR: Should fail with error
@@ -114,7 +113,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_when_working(db_sessi
         description="Test with working orchestrator",
         mission="Test mission for working orchestrator",
         tenant_key=tenant_key,
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
@@ -130,7 +129,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_when_working(db_sessi
         tenant_key=tenant_key,
         job_type="orchestrator",
         status="active",
-        mission="Working orchestrator mission"
+        mission="Working orchestrator mission",
     )
     db_session.add(existing_job)
 
@@ -141,10 +140,9 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_when_working(db_sessi
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
         agent_name="Orchestrator",
-        instance_number=1,
         status="working",  # Already running
         context_budget=10000,
-        context_used=0
+        context_used=0,
     )
     db_session.add(existing_execution)
     await db_session.commit()
@@ -156,7 +154,7 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_when_working(db_sessi
         mission="Should not be created",
         project_id=project_id,
         tenant_key=tenant_key,
-        session=db_session
+        session=db_session,
     )
 
     # BEHAVIOR: Should fail with error
@@ -185,7 +183,7 @@ async def test_spawn_agent_allows_orchestrator_when_previous_complete(db_session
         description="Test succession scenario",
         mission="Test mission for succession scenario",
         tenant_key=tenant_key,
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
@@ -201,7 +199,7 @@ async def test_spawn_agent_allows_orchestrator_when_previous_complete(db_session
         tenant_key=tenant_key,
         job_type="orchestrator",
         status="completed",  # Finished
-        mission="Completed orchestrator mission"
+        mission="Completed orchestrator mission",
     )
     db_session.add(completed_job)
 
@@ -212,10 +210,9 @@ async def test_spawn_agent_allows_orchestrator_when_previous_complete(db_session
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
         agent_name="Orchestrator #1",
-        instance_number=1,
         status="complete",  # Finished, succession allowed
         context_budget=10000,
-        context_used=0
+        context_used=0,
     )
     db_session.add(completed_execution)
     await db_session.commit()
@@ -228,7 +225,7 @@ async def test_spawn_agent_allows_orchestrator_when_previous_complete(db_session
         project_id=project_id,
         tenant_key=tenant_key,
         parent_job_id=completed_agent_id,  # Link to parent agent_id (not job_id)
-        session=db_session
+        session=db_session,
     )
 
     # BEHAVIOR: Should succeed for succession
@@ -247,8 +244,8 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
 
     Handover 0351: agent_name must match template name for validation.
     """
-    from src.giljo_mcp.tools.orchestration import spawn_agent_job
     from src.giljo_mcp.models import AgentTemplate
+    from src.giljo_mcp.tools.orchestration import spawn_agent_job
 
     # Setup
     tenant_key = "test_tenant_multi"
@@ -261,7 +258,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         description="Test multiple non-orchestrator agents",
         mission="Test mission for multiple agents",
         tenant_key=tenant_key,
-        status="active"
+        status="active",
     )
     db_session.add(project)
 
@@ -275,7 +272,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         product_id=None,  # No product link needed for this test
         is_active=True,
         version="1.0.0",
-        template_content="# Implementer\n\nImplements code."
+        system_instructions="# Implementer\n\nImplements code.",
     )
     db_session.add(implementer_template)
     await db_session.commit()
@@ -289,7 +286,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         tenant_key=tenant_key,
         job_type="orchestrator",
         status="active",
-        mission="Orchestrator mission"
+        mission="Orchestrator mission",
     )
     db_session.add(orch_job)
     orch_execution = AgentExecution(
@@ -298,10 +295,9 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
         agent_name="Orchestrator",
-        instance_number=1,
         status="working",
         context_budget=10000,
-        context_used=0
+        context_used=0,
     )
     db_session.add(orch_execution)
 
@@ -314,7 +310,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         tenant_key=tenant_key,
         job_type="worker",
         status="active",
-        mission="First implementer"
+        mission="First implementer",
     )
     db_session.add(impl1_job)
     impl1_execution = AgentExecution(
@@ -322,11 +318,9 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         job_id=impl1_job_id,
         tenant_key=tenant_key,
         agent_display_name="worker",  # agent_display_name for categorization
-        agent_name="implementer",  # agent_name matches template (SSOT)
-        instance_number=1,
-        status="working",
+        agent_name="implementer",  # agent_name matches template (SSOT)        status="working",
         context_budget=10000,
-        context_used=0
+        context_used=0,
     )
     db_session.add(impl1_execution)
     await db_session.commit()
@@ -339,7 +333,7 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         mission="Second implementer mission",
         project_id=project_id,
         tenant_key=tenant_key,
-        session=db_session
+        session=db_session,
     )
 
     # BEHAVIOR: Non-orchestrator agents can have multiple instances
@@ -369,7 +363,7 @@ async def test_spawn_agent_respects_tenant_isolation(db_session, db_manager):
         description="Project in tenant A",
         mission="Test mission for tenant A",
         tenant_key=tenant_a,
-        status="active"
+        status="active",
     )
     db_session.add(project_a)
 
@@ -382,7 +376,7 @@ async def test_spawn_agent_respects_tenant_isolation(db_session, db_manager):
         description="Project in tenant B",
         mission="Test mission for tenant B",
         tenant_key=tenant_b,
-        status="active"
+        status="active",
     )
     db_session.add(project_b)
     await db_session.commit()
@@ -399,7 +393,7 @@ async def test_spawn_agent_respects_tenant_isolation(db_session, db_manager):
         tenant_key=tenant_a,
         job_type="orchestrator",
         status="active",
-        mission="Tenant A orchestrator"
+        mission="Tenant A orchestrator",
     )
     db_session.add(orch_a_job)
     orch_a_execution = AgentExecution(
@@ -408,10 +402,9 @@ async def test_spawn_agent_respects_tenant_isolation(db_session, db_manager):
         tenant_key=tenant_a,
         agent_display_name="orchestrator",
         agent_name="Orchestrator A",
-        instance_number=1,
         status="working",
         context_budget=10000,
-        context_used=0
+        context_used=0,
     )
     db_session.add(orch_a_execution)
     await db_session.commit()
@@ -423,7 +416,7 @@ async def test_spawn_agent_respects_tenant_isolation(db_session, db_manager):
         mission="Tenant B orchestrator",
         project_id=project_b_id,  # Use project_b's ID
         tenant_key=tenant_b,  # Different tenant
-        session=db_session
+        session=db_session,
     )
 
     # BEHAVIOR: Multi-tenant isolation - should succeed

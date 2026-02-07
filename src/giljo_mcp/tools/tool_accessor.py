@@ -5,39 +5,35 @@ Provides direct access to MCP tool functions for API endpoints
 
 import logging
 from pathlib import Path
-from typing import Any, List, Optional, TYPE_CHECKING
-from uuid import uuid4
+from typing import TYPE_CHECKING, Any
+
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.services.template_service import TemplateService
-from src.giljo_mcp.services.task_service import TaskService
-from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.context_service import ContextService
+from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
+from src.giljo_mcp.services.product_service import ProductService
+from src.giljo_mcp.services.project_service import ProjectService
+from src.giljo_mcp.services.task_service import TaskService
+from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
-
 
 # ============================================================================
 # STANDALONE HELPER FUNCTIONS (For Testing and Tenant Isolation)
 # ============================================================================
 
 
-async def activate_project(
-    project_id: str,
-    tenant_key: str,
-    session
-) -> dict[str, Any]:
+async def activate_project(project_id: str, tenant_key: str, session) -> dict[str, Any]:
     """
     Activate a project with tenant isolation (testable helper).
 
@@ -57,12 +53,7 @@ async def activate_project(
 
         # Get project with tenant isolation
         res = await session.execute(
-            select(Project).where(
-                and_(
-                    Project.id == project_id,
-                    Project.tenant_key == tenant_key
-                )
-            )
+            select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
         )
         project = res.scalar_one_or_none()
 
@@ -76,12 +67,7 @@ async def activate_project(
         if project.product_id:
             # TENANT ISOLATION: Filter product by tenant_key
             prod = await session.execute(
-                select(Product).where(
-                    and_(
-                        Product.id == project.product_id,
-                        Product.tenant_key == tenant_key
-                    )
-                )
+                select(Product).where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
             )
             product = prod.scalar_one_or_none()
             if not product or not getattr(product, "is_active", False):
@@ -99,7 +85,7 @@ async def activate_project(
         }
 
     except Exception as e:
-        logger.exception(f"Failed to activate project: {e}")
+        logger.exception("Failed to activate project")
         return {"success": False, "error": str(e)}
 
 
@@ -110,8 +96,8 @@ class ToolAccessor:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        websocket_manager: Optional[Any] = None,
-        test_session: Optional["AsyncSession"] = None
+        websocket_manager: Any | None = None,
+        test_session: "AsyncSession" | None = None,
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
@@ -119,24 +105,26 @@ class ToolAccessor:
         self._test_session = test_session
 
         # Initialize service layer (Handover 0121 - Phase 1, Handover 0123 - Phase 2 ✅ COMPLETE)
+        # Note: ProductService requires tenant_key directly, we'll pass it when needed
+        self._product_service = None  # Lazy initialization per-request
         self._project_service = ProjectService(
             db_manager,
             tenant_manager,
-            websocket_manager=websocket_manager  # Fix: Pass WebSocket manager for mission updates
+            websocket_manager=websocket_manager,  # Fix: Pass WebSocket manager for mission updates
         )
         self._template_service = TemplateService(db_manager, tenant_manager)
         self._task_service = TaskService(db_manager, tenant_manager)
         self._message_service = MessageService(
             db_manager,
             tenant_manager,
-            websocket_manager=websocket_manager  # Pass WebSocket manager
+            websocket_manager=websocket_manager,  # Pass WebSocket manager
         )
         self._context_service = ContextService(db_manager, tenant_manager)
         self._orchestration_service = OrchestrationService(
             db_manager,
             tenant_manager,
             message_service=self._message_service,  # Pass MessageService for WebSocket-enabled messaging
-            test_session=test_session  # Pass test session for transaction sharing (Handover 0358c)
+            test_session=test_session,  # Pass test session for transaction sharing (Handover 0358c)
         )
 
     def get_session_async(self):
@@ -148,9 +136,11 @@ class ToolAccessor:
         if self._test_session is not None:
             # Return async context manager that yields test session
             import contextlib
+
             @contextlib.asynccontextmanager
             async def _test_session_wrapper():
                 yield self._test_session
+
             return _test_session_wrapper()
         return self.db_manager.get_session_async()
 
@@ -161,8 +151,8 @@ class ToolAccessor:
         name: str,
         mission: str,
         description: str = "",
-        product_id: Optional[str] = None,
-        tenant_key: Optional[str] = None,
+        product_id: str | None = None,
+        tenant_key: str | None = None,
         status: str = "inactive",
         context_budget: int = 150000,
     ) -> dict[str, Any]:
@@ -177,12 +167,9 @@ class ToolAccessor:
             context_budget=context_budget,
         )
 
-    async def list_projects(self, status: Optional[str] = None, tenant_key: Optional[str] = None) -> List[dict[str, Any]]:
+    async def list_projects(self, status: str | None = None, tenant_key: str | None = None) -> list[dict[str, Any]]:
         """List all projects with optional status filter (delegates to ProjectService)"""
-        return await self._project_service.list_projects(
-            status=status,
-            tenant_key=tenant_key
-        )
+        return await self._project_service.list_projects(status=status, tenant_key=tenant_key)
 
     async def get_project(self, project_id: str) -> dict[str, Any]:
         """Get a specific project by ID (delegates to ProjectService)"""
@@ -196,22 +183,13 @@ class ToolAccessor:
         tenant_key = self.tenant_manager.get_current_tenant()
         return await self._project_service.switch_project(project_id, tenant_key=tenant_key)
 
-    async def close_project(self, project_id: str, summary: str) -> dict[str, Any]:
-        """
-        Close a completed project with summary.
-        DEPRECATED: Use complete_project instead (delegates to ProjectService)
-        """
-        # SECURITY FIX (Handover 0424): Always pass tenant_key for isolation
-        tenant_key = self.tenant_manager.get_current_tenant()
-        return await self._project_service.complete_project(project_id, summary, tenant_key=tenant_key)
-
-    async def complete_project(self, project_id: str, summary: Optional[str] = None) -> dict[str, Any]:
+    async def complete_project(self, project_id: str, summary: str | None = None) -> dict[str, Any]:
         """Mark a project as completed (delegates to ProjectService)"""
         # SECURITY FIX (Handover 0424): Always pass tenant_key for isolation
         tenant_key = self.tenant_manager.get_current_tenant()
         return await self._project_service.complete_project(project_id, summary, tenant_key=tenant_key)
 
-    async def cancel_project(self, project_id: str, reason: Optional[str] = None) -> dict[str, Any]:
+    async def cancel_project(self, project_id: str, reason: str | None = None) -> dict[str, Any]:
         """Cancel a project (delegates to ProjectService)"""
         # NOTE: cancel_project needs service-level fix to accept tenant_key
         return await self._project_service.cancel_project(project_id, reason)
@@ -227,37 +205,9 @@ class ToolAccessor:
         tenant_key = self.tenant_manager.get_current_tenant()
         return await self._project_service.update_project_mission(project_id, mission, tenant_key=tenant_key)
 
-    async def update_agent_mission(
-        self, job_id: str, tenant_key: str, mission: str
-    ) -> dict[str, Any]:
+    async def update_agent_mission(self, job_id: str, tenant_key: str, mission: str) -> dict[str, Any]:
         """Delegate to OrchestrationService (Handover 0451)"""
         return await self._orchestration_service.update_agent_mission(job_id, tenant_key, mission)
-
-    # Agent Tools
-
-    async def decommission_agent(self, agent_name: str, project_id: str, reason: str = "completed") -> dict[str, Any]:
-        """Gracefully end an agent's work"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                result = await session.execute(
-                    update(Agent)
-                    .where(Agent.name == agent_name, Agent.project_id == project_id)
-                    .values(status="decommissioned", meta_data={"reason": reason})
-                )
-
-                if result.rowcount == 0:
-                    return {"success": False, "error": "Agent not found"}
-
-                await session.commit()
-
-                return {
-                    "success": True,
-                    "message": f"Agent {agent_name} decommissioned",
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to decommission agent: {e}")
-            return {"success": False, "error": str(e)}
 
     # Message Tools (delegates to MessageService)
 
@@ -268,8 +218,8 @@ class ToolAccessor:
         project_id: str,
         message_type: str = "direct",
         priority: str = "normal",
-        from_agent: Optional[str] = None,
-        tenant_key: Optional[str] = None,
+        from_agent: str | None = None,
+        tenant_key: str | None = None,
     ) -> dict[str, Any]:
         """Send message to one or more agents (delegates to MessageService)"""
         return await self._message_service.send_message(
@@ -282,7 +232,7 @@ class ToolAccessor:
             tenant_key=tenant_key,
         )
 
-    async def get_messages(self, agent_name: str, project_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_messages(self, agent_name: str, project_id: str | None = None) -> dict[str, Any]:
         """Retrieve pending messages for an agent (delegates to MessageService)"""
         return await self._message_service.get_messages(agent_name=agent_name, project_id=project_id)
 
@@ -298,10 +248,10 @@ class ToolAccessor:
         self,
         agent_id: str,
         limit: int = 10,
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
         exclude_self: bool = True,
         exclude_progress: bool = True,
-        message_types: Optional[list[str]] = None
+        message_types: list[str | None] = None,
     ) -> dict[str, Any]:
         """
         Receive pending messages for an agent with optional filtering (delegates to MessageService).
@@ -326,16 +276,16 @@ class ToolAccessor:
             tenant_key=tenant_key,
             exclude_self=exclude_self,
             exclude_progress=exclude_progress,
-            message_types=message_types
+            message_types=message_types,
         )
 
     async def list_messages(
         self,
-        project_id: Optional[str] = None,
-        status: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        tenant_key: Optional[str] = None,
-        limit: Optional[int] = None,
+        project_id: str | None = None,
+        status: str | None = None,
+        agent_id: str | None = None,
+        tenant_key: str | None = None,
+        limit: int | None = None,
     ) -> dict[str, Any]:
         """
         List messages in a project or for a specific agent (delegates to MessageService).
@@ -348,7 +298,7 @@ class ToolAccessor:
 
     # Task Tools
 
-    async def log_task(self, content: str, category: Optional[str] = None, priority: str = "medium") -> dict[str, Any]:
+    async def log_task(self, content: str, category: str | None = None, priority: str = "medium") -> dict[str, Any]:
         """Quick task capture (delegates to TaskService)"""
         return await self._task_service.log_task(content=content, category=category, priority=priority)
 
@@ -357,11 +307,12 @@ class ToolAccessor:
         title: str,
         description: str,
         priority: str = "medium",
-        category: Optional[str] = None,
-        assigned_to: Optional[str] = None,
+        category: str | None = None,
+        assigned_to: str | None = None,
+        tenant_key: str | None = None,
     ) -> dict[str, Any]:
         """
-        Create a new task with optional category support.
+        Create a new task bound to the active product.
 
         Args:
             title: Task title/summary
@@ -369,16 +320,54 @@ class ToolAccessor:
             priority: Task priority (default: "medium")
             category: Optional category (frontend, backend, database, infra, docs, general)
             assigned_to: Optional agent name to assign to (not implemented yet)
+            tenant_key: Tenant isolation key (injected by MCP security layer)
 
         Returns:
             Dict with success status and task_id or error
+
+        Raises:
+            ValidationError: If no active product is set for the tenant
+
+        Example:
+            >>> result = await tool_accessor.create_task(
+            ...     title="Fix login bug",
+            ...     description="Users cannot login with email",
+            ...     priority="high",
+            ...     tenant_key="tenant-abc"
+            ... )
+            >>> print(result["task_id"])
         """
-        # TaskService.create_task calls log_task which accepts category
-        # We need to call log_task directly to pass category
+        # Use tenant_key from parameter or fall back to tenant_manager
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+
+        # Fetch active product for tenant (Handover 0433 Phase 3)
+        # ProductService requires tenant_key in constructor, instantiate per-request
+        product_service = ProductService(
+            db_manager=self.db_manager,
+            tenant_key=effective_tenant_key,
+            websocket_manager=self._websocket_manager,
+            test_session=self._test_session,
+        )
+        active_product_result = await product_service.get_active_product()
+
+        if not active_product_result.get("product"):
+            raise ValidationError(
+                "No active product set. Please activate a product first.",
+                context={
+                    "tenant_key": effective_tenant_key,
+                    "operation": "create_task",
+                },
+            )
+
+        product_id = active_product_result["product"]["id"]
+
+        # Create task with product binding and tenant isolation
         return await self._task_service.log_task(
             content=description,
             category=category or title,  # Use category if provided, otherwise use title
             priority=priority,
+            product_id=product_id,  # Always bind to active product
+            tenant_key=effective_tenant_key,  # Ensure tenant isolation
         )
 
     # Task MCP tools retired Dec 2025 - list_tasks, update_task, assign_task, complete_task removed
@@ -386,7 +375,7 @@ class ToolAccessor:
 
     # Context Tools (delegates to ContextService)
 
-    async def get_context_index(self, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_context_index(self, product_id: str | None = None) -> dict[str, Any]:
         """Get the context index for intelligent querying (delegates to ContextService)"""
         return await self._context_service.get_context_index(product_id=product_id)
 
@@ -398,7 +387,7 @@ class ToolAccessor:
         """Get the vision document index (delegates to ContextService)"""
         return await self._context_service.get_vision_index()
 
-    async def get_product_settings(self, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_product_settings(self, product_id: str | None = None) -> dict[str, Any]:
         """Get all product settings for analysis (delegates to ContextService)"""
         return await self._context_service.get_product_settings(product_id=product_id)
 
@@ -420,9 +409,9 @@ class ToolAccessor:
 
     async def export_agents(
         self,
-        product_path: Optional[str] = None,
+        product_path: str | None = None,
         personal: bool = False,
-        product_id: Optional[str] = None,
+        product_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Export agent templates to Claude Code format via MCP command.
@@ -464,13 +453,13 @@ class ToolAccessor:
             return result
 
         except Exception as e:
-            logger.exception(f"Failed to export agents: {e}")
+            logger.exception("Failed to export agents")
             return {"success": False, "error": str(e)}
 
     async def set_product_path(
         self,
         project_path: str,
-        product_id: Optional[str] = None,
+        product_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Set or update product's project path for agent export.
@@ -505,12 +494,12 @@ class ToolAccessor:
             return result
 
         except Exception as e:
-            logger.exception(f"Failed to set product path: {e}")
+            logger.exception("Failed to set product path")
             return {"success": False, "error": str(e)}
 
     async def get_product_path(
         self,
-        product_id: Optional[str] = None,
+        product_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Get product's current project path.
@@ -542,7 +531,7 @@ class ToolAccessor:
             }
 
         except Exception as e:
-            logger.exception(f"Failed to get product path: {e}")
+            logger.exception("Failed to get product path")
             return {"success": False, "error": str(e)}
 
     # Orchestration Tools
@@ -586,7 +575,9 @@ class ToolAccessor:
                 if content_type == "slash_commands":
                     zip_path, message = await staging.stage_slash_commands(staging_path)
                 else:
-                    zip_path, message = await staging.stage_agent_templates(staging_path, tenant_key, db_session=session)
+                    zip_path, message = await staging.stage_agent_templates(
+                        staging_path, tenant_key, db_session=session
+                    )
 
                 if not zip_path:
                     await token_manager.mark_failed(token, message)
@@ -597,8 +588,11 @@ class ToolAccessor:
 
                 # Get server URL from config (same approach as downloads.py)
                 from pathlib import Path
+
                 import yaml
+
                 from giljo_mcp.config_manager import get_config
+
                 config = get_config()
                 config_path = Path.cwd() / "config.yaml"
                 with open(config_path) as f:
@@ -618,7 +612,7 @@ class ToolAccessor:
                     "one_time_use": True,
                 }
         except Exception as e:
-            logger.exception(f"Failed to generate download token: {e}")
+            logger.exception("Failed to generate download token")
             return {"success": False, "error": str(e)}
 
     async def get_orchestrator_instructions(self, job_id: str, tenant_key: str) -> dict[str, Any]:
@@ -632,7 +626,7 @@ class ToolAccessor:
         mission: str,
         project_id: str,
         tenant_key: str,
-        parent_job_id: Optional[str] = None,
+        parent_job_id: str | None = None,
     ) -> dict[str, Any]:
         """Create an agent job (delegates to OrchestrationService)"""
         return await self._orchestration_service.spawn_agent_job(
@@ -641,7 +635,7 @@ class ToolAccessor:
             mission=mission,
             project_id=project_id,
             tenant_key=tenant_key,
-            parent_job_id=parent_job_id
+            parent_job_id=parent_job_id,
         )
 
     async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
@@ -656,16 +650,18 @@ class ToolAccessor:
 
     async def get_pending_jobs(self, agent_display_name: str, tenant_key: str) -> dict[str, Any]:
         """Get pending jobs for agent display name (delegates to OrchestrationService)"""
-        return await self._orchestration_service.get_pending_jobs(agent_display_name=agent_display_name, tenant_key=tenant_key)
+        return await self._orchestration_service.get_pending_jobs(
+            agent_display_name=agent_display_name, tenant_key=tenant_key
+        )
 
-    async def acknowledge_job(self, job_id: str, agent_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def acknowledge_job(self, job_id: str, agent_id: str, tenant_key: str | None = None) -> dict[str, Any]:
         """Acknowledge job assignment (delegates to OrchestrationService)"""
         return await self._orchestration_service.acknowledge_job(job_id=job_id, agent_id=agent_id)
 
     async def report_progress(
         self,
         job_id: str,
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
         progress: dict[str, Any] | None = None,
         todo_items: list[dict] | None = None,
     ) -> dict[str, Any]:
@@ -681,14 +677,13 @@ class ToolAccessor:
             todo_items=todo_items,
         )
 
-    async def complete_job(self, job_id: str, result: dict[str, Any], tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def complete_job(self, job_id: str, result: dict[str, Any], tenant_key: str | None = None) -> dict[str, Any]:
         """Mark job as complete (delegates to OrchestrationService)"""
         return await self._orchestration_service.complete_job(job_id=job_id, result=result)
 
-    async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def report_error(self, job_id: str, error: str, tenant_key: str | None = None) -> dict[str, Any]:
         """Report job error (delegates to OrchestrationService)"""
         return await self._orchestration_service.report_error(job_id=job_id, error=error)
-
 
     async def get_team_agents(
         self,
@@ -717,7 +712,6 @@ class ToolAccessor:
                         "job_id": str,
                         "agent_display_name": str,
                         "status": str,
-                        "instance_number": int,
                         "agent_name": str,
                         "tenant_key": str
                     },
@@ -752,138 +746,6 @@ class ToolAccessor:
         """Delegate to OrchestrationService (Handover 0451)"""
         return await self._orchestration_service.check_succession_status(job_id, tenant_key)
 
-    # Slash Command Handler Wrapper (Handover 0084b)
-
-    async def gil_handover(self, job_id: str = None, reason: str = "manual") -> dict[str, Any]:
-        """
-        DEPRECATED (Handover 0391, updated 0461c): This method is no longer exposed via MCP.
-        Users trigger handover via UI "Hand Over" button which calls REST API:
-        POST /api/agent-jobs/{job_id}/simple-handover
-
-        Updated behavior (0461c): Simple session handover via 360 Memory.
-        - Writes session context to 360 Memory (session_handover entry)
-        - Resets context_used to 0 (no new AgentExecution created)
-        - Returns continuation prompt that reads 360 Memory
-        - No more Agent ID Swap or successor creation
-
-        Args:
-            job_id: Current orchestrator job UUID (work order identifier)
-            reason: DEPRECATED - No longer used (kept for backwards compatibility)
-
-        Returns:
-            dict with success, message, launch_prompt (continuation), memory_entry_id, context_reset
-        """
-        try:
-            from ..slash_commands import get_slash_command
-
-            handler = get_slash_command("gil_handover")
-            if not handler:
-                return {"success": False, "message": "Slash command handler not found", "error": "HANDLER_NOT_FOUND"}
-
-            # Get database session (synchronous context manager)
-            with self.db_manager.get_session() as session:
-                result = await handler(
-                    db_session=session,
-                    tenant_key=self.tenant_manager.get_current_tenant(),
-                    project_id=None,  # Not used by handover
-                    orchestrator_job_id=job_id,
-                )
-
-            return result
-
-        except Exception as e:
-            logger.exception(f"Failed to execute gil_handover: {e}")
-            return {"success": False, "message": str(e)}
-
-    async def gil_activate(self, project_id: str) -> dict[str, Any]:
-        """
-        DEPRECATED (Handover 0388): This method is no longer exposed via MCP.
-        Users activate projects via web UI (/api/v1/projects/{id}/activate).
-        Kept for backwards compatibility with any external integrations.
-        """
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                return {"success": False, "error": "No active tenant"}
-            if not project_id:
-                return {"success": False, "error": "project_id is required"}
-            from sqlalchemy import select
-            from giljo_mcp.models import Project, Product
-            from datetime import datetime, timezone
-            async with self.get_session_async() as session:
-                res = await session.execute(select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key))
-                project = res.scalar_one_or_none()
-                if not project:
-                    return {"success": False, "error": "Project not found"}
-                if project.status != "inactive":
-                    return {"success": False, "error": f"Project cannot be activated from status '{project.status}'"}
-                if project.product_id:
-                    # TENANT ISOLATION: Filter product by tenant_key
-                    prod = await session.execute(
-                        select(Product).where(
-                            and_(
-                                Product.id == project.product_id,
-                                Product.tenant_key == tenant_key
-                            )
-                        )
-                    )
-                    product = prod.scalar_one_or_none()
-                    if not product or not getattr(product, "is_active", False):
-                        return {"success": False, "error": "Parent product inactive or missing"}
-                project.status = "active"
-                project.updated_at = datetime.now(timezone.utc)
-                await session.commit()
-
-                # Phase C: Check if orchestrator job exists
-                job_result = await session.execute(
-                    select(AgentJob).where(
-                        AgentJob.project_id == project_id,
-                        AgentJob.tenant_key == tenant_key,
-                        AgentJob.job_type == "orchestrator",
-                    )
-                )
-                agent_job = job_result.scalar_one_or_none()
-
-                if not agent_job:
-                    # Create both AgentJob and AgentExecution
-                    job_id = str(uuid4())
-                    agent_id = str(uuid4())
-
-                    # Create AgentJob (work order)
-                    agent_job = AgentJob(
-                        job_id=job_id,
-                        tenant_key=tenant_key,
-                        project_id=project_id,
-                        mission=(
-                            "I am ready to create the project mission based on product context and project description. "
-                            "I will write the mission in the mission window and select the proper agents below."
-                        ),
-                        job_type="orchestrator",
-                        status="active",
-                    )
-                    session.add(agent_job)
-
-                    # Create AgentExecution (executor instance)
-                    agent_execution = AgentExecution(
-                        agent_id=agent_id,
-                        job_id=job_id,
-                        tenant_key=tenant_key,
-                        agent_display_name="orchestrator",
-                        agent_name="orchestrator",  # Type key for color lookup
-                        instance_number=1,
-                        status="waiting",
-                        progress=0,
-                        tool_type="universal",
-                        messages=[],
-                    )
-                    session.add(agent_execution)
-                    await session.commit()
-
-            return {"success": True, "project_id": project_id}
-        except Exception as e:
-            logger.exception(f"gil_activate failed: {e}")
-            return {"success": False, "error": str(e)}
-
     async def gil_launch(self, project_id: str) -> dict[str, Any]:
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
@@ -891,30 +753,41 @@ class ToolAccessor:
                 return {"success": False, "error": "No active tenant"}
             if not project_id:
                 return {"success": False, "error": "project_id is required"}
+            from datetime import datetime, timezone
+
             from sqlalchemy import select
+
             from giljo_mcp.models import Project
             from giljo_mcp.models.agent_identity import AgentJob
-            from datetime import datetime, timezone
+
             async with self.get_session_async() as session:
-                pr = await session.execute(select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key))
+                pr = await session.execute(
+                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
+                )
                 project = pr.scalar_one_or_none()
                 if not project:
                     return {"success": False, "error": "Project not found"}
                 if not project.mission or not project.mission.strip():
-                    return {"success": False, "error": "Project mission has not been created. Please complete staging first."}
+                    return {
+                        "success": False,
+                        "error": "Project mission has not been created. Please complete staging first.",
+                    }
                 ag = await session.execute(
                     select(AgentJob).where(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key)
                 )
                 agents = ag.scalars().all()
                 if not agents:
-                    return {"success": False, "error": "No agents have been spawned for this project. Please complete staging first."}
+                    return {
+                        "success": False,
+                        "error": "No agents have been spawned for this project. Please complete staging first.",
+                    }
                 if hasattr(project, "staging_status"):
                     project.staging_status = "launching"
                     project.updated_at = datetime.now(timezone.utc)
                     await session.commit()
             return {"success": True, "project_id": project_id, "agent_count": len(agents)}
         except Exception as e:
-            logger.exception(f"gil_launch failed: {e}")
+            logger.exception("gil_launch failed")
             return {"success": False, "error": str(e)}
 
     async def close_project_and_update_memory(
@@ -966,7 +839,7 @@ class ToolAccessor:
         """
         Write a 360 memory entry for project completion or handover (Handover 0412).
 
-        This method allows agents to append entries to Product.product_memory.sequential_history
+        This method allows agents to create entries in the product_memory_entries table
         during handovers or at project completion.
 
         Args:
@@ -1005,8 +878,8 @@ class ToolAccessor:
         categories: list[str] | None = None,
         depth_config: dict[str, Any] | None = None,
         apply_user_config: bool = True,
-        format: str = "structured",
-        agent_name: str | None = None  # Handover 0430: Required for self_identity category
+        output_format: str = "structured",
+        agent_name: str | None = None,  # Handover 0430: Required for self_identity category
     ) -> dict[str, Any]:
         """
         Unified context fetcher - single entry point for all context.
@@ -1037,18 +910,15 @@ class ToolAccessor:
             categories=categories or ["all"],
             depth_config=depth_config,
             apply_user_config=apply_user_config,
-            format=format,
+            output_format=output_format,
             agent_name=agent_name,  # Handover 0430
-            db_manager=self.db_manager
+            db_manager=self.db_manager,
         )
 
     # Agent Discovery Tools (Handover 0422)
 
     async def get_available_agents(
-        self,
-        tenant_key: str,
-        active_only: bool = True,
-        depth: str = "full"
+        self, tenant_key: str, active_only: bool = True, depth: str = "full"
     ) -> dict[str, Any]:
         """
         Get available agent templates with staleness info.

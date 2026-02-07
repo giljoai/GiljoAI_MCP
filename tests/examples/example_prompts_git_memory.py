@@ -8,8 +8,8 @@ Date: 2025-11-16
 PURPOSE: Demonstrate prompt injection behavior with real examples.
 """
 
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 def create_example_product_git_enabled():
@@ -20,44 +20,40 @@ def create_example_product_git_enabled():
         name="GiljoAI MCP Server",
         description="Multi-agent orchestration system",
         product_memory={
-            "git_integration": {
-                "enabled": True,
-                "commit_limit": 20,
-                "default_branch": "main"
-            },
+            "git_integration": {"enabled": True, "commit_limit": 20, "default_branch": "main"},
             "learnings": [
                 {
                     "sequence": 1,
                     "summary": "Initial backend setup completed with FastAPI + PostgreSQL",
                     "key_outcomes": ["Database migrations working", "Auth system functional"],
-                    "timestamp": "2025-11-01T10:00:00Z"
+                    "timestamp": "2025-11-01T10:00:00Z",
                 },
                 {
                     "sequence": 2,
                     "summary": "Frontend dashboard integrated with WebSocket real-time updates",
                     "key_outcomes": ["Agent status live updates", "Project grid responsive"],
-                    "timestamp": "2025-11-05T14:30:00Z"
+                    "timestamp": "2025-11-05T14:30:00Z",
                 },
                 {
                     "sequence": 3,
                     "summary": "Orchestrator succession implemented with manual handover",
                     "key_outcomes": ["Context handover working", "Lineage tracking complete"],
-                    "timestamp": "2025-11-10T09:15:00Z"
-                }
+                    "timestamp": "2025-11-10T09:15:00Z",
+                },
             ],
             "context": {
                 "objectives": [
                     "Maintain >80% test coverage across services",
                     "Ensure multi-tenant data isolation",
-                    "Keep thin client prompts under 200 tokens"
+                    "Keep thin client prompts under 200 tokens",
                 ],
                 "decisions": [
                     "Use PostgreSQL exclusively (no SQLite support)",
                     "Always enable authentication (no default credentials)",
-                    "JSONB columns for flexible config and memory storage"
-                ]
-            }
-        }
+                    "JSONB columns for flexible config and memory storage",
+                ],
+            },
+        },
     )
 
 
@@ -69,21 +65,17 @@ def create_example_product_git_disabled():
         name="Prototype App",
         description="Quick prototyping without version control",
         product_memory={
-            "git_integration": {
-                "enabled": False
-            },
+            "git_integration": {"enabled": False},
             "learnings": [
                 {
                     "sequence": 1,
                     "summary": "Initial prototype built with manual tracking",
                     "key_outcomes": ["Core features working"],
-                    "timestamp": "2025-11-15T12:00:00Z"
+                    "timestamp": "2025-11-15T12:00:00Z",
                 }
             ],
-            "context": {
-                "objectives": ["Rapid prototyping", "Minimal overhead"]
-            }
-        }
+            "context": {"objectives": ["Rapid prototyping", "Minimal overhead"]},
+        },
     )
 
 
@@ -107,9 +99,8 @@ def main():
         orchestrator_id="orch-example-123",
         project_id="proj-example-456",
         project_name="GiljoAI MCP Server",
-        instance_number=1,
         tool="universal",
-        product=product_git
+        product=product_git,
     )
 
     print(prompt_git)
@@ -128,9 +119,8 @@ def main():
         orchestrator_id="orch-example-789",
         project_id="proj-example-012",
         project_name="Prototype App",
-        instance_number=1,
         tool="universal",
-        product=product_nogit
+        product=product_nogit,
     )
 
     print(prompt_nogit)
@@ -145,7 +135,9 @@ def main():
     print("-" * 80)
     print(f"With Git:    {len(prompt_git)} chars (~{len(prompt_git) // 4} tokens)")
     print(f"Without Git: {len(prompt_nogit)} chars (~{len(prompt_nogit) // 4} tokens)")
-    print(f"Difference:  {len(prompt_git) - len(prompt_nogit)} chars (~{(len(prompt_git) - len(prompt_nogit)) // 4} tokens)")
+    print(
+        f"Difference:  {len(prompt_git) - len(prompt_nogit)} chars (~{(len(prompt_git) - len(prompt_nogit)) // 4} tokens)"
+    )
     print()
 
     # Verify both have 360 memory

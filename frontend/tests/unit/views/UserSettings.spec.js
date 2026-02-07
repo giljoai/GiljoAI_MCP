@@ -392,27 +392,6 @@ describe('UserSettings.vue', () => {
       expect(appearanceContent.exists()).toBe(true)
     })
 
-    it('includes theme selector', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'appearance'
-        await wrapper.vm.$nextTick()
-      }
-
-      const themeRadioGroup = wrapper.find('[data-test="theme-selector"]')
-      expect(themeRadioGroup.exists()).toBe(true)
-    })
-
     it('includes mascot toggle', async () => {
       wrapper = mount(UserSettings, {
         global: {

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import asyncio
 import base64
 import os
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api_client import APIClient
@@ -176,7 +175,9 @@ async def sim_create_task(payload: dict) -> dict:
     description = payload.get("description", "")
     product_id = payload.get("product_id")
     project_id = payload.get("project_id")
-    res = await state.client.create_task(title=title, description=description, product_id=product_id, project_id=project_id)
+    res = await state.client.create_task(
+        title=title, description=description, product_id=product_id, project_id=project_id
+    )
     if res.get("success"):
         tid = res["data"].get("id")
         if tid:
@@ -192,18 +193,22 @@ async def sim_delete_task(payload: dict) -> dict:
         state.registry.remove("tasks", tid)
     return res
 
+
 @app.post("/api/sim/task/convert")
 async def sim_convert_task(payload: dict) -> dict:
     tid = payload.get("task_id")
     project_name = payload.get("project_name")
     strategy = payload.get("strategy", "single")
     include_subtasks = bool(payload.get("include_subtasks", True))
-    return await state.client.convert_task(tid, project_name=project_name, strategy=strategy, include_subtasks=include_subtasks)
+    return await state.client.convert_task(
+        tid, project_name=project_name, strategy=strategy, include_subtasks=include_subtasks
+    )
 
 
 # ------------------------ Jobs & Orchestrator -------------
 # Note: orchestrate_project endpoint removed (deprecated 2026-01-26)
 # Use manual staging workflow: get_orchestrator_instructions -> spawn_agent_job
+
 
 @app.get("/api/sim/jobs/workflow")
 async def sim_workflow(project_id: str) -> dict:
@@ -217,7 +222,9 @@ async def sim_send_message(payload: dict) -> dict:
     content = payload.get("content", "")
     project_id = payload.get("project_id")
     priority = payload.get("priority", "normal")
-    res = await state.client.send_message(to_agents=to_agents, content=content, project_id=project_id, priority=priority)
+    res = await state.client.send_message(
+        to_agents=to_agents, content=content, project_id=project_id, priority=priority
+    )
     if res.get("success"):
         mid = res["data"].get("id")
         if mid:
@@ -226,14 +233,18 @@ async def sim_send_message(payload: dict) -> dict:
 
 
 @app.get("/api/sim/messages/list")
-async def sim_list_messages(project_id: Optional[str] = None, agent_name: Optional[str] = None, status: Optional[str] = None) -> dict:
+async def sim_list_messages(
+    project_id: Optional[str] = None, agent_name: Optional[str] = None, status: Optional[str] = None
+) -> dict:
     return await state.client.list_messages(project_id=project_id, agent_name=agent_name, status=status)
+
 
 @app.post("/api/sim/messages/ack")
 async def sim_ack_message(payload: dict) -> dict:
     mid = payload.get("message_id")
     agent = payload.get("agent_name", "simulator")
     return await state.client.acknowledge_message(mid, agent)
+
 
 @app.post("/api/sim/messages/complete")
 async def sim_complete_message(payload: dict) -> dict:
@@ -359,7 +370,11 @@ async def sim_purge_sim_entities() -> dict:
     if prod_list.get("success"):
         for p in prod_list["data"]:
             try:
-                if str(p.get("name", "")).startswith("SIM_") or str(p.get("name", "")).startswith("SIM-") or str(p.get("name", "")).startswith("SIM PRODUCT"):
+                if (
+                    str(p.get("name", "")).startswith("SIM_")
+                    or str(p.get("name", "")).startswith("SIM-")
+                    or str(p.get("name", "")).startswith("SIM PRODUCT")
+                ):
                     r = await state.client.delete_product(p.get("id"))
                     report.append({"kind": "product", "id": p.get("id"), **r})
             except Exception as e:

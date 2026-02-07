@@ -369,7 +369,7 @@ class TestTemplateManagerIntegration:
     def test_template_includes_serena_when_enabled(self, tmp_path):
         """Test Serena guidance appears in templates."""
         from src.giljo_mcp.services.config_service import ConfigService
-        from src.giljo_mcp.template_manager import TemplateManager
+        from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
         # Create config with serena enabled
         config_path = tmp_path / "config.yaml"
@@ -378,7 +378,7 @@ class TestTemplateManagerIntegration:
 
         # Initialize services
         config_service = ConfigService(config_path)
-        template_manager = TemplateManager(config_service=config_service)
+        template_manager = UnifiedTemplateManager(config_service=config_service)
 
         # Get orchestrator template
         template = template_manager.get_role_template("orchestrator")
@@ -390,7 +390,7 @@ class TestTemplateManagerIntegration:
     def test_template_excludes_serena_when_disabled(self, tmp_path):
         """Test no Serena guidance when disabled."""
         from src.giljo_mcp.services.config_service import ConfigService
-        from src.giljo_mcp.template_manager import TemplateManager
+        from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
         # Create config with serena disabled
         config_path = tmp_path / "config.yaml"
@@ -398,7 +398,7 @@ class TestTemplateManagerIntegration:
         config_path.write_text(yaml.dump(config_data))
 
         config_service = ConfigService(config_path)
-        template_manager = TemplateManager(config_service=config_service)
+        template_manager = UnifiedTemplateManager(config_service=config_service)
 
         template = template_manager.get_role_template("orchestrator")
 
@@ -408,14 +408,14 @@ class TestTemplateManagerIntegration:
     def test_all_roles_have_serena_guidance(self, tmp_path):
         """Test all 6 roles get appropriate Serena guidance."""
         from src.giljo_mcp.services.config_service import ConfigService
-        from src.giljo_mcp.template_manager import TemplateManager
+        from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
         config_path = tmp_path / "config.yaml"
         config_data = {"features": {"serena_mcp": {"enabled": True, "installed": True, "registered": True}}}
         config_path.write_text(yaml.dump(config_data))
 
         config_service = ConfigService(config_path)
-        template_manager = TemplateManager(config_service=config_service)
+        template_manager = UnifiedTemplateManager(config_service=config_service)
 
         roles = ["orchestrator", "analyzer", "implementer", "tester", "reviewer", "documenter"]
 
@@ -427,7 +427,7 @@ class TestTemplateManagerIntegration:
     def test_cache_key_differentiates_serena_state(self, tmp_path):
         """Test templates cached separately for enabled/disabled."""
         from src.giljo_mcp.services.config_service import ConfigService
-        from src.giljo_mcp.template_manager import TemplateManager
+        from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
         config_path = tmp_path / "config.yaml"
 
@@ -436,7 +436,7 @@ class TestTemplateManagerIntegration:
         config_path.write_text(yaml.dump(config_data))
 
         config_service = ConfigService(config_path)
-        template_manager = TemplateManager(config_service=config_service)
+        template_manager = UnifiedTemplateManager(config_service=config_service)
 
         template_enabled = template_manager.get_role_template("orchestrator")
 
@@ -448,7 +448,7 @@ class TestTemplateManagerIntegration:
         config_service.invalidate_cache()
 
         # Get new template (should be different)
-        template_manager_2 = TemplateManager(config_service=config_service)
+        template_manager_2 = UnifiedTemplateManager(config_service=config_service)
         template_disabled = template_manager_2.get_role_template("orchestrator")
 
         # Templates should differ based on Serena state

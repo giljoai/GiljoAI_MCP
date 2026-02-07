@@ -9,10 +9,11 @@ Tests for:
 Follows TDD workflow: RED → GREEN → REFACTOR
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, Mock
-from datetime import datetime
 from contextlib import asynccontextmanager
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, Mock
+
+import pytest
 
 
 def create_mock_db_manager(mock_session):
@@ -26,6 +27,7 @@ def create_mock_db_manager(mock_session):
     Returns:
         Mock db_manager with get_session_async configured
     """
+
     @asynccontextmanager
     async def mock_get_session_async():
         yield mock_session
@@ -59,10 +61,7 @@ async def test_get_product_context_basic():
     mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_product_context(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        include_metadata=False,
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="test-tenant", include_metadata=False, db_manager=mock_db_manager
     )
 
     assert result["source"] == "product_context"
@@ -95,10 +94,7 @@ async def test_get_product_context_with_metadata():
     mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_product_context(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        include_metadata=True,
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="test-tenant", include_metadata=True, db_manager=mock_db_manager
     )
 
     assert result["data"]["meta_data"] == {"custom_key": "custom_value"}
@@ -118,10 +114,7 @@ async def test_get_product_context_multi_tenant_isolation():
     mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_product_context(
-        product_id="test-id",
-        tenant_key="wrong-tenant",
-        include_metadata=False,
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="wrong-tenant", include_metadata=False, db_manager=mock_db_manager
     )
 
     assert "error" in result["metadata"]
@@ -141,7 +134,6 @@ async def test_get_project_description_basic():
     mock_project.status = "active"
     mock_project.staging_status = "staged"
     mock_project.context_used = 50000
-    mock_project.context_budget = 150000  # Should be EXCLUDED
     mock_project.orchestrator_summary = None
 
     mock_session = AsyncMock()
@@ -153,10 +145,7 @@ async def test_get_project_description_basic():
     mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_project(
-        project_id="test-id",
-        tenant_key="test-tenant",
-        include_summary=False,
-        db_manager=mock_db_manager
+        project_id="test-id", tenant_key="test-tenant", include_summary=False, db_manager=mock_db_manager
     )
 
     assert result["source"] == "project_description"
@@ -190,10 +179,7 @@ async def test_get_project_description_with_summary():
     mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_project(
-        project_id="test-id",
-        tenant_key="test-tenant",
-        include_summary=True,
-        db_manager=mock_db_manager
+        project_id="test-id", tenant_key="test-tenant", include_summary=True, db_manager=mock_db_manager
     )
 
     assert result["data"]["orchestrator_summary"] == "Project completed successfully..."
@@ -210,9 +196,9 @@ async def test_get_testing_config_complete():
         "test_config": {
             "strategy": "TDD with unit and integration tests",
             "coverage_target": 85,
-            "frameworks": ["pytest", "jest"]
+            "frameworks": ["pytest", "jest"],
         },
-        "test_commands": ["pytest tests/", "npm test"]
+        "test_commands": ["pytest tests/", "npm test"],
     }
 
     mock_session = AsyncMock()
@@ -223,12 +209,7 @@ async def test_get_testing_config_complete():
     # Mock db_manager with async context manager
     mock_db_manager = create_mock_db_manager(mock_session)
 
-    result = await get_testing(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        depth="full",
-        db_manager=mock_db_manager
-    )
+    result = await get_testing(product_id="test-id", tenant_key="test-tenant", depth="full", db_manager=mock_db_manager)
 
     assert result["source"] == "testing"
     assert result["data"]["quality_standards"] == "80% coverage, all tests passing, zero critical bugs"
@@ -244,13 +225,7 @@ async def test_get_testing_depth_basic():
 
     mock_product = MagicMock()
     mock_product.quality_standards = "Standards here"
-    mock_product.config_data = {
-        "test_config": {
-            "strategy": "TDD",
-            "coverage_target": 80,
-            "frameworks": ["pytest"]
-        }
-    }
+    mock_product.config_data = {"test_config": {"strategy": "TDD", "coverage_target": 80, "frameworks": ["pytest"]}}
 
     mock_session = AsyncMock()
     mock_result = MagicMock()
@@ -261,10 +236,7 @@ async def test_get_testing_depth_basic():
     mock_db_manager = create_mock_db_manager(mock_session)
 
     result = await get_testing(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        depth="basic",
-        db_manager=mock_db_manager
+        product_id="test-id", tenant_key="test-tenant", depth="basic", db_manager=mock_db_manager
     )
 
     assert result["data"]["testing_strategy"] == "TDD"
@@ -289,12 +261,7 @@ async def test_get_testing_empty_config_data():
     # Mock db_manager with async context manager
     mock_db_manager = create_mock_db_manager(mock_session)
 
-    result = await get_testing(
-        product_id="test-id",
-        tenant_key="test-tenant",
-        depth="full",
-        db_manager=mock_db_manager
-    )
+    result = await get_testing(product_id="test-id", tenant_key="test-tenant", depth="full", db_manager=mock_db_manager)
 
     assert result["data"]["quality_standards"] == ""
     assert result["data"]["testing_strategy"] == ""

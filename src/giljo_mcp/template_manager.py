@@ -6,9 +6,10 @@ Single source of truth for all template operations
 
 import logging
 import re
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from .database import DatabaseManager
+
 # NOTE: TemplateAugmentation import removed (Handover 0423 - using dict-based augmentations only)
 from .services.config_service import ConfigService
 from .template_cache import TemplateCache
@@ -89,7 +90,7 @@ def process_template(
         if all(hasattr(a, "priority") or "priority" in a for a in augmentations):
             sorted_augs = sorted(
                 augmentations,
-                key=lambda x: (x.priority if hasattr(x, "priority") else x.get("priority", 0)),
+                key=lambda x: x.priority if hasattr(x, "priority") else x.get("priority", 0),
             )
 
         for aug in sorted_augs:
@@ -130,7 +131,6 @@ class UnifiedTemplateManager:
     Handover 0106: Dual-Field Template System
     - system_instructions: Protected MCP coordination (non-editable by users)
     - user_instructions: Editable role-specific guidance
-    - template_content: DEPRECATED (v3.0 compatibility only)
 
     Template Resolution:
     1. Fetch template from cache/database
@@ -139,7 +139,6 @@ class UnifiedTemplateManager:
     4. Process variables and return final content
 
     Backward Compatibility:
-    - Falls back to template_content if system_instructions not available
     - Supports legacy templates (no database) via _legacy_templates
     """
 
@@ -618,7 +617,7 @@ SUCCESS CRITERIA:
             variables["serena_enabled"] = serena_config.get("use_in_prompts", False)
 
             # Try cache → database cascade → legacy fallback
-            template_content = None
+            merged_content = None
             template_obj = None
 
             if self.cache and use_cache:
@@ -626,14 +625,14 @@ SUCCESS CRITERIA:
                 template_obj = await self.cache.get_template(role, tenant_key, product_id)
                 if template_obj:
                     # Handover 0106: Merge system_instructions + user_instructions
-                    template_content = self._merge_instructions(template_obj)
+                    merged_content = self._merge_instructions(template_obj)
                     logger.debug(
                         f"Template resolved from cache/database: {role} (tenant={tenant_key}, product={product_id})"
                     )
 
             # Fallback to legacy templates if not in database
-            if not template_content:
-                template_content = self._legacy_templates.get(role.lower(), f"No template available for role: {role}")
+            if not merged_content:
+                merged_content = self._legacy_templates.get(role.lower(), f"No template available for role: {role}")
                 logger.debug(f"Using legacy fallback template for role: {role}")
 
             # Add Serena augmentation if enabled
@@ -642,7 +641,7 @@ SUCCESS CRITERIA:
                 augmentations.append(self._create_serena_augmentation(role))
 
             # Process the template
-            return process_template(template_content, variables, augmentations)
+            return process_template(merged_content, variables, augmentations)
 
         except Exception:
             logger.exception(f"Failed to get template for role '{role}'")
@@ -696,29 +695,20 @@ SUCCESS CRITERIA:
         """
         Merge system_instructions + user_instructions (Handover 0106).
 
-        Priority:
-        1. Use system_instructions + user_instructions if available (v3.1+)
-        2. Fallback to template_content if system_instructions empty (v3.0 compatibility)
-
         Args:
             template: AgentTemplate object from database
 
         Returns:
             Merged template content (system first, then user)
         """
-        # Check if we have system_instructions (Handover 0106 dual-field system)
-        if hasattr(template, "system_instructions") and template.system_instructions:
-            # System instructions available - use dual-field merge
-            merged = template.system_instructions
+        # Use dual-field merge
+        merged = template.system_instructions or ""
 
-            # Append user instructions if available
-            if hasattr(template, "user_instructions") and template.user_instructions:
-                merged += "\n\n" + template.user_instructions
+        # Append user instructions if available
+        if hasattr(template, "user_instructions") and template.user_instructions:
+            merged += "\n\n" + template.user_instructions
 
-            return merged
-
-        # Fallback to legacy template_content (backward compatibility with v3.0)
-        return template.template_content or ""
+        return merged
 
     def _create_serena_augmentation(self, role: str) -> dict:
         """
@@ -1012,8 +1002,24 @@ Use Serena MCP tools for semantic code analysis:
         return default_criteria.get(role.lower(), ["Complete assigned tasks"])
 
 
-# Singleton instance for global use
-_template_manager_instance = None
+# Module-level template manager holder
+class _TemplateManagerHolder:
+    """Lazy singleton holder to avoid global statement."""
+
+    _instance: Optional[UnifiedTemplateManager] = None
+
+    @classmethod
+    def get_instance(cls, db_manager: Optional[DatabaseManager] = None, redis_client=None) -> UnifiedTemplateManager:
+        if cls._instance is None:
+            cls._instance = UnifiedTemplateManager(db_manager, redis_client)
+        elif db_manager and cls._instance.db_manager is None:
+            # Update with database manager if not previously set
+            cls._instance.db_manager = db_manager
+            # Re-initialize cache with new db_manager
+            if db_manager:
+                cls._instance.cache = TemplateCache(db_manager, redis_client)
+                logger.info("TemplateCache re-initialized with database manager")
+        return cls._instance
 
 
 def get_template_manager(
@@ -1030,22 +1036,4 @@ def get_template_manager(
     Returns:
         UnifiedTemplateManager instance
     """
-    global _template_manager_instance
-
-    if _template_manager_instance is None:
-        _template_manager_instance = UnifiedTemplateManager(db_manager, redis_client)
-    elif db_manager and _template_manager_instance.db_manager is None:
-        # Update with database manager if not previously set
-        _template_manager_instance.db_manager = db_manager
-        # Re-initialize cache with new db_manager
-        if db_manager:
-            _template_manager_instance.cache = TemplateCache(db_manager, redis_client)
-            logger.info("TemplateCache re-initialized with database manager")
-
-    return _template_manager_instance
-
-
-# DEPRECATED: Use UnifiedTemplateManager directly. This alias will be removed in v4.0.
-# Kept for backward compatibility with examples/ directory only.
-# See Handover 0373 for migration plan.
-TemplateManager = UnifiedTemplateManager  # DEPRECATED
+    return _TemplateManagerHolder.get_instance(db_manager, redis_client)

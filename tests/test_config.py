@@ -21,7 +21,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.config_manager import ConfigManager, get_config, set_config
-from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
 class TestConfigManager:
@@ -34,7 +33,7 @@ class TestConfigManager:
         assert config.app_name == "GiljoAI MCP Coding Orchestrator"
         assert config.app_version == "0.1.0"
         assert config.server.debug is False
-        assert config.database.database_type == "postgresql"  # Project standardized on PostgreSQL
+        assert config.database.type == "postgresql"  # Project standardized on PostgreSQL
         assert config.server.api_host == "0.0.0.0"  # v3.0: Always bind to all interfaces
         assert config.server.api_port == 7272  # Production default (changed from 8000)
         assert config.tenant.enable_multi_tenant is True
@@ -79,7 +78,7 @@ class TestConfigManager:
         config_manager = ConfigManager()
 
         assert config_manager.database.database_url == "postgresql://user:pass@host:5432/db"
-        assert config_manager.database.database_type == "postgresql"
+        assert config_manager.database.type == "postgresql"
         assert config_manager.server.api_host == "0.0.0.0"
         assert config_manager.server.api_port == 9000
         assert config_manager.server.debug is True
@@ -89,7 +88,7 @@ class TestConfigManager:
         config = get_config()
 
         # Test PostgreSQL URL construction (project standardized on PostgreSQL)
-        config.database.database_type = "postgresql"
+        config.database.type = "postgresql"
         config.database.host = "localhost"
         config.database.port = 5432
         config.database.username = "testuser"

@@ -14,7 +14,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from giljo_mcp.logging import get_logger, ErrorCode
+from giljo_mcp.logging import ErrorCode, get_logger
 
 
 logger = get_logger(__name__)
@@ -82,7 +82,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
             has_authorization=bool(request.headers.get("authorization")),
         )
 
-        # Authenticate (auto-login or credentials)
         auth_result = await auth_manager.authenticate_request(request)
 
         # DIAGNOSTIC: Log auth result
@@ -127,7 +126,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     def _is_public_endpoint(self, path: str) -> bool:
         """Check if endpoint is public (no authentication required)"""
-        PUBLIC_PATHS = [
+        public_paths = [
             "/health",
             "/docs",
             "/redoc",
@@ -147,4 +146,4 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Always allow token download path (token is the auth)
         if path.startswith("/api/download/temp") or "/api/download/temp/" in path:
             return True
-        return any(path.startswith(p) for p in PUBLIC_PATHS)
+        return any(path.startswith(p) for p in public_paths)

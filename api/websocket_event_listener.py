@@ -9,10 +9,11 @@ Created: 2025-11-06
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from api.event_bus import EventBus
 from api.events.schemas import EventFactory
+
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ class WebSocketEventListener:
             },
         )
 
-    async def handle_product_status_changed(self, data: Dict[str, Any]) -> None:
+    async def handle_product_status_changed(self, data: dict[str, Any]) -> None:
         """
         Handle product:status:changed event.
 
@@ -105,7 +106,7 @@ class WebSocketEventListener:
                 exc_info=True,
             )
 
-    async def handle_mission_updated(self, data: Dict[str, Any]) -> None:
+    async def handle_mission_updated(self, data: dict[str, Any]) -> None:
         """
         Handle project:mission_updated event.
 
@@ -153,7 +154,7 @@ class WebSocketEventListener:
                 exc_info=True,
             )
 
-    async def handle_agent_created(self, data: Dict[str, Any]) -> None:
+    async def handle_agent_created(self, data: dict[str, Any]) -> None:
         """
         Handle agent:created event.
 

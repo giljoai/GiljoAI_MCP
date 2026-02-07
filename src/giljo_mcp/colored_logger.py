@@ -13,11 +13,11 @@ Color scheme:
 
 import logging
 import sys
-from typing import Optional
+from typing import ClassVar, Optional
 
 
 try:
-    from colorama import Back, Fore, Style
+    from colorama import Fore, Style
     from colorama import init as colorama_init
 
     # Initialize colorama for Windows support
@@ -31,14 +31,14 @@ except ImportError:
         def __getattr__(self, name):
             return ""
 
-    Fore = Back = Style = _DummyColor()
+    Fore = Style = _DummyColor()
 
 
 class ColoredFormatter(logging.Formatter):
     """Custom formatter that adds colors to log messages based on level."""
 
     # Color mapping for log levels
-    COLORS = {
+    COLORS: ClassVar[dict[int, str]] = {
         logging.DEBUG: Fore.WHITE,  # Trivial text in white
         logging.INFO: Fore.BLUE,  # General information in blue
         logging.WARNING: Fore.YELLOW,  # Warnings in yellow
@@ -73,10 +73,7 @@ class ColoredFormatter(logging.Formatter):
             Formatted and colored log message
         """
         # Get the color for this log level
-        if record.levelno == self.SUCCESS:
-            color = Fore.GREEN
-        else:
-            color = self.COLORS.get(record.levelno, Fore.WHITE)
+        color = Fore.GREEN if record.levelno == self.SUCCESS else self.COLORS.get(record.levelno, Fore.WHITE)
 
         # Save the original level name
         original_levelname = record.levelname

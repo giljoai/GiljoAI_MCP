@@ -29,6 +29,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from typing import Optional
 
+
 try:
     # SQLAlchemy URL parser is convenient and already a dependency
     from sqlalchemy.engine.url import make_url
@@ -92,7 +93,7 @@ def ensure_database_exists(conn: DbConn) -> None:
                 cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (conn.database,))
                 exists = cur.fetchone() is not None
                 if not exists:
-                    cur.execute(sql.SQL("CREATE DATABASE {}" ).format(sql.Identifier(conn.database)))
+                    cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(conn.database)))
                     print(f"[OK] Created database: {conn.database}")
                 else:
                     print(f"[OK] Database exists: {conn.database}")
@@ -173,4 +174,3 @@ def main() -> int:
 if __name__ == "__main__":
     with suppress(KeyboardInterrupt):
         sys.exit(main())
-

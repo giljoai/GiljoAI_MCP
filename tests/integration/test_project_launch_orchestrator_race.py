@@ -6,10 +6,11 @@ verifying the fix for the race condition where Promise.all caused the orchestrat
 to be missing from the list.
 """
 
-import pytest
-import pytest_asyncio
 from datetime import datetime, timezone
 from uuid import uuid4
+
+import pytest
+import pytest_asyncio
 
 from src.giljo_mcp.models import Project
 
@@ -43,8 +44,7 @@ async def test_project_without_orchestrator(db_session):
 
 @pytest.mark.asyncio
 async def test_orchestrator_included_in_agent_jobs_list_after_auto_creation(
-    async_client,
-    test_project_without_orchestrator
+    async_client, test_project_without_orchestrator
 ):
     """
     BEHAVIOR: When fetching agent jobs for a project, the orchestrator
@@ -62,40 +62,28 @@ async def test_orchestrator_included_in_agent_jobs_list_after_auto_creation(
     project_id = test_project_without_orchestrator.id
 
     # Step 1: Verify no orchestrator exists initially
-    response = await async_client.get(
-        f"/api/projects/{project_id}/agents"
-    )
+    response = await async_client.get(f"/api/projects/{project_id}/agents")
     assert response.status_code == 200
     initial_agents = response.json()
 
     # Should have no agents at all (empty project)
-    assert len(initial_agents) == 0, (
-        f"Expected empty agent list initially, got {len(initial_agents)} agents"
-    )
+    assert len(initial_agents) == 0, f"Expected empty agent list initially, got {len(initial_agents)} agents"
 
     # Step 2: Call getOrchestrator (triggers auto-creation)
-    response = await async_client.get(
-        f"/api/projects/{project_id}/orchestrator"
-    )
+    response = await async_client.get(f"/api/projects/{project_id}/orchestrator")
     assert response.status_code == 200
     orchestrator_data = response.json()
 
     # Verify orchestrator was created successfully
-    assert orchestrator_data.get("success") is True, (
-        "getOrchestrator should return success=True"
-    )
-    assert "orchestrator" in orchestrator_data, (
-        "getOrchestrator should return orchestrator object"
-    )
+    assert orchestrator_data.get("success") is True, "getOrchestrator should return success=True"
+    assert "orchestrator" in orchestrator_data, "getOrchestrator should return orchestrator object"
 
     orchestrator_id = orchestrator_data["orchestrator"]["job_id"]
     assert orchestrator_id is not None, "Orchestrator should have a job_id"
 
     # Step 3: Call agentJobs.list AFTER getOrchestrator
     # This is the critical test - the orchestrator should now be in the list
-    response = await async_client.get(
-        f"/api/projects/{project_id}/agents"
-    )
+    response = await async_client.get(f"/api/projects/{project_id}/agents")
     assert response.status_code == 200
     agents = response.json()
 
@@ -117,10 +105,7 @@ async def test_orchestrator_included_in_agent_jobs_list_after_auto_creation(
 
 
 @pytest.mark.asyncio
-async def test_parallel_calls_demonstrate_race_condition(
-    async_client,
-    test_project_without_orchestrator
-):
+async def test_parallel_calls_demonstrate_race_condition(async_client, test_project_without_orchestrator):
     """
     DEMONSTRATION: This test shows the race condition when calls are parallel.
 
@@ -136,18 +121,11 @@ async def test_parallel_calls_demonstrate_race_condition(
     import asyncio
 
     # Execute both calls simultaneously
-    get_orchestrator_task = async_client.get(
-        f"/api/projects/{project_id}/orchestrator"
-    )
-    get_agents_task = async_client.get(
-        f"/api/projects/{project_id}/agents"
-    )
+    get_orchestrator_task = async_client.get(f"/api/projects/{project_id}/orchestrator")
+    get_agents_task = async_client.get(f"/api/projects/{project_id}/agents")
 
     # Wait for both to complete (parallel execution)
-    orchestrator_response, agents_response = await asyncio.gather(
-        get_orchestrator_task,
-        get_agents_task
-    )
+    orchestrator_response, agents_response = await asyncio.gather(get_orchestrator_task, get_agents_task)
 
     # Both should succeed
     assert orchestrator_response.status_code == 200

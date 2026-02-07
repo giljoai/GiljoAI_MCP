@@ -12,7 +12,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
 )
@@ -37,6 +36,11 @@ class Task(Base):
     - job_id: Links task to AgentJob for execution tracking (Handover 0381: renamed from agent_job_id)
     - project_id: Now nullable to support unassigned tasks
     - status: Added "converted" state for task-to-project conversions
+
+    Handover 0433: Task Product Binding (Security Enhancement)
+    - product_id: Now required (NOT NULL) for tenant isolation
+    - All tasks must be bound to a product
+    - Eliminates "unassigned tasks" vulnerability
     """
 
     __tablename__ = "tasks"
@@ -51,8 +55,8 @@ class Task(Base):
         comment="Organization for org-level tasks (Handover 0424)",
     )
     product_id = Column(
-        String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=True
-    )  # Product-level scope for task isolation
+        String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=False
+    )  # Product-level scope for task isolation (Handover 0433: Made required)
     project_id = Column(
         String(36), ForeignKey("projects.id"), nullable=True
     )  # Handover 0072: Nullable for unassigned tasks
@@ -87,7 +91,7 @@ class Task(Base):
         "Project", back_populates="tasks", foreign_keys=[project_id]
     )  # Specify FK to avoid ambiguity with converted_to_project_id
     subtasks = relationship("Task", back_populates="parent_task", foreign_keys="Task.parent_task_id")
-    parent_task = relationship("Task", back_populates="subtasks", remote_side=[id])
+    parent_task = relationship("Task", back_populates="subtasks", remote_side="Task.id")
 
     # Phase 4: User relationships (Handover 0076: removed assigned_to_user)
     created_by_user = relationship("User", foreign_keys=[created_by_user_id], back_populates="created_tasks")
@@ -106,6 +110,9 @@ class Task(Base):
         Index("idx_task_job", "job_id"),  # Handover 0072/0381: Agent job linking
         Index("idx_task_tenant_job", "tenant_key", "job_id"),  # Composite for tenant isolation
     )
+
+    def __repr__(self) -> str:
+        return f"<Task(id={self.id}, title='{self.title}', status='{self.status}')>"
 
 
 class Message(Base):
@@ -151,3 +158,6 @@ class Message(Base):
         Index("idx_message_priority", "priority"),
         Index("idx_message_created", "created_at"),
     )
+
+    def __repr__(self) -> str:
+        return f"<Message(id={self.id}, subject='{self.subject}', status='{self.status}')>"

@@ -2,20 +2,20 @@
   <v-navigation-drawer
     id="navigation"
     :model-value="modelValue"
-    @update:model-value="$emit('update:model-value', $event)"
     :rail="rail"
     permanent
     color="surface"
     width="180"
     class="navigation-drawer-container"
+    @update:model-value="$emit('update:model-value', $event)"
   >
     <!-- Edge-Aligned Collapse/Expand Tab -->
     <div
       class="edge-toggle-tab"
-      @click="$emit('toggle-rail')"
       :aria-label="rail ? 'Expand sidebar' : 'Collapse sidebar'"
       role="button"
       tabindex="0"
+      @click="$emit('toggle-rail')"
       @keydown.enter="$emit('toggle-rail')"
       @keydown.space.prevent="$emit('toggle-rail')"
     >
@@ -26,7 +26,7 @@
     <div style="height: 8px"></div>
 
     <!-- Navigation Items -->
-    <v-list density="compact" nav v-model:selected="selected" select-strategy="single">
+    <v-list v-model:selected="selected" density="compact" nav select-strategy="single">
       <v-list-item
         v-for="item in navigationItems"
         :key="item.name"
@@ -51,16 +51,6 @@
       </v-list-item>
     </v-list>
 
-    <!-- Bottom Section -->
-    <template v-slot:append>
-      <v-list density="compact" nav>
-        <v-list-item
-          prepend-icon="mdi-theme-light-dark"
-          title="Toggle Theme"
-          @click="toggleTheme"
-        ></v-list-item>
-      </v-list>
-    </template>
   </v-navigation-drawer>
 </template>
 
@@ -98,17 +88,16 @@ const projectStore = useProjectStore()  // Product/Project State Fix
 // Track which nav item is selected (ensure single active item)
 const selected = ref([])
 
-// Dynamic Giljo icon for Jobs based on route and theme
+// Dynamic Giljo icon for Jobs based on route (dark theme only)
 const jobsIcon = computed(() => {
   const isJobsRoute = route.path.includes('/projects/')
-  const isDark = theme.global.current.value.dark
 
   if (isJobsRoute) {
-    // Active state: Yellow/White for dark theme, Blue/Yellow for light theme
-    return isDark ? '/icons/Giljo_YW_Face.svg' : '/icons/Giljo_BY_Face.svg'
+    // Active state: Yellow/White for dark theme
+    return '/icons/Giljo_YW_Face.svg'
   }
-  // Inactive state: Light gray for dark theme, Dark gray for light theme
-  return isDark ? '/icons/Giljo_Inactive_Dark.svg' : '/icons/Giljo_Inactive_Light.svg'
+  // Inactive state: Light gray for dark theme
+  return '/icons/Giljo_Inactive_Dark.svg'
 })
 
 // Navigation items
@@ -154,7 +143,7 @@ const updateSelectedFromRoute = () => {
   let best = null
   for (const item of items) {
     if (!item.path) continue
-    if (currentPath === item.path || currentPath.startsWith(item.path + '/')) {
+    if (currentPath === item.path || currentPath.startsWith(`${item.path  }/`)) {
       if (!best || item.path.length > best.path.length) {
         best = item
       }
@@ -171,15 +160,6 @@ watch(
   () => updateSelectedFromRoute(),
 )
 
-const toggleTheme = () => {
-  document.documentElement.classList.remove('no-transition')
-  const newTheme = theme.global.current.value.dark ? 'light' : 'dark'
-  theme.change(newTheme)
-  document.documentElement.setAttribute('data-theme', newTheme)
-  localStorage.setItem('theme-preference', newTheme)
-  settingsStore.settings.theme = newTheme
-  localStorage.setItem('giljo_settings', JSON.stringify(settingsStore.settings))
-}
 </script>
 
 <style scoped>

@@ -16,11 +16,11 @@ Summaries (light/medium) generated via VisionDocumentSummarizer for large docume
 
 import logging
 from pathlib import Path
-from typing import List, Optional
 
 import aiofiles
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
@@ -57,10 +57,7 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
     try:
         consolidation_service = ConsolidatedVisionService()
         result = await consolidation_service.consolidate_vision_documents(
-            product_id=product_id,
-            session=db_session,
-            tenant_key=tenant_key,
-            force=False
+            product_id=product_id, session=db_session, tenant_key=tenant_key, force=False
         )
 
         if result["success"]:
@@ -70,14 +67,10 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
             )
         else:
             # Not an error - could be "no_changes" which is expected
-            logger.debug(
-                f"consolidation_skipped: product_id={product_id}, reason={result.get('error')}"
-            )
-    except Exception as e:
+            logger.debug(f"consolidation_skipped: product_id={product_id}, reason={result.get('error')}")
+    except (SQLAlchemyError, ValueError, KeyError):
         # Don't fail the main operation if consolidation fails
-        logger.error(
-            f"consolidation_failed: product_id={product_id}, error={str(e)}"
-        )
+        logger.exception(f"consolidation_failed: product_id={product_id}")
 
 
 async def get_db():
@@ -117,8 +110,8 @@ async def create_vision_document(
     product_id: str = Form(...),
     document_name: str = Form(...),
     document_type: str = Form("vision"),
-    content: Optional[str] = Form(None),
-    vision_file: Optional[UploadFile] = File(None),
+    content: str | None = Form(None),
+    vision_file: UploadFile | None = File(None),
     display_order: int = Form(0),
     version: str = Form("1.0.0"),
     db: AsyncSession = Depends(get_db),
@@ -268,7 +261,7 @@ async def create_vision_document(
                     f"(from {summaries['original_tokens']} tokens) "
                     f"in {summaries['processing_time_ms']}ms"
                 )
-            except Exception as e:
+            except (ImportError, ValueError, KeyError) as e:
                 # Summarization failed but document created - log warning and continue
                 logger.warning(f"Document {doc.id} created but summarization failed: {e}")
 
@@ -282,9 +275,7 @@ async def create_vision_document(
 
                 chunker = VisionDocumentChunker(target_chunk_size=25000)
                 chunk_result = await chunker.chunk_vision_document(
-                    session=db,
-                    tenant_key=tenant_key,
-                    vision_document_id=str(doc.id)
+                    session=db, tenant_key=tenant_key, vision_document_id=str(doc.id)
                 )
                 await db.commit()
 
@@ -295,7 +286,7 @@ async def create_vision_document(
                     )
                 else:
                     logger.warning(f"Document {doc.id} created but chunking failed: {chunk_result.get('error')}")
-            except Exception as e:
+            except (ImportError, SQLAlchemyError, ValueError) as e:
                 # Chunking failed but document created - log warning and continue
                 logger.warning(f"Document {doc.id} created but chunking failed: {e}")
 
@@ -306,12 +297,15 @@ async def create_vision_document(
 
         return VisionDocumentResponse.model_validate(doc)
 
-    except Exception as e:
+    except HTTPException:
+        await db.rollback()
+        raise
+    except (SQLAlchemyError, OSError, UnicodeDecodeError, ValueError) as e:
         await db.rollback()
         logger.error(f"Failed to create vision document: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to create vision document: {e!s}"
-        )
+        ) from e
 
 
 @router.get("/{document_id}", response_model=VisionDocumentResponse)
@@ -348,15 +342,12 @@ async def get_vision_document(
     doc = result.scalar_one_or_none()
 
     if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Vision document {document_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Vision document {document_id} not found")
 
     return VisionDocumentResponse.model_validate(doc)
 
 
-@router.get("/product/{product_id}", response_model=List[VisionDocumentResponse])
+@router.get("/product/{product_id}", response_model=list[VisionDocumentResponse])
 async def list_vision_documents(
     product_id: str,
     active_only: bool = True,
@@ -392,11 +383,11 @@ async def list_vision_documents(
 
         return [VisionDocumentResponse.model_validate(doc) for doc in docs]
 
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error(f"Failed to list vision documents: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to list vision documents: {e!s}"
-        )
+        ) from e
 
 
 @router.put("/{document_id}", response_model=VisionDocumentResponse)
@@ -468,7 +459,7 @@ async def update_vision_document(
                     f"Light={summaries['light']['tokens']} tokens, "
                     f"Medium={summaries['medium']['tokens']} tokens"
                 )
-            except Exception as e:
+            except (ImportError, ValueError, KeyError) as e:
                 # Summarization failed but content updated - log warning and continue
                 logger.warning(f"Document {document_id} updated but summarization failed: {e}")
 
@@ -480,12 +471,15 @@ async def update_vision_document(
 
         return VisionDocumentResponse.model_validate(doc)
 
-    except Exception as e:
+    except HTTPException:
+        await db.rollback()
+        raise
+    except (SQLAlchemyError, ValueError) as e:
         await db.rollback()
         logger.error(f"Failed to update vision document: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update vision document: {e!s}"
-        )
+        ) from e
 
 
 @router.delete("/{document_id}", response_model=DeleteResponse)
@@ -528,8 +522,7 @@ async def delete_vision_document(
 
         if not doc:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Vision document {document_id} not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Vision document {document_id} not found"
             )
 
         product_id = doc.product_id  # Store before deletion
@@ -547,12 +540,15 @@ async def delete_vision_document(
 
         return DeleteResponse(**delete_result)
 
-    except Exception as e:
+    except HTTPException:
+        await db.rollback()
+        raise
+    except SQLAlchemyError as e:
         await db.rollback()
         logger.error(f"Failed to delete vision document: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete vision document: {e!s}"
-        )
+        ) from e
 
 
 @router.post("/products/{product_id}/regenerate-consolidated", response_model=dict)
@@ -595,34 +591,23 @@ async def regenerate_consolidated_vision(
     """
     try:
         # Verify product exists and belongs to tenant
-        result = await db.execute(
-            select(Product).filter(
-                Product.id == product_id,
-                Product.tenant_key == tenant_key
-            )
-        )
+        result = await db.execute(select(Product).filter(Product.id == product_id, Product.tenant_key == tenant_key))
         product = result.scalar_one_or_none()
 
         if not product:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product {product_id} not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product {product_id} not found")
 
         # Run consolidation service
         consolidation_service = ConsolidatedVisionService()
         consolidation_result = await consolidation_service.consolidate_vision_documents(
-            product_id=product_id,
-            session=db,
-            tenant_key=tenant_key,
-            force=force
+            product_id=product_id, session=db, tenant_key=tenant_key, force=force
         )
 
         if not consolidation_result["success"]:
             # Return error details for debugging
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=consolidation_result.get("error", "Consolidation failed")
+                detail=consolidation_result.get("error", "Consolidation failed"),
             )
 
         return {
@@ -630,17 +615,16 @@ async def regenerate_consolidated_vision(
             "light_tokens": consolidation_result["light"]["tokens"],
             "medium_tokens": consolidation_result["medium"]["tokens"],
             "source_docs": consolidation_result["source_docs"],
-            "hash": consolidation_result["hash"]
+            "hash": consolidation_result["hash"],
         }
 
     except HTTPException:
         raise  # Re-raise HTTP exceptions
-    except Exception as e:
+    except (SQLAlchemyError, ValueError, KeyError) as e:
         logger.error(f"Failed to regenerate consolidated vision: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to regenerate consolidated vision: {e!s}"
-        )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to regenerate consolidated vision: {e!s}"
+        ) from e
 
 
 @router.post("/{document_id}/regenerate-summaries", response_model=RechunkResponse)
@@ -687,7 +671,7 @@ async def regenerate_summaries(
         if not content:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Vision document {document_id} has no content to summarize"
+                detail=f"Vision document {document_id} has no content to summarize",
             )
 
         # Generate summaries
@@ -714,15 +698,17 @@ async def regenerate_summaries(
 
         return RechunkResponse(
             success=True,
-            message=f"Summaries regenerated successfully",
+            message="Summaries regenerated successfully",
             chunks_created=2,  # light and medium summaries
-            total_tokens=summaries["original_tokens"]
+            total_tokens=summaries["original_tokens"],
         )
 
-    except Exception as e:
+    except HTTPException:
+        await db.rollback()
+        raise
+    except (ImportError, SQLAlchemyError, ValueError, KeyError) as e:
         await db.rollback()
         logger.error(f"Failed to regenerate summaries: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to regenerate summaries: {e!s}"
-        )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to regenerate summaries: {e!s}"
+        ) from e

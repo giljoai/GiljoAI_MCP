@@ -5,19 +5,15 @@ Verifies that services use ProductMemoryRepository for reads instead of JSONB.
 Handover 0390b Phase 3.
 """
 
-import pytest
 from datetime import datetime
-from uuid import uuid4
 
-from src.giljo_mcp.models import Product
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+import pytest
+
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
 
 @pytest.mark.asyncio
-async def test_product_memory_entries_available_via_repository(
-    db_session, test_tenant_key, test_product
-):
+async def test_product_memory_entries_available_via_repository(db_session, test_tenant_key, test_product):
     """
     Test that memory entries can be fetched via repository and match expected structure.
     This validates the repository interface for service layer integration.
@@ -82,9 +78,7 @@ async def test_product_memory_entries_available_via_repository(
 
 
 @pytest.mark.asyncio
-async def test_get_entries_for_context_returns_lightweight_dicts(
-    db_session, test_tenant_key, test_product
-):
+async def test_get_entries_for_context_returns_lightweight_dicts(db_session, test_tenant_key, test_product):
     """
     Test that get_entries_for_context returns lightweight dicts suitable for context injection.
     This is the primary interface services will use for orchestrator context.
@@ -101,9 +95,9 @@ async def test_get_entries_for_context_returns_lightweight_dicts(
             entry_type="project_closeout",
             source="test",
             timestamp=datetime.utcnow(),
-            project_name=f"Project {i+1}",
-            summary=f"Summary {i+1}",
-            key_outcomes=[f"Outcome {i+1}"],
+            project_name=f"Project {i + 1}",
+            summary=f"Summary {i + 1}",
+            key_outcomes=[f"Outcome {i + 1}"],
         )
 
     await db_session.commit()
@@ -123,9 +117,7 @@ async def test_get_entries_for_context_returns_lightweight_dicts(
 
 
 @pytest.mark.asyncio
-async def test_repository_respects_include_deleted_flag(
-    db_session, test_tenant_key, test_product
-):
+async def test_repository_respects_include_deleted_flag(db_session, test_tenant_key, test_product):
     """
     Test that repository correctly filters deleted entries.
     """

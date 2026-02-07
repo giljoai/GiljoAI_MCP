@@ -20,24 +20,19 @@ Tests validate:
 """
 
 import time
-import pytest
-import pytest_asyncio
-from uuid import uuid4
 from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import uuid4
 
-from src.giljo_mcp.models import (
-    User, Product, Project
-)
+import pytest_asyncio
+
 from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
-
-from tests.fixtures.base_fixtures import db_manager, db_session
+from src.giljo_mcp.models import Product, Project, User
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def perf_tenant():
@@ -66,7 +61,7 @@ async def perf_user(db_session, perf_tenant):
                 "memory_360": 2,
                 "git_history": 3,
                 "agent_templates": 3,
-            }
+            },
         },
         serena_enabled=True,
     )
@@ -81,15 +76,17 @@ async def perf_product_with_large_memory(db_session, perf_tenant):
     # Create product with substantial memory entries
     history = []
     for i in range(100):  # Large number of entries
-        history.append({
-            "sequence": i + 1,
-            "type": "project_closeout",
-            "project_id": str(uuid4()),
-            "summary": f"Project {i+1} completed with implementation and testing",
-            "timestamp": datetime.utcnow().isoformat(),
-            "decisions": ["decision_1", "decision_2"],
-            "git_commits": [f"commit_{j}" for j in range(5)],
-        })
+        history.append(
+            {
+                "sequence": i + 1,
+                "type": "project_closeout",
+                "project_id": str(uuid4()),
+                "summary": f"Project {i + 1} completed with implementation and testing",
+                "timestamp": datetime.utcnow().isoformat(),
+                "decisions": ["decision_1", "decision_2"],
+                "git_commits": [f"commit_{j}" for j in range(5)],
+            }
+        )
 
     product = Product(
         id=str(uuid4()),
@@ -114,7 +111,7 @@ async def perf_product_with_large_memory(db_session, perf_tenant):
                 "repository_url": "https://github.com/example/repo",
             },
             "sequential_history": history,
-        }
+        },
     )
     db_session.add(product)
     await db_session.flush()
@@ -139,6 +136,7 @@ async def perf_project(db_session, perf_product_with_large_memory, perf_tenant):
 # ============================================================================
 # TEST SUITE 1: Context Generation Performance
 # ============================================================================
+
 
 class TestContextGenerationPerformance:
     """
@@ -226,12 +224,13 @@ class TestContextGenerationPerformance:
         assert memory is not None
         assert len(memory) == 100  # Should have all entries
 
-        assert elapsed < 0.3, f"Memory retrieval took {elapsed*1000:.2f}ms, expected <300ms"
+        assert elapsed < 0.3, f"Memory retrieval took {elapsed * 1000:.2f}ms, expected <300ms"
 
 
 # ============================================================================
 # TEST SUITE 2: Settings Persistence Performance
 # ============================================================================
+
 
 class TestSettingsPersistencePerformance:
     """
@@ -270,7 +269,7 @@ class TestSettingsPersistencePerformance:
         retrieved = await db_session.get(User, perf_user.id)
         assert retrieved.field_priority_config["priorities"]["vision_documents"] == 3
 
-        assert elapsed < 0.5, f"Settings persistence took {elapsed*1000:.2f}ms, expected <500ms"
+        assert elapsed < 0.5, f"Settings persistence took {elapsed * 1000:.2f}ms, expected <500ms"
 
     async def test_serena_toggle_persistence_under_500ms(
         self,
@@ -288,7 +287,7 @@ class TestSettingsPersistencePerformance:
         retrieved = await db_session.get(User, perf_user.id)
         assert retrieved.serena_enabled is True
 
-        assert elapsed < 0.5, f"Toggle persistence took {elapsed*1000:.2f}ms, expected <500ms"
+        assert elapsed < 0.5, f"Toggle persistence took {elapsed * 1000:.2f}ms, expected <500ms"
 
     async def test_github_integration_toggle_under_500ms(
         self,
@@ -306,7 +305,7 @@ class TestSettingsPersistencePerformance:
         retrieved = await db_session.get(Product, perf_product_with_large_memory.id)
         assert retrieved.product_memory["git_integration"]["enabled"] is False
 
-        assert elapsed < 0.5, f"GitHub toggle persistence took {elapsed*1000:.2f}ms, expected <500ms"
+        assert elapsed < 0.5, f"GitHub toggle persistence took {elapsed * 1000:.2f}ms, expected <500ms"
 
     async def test_testing_config_update_under_500ms(
         self,
@@ -324,12 +323,13 @@ class TestSettingsPersistencePerformance:
         retrieved = await db_session.get(Product, perf_product_with_large_memory.id)
         assert retrieved.testing_config["coverage_target"] == 90
 
-        assert elapsed < 0.5, f"Config persistence took {elapsed*1000:.2f}ms, expected <500ms"
+        assert elapsed < 0.5, f"Config persistence took {elapsed * 1000:.2f}ms, expected <500ms"
 
 
 # ============================================================================
 # TEST SUITE 3: Field Priority Filtering Performance
 # ============================================================================
+
 
 class TestFieldPriorityFilteringPerformance:
     """
@@ -361,7 +361,7 @@ class TestFieldPriorityFilteringPerformance:
         assert len(high_priority) > 0
         assert len(low_priority) > 0
 
-        assert elapsed < 0.1, f"Priority filtering took {elapsed*1000:.2f}ms, expected <100ms"
+        assert elapsed < 0.1, f"Priority filtering took {elapsed * 1000:.2f}ms, expected <100ms"
 
     async def test_context_priority_application_under_500ms(
         self,
@@ -388,12 +388,13 @@ class TestFieldPriorityFilteringPerformance:
         elapsed = time.time() - start_time
 
         assert context is not None
-        assert elapsed < 0.5, f"Priority application took {elapsed*1000:.2f}ms, expected <500ms"
+        assert elapsed < 0.5, f"Priority application took {elapsed * 1000:.2f}ms, expected <500ms"
 
 
 # ============================================================================
 # TEST SUITE 4: Large Dataset Performance
 # ============================================================================
+
 
 class TestLargeDatasetPerformance:
     """
@@ -445,12 +446,13 @@ class TestLargeDatasetPerformance:
         elapsed = time.time() - start_time
 
         assert len(filtered) == 50
-        assert elapsed < 0.3, f"Filtering 100 entries took {elapsed*1000:.2f}ms"
+        assert elapsed < 0.3, f"Filtering 100 entries took {elapsed * 1000:.2f}ms"
 
 
 # ============================================================================
 # TEST SUITE 5: Concurrent Operations Performance
 # ============================================================================
+
 
 class TestConcurrentOperationsPerformance:
     """
@@ -490,6 +492,7 @@ class TestConcurrentOperationsPerformance:
 # ============================================================================
 # TEST SUITE 6: Cache Effectiveness (if applicable)
 # ============================================================================
+
 
 class TestCacheEffectiveness:
     """
@@ -542,6 +545,7 @@ class TestCacheEffectiveness:
 # ============================================================================
 # TEST SUITE 7: Memory Usage
 # ============================================================================
+
 
 class TestMemoryEfficiency:
     """

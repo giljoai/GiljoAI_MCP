@@ -7,14 +7,13 @@ and efficient context management for agents.
 """
 
 from sqlalchemy import (
-    BigInteger,
+    JSON,
     Column,
     DateTime,
     Float,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -60,6 +59,9 @@ class ContextIndex(Base):
         Index("idx_context_doc", "document_name"),
     )
 
+    def __repr__(self) -> str:
+        return f"<ContextIndex(id={self.id}, document_name='{self.document_name}')>"
+
 
 class LargeDocumentIndex(Base):
     """
@@ -87,6 +89,9 @@ class LargeDocumentIndex(Base):
         UniqueConstraint("project_id", "document_path", name="uq_large_doc_path"),
         Index("idx_large_doc_tenant", "tenant_key"),
     )
+
+    def __repr__(self) -> str:
+        return f"<LargeDocumentIndex(id={self.id}, document_path='{self.document_path}')>"
 
 
 class MCPContextIndex(Base):
@@ -136,7 +141,7 @@ class MCPContextIndex(Base):
         Index("idx_mcp_context_product_vision_doc", "product_id", "vision_document_id"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<MCPContextIndex(id={self.id}, chunk_id={self.chunk_id}, product_id={self.product_id})>"
 
 
@@ -171,5 +176,5 @@ class MCPContextSummary(Base):
         Index("idx_mcp_summary_context_id", "context_id"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<MCPContextSummary(id={self.id}, context_id={self.context_id}, reduction={self.reduction_percent}%)>"

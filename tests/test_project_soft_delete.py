@@ -17,7 +17,7 @@ import pytest
 from sqlalchemy import select
 
 from src.giljo_mcp.models import Message, Product, Project, Task
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 

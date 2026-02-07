@@ -10,13 +10,14 @@ Tests focus on:
 - Succession chain integrity
 """
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # These imports will FAIL until GREEN phase
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 class TestJobPersistenceAcrossSuccession:
@@ -32,7 +33,7 @@ class TestJobPersistenceAcrossSuccession:
             project_id="project-123",
             mission="Build authentication system with OAuth2, JWT, and role-based access control",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -43,10 +44,9 @@ class TestJobPersistenceAcrossSuccession:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="complete",
             started_at=datetime(2025, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
-            completed_at=datetime(2025, 1, 1, 14, 0, 0, tzinfo=timezone.utc)
+            completed_at=datetime(2025, 1, 1, 14, 0, 0, tzinfo=timezone.utc),
         )
         db_session.add(exec1)
         await db_session.commit()
@@ -57,10 +57,9 @@ class TestJobPersistenceAcrossSuccession:
             job_id=job.job_id,  # SAME job
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=2,
             status="working",
             spawned_by=exec1.agent_id,
-            started_at=datetime(2025, 1, 1, 14, 5, 0, tzinfo=timezone.utc)
+            started_at=datetime(2025, 1, 1, 14, 5, 0, tzinfo=timezone.utc),
         )
         exec1.succeeded_by = exec2.agent_id
         db_session.add(exec2)
@@ -85,7 +84,7 @@ class TestJobPersistenceAcrossSuccession:
             project_id="project-123",
             mission="Long-running project with multiple handovers",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -98,17 +97,17 @@ class TestJobPersistenceAcrossSuccession:
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
                 agent_display_name="orchestrator",
-                instance_number=i,
                 status="complete" if i < 5 else "working",
-                spawned_by=prev_agent_id
+                spawned_by=prev_agent_id,
             )
             db_session.add(exec_instance)
             await db_session.commit()
 
             # Update previous execution's succeeded_by
             if prev_agent_id:
-                prev_exec = (await db_session.execute(select(AgentExecution).filter(AgentExecution.agent_id == prev_agent_id
-                ))).scalar_one_or_none()
+                prev_exec = (
+                    await db_session.execute(select(AgentExecution).filter(AgentExecution.agent_id == prev_agent_id))
+                ).scalar_one_or_none()
                 prev_exec.succeeded_by = exec_instance.agent_id
                 await db_session.commit()
 
@@ -119,8 +118,6 @@ class TestJobPersistenceAcrossSuccession:
 
         # Validate succession chain
         assert len(job.executions) == 5
-        assert job.executions[0].instance_number == 1
-        assert job.executions[4].instance_number == 5
         assert job.executions[4].spawned_by == "agent-004"
 
 
@@ -136,7 +133,7 @@ class TestMissionDataNormalization:
             project_id="project-123",
             mission="This is the mission statement. It should be stored only once.",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -148,14 +145,13 @@ class TestMissionDataNormalization:
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
                 agent_display_name="orchestrator",
-                instance_number=i,
-                status="complete" if i < 3 else "working"
+                status="complete" if i < 3 else "working",
             )
             db_session.add(exec_instance)
         await db_session.commit()
 
         # Validate: Mission is NOT in AgentExecution table
-        assert not hasattr(job.executions[0], 'mission')  # No mission field in execution
+        assert not hasattr(job.executions[0], "mission")  # No mission field in execution
 
         # Validate: All executions share the SAME job mission
         await db_session.refresh(job)
@@ -179,7 +175,7 @@ class TestMessageRoutingSemantics:
             project_id="project-123",
             mission="Test messaging",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -189,16 +185,14 @@ class TestMessageRoutingSemantics:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
-            status="working"
+            status="working",
         )
         exec2 = AgentExecution(
             agent_id="agent-receiver",
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="analyzer",
-            instance_number=1,
-            status="working"
+            status="working",
         )
         db_session.add_all([exec1, exec2])
         await db_session.commit()
@@ -207,13 +201,17 @@ class TestMessageRoutingSemantics:
         message_payload = {
             "from_agent": "agent-sender",
             "to_agent": "agent-receiver",  # Routes to EXECUTOR, not job
-            "content": "Please analyze the requirements"
+            "content": "Please analyze the requirements",
         }
 
         # Store message in receiver's execution
         exec2.messages = [
-            {"id": "msg-1", "from": message_payload["from_agent"],
-             "content": message_payload["content"], "status": "pending"}
+            {
+                "id": "msg-1",
+                "from": message_payload["from_agent"],
+                "content": message_payload["content"],
+                "status": "pending",
+            }
         ]
         await db_session.commit()
 
@@ -235,7 +233,7 @@ class TestMessageRoutingSemantics:
             project_id="project-123",
             mission="Test message isolation",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -246,11 +244,8 @@ class TestMessageRoutingSemantics:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
             status="complete",
-            messages=[
-                {"id": "msg-1", "content": "Message for instance 1", "status": "acknowledged"}
-            ]
+            messages=[{"id": "msg-1", "content": "Message for instance 1", "status": "acknowledged"}],
         )
         db_session.add(exec1)
         await db_session.commit()
@@ -261,12 +256,9 @@ class TestMessageRoutingSemantics:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=2,
             status="working",
             spawned_by=exec1.agent_id,
-            messages=[
-                {"id": "msg-2", "content": "Message for instance 2", "status": "pending"}
-            ]
+            messages=[{"id": "msg-2", "content": "Message for instance 2", "status": "pending"}],
         )
         db_session.add(exec2)
         await db_session.commit()
@@ -294,7 +286,7 @@ class TestSuccessionChainIntegrity:
             project_id="project-123",
             mission="Test succession chain integrity",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -305,8 +297,7 @@ class TestSuccessionChainIntegrity:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
-            status="complete"
+            status="complete",
         )
         db_session.add(exec1)
         await db_session.commit()
@@ -316,9 +307,8 @@ class TestSuccessionChainIntegrity:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=2,
             status="complete",
-            spawned_by=exec1.agent_id
+            spawned_by=exec1.agent_id,
         )
         exec1.succeeded_by = exec2.agent_id
         db_session.add(exec2)
@@ -329,9 +319,8 @@ class TestSuccessionChainIntegrity:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=3,
             status="working",
-            spawned_by=exec2.agent_id
+            spawned_by=exec2.agent_id,
         )
         exec2.succeeded_by = exec3.agent_id
         db_session.add(exec3)
@@ -361,7 +350,7 @@ class TestSuccessionChainIntegrity:
             project_id="project-123",
             mission="Test execution history query",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -373,20 +362,20 @@ class TestSuccessionChainIntegrity:
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
                 agent_display_name="orchestrator",
-                instance_number=i,
-                status="complete" if i < 4 else "working"
+                status="complete" if i < 4 else "working",
             )
             db_session.add(exec_instance)
         await db_session.commit()
 
         # Query all executions for job
-        executions = (await db_session.execute(select(AgentExecution).filter(AgentExecution.job_id == job.job_id
-        ).order_by(AgentExecution.instance_number))).scalars().all()
+        executions = (
+            (await db_session.execute(select(AgentExecution).filter(AgentExecution.job_id == job.job_id)))
+            .scalars()
+            .all()
+        )
 
         # Validate
         assert len(executions) == 4
-        assert executions[0].instance_number == 1
-        assert executions[3].instance_number == 4
         assert executions[3].status == "working"
 
 
@@ -402,7 +391,7 @@ class TestJobStatusTransitions:
             project_id="project-123",
             mission="Test job completion",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -413,8 +402,7 @@ class TestJobStatusTransitions:
             job_id=job.job_id,
             tenant_key="tenant-abc",
             agent_display_name="orchestrator",
-            instance_number=1,
-            status="working"
+            status="working",
         )
         db_session.add(execution)
         await db_session.commit()
@@ -450,7 +438,7 @@ class TestIndexPerformance:
             project_id="project-123",
             mission="Test index performance",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -462,15 +450,17 @@ class TestIndexPerformance:
                 job_id=job.job_id,
                 tenant_key="tenant-abc",
                 agent_display_name="orchestrator",
-                instance_number=i,
-                status="complete"
+                status="complete",
             )
             db_session.add(exec_instance)
         await db_session.commit()
 
         # Query by job_id (should use idx_agent_executions_job)
-        executions = (await db_session.execute(select(AgentExecution).filter(AgentExecution.job_id == job.job_id
-        ))).scalars().all()
+        executions = (
+            (await db_session.execute(select(AgentExecution).filter(AgentExecution.job_id == job.job_id)))
+            .scalars()
+            .all()
+        )
 
         assert len(executions) == 10
 
@@ -483,7 +473,7 @@ class TestIndexPerformance:
             project_id="project-123",
             mission="Test composite index",
             job_type="orchestrator",
-            status="active"
+            status="active",
         )
         db_session.add(job)
         await db_session.commit()
@@ -495,15 +485,22 @@ class TestIndexPerformance:
                 job_id=job.job_id,
                 tenant_key="tenant-xyz",
                 agent_display_name="orchestrator",
-                instance_number=i,
-                status="complete"
+                status="complete",
             )
             db_session.add(exec_instance)
         await db_session.commit()
 
         # Query by tenant_key + job_id (should use idx_agent_executions_tenant_job)
-        executions = (await db_session.execute(select(AgentExecution).filter(AgentExecution.tenant_key == "tenant-xyz",
-            AgentExecution.job_id == job.job_id
-        ))).scalars().all()
+        executions = (
+            (
+                await db_session.execute(
+                    select(AgentExecution).filter(
+                        AgentExecution.tenant_key == "tenant-xyz", AgentExecution.job_id == job.job_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         assert len(executions) == 5

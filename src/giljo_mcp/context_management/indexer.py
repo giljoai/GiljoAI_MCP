@@ -12,7 +12,7 @@ Features:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.giljo_mcp.models import MCPContextIndex
 from src.giljo_mcp.repositories.context_repository import ContextRepository
@@ -41,7 +41,7 @@ class ContextIndexer:
 
         logger.info("ContextIndexer initialized")
 
-    def store_chunk(self, tenant_key: str, product_id: str, chunk: Dict[str, Any]) -> str:
+    def store_chunk(self, tenant_key: str, product_id: str, chunk: dict[str, Any]) -> str:
         """
         Store a single chunk in the database.
 
@@ -71,7 +71,7 @@ class ContextIndexer:
 
             return created_chunk.chunk_id
 
-    def store_chunks(self, tenant_key: str, product_id: str, chunks: List[Dict[str, Any]]) -> List[str]:
+    def store_chunks(self, tenant_key: str, product_id: str, chunks: list[dict[str, Any]]) -> list[str]:
         """
         Store multiple chunks in batch.
 
@@ -109,7 +109,7 @@ class ContextIndexer:
 
         return chunk_ids
 
-    def search_chunks(self, tenant_key: str, product_id: str, query: str, limit: int = 10) -> List[MCPContextIndex]:
+    def search_chunks(self, tenant_key: str, product_id: str, query: str, limit: int = 10) -> list[MCPContextIndex]:
         """
         Search chunks by keywords using PostgreSQL full-text search.
 
@@ -131,7 +131,7 @@ class ContextIndexer:
 
             return results
 
-    def get_chunks_by_product(self, tenant_key: str, product_id: str) -> List[MCPContextIndex]:
+    def get_chunks_by_product(self, tenant_key: str, product_id: str) -> list[MCPContextIndex]:
         """
         Get all chunks for a product ordered by chunk_order.
 
@@ -151,7 +151,7 @@ class ContextIndexer:
 
             return chunks
 
-    def get_chunk_by_id(self, tenant_key: str, chunk_id: str) -> Optional[MCPContextIndex]:
+    def get_chunk_by_id(self, tenant_key: str, chunk_id: str) -> MCPContextIndex | None:
         """
         Get a specific chunk by chunk_id.
 

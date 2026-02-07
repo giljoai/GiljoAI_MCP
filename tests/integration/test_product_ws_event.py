@@ -8,17 +8,18 @@ Tests that:
 """
 
 import types
+from typing import Optional
+
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
+from fastapi import Cookie, Depends, Header, Request
+from httpx import ASGITransport, AsyncClient
+from passlib.hash import bcrypt
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from passlib.hash import bcrypt
-from typing import Optional
-from fastapi import Cookie, Depends, Header, Request
 
 from api.app import app
-from src.giljo_mcp.auth.dependencies import get_db_session, get_current_active_user
+from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import User
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
@@ -26,6 +27,7 @@ from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 class DummyEventBus:
     """Capture events for testing."""
+
     def __init__(self):
         self.events = []
 
@@ -84,11 +86,7 @@ async def test_client():
         db: AsyncSession = Depends(override_get_db_session),
     ):
         return types.SimpleNamespace(
-            id=admin_id,
-            username="test_admin",
-            role="admin",
-            tenant_key=test_tenant,
-            is_active=True
+            id=admin_id, username="test_admin", role="admin", tenant_key=test_tenant, is_active=True
         )
 
     app.dependency_overrides[get_current_active_user] = override_get_current_active_user
@@ -96,6 +94,7 @@ async def test_client():
     # Replace event bus with dummy to capture events
     # Import state from api.app to set event_bus
     from api.app import state
+
     dummy_bus = DummyEventBus()
     state.event_bus = dummy_bus
 
@@ -109,7 +108,8 @@ async def test_client():
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="""
+@pytest.mark.skip(
+    reason="""
 BLOCKED: AuthMiddleware runs before FastAPI dependency injection, so overriding
 get_current_active_user doesn't bypass the middleware. The middleware's auth_manager
 is set via closure at app creation time.
@@ -120,7 +120,8 @@ Tests need either:
 
 The functionality (product:status:changed events) IS implemented - see
 api/endpoints/products/lifecycle.py which publishes to state.event_bus.
-""")
+"""
+)
 async def test_product_activation_emits_tenant_scoped_ws_event(test_client):
     """Test that product activation/deactivation emits correct WebSocket events."""
     client, dummy_bus, test_tenant = test_client
@@ -148,8 +149,7 @@ async def test_product_activation_emits_tenant_scoped_ws_event(test_client):
 
     # Check activation event
     activation_events = [
-        (et, ev) for et, ev in dummy_bus.events
-        if et == "product:status:changed" and ev.get("is_active") is True
+        (et, ev) for et, ev in dummy_bus.events if et == "product:status:changed" and ev.get("is_active") is True
     ]
     assert len(activation_events) >= 1, f"No activation event found. Events: {dummy_bus.events}"
 
@@ -166,8 +166,7 @@ async def test_product_activation_emits_tenant_scoped_ws_event(test_client):
 
     # Check deactivation event
     deactivation_events = [
-        (et, ev) for et, ev in dummy_bus.events
-        if et == "product:status:changed" and ev.get("is_active") is False
+        (et, ev) for et, ev in dummy_bus.events if et == "product:status:changed" and ev.get("is_active") is False
     ]
     assert len(deactivation_events) >= 1, f"No deactivation event found. Events: {dummy_bus.events}"
 

@@ -338,7 +338,7 @@ function formatRecipient(message) {
   // In a future enhancement, we could look up the agent name from the jobs list
   const toAgentId = message.to_agent_id
   if (toAgentId) {
-    return toAgentId.slice(0, 8) + '...'
+    return `${toAgentId.slice(0, 8)  }...`
   }
 
   return 'Unknown'
@@ -357,10 +357,10 @@ function getMessagePreview(message) {
 
 function formatMessageMeta(message) {
   const fromId = message.from_agent_id
-    ? message.from_agent_id.slice(0, 8) + '...'
+    ? `${message.from_agent_id.slice(0, 8)  }...`
     : 'user'
   const toId = message.to_agent_id
-    ? message.to_agent_id.slice(0, 8) + '...'
+    ? `${message.to_agent_id.slice(0, 8)  }...`
     : 'broadcast'
   const status = message.status || 'unknown'
   const timestamp = message.timestamp || message.created_at

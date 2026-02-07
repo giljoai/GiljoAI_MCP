@@ -12,21 +12,18 @@ Tests:
 TDD Status: RED ❌ - Tests written FIRST, implementation to follow
 """
 
-import pytest
 from uuid import uuid4
+
+import pytest
 from fastapi import status
 from httpx import AsyncClient
 
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest.mark.asyncio
-async def test_implementation_prompt_happy_path(
-    api_client: AsyncClient,
-    db_manager,
-    test_user: User
-):
+async def test_implementation_prompt_happy_path(api_client: AsyncClient, db_manager, test_user: User):
     """
     Test 1: Happy Path - Valid CLI project returns implementation prompt.
 
@@ -38,6 +35,7 @@ async def test_implementation_prompt_happy_path(
     """
     # Create auth headers from test_user (same tenant)
     from src.giljo_mcp.auth.jwt_manager import JWTManager
+
     token = JWTManager.create_access_token(
         user_id=test_user.id,
         username=test_user.username,
@@ -117,10 +115,7 @@ async def test_implementation_prompt_happy_path(
         await session.commit()
 
     # Call implementation prompt endpoint (use project_id variable)
-    response = await api_client.get(
-        f"/api/v1/prompts/implementation/{project_id}",
-        headers=auth_headers
-    )
+    response = await api_client.get(f"/api/v1/prompts/implementation/{project_id}", headers=auth_headers)
 
     # Verify response
     assert response.status_code == status.HTTP_200_OK
@@ -156,10 +151,7 @@ async def test_implementation_prompt_happy_path(
 
 
 @pytest.mark.asyncio
-async def test_implementation_prompt_project_not_found(
-    api_client: AsyncClient,
-    auth_headers: dict
-):
+async def test_implementation_prompt_project_not_found(api_client: AsyncClient, auth_headers: dict):
     """
     Test 2: 404 - Project not found.
 
@@ -169,21 +161,14 @@ async def test_implementation_prompt_project_not_found(
 
     TDD Status: RED ❌ - Endpoint does not exist yet
     """
-    response = await api_client.get(
-        "/api/v1/prompts/implementation/nonexistent-project-999",
-        headers=auth_headers
-    )
+    response = await api_client.get("/api/v1/prompts/implementation/nonexistent-project-999", headers=auth_headers)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "not found" in response.json()["message"].lower()
 
 
 @pytest.mark.asyncio
-async def test_implementation_prompt_not_cli_mode(
-    api_client: AsyncClient,
-    db_manager,
-    test_user: User
-):
+async def test_implementation_prompt_not_cli_mode(api_client: AsyncClient, db_manager, test_user: User):
     """
     Test 3: 400 - Project not in CLI mode.
 
@@ -195,6 +180,7 @@ async def test_implementation_prompt_not_cli_mode(
     """
     # Create auth headers from test_user (same tenant)
     from src.giljo_mcp.auth.jwt_manager import JWTManager
+
     token = JWTManager.create_access_token(
         user_id=test_user.id,
         username=test_user.username,
@@ -231,10 +217,7 @@ async def test_implementation_prompt_not_cli_mode(
         # Store ID before session closes
         project_id = project.id
 
-    response = await api_client.get(
-        f"/api/v1/prompts/implementation/{project_id}",
-        headers=auth_headers
-    )
+    response = await api_client.get(f"/api/v1/prompts/implementation/{project_id}", headers=auth_headers)
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     detail = response.json()["message"].lower()
@@ -242,11 +225,7 @@ async def test_implementation_prompt_not_cli_mode(
 
 
 @pytest.mark.asyncio
-async def test_implementation_prompt_no_active_orchestrator(
-    api_client: AsyncClient,
-    db_manager,
-    test_user: User
-):
+async def test_implementation_prompt_no_active_orchestrator(api_client: AsyncClient, db_manager, test_user: User):
     """
     Test 4: 404 - No active orchestrator found.
 
@@ -258,6 +237,7 @@ async def test_implementation_prompt_no_active_orchestrator(
     """
     # Create auth headers from test_user (same tenant)
     from src.giljo_mcp.auth.jwt_manager import JWTManager
+
     token = JWTManager.create_access_token(
         user_id=test_user.id,
         username=test_user.username,
@@ -305,10 +285,7 @@ async def test_implementation_prompt_no_active_orchestrator(
         # Store ID before session closes
         project_id = project.id
 
-    response = await api_client.get(
-        f"/api/v1/prompts/implementation/{project_id}",
-        headers=auth_headers
-    )
+    response = await api_client.get(f"/api/v1/prompts/implementation/{project_id}", headers=auth_headers)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     detail = response.json()["message"].lower()
@@ -316,11 +293,7 @@ async def test_implementation_prompt_no_active_orchestrator(
 
 
 @pytest.mark.asyncio
-async def test_implementation_prompt_no_spawned_agents(
-    api_client: AsyncClient,
-    db_manager,
-    test_user: User
-):
+async def test_implementation_prompt_no_spawned_agents(api_client: AsyncClient, db_manager, test_user: User):
     """
     Test 5: 400 - No spawned agent jobs.
 
@@ -332,6 +305,7 @@ async def test_implementation_prompt_no_spawned_agents(
     """
     # Create auth headers from test_user (same tenant)
     from src.giljo_mcp.auth.jwt_manager import JWTManager
+
     token = JWTManager.create_access_token(
         user_id=test_user.id,
         username=test_user.username,
@@ -379,10 +353,7 @@ async def test_implementation_prompt_no_spawned_agents(
         # Store ID before session closes
         project_id = project.id
 
-    response = await api_client.get(
-        f"/api/v1/prompts/implementation/{project_id}",
-        headers=auth_headers
-    )
+    response = await api_client.get(f"/api/v1/prompts/implementation/{project_id}", headers=auth_headers)
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     detail = response.json()["message"].lower()
@@ -391,10 +362,7 @@ async def test_implementation_prompt_no_spawned_agents(
 
 @pytest.mark.asyncio
 async def test_implementation_prompt_tenant_isolation(
-    api_client: AsyncClient,
-    db_manager,
-    auth_headers_tenant_a: dict,
-    auth_headers_tenant_b: dict
+    api_client: AsyncClient, db_manager, auth_headers_tenant_a: dict, auth_headers_tenant_b: dict
 ):
     """
     Test 6: 403/404 - Multi-tenant isolation violation.
@@ -465,21 +433,14 @@ async def test_implementation_prompt_tenant_isolation(
         project_id = project.id
 
     # Tenant B tries to access tenant A's project
-    response = await api_client.get(
-        f"/api/v1/prompts/implementation/{project_id}",
-        headers=auth_headers_tenant_b
-    )
+    response = await api_client.get(f"/api/v1/prompts/implementation/{project_id}", headers=auth_headers_tenant_b)
 
     # Should return 404 (not 403) to avoid leaking project existence
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.asyncio
-async def test_implementation_prompt_unauthorized(
-    api_client: AsyncClient,
-    db_manager,
-    test_user: User
-):
+async def test_implementation_prompt_unauthorized(api_client: AsyncClient, db_manager, test_user: User):
     """
     Test 7: 401 - Unauthorized access without authentication.
 
@@ -489,19 +450,13 @@ async def test_implementation_prompt_unauthorized(
 
     TDD Status: RED ❌ - Endpoint does not exist yet
     """
-    response = await api_client.get(
-        "/api/v1/prompts/implementation/test-project-123"
-    )
+    response = await api_client.get("/api/v1/prompts/implementation/test-project-123")
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.asyncio
-async def test_implementation_prompt_includes_context_used(
-    api_client: AsyncClient,
-    db_manager,
-    test_user: User
-):
+async def test_implementation_prompt_includes_context_used(api_client: AsyncClient, db_manager, test_user: User):
     """
     Test 8: Prompt includes orchestrator context_used for monitoring.
 
@@ -513,6 +468,7 @@ async def test_implementation_prompt_includes_context_used(
     """
     # Create auth headers from test_user (same tenant)
     from src.giljo_mcp.auth.jwt_manager import JWTManager
+
     token = JWTManager.create_access_token(
         user_id=test_user.id,
         username=test_user.username,
@@ -575,10 +531,7 @@ async def test_implementation_prompt_includes_context_used(
         session.add(agent)
         await session.commit()
 
-    response = await api_client.get(
-        f"/api/v1/prompts/implementation/{project_id}",
-        headers=auth_headers
-    )
+    response = await api_client.get(f"/api/v1/prompts/implementation/{project_id}", headers=auth_headers)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()

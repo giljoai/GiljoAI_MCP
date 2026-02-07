@@ -6,12 +6,14 @@ Run this test to confirm your test environment is properly protected.
 """
 
 import os
+
 import pytest
+
 from tests.helpers.test_db_helper import (
-    validate_database_name,
-    validate_connection_string,
     PRODUCTION_DB_NAME,
     TEST_DB_SUFFIX,
+    validate_connection_string,
+    validate_database_name,
 )
 
 

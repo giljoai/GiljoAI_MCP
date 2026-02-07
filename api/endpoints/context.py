@@ -8,7 +8,7 @@ Handover 0347e: 4-level vision depth validation
 Validates vision_documents depth values (optional, light, medium, full).
 """
 
-from typing import Any, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -37,7 +37,7 @@ class VisionResponse(BaseModel):
 
 
 class ChunkVisionRequest(BaseModel):
-    force_rechunk: bool = Field(False, description="Force rechunking even if already chunked")
+    force_rechunk: bool = Field(default=False, description="Force rechunking even if already chunked")
 
 
 class ChunkVisionResponse(BaseModel):
@@ -46,8 +46,8 @@ class ChunkVisionResponse(BaseModel):
     chunks_created: int
     total_tokens: int
     original_size: int
-    reduction_percentage: Optional[float] = None
-    message: Optional[str] = None
+    reduction_percentage: float | None = None
+    message: str | None = None
 
 
 class ContextChunk(BaseModel):
@@ -55,12 +55,12 @@ class ContextChunk(BaseModel):
     content: str
     tokens: int
     chunk_number: int
-    relevance_score: Optional[float] = None
+    relevance_score: float | None = None
 
 
 class SearchContextResponse(BaseModel):
     query: str
-    chunks: List[ContextChunk]
+    chunks: list[ContextChunk]
     total_chunks: int
     total_tokens: int
 
@@ -74,11 +74,11 @@ class LoadContextRequest(BaseModel):
 
 class LoadContextResponse(BaseModel):
     agent_display_name: str
-    chunks: List[ContextChunk]
+    chunks: list[ContextChunk]
     total_chunks: int
     total_tokens: int
     average_relevance: float
-    reduction_percentage: Optional[float] = None
+    reduction_percentage: float | None = None
 
 
 class TokenStatsResponse(BaseModel):
@@ -92,12 +92,12 @@ class TokenStatsResponse(BaseModel):
 class HealthCheckResponse(BaseModel):
     status: str
     chunk_count: int
-    search_performance_ms: Optional[float] = None
-    message: Optional[str] = None
+    search_performance_ms: float | None = None
+    message: str | None = None
 
 
 @router.get("/index", response_model=ContextIndexResponse)
-async def get_context_index(product_id: Optional[str] = Query(None, description="Product ID")):
+async def get_context_index(product_id: str | None = Query(None, description="Product ID")):
     """Get the context index for intelligent querying"""
     from src.giljo_mcp.tools.context import get_context_index
 
@@ -141,7 +141,7 @@ async def get_vision_index():
 
 
 @router.get("/settings", response_model=dict[str, Any])
-async def get_product_settings(product_id: Optional[str] = Query(None, description="Product ID")):
+async def get_product_settings(product_id: str | None = Query(None, description="Product ID")):
     """Get all product settings for analysis"""
     from src.giljo_mcp.tools.context import get_product_settings
 
@@ -228,6 +228,7 @@ async def chunk_vision_document(
                 # Mark vision document as chunked
                 if vision_doc_id:
                     from src.giljo_mcp.models.products import VisionDocument
+
                     stmt = select(VisionDocument).where(VisionDocument.id == vision_doc_id)
                     vision_result = await db.execute(stmt)
                     vision_doc = vision_result.scalar_one_or_none()
@@ -247,14 +248,14 @@ async def chunk_vision_document(
                 )
             raise HTTPException(status_code=500, detail=result.get("message", "Failed to chunk vision document"))
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (ValueError, KeyError, RuntimeError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/search", response_model=SearchContextResponse)
 async def search_context(
     query: str = Query(..., description="Search query"),
-    product_id: Optional[str] = Query(None, description="Filter by product ID"),
+    product_id: str | None = Query(None, description="Filter by product ID"),
     limit: int = Query(10, description="Maximum chunks to return"),
     tenant_key: str = Depends(get_tenant_key),
 ):
@@ -299,8 +300,8 @@ async def search_context(
             query=query, chunks=context_chunks, total_chunks=len(context_chunks), total_tokens=total_tokens
         )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (ValueError, KeyError, RuntimeError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/load-for-agent", response_model=LoadContextResponse)
@@ -353,8 +354,8 @@ async def load_context_for_agent(
             reduction_percentage=None,
         )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (ValueError, KeyError, RuntimeError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/products/{product_id}/token-stats", response_model=TokenStatsResponse)
@@ -403,8 +404,8 @@ async def get_token_stats(
             chunks_count=stats.get("chunks_count", 0),
         )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except (ValueError, KeyError, RuntimeError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/health", response_model=HealthCheckResponse)
@@ -444,7 +445,7 @@ async def health_check(
                 message="Context management system operational",
             )
 
-    except Exception as e:
+    except (ValueError, KeyError, RuntimeError) as e:
         return HealthCheckResponse(
             status="degraded", chunk_count=0, search_performance_ms=None, message=f"Error: {e!s}"
         )

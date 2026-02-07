@@ -23,15 +23,18 @@ import importlib
 import json
 import os
 import sys
-from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set
+from collections.abc import Iterable
 from importlib import metadata
-from urllib import request, parse
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
+from urllib import parse, request
+
 
 try:
     from packaging.requirements import Requirement
     from packaging.version import parse as parse_version
 except ModuleNotFoundError:  # fallback for offline environments
+
     class Requirement:  # type: ignore
         def __init__(self, requirement: str):
             self.name = requirement.split("[")[0].split("==")[0].split(">=")[0].strip()
@@ -80,7 +83,9 @@ def build_api_catalog() -> Dict[str, Any]:
             if not isinstance(route, APIRoute):
                 continue
             methods = sorted(m for m in route.methods if m not in {"HEAD", "OPTIONS"})
-            summary = route.summary or (route.endpoint.__doc__.strip().splitlines()[0] if route.endpoint.__doc__ else "")
+            summary = route.summary or (
+                route.endpoint.__doc__.strip().splitlines()[0] if route.endpoint.__doc__ else ""
+            )
             routes.append(
                 {
                     "path": route.path,
@@ -107,7 +112,7 @@ def build_api_catalog() -> Dict[str, Any]:
 async def _call_mcp_list() -> Dict[str, Any]:
     add_repo_to_syspath()
     mod = importlib.import_module("api.endpoints.mcp_tools")
-    func = getattr(mod, "list_mcp_tools")
+    func = mod.list_mcp_tools
     return await func()
 
 
@@ -125,7 +130,7 @@ def build_db_schema() -> Dict[str, Any]:
     try:
         add_repo_to_syspath()
         models_mod = importlib.import_module("giljo_mcp.models")
-        Base = getattr(models_mod, "Base")
+        Base = models_mod.Base
         metadata = Base.metadata
 
         tables_out: Dict[str, Any] = {}
@@ -218,8 +223,8 @@ def build_agent_template_catalog() -> Dict[str, Any]:
     try:
         add_repo_to_syspath()
         seeder = importlib.import_module("giljo_mcp.template_seeder")
-        get_defaults = getattr(seeder, "_get_default_templates_v103")
-        get_metadata = getattr(seeder, "_get_template_metadata", lambda: {})
+        get_defaults = seeder._get_default_templates_v103
+        get_metadata = getattr(seeder, "_get_template_metadata", dict)
         templates = get_defaults()
         metadata = get_metadata()
 

@@ -6,7 +6,6 @@ Provides elegant copy-paste configuration system for connecting AI tools
 """
 
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -19,7 +18,6 @@ from src.giljo_mcp.models import User
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
 
 # Pydantic Models
 
@@ -41,14 +39,14 @@ class AIToolConfigResponse(BaseModel):
     config_format: str = Field(..., description="Configuration format (json/yaml)")
     config_content: str = Field(..., description="Configuration content as string")
     file_location: str = Field(..., description="Where to save the config file")
-    instructions: List[str] = Field(..., description="Step-by-step setup instructions")
+    instructions: list[str] = Field(..., description="Step-by-step setup instructions")
     download_filename: str = Field(..., description="Filename for markdown guide download")
 
 
 class SupportedToolsResponse(BaseModel):
     """Response listing all supported AI tools."""
 
-    tools: List[AIToolInfo]
+    tools: list[AIToolInfo]
 
 
 # Configuration Templates
@@ -106,7 +104,7 @@ def get_gemini_config(server_url: str, api_key: str) -> str:
     return f'gemini mcp add -t http -H "X-API-Key: {api_key}" giljo-mcp {server_url}/mcp'
 
 
-def get_http_tool_instructions(tool_id: str) -> List[str]:
+def get_http_tool_instructions(tool_id: str) -> list[str]:
     """
     Get HTTP transport setup instructions for a specific tool.
 
@@ -175,7 +173,7 @@ async def list_supported_tools():
 @router.get("/config-generator/{tool_name}", response_model=AIToolConfigResponse, tags=["ai-tools"])
 async def generate_ai_tool_config(
     tool_name: str,
-    current_user: Optional[User] = Depends(get_current_active_user),
+    current_user: User | None = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -269,7 +267,7 @@ async def generate_ai_tool_config(
 @router.get("/config-generator/{tool_name}/markdown", tags=["ai-tools"])
 async def download_setup_guide(
     tool_name: str,
-    current_user: Optional[User] = Depends(get_current_active_user),
+    current_user: User | None = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -347,7 +345,6 @@ Copy the configuration below and paste it into your config file:
     markdown += (
         instructions_text
         + """
-
 
 ## Testing the Connection
 

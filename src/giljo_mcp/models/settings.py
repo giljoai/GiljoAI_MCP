@@ -5,12 +5,11 @@ Stores general, network, and database settings per tenant in JSONB format.
 Handover 0506: Settings endpoints implementation.
 """
 
-from datetime import datetime
 from sqlalchemy import (
     Column,
-    String,
     DateTime,
     Index,
+    String,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -47,5 +46,5 @@ class Settings(Base):
         Index("idx_settings_category", "category"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Settings(id={self.id}, tenant_key={self.tenant_key}, category={self.category})>"

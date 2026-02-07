@@ -8,7 +8,7 @@ success criteria, and protocol instructions from the AgentTemplate stored in Adm
 """
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -21,7 +21,7 @@ from src.giljo_mcp.models import AgentTemplate
 logger = structlog.get_logger(__name__)
 
 
-def estimate_tokens(data: Dict[str, Any]) -> int:
+def estimate_tokens(data: dict[str, Any]) -> int:
     """
     Estimate token count for response data.
 
@@ -40,9 +40,9 @@ def estimate_tokens(data: Dict[str, Any]) -> int:
 async def get_self_identity(
     agent_name: str,
     tenant_key: str,
-    db_manager: Optional[DatabaseManager] = None,
-    session: Optional[AsyncSession] = None  # For testing only
-) -> Dict[str, Any]:
+    db_manager: DatabaseManager | None = None,
+    session: AsyncSession | None = None,  # For testing only
+) -> dict[str, Any]:
     """
     Fetch agent template by name for self-identity context.
 
@@ -89,11 +89,7 @@ async def get_self_identity(
             db_manager=db_manager
         )
     """
-    logger.info(
-        "fetching_self_identity",
-        agent_name=agent_name,
-        tenant_key=tenant_key
-    )
+    logger.info("fetching_self_identity", agent_name=agent_name, tenant_key=tenant_key)
 
     if db_manager is None and session is None:
         logger.error("db_manager or session is required", operation="get_self_identity")
@@ -112,28 +108,19 @@ async def get_self_identity(
     try:
         # Query template by name with multi-tenant isolation
         stmt = select(AgentTemplate).where(
-            AgentTemplate.name == agent_name,
-            AgentTemplate.tenant_key == tenant_key,
-            AgentTemplate.is_active == True
+            AgentTemplate.name == agent_name, AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active
         )
         result = await session_to_use.execute(stmt)
         template = result.scalar_one_or_none()
 
         if not template:
             logger.warning(
-                "template_not_found",
-                agent_name=agent_name,
-                tenant_key=tenant_key,
-                operation="get_self_identity"
+                "template_not_found", agent_name=agent_name, tenant_key=tenant_key, operation="get_self_identity"
             )
             return {
                 "source": "self_identity",
                 "data": {},
-                "metadata": {
-                    "agent_name": agent_name,
-                    "tenant_key": tenant_key,
-                    "error": "template_not_found"
-                }
+                "metadata": {"agent_name": agent_name, "tenant_key": tenant_key, "error": "template_not_found"},
             }
 
         # Build data dict with all identity fields
@@ -160,17 +147,13 @@ async def get_self_identity(
             has_user_instructions=bool(template.user_instructions),
             num_behavioral_rules=len(data["behavioral_rules"]),
             num_success_criteria=len(data["success_criteria"]),
-            estimated_tokens=total_tokens
+            estimated_tokens=total_tokens,
         )
 
         return {
             "source": "self_identity",
             "data": data,
-            "metadata": {
-                "agent_name": agent_name,
-                "tenant_key": tenant_key,
-                "estimated_tokens": total_tokens
-            }
+            "metadata": {"agent_name": agent_name, "tenant_key": tenant_key, "estimated_tokens": total_tokens},
         }
     finally:
         if should_close and session_to_use:

@@ -22,7 +22,6 @@ Categories (v2.0):
 Handover: 0313 (Phase 6: Integration test update)
 """
 
-import pytest
 from src.giljo_mcp.config.defaults import (
     DEFAULT_FIELD_PRIORITY,
     get_categories_by_priority,
@@ -54,25 +53,17 @@ class TestPrioritySystemV2Defaults:
             "git_history",
         }
         actual_categories = set(DEFAULT_FIELD_PRIORITY["priorities"].keys())
-        assert actual_categories == expected_categories, (
-            f"Expected {expected_categories}, got {actual_categories}"
-        )
+        assert actual_categories == expected_categories, f"Expected {expected_categories}, got {actual_categories}"
 
     def test_default_priorities_are_valid_range(self):
         """Verify all default priorities are in valid range (1-4)"""
         for category, priority in DEFAULT_FIELD_PRIORITY["priorities"].items():
-            assert 1 <= priority <= 4, (
-                f"Priority {priority} for '{category}' out of valid range (1-4)"
-            )
+            assert 1 <= priority <= 4, f"Priority {priority} for '{category}' out of valid range (1-4)"
 
     def test_default_has_at_least_one_critical_category(self):
         """Verify at least one category has Priority 1 (CRITICAL)"""
-        critical_categories = [
-            cat for cat, pri in DEFAULT_FIELD_PRIORITY["priorities"].items() if pri == 1
-        ]
-        assert len(critical_categories) >= 1, (
-            "At least one category must have Priority 1 (CRITICAL)"
-        )
+        critical_categories = [cat for cat, pri in DEFAULT_FIELD_PRIORITY["priorities"].items() if pri == 1]
+        assert len(critical_categories) >= 1, "At least one category must have Priority 1 (CRITICAL)"
 
     def test_default_critical_categories(self):
         """Verify product_core and agent_templates are CRITICAL (Priority 1)"""
@@ -158,7 +149,7 @@ class TestBackwardCompatibility:
 
         # Verify no overlap with v1.0 priorities (except 4, which is reused)
         assert not v1_priorities.intersection(v2_priorities), (
-            f"v2.0 defaults should not contain v1.0 priority values (10, 7, 0)"
+            "v2.0 defaults should not contain v1.0 priority values (10, 7, 0)"
         )
 
     def test_v1_field_names_not_in_v2_categories(self):
@@ -184,6 +175,4 @@ class TestBackwardCompatibility:
 
         # Only "agent_templates" should overlap (renamed but semantically same)
         overlap = v1_field_names.intersection(v2_category_names)
-        assert overlap == {"agent_templates"}, (
-            f"Unexpected overlap between v1.0 fields and v2.0 categories: {overlap}"
-        )
+        assert overlap == {"agent_templates"}, f"Unexpected overlap between v1.0 fields and v2.0 categories: {overlap}"

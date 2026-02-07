@@ -5,13 +5,13 @@
       :key="key"
       :class="['launch-prompt-icon', `launch-prompt-icon--${key}`]"
       :style="{ backgroundColor: tool.color }"
-      @click="copyCommand(tool)"
-      @keydown.enter="copyCommand(tool)"
-      @keydown.space.prevent="copyCommand(tool)"
       role="button"
       tabindex="0"
       :aria-label="`Copy ${tool.name} command to clipboard`"
       :title="`Click to copy: ${tool.command}`"
+      @click="copyCommand(tool)"
+      @keydown.enter="copyCommand(tool)"
+      @keydown.space.prevent="copyCommand(tool)"
     >
       <v-icon :icon="tool.icon" size="16" />
       <span class="launch-prompt-icon__label">{{ tool.name }}</span>

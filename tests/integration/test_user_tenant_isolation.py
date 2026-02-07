@@ -11,15 +11,12 @@ We avoid testing implementation details; we assert observable API behavior.
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
-from passlib.hash import bcrypt
 
 from api.app import app
 from src.giljo_mcp.auth.dependencies import get_db_session
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import User
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -58,7 +55,8 @@ async def test_client():
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="""
+@pytest.mark.skip(
+    reason="""
 BLOCKED: The /api/auth/create-first-admin endpoint uses app-level state (not DB) to track
 if admin was ever created. Tests need either:
 1. A way to reset this app state, or
@@ -66,7 +64,8 @@ if admin was ever created. Tests need either:
 
 The functionality (unique tenant_key per user) IS implemented - see api/endpoints/auth.py:register_user
 which calls TenantManager.generate_tenant_key(). Manual testing works.
-""")
+"""
+)
 async def test_register_user_assigns_unique_tenant_per_user(test_client: AsyncClient):
     """Test that each registered user gets a unique tenant_key."""
 
@@ -87,8 +86,7 @@ async def test_register_user_assigns_unique_tenant_per_user(test_client: AsyncCl
 
     # Login as admin to get auth cookie for registration
     login_resp = await test_client.post(
-        "/api/auth/login",
-        json={"username": "admin_user", "password": "AdminPassw0rd!#"}
+        "/api/auth/login", json={"username": "admin_user", "password": "AdminPassw0rd!#"}
     )
     assert login_resp.status_code == 200, f"Failed to login: {login_resp.text}"
 
@@ -105,7 +103,7 @@ async def test_register_user_assigns_unique_tenant_per_user(test_client: AsyncCl
     assert resp_a.status_code == 201, f"Failed to register user A: {resp_a.text}"
     user_a = resp_a.json()
     assert user_a["tenant_key"].startswith("tk_"), f"User A tenant_key doesn't start with tk_: {user_a}"
-    assert user_a["tenant_key"] != admin_tenant, f"User A should have different tenant than admin"
+    assert user_a["tenant_key"] != admin_tenant, "User A should have different tenant than admin"
 
     # 3) Register user B and ensure different tenant from user A
     user_b_req = {
@@ -120,4 +118,4 @@ async def test_register_user_assigns_unique_tenant_per_user(test_client: AsyncCl
     assert resp_b.status_code == 201, f"Failed to register user B: {resp_b.text}"
     user_b = resp_b.json()
     assert user_b["tenant_key"].startswith("tk_"), f"User B tenant_key doesn't start with tk_: {user_b}"
-    assert user_b["tenant_key"] != user_a["tenant_key"], f"User B should have different tenant than User A"
+    assert user_b["tenant_key"] != user_a["tenant_key"], "User B should have different tenant than User A"

@@ -7,7 +7,6 @@ Semantic Contract (Handover 0358c):
 - job_id = work order UUID (the WHAT - persistent across succession)
 - agent_id = executor UUID (the WHO - specific agent instance)
 - AgentJob = work order (mission, job_type, status: active/completed/cancelled)
-- AgentExecution = executor (agent_display_name, instance_number, status: waiting/working/blocked/complete/failed/cancelled/decommissioned)
 
 Test Philosophy (TDD RED Phase):
 - These tests WILL FAIL initially (correct for RED phase)
@@ -31,16 +30,15 @@ Test Coverage:
 7. Multi-tenant isolation for all agent operations
 """
 
-from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
 
 
 # ========================================================================
@@ -142,7 +140,6 @@ async def test_agent_execution(db_session, tenant_key, test_agent_job):
         job_id=test_agent_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="backend-implementor",
-        instance_number=1,
         status="waiting",
         agent_name="Backend Implementor #1",
         context_used=0,
@@ -214,7 +211,6 @@ async def test_ensure_agent_creates_both_models(db_session, tenant_key, test_pro
 
     Expected behavior (NEW dual-model architecture):
     - Creates AgentJob (work order) with mission, job_type
-    - Creates AgentExecution (executor) with agent_display_name, instance_number=1
     - Links execution to job via foreign key (AgentExecution.job_id)
     - Returns both job_id and agent_id in response
     - Both models share tenant_key for isolation
@@ -273,7 +269,6 @@ async def test_ensure_agent_creates_both_models(db_session, tenant_key, test_pro
     assert agent_execution is not None, "AgentExecution should be created in database"
     assert agent_execution.job_id == result["job_id"], "AgentExecution should reference parent job"
     assert agent_execution.agent_display_name == "backend-implementor", "AgentExecution.agent_display_name should match"
-    assert agent_execution.instance_number == 1, "First execution should have instance_number=1"
     assert agent_execution.status == "waiting", "AgentExecution.status should be 'waiting'"
 
 
@@ -469,7 +464,6 @@ async def test_handoff_creates_successor_execution(db_session, tenant_key, test_
         job_id=test_agent_job.job_id,  # SAME job (work order)
         tenant_key=tenant_key,
         agent_display_name="backend-implementor",
-        instance_number=2,
         status="waiting",
         agent_name="backend-implementor #2",
         context_used=0,
@@ -645,10 +639,10 @@ async def test_full_agent_lifecycle_workflow(db_session, tenant_key, test_projec
     - Functions use MCPAgentJob instead of dual-model
     """
     from src.giljo_mcp.tools.agent import (
-        _ensure_agent_with_session,
-        launch_agent,
-        _get_agent_health_with_session,
         _decommission_agent_with_session,
+        _ensure_agent_with_session,
+        _get_agent_health_with_session,
+        launch_agent,
     )
 
     # Step 1: Ensure agent (create AgentJob + AgentExecution)
