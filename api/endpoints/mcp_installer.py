@@ -181,7 +181,7 @@ async def get_user_by_id(session: AsyncSession, user_id: str) -> Optional[User]:
         User object or None if not found
     """
     # Simple query: Get user by ID (active users only)
-    stmt = select(User).where(User.id == user_id, User.is_active == True)
+    stmt = select(User).where(User.id == user_id, User.is_active)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
     return user

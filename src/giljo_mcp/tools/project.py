@@ -12,9 +12,12 @@ from src.giljo_mcp.database import DatabaseManager
 logger = logging.getLogger(__name__)
 
 
-# Module-level variables for test injection (Handover 0366c)
-_db_manager_instance: Optional[DatabaseManager] = None
-_test_session: Optional[Any] = None
+# Module-level state holder
+class _ProjectToolsState:
+    """State holder to avoid global statement."""
+
+    db_manager_instance: Optional[DatabaseManager] = None
+    test_session: Optional[Any] = None
 
 
 def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
@@ -35,9 +38,8 @@ def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
             project.init_for_testing(db_manager, db_session)
             yield
     """
-    global _db_manager_instance, _test_session
-    _db_manager_instance = db_manager
-    _test_session = db_session
+    _ProjectToolsState.db_manager_instance = db_manager
+    _ProjectToolsState.test_session = db_session
 
 
 class _SessionWrapper:
@@ -92,14 +94,14 @@ class _SessionContext:
 
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
-        self.test_mode = _test_session is not None
+        self.test_mode = _ProjectToolsState.test_session is not None
         self.session = None
         self.context_manager = None
 
     async def __aenter__(self):
         if self.test_mode:
             # Test mode - use injected session with wrapper
-            self.session = _SessionWrapper(_test_session, test_mode=True)
+            self.session = _SessionWrapper(_ProjectToolsState.test_session, test_mode=True)
         else:
             # Production mode - create new session
             self.context_manager = self.db_manager.get_session_async()

@@ -18,9 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Import colored logger and filter utilities
 try:
     from src.giljo_mcp.colored_logger import (
-        ColoredFormatter,
         LogFilter,
-        get_colored_logger,
         print_error,
         print_highlight,
         print_info,

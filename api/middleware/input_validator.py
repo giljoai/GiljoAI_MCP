@@ -14,7 +14,7 @@ Created in Handover 0129c - Security Hardening & OWASP Compliance
 
 import logging
 import re
-from typing import Any, Callable
+from typing import Any, Callable, ClassVar
 
 from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -37,7 +37,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
     """
 
     # Dangerous SQL injection patterns to block
-    SQL_INJECTION_PATTERNS = [
+    SQL_INJECTION_PATTERNS: ClassVar[list[str]] = [
         r"(\bUNION\b.*\bSELECT\b)",  # UNION SELECT attacks
         r"(\bDROP\b.*\bTABLE\b)",  # DROP TABLE attacks
         r"(\bEXEC\b.*\()",  # EXEC() function calls
@@ -50,7 +50,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
     ]
 
     # XSS (Cross-Site Scripting) patterns to block
-    XSS_PATTERNS = [
+    XSS_PATTERNS: ClassVar[list[str]] = [
         r"<script[^>]*>.*?</script>",  # <script> tags
         r"javascript:",  # javascript: protocol
         r"onerror\s*=",  # onerror event handler
@@ -63,7 +63,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
     ]
 
     # Path traversal patterns to block
-    PATH_TRAVERSAL_PATTERNS = [
+    PATH_TRAVERSAL_PATTERNS: ClassVar[list[str]] = [
         r"\.\./",  # ../ (Unix)
         r"\.\.\\",  # ..\ (Windows)
     ]

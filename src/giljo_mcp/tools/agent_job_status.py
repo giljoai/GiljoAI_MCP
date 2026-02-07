@@ -35,10 +35,13 @@ logger = logging.getLogger(__name__)
 # AgentExecution has different statuses: waiting, working, blocked, complete, cancelled, failed, decommissioned
 VALID_STATUSES = {"active", "completed", "cancelled"}
 
-# Module-level db_manager, job_manager, and test_session (initialized by register function or tests)
-_db_manager: Optional[DatabaseManager] = None
-_job_manager: Optional[AgentJobManager] = None
-_test_session: Optional[Any] = None  # AsyncSession for testing
+# Module-level state holder
+class _AgentJobStatusState:
+    """State holder to avoid global statement."""
+
+    db_manager: Optional[DatabaseManager] = None
+    job_manager: Optional[AgentJobManager] = None
+    test_session: Optional[Any] = None  # AsyncSession for testing
 
 
 def init_for_testing(
@@ -57,12 +60,11 @@ def init_for_testing(
         test_session: Optional AsyncSession for transaction-based test isolation
         tenant_manager: TenantManager instance for testing (required for AgentJobManager)
     """
-    global _db_manager, _job_manager, _test_session
-    _db_manager = db_manager
+    _AgentJobStatusState.db_manager = db_manager
     if tenant_manager is None:
         raise ValueError("tenant_manager is required for initializing AgentJobManager")
-    _job_manager = AgentJobManager(db_manager, tenant_manager)
-    _test_session = test_session
+    _AgentJobStatusState.job_manager = AgentJobManager(db_manager, tenant_manager)
+    _AgentJobStatusState.test_session = test_session
 
 
 async def get_job_status(
@@ -106,7 +108,7 @@ async def get_job_status(
     - Response includes execution history to show all agents who worked
     """
     # Use provided db_manager or fall back to module-level
-    db_mgr = db_manager if db_manager is not None else _db_manager
+    db_mgr = db_manager if db_manager is not None else _AgentJobStatusState.db_manager
 
     if db_mgr is None:
         raise RuntimeError("get_job_status called before registration and no db_manager provided")
@@ -129,8 +131,8 @@ async def get_job_status(
 
         # Use test session if available (for transaction isolation in tests)
         # Otherwise create new session
-        if _test_session is not None:
-            session = _test_session
+        if _AgentJobStatusState.test_session is not None:
+            session = _AgentJobStatusState.test_session
             # Process query directly without context manager (test session managed externally)
             return await _get_job_status_impl(session, job_id, tenant_key)
         async with db_mgr.get_session_async() as session:
@@ -198,13 +200,13 @@ async def _get_job_status_impl(session, job_id: str, tenant_key: str) -> dict[st
     if executions:
         response["executions"] = [
             {
-                "agent_id": exec.agent_id,
-                "status": exec.status,
-                "progress": exec.progress,
-                "started_at": exec.started_at.isoformat() if exec.started_at else None,
-                "completed_at": exec.completed_at.isoformat() if exec.completed_at else None,
+                "agent_id": execution.agent_id,
+                "status": execution.status,
+                "progress": execution.progress,
+                "started_at": execution.started_at.isoformat() if execution.started_at else None,
+                "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
             }
-            for exec in executions
+            for execution in executions
         ]
 
         # Find current agent (most recent by started_at)
@@ -260,7 +262,7 @@ async def get_agent_status(
     - Response includes job_id for context (which work order is this agent executing)
     """
     # Use provided db_manager or fall back to module-level
-    db_mgr = db_manager if db_manager is not None else _db_manager
+    db_mgr = db_manager if db_manager is not None else _AgentJobStatusState.db_manager
 
     if db_mgr is None:
         raise RuntimeError("get_agent_status called before registration and no db_manager provided")
@@ -283,8 +285,8 @@ async def get_agent_status(
 
         # Use test session if available (for transaction isolation in tests)
         # Otherwise create new session
-        if _test_session is not None:
-            session = _test_session
+        if _AgentJobStatusState.test_session is not None:
+            session = _AgentJobStatusState.test_session
             # Process query directly without context manager (test session managed externally)
             return await _get_agent_status_impl(session, agent_id, tenant_key)
         async with db_mgr.get_session_async() as session:
@@ -422,7 +424,7 @@ async def update_job_status(
     Handover 0366c: Uses AgentJob model (not deprecated Job model)
     """
     # Use provided db_manager or fall back to module-level
-    db_mgr = db_manager if db_manager is not None else _db_manager
+    db_mgr = db_manager if db_manager is not None else _AgentJobStatusState.db_manager
 
     if db_mgr is None:
         raise RuntimeError("update_job_status called before registration and no db_manager provided")
@@ -456,8 +458,8 @@ async def update_job_status(
 
         # Use test session if available (for transaction isolation in tests)
         # Otherwise create new session
-        if _test_session is not None:
-            session = _test_session
+        if _AgentJobStatusState.test_session is not None:
+            session = _AgentJobStatusState.test_session
             # Process query directly without context manager (test session managed externally)
             return await _update_job_status_impl(session, job_id, tenant_key, new_status, reason)
         async with db_mgr.get_session_async() as session:
@@ -551,9 +553,5 @@ async def _update_job_status_impl(
         f"Job {job_id} status updated: {old_status} -> {job.status} "
         f"for tenant {tenant_key}" + (f" (reason: {reason})" if reason else "")
     )
-
-    # TODO: Trigger WebSocket event for Kanban board real-time updates
-    # This will be implemented in the next phase
-    # await websocket_manager.broadcast_job_status_changed(...)
 
     return response

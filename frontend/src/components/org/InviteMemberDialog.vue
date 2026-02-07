@@ -14,13 +14,13 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn @click="dialogModel = false" data-test="invite-cancel">Cancel</v-btn>
+        <v-btn data-test="invite-cancel" @click="dialogModel = false">Cancel</v-btn>
         <v-btn
           color="primary"
           :loading="loading"
           :disabled="!userId"
-          @click="invite"
           data-test="invite-submit"
+          @click="invite"
         >
           Invite
         </v-btn>

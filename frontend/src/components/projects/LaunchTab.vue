@@ -47,8 +47,8 @@
                     :class="{ 'icon-disabled': !gitEnabled }"
                     size="48"
                     data-testid="github-status-icon"
-                    @click="goToIntegrations"
                     style="cursor: pointer;"
+                    @click="goToIntegrations"
                   >
                     mdi-github
                   </v-icon>
@@ -66,8 +66,8 @@
                     height="48"
                     :class="{ 'icon-disabled': !serenaEnabled }"
                     data-testid="serena-status-icon"
-                    @click="goToIntegrations"
                     style="cursor: pointer;"
+                    @click="goToIntegrations"
                   />
                 </template>
                 <span v-if="serenaEnabled">Serena MCP enabled. Agents will use semantic code navigation.</span>
@@ -85,8 +85,8 @@
                 :class="{ 'orchestrator-card': agent.agent_display_name === 'orchestrator' }"
                 data-testid="agent-card"
                 :data-agent-display-name="agent.agent_display_name"
-                @click="handleAgentInfo(agent)"
                 style="cursor: pointer;"
+                @click="handleAgentInfo(agent)"
               >
                 <div class="agent-avatar" :style="{ background: getAgentColor(agent.agent_name || agent.agent_display_name) }">
                   {{ getAgentInitials(agent.agent_display_name) }}

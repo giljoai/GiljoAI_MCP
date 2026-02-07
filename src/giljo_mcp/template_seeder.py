@@ -158,12 +158,11 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
 
         # Load legacy templates from template_manager
         logger.debug(f"Loading legacy templates for tenant '{tenant_key}'")
-        template_mgr = UnifiedTemplateManager()
-        legacy_templates = template_mgr._legacy_templates
+        UnifiedTemplateManager()
 
         # Define comprehensive metadata for each template
         # Extracted from original template content and handover requirements
-        template_metadata = _get_template_metadata()
+        _get_template_metadata()
 
         # Get MCP coordination section to append to all templates
         mcp_section = _get_mcp_coordination_section()

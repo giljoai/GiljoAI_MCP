@@ -528,7 +528,7 @@ class UserService:
         if user.role == "admin" and new_role != "admin":
             stmt = select(func.count(User.id)).where(
                 and_(
-                    User.tenant_key == self.tenant_key, User.role == "admin", User.is_active == True, User.id != user_id
+                    User.tenant_key == self.tenant_key, User.role == "admin", User.is_active, User.id != user_id
                 )
             )
             admin_count_result = await session.execute(stmt)
@@ -1069,9 +1069,6 @@ class UserService:
         """Implementation that uses provided session"""
         # Validate config values
         valid_vision = ["none", "optional", "light", "medium", "full"]
-        valid_memory = [1, 3, 5, 10]
-        valid_git = [5, 10, 25, 50, 100]
-        valid_agent_templates = ["type_only", "full"]
 
         if "vision_documents" in config and config["vision_documents"] not in valid_vision:
             raise ValidationError(

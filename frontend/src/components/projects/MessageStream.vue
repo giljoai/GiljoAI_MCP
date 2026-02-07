@@ -104,8 +104,8 @@
         color="primary"
         elevation="4"
         size="small"
-        @click="scrollToBottom"
         aria-label="Scroll to latest messages"
+        @click="scrollToBottom"
       >
         <v-icon>mdi-chevron-down</v-icon>
         <v-badge v-if="unreadCount > 0" :content="unreadCount" color="error" floating />
@@ -236,7 +236,7 @@ function formatAgentName(displayName) {
  */
 function truncateUuid(uuid) {
   if (!uuid || typeof uuid !== 'string') return 'unknown'
-  return uuid.slice(0, 8) + '...'
+  return `${uuid.slice(0, 8)  }...`
 }
 
 /**

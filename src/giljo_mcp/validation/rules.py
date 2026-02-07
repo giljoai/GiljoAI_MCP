@@ -13,7 +13,7 @@ Rules are executed in order by TemplateValidator.
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import ClassVar, Optional
 
 
 @dataclass
@@ -72,7 +72,7 @@ class MCPToolsPresenceRule(ValidationRule):
     name = "MCP Tools Presence Check"
     severity = "critical"
 
-    REQUIRED_TOOLS = ["acknowledge_job", "report_progress", "complete_job", "send_message", "receive_messages"]
+    REQUIRED_TOOLS: ClassVar[list[str]] = ["acknowledge_job", "report_progress", "complete_job", "send_message", "receive_messages"]
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check all required MCP tools are mentioned in template."""
@@ -111,7 +111,7 @@ class PlaceholderVerificationRule(ValidationRule):
     name = "Placeholder Verification"
     severity = "critical"
 
-    REQUIRED_PLACEHOLDERS = ["agent_id", "tenant_key", "job_id"]
+    REQUIRED_PLACEHOLDERS: ClassVar[list[str]] = ["agent_id", "tenant_key", "job_id"]
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check required placeholders are present and well-formed."""
@@ -163,7 +163,7 @@ class InjectionDetectionRule(ValidationRule):
     severity = "critical"
 
     # SQL injection patterns
-    SQL_INJECTION_PATTERNS = [
+    SQL_INJECTION_PATTERNS: ClassVar[list[str]] = [
         r"';\s*DROP\s+TABLE",
         r"'\s*OR\s+'\d'\s*=\s*'\d",
         r"'\s*UNION\s+SELECT",
@@ -172,7 +172,7 @@ class InjectionDetectionRule(ValidationRule):
     ]
 
     # Command injection patterns
-    COMMAND_INJECTION_PATTERNS = [
+    COMMAND_INJECTION_PATTERNS: ClassVar[list[str]] = [
         r"&&\s*rm\s+-rf",
         r"\|\s*cat\s+/etc/passwd",
         r";\s*whoami",
@@ -181,7 +181,7 @@ class InjectionDetectionRule(ValidationRule):
     ]
 
     # Script injection patterns
-    SCRIPT_INJECTION_PATTERNS = [r"<script[^>]*>", r"onerror\s*=", r"javascript:", r"<iframe[^>]*>"]
+    SCRIPT_INJECTION_PATTERNS: ClassVar[list[str]] = [r"<script[^>]*>", r"onerror\s*=", r"javascript:", r"<iframe[^>]*>"]
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Detect injection patterns in template content."""
@@ -246,7 +246,7 @@ class ToolUsageBestPracticesRule(ValidationRule):
     name = "Tool Usage Best Practices"
     severity = "warning"
 
-    BEST_PRACTICE_KEYWORDS = ["error", "report_error", "handle errors", "gracefully"]
+    BEST_PRACTICE_KEYWORDS: ClassVar[list[str]] = ["error", "report_error", "handle errors", "gracefully"]
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check for best practice mentions."""

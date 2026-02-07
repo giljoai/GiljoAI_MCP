@@ -38,10 +38,10 @@
           :value="action.value"
           :prepend-icon="action.icon"
           :class="{ 'text-error': action.destructive }"
-          @click="handleActionClick(action)"
           :aria-label="action.label"
           role="menuitem"
           tabindex="0"
+          @click="handleActionClick(action)"
         >
           <v-list-item-title>{{ action.label }}</v-list-item-title>
         </v-list-item>
@@ -87,18 +87,18 @@
           <v-spacer></v-spacer>
           <v-btn
             variant="text"
-            @click="cancelConfirmation"
             :disabled="loading"
             aria-label="Cancel action"
+            @click="cancelConfirmation"
           >
             Cancel
           </v-btn>
           <v-btn
             :color="pendingAction?.destructive ? 'error' : 'primary'"
             variant="flat"
-            @click="confirmAction"
             :loading="loading"
             :aria-label="`Confirm ${pendingAction?.label}`"
+            @click="confirmAction"
           >
             {{ pendingAction?.label }}
           </v-btn>

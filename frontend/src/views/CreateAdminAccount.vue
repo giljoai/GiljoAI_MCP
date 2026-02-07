@@ -91,7 +91,7 @@
               />
 
               <!-- Compact Password Compliance Indicator -->
-              <div class="d-flex align-center mb-4" v-if="passwordMeetsAll">
+              <div v-if="passwordMeetsAll" class="d-flex align-center mb-4">
                 <v-icon color="success" size="16" class="mr-1">mdi-check-circle</v-icon>
                 <span class="text-caption">Meets password requirements</span>
                 <v-tooltip location="top" max-width="300">
@@ -129,12 +129,12 @@
                 variant="outlined"
                 density="comfortable"
                 class="mb-3"
-                @input="handlePinInput"
-                @keypress="onlyNumbers"
                 hint="Enter 4 digits (example: 1234)"
                 persistent-hint
                 aria-label="Enter your 4-digit recovery PIN"
                 aria-required="true"
+                @input="handlePinInput"
+                @keypress="onlyNumbers"
               />
 
               <!-- Confirm PIN -->
@@ -149,10 +149,10 @@
                 variant="outlined"
                 density="comfortable"
                 class="mb-3"
-                @input="handleConfirmPinInput"
-                @keypress="onlyNumbers"
                 aria-label="Confirm your 4-digit recovery PIN"
                 aria-required="true"
+                @input="handleConfirmPinInput"
+                @keypress="onlyNumbers"
               />
 
               <!-- Error Message -->

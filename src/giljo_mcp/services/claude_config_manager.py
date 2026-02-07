@@ -104,7 +104,7 @@ class ClaudeConfigManager:
         except (ConfigurationError, FileSystemError):
             # Re-raise our custom exceptions
             raise
-        except (OSError, ValueError, RuntimeError) as e:
+        except (ValueError, RuntimeError) as e:
             logger.error(f"Unexpected error during injection: {e}")
             if backup_path:
                 self._restore_backup(backup_path)
@@ -160,7 +160,7 @@ class ClaudeConfigManager:
                 message=f"IO error during Serena removal: {e}",
                 context={"operation": "remove_serena", "config_path": str(self.claude_config_path)},
             ) from e
-        except (OSError, ValueError, RuntimeError) as e:
+        except (ValueError, RuntimeError) as e:
             logger.error(f"Error during removal: {e}")
             if backup_path:
                 self._restore_backup(backup_path)

@@ -30,8 +30,8 @@
             color="primary"
             size="large"
             :loading="downloading.windows"
-            @click="downloadScript('windows')"
             prepend-icon="mdi-microsoft-windows"
+            @click="downloadScript('windows')"
           >
             Download for Windows
           </v-btn>
@@ -41,8 +41,8 @@
             size="large"
             variant="outlined"
             :loading="downloading.unix"
-            @click="downloadScript('unix')"
             prepend-icon="mdi-apple"
+            @click="downloadScript('unix')"
           >
             Download for macOS/Linux
           </v-btn>
@@ -93,8 +93,8 @@
           color="primary"
           size="large"
           :loading="generatingLinks"
-          @click="generateShareLinks"
           prepend-icon="mdi-link-variant-plus"
+          @click="generateShareLinks"
         >
           Generate Share Links
         </v-btn>
@@ -124,8 +124,8 @@
                 icon="mdi-content-copy"
                 size="small"
                 variant="text"
-                @click="copyToClipboard(shareLinks.windows_url, 'Windows link')"
                 title="Copy Windows link"
+                @click="copyToClipboard(shareLinks.windows_url, 'Windows link')"
               />
             </template>
           </v-text-field>
@@ -144,8 +144,8 @@
                 icon="mdi-content-copy"
                 size="small"
                 variant="text"
-                @click="copyToClipboard(shareLinks.unix_url, 'Unix link')"
                 title="Copy Unix link"
+                @click="copyToClipboard(shareLinks.unix_url, 'Unix link')"
               />
             </template>
           </v-text-field>
@@ -184,8 +184,8 @@ Questions? Let me know!
                   <v-btn
                     variant="outlined"
                     class="mt-2"
-                    @click="copyEmailTemplate"
                     prepend-icon="mdi-content-copy"
+                    @click="copyEmailTemplate"
                   >
                     Copy Email Template
                   </v-btn>
@@ -195,7 +195,7 @@ Questions? Let me know!
           </v-expansion-panels>
 
           <!-- Regenerate Button -->
-          <v-btn variant="text" class="mt-4" @click="resetShareLinks" prepend-icon="mdi-refresh">
+          <v-btn variant="text" class="mt-4" prepend-icon="mdi-refresh" @click="resetShareLinks">
             Generate New Links
           </v-btn>
         </div>
@@ -234,8 +234,8 @@ Questions? Let me know!
                     <v-btn
                       size="small"
                       variant="text"
-                      @click="copyManualConfig"
                       prepend-icon="mdi-content-copy"
+                      @click="copyManualConfig"
                     >
                       Copy Config
                     </v-btn>
@@ -381,7 +381,7 @@ Questions? Let me know!
     >
       {{ snackbar.message }}
       <template v-slot:actions>
-        <v-btn variant="text" @click="snackbar.show = false" icon="mdi-close" />
+        <v-btn variant="text" icon="mdi-close" @click="snackbar.show = false" />
       </template>
     </v-snackbar>
   </v-container>

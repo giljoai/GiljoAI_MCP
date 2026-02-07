@@ -65,8 +65,8 @@
         :rules="[validateDomain]"
         :error-messages="domainError"
         :disabled="loading"
-        @keyup.enter="addDomain"
         class="mb-2"
+        @keyup.enter="addDomain"
       >
         <template v-slot:append>
           <v-btn

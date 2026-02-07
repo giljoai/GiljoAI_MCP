@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from api.broker.base import WebSocketEventBroker
 from api.broker.in_memory import InMemoryWebSocketEventBroker

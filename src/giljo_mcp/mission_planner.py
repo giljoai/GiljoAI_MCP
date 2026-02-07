@@ -446,7 +446,7 @@ Success Criteria:
         # For now, return analysis results as this method seems to be called
         # before full mission generation. This allows the orchestrator to proceed.
         # The full generate_missions method will be called later in the workflow.
-        analysis = await self.analyze_requirements(product, project_description)
+        await self.analyze_requirements(product, project_description)
 
         # Return empty missions dict for now - the orchestrator will call
         # generate_missions later with full context
@@ -528,18 +528,7 @@ Success Criteria:
             )
             return ""
 
-            # Future implementation:
-            # from src.giljo_mcp.mcp_client import MCPClient
-            #
-            # mcp_client = MCPClient()
-            # result = await mcp_client.call_tool(
-            #     tool_name="serena__get_symbols_overview",
-            #     arguments={"relative_path": "."}
-            # )
-            #
-            # return result.get("content", "")
-
-        except Exception as e:  # noqa: BLE001 - Placeholder for future MCP client calls
+        except Exception as e:  # noqa: BLE001
             logger.warning(
                 f"Failed to fetch Serena context: {e}",
                 extra={"project_id": project_id, "tenant_key": tenant_key},
@@ -1139,7 +1128,7 @@ Success Criteria:
         return "\n".join(formatted_lines)
 
     # Section name mapping for human-readable priority framing
-    SECTION_NAMES = {
+    SECTION_NAMES: ClassVar[dict[str, str]] = {
         "product_core": "Product Context",
         "vision_documents": "Product Vision",
         "project_description": "Project Description",
@@ -1237,7 +1226,7 @@ Success Criteria:
                 .where(
                     VisionDocument.product_id == product.id,
                     VisionDocument.tenant_key == product.tenant_key,
-                    VisionDocument.is_active == True,
+                    VisionDocument.is_active,
                 )
                 .order_by(VisionDocument.display_order, VisionDocument.created_at.desc())
                 .limit(1)
@@ -1705,7 +1694,7 @@ Partial reading defeats the purpose of this configuration."""
             .where(
                 and_(
                     AgentTemplate.tenant_key == tenant_key,
-                    AgentTemplate.is_active == True,
+                    AgentTemplate.is_active,
                 )
             )
             .order_by(AgentTemplate.name)

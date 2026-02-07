@@ -253,9 +253,7 @@ async def complete_message(
     from api.app import state
 
     # Service raises exceptions on error
-    complete_result = await message_service.complete_message(
-        message_id=message_id, agent_name=agent_name, result=result
-    )
+    await message_service.complete_message(message_id=message_id, agent_name=agent_name, result=result)
 
     # Broadcast message completion
     if state.websocket_manager:

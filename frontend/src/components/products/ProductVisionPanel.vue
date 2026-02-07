@@ -15,8 +15,8 @@
       variant="tonal"
       density="compact"
       dismissible
-      @click:close="$emit('clearError')"
       class="mb-4"
+      @click:close="$emit('clearError')"
     >
       {{ uploadError }}
     </v-alert>
@@ -215,9 +215,9 @@ function handleRemoveFile(index) {
  * @returns {string} - Formatted file size
  */
 function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  if (bytes < 1024) return `${bytes  } B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)  } KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)  } MB`
 }
 
 /**

@@ -100,9 +100,9 @@
           size="large"
           :loading="testing"
           :disabled="testing"
-          @click="testConnection"
           aria-label="Test database connection"
           data-test="test-connection-btn"
+          @click="testConnection"
         >
           <v-icon start>mdi-database-check</v-icon>
           {{ testButtonText }}
