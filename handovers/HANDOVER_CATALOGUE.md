@@ -143,6 +143,15 @@
 > **0488**: Enriched broadcast response with STOP directive for staging completion
 > **0489**: Critical cleanup of mcp_http.py (MCP-over-HTTP JSON-RPC endpoint)
 
+### 360 Memory UI Fix (0490) - NEW
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0490** | **360 Memory UI Closeout Modal Fix** | **Ready** | **HIGH** | 4-6h |
+
+> **Purpose**: Fix CloseoutModal to fetch memory entries from normalized `product_memory_entries` table
+> **Root Cause**: UI reading obsolete JSONB field removed in 0700c; backend lacks API endpoint for normalized table
+> **Solution**: Create GET endpoint + update frontend to use new API (TDD approach)
+
 ### Superseded/Moved to Completed (Cleanup)
 | ID | Title | Status | Notes |
 |----|-------|--------|-------|
@@ -630,7 +639,7 @@ completed/reference/
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0397 (includes Alpha Trial 0356-0362, 0364-0365)
-**0401-0500** (Agent Monitoring): 0400-0433 (mostly complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0485 (0480 REVISED complete, 0481-0485 in progress), 0486-0489 (continuation workflow + implementation gates)
+**0401-0500** (Agent Monitoring): 0400-0433 (mostly complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0485 (0480 REVISED complete, 0481-0485 in progress), 0486-0490 (continuation workflow + implementation gates + 360 memory UI fix)
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
@@ -647,7 +656,7 @@ completed/reference/
 - **0317**: Gap in 0301-0400 range
 - **0398-0399**: Gaps in 0301-0400 range (0385-0386 used in git, 0396-0397 now used)
 - **0413, 0418, 0434-0439**: Gaps in 0401-0500 range (0433 now used)
-- **0441-0449, 0454-0459, 0465-0469, 0471-0479, 0490-0499**: Additional 0401-0500 gaps
+- **0441-0449, 0454-0459, 0465-0469, 0471-0479, 0491-0499**: Additional 0401-0500 gaps (0490 now used)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
 - **0133-0134**: Gaps in 0101-0200 range
