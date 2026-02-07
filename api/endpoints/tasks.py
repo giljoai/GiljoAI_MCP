@@ -211,6 +211,7 @@ async def create_task(
     return task_to_response(task)
 
 
+@router.get("/summary")
 @router.get("/summary/")
 async def get_task_summary(
     product_id: Optional[str] = Query(None, description="Filter by product ID"),
