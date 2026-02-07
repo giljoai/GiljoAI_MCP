@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
     AuthorizationError,
-    BaseGiljoException,
+    BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -114,12 +114,12 @@ class TaskService:
                 return await self._log_task_impl(self._session, content, category, priority, project_id, tenant_key)
             async with self.db_manager.get_session_async() as session:
                 return await self._log_task_impl(session, content, category, priority, project_id, tenant_key)
-        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+        except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
             self._logger.exception("Failed to log task")
-            raise BaseGiljoException(message=str(e), context={"operation": "log_task"}) from e
+            raise BaseGiljoError(message=str(e), context={"operation": "log_task"}) from e
 
     async def _log_task_impl(
         self,
@@ -358,12 +358,12 @@ class TaskService:
 
                 return {"success": True, "tasks": task_list, "count": len(task_list)}
 
-        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+        except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
             self._logger.exception("Failed to list tasks")
-            raise BaseGiljoException(message=str(e), context={"operation": "list_tasks"}) from e
+            raise BaseGiljoError(message=str(e), context={"operation": "list_tasks"}) from e
 
     # ============================================================================
     # Task Updates
@@ -430,12 +430,12 @@ class TaskService:
 
                 return {"success": True, "task_id": task_id, "updated_fields": updated_fields}
 
-        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+        except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
             self._logger.exception("Failed to update task")
-            raise BaseGiljoException(message=str(e), context={"operation": "update_task", "task_id": task_id}) from e
+            raise BaseGiljoError(message=str(e), context={"operation": "update_task", "task_id": task_id}) from e
 
     async def assign_task(self, task_id: str, agent_name: str) -> dict[str, Any]:
         """
@@ -507,12 +507,12 @@ class TaskService:
                 return await self._get_task_impl(self._session, task_id)
             async with self.db_manager.get_session_async() as session:
                 return await self._get_task_impl(session, task_id)
-        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+        except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
             self._logger.exception("Failed to get task {task_id}")
-            raise BaseGiljoException(message=str(e), context={"operation": "get_task", "task_id": task_id}) from e
+            raise BaseGiljoError(message=str(e), context={"operation": "get_task", "task_id": task_id}) from e
 
     async def _get_task_impl(self, session: AsyncSession, task_id: str) -> dict[str, Any]:
         """Implementation of get_task with explicit session parameter."""
@@ -583,12 +583,12 @@ class TaskService:
                 return await self._delete_task_impl(self._session, task_id, user_id)
             async with self.db_manager.get_session_async() as session:
                 return await self._delete_task_impl(session, task_id, user_id)
-        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+        except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
             self._logger.exception("Failed to delete task {task_id}")
-            raise BaseGiljoException(message=str(e), context={"operation": "delete_task", "task_id": task_id}) from e
+            raise BaseGiljoError(message=str(e), context={"operation": "delete_task", "task_id": task_id}) from e
 
     async def _delete_task_impl(self, session: AsyncSession, task_id: str, user_id: str) -> dict[str, Any]:
         """Implementation of delete_task with explicit session parameter."""
@@ -683,14 +683,12 @@ class TaskService:
                 return await self._convert_to_project_impl(
                     session, task_id, project_name, strategy, include_subtasks, user_id
                 )
-        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+        except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
             self._logger.exception("Failed to convert task {task_id} to project")
-            raise BaseGiljoException(
-                message=str(e), context={"operation": "convert_to_project", "task_id": task_id}
-            ) from e
+            raise BaseGiljoError(message=str(e), context={"operation": "convert_to_project", "task_id": task_id}) from e
 
     async def _convert_to_project_impl(
         self,
@@ -851,12 +849,12 @@ class TaskService:
                 return await self._change_status_impl(self._session, task_id, new_status)
             async with self.db_manager.get_session_async() as session:
                 return await self._change_status_impl(session, task_id, new_status)
-        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+        except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
             self._logger.exception("Failed to change task {task_id} status")
-            raise BaseGiljoException(message=str(e), context={"operation": "change_status", "task_id": task_id}) from e
+            raise BaseGiljoError(message=str(e), context={"operation": "change_status", "task_id": task_id}) from e
 
     async def _change_status_impl(self, session: AsyncSession, task_id: str, new_status: str) -> dict[str, Any]:
         """Implementation of change_status with explicit session parameter."""
@@ -947,12 +945,12 @@ class TaskService:
                 return await self._get_summary_impl(self._session, product_id)
             async with self.db_manager.get_session_async() as session:
                 return await self._get_summary_impl(session, product_id)
-        except (BaseGiljoException, ResourceNotFoundError, ValidationError, AuthorizationError):
+        except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
             self._logger.exception("Failed to get task summary")
-            raise BaseGiljoException(message=str(e), context={"operation": "get_summary"}) from e
+            raise BaseGiljoError(message=str(e), context={"operation": "get_summary"}) from e
 
     async def _get_summary_impl(self, session: AsyncSession, product_id: Optional[str] = None) -> dict[str, Any]:
         """Implementation of get_summary with explicit session parameter."""

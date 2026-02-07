@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
-    BaseGiljoException,
+    BaseGiljoError,
     ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
@@ -131,7 +131,7 @@ class ProjectService:
             Dict with project details
 
         Raises:
-            BaseGiljoException: When project creation fails
+            BaseGiljoError: When project creation fails
 
         Example:
             >>> result = await service.create_project(
@@ -183,7 +183,7 @@ class ProjectService:
 
         except Exception as e:
             self._logger.exception("Failed to create project")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to create project: {e!s}", context={"name": name, "tenant_key": tenant_key}
             ) from e
 
@@ -201,7 +201,7 @@ class ProjectService:
         Raises:
             ValueError: If tenant_key is None or empty (security requirement)
             ResourceNotFoundError: When project not found
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.get_project("abc-123", tenant_key="tenant-abc")
@@ -281,7 +281,7 @@ class ProjectService:
             raise
         except Exception as e:
             self._logger.exception("Failed to get project")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to get project: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
 
@@ -300,7 +300,7 @@ class ProjectService:
 
         Raises:
             ValidationError: When no tenant context is available
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.get_active_project()
@@ -367,7 +367,7 @@ class ProjectService:
             raise
         except Exception as e:
             self._logger.exception("Failed to get active project")
-            raise BaseGiljoException(message=f"Failed to get active project: {e!s}", context={}) from e
+            raise BaseGiljoError(message=f"Failed to get active project: {e!s}", context={}) from e
 
     async def list_projects(self, status: str | None = None, tenant_key: str | None = None) -> list[dict[str, Any]]:
         """
@@ -382,7 +382,7 @@ class ProjectService:
 
         Raises:
             ValidationError: When no tenant context is available
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> projects = await service.list_projects(status="active")
@@ -442,9 +442,7 @@ class ProjectService:
             raise
         except Exception as e:
             self._logger.exception("Failed to list projects")
-            raise BaseGiljoException(
-                message=f"Failed to list projects: {e!s}", context={"tenant_key": tenant_key}
-            ) from e
+            raise BaseGiljoError(message=f"Failed to list projects: {e!s}", context={"tenant_key": tenant_key}) from e
 
     async def update_project_mission(
         self, project_id: str, mission: str, tenant_key: str | None = None
@@ -465,7 +463,7 @@ class ProjectService:
 
         Raises:
             ResourceNotFoundError: When project not found
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.update_project_mission(
@@ -522,7 +520,7 @@ class ProjectService:
             raise
         except Exception as e:
             self._logger.exception("Failed to update mission")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to update mission: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
 
@@ -554,7 +552,7 @@ class ProjectService:
 
         Raises:
             ValidationError: When tenant not set or summary missing
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
         """
         try:
             resolved_tenant = tenant_key or self.tenant_manager.get_current_tenant()
@@ -595,7 +593,7 @@ class ProjectService:
             raise
         except Exception as e:
             self._logger.exception("Failed to complete project")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to complete project: {e!s}",
                 context={"project_id": project_id, "tenant_key": tenant_key},
             ) from e
@@ -701,7 +699,7 @@ class ProjectService:
 
         Raises:
             ResourceNotFoundError: When project not found
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.cancel_project(
@@ -741,9 +739,7 @@ class ProjectService:
             raise
         except Exception as e:
             self._logger.exception("Failed to cancel project")
-            raise BaseGiljoException(
-                message=f"Failed to cancel project: {e!s}", context={"project_id": project_id}
-            ) from e
+            raise BaseGiljoError(message=f"Failed to cancel project: {e!s}", context={"project_id": project_id}) from e
 
     async def close_out_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
         """
@@ -761,7 +757,7 @@ class ProjectService:
 
         Raises:
             ResourceNotFoundError: When project not found or access denied
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.close_out_project(
@@ -835,7 +831,7 @@ class ProjectService:
             raise
         except Exception as e:
             self._logger.exception("Failed to close out project")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to close out project: {e!s}",
                 context={"project_id": project_id, "tenant_key": tenant_key},
             ) from e
@@ -857,7 +853,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: When project not found or access denied
             ProjectStateError: When project not in completed state
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.continue_working(
@@ -935,7 +931,7 @@ class ProjectService:
             raise
         except Exception as e:
             self._logger.exception("Failed to resume project")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to resume project: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
 
@@ -968,7 +964,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: When project not found
             ProjectStateError: When invalid state transition
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.activate_project("abc-123")
@@ -1083,7 +1079,7 @@ class ProjectService:
             raise
         except Exception as e:
             self._logger.exception("Failed to activate project")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to activate project: {e!s}", context={"project_id": project_id}
             ) from e
 
@@ -2603,7 +2599,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 - projects: list - Details of purged projects
 
         Raises:
-            BaseGiljoException: Database not available
+            BaseGiljoError: Database not available
 
         Example:
             >>> result = await service.purge_expired_deleted_projects()
@@ -2613,7 +2609,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
         if not self.db_manager:
             self._logger.error("[Nuclear Purge] Cannot purge - database manager not available")
-            raise BaseGiljoException(message="Database not available", context={})
+            raise BaseGiljoError(message="Database not available", context={})
 
         async with self._get_session() as session:
             # Find projects deleted more than specified days ago
