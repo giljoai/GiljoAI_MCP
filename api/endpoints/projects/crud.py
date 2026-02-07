@@ -11,7 +11,6 @@ All operations use ProjectService (no direct DB access where possible).
 """
 
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, status
 
@@ -22,10 +21,8 @@ from src.giljo_mcp.services.project_service import ProjectService
 from .dependencies import get_project_service
 from .models import ProjectCreate, ProjectResponse, ProjectUpdate
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
 
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 async def create_project(
@@ -85,10 +82,9 @@ async def create_project(
         execution_mode=result.get("execution_mode", "multi_terminal"),  # Handover 0260
     )
 
-
 @router.get("/", response_model=list[ProjectResponse])
 async def list_projects(
-    status_filter: Optional[str] = None,
+    status_filter: str | None = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ) -> list[ProjectResponse]:
@@ -134,7 +130,6 @@ async def list_projects(
         )
         for proj in projects
     ]
-
 
 @router.get("/deleted", response_model=list[ProjectResponse])
 async def get_deleted_projects(
@@ -189,12 +184,11 @@ async def get_deleted_projects(
         for proj in projects
     ]
 
-
-@router.get("/active", response_model=Optional[ProjectResponse])
+@router.get("/active", response_model=ProjectResponse | None)
 async def get_active_project(
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
-) -> Optional[ProjectResponse]:
+) -> ProjectResponse | None:
     """
     Get the currently active project for the user's tenant.
 
@@ -242,7 +236,6 @@ async def get_active_project(
         message_count=proj.get("message_count", 0),
         execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
     )
-
 
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(
@@ -293,7 +286,6 @@ async def get_project(
         execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
         agents=agents_from_service,  # Fixed: Use agents from ProjectService, not hardcoded []
     )
-
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
 async def update_project(

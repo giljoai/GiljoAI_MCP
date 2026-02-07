@@ -20,14 +20,12 @@ import re
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-
 logger = logging.getLogger(__name__)
-
 
 class SetupStateManager:
     """
@@ -42,10 +40,10 @@ class SetupStateManager:
 
     def __init__(
         self,
-        tenant_key: Optional[str] = None,
-        db_session: Optional[Session] = None,
-        current_version: Optional[str] = None,
-        required_db_version: Optional[str] = None,
+        tenant_key: str | None = None,
+        db_session: Session | None = None,
+        current_version: str | None = None,
+        required_db_version: str | None = None,
     ):
         """
         Initialize SetupStateManager.
@@ -78,9 +76,9 @@ class SetupStateManager:
     def get_instance(
         cls,
         tenant_key: str,
-        db_session: Optional[Session] = None,
-        current_version: Optional[str] = None,
-        required_db_version: Optional[str] = None,
+        db_session: Session | None = None,
+        current_version: str | None = None,
+        required_db_version: str | None = None,
     ) -> "SetupStateManager":
         """
         Get singleton instance for tenant.
@@ -139,7 +137,7 @@ class SetupStateManager:
         # Return default state
         return self._get_default_state()
 
-    def _get_state_from_database(self) -> Optional[dict[str, Any]]:
+    def _get_state_from_database(self) -> dict[str, Any | None]:
         """Get state from database."""
         from src.giljo_mcp.models import SetupState
 
@@ -148,7 +146,7 @@ class SetupStateManager:
             return state.to_dict()
         return None
 
-    def _get_state_from_file(self) -> Optional[dict[str, Any]]:
+    def _get_state_from_file(self) -> dict[str, Any | None]:
         """Get state from file."""
         if not self.state_file.exists():
             return None
@@ -193,8 +191,8 @@ class SetupStateManager:
 
     def mark_database_initialized(
         self,
-        setup_version: Optional[str] = None,
-        config_snapshot: Optional[dict[str, Any]] = None,
+        setup_version: str | None = None,
+        config_snapshot: dict[str, Any | None] = None,
     ) -> None:
         """
         Mark database as initialized (tables created and ready for use).
@@ -228,8 +226,8 @@ class SetupStateManager:
 
     def _mark_database_initialized_in_database(
         self,
-        setup_version: Optional[str],
-        config_snapshot: Optional[dict[str, Any]],
+        setup_version: str | None,
+        config_snapshot: dict[str, Any | None],
     ) -> None:
         """Mark database initialized in database."""
         from src.giljo_mcp.models import SetupState
@@ -247,8 +245,8 @@ class SetupStateManager:
 
     def _mark_database_initialized_in_file(
         self,
-        setup_version: Optional[str],
-        config_snapshot: Optional[dict[str, Any]],
+        setup_version: str | None,
+        config_snapshot: dict[str, Any | None],
     ) -> None:
         """Mark database initialized in file."""
         # Ensure directory exists
@@ -446,7 +444,7 @@ class SetupStateManager:
     def migrate_state(
         self,
         new_setup_version: str,
-        new_database_version: Optional[str] = None,
+        new_database_version: str | None = None,
     ) -> None:
         """
         Migrate state to new version.
@@ -608,7 +606,7 @@ class SetupStateManager:
 
         return bool(value)
 
-    def get_config_snapshot(self) -> Optional[dict[str, Any]]:
+    def get_config_snapshot(self) -> dict[str, Any | None]:
         """
         Get configuration snapshot.
 

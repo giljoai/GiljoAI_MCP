@@ -16,7 +16,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 from inspect import iscoroutine
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -29,9 +29,7 @@ from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
-
 logger = logging.getLogger(__name__)
-
 
 # Field length constraints
 MAX_SUMMARY_LENGTH = 10000  # ~2,500 tokens
@@ -41,12 +39,11 @@ MAX_DECISIONS_MADE = 100
 # Statuses to skip during verification (they don't block closeout)
 SKIP_STATUSES = {"decommissioned", "cancelled", "failed"}
 
-
 async def _check_closeout_readiness(
     session: AsyncSession,
     project_id: str,
     tenant_key: str,
-    orchestrator_job_id: Optional[str] = None,
+    orchestrator_job_id: str | None = None,
 ) -> tuple[bool, dict[str, Any]]:
     """
     Verify all agents are ready for project closeout (Handover 0431).
@@ -197,7 +194,6 @@ async def _check_closeout_readiness(
         }
     }
 
-
 async def write_360_memory(
     project_id: str,
     tenant_key: str,
@@ -205,9 +201,9 @@ async def write_360_memory(
     key_outcomes: list[str],
     decisions_made: list[str],
     entry_type: str = "project_completion",
-    author_job_id: Optional[str] = None,
-    db_manager: Optional[DatabaseManager] = None,
-    session: Optional[AsyncSession] = None,
+    author_job_id: str | None = None,
+    db_manager: DatabaseManager | None = None,
+    session: AsyncSession | None = None,
 ) -> dict[str, Any]:
     """
     Write a 360 memory entry for project completion or handover.
@@ -337,7 +333,7 @@ async def write_360_memory(
 
             # Get git configuration and fetch commits if enabled
             git_config = _get_git_config(product_memory)
-            git_commits: Optional[list[dict[str, Any]]] = None
+            git_commits: list[dict[str, Any | None]] = None
 
             if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
                 git_commits = await _fetch_github_commits(
@@ -452,7 +448,6 @@ async def write_360_memory(
         logger.exception("Failed to write 360 memory entry", extra={"error": str(exc)})
         return {"success": False, "error": str(exc)}
 
-
 async def _emit_websocket_event(
     event_type: str,
     tenant_key: str,
@@ -487,7 +482,6 @@ async def _emit_websocket_event(
     except (RuntimeError, ValueError, KeyError) as exc:
         logger.warning(f"WebSocket emit failed for {event_type}: {exc}")
 
-
 def _get_git_config(product_memory: dict[str, Any]) -> dict[str, Any]:
     """Normalize git integration configuration."""
     if not isinstance(product_memory, dict):
@@ -495,14 +489,13 @@ def _get_git_config(product_memory: dict[str, Any]) -> dict[str, Any]:
     git_cfg = product_memory.get("git_integration") or product_memory.get("github") or {}
     return git_cfg if isinstance(git_cfg, dict) else {}
 
-
 async def _fetch_github_commits(
-    repo_name: Optional[str],
-    repo_owner: Optional[str],
-    access_token: Optional[str],
+    repo_name: str | None,
+    repo_owner: str | None,
+    access_token: str | None,
     project_created_at: datetime,
-    project_completed_at: Optional[datetime],
-) -> Optional[list[dict[str, Any]]]:
+    project_completed_at: datetime | None,
+) -> list[dict[str, Any | None]]:
     """
     Fetch GitHub commits between project creation and completion.
 

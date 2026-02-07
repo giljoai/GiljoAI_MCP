@@ -20,11 +20,9 @@ subprocess calls to local git installations.
 import logging
 import subprocess  # nosec B404
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 logger = logging.getLogger(__name__)
-
 
 class GitService:
     """Service for git operations on local repositories"""
@@ -37,7 +35,7 @@ class GitService:
         self,
         repo_path: str,
         limit: int = 20,
-        since: Optional[str] = None,
+        since: str | None = None,
         branch: str = "HEAD",
     ) -> list[dict[str, Any]]:
         """
@@ -208,7 +206,7 @@ class GitService:
 
         return commits
 
-    async def get_current_branch(self, repo_path: str) -> Optional[str]:
+    async def get_current_branch(self, repo_path: str) -> str | None:
         """
         Get the current branch name of repository.
 
@@ -241,7 +239,7 @@ class GitService:
             self.logger.exception(f"Error getting current branch: {e}")
             return None
 
-    async def get_remote_url(self, repo_path: str) -> Optional[str]:
+    async def get_remote_url(self, repo_path: str) -> str | None:
         """
         Get the remote URL (origin) of repository.
 

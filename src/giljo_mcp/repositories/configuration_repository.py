@@ -5,14 +5,11 @@ Handover 1011: Migrates configuration queries from api/endpoints/configuration.p
 and setup.py to follow the repository pattern with CRITICAL tenant isolation.
 """
 
-from typing import List, Optional
-
 from sqlalchemy import delete, distinct, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Configuration
 from ..models.auth import User
-
 
 class ConfigurationRepository:
     """
@@ -76,7 +73,7 @@ class ConfigurationRepository:
         session: AsyncSession,
         tenant_key: str,
         key: str,
-    ) -> Optional[Configuration]:
+    ) -> Configuration | None:
         """
         Get a specific configuration by tenant and key.
 

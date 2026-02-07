@@ -5,13 +5,12 @@ SettingsService handles CRUD operations for tenant-scoped settings (general, net
 Handover 0506: Settings endpoints implementation.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.settings import Settings
-
 
 class SettingsService:
     """

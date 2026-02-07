@@ -11,7 +11,7 @@ Token Budget by Depth:
 - 10: Last 10 projects (~5000 tokens)
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -21,9 +21,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
-
 logger = structlog.get_logger(__name__)
-
 
 def estimate_tokens(data: Any) -> int:
     """Rough token estimation (1 token ≈ 4 chars)."""
@@ -32,15 +30,14 @@ def estimate_tokens(data: Any) -> int:
     text = json.dumps(data) if not isinstance(data, str) else data
     return len(text) // 4
 
-
 async def get_360_memory(
     product_id: str,
     tenant_key: str,
     last_n_projects: int = 3,
     offset: int = 0,
     limit: int = None,
-    db_manager: Optional[DatabaseManager] = None,
-    session: Optional[AsyncSession] = None,  # For testing only
+    db_manager: DatabaseManager | None = None,
+    session: AsyncSession | None = None,  # For testing only
 ) -> dict[str, Any]:
     """
     Fetch 360 memory (sequential project history) for given product with depth control and pagination.

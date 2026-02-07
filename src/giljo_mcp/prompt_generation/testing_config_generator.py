@@ -8,17 +8,15 @@ Handover 0271: Testing Configuration Context Integration
 """
 
 import logging
-from typing import Any, Dict, Optional
-
+from typing import Any
 
 logger = logging.getLogger(__name__)
-
 
 class TestingConfigGenerator:
     """Generate testing configuration context based on priority and agent type."""
 
     @classmethod
-    def generate_context(cls, testing_config: Optional[dict[str, Any]], priority: int = 1) -> str:
+    def generate_context(cls, testing_config: dict[str, Any | None], priority: int = 1) -> str:
         """
         Generate testing configuration context.
 
@@ -211,7 +209,7 @@ Apply TDD approach: Write tests first, then implement code.
 """
 
     @classmethod
-    def generate_for_agent(cls, testing_config: Optional[dict[str, Any]], agent_display_name: str) -> str:
+    def generate_for_agent(cls, testing_config: dict[str, Any | None], agent_display_name: str) -> str:
         """
         Generate agent-specific testing guidance.
 
@@ -231,12 +229,11 @@ Apply TDD approach: Write tests first, then implement code.
         # Summary for others (architect, documenter, etc.)
         return cls.generate_context(testing_config, priority=3)
 
-
 class TestingConfigValidator:
     """Validate testing configuration structure."""
 
     @staticmethod
-    def validate(config: Optional[dict[str, Any]]) -> bool:
+    def validate(config: dict[str, Any | None]) -> bool:
         """
         Validate testing configuration.
 

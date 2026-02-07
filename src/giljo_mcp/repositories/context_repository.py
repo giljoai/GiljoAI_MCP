@@ -5,15 +5,12 @@ Handover 0017: Provides agentic vision chunking and summarization with full-text
 All operations enforce tenant isolation for security.
 """
 
-from typing import List, Optional
-
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from ..models import MCPContextIndex, MCPContextSummary
 from .base import BaseRepository
-
 
 class ContextRepository:
     """
@@ -45,7 +42,7 @@ class ContextRepository:
         keywords: list[str],
         token_count: int,
         chunk_order: int,
-        summary: Optional[str] = None,
+        summary: str | None = None,
     ) -> MCPContextIndex:
         """
         Create a context chunk.
@@ -154,7 +151,7 @@ class ContextRepository:
         )
         return list(result.scalars().all())
 
-    async def get_chunk_by_id(self, session: AsyncSession, tenant_key: str, chunk_id: str) -> Optional[MCPContextIndex]:
+    async def get_chunk_by_id(self, session: AsyncSession, tenant_key: str, chunk_id: str) -> MCPContextIndex | None:
         """
         Get a specific chunk by chunk_id.
 
@@ -304,7 +301,7 @@ class ContextRepository:
 
     async def get_summary_by_id(
         self, session: AsyncSession, tenant_key: str, context_id: str
-    ) -> Optional[MCPContextSummary]:
+    ) -> MCPContextSummary | None:
         """
         Get a specific summary by context_id.
 
@@ -324,7 +321,7 @@ class ContextRepository:
         return result.scalar_one_or_none()
 
     async def get_token_reduction_stats(
-        self, session: AsyncSession, tenant_key: str, product_id: Optional[str] = None
+        self, session: AsyncSession, tenant_key: str, product_id: str | None = None
     ) -> dict:
         """
         Get context prioritization statistics for a tenant or specific product.

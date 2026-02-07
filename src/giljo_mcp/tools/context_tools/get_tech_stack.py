@@ -7,7 +7,7 @@ Reuses logic from:
 Always returns ALL tech stack fields (no truncation).
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -15,9 +15,7 @@ from sqlalchemy import select
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product
 
-
 logger = structlog.get_logger(__name__)
-
 
 def estimate_tokens(data: Any) -> int:
     """Rough token estimation (1 token ≈ 4 chars)."""
@@ -26,9 +24,8 @@ def estimate_tokens(data: Any) -> int:
     text = json.dumps(data) if not isinstance(data, str) else data
     return len(text) // 4
 
-
 async def get_tech_stack(
-    product_id: str, tenant_key: str, offset: int = 0, limit: int = None, db_manager: Optional[DatabaseManager] = None
+    product_id: str, tenant_key: str, offset: int = 0, limit: int = None, db_manager: DatabaseManager | None = None
 ) -> dict[str, Any]:
     """
     Fetch tech stack information for given product.

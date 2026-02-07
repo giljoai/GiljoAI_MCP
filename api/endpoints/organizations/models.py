@@ -8,32 +8,27 @@ Request/response models for:
 """
 
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import BaseModel, Field
-
 
 # ============================================================================
 # Organization Schemas
 # ============================================================================
 
-
 class OrganizationCreate(BaseModel):
     """Schema for creating organization."""
 
     name: str = Field(..., min_length=1, max_length=255, description="Organization display name")
-    slug: Optional[str] = Field(
+    slug: str | None = Field(
         None, max_length=100, description="URL-friendly identifier (auto-generated if not provided)"
     )
-    settings: Optional[dict] = Field(default_factory=dict, description="Organization-level settings")
-
+    settings: dict | None = Field(default_factory=dict, description="Organization-level settings")
 
 class OrganizationUpdate(BaseModel):
     """Schema for updating organization."""
 
-    name: Optional[str] = Field(None, max_length=255, description="Organization display name")
-    settings: Optional[dict] = Field(None, description="Organization-level settings")
-
+    name: str | None = Field(None, max_length=255, description="Organization display name")
+    settings: dict | None = Field(None, description="Organization-level settings")
 
 class MemberResponse(BaseModel):
     """Schema for membership in response."""
@@ -42,11 +37,10 @@ class MemberResponse(BaseModel):
     user_id: str = Field(..., description="User ID")
     role: str = Field(..., description="Member role (owner, admin, member, viewer)")
     joined_at: datetime = Field(..., description="Timestamp when user joined organization")
-    invited_by: Optional[str] = Field(None, description="User ID who invited this member")
+    invited_by: str | None = Field(None, description="User ID who invited this member")
 
     class Config:
         from_attributes = True
-
 
 class OrganizationResponse(BaseModel):
     """Schema for organization response."""
@@ -56,18 +50,16 @@ class OrganizationResponse(BaseModel):
     slug: str = Field(..., description="URL-friendly identifier")
     is_active: bool = Field(..., description="Whether organization is active")
     created_at: datetime = Field(..., description="Organization creation timestamp")
-    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")  # 0424m: nullable
+    updated_at: datetime | None = Field(None, description="Last update timestamp")  # 0424m: nullable
     settings: dict = Field(..., description="Organization-level settings")
     members: list[MemberResponse] = Field(default_factory=list, description="Organization members")
 
     class Config:
         from_attributes = True
 
-
 # ============================================================================
 # Membership Schemas
 # ============================================================================
-
 
 class MemberInvite(BaseModel):
     """Schema for inviting member."""
@@ -75,12 +67,10 @@ class MemberInvite(BaseModel):
     user_id: str = Field(..., description="User ID to invite")
     role: str = Field(..., pattern="^(admin|member|viewer)$", description="Role to assign (admin, member, viewer)")
 
-
 class MemberRoleUpdate(BaseModel):
     """Schema for updating member role."""
 
     role: str = Field(..., pattern="^(admin|member|viewer)$", description="New role (admin, member, viewer)")
-
 
 class OwnershipTransfer(BaseModel):
     """Schema for transferring ownership."""

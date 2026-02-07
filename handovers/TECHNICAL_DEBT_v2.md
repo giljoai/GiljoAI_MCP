@@ -2475,7 +2475,7 @@ const response = await api.agentJobs.simpleHandover(props.job.job_id)
 **Effort**: 4-6 hours
 **Date Identified**: 2026-02-04
 **Date Completed**: 2026-02-04
-**Handover**: `0709_implementation_phase_gate.md`
+**Handover**: `0487_implementation_phase_gate.md`
 **Priority**: HIGH - Protocol discipline enforcement
 
 ### Problem Statement

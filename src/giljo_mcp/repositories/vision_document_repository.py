@@ -9,7 +9,7 @@ All operations enforce tenant_key filtering for security (zero cross-tenant leak
 
 import hashlib
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import DatabaseManager
 from ..models import MCPContextIndex, Product, VisionDocument
 from .base import BaseRepository
-
 
 class VisionDocumentRepository:
     """
@@ -49,12 +48,12 @@ class VisionDocumentRepository:
         content: str,
         document_type: str = "vision",
         storage_type: str = "inline",
-        file_path: Optional[str] = None,
-        file_size: Optional[int] = None,
+        file_path: str | None = None,
+        file_size: int | None = None,
         is_active: bool = True,
         display_order: int = 0,
         version: str = "1.0.0",
-        meta_data: Optional[dict] = None,
+        meta_data: dict | None = None,
     ) -> VisionDocument:
         """
         Create a new vision document with automatic content hashing.
@@ -115,7 +114,7 @@ class VisionDocumentRepository:
 
         return doc
 
-    async def get_by_id(self, session: AsyncSession, tenant_key: str, document_id: str) -> Optional[VisionDocument]:
+    async def get_by_id(self, session: AsyncSession, tenant_key: str, document_id: str) -> VisionDocument | None:
         """
         Get vision document by ID with tenant filter (CRITICAL security).
 
@@ -159,7 +158,7 @@ class VisionDocumentRepository:
 
     async def update_content(
         self, session: AsyncSession, tenant_key: str, document_id: str, new_content: str
-    ) -> Optional[VisionDocument]:
+    ) -> VisionDocument | None:
         """
         Update vision document content with automatic hash recalculation and chunked reset.
 
@@ -304,7 +303,7 @@ class VisionDocumentRepository:
 
     async def set_active_status(
         self, session: AsyncSession, tenant_key: str, document_id: str, is_active: bool
-    ) -> Optional[VisionDocument]:
+    ) -> VisionDocument | None:
         """
         Set active status of a vision document.
 
@@ -328,7 +327,7 @@ class VisionDocumentRepository:
 
     async def update_display_order(
         self, session: AsyncSession, tenant_key: str, document_id: str, new_order: int
-    ) -> Optional[VisionDocument]:
+    ) -> VisionDocument | None:
         """
         Update display order of a vision document.
 

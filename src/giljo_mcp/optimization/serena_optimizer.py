@@ -13,13 +13,11 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import select
 
-
 logger = logging.getLogger(__name__)
-
 
 class OperationType(Enum):
     """Types of Serena MCP operations that can be optimized"""
@@ -30,7 +28,6 @@ class OperationType(Enum):
     PATTERN_SEARCH = "pattern_search"
     DIRECTORY_LIST = "directory_list"
 
-
 @dataclass
 class OptimizationRule:
     """Rules for optimizing Serena MCP operations"""
@@ -39,8 +36,7 @@ class OptimizationRule:
     max_answer_chars: int
     prefer_symbolic: bool
     guidance: str
-    context_filter: Optional[str] = None
-
+    context_filter: str | None = None
 
 class TokenUsageTracker:
     """Track and estimate token usage for optimization operations"""
@@ -75,7 +71,6 @@ class TokenUsageTracker:
         if unoptimized_tokens == 0:
             return 0.0
         return ((unoptimized_tokens - optimized_tokens) / unoptimized_tokens) * 100.0
-
 
 class SerenaOptimizer:
     """

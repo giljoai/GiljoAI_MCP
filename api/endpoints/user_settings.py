@@ -14,7 +14,6 @@ Project 0036: Cookie domain whitelist management for cross-port authentication.
 import logging
 import re
 from pathlib import Path
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -23,13 +22,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.auth.dependencies import get_db_session, require_admin
 from src.giljo_mcp.models import User
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-
 # Pydantic Models
-
 
 class CookieDomainsResponse(BaseModel):
     """Response model for cookie domain whitelist."""
@@ -39,7 +35,6 @@ class CookieDomainsResponse(BaseModel):
     )
 
     domains: list[str] = Field(description="List of whitelisted cookie domains")
-
 
 class AddCookieDomainRequest(BaseModel):
     """Request model for adding a domain to cookie whitelist."""
@@ -98,7 +93,6 @@ class AddCookieDomainRequest(BaseModel):
 
         return domain
 
-
 class RemoveCookieDomainRequest(BaseModel):
     """Request model for removing a domain from cookie whitelist."""
 
@@ -106,14 +100,11 @@ class RemoveCookieDomainRequest(BaseModel):
 
     domain: str = Field(min_length=3, max_length=255, description="Domain name to remove from whitelist")
 
-
 # Helper Functions
-
 
 def _get_config_path() -> Path:
     """Get path to config.yaml in project root."""
     return Path.cwd() / "config.yaml"
-
 
 def _read_config() -> dict:
     """
@@ -153,7 +144,6 @@ def _read_config() -> dict:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to read configuration file: {e!s}"
         ) from e
 
-
 def _write_config(config: dict) -> None:
     """
     Write config.yaml file atomically.
@@ -186,7 +176,6 @@ def _write_config(config: dict) -> None:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update configuration file: {e!s}"
         ) from e
 
-
 def _get_cookie_domains(config: dict) -> list[str]:
     """
     Extract cookie domain whitelist from config.
@@ -198,7 +187,6 @@ def _get_cookie_domains(config: dict) -> list[str]:
         List of whitelisted domains (empty list if not configured)
     """
     return config.get("security", {}).get("cookie_domain_whitelist", [])
-
 
 def _set_cookie_domains(config: dict, domains: list[str]) -> None:
     """
@@ -217,9 +205,7 @@ def _set_cookie_domains(config: dict, domains: list[str]) -> None:
     # Update whitelist
     config["security"]["cookie_domain_whitelist"] = domains
 
-
 # API Endpoints
-
 
 @router.get("/settings/cookie-domains", response_model=CookieDomainsResponse)
 async def get_cookie_domains(
@@ -252,7 +238,6 @@ async def get_cookie_domains(
 
     logger.debug(f"Cookie domain whitelist: {domains}")
     return CookieDomainsResponse(domains=domains)
-
 
 @router.post("/settings/cookie-domains", response_model=CookieDomainsResponse, status_code=status.HTTP_201_CREATED)
 async def add_cookie_domain(
@@ -302,7 +287,6 @@ async def add_cookie_domain(
 
     logger.info(f"Cookie domain whitelist updated. Total domains: {len(domains)}")
     return CookieDomainsResponse(domains=domains)
-
 
 @router.delete("/settings/cookie-domains", response_model=CookieDomainsResponse)
 async def remove_cookie_domain(

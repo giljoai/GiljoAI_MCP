@@ -9,14 +9,12 @@ Created: 2025-11-06
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from api.event_bus import EventBus
 from api.events.schemas import EventFactory
 
-
 logger = logging.getLogger(__name__)
-
 
 class WebSocketEventListener:
     """

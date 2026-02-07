@@ -9,8 +9,6 @@ import json
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Set
-
 
 def extract_python_imports(file_path: Path) -> list[str]:
     """Extract imported modules from Python file using AST parsing."""
@@ -31,7 +29,6 @@ def extract_python_imports(file_path: Path) -> list[str]:
         print(f"Warning: Failed to parse {file_path}: {e}")
         return []
 
-
 def extract_vue_imports(file_path: Path) -> list[str]:
     """Extract imported modules from Vue/JS file using regex."""
     try:
@@ -43,7 +40,6 @@ def extract_vue_imports(file_path: Path) -> list[str]:
     except (OSError, SyntaxError, UnicodeDecodeError) as e:
         print(f"Warning: Failed to parse {file_path}: {e}")
         return []
-
 
 def classify_layer(file_path: Path, root_path: Path) -> str:
     """Classify file into architectural layer based on path."""
@@ -74,7 +70,6 @@ def classify_layer(file_path: Path, root_path: Path) -> str:
     ):
         return "service"
     return "docs"
-
 
 def resolve_import_to_file(import_name: str, source_file: Path, root_path: Path, all_files: set[Path]):
     """Attempt to resolve an import statement to an actual file path."""
@@ -108,7 +103,6 @@ def resolve_import_to_file(import_name: str, source_file: Path, root_path: Path,
             if init_candidate in all_files:
                 return init_candidate
     return None
-
 
 def build_dependency_graph(root_path: Path) -> dict:
     print(f"Scanning codebase from: {root_path}")
@@ -171,7 +165,6 @@ def build_dependency_graph(root_path: Path) -> dict:
     print(f"Built graph: {len(nodes)} nodes, {len(edges)} edges")
     return {"nodes": nodes, "edges": edges, "file_map": file_map}
 
-
 def detect_circular_dependencies(graph: dict) -> list[list[int]]:
     nodes = graph["nodes"]
     cycles, visited, rec_stack, path = [], set(), set(), []
@@ -196,7 +189,6 @@ def detect_circular_dependencies(graph: dict) -> list[list[int]]:
         if idx not in visited:
             dfs(idx)
     return cycles
-
 
 def analyze_dependencies(graph: dict) -> dict:
     print("Analyzing dependencies...")
@@ -238,7 +230,6 @@ def analyze_dependencies(graph: dict) -> dict:
         "stats": stats,
     }
 
-
 def enrich_with_cleanup_index(graph: dict, cleanup_index_path: Path) -> dict:
     if not cleanup_index_path.exists():
         return graph
@@ -262,7 +253,6 @@ def enrich_with_cleanup_index(graph: dict, cleanup_index_path: Path) -> dict:
     print(f"Enriched {len(graph['nodes'])} nodes")
     return graph
 
-
 def export_graph_data(graph: dict, cleanup_index_path: Path, output_path: Path):
     enriched = enrich_with_cleanup_index(graph, cleanup_index_path)
     d3_data = {"nodes": enriched["nodes"], "links": enriched["edges"]}
@@ -270,7 +260,6 @@ def export_graph_data(graph: dict, cleanup_index_path: Path, output_path: Path):
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(d3_data, f, indent=2)
     print(f"Exported: {output_path}")
-
 
 def generate_html(data_path: Path, output_path: Path):
     print("Generating HTML...")
@@ -371,7 +360,6 @@ updateStats();"""
         f.write(h)
     print(f"Generated: {output_path}")
 
-
 def main():
     root_path = Path(__file__).parent.parent.parent.parent
     print("GiljoAI MCP Dependency Visualizer")
@@ -389,7 +377,6 @@ def main():
     print(f"Analysis: {analysis_output_path}")
     print("\nSUCCESS: Visualization complete!")
     print(f"Open: {html_output_path}")
-
 
 if __name__ == "__main__":
     main()

@@ -18,7 +18,7 @@ Security (SaaS):
 - LLM cannot bypass - code-level enforcement
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
 
@@ -35,7 +35,6 @@ from src.giljo_mcp.tools.context_tools.get_self_identity import get_self_identit
 from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
 from src.giljo_mcp.tools.context_tools.get_testing import get_testing
 from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
-
 
 logger = structlog.get_logger(__name__)
 
@@ -69,17 +68,16 @@ DEFAULT_DEPTHS = {
 
 ALL_CATEGORIES = list(CATEGORY_TOOLS.keys())
 
-
 async def fetch_context(
     product_id: str,
     tenant_key: str,
-    project_id: Optional[str] = None,
-    categories: Optional[list[str]] = None,
-    depth_config: Optional[dict[str, Any]] = None,
+    project_id: str | None = None,
+    categories: list[str | None] = None,
+    depth_config: dict[str, Any | None] = None,
     apply_user_config: bool = True,
     format: str = "structured",
-    agent_name: Optional[str] = None,
-    db_manager: Optional[DatabaseManager] = None,
+    agent_name: str | None = None,
+    db_manager: DatabaseManager | None = None,
 ) -> dict[str, Any]:
     """
     Unified context fetcher - dispatches to internal tools.
@@ -248,14 +246,13 @@ async def fetch_context(
 
     return response
 
-
 async def _fetch_category(
     category: str,
     product_id: str,
     tenant_key: str,
-    project_id: Optional[str],
+    project_id: str | None,
     depth: Any,
-    agent_name: Optional[str],
+    agent_name: str | None,
     db_manager: DatabaseManager,
 ) -> dict[str, Any]:
     """
@@ -324,7 +321,6 @@ async def _fetch_category(
         # No depth param for product_core
 
     return await tool_func(**kwargs)
-
 
 def _flatten_results(results: dict[str, Any]) -> dict[str, Any]:
     """
