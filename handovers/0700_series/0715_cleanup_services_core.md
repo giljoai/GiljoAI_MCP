@@ -1,12 +1,40 @@
-# Handover 0708: Cleanup Services Core
+# Handover 0715: Cleanup Services Core
 
-**Date:** 2026-01-27
+**Series:** 0700 Code Cleanup Series
+**Date:** 2026-01-27 (Updated: 2026-02-07)
 **From Agent:** orchestrator-coordinator
 **To Agent:** database-expert / tdd-implementor
 **Priority:** High
 **Estimated Complexity:** 4-6 hours
-**Status:** Not Started
-**Depends On:** 0707 (Services Leaf)
+**Status:** Pending
+**Depends On:** 0714 (Services Leaf)
+
+---
+
+## CRITICAL: Large File Handling
+
+**Files over 20K tokens (~500+ lines) MUST be read in batches.** Do NOT skip large files.
+
+```python
+# Read large files in chunks of 200 lines:
+Read(file_path, offset=0, limit=200)    # Lines 1-200
+Read(file_path, offset=200, limit=200)  # Lines 201-400
+```
+
+**Key large files:**
+- `project_service.py` (~1500 lines)
+- `orchestration_service.py` (~500 lines)
+
+---
+
+## NOTE: Partial Work Already Done
+
+Some items may have been addressed:
+- **0707-LINT**: Lint auto-fix and manual cleanup
+- **0708-TYPES**: Type hint modernization
+- **0700d**: Legacy succession cleanup
+
+Focus on remaining TODO markers (especially 12 in orchestration_service.py).
 
 ---
 
@@ -176,4 +204,4 @@ git checkout HEAD~1 -- src/giljo_mcp/services/project_service.py
 
 ## Next Handover
 
-**0709_cleanup_api_simple.md** - Begin API endpoint cleanup with simple CRUD endpoints.
+**0711** - API MCP Cleanup (already in chain).

@@ -1,12 +1,35 @@
-# Handover 0706: Cleanup Models Agents (CRITICAL)
+# Handover 0710: Cleanup Models Agents (CRITICAL)
 
-**Date:** 2026-01-27
+**Series:** 0700 Code Cleanup Series
+**Date:** 2026-01-27 (Updated: 2026-02-07)
 **From Agent:** orchestrator-coordinator
 **To Agent:** database-expert
 **Priority:** Critical
 **Estimated Complexity:** 4-6 hours
-**Status:** Not Started
-**Depends On:** 0705 (Models Core)
+**Status:** Pending
+**Depends On:** 0709-SECURITY
+
+---
+
+## CRITICAL: Large File Handling
+
+**Files over 20K tokens (~500+ lines) MUST be read in batches.** Do NOT skip large files.
+
+```python
+# Read large files in chunks of 200 lines:
+Read(file_path, offset=0, limit=200)    # Lines 1-200
+Read(file_path, offset=200, limit=200)  # Lines 201-400
+```
+
+---
+
+## NOTE: Partial Work Already Done
+
+Some items in this spec may have been addressed by earlier handovers:
+- **0700c**: JSONB Field Cleanup (messages JSONB marked deprecated)
+- **0706b**: agent_identity.py investigation (verdict: HEALTHY architecture)
+
+Focus on remaining DEPRECATED/TODO markers not yet addressed.
 
 ---
 
@@ -205,4 +228,4 @@ git checkout backup/pre-0706-cleanup -- src/giljo_mcp/models/agent_identity.py s
 
 ## Next Handover
 
-**0707_cleanup_services_leaf.md** - Begin service layer cleanup with leaf services.
+**0714_cleanup_services_leaf.md** - Begin service layer cleanup with leaf services.
