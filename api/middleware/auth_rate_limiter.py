@@ -38,7 +38,7 @@ class RateLimiter:
 
         Storage format: {ip_address: deque([timestamp1, timestamp2, ...])}
         """
-        self.requests: Dict[str, Deque[float]] = defaultdict(deque)
+        self.requests: dict[str, deque[float]] = defaultdict(deque)
         logger.info("RateLimiter initialized (in-memory storage, sliding window)")
 
     def _get_client_ip(self, request: Request) -> str:

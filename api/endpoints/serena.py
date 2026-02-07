@@ -29,7 +29,7 @@ def get_config_path() -> Path:
     return Path.cwd() / "config.yaml"
 
 
-def read_config() -> Dict[str, Any]:
+def read_config() -> dict[str, Any]:
     """Read config.yaml."""
     config_path = get_config_path()
     if not config_path.exists():
@@ -43,7 +43,7 @@ def read_config() -> Dict[str, Any]:
         return {}
 
 
-def write_config(config: Dict[str, Any]) -> None:
+def write_config(config: dict[str, Any]) -> None:
     """Write config.yaml."""
     config_path = get_config_path()
     try:

@@ -89,7 +89,7 @@ class DynamicContextLoader:
         role: Optional[str] = None,
         max_tokens: int = 10000,
         limit: int = 20,
-    ) -> List[Dict[str, any]]:
+    ) -> list[dict[str, any]]:
         """
         Load relevant chunks with role-based filtering.
 

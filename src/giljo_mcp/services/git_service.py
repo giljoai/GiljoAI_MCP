@@ -39,7 +39,7 @@ class GitService:
         limit: int = 20,
         since: Optional[str] = None,
         branch: str = "HEAD",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Fetch git commit history from local repository.
 
@@ -165,7 +165,7 @@ class GitService:
             self.logger.exception(f"Validation error for {repo_path}: {e}")
             return False
 
-    def _parse_git_log(self, log_output: str) -> List[Dict[str, Any]]:
+    def _parse_git_log(self, log_output: str) -> list[dict[str, Any]]:
         """
         Parse git log output in format: sha|author|email|timestamp|message
 

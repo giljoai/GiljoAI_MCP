@@ -348,7 +348,7 @@ async def get_vision_document(
     return VisionDocumentResponse.model_validate(doc)
 
 
-@router.get("/product/{product_id}", response_model=List[VisionDocumentResponse])
+@router.get("/product/{product_id}", response_model=list[VisionDocumentResponse])
 async def list_vision_documents(
     product_id: str,
     active_only: bool = True,

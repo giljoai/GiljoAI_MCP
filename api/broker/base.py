@@ -10,8 +10,8 @@ from typing import Any, Callable, Optional
 class WebSocketBrokerMessage:
     tenant_key: str
     event: dict[str, Any]
-    exclude_client: Optional[str] = None
-    origin: Optional[str] = None
+    exclude_client: str | None = None
+    origin: str | None = None
 
 
 BrokerHandler = Callable[[WebSocketBrokerMessage], Awaitable[None]]

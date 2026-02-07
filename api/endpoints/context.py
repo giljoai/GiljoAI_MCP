@@ -60,7 +60,7 @@ class ContextChunk(BaseModel):
 
 class SearchContextResponse(BaseModel):
     query: str
-    chunks: List[ContextChunk]
+    chunks: list[ContextChunk]
     total_chunks: int
     total_tokens: int
 
@@ -74,7 +74,7 @@ class LoadContextRequest(BaseModel):
 
 class LoadContextResponse(BaseModel):
     agent_display_name: str
-    chunks: List[ContextChunk]
+    chunks: list[ContextChunk]
     total_chunks: int
     total_tokens: int
     average_relevance: float

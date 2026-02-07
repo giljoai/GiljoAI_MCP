@@ -451,7 +451,7 @@ async def delete_project(
 @router.post("/{project_id}/launch", response_model=ProjectLaunchResponse)
 async def launch_project(
     project_id: str,
-    launch_config: Optional[Dict[str, Any]] = None,
+    launch_config: Optional[dict[str, Any]] = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
 ) -> ProjectLaunchResponse:

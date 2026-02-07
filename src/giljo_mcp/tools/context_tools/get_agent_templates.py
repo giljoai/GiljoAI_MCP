@@ -38,7 +38,7 @@ async def get_agent_templates(
     offset: int = 0,
     limit: int = None,
     db_manager: Optional[DatabaseManager] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Fetch agent templates for given tenant with depth control.
 

@@ -75,7 +75,7 @@ class VisionDocumentSummarizer:
         text: str,
         target_tokens: int = 25000,
         chunk_size: int = 10000,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Summarize document to target token count using map-reduce LSA.
 
@@ -223,7 +223,7 @@ class VisionDocumentSummarizer:
             # Better to be slightly over target than lose content
             return text
 
-    def summarize_multi_level(self, text: str, levels: Dict[str, float] = None) -> Dict[str, Any]:
+    def summarize_multi_level(self, text: str, levels: dict[str, float] = None) -> dict[str, Any]:
         """
         Generate 2 summary levels based on percentage of original content.
 

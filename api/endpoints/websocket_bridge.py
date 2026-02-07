@@ -27,7 +27,7 @@ class WebSocketEventRequest(BaseModel):
 
     event_type: str
     tenant_key: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
 
 
 class WebSocketEventResponse(BaseModel):

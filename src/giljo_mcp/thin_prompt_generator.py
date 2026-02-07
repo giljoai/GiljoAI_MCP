@@ -116,10 +116,10 @@ class ThinClientPromptGenerator:
         project_id: str,
         user_id: Optional[str] = None,
         tool: str = "universal",
-        field_priorities: Optional[Dict[str, int]] = None,
-        depth_config: Optional[Dict[str, Any]] = None,  # NEW PARAMETER (Handover 0315)
+        field_priorities: Optional[dict[str, int]] = None,
+        depth_config: Optional[dict[str, Any]] = None,  # NEW PARAMETER (Handover 0315)
         continuation_mode: bool = False,  # NEW PARAMETER (Handover 0461c)
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate a thin orchestrator prompt for a specified project.
 
@@ -370,7 +370,7 @@ class ThinClientPromptGenerator:
         }
 
     async def _regenerate_mission(
-        self, product: Product, project: Project, field_priorities: Dict[str, int], user_id: Optional[str]
+        self, product: Product, project: Project, field_priorities: dict[str, int], user_id: Optional[str]
     ) -> str:
         """
         Regenerate orchestrator mission with current field priorities.
@@ -544,8 +544,8 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         project: Any,
         product: Any,
         tool: str,
-        field_priorities: Dict[str, int],
-        depth_config: Dict[str, Any],
+        field_priorities: dict[str, int],
+        depth_config: dict[str, Any],
         user_id: Optional[str] = None,
     ) -> str:
         """
@@ -837,7 +837,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         project_name: str,
         tool: str,
         product,
-        field_priorities: Optional[Dict[str, int]] = None,
+        field_priorities: Optional[dict[str, int]] = None,
     ) -> str:
         """
         Build thin client prompt WITH 360 Memory, Git integration, and Agent templates.
@@ -899,7 +899,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
 
         return enhanced_prompt
 
-    async def _get_user_field_priorities(self, user_id: str) -> Dict[str, int]:
+    async def _get_user_field_priorities(self, user_id: str) -> dict[str, int]:
         """
         Fetch user's field priority configuration.
 
