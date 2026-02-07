@@ -5,7 +5,7 @@ SettingsService handles CRUD operations for tenant-scoped settings (general, net
 Handover 0506: Settings endpoints implementation.
 """
 
-from typing import Any
+from typing import Any, ClassVar
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +29,7 @@ class SettingsService:
         ValueError if category is invalid
     """
 
-    VALID_CATEGORIES = {"general", "network", "database"}
+    VALID_CATEGORIES: ClassVar[set[str]] = {"general", "network", "database"}
 
     def __init__(self, session: AsyncSession, tenant_key: str):
         self.session = session

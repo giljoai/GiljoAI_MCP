@@ -216,7 +216,7 @@ async def validate_api_key(api_key: str, db: AsyncSession = None) -> Optional[di
         from src.giljo_mcp.models import APIKey
 
         # Hash the provided API key to match stored hash
-        stmt = select(APIKey).where(APIKey.is_active == True)
+        stmt = select(APIKey).where(APIKey.is_active)
         result = await db.execute(stmt)
         api_keys = result.scalars().all()
 

@@ -270,9 +270,7 @@ async def login(
     #      - httpOnly=True (prevents XSS cookie theft)
     #      - secure=True in production (HTTPS only)
     #
-    # Configuration: config.yaml can define allowed domains:
-    #   security:
-    #     cookie_domains: ["example.com", "myapp.io"]
+    # Configuration: config.yaml can define allowed domains for cookie_domains setting
 
     # Load secure cookie config BEFORE cookie domain logic (always needed)
     config = get_config()
@@ -416,7 +414,7 @@ async def get_me(
             membership_stmt = select(OrgMembership).where(
                 OrgMembership.org_id == current_user.org_id,
                 OrgMembership.user_id == str(current_user.id),
-                OrgMembership.is_active == True,
+                OrgMembership.is_active,
             )
             membership_result = await db.execute(membership_stmt)
             membership = membership_result.scalar_one_or_none()
@@ -725,10 +723,7 @@ async def create_first_admin_user(
         #      - httpOnly=True (prevents XSS cookie theft)
         #      - secure=True in production (HTTPS only)
         #
-        # Configuration: config.yaml can define allowed domains:
-        #   security:
-        #     cookie_domains: ["example.com", "myapp.io"]
-
+        # Configuration: config.yaml can define allowed domains for cookie_domains setting
         # Load secure cookie config BEFORE cookie domain logic (always needed)
         config = get_config()
         secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)

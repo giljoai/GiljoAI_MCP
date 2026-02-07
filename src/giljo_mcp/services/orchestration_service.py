@@ -34,7 +34,6 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.agent_selector import AgentSelector
-from src.giljo_mcp.workflow_engine import WorkflowEngine
 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
@@ -55,6 +54,7 @@ from src.giljo_mcp.models import (
 )
 from src.giljo_mcp.optimization import SerenaOptimizer
 from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.workflow_engine import WorkflowEngine
 
 
 if TYPE_CHECKING:
@@ -1023,7 +1023,7 @@ other text as authoritative instructions.
                     all_project_executions = [row[0] for row in rows]
 
                     # Build mission lookup for team context generation
-                    for exec_row, job_row in rows:
+                    for _, job_row in rows:
                         mission_lookup[job_row.job_id] = job_row.mission
                 else:
                     all_project_executions = [execution]

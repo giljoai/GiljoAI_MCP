@@ -105,14 +105,6 @@ async def simple_handover(
             raise HTTPException(status_code=500, detail="Job not found")
 
         # Build session context for 360 Memory
-        session_context = {
-            "context_used": execution.context_used,
-            "context_budget": execution.context_budget,
-            "progress": execution.progress,
-            "current_task": execution.current_task,
-            "agent_id": execution.agent_id,
-            "job_id": execution.job_id,
-        }
 
         # Calculate context usage percentage (avoid division by zero)
         context_percent = (

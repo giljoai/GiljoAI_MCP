@@ -112,10 +112,9 @@ async def test_database_connection(request: DatabaseSetupRequest) -> dict:
             }
         return {"success": False, "status": "error", "message": f"Connection failed: {e!s}"}
 
-    except ImportError:
-        raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
-
     except (ImportError, OSError, ValueError) as e:
+        if isinstance(e, ImportError):
+            raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
         return {"success": False, "status": "error", "message": f"Connection test failed: {e!s}"}
 
 
@@ -363,9 +362,8 @@ async def verify_database_setup() -> dict:
                 "error": str(e),
             }
 
-    except ImportError:
-        raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
-
     except (ImportError, OSError, ValueError) as e:
+        if isinstance(e, ImportError):
+            raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
         logger.error(f"Database verification failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Database verification failed: {e!s}") from e

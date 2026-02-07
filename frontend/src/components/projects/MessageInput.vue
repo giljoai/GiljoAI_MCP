@@ -23,8 +23,8 @@
         density="comfortable"
         hide-details
         :disabled="disabled"
-        @keydown="handleKeydown"
         aria-label="Message input"
+        @keydown="handleKeydown"
       />
 
       <!-- "To" dropdown -->
@@ -50,9 +50,9 @@
         color="primary"
         size="large"
         :disabled="!canSend"
-        @click="handleSubmit"
         :aria-label="`Send message to ${getRecipientLabel(recipient)}`"
         :title="`Send message to ${getRecipientLabel(recipient)}`"
+        @click="handleSubmit"
       >
         <v-icon icon="mdi-chevron-left" size="28" />
       </v-btn>
@@ -134,7 +134,7 @@ const recipientOptions = computed(() => {
 
   props.agents.forEach((agent) => {
     const displayName = agent.agent_display_name || 'Unknown'
-    const truncatedId = agent.agent_id ? agent.agent_id.slice(0, 8) + '...' : 'unknown'
+    const truncatedId = agent.agent_id ? `${agent.agent_id.slice(0, 8)  }...` : 'unknown'
     const label = `${displayName} - ${truncatedId}`
     options.push({ label, value: agent.agent_id })
   })

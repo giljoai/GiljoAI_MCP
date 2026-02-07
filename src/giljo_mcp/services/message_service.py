@@ -306,7 +306,7 @@ class MessageService:
 
                 # Emit WebSocket events if manager is available
                 if self._websocket_manager and messages:
-                    first_message = messages[0]  # Use first message for metadata
+                    messages[0]  # Use first message for metadata
                     self._logger.info(f"[WEBSOCKET DEBUG] Calling broadcast_message_sent for message {message_id}")
                     try:
                         # Determine to_agent: None for broadcasts (including ['all']), specific agent for direct messages
@@ -332,9 +332,9 @@ class MessageService:
                             # Exclude sender from recipients to prevent self-notification
                             sender_ref = from_agent or "orchestrator"
                             recipient_agent_ids = [
-                                exec.agent_id
-                                for exec in all_executions
-                                if exec.agent_display_name != sender_ref and exec.agent_id != sender_ref
+                                execution.agent_id
+                                for execution in all_executions
+                                if execution.agent_display_name != sender_ref and execution.agent_id != sender_ref
                             ]
                             self._logger.info(
                                 f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_agent_ids)} recipients "
@@ -611,7 +611,7 @@ class MessageService:
                         context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
-                agent_ids = [exec.agent_id for exec in executions]
+                agent_ids = [execution.agent_id for execution in executions]
 
                 # Send message to all active executors
                 result = await self.send_message(

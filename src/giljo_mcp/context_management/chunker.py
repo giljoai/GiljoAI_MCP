@@ -197,7 +197,7 @@ class VisionDocumentChunker:
         # Process each chunk to add accurate token counts and metadata
         processed_chunks = []
 
-        for i, chunk in enumerate(enhanced_chunks):
+        for _, chunk in enumerate(enhanced_chunks):
             chunk_content = chunk["content"]
 
             # Skip empty chunks

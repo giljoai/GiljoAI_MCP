@@ -212,11 +212,11 @@ class FileSystemError(BaseGiljoException):
     """Base class for file system errors."""
 
 
-class FileNotFoundError(FileSystemError):
+class GiljoFileNotFoundError(FileSystemError):
     """Raised when a required file is not found."""
 
 
-class PermissionError(FileSystemError):
+class GiljoPermissionError(FileSystemError):
     """Raised when file system permissions are insufficient."""
 
 
@@ -264,9 +264,11 @@ def create_error_from_exception(exc: Exception, context: Optional[dict] = None) 
         return exc
 
     # Map common Python exceptions to appropriate GiljoAI exceptions
+    import builtins
+
     mapping = {
-        FileNotFoundError: FileNotFoundError,
-        PermissionError: PermissionError,
+        builtins.FileNotFoundError: GiljoFileNotFoundError,
+        builtins.PermissionError: GiljoPermissionError,
         ConnectionError: DatabaseConnectionError,
         TimeoutError: ResourceExhaustedError,
         ValueError: ValidationError,

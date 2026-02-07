@@ -47,7 +47,7 @@
             </AppAlert>
 
             <!-- Login Form -->
-            <v-form @submit.prevent="handleLogin" ref="loginForm">
+            <v-form ref="loginForm" @submit.prevent="handleLogin">
               <v-text-field
                 v-model="username"
                 label="Username"
@@ -98,7 +98,7 @@
                 class="mt-4"
                 data-testid="login-button"
               >
-                <v-icon start v-if="!loading">mdi-login</v-icon>
+                <v-icon v-if="!loading" start>mdi-login</v-icon>
                 {{ loading ? 'Logging in...' : 'Sign In' }}
               </v-btn>
 
@@ -107,9 +107,9 @@
                 <v-btn
                   variant="text"
                   color="primary"
-                  @click="handleForgotPasswordClick"
                   :disabled="loading"
                   aria-label="Open forgot password dialog"
+                  @click="handleForgotPasswordClick"
                 >
                   <v-icon start>mdi-lock-question</v-icon>
                   Forgot Password?

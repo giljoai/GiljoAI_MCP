@@ -9,7 +9,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 import yaml
 from sqlalchemy import select
@@ -29,7 +29,7 @@ class PathResolver:
     Resolution order: environment variables -> database -> config.yaml -> defaults
     """
 
-    DEFAULT_PATHS = {
+    DEFAULT_PATHS: ClassVar[dict[str, str]] = {
         "vision": "docs/vision",
         "sessions": "docs/sessions",
         "devlog": "docs/devlog",
@@ -173,7 +173,7 @@ class DiscoveryManager:
     Implements role-based filtering and token optimization.
     """
 
-    PRIORITY_ORDER = [
+    PRIORITY_ORDER: ClassVar[list[str]] = [
         "vision",  # Priority 1: Product vision documents
         "config",  # Priority 2: Configuration (yaml + database)
         "docs",  # Priority 3: Documentation (CLAUDE.md, README)
@@ -181,7 +181,7 @@ class DiscoveryManager:
         "code",  # Priority 5: Code via Serena MCP
     ]
 
-    ROLE_PRIORITIES = {
+    ROLE_PRIORITIES: ClassVar[dict[str, list[str]]] = {
         "orchestrator": ["vision", "config", "docs", "memories"],
         "analyzer": ["vision", "docs", "code"],
         "implementer": ["docs", "code", "config"],
@@ -189,7 +189,7 @@ class DiscoveryManager:
         "default": ["config", "docs"],  # Fallback for unknown roles
     }
 
-    ROLE_TOKEN_LIMITS = {
+    ROLE_TOKEN_LIMITS: ClassVar[dict[str, int]] = {
         "orchestrator": 50000,  # Needs full vision
         "analyzer": 30000,  # Focused analysis
         "implementer": 40000,  # Technical details

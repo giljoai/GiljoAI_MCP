@@ -319,7 +319,7 @@ class AuthService:
         else:
             stmt = (
                 select(APIKey)
-                .where(APIKey.user_id == user_id, APIKey.is_active == True)
+                .where(APIKey.user_id == user_id, APIKey.is_active)
                 .order_by(APIKey.created_at.desc())
             )
 

@@ -120,7 +120,7 @@ export function darkenColor(hex, percent = 10) {
   const B = (num & 0x0000ff) - amt
 
   return (
-    '#' +
+    `#${ 
     (
       0x1000000 +
       (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
@@ -129,7 +129,7 @@ export function darkenColor(hex, percent = 10) {
     )
       .toString(16)
       .slice(1)
-      .toUpperCase()
+      .toUpperCase()}`
   )
 }
 
@@ -146,7 +146,7 @@ export function lightenColor(hex, percent = 20) {
   const B = (num & 0x0000ff) + amt
 
   return (
-    '#' +
+    `#${ 
     (
       0x1000000 +
       (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
@@ -155,7 +155,7 @@ export function lightenColor(hex, percent = 20) {
     )
       .toString(16)
       .slice(1)
-      .toUpperCase()
+      .toUpperCase()}`
   )
 }
 

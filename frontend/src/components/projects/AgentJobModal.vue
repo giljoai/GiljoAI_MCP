@@ -8,7 +8,7 @@
         </v-avatar>
         <span style="text-transform: capitalize">{{ agent?.agent_name || agent?.agent_display_name }}</span>&nbsp;- Assigned Job
         <v-spacer></v-spacer>
-        <v-btn icon variant="text" @click="handleClose" aria-label="Close">
+        <v-btn icon variant="text" aria-label="Close" @click="handleClose">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
