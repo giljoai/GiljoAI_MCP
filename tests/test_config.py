@@ -21,7 +21,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.giljo_mcp.config_manager import ConfigManager, get_config, set_config
-from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
 class TestConfigManager:

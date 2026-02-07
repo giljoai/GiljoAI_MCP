@@ -11,17 +11,16 @@ NOTE: check_succession_status() tests removed in Handover 0461a (manual successi
 All tests should FAIL initially (RED phase) since the methods don't exist yet in OrchestrationService.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
-from datetime import datetime, timezone
 
-from sqlalchemy.ext.asyncio import AsyncSession
+import pytest
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models import Product, Project, AgentTemplate
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 
 
 # ============================================================================
@@ -33,9 +32,7 @@ class TestGetOrchestratorInstructions:
     """Tests for get_orchestrator_instructions() method."""
 
     @pytest.mark.asyncio
-    async def test_returns_framing_based_context(
-        self, db_session: AsyncSession, test_product, test_project
-    ):
+    async def test_returns_framing_based_context(self, db_session: AsyncSession, test_product, test_project):
         """Test returns identity, project_description_inline, context_fetch_instructions, agent_templates."""
         # Ensure test_product uses same tenant_key as test_project
         test_product.tenant_key = test_project.tenant_key
@@ -49,7 +46,6 @@ class TestGetOrchestratorInstructions:
 
         # Setup: Create orchestrator job and execution
         orchestrator_job = AgentJob(
-
             job_id=str(uuid4()),
             job_type="orchestrator",
             tenant_key=test_project.tenant_key,
@@ -66,7 +62,8 @@ class TestGetOrchestratorInstructions:
             job_id=orchestrator_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="waiting",
+            agent_name="orchestrator",
+            status="waiting",
             context_used=5000,
             context_budget=150000,
         )
@@ -74,7 +71,9 @@ class TestGetOrchestratorInstructions:
         await db_session.commit()
 
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Get orchestrator instructions
@@ -110,7 +109,9 @@ class TestGetOrchestratorInstructions:
     async def test_validates_job_id_required(self, db_session: AsyncSession, test_project):
         """Test returns error if job_id is empty."""
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Call with empty job_id
@@ -128,7 +129,9 @@ class TestGetOrchestratorInstructions:
     async def test_validates_tenant_key_required(self, db_session: AsyncSession):
         """Test returns error if tenant_key is empty."""
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Call with empty tenant_key
@@ -143,9 +146,7 @@ class TestGetOrchestratorInstructions:
         assert "Tenant key is required" in result["message"]
 
     @pytest.mark.asyncio
-    async def test_validates_job_is_orchestrator(
-        self, db_session: AsyncSession, test_project
-    ):
+    async def test_validates_job_is_orchestrator(self, db_session: AsyncSession, test_project):
         """Test returns error if job_type != 'orchestrator'."""
         # Setup: Create non-orchestrator job (implementer)
         implementer_job = AgentJob(
@@ -164,13 +165,16 @@ class TestGetOrchestratorInstructions:
             job_id=implementer_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="implementer",
-            agent_name="implementer",            status="waiting",
+            agent_name="implementer",
+            status="waiting",
         )
         db_session.add(implementer_execution)
         await db_session.commit()
 
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Call with implementer job
@@ -229,13 +233,16 @@ class TestGetOrchestratorInstructions:
             job_id=orchestrator_job_a.job_id,
             tenant_key=tenant_a,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="waiting",
+            agent_name="orchestrator",
+            status="waiting",
         )
         db_session.add(orchestrator_execution_a)
         await db_session.commit()
 
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Tenant B tries to access tenant A's orchestrator
@@ -258,9 +265,7 @@ class TestCreateSuccessorOrchestrator:
     """Tests for create_successor_orchestrator() method."""
 
     @pytest.mark.asyncio
-    async def test_creates_successor_execution(
-        self, db_session: AsyncSession, test_project
-    ):
+    async def test_creates_successor_execution(self, db_session: AsyncSession, test_project):
         """Test creates new AgentExecution as successor."""
         # Setup: Create current orchestrator execution
         current_job = AgentJob(
@@ -279,7 +284,8 @@ class TestCreateSuccessorOrchestrator:
             job_id=current_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="waiting",
+            agent_name="orchestrator",
+            status="waiting",
             context_used=140000,
             context_budget=150000,
         )
@@ -287,7 +293,9 @@ class TestCreateSuccessorOrchestrator:
         await db_session.commit()
 
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Create successor
@@ -314,9 +322,7 @@ class TestCreateSuccessorOrchestrator:
         assert successor.spawned_by == current_execution.agent_id
 
     @pytest.mark.asyncio
-    async def test_marks_current_decommissioned(
-        self, db_session: AsyncSession, test_project
-    ):
+    async def test_marks_current_decommissioned(self, db_session: AsyncSession, test_project):
         """Test marks current execution as 'decommissioned'."""
         # Setup: Create current orchestrator execution
         current_job = AgentJob(
@@ -336,7 +342,8 @@ class TestCreateSuccessorOrchestrator:
             job_id=current_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="waiting",
+            agent_name="orchestrator",
+            status="waiting",
             context_used=140000,
             context_budget=150000,
         )
@@ -344,7 +351,9 @@ class TestCreateSuccessorOrchestrator:
         await db_session.commit()
 
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Create successor
@@ -361,9 +370,7 @@ class TestCreateSuccessorOrchestrator:
         assert current_execution.completed_at is not None
 
     @pytest.mark.asyncio
-    async def test_preserves_job_id(
-        self, db_session: AsyncSession, test_project
-    ):
+    async def test_preserves_job_id(self, db_session: AsyncSession, test_project):
         """Test same job_id, different agent_id."""
         # Setup: Create current orchestrator execution
         current_job = AgentJob(
@@ -383,7 +390,8 @@ class TestCreateSuccessorOrchestrator:
             job_id=current_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="waiting",
+            agent_name="orchestrator",
+            status="waiting",
             context_used=140000,
             context_budget=150000,
         )
@@ -391,7 +399,9 @@ class TestCreateSuccessorOrchestrator:
         await db_session.commit()
 
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Create successor
@@ -407,9 +417,7 @@ class TestCreateSuccessorOrchestrator:
         assert result["successor_id"] != current_agent_id  # Different agent_id
 
     @pytest.mark.asyncio
-    async def test_rejects_already_completed(
-        self, db_session: AsyncSession, test_project
-    ):
+    async def test_rejects_already_completed(self, db_session: AsyncSession, test_project):
         """Test returns error if job already completed."""
         # Setup: Create completed orchestrator job
         completed_job = AgentJob(
@@ -428,13 +436,16 @@ class TestCreateSuccessorOrchestrator:
             job_id=completed_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
-            agent_name="orchestrator",            status="complete",  # AgentExecution: waiting, working, blocked, complete, failed, cancelled, decommissioned
+            agent_name="orchestrator",
+            status="complete",  # AgentExecution: waiting, working, blocked, complete, failed, cancelled, decommissioned
         )
         db_session.add(completed_execution)
         await db_session.commit()
 
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Try to create successor
@@ -449,7 +460,6 @@ class TestCreateSuccessorOrchestrator:
         assert "already completed" in result["error"]
 
 
-
 # ============================================================================
 # TestUpdateAgentMission
 # ============================================================================
@@ -459,13 +469,10 @@ class TestUpdateAgentMission:
     """Tests for update_agent_mission() method."""
 
     @pytest.mark.asyncio
-    async def test_updates_job_mission(
-        self, db_session: AsyncSession, test_project
-    ):
+    async def test_updates_job_mission(self, db_session: AsyncSession, test_project):
         """Test mission field updated in database."""
         # Setup: Create agent job with original mission
         agent_job = AgentJob(
-
             job_id=str(uuid4()),
             job_type="orchestrator",
             tenant_key=test_project.tenant_key,
@@ -477,7 +484,9 @@ class TestUpdateAgentMission:
         await db_session.commit()
 
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Update mission
@@ -497,12 +506,12 @@ class TestUpdateAgentMission:
         assert agent_job.mission == new_mission
 
     @pytest.mark.asyncio
-    async def test_returns_not_found_for_invalid_job(
-        self, db_session: AsyncSession, test_project
-    ):
+    async def test_returns_not_found_for_invalid_job(self, db_session: AsyncSession, test_project):
         """Test returns error for non-existent job."""
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Update mission for non-existent job
@@ -557,7 +566,9 @@ class TestUpdateAgentMission:
         await db_session.commit()
 
         # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock())
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
         service._test_session = db_session
 
         # Act: Tenant B tries to update tenant A's job

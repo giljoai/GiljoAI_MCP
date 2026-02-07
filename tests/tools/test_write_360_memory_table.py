@@ -37,9 +37,9 @@ import pytest_asyncio
 from sqlalchemy import select
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from src.giljo_mcp.tools.write_360_memory import write_360_memory
 
 
@@ -123,7 +123,8 @@ async def test_agent_execution(db_session, tenant_key, test_agent_job):
         job_id=test_agent_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        agent_name="Test Orchestrator",        status="working",
+        agent_name="Test Orchestrator",
+        status="working",
         progress=50,
         messages_sent_count=0,
         messages_waiting_count=0,
@@ -148,9 +149,7 @@ class TestWrite360MemoryTable:
     """Tests for write_360_memory tool with table-based writes."""
 
     @pytest.mark.asyncio
-    async def test_creates_table_entry(
-        self, db_session, db_manager, tenant_key, test_project, test_product
-    ):
+    async def test_creates_table_entry(self, db_session, db_manager, tenant_key, test_project, test_product):
         """Entry should be created in product_memory_entries table."""
         result = await write_360_memory(
             project_id=test_project.id,
@@ -187,9 +186,7 @@ class TestWrite360MemoryTable:
         assert entry.decisions_made == ["Used bcrypt for password hashing", "Redis for session storage"]
 
     @pytest.mark.asyncio
-    async def test_no_jsonb_mutation(
-        self, db_session, db_manager, tenant_key, test_project, test_product
-    ):
+    async def test_no_jsonb_mutation(self, db_session, db_manager, tenant_key, test_project, test_product):
         """JSONB product_memory should NOT be mutated."""
         # Verify JSONB is empty before
         assert test_product.product_memory == {}
@@ -211,9 +208,7 @@ class TestWrite360MemoryTable:
         assert "sequential_history" not in test_product.product_memory
 
     @pytest.mark.asyncio
-    async def test_atomic_sequence_generation(
-        self, db_session, db_manager, tenant_key, test_project, test_product
-    ):
+    async def test_atomic_sequence_generation(self, db_session, db_manager, tenant_key, test_project, test_product):
         """Sequence numbers should be atomic and sequential."""
         # Create 3 entries
         results = []
@@ -221,9 +216,9 @@ class TestWrite360MemoryTable:
             result = await write_360_memory(
                 project_id=test_project.id,
                 tenant_key=tenant_key,
-                summary=f"Summary {i+1}",
-                key_outcomes=[f"Outcome {i+1}"],
-                decisions_made=[f"Decision {i+1}"],
+                summary=f"Summary {i + 1}",
+                key_outcomes=[f"Outcome {i + 1}"],
+                decisions_made=[f"Decision {i + 1}"],
                 entry_type="project_completion",
                 db_manager=db_manager,
                 session=db_session,
@@ -236,10 +231,14 @@ class TestWrite360MemoryTable:
         assert results[2]["sequence_number"] == 3
 
         # Verify in database
-        stmt = select(ProductMemoryEntry).where(
-            ProductMemoryEntry.product_id == test_product.id,
-            ProductMemoryEntry.tenant_key == tenant_key,
-        ).order_by(ProductMemoryEntry.sequence)
+        stmt = (
+            select(ProductMemoryEntry)
+            .where(
+                ProductMemoryEntry.product_id == test_product.id,
+                ProductMemoryEntry.tenant_key == tenant_key,
+            )
+            .order_by(ProductMemoryEntry.sequence)
+        )
         db_result = await db_session.execute(stmt)
         entries = db_result.scalars().all()
 
@@ -249,9 +248,7 @@ class TestWrite360MemoryTable:
         assert entries[2].sequence == 3
 
     @pytest.mark.asyncio
-    async def test_returns_entry_id(
-        self, db_session, db_manager, tenant_key, test_project
-    ):
+    async def test_returns_entry_id(self, db_session, db_manager, tenant_key, test_project):
         """Return should include entry_id from table."""
         result = await write_360_memory(
             project_id=test_project.id,
@@ -270,6 +267,7 @@ class TestWrite360MemoryTable:
 
         # Verify entry_id is a valid UUID
         from uuid import UUID
+
         try:
             UUID(result["entry_id"])
         except ValueError:
@@ -293,9 +291,7 @@ class TestWrite360MemoryTable:
         )
 
         # Verify entry in database
-        stmt = select(ProductMemoryEntry).where(
-            ProductMemoryEntry.id == result["entry_id"]
-        )
+        stmt = select(ProductMemoryEntry).where(ProductMemoryEntry.id == result["entry_id"])
         db_result = await db_session.execute(stmt)
         entry = db_result.scalar_one()
 
@@ -348,9 +344,7 @@ class TestWrite360MemoryValidation:
         assert "project_id is required" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_requires_summary(
-        self, db_manager, tenant_key, test_project
-    ):
+    async def test_requires_summary(self, db_manager, tenant_key, test_project):
         """Should return error if summary is missing."""
         result = await write_360_memory(
             project_id=test_project.id,
@@ -365,9 +359,7 @@ class TestWrite360MemoryValidation:
         assert "summary is required" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_validates_entry_type(
-        self, db_session, db_manager, tenant_key, test_project
-    ):
+    async def test_validates_entry_type(self, db_session, db_manager, tenant_key, test_project):
         """Should return error if entry_type is invalid."""
         result = await write_360_memory(
             project_id=test_project.id,
@@ -384,9 +376,7 @@ class TestWrite360MemoryValidation:
         assert "Invalid entry_type" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_validates_summary_length(
-        self, db_session, db_manager, tenant_key, test_project
-    ):
+    async def test_validates_summary_length(self, db_session, db_manager, tenant_key, test_project):
         """Should return error if summary exceeds max length."""
         long_summary = "x" * 10001  # MAX_SUMMARY_LENGTH is 10000
 
@@ -404,9 +394,7 @@ class TestWrite360MemoryValidation:
         assert "Summary too long" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_project_not_found(
-        self, db_session, db_manager, tenant_key
-    ):
+    async def test_project_not_found(self, db_session, db_manager, tenant_key):
         """Should return error if project does not exist."""
         fake_project_id = str(uuid4())
 
@@ -433,9 +421,7 @@ class TestWrite360MemoryTenantIsolation:
     """Tests for multi-tenant isolation."""
 
     @pytest.mark.asyncio
-    async def test_tenant_isolation(
-        self, db_session, db_manager, tenant_key, other_tenant_key, test_project
-    ):
+    async def test_tenant_isolation(self, db_session, db_manager, tenant_key, other_tenant_key, test_project):
         """Should not allow writing to another tenant's project."""
         result = await write_360_memory(
             project_id=test_project.id,
@@ -451,9 +437,7 @@ class TestWrite360MemoryTenantIsolation:
         assert "not found or unauthorized" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_entries_isolated_by_tenant(
-        self, db_session, db_manager, tenant_key, test_project, test_product
-    ):
+    async def test_entries_isolated_by_tenant(self, db_session, db_manager, tenant_key, test_project, test_product):
         """Entries should only be visible to the correct tenant."""
         # Create entry
         result = await write_360_memory(

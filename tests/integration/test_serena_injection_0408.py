@@ -9,12 +9,12 @@ Tests that the Serena MCP toggle check and injection work correctly when:
 
 from pathlib import Path
 from uuid import uuid4
-import yaml
-import pytest
 
-from src.giljo_mcp.database import DatabaseManager
+import pytest
+import yaml
+
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 @pytest.mark.asyncio
@@ -79,7 +79,8 @@ class TestSerenaInjection0408:
                 agent_display_name="orchestrator",
                 status="waiting",
                 context_budget=150000,
-                context_used=0,            )
+                context_used=0,
+            )
             session.add(orchestrator_exec)
 
             await session.commit()
@@ -106,13 +107,7 @@ class TestSerenaInjection0408:
 
         try:
             # Write config with Serena enabled
-            config_data = {
-                "features": {
-                    "serena_mcp": {
-                        "use_in_prompts": True
-                    }
-                }
-            }
+            config_data = {"features": {"serena_mcp": {"use_in_prompts": True}}}
             with open(config_path, "w", encoding="utf-8") as f:
                 yaml.safe_dump(config_data, f)
 
@@ -156,13 +151,7 @@ class TestSerenaInjection0408:
 
         try:
             # Write config with Serena disabled
-            config_data = {
-                "features": {
-                    "serena_mcp": {
-                        "use_in_prompts": False
-                    }
-                }
-            }
+            config_data = {"features": {"serena_mcp": {"use_in_prompts": False}}}
             with open(config_path, "w", encoding="utf-8") as f:
                 yaml.safe_dump(config_data, f)
 

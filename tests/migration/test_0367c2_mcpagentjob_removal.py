@@ -201,9 +201,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "orchestration.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_import(source), (
-            "tools/orchestration.py still imports MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_import(source), "tools/orchestration.py still imports MCPAgentJob"
 
     def test_tools_orchestration_has_no_mcpagentjob_usage(self, project_root: Path):
         """
@@ -212,9 +210,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "orchestration.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_usage(source), (
-            "tools/orchestration.py still uses MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_usage(source), "tools/orchestration.py still uses MCPAgentJob"
 
     def test_tools_agent_coordination_has_no_mcpagentjob_import(self, project_root: Path):
         """
@@ -223,9 +219,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "agent_coordination.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_import(source), (
-            "tools/agent_coordination.py still imports MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_import(source), "tools/agent_coordination.py still imports MCPAgentJob"
 
     def test_tools_agent_coordination_has_no_mcpagentjob_usage(self, project_root: Path):
         """
@@ -234,9 +228,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "agent_coordination.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_usage(source), (
-            "tools/agent_coordination.py still uses MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_usage(source), "tools/agent_coordination.py still uses MCPAgentJob"
 
     def test_tools_init_has_no_mcpagentjob_import(self, project_root: Path):
         """
@@ -245,9 +237,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "__init__.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_import(source), (
-            "tools/__init__.py still imports MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_import(source), "tools/__init__.py still imports MCPAgentJob"
 
     def test_tools_init_has_no_mcpagentjob_usage(self, project_root: Path):
         """
@@ -256,9 +246,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "__init__.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_usage(source), (
-            "tools/__init__.py still uses MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_usage(source), "tools/__init__.py still uses MCPAgentJob"
 
     def test_tools_tool_accessor_has_no_mcpagentjob_import(self, project_root: Path):
         """
@@ -267,9 +255,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "tool_accessor.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_import(source), (
-            "tools/tool_accessor.py still imports MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_import(source), "tools/tool_accessor.py still imports MCPAgentJob"
 
     def test_tools_tool_accessor_has_no_mcpagentjob_usage(self, project_root: Path):
         """
@@ -278,9 +264,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "tool_accessor.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_usage(source), (
-            "tools/tool_accessor.py still uses MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_usage(source), "tools/tool_accessor.py still uses MCPAgentJob"
 
     # Priority 2 - Low Priority Tools
     def test_tools_agent_status_has_no_mcpagentjob_import(self, project_root: Path):
@@ -290,9 +274,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "agent_status.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_import(source), (
-            "tools/agent_status.py still imports MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_import(source), "tools/agent_status.py still imports MCPAgentJob"
 
     def test_tools_agent_status_has_no_mcpagentjob_usage(self, project_root: Path):
         """
@@ -301,9 +283,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "agent_status.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_usage(source), (
-            "tools/agent_status.py still uses MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_usage(source), "tools/agent_status.py still uses MCPAgentJob"
 
     def test_tools_optimization_has_no_mcpagentjob_import(self, project_root: Path):
         """
@@ -312,9 +292,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "optimization.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_import(source), (
-            "tools/optimization.py still imports MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_import(source), "tools/optimization.py still imports MCPAgentJob"
 
     def test_tools_optimization_has_no_mcpagentjob_usage(self, project_root: Path):
         """
@@ -323,9 +301,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "optimization.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_usage(source), (
-            "tools/optimization.py still uses MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_usage(source), "tools/optimization.py still uses MCPAgentJob"
 
     def test_tools_project_has_no_mcpagentjob_import(self, project_root: Path):
         """
@@ -334,9 +310,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "project.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_import(source), (
-            "tools/project.py still imports MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_import(source), "tools/project.py still imports MCPAgentJob"
 
     def test_tools_project_has_no_mcpagentjob_usage(self, project_root: Path):
         """
@@ -345,9 +319,7 @@ class TestMCPAgentJobRemovalBehavior:
         file_path = project_root / "src" / "giljo_mcp" / "tools" / "project.py"
         source = file_path.read_text(encoding="utf-8")
 
-        assert not self._has_mcpagentjob_usage(source), (
-            "tools/project.py still uses MCPAgentJob"
-        )
+        assert not self._has_mcpagentjob_usage(source), "tools/project.py still uses MCPAgentJob"
 
 
 class TestMCPAgentJobRemovalIntegration:

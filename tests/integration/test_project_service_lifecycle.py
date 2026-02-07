@@ -12,13 +12,14 @@ These tests use real database connections to verify:
 Target: >85% code coverage
 """
 
-import pytest
 from datetime import datetime
 
-from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.models.projects import Project
+import pytest
+
 from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.services.project_service import ProjectService
 
 
 @pytest.mark.asyncio
@@ -32,9 +33,7 @@ class TestProjectLifecycleMethods:
         # Create a product first
         async with db_manager.get_session_async() as session:
             product = Product(
-                name="Test Product",
-                description="Test Description",
-                tenant_key=tenant_manager.get_current_tenant()
+                name="Test Product", description="Test Description", tenant_key=tenant_manager.get_current_tenant()
             )
             session.add(product)
             await session.commit()
@@ -49,7 +48,7 @@ class TestProjectLifecycleMethods:
                 mission="Test Mission",
                 status="waiting",
                 product_id=product_id,
-                tenant_key=tenant_manager.get_current_tenant()
+                tenant_key=tenant_manager.get_current_tenant(),
             )
             session.add(project)
             await session.commit()
@@ -67,6 +66,7 @@ class TestProjectLifecycleMethods:
         # Verify in database
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             stmt = select(Project).where(Project.id == project_id)
             db_result = await session.execute(stmt)
             db_project = db_result.scalar_one()
@@ -80,9 +80,7 @@ class TestProjectLifecycleMethods:
         # Create product
         async with db_manager.get_session_async() as session:
             product = Product(
-                name="Test Product",
-                description="Test Description",
-                tenant_key=tenant_manager.get_current_tenant()
+                name="Test Product", description="Test Description", tenant_key=tenant_manager.get_current_tenant()
             )
             session.add(product)
             await session.commit()
@@ -100,7 +98,7 @@ class TestProjectLifecycleMethods:
                 mission="Mission 1",
                 status="waiting",
                 product_id=product_id,
-                tenant_key=tenant_manager.get_current_tenant()
+                tenant_key=tenant_manager.get_current_tenant(),
             )
             project2 = Project(
                 name="Project 2",
@@ -108,7 +106,7 @@ class TestProjectLifecycleMethods:
                 mission="Mission 2",
                 status="waiting",
                 product_id=product_id,
-                tenant_key=tenant_manager.get_current_tenant()
+                tenant_key=tenant_manager.get_current_tenant(),
             )
             session.add(project1)
             session.add(project2)
@@ -131,6 +129,7 @@ class TestProjectLifecycleMethods:
         # Verify first project is now paused
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             stmt = select(Project).where(Project.id == project1_id)
             db_result = await session.execute(stmt)
             db_project1 = db_result.scalar_one()
@@ -144,9 +143,7 @@ class TestProjectLifecycleMethods:
         # Create active project
         async with db_manager.get_session_async() as session:
             product = Product(
-                name="Test Product",
-                description="Test Description",
-                tenant_key=tenant_manager.get_current_tenant()
+                name="Test Product", description="Test Description", tenant_key=tenant_manager.get_current_tenant()
             )
             session.add(product)
             await session.commit()
@@ -157,7 +154,7 @@ class TestProjectLifecycleMethods:
                 mission="Test Mission",
                 status="active",
                 product_id=product.id,
-                tenant_key=tenant_manager.get_current_tenant()
+                tenant_key=tenant_manager.get_current_tenant(),
             )
             session.add(project)
             await session.commit()
@@ -179,9 +176,7 @@ class TestProjectLifecycleMethods:
         # Create staging project
         async with db_manager.get_session_async() as session:
             product = Product(
-                name="Test Product",
-                description="Test Description",
-                tenant_key=tenant_manager.get_current_tenant()
+                name="Test Product", description="Test Description", tenant_key=tenant_manager.get_current_tenant()
             )
             session.add(product)
             await session.commit()
@@ -192,7 +187,7 @@ class TestProjectLifecycleMethods:
                 mission="Test Mission",
                 status="waiting",
                 product_id=product.id,
-                tenant_key=tenant_manager.get_current_tenant()
+                tenant_key=tenant_manager.get_current_tenant(),
             )
             session.add(project)
             await session.commit()
@@ -214,9 +209,7 @@ class TestProjectLifecycleMethods:
         # Create project with jobs
         async with db_manager.get_session_async() as session:
             product = Product(
-                name="Test Product",
-                description="Test Description",
-                tenant_key=tenant_manager.get_current_tenant()
+                name="Test Product", description="Test Description", tenant_key=tenant_manager.get_current_tenant()
             )
             session.add(product)
             await session.commit()
@@ -228,7 +221,7 @@ class TestProjectLifecycleMethods:
                 status="active",
                 activated_at=datetime.utcnow(),
                 product_id=product.id,
-                tenant_key=tenant_manager.get_current_tenant()
+                tenant_key=tenant_manager.get_current_tenant(),
             )
             session.add(project)
             await session.commit()
@@ -241,43 +234,43 @@ class TestProjectLifecycleMethods:
                     agent_display_name="architect",
                     status="completed",
                     project_id=project_id,
-                    tenant_key=tenant_manager.get_current_tenant()
+                    tenant_key=tenant_manager.get_current_tenant(),
                 ),
                 AgentExecution(
                     agent_display_name="implementor",
                     status="completed",
                     project_id=project_id,
-                    tenant_key=tenant_manager.get_current_tenant()
+                    tenant_key=tenant_manager.get_current_tenant(),
                 ),
                 AgentExecution(
                     agent_display_name="tester",
                     status="completed",
                     project_id=project_id,
-                    tenant_key=tenant_manager.get_current_tenant()
+                    tenant_key=tenant_manager.get_current_tenant(),
                 ),
                 AgentExecution(
                     agent_display_name="reviewer",
                     status="active",
                     project_id=project_id,
-                    tenant_key=tenant_manager.get_current_tenant()
+                    tenant_key=tenant_manager.get_current_tenant(),
                 ),
                 AgentExecution(
                     agent_display_name="orchestrator",
                     status="waiting",
                     project_id=project_id,
-                    tenant_key=tenant_manager.get_current_tenant()
+                    tenant_key=tenant_manager.get_current_tenant(),
                 ),
                 AgentExecution(
                     agent_display_name="helper",
                     status="waiting",
                     project_id=project_id,
-                    tenant_key=tenant_manager.get_current_tenant()
+                    tenant_key=tenant_manager.get_current_tenant(),
                 ),
                 AgentExecution(
                     agent_display_name="analyzer",
                     status="failed",
                     project_id=project_id,
-                    tenant_key=tenant_manager.get_current_tenant()
+                    tenant_key=tenant_manager.get_current_tenant(),
                 ),
             ]
             for job in jobs:
@@ -305,9 +298,7 @@ class TestProjectLifecycleMethods:
         # Create project
         async with db_manager.get_session_async() as session:
             product = Product(
-                name="Test Product",
-                description="Test Description",
-                tenant_key=tenant_manager.get_current_tenant()
+                name="Test Product", description="Test Description", tenant_key=tenant_manager.get_current_tenant()
             )
             session.add(product)
             await session.commit()
@@ -319,7 +310,7 @@ class TestProjectLifecycleMethods:
                 config_data={"old": "data"},
                 status="active",
                 product_id=product.id,
-                tenant_key=tenant_manager.get_current_tenant()
+                tenant_key=tenant_manager.get_current_tenant(),
             )
             session.add(project)
             await session.commit()
@@ -331,7 +322,7 @@ class TestProjectLifecycleMethods:
             "name": "New Name",
             "description": "New Description",
             "mission": "New Mission",
-            "config_data": {"new": "data"}
+            "config_data": {"new": "data"},
         }
         result = await service.update_project(project_id, updates)
 
@@ -349,9 +340,7 @@ class TestProjectLifecycleMethods:
         # Create product
         async with db_manager.get_session_async() as session:
             product = Product(
-                name="Test Product",
-                description="Test Description",
-                tenant_key=tenant_manager.get_current_tenant()
+                name="Test Product", description="Test Description", tenant_key=tenant_manager.get_current_tenant()
             )
             session.add(product)
             await session.commit()
@@ -363,7 +352,7 @@ class TestProjectLifecycleMethods:
                 mission="Complete lifecycle test",
                 status="waiting",
                 product_id=product.id,
-                tenant_key=tenant_manager.get_current_tenant()
+                tenant_key=tenant_manager.get_current_tenant(),
             )
             session.add(project)
             await session.commit()
@@ -393,6 +382,7 @@ class TestProjectLifecycleMethods:
         # Verify final state
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             stmt = select(Project).where(Project.id == project_id)
             db_result = await session.execute(stmt)
             db_project = db_result.scalar_one()

@@ -5,10 +5,10 @@ Tests ensure all entries written to product_memory.sequential_history
 are properly validated before insertion to prevent malformed data.
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import Product
@@ -22,11 +22,7 @@ class TestSequentialHistoryValidation:
     def product_service(self):
         """Create ProductService instance."""
         mock_db_manager = MagicMock()
-        return ProductService(
-            db_manager=mock_db_manager,
-            tenant_key="test-tenant",
-            websocket_manager=None
-        )
+        return ProductService(db_manager=mock_db_manager, tenant_key="test-tenant", websocket_manager=None)
 
     @pytest.fixture
     def mock_product(self):
@@ -59,16 +55,12 @@ class TestSequentialHistoryValidation:
 
         # Test with string (invalid)
         with pytest.raises(ValueError) as exc_info:
-            await product_service.add_learning_to_product_memory(
-                session, "test-product-id", "invalid-string-entry"
-            )
+            await product_service.add_learning_to_product_memory(session, "test-product-id", "invalid-string-entry")
         assert "History entry must be a dictionary" in str(exc_info.value)
 
         # Test with list (invalid)
         with pytest.raises(ValueError) as exc_info:
-            await product_service.add_learning_to_product_memory(
-                session, "test-product-id", ["invalid", "list"]
-            )
+            await product_service.add_learning_to_product_memory(session, "test-product-id", ["invalid", "list"])
         assert "History entry must be a dictionary" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -87,9 +79,7 @@ class TestSequentialHistoryValidation:
             "summary": "Test entry",
         }
         with pytest.raises(ValueError) as exc_info:
-            await product_service.add_learning_to_product_memory(
-                session, "test-product-id", missing_type
-            )
+            await product_service.add_learning_to_product_memory(session, "test-product-id", missing_type)
         assert "missing required fields" in str(exc_info.value)
         assert "type" in str(exc_info.value)
 
@@ -99,9 +89,7 @@ class TestSequentialHistoryValidation:
             "summary": "Test entry",
         }
         with pytest.raises(ValueError) as exc_info:
-            await product_service.add_learning_to_product_memory(
-                session, "test-product-id", missing_timestamp
-            )
+            await product_service.add_learning_to_product_memory(session, "test-product-id", missing_timestamp)
         assert "missing required fields" in str(exc_info.value)
         assert "timestamp" in str(exc_info.value)
 
@@ -110,9 +98,7 @@ class TestSequentialHistoryValidation:
             "summary": "Test entry",
         }
         with pytest.raises(ValueError) as exc_info:
-            await product_service.add_learning_to_product_memory(
-                session, "test-product-id", missing_both
-            )
+            await product_service.add_learning_to_product_memory(session, "test-product-id", missing_both)
         assert "missing required fields" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -126,7 +112,7 @@ class TestSequentialHistoryValidation:
         session.execute.return_value = mock_result
 
         # Mock WebSocket event emission
-        with patch.object(product_service, '_emit_websocket_event', new_callable=AsyncMock):
+        with patch.object(product_service, "_emit_websocket_event", new_callable=AsyncMock):
             valid_entry = {
                 "type": "project_closeout",
                 "project_id": "project-123",
@@ -135,9 +121,7 @@ class TestSequentialHistoryValidation:
                 "git_commits": [],
             }
 
-            result = await product_service.add_learning_to_product_memory(
-                session, "test-product-id", valid_entry
-            )
+            result = await product_service.add_learning_to_product_memory(session, "test-product-id", valid_entry)
 
             # Should not raise any exceptions
             assert result == mock_product
@@ -155,16 +139,14 @@ class TestSequentialHistoryValidation:
         session.execute.return_value = mock_result
 
         # Mock WebSocket event emission
-        with patch.object(product_service, '_emit_websocket_event', new_callable=AsyncMock):
+        with patch.object(product_service, "_emit_websocket_event", new_callable=AsyncMock):
             valid_entry = {
                 "type": "manual_entry",
                 "timestamp": "2025-11-16T11:00:00Z",
                 "notes": "Manual learning entry",
             }
 
-            result = await product_service.add_learning_to_product_memory(
-                session, "test-product-id", valid_entry
-            )
+            result = await product_service.add_learning_to_product_memory(session, "test-product-id", valid_entry)
 
             assert result == mock_product
 
@@ -179,7 +161,7 @@ class TestSequentialHistoryValidation:
         session.execute.return_value = mock_result
 
         # Mock WebSocket event emission
-        with patch.object(product_service, '_emit_websocket_event', new_callable=AsyncMock):
+        with patch.object(product_service, "_emit_websocket_event", new_callable=AsyncMock):
             valid_entry = {
                 "type": "import",
                 "timestamp": "2025-11-16T12:00:00Z",
@@ -187,9 +169,7 @@ class TestSequentialHistoryValidation:
                 "data": {"key": "value"},
             }
 
-            result = await product_service.add_learning_to_product_memory(
-                session, "test-product-id", valid_entry
-            )
+            result = await product_service.add_learning_to_product_memory(session, "test-product-id", valid_entry)
 
             assert result == mock_product
 
@@ -204,7 +184,7 @@ class TestSequentialHistoryValidation:
         session.execute.return_value = mock_result
 
         # Mock WebSocket event emission
-        with patch.object(product_service, '_emit_websocket_event', new_callable=AsyncMock):
+        with patch.object(product_service, "_emit_websocket_event", new_callable=AsyncMock):
             unknown_type_entry = {
                 "type": "unknown_type",
                 "timestamp": "2025-11-16T13:00:00Z",
@@ -233,15 +213,13 @@ class TestSequentialHistoryValidation:
         session.execute.return_value = mock_result
 
         # Mock WebSocket event emission
-        with patch.object(product_service, '_emit_websocket_event', new_callable=AsyncMock):
+        with patch.object(product_service, "_emit_websocket_event", new_callable=AsyncMock):
             minimal_entry = {
                 "type": "project_closeout",
                 "timestamp": "2025-11-16T14:00:00Z",
             }
 
-            result = await product_service.add_learning_to_product_memory(
-                session, "test-product-id", minimal_entry
-            )
+            result = await product_service.add_learning_to_product_memory(session, "test-product-id", minimal_entry)
 
             assert result == mock_product
 
@@ -256,7 +234,7 @@ class TestSequentialHistoryValidation:
         session.execute.return_value = mock_result
 
         # Mock WebSocket event emission
-        with patch.object(product_service, '_emit_websocket_event', new_callable=AsyncMock):
+        with patch.object(product_service, "_emit_websocket_event", new_callable=AsyncMock):
             entry_without_sequence = {
                 "type": "project_closeout",
                 "timestamp": "2025-11-16T15:00:00Z",

@@ -10,13 +10,13 @@ Tests cover:
 Target: >80% line coverage
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+
+from src.giljo_mcp.models import AgentExecution, Project
 from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.models import Project, AgentExecution, Message
 
 
 @pytest.fixture
@@ -569,7 +569,7 @@ class TestProjectServiceLifecycle:
             if call_count[0] == 1:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_project))
             # Call 2: Get max instance number
-            elif call_count[0] == 2:
+            if call_count[0] == 2:
                 return Mock(scalar=Mock(return_value=0))
             # Default
             return Mock(scalar_one_or_none=Mock(return_value=None))
@@ -617,9 +617,7 @@ class TestProjectServiceSwitchProject:
 
         # NOTE: Session tracking removed (Handover 0423 - Session model deleted)
         # Mock only the project query
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=mock_project))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=mock_project)))
 
         service = ProjectService(db_manager, tenant_manager)
 

@@ -82,8 +82,9 @@ async def test_admin_user_tenant_isolation(admin_user, db_manager):
     assert len(admin_user.tenant_key) > 0
 
     # Create a second admin user - should have DIFFERENT tenant key
-    from passlib.hash import bcrypt
     from uuid import uuid4
+
+    from passlib.hash import bcrypt
 
     unique_id = uuid4().hex[:8]
     tenant_key = TenantManager.generate_tenant_key(f"admin2_{unique_id}")
@@ -95,7 +96,7 @@ async def test_admin_user_tenant_isolation(admin_user, db_manager):
             email=f"admin2_{unique_id}@test.com",
             tenant_key=tenant_key,
             role="admin",
-            is_active=True
+            is_active=True,
         )
         session.add(user2)
         await session.commit()

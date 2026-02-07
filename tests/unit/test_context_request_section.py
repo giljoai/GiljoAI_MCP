@@ -4,14 +4,15 @@ Tests for context request behavioral instructions in agent templates (Handover 0
 Verifies that all agent templates include instructions on when and how to request
 broader project context from the orchestrator via MCP messaging.
 """
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_seeder import (
-    seed_tenant_templates,
     _get_context_request_section,
+    seed_tenant_templates,
 )
 
 
@@ -29,9 +30,7 @@ class TestContextRequestSection:
         assert count == 5, "Should seed 5 default templates (orchestrator is system-managed)"
 
         # Fetch all templates
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         # Verify all templates have context request instructions
@@ -47,9 +46,7 @@ class TestContextRequestSection:
 
         await seed_tenant_templates(db_session, tenant_key)
 
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -68,9 +65,7 @@ class TestContextRequestSection:
 
         await seed_tenant_templates(db_session, tenant_key)
 
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -79,12 +74,8 @@ class TestContextRequestSection:
                 f"{template.role} missing 'How to Request Context' subsection"
             )
             # Should reference send_message MCP tool
-            assert "send_message" in system_inst, (
-                f"{template.role} should reference send_message tool"
-            )
-            assert "REQUEST_CONTEXT:" in system_inst, (
-                f"{template.role} should show REQUEST_CONTEXT message format"
-            )
+            assert "send_message" in system_inst, f"{template.role} should reference send_message tool"
+            assert "REQUEST_CONTEXT:" in system_inst, f"{template.role} should show REQUEST_CONTEXT message format"
 
     async def test_context_request_message_format_examples(self, db_session: AsyncSession):
         """Verify section includes good/bad message format examples."""
@@ -92,20 +83,14 @@ class TestContextRequestSection:
 
         await seed_tenant_templates(db_session, tenant_key)
 
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
             system_inst = template.system_instructions
             # Should have good examples (✅) and bad examples (❌)
-            assert "Good:" in system_inst or "✅" in system_inst, (
-                f"{template.role} should have good example patterns"
-            )
-            assert "Bad:" in system_inst or "❌" in system_inst, (
-                f"{template.role} should have bad example patterns"
-            )
+            assert "Good:" in system_inst or "✅" in system_inst, f"{template.role} should have good example patterns"
+            assert "Bad:" in system_inst or "❌" in system_inst, f"{template.role} should have bad example patterns"
 
     async def test_context_request_wait_for_response(self, db_session: AsyncSession):
         """Verify section instructs agents to wait for orchestrator response."""
@@ -113,9 +98,7 @@ class TestContextRequestSection:
 
         await seed_tenant_templates(db_session, tenant_key)
 
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -133,9 +116,7 @@ class TestContextRequestSection:
 
         await seed_tenant_templates(db_session, tenant_key)
 
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -150,9 +131,7 @@ class TestContextRequestSection:
 
         await seed_tenant_templates(db_session, tenant_key)
 
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -162,9 +141,7 @@ class TestContextRequestSection:
                 f"{template.role} should list benefits of context request protocol"
             )
             # Should mention audit trail
-            assert "audit" in system_inst.lower(), (
-                f"{template.role} benefits should mention audit trail"
-            )
+            assert "audit" in system_inst.lower(), f"{template.role} benefits should mention audit trail"
 
     def test_orchestrator_response_instructions(self):
         """Verify orchestrator context response section has required content.
@@ -181,9 +158,7 @@ class TestContextRequestSection:
         assert "RESPONDING TO CONTEXT REQUESTS" in response_section, (
             "Orchestrator missing RESPONDING TO CONTEXT REQUESTS section"
         )
-        assert "CONTEXT_RESPONSE:" in response_section, (
-            "Orchestrator should show CONTEXT_RESPONSE message format"
-        )
+        assert "CONTEXT_RESPONSE:" in response_section, "Orchestrator should show CONTEXT_RESPONSE message format"
         assert "filtered excerpt" in response_section.lower(), (
             "Orchestrator should mention providing filtered excerpts, not full text"
         )
@@ -195,10 +170,7 @@ class TestContextRequestSection:
         await seed_tenant_templates(db_session, tenant_key)
 
         result = await db_session.execute(
-            select(AgentTemplate).where(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.role != "orchestrator"
-            )
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role != "orchestrator")
         )
         non_orchestrator_templates = result.scalars().all()
 
@@ -236,9 +208,7 @@ class TestContextRequestSection:
         assert "mcp__giljo-mcp__send_message" in section or "send_message" in section, (
             "Should reference send_message tool"
         )
-        assert "to_agent=" in section or "orchestrator" in section.lower(), (
-            "Should show targeting orchestrator"
-        )
+        assert "to_agent=" in section or "orchestrator" in section.lower(), "Should show targeting orchestrator"
         assert "tenant_key" in section, "Should mention tenant_key parameter"
 
     def test_context_request_section_placement(self):
@@ -248,9 +218,5 @@ class TestContextRequestSection:
         section = _get_context_request_section()
 
         # Section should be standalone (not include MCP coordination or check-in)
-        assert "MCP COMMUNICATION PROTOCOL" not in section, (
-            "Should not include full MCP coordination (that's separate)"
-        )
-        assert "CHECK-IN PROTOCOL" not in section, (
-            "Should not include check-in protocol (that's separate)"
-        )
+        assert "MCP COMMUNICATION PROTOCOL" not in section, "Should not include full MCP coordination (that's separate)"
+        assert "CHECK-IN PROTOCOL" not in section, "Should not include check-in protocol (that's separate)"

@@ -13,8 +13,9 @@ Target: >80% line coverage
 Note: Most methods are stubs or deprecated, so tests verify correct stub/error responses.
 """
 
-import pytest
 from unittest.mock import Mock
+
+import pytest
 
 from src.giljo_mcp.services.context_service import ContextService
 
@@ -178,7 +179,6 @@ class TestContextServiceBehavior:
         db_manager.get_session_async.assert_not_called()
 
 
-
 class TestContextServiceConsistency:
     """Test consistency of responses"""
 
@@ -201,4 +201,3 @@ class TestContextServiceConsistency:
         # Assert
         for result in results:
             assert result["success"] is True
-

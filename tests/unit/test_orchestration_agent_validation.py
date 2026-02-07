@@ -17,15 +17,12 @@ Test Coverage:
 """
 
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.models import AgentTemplate, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from tests.utils.tools_helpers import ToolsTestHelper, MockMCPToolRegistrar
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 class TestOrchestratorInstructionsConstraint:
@@ -151,8 +148,7 @@ class TestOrchestratorInstructionsConstraint:
 
             # ASSERTION: No agent_spawning_constraint in multi-terminal mode
             assert "agent_spawning_constraint" not in result, (
-                "Multi-terminal mode should NOT include agent_spawning_constraint "
-                "(agents are manually launched)"
+                "Multi-terminal mode should NOT include agent_spawning_constraint (agents are manually launched)"
             )
 
     @pytest.mark.asyncio
@@ -205,9 +201,7 @@ class TestOrchestratorInstructionsConstraint:
             assert "instruction" in constraint, "Constraint must include instruction text"
 
             # ASSERTION 3: Mode is 'strict_task_tool'
-            assert constraint["mode"] == "strict_task_tool", (
-                "CLI mode must use 'strict_task_tool' validation mode"
-            )
+            assert constraint["mode"] == "strict_task_tool", "CLI mode must use 'strict_task_tool' validation mode"
 
             # ASSERTION 4: allowed_agent_display_names is a list
             assert isinstance(constraint["allowed_agent_display_names"], list), (
@@ -218,9 +212,7 @@ class TestOrchestratorInstructionsConstraint:
             # Query available templates
             from src.giljo_mcp.tools.agent_discovery import get_available_agents
 
-            agents_result = await get_available_agents(
-                session, self.tenant_key, depth="type_only"
-            )
+            agents_result = await get_available_agents(session, self.tenant_key, depth="type_only")
 
             expected_types = [t["name"] for t in agents_result["data"]["agents"]]
             assert set(constraint["allowed_agent_display_names"]) == set(expected_types), (
@@ -230,9 +222,7 @@ class TestOrchestratorInstructionsConstraint:
 
             # ASSERTION 6: Instruction mentions Task tool requirement
             instruction_lower = constraint["instruction"].lower()
-            assert "task tool" in instruction_lower, (
-                "Instruction must mention Task tool requirement"
-            )
+            assert "task tool" in instruction_lower, "Instruction must mention Task tool requirement"
 
     @pytest.mark.asyncio
     async def test_constraint_includes_all_active_templates(self):
@@ -271,8 +261,7 @@ class TestOrchestratorInstructionsConstraint:
             # ASSERTION: All template names present
             expected_names = ["implementer", "tester", "reviewer"]
             assert set(allowed_types) == set(expected_names), (
-                f"Constraint must include all active templates. "
-                f"Expected: {expected_names}, Got: {allowed_types}"
+                f"Constraint must include all active templates. Expected: {expected_names}, Got: {allowed_types}"
             )
 
     @pytest.mark.asyncio
@@ -455,8 +444,7 @@ class TestSpawnAgentJobValidation:
 
             # ASSERTION: Each valid type accepted
             assert result["success"] is True, (
-                f"Valid agent_display_name '{agent_display_name}' should be accepted. "
-                f"Error: {result.get('error')}"
+                f"Valid agent_display_name '{agent_display_name}' should be accepted. Error: {result.get('error')}"
             )
 
     @pytest.mark.asyncio
@@ -480,9 +468,7 @@ class TestSpawnAgentJobValidation:
         )
 
         # ASSERTION 1: Spawn fails
-        assert result["success"] is False, (
-            "Invalid agent_display_name should be rejected"
-        )
+        assert result["success"] is False, "Invalid agent_display_name should be rejected"
 
         # ASSERTION 2: Error message present
         assert "error" in result, "Rejected spawn must include error message"
@@ -497,17 +483,11 @@ class TestSpawnAgentJobValidation:
         )
 
         # ASSERTION 4: Error lists valid agent types
-        assert "implementer" in error_msg, (
-            f"Error should list valid agent types. Got: {error_msg}"
-        )
-        assert "tester" in error_msg, (
-            f"Error should list valid agent types. Got: {error_msg}"
-        )
+        assert "implementer" in error_msg, f"Error should list valid agent types. Got: {error_msg}"
+        assert "tester" in error_msg, f"Error should list valid agent types. Got: {error_msg}"
 
         # ASSERTION 5: Hint field present
-        assert "hint" in result, (
-            "Rejected spawn should include 'hint' field to guide orchestrator"
-        )
+        assert "hint" in result, "Rejected spawn should include 'hint' field to guide orchestrator"
 
     @pytest.mark.asyncio
     async def test_extended_agent_name_as_type_rejected(self):
@@ -531,9 +511,7 @@ class TestSpawnAgentJobValidation:
         )
 
         # ASSERTION 1: Spawn fails
-        assert result["success"] is False, (
-            "Extended names should be rejected as agent_display_name"
-        )
+        assert result["success"] is False, "Extended names should be rejected as agent_display_name"
 
         # ASSERTION 2: Error present
         assert "error" in result
@@ -567,16 +545,12 @@ class TestSpawnAgentJobValidation:
         )
 
         # ASSERTION: Case mismatch rejected
-        assert result["success"] is False, (
-            "Agent type matching must be case-sensitive. 'Implementer' != 'implementer'"
-        )
+        assert result["success"] is False, "Agent type matching must be case-sensitive. 'Implementer' != 'implementer'"
 
         # ASSERTION: Error mentions case sensitivity
         assert "error" in result
         error_msg = result["error"]
-        assert "Implementer" in error_msg, (
-            f"Error should show the invalid type. Got: {error_msg}"
-        )
+        assert "Implementer" in error_msg, f"Error should show the invalid type. Got: {error_msg}"
 
     @pytest.mark.asyncio
     async def test_inactive_template_rejected(self):
@@ -613,16 +587,12 @@ class TestSpawnAgentJobValidation:
             )
 
             # ASSERTION: Inactive template rejected
-            assert result["success"] is False, (
-                "Inactive templates should be rejected"
-            )
+            assert result["success"] is False, "Inactive templates should be rejected"
 
             # ASSERTION: Error explains template is inactive
             assert "error" in result
             # Should list only active templates
-            assert "implementer" in result["error"], (
-                "Error should list active templates only"
-            )
+            assert "implementer" in result["error"], "Error should list active templates only"
 
     @pytest.mark.asyncio
     async def test_error_message_includes_valid_types_list(self):

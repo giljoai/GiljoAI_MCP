@@ -5,6 +5,8 @@ Tests all critical features of the message acknowledgment implementation
 """
 
 import pytest
+
+
 pytest.skip("TODO(0127a-2): Comprehensive refactoring needed for MCPAgentJob model", allow_module_level=True)
 import sys
 import uuid
@@ -17,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 from src.giljo_mcp.database import DatabaseManager
+
 # TODO(0127a): from src.giljo_mcp.models import Agent, Message, Project
 # from src.giljo_mcp.models import MCPAgentJob  # Use this instead
 from tests.helpers.test_db_helper import PostgreSQLTestHelper

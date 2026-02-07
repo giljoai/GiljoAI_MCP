@@ -13,11 +13,11 @@ Target Metrics (from Handover 0129b):
 - Complex operations: <200ms (acceptable <500ms)
 """
 
-import time
 import statistics
+import time
 import uuid
-from typing import List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List
 
 import pytest
 from httpx import AsyncClient
@@ -57,7 +57,7 @@ class APIBenchmarks:
             "max": max(timings),
             "p95": self._percentile(timings, 95),
             "p99": self._percentile(timings, 99),
-            "iterations": iterations
+            "iterations": iterations,
         }
 
     @staticmethod
@@ -71,14 +71,11 @@ class APIBenchmarks:
 
     def generate_report(self) -> Dict[str, Any]:
         """Generate benchmark report."""
-        return {
-            "api_benchmarks": self.results,
-            "timestamp": datetime.now().isoformat(),
-            "tenant_key": self.tenant_key
-        }
+        return {"api_benchmarks": self.results, "timestamp": datetime.now().isoformat(), "tenant_key": self.tenant_key}
 
 
 # Benchmark functions
+
 
 async def benchmark_get_products_list(client: AsyncClient, headers: Dict[str, str]):
     """Benchmark GET list of products."""
@@ -96,10 +93,7 @@ async def benchmark_get_product_single(client: AsyncClient, headers: Dict[str, s
 
 async def benchmark_post_product(client: AsyncClient, headers: Dict[str, str], tenant_key: str):
     """Benchmark POST (create) product."""
-    product_data = {
-        "name": f"Benchmark Product {uuid.uuid4()}",
-        "status": "active"
-    }
+    product_data = {"name": f"Benchmark Product {uuid.uuid4()}", "status": "active"}
     response = await client.post("/api/v1/products", headers=headers, json=product_data)
     assert response.status_code == 201
     product = response.json()
@@ -112,9 +106,7 @@ async def benchmark_post_product(client: AsyncClient, headers: Dict[str, str], t
 
 async def benchmark_put_product(client: AsyncClient, headers: Dict[str, str], product_id: int):
     """Benchmark PUT (update) product."""
-    update_data = {
-        "name": f"Updated Product {uuid.uuid4()}"
-    }
+    update_data = {"name": f"Updated Product {uuid.uuid4()}"}
     response = await client.put(f"/api/v1/products/{product_id}", headers=headers, json=update_data)
     assert response.status_code == 200
     return response.json()
@@ -139,7 +131,7 @@ async def benchmark_post_project(client: AsyncClient, headers: Dict[str, str], p
     project_data = {
         "name": f"Benchmark Project {uuid.uuid4()}",
         "mission": "Performance benchmark project",
-        "product_id": product_id
+        "product_id": product_id,
     }
     response = await client.post(f"/api/v1/products/{product_id}/projects", headers=headers, json=project_data)
     assert response.status_code == 201
@@ -171,7 +163,7 @@ async def benchmark_complex_project_with_context(client: AsyncClient, headers: D
     project_data = {
         "name": f"Complex Project {uuid.uuid4()}",
         "mission": "Complex benchmark operation",
-        "product_id": product_id
+        "product_id": product_id,
     }
     response = await client.post(f"/api/v1/products/{product_id}/projects", headers=headers, json=project_data)
     assert response.status_code == 201
@@ -188,6 +180,7 @@ async def benchmark_complex_project_with_context(client: AsyncClient, headers: D
 
 
 # Test class
+
 
 class TestAPIPerformance:
     """API endpoint performance benchmark tests."""
@@ -207,9 +200,7 @@ class TestAPIPerformance:
         # Benchmark 1: GET products list
         print("Benchmarking GET products list...")
         await benchmarks.run_benchmark(
-            "get_products_list",
-            lambda: benchmark_get_products_list(async_client, benchmarks.headers),
-            iterations=100
+            "get_products_list", lambda: benchmark_get_products_list(async_client, benchmarks.headers), iterations=100
         )
 
         # Benchmark 2: GET single product
@@ -217,7 +208,7 @@ class TestAPIPerformance:
         await benchmarks.run_benchmark(
             "get_product_single",
             lambda: benchmark_get_product_single(async_client, benchmarks.headers, test_product.id),
-            iterations=100
+            iterations=100,
         )
 
         # Benchmark 3: POST product
@@ -225,7 +216,7 @@ class TestAPIPerformance:
         await benchmarks.run_benchmark(
             "post_product",
             lambda: benchmark_post_product(async_client, benchmarks.headers, test_tenant.tenant_key),
-            iterations=50  # Fewer iterations for write operations
+            iterations=50,  # Fewer iterations for write operations
         )
 
         # Benchmark 4: PUT product
@@ -233,7 +224,7 @@ class TestAPIPerformance:
         await benchmarks.run_benchmark(
             "put_product",
             lambda: benchmark_put_product(async_client, benchmarks.headers, test_product.id),
-            iterations=50
+            iterations=50,
         )
 
         # Benchmark 5: GET projects list
@@ -241,7 +232,7 @@ class TestAPIPerformance:
         await benchmarks.run_benchmark(
             "get_projects_list",
             lambda: benchmark_get_projects_list(async_client, benchmarks.headers, test_product.id),
-            iterations=100
+            iterations=100,
         )
 
         # Benchmark 6: GET single project
@@ -249,7 +240,7 @@ class TestAPIPerformance:
         await benchmarks.run_benchmark(
             "get_project_single",
             lambda: benchmark_get_project_single(async_client, benchmarks.headers, test_project.id),
-            iterations=100
+            iterations=100,
         )
 
         # Benchmark 7: POST project
@@ -257,15 +248,13 @@ class TestAPIPerformance:
         await benchmarks.run_benchmark(
             "post_project",
             lambda: benchmark_post_project(async_client, benchmarks.headers, test_product.id),
-            iterations=50
+            iterations=50,
         )
 
         # Benchmark 8: GET templates list
         print("Benchmarking GET templates list...")
         await benchmarks.run_benchmark(
-            "get_templates_list",
-            lambda: benchmark_get_templates_list(async_client, benchmarks.headers),
-            iterations=100
+            "get_templates_list", lambda: benchmark_get_templates_list(async_client, benchmarks.headers), iterations=100
         )
 
         # Benchmark 9: GET agent jobs list
@@ -273,7 +262,7 @@ class TestAPIPerformance:
         await benchmarks.run_benchmark(
             "get_agent_jobs_list",
             lambda: benchmark_get_agent_jobs_list(async_client, benchmarks.headers, test_project.id),
-            iterations=100
+            iterations=100,
         )
 
         # Benchmark 10: Complex operation
@@ -281,7 +270,7 @@ class TestAPIPerformance:
         await benchmarks.run_benchmark(
             "complex_project_with_context",
             lambda: benchmark_complex_project_with_context(async_client, benchmarks.headers, test_product.id),
-            iterations=30  # Fewer iterations for complex operations
+            iterations=30,  # Fewer iterations for complex operations
         )
 
         # Generate report
@@ -300,17 +289,21 @@ class TestAPIPerformance:
             print(f"  Max:    {metrics['max']:.2f}ms")
 
         # Assertions against acceptable targets
-        assert report["api_benchmarks"]["get_products_list"]["mean"] < 200, \
+        assert report["api_benchmarks"]["get_products_list"]["mean"] < 200, (
             f"GET products list exceeds acceptable target (200ms): {report['api_benchmarks']['get_products_list']['mean']:.2f}ms"
+        )
 
-        assert report["api_benchmarks"]["get_product_single"]["mean"] < 100, \
+        assert report["api_benchmarks"]["get_product_single"]["mean"] < 100, (
             f"GET single product exceeds acceptable target (100ms): {report['api_benchmarks']['get_product_single']['mean']:.2f}ms"
+        )
 
-        assert report["api_benchmarks"]["post_product"]["mean"] < 200, \
+        assert report["api_benchmarks"]["post_product"]["mean"] < 200, (
             f"POST product exceeds acceptable target (200ms): {report['api_benchmarks']['post_product']['mean']:.2f}ms"
+        )
 
-        assert report["api_benchmarks"]["complex_project_with_context"]["mean"] < 500, \
+        assert report["api_benchmarks"]["complex_project_with_context"]["mean"] < 500, (
             f"Complex operation exceeds acceptable target (500ms): {report['api_benchmarks']['complex_project_with_context']['mean']:.2f}ms"
+        )
 
         print("\n✅ All API benchmarks completed successfully!\n")
 
@@ -328,7 +321,7 @@ class TestAPIPerformance:
             "post_project": 100,
             "get_templates_list": 100,
             "get_agent_jobs_list": 100,
-            "complex_project_with_context": 200
+            "complex_project_with_context": 200,
         }
         return targets.get(benchmark_name, 100)
 

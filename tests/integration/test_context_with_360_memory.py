@@ -15,9 +15,9 @@ Related Handovers:
 - 0311: Context integration (this handover)
 """
 
-import pytest
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models.products import Product
@@ -30,6 +30,7 @@ from src.giljo_mcp.models.projects import Project
 @pytest.fixture
 def sample_product():
     """Create sample product with 360 Memory data."""
+
     def _create_learning(seq: int) -> dict:
         return {
             "sequence": seq,
@@ -38,14 +39,8 @@ def sample_product():
             "project_name": f"Alpha v{seq}.0",
             "timestamp": f"2025-11-{seq:02d}T10:00:00Z",
             "summary": f"Completed major milestone {seq} with significant architectural improvements.",
-            "key_outcomes": [
-                f"Implemented feature set {seq}",
-                f"Achieved performance target {seq}"
-            ],
-            "decisions_made": [
-                f"Chose architecture pattern {seq}",
-                f"Selected technology stack {seq}"
-            ]
+            "key_outcomes": [f"Implemented feature set {seq}", f"Achieved performance target {seq}"],
+            "decisions_made": [f"Chose architecture pattern {seq}", f"Selected technology stack {seq}"],
         }
 
     product = Product(
@@ -58,10 +53,10 @@ def sample_product():
             "git_integration": {
                 "enabled": False,  # Default off
                 "commit_limit": 20,
-                "default_branch": "main"
+                "default_branch": "main",
             },
-            "context": {}
-        }
+            "context": {},
+        },
     )
     return product
 
@@ -74,7 +69,7 @@ def sample_project():
         product_id="test-product-123",
         tenant_key="test-tenant",
         name="Integration Test Project",
-        description="Testing 360 Memory context integration"
+        description="Testing 360 Memory context integration",
     )
 
 
@@ -95,6 +90,7 @@ def mission_planner_with_db():
     # Mock Serena context fetching (not testing Serena here)
     async def mock_fetch_serena(*args, **kwargs):
         return ""
+
     planner._fetch_serena_codebase_context = mock_fetch_serena
 
     return planner
@@ -104,9 +100,7 @@ def mission_planner_with_db():
 
 
 @pytest.mark.asyncio
-async def test_full_context_with_360_memory_and_git(
-    mission_planner_with_db, sample_product, sample_project
-):
+async def test_full_context_with_360_memory_and_git(mission_planner_with_db, sample_product, sample_project):
     """
     Complete context build with 360 Memory enabled and Git integration active.
 
@@ -131,7 +125,7 @@ async def test_full_context_with_360_memory_and_git(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     # Verify 360 Memory section present
@@ -152,9 +146,7 @@ async def test_full_context_with_360_memory_and_git(
 
 
 @pytest.mark.asyncio
-async def test_context_without_360_memory(
-    mission_planner_with_db, sample_product, sample_project
-):
+async def test_context_without_360_memory(mission_planner_with_db, sample_product, sample_project):
     """
     Context build with 360 Memory priority = 0 (excluded).
 
@@ -172,7 +164,7 @@ async def test_context_without_360_memory(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     # Verify 360 Memory section excluded (check for section header, not just text)
@@ -182,9 +174,7 @@ async def test_context_without_360_memory(
 
 
 @pytest.mark.asyncio
-async def test_context_git_disabled(
-    mission_planner_with_db, sample_product, sample_project
-):
+async def test_context_git_disabled(mission_planner_with_db, sample_product, sample_project):
     """
     Git integration disabled should not include git instructions.
 
@@ -205,7 +195,7 @@ async def test_context_git_disabled(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     # Verify 360 Memory present
@@ -218,9 +208,7 @@ async def test_context_git_disabled(
 
 
 @pytest.mark.asyncio
-async def test_token_budget_with_360_memory(
-    mission_planner_with_db, sample_product, sample_project
-):
+async def test_token_budget_with_360_memory(mission_planner_with_db, sample_product, sample_project):
     """
     360 Memory content should be counted in token budget.
 
@@ -235,7 +223,7 @@ async def test_token_budget_with_360_memory(
         project=sample_project,
         field_priorities={"product_memory.learnings": 0},  # Excluded
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     context_minimal = await mission_planner_with_db._build_context_with_priorities(
@@ -243,7 +231,7 @@ async def test_token_budget_with_360_memory(
         project=sample_project,
         field_priorities={"product_memory.learnings": 2},  # Minimal
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     context_moderate = await mission_planner_with_db._build_context_with_priorities(
@@ -251,7 +239,7 @@ async def test_token_budget_with_360_memory(
         project=sample_project,
         field_priorities={"product_memory.learnings": 7},  # Moderate
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     context_full = await mission_planner_with_db._build_context_with_priorities(
@@ -259,7 +247,7 @@ async def test_token_budget_with_360_memory(
         project=sample_project,
         field_priorities={"product_memory.learnings": 10},  # Full
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     # Count tokens
@@ -284,9 +272,7 @@ async def test_token_budget_with_360_memory(
 
 
 @pytest.mark.asyncio
-async def test_context_with_no_learnings(
-    mission_planner_with_db, sample_product, sample_project
-):
+async def test_context_with_no_learnings(mission_planner_with_db, sample_product, sample_project):
     """
     Product with empty learnings array should degrade gracefully.
 
@@ -307,7 +293,7 @@ async def test_context_with_no_learnings(
         project=sample_project,
         field_priorities=field_priorities,
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
 
     # Verify graceful degradation (no 360 Memory section added)
@@ -318,9 +304,7 @@ async def test_context_with_no_learnings(
 
 
 @pytest.mark.asyncio
-async def test_context_priority_detail_levels(
-    mission_planner_with_db, sample_product, sample_project
-):
+async def test_context_priority_detail_levels(mission_planner_with_db, sample_product, sample_project):
     """
     Different priority levels should produce different detail levels.
 
@@ -336,7 +320,7 @@ async def test_context_priority_detail_levels(
         project=sample_project,
         field_priorities={"product_memory.learnings": 10},
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
     assert "**Decisions Made:**" in context_full, "Full detail should include decisions"
     assert "**Key Outcomes:**" in context_full, "Full detail should include outcomes"
@@ -347,7 +331,7 @@ async def test_context_priority_detail_levels(
         project=sample_project,
         field_priorities={"product_memory.learnings": 7},
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
     assert "**Key Outcomes:**" in context_moderate, "Moderate should include outcomes"
     assert "**Decisions Made:**" not in context_moderate, "Moderate should exclude decisions"
@@ -358,7 +342,7 @@ async def test_context_priority_detail_levels(
         project=sample_project,
         field_priorities={"product_memory.learnings": 5},
         user_id="test-user",
-        include_serena=False
+        include_serena=False,
     )
     assert "**Key Outcomes:**" not in context_abbreviated, "Abbreviated should exclude outcomes"
     assert "**Decisions Made:**" not in context_abbreviated, "Abbreviated should exclude decisions"

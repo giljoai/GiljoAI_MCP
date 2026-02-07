@@ -3,6 +3,7 @@
 
 from pathlib import Path
 
+
 PROJECT_ROOT = Path(__file__).parent.parent
 HTML_FILE = PROJECT_ROOT / "docs" / "cleanup" / "dependency_graph.html"
 
@@ -121,7 +122,7 @@ document.getElementById('update-graph')?.addEventListener('click', updateGraph);
 
 def main():
     print(f"Reading HTML from {HTML_FILE}...")
-    html_content = HTML_FILE.read_text(encoding='utf-8')
+    html_content = HTML_FILE.read_text(encoding="utf-8")
 
     # Check if button already exists
     if 'id="update-graph"' in html_content:
@@ -134,40 +135,29 @@ def main():
         print("ERROR: Could not find reset-view button")
         return 1
 
-    html_content = html_content.replace(
-        reset_button,
-        reset_button + '\n' + UPDATE_BUTTON_HTML
-    )
+    html_content = html_content.replace(reset_button, reset_button + "\n" + UPDATE_BUTTON_HTML)
 
     # Add styles
-    style_end = '</style>'
+    style_end = "</style>"
     style_insertion = html_content.rfind(style_end)
     if style_insertion == -1:
         print("ERROR: Could not find style section")
         return 1
 
-    html_content = (
-        html_content[:style_insertion] +
-        UPDATE_BUTTON_STYLE +
-        html_content[style_insertion:]
-    )
+    html_content = html_content[:style_insertion] + UPDATE_BUTTON_STYLE + html_content[style_insertion:]
 
     # Add script
-    script_end = '</script>\n</body>'
+    script_end = "</script>\n</body>"
     script_insertion = html_content.rfind(script_end)
     if script_insertion == -1:
         print("ERROR: Could not find script section")
         return 1
 
-    html_content = (
-        html_content[:script_insertion] +
-        UPDATE_BUTTON_SCRIPT +
-        html_content[script_insertion:]
-    )
+    html_content = html_content[:script_insertion] + UPDATE_BUTTON_SCRIPT + html_content[script_insertion:]
 
     # Write back
     print(f"Writing updated HTML to {HTML_FILE}...")
-    HTML_FILE.write_text(html_content, encoding='utf-8')
+    HTML_FILE.write_text(html_content, encoding="utf-8")
 
     print("[SUCCESS] Added update button to dependency graph")
     print("\nFeatures:")

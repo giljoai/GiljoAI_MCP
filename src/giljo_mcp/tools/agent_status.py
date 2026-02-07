@@ -25,6 +25,7 @@ from sqlalchemy import select
 
 from ..models.agent_identity import AgentExecution
 
+
 logger = logging.getLogger(__name__)
 
 # Valid status values (Handover 0113 - 7 State System)
@@ -35,6 +36,7 @@ TERMINAL_STATES = {"failed", "cancelled", "decommissioned"}
 
 # Module-level db_manager (initialized by register function or init_for_testing)
 _db_manager: Any | None = None
+
 
 def init_for_testing(db_manager):
     """
@@ -48,6 +50,7 @@ def init_for_testing(db_manager):
     """
     global _db_manager
     _db_manager = db_manager
+
 
 async def set_agent_status(
     agent_id: str,
@@ -218,6 +221,7 @@ async def set_agent_status(
     except Exception as e:
         logger.error(f"[set_agent_status] Error updating status: {e}", exc_info=True)
         raise ValueError(f"Failed to update agent status: {e!s}") from e
+
 
 async def report_progress(
     agent_id: str,

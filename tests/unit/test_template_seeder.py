@@ -6,16 +6,18 @@ user_instructions (editable role-specific guidance) in agent templates.
 
 Handover 0106: Dual-Field System
 """
-import pytest
+
 from datetime import datetime, timezone
+
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.template_seeder import (
-    seed_tenant_templates,
-    _get_mcp_coordination_section,
     _get_default_templates_v103,
+    _get_mcp_coordination_section,
+    seed_tenant_templates,
 )
 
 
@@ -34,9 +36,7 @@ class TestTemplateSeederDualField:
         assert count == 6, "Should seed 6 default templates"
 
         # Fetch all templates
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         # Verify all have system_instructions
@@ -58,9 +58,7 @@ class TestTemplateSeederDualField:
         assert count == 6
 
         # Fetch all templates
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         # Verify all have user_instructions
@@ -72,7 +70,10 @@ class TestTemplateSeederDualField:
             if template.role == "orchestrator":
                 assert "orchestrator" in template.user_instructions.lower()
             elif template.role == "implementer":
-                assert "implementation" in template.user_instructions.lower() or "implementer" in template.user_instructions.lower()
+                assert (
+                    "implementation" in template.user_instructions.lower()
+                    or "implementer" in template.user_instructions.lower()
+                )
             elif template.role == "tester":
                 assert "test" in template.user_instructions.lower()
 
@@ -85,9 +86,7 @@ class TestTemplateSeederDualField:
 
         # Fetch all templates
         result = await db_session.execute(
-            select(AgentTemplate.system_instructions).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
+            select(AgentTemplate.system_instructions).where(AgentTemplate.tenant_key == tenant_key)
         )
         system_instructions_list = [row[0] for row in result.fetchall()]
 
@@ -104,9 +103,7 @@ class TestTemplateSeederDualField:
 
         # Fetch all templates
         result = await db_session.execute(
-            select(AgentTemplate.role, AgentTemplate.user_instructions).where(
-                AgentTemplate.tenant_key == tenant_key
-            )
+            select(AgentTemplate.role, AgentTemplate.user_instructions).where(AgentTemplate.tenant_key == tenant_key)
         )
         user_instructions_by_role = {row[0]: row[1] for row in result.fetchall()}
 
@@ -119,11 +116,26 @@ class TestTemplateSeederDualField:
 
         # Verify each role has content matching its role
         assert "orchestrator" in user_instructions_by_role["orchestrator"].lower()
-        assert "analyzer" in user_instructions_by_role["analyzer"].lower() or "analysis" in user_instructions_by_role["analyzer"].lower()
-        assert "implementer" in user_instructions_by_role["implementer"].lower() or "implementation" in user_instructions_by_role["implementer"].lower()
-        assert "tester" in user_instructions_by_role["tester"].lower() or "test" in user_instructions_by_role["tester"].lower()
-        assert "reviewer" in user_instructions_by_role["reviewer"].lower() or "review" in user_instructions_by_role["reviewer"].lower()
-        assert "documenter" in user_instructions_by_role["documenter"].lower() or "documentation" in user_instructions_by_role["documenter"].lower()
+        assert (
+            "analyzer" in user_instructions_by_role["analyzer"].lower()
+            or "analysis" in user_instructions_by_role["analyzer"].lower()
+        )
+        assert (
+            "implementer" in user_instructions_by_role["implementer"].lower()
+            or "implementation" in user_instructions_by_role["implementer"].lower()
+        )
+        assert (
+            "tester" in user_instructions_by_role["tester"].lower()
+            or "test" in user_instructions_by_role["tester"].lower()
+        )
+        assert (
+            "reviewer" in user_instructions_by_role["reviewer"].lower()
+            or "review" in user_instructions_by_role["reviewer"].lower()
+        )
+        assert (
+            "documenter" in user_instructions_by_role["documenter"].lower()
+            or "documentation" in user_instructions_by_role["documenter"].lower()
+        )
 
     async def test_system_instructions_populated(self, db_session: AsyncSession):
         """Verify system_instructions populated correctly."""
@@ -133,9 +145,7 @@ class TestTemplateSeederDualField:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Fetch all templates
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         # Verify system_instructions field populated
@@ -161,9 +171,7 @@ class TestTemplateSeederDualField:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Fetch all templates
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         # Required MCP tools that MUST be in system_instructions
@@ -184,8 +192,7 @@ class TestTemplateSeederDualField:
 
             for tool in required_tools:
                 assert tool in system_inst, (
-                    f"{template.role} missing required MCP tool: {tool}\n"
-                    f"System instructions: {system_inst[:200]}..."
+                    f"{template.role} missing required MCP tool: {tool}\nSystem instructions: {system_inst[:200]}..."
                 )
 
     async def test_system_instructions_not_in_user(self, db_session: AsyncSession):
@@ -196,9 +203,7 @@ class TestTemplateSeederDualField:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Fetch all templates
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         # Verify user_instructions don't contain MCP coordination content
@@ -226,9 +231,7 @@ class TestTemplateSeederDualField:
         assert count2 == 0, "Second seed should skip (idempotent)"
 
         # Verify still only 6 templates
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
         assert len(templates) == 6, "Should still have exactly 6 templates after idempotent run"
 
@@ -240,9 +243,7 @@ class TestTemplateSeederDualField:
         await seed_tenant_templates(db_session, tenant_key)
 
         # Fetch all templates and verify system_instructions NOT NULL
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-        )
+        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         for template in templates:
@@ -302,14 +303,10 @@ class TestTemplateSeederDualField:
         assert count2 == 6, "Tenant B should have 6 templates"
 
         # Verify isolation
-        result1 = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant1)
-        )
+        result1 = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant1))
         templates1 = result1.scalars().all()
 
-        result2 = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant2)
-        )
+        result2 = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant2))
         templates2 = result2.scalars().all()
 
         assert len(templates1) == 6, "Tenant A should have 6 templates"

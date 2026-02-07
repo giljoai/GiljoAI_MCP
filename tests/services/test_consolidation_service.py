@@ -7,9 +7,10 @@ Purpose: Test consolidation of multiple vision documents into unified light/medi
 """
 
 import hashlib
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+
 from src.giljo_mcp.models.products import Product, VisionDocument
 
 
@@ -57,28 +58,17 @@ async def test_consolidate_single_document_returns_unified_summary(mock_db_manag
     # Mock VisionDocumentSummarizer
     mock_summarizer = MagicMock()
     mock_summarizer.summarize_multi_level.return_value = {
-        "light": {
-            "summary": "Light summary of vision",
-            "tokens": 50,
-            "sentences": 2
-        },
-        "medium": {
-            "summary": "Medium summary of vision with more detail",
-            "tokens": 100,
-            "sentences": 4
-        },
+        "light": {"summary": "Light summary of vision", "tokens": 50, "sentences": 2},
+        "medium": {"summary": "Medium summary of vision with more detail", "tokens": 100, "sentences": 4},
         "original_tokens": 150,
-        "processing_time_ms": 100
+        "processing_time_ms": 100,
     }
 
     service = ConsolidatedVisionService()
     service.summarizer = mock_summarizer
 
     result = await service.consolidate_vision_documents(
-        product_id="test-product-id",
-        session=session,
-        tenant_key="test-tenant",
-        force=False
+        product_id="test-product-id", session=session, tenant_key="test-tenant", force=False
     )
 
     # Verify result structure
@@ -115,8 +105,8 @@ async def test_consolidate_five_documents_returns_unified_summary(mock_db_manage
     docs = []
     for i in range(5):
         doc = MagicMock(spec=VisionDocument)
-        doc.document_name = f"Chapter {i+1}"
-        doc.vision_document = f"Content of chapter {i+1}. " * 50
+        doc.document_name = f"Chapter {i + 1}"
+        doc.vision_document = f"Content of chapter {i + 1}. " * 50
         doc.is_active = True
         doc.display_order = i + 1
         docs.append(doc)
@@ -134,28 +124,17 @@ async def test_consolidate_five_documents_returns_unified_summary(mock_db_manage
     # Mock summarizer
     mock_summarizer = MagicMock()
     mock_summarizer.summarize_multi_level.return_value = {
-        "light": {
-            "summary": "Light summary of all 5 chapters",
-            "tokens": 200,
-            "sentences": 10
-        },
-        "medium": {
-            "summary": "Medium summary of all 5 chapters with more detail",
-            "tokens": 400,
-            "sentences": 20
-        },
+        "light": {"summary": "Light summary of all 5 chapters", "tokens": 200, "sentences": 10},
+        "medium": {"summary": "Medium summary of all 5 chapters with more detail", "tokens": 400, "sentences": 20},
         "original_tokens": 600,
-        "processing_time_ms": 200
+        "processing_time_ms": 200,
     }
 
     service = ConsolidatedVisionService()
     service.summarizer = mock_summarizer
 
     result = await service.consolidate_vision_documents(
-        product_id="test-product-id",
-        session=session,
-        tenant_key="test-tenant",
-        force=False
+        product_id="test-product-id", session=session, tenant_key="test-tenant", force=False
     )
 
     assert result["success"] is True
@@ -281,7 +260,7 @@ async def test_consolidate_detects_no_changes(mock_db_manager):
 
     # Calculate expected hash
     aggregate_text = f"# {doc.document_name}\n\n{doc.vision_document}"
-    expected_hash = hashlib.sha256(aggregate_text.encode('utf-8')).hexdigest()
+    expected_hash = hashlib.sha256(aggregate_text.encode("utf-8")).hexdigest()
 
     product = MagicMock(spec=Product)
     product.id = "test-product-id"
@@ -299,7 +278,7 @@ async def test_consolidate_detects_no_changes(mock_db_manager):
         product_id="test-product-id",
         session=session,
         tenant_key="test-tenant",
-        force=False  # Don't force
+        force=False,  # Don't force
     )
 
     # Verify no changes detected
@@ -325,7 +304,7 @@ async def test_consolidate_force_regenerates(mock_db_manager):
 
     # Calculate hash (same as before)
     aggregate_text = f"# {doc.document_name}\n\n{doc.vision_document}"
-    expected_hash = hashlib.sha256(aggregate_text.encode('utf-8')).hexdigest()
+    expected_hash = hashlib.sha256(aggregate_text.encode("utf-8")).hexdigest()
 
     product = MagicMock(spec=Product)
     product.id = "test-product-id"
@@ -343,7 +322,7 @@ async def test_consolidate_force_regenerates(mock_db_manager):
         "light": {"summary": "Forced light", "tokens": 25, "sentences": 1},
         "medium": {"summary": "Forced medium", "tokens": 50, "sentences": 2},
         "original_tokens": 100,
-        "processing_time_ms": 50
+        "processing_time_ms": 50,
     }
 
     service = ConsolidatedVisionService()
@@ -353,7 +332,7 @@ async def test_consolidate_force_regenerates(mock_db_manager):
         product_id="test-product-id",
         session=session,
         tenant_key="test-tenant",
-        force=True  # FORCE regeneration
+        force=True,  # FORCE regeneration
     )
 
     # Verify regeneration happened despite matching hash
@@ -376,10 +355,7 @@ async def test_consolidate_handles_product_not_found(mock_db_manager):
     service = ConsolidatedVisionService()
 
     result = await service.consolidate_vision_documents(
-        product_id="nonexistent-id",
-        session=session,
-        tenant_key="test-tenant",
-        force=False
+        product_id="nonexistent-id", session=session, tenant_key="test-tenant", force=False
     )
 
     # Verify error response
@@ -413,7 +389,7 @@ async def test_consolidate_enforces_tenant_isolation(mock_db_manager):
         product_id="test-product-id",
         session=session,
         tenant_key="test-tenant",  # Request from different tenant
-        force=False
+        force=False,
     )
 
     # Verify tenant isolation enforced

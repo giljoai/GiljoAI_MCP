@@ -348,7 +348,10 @@ async def test_send_to_project(mock_websocket_manager):
 
     # Act
     sent_count = await ws_dep.send_to_project(
-        tenant_key="tenant_abc", project_id="proj_123", event_type="agent:created", data={"agent_display_name": "orchestrator"}
+        tenant_key="tenant_abc",
+        project_id="proj_123",
+        event_type="agent:created",
+        data={"agent_display_name": "orchestrator"},
     )
 
     # Assert

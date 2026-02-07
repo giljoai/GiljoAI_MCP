@@ -8,7 +8,7 @@ import asyncio
 # Import the production WebSocket manager
 import sys
 from pathlib import Path
-from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 

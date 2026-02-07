@@ -16,16 +16,13 @@ Test Coverage:
 - Edge cases and error conditions
 """
 
-import secrets
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 from passlib.hash import bcrypt
 from sqlalchemy import select
 
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.auth import APIKey, User
 from src.giljo_mcp.models.config import SetupState
 from src.giljo_mcp.services.auth_service import AuthService
@@ -40,7 +37,7 @@ async def auth_service(db_manager, db_session):
     return AuthService(
         db_manager=db_manager,
         websocket_manager=None,  # No WebSocket in tests
-        session=db_session  # SHARED SESSION for test transaction isolation
+        session=db_session,  # SHARED SESSION for test transaction isolation
     )
 
 
@@ -293,10 +290,7 @@ class TestCreateAPIKey:
         user, _ = test_user
 
         result = await auth_service.create_api_key(
-            user_id=user.id,
-            tenant_key=user.tenant_key,
-            name="New Test Key",
-            permissions=["*"]
+            user_id=user.id, tenant_key=user.tenant_key, name="New Test Key", permissions=["*"]
         )
 
         assert result["success"] is True
@@ -313,10 +307,7 @@ class TestCreateAPIKey:
         user, _ = test_user
 
         result = await auth_service.create_api_key(
-            user_id=user.id,
-            tenant_key=user.tenant_key,
-            name="Limited Key",
-            permissions=["read", "write"]
+            user_id=user.id, tenant_key=user.tenant_key, name="Limited Key", permissions=["read", "write"]
         )
 
         assert result["success"] is True
@@ -378,7 +369,7 @@ class TestRegisterUser:
             email="new@example.com",
             password="NewPassword123!",
             role="developer",
-            requesting_admin_id=admin_user.id
+            requesting_admin_id=admin_user.id,
         )
 
         assert result["success"] is True
@@ -404,7 +395,7 @@ class TestRegisterUser:
             email="different@example.com",
             password="Password123!",
             role="developer",
-            requesting_admin_id=admin_user.id
+            requesting_admin_id=admin_user.id,
         )
 
         assert result["success"] is False
@@ -424,10 +415,7 @@ class TestCreateFirstAdmin:
         assert len(result.scalars().all()) == 0
 
         result = await auth_service.create_first_admin(
-            username="admin",
-            email="admin@example.com",
-            password="SecureAdmin123!@#",
-            full_name="System Administrator"
+            username="admin", email="admin@example.com", password="SecureAdmin123!@#", full_name="System Administrator"
         )
 
         assert result["success"] is True
@@ -447,10 +435,7 @@ class TestCreateFirstAdmin:
     async def test_create_first_admin_fails_when_users_exist(self, auth_service, test_user):
         """Test creating first admin fails when users already exist"""
         result = await auth_service.create_first_admin(
-            username="secondadmin",
-            email="second@example.com",
-            password="SecureAdmin123!@#",
-            full_name="Second Admin"
+            username="secondadmin", email="second@example.com", password="SecureAdmin123!@#", full_name="Second Admin"
         )
 
         assert result["success"] is False
@@ -464,7 +449,7 @@ class TestCreateFirstAdmin:
             username="admin",
             email="admin@example.com",
             password="weak",  # Too short, no complexity
-            full_name="Admin"
+            full_name="Admin",
         )
 
         assert result["success"] is False

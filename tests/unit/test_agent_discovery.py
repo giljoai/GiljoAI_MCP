@@ -19,10 +19,10 @@ TDD Approach:
 3. REFACTOR: Improve code while keeping tests green
 """
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, Mock
 
 from src.giljo_mcp.models import AgentTemplate
 
@@ -60,7 +60,7 @@ class TestGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.1.0",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
         template2 = AgentTemplate(
             name="tester",
@@ -69,7 +69,7 @@ class TestGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
 
         db_session.add(template1)
@@ -97,7 +97,7 @@ class TestGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.2.0",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
         db_session.add(template)
         await db_session.commit()
@@ -122,7 +122,7 @@ class TestGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
         inactive = AgentTemplate(
             name="deprecated_agent",
@@ -131,7 +131,7 @@ class TestGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=False,
             version="0.9.0",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
 
         db_session.add(active)
@@ -147,8 +147,8 @@ class TestGetAvailableAgents:
     @pytest.mark.asyncio
     async def test_tenant_isolation(self, db_session):
         """Test tenant isolation in agent discovery"""
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents
         from src.giljo_mcp.tenant import TenantManager
+        from src.giljo_mcp.tools.agent_discovery import get_available_agents
 
         # Create templates for different tenants
         other_tenant = TenantManager.generate_tenant_key()
@@ -160,7 +160,7 @@ class TestGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="1.0.0",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
         template_b = AgentTemplate(
             name="implementer",
@@ -169,7 +169,7 @@ class TestGetAvailableAgents:
             tenant_key=other_tenant,
             is_active=True,
             version="1.0.0",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
 
         db_session.add(template_a)
@@ -203,7 +203,7 @@ class TestGetAvailableAgents:
 
         assert "fetched_at" in result["data"]
         # Verify it's a valid ISO timestamp
-        datetime.fromisoformat(result["data"]["fetched_at"].replace('Z', '+00:00'))
+        datetime.fromisoformat(result["data"]["fetched_at"].replace("Z", "+00:00"))
 
     @pytest.mark.asyncio
     async def test_expected_filename_format(self, db_session):
@@ -217,7 +217,7 @@ class TestGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version="2.0.1",
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
         db_session.add(template)
         await db_session.commit()
@@ -249,7 +249,7 @@ class TestGetAvailableAgents:
             tenant_key=self.tenant_key,
             is_active=True,
             version=None,  # Missing version
-            system_instructions="Test mission content"
+            system_instructions="Test mission content",
         )
         db_session.add(template)
         await db_session.commit()

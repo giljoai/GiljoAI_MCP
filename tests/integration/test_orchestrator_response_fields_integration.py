@@ -5,13 +5,14 @@ This test creates a real database scenario and verifies that all 6 new fields
 are properly returned by get_orchestrator_instructions().
 """
 
-import pytest
 from uuid import uuid4
+
+import pytest
 
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tools.orchestration import get_orchestrator_instructions
 
 

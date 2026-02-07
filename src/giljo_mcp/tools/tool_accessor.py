@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,11 +23,13 @@ from src.giljo_mcp.services.task_service import TaskService
 from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.tenant import TenantManager
 
+
 logger = logging.getLogger(__name__)
 
 # ============================================================================
 # STANDALONE HELPER FUNCTIONS (For Testing and Tenant Isolation)
 # ============================================================================
+
 
 async def activate_project(project_id: str, tenant_key: str, session) -> dict[str, Any]:
     """
@@ -82,6 +85,7 @@ async def activate_project(project_id: str, tenant_key: str, session) -> dict[st
     except Exception as e:
         logger.exception(f"Failed to activate project: {e}")
         return {"success": False, "error": str(e)}
+
 
 class ToolAccessor:
     """Provides direct access to MCP tool functionality for API"""
@@ -159,9 +163,7 @@ class ToolAccessor:
             context_budget=context_budget,
         )
 
-    async def list_projects(
-        self, status: str | None = None, tenant_key: str | None = None
-    ) -> list[dict[str, Any]]:
+    async def list_projects(self, status: str | None = None, tenant_key: str | None = None) -> list[dict[str, Any]]:
         """List all projects with optional status filter (delegates to ProjectService)"""
         return await self._project_service.list_projects(status=status, tenant_key=tenant_key)
 
@@ -658,9 +660,7 @@ class ToolAccessor:
             todo_items=todo_items,
         )
 
-    async def complete_job(
-        self, job_id: str, result: dict[str, Any], tenant_key: str | None = None
-    ) -> dict[str, Any]:
+    async def complete_job(self, job_id: str, result: dict[str, Any], tenant_key: str | None = None) -> dict[str, Any]:
         """Mark job as complete (delegates to OrchestrationService)"""
         return await self._orchestration_service.complete_job(job_id=job_id, result=result)
 

@@ -9,7 +9,6 @@ Handover 0254: Three-Layer Instruction Architecture Cleanup
 Layer 3: Database Template Definitions
 """
 
-import pytest
 from src.giljo_mcp.template_seeder import _get_template_metadata
 
 

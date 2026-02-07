@@ -20,8 +20,10 @@ from mcp import types
 from mcp.server import InitializationOptions, Server
 from mcp.server.stdio import stdio_server
 
+
 SERVER_URL_ENV = "GILJO_MCP_SERVER_URL"
 API_KEY_ENV = "GILJO_API_KEY"
+
 
 def _get_server_url() -> str:
     url = os.getenv(SERVER_URL_ENV, "").rstrip("/")
@@ -29,8 +31,10 @@ def _get_server_url() -> str:
         raise RuntimeError("GILJO_MCP_SERVER_URL is not set")
     return url
 
+
 def _get_api_key() -> str | None:
     return os.getenv(API_KEY_ENV)
+
 
 def _auth_headers() -> dict[str, str]:
     api_key = _get_api_key()
@@ -39,7 +43,9 @@ def _auth_headers() -> dict[str, str]:
         headers["Authorization"] = f"Bearer {api_key}"
     return headers
 
+
 server = Server("giljo-mcp-stdin-proxy")
+
 
 @server.list_tools()
 async def list_tools() -> list[types.Tool]:
@@ -70,6 +76,7 @@ async def list_tools() -> list[types.Tool]:
             )
         return tools
 
+
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """Proxy tools/call to HTTP /mcp."""
@@ -97,6 +104,7 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> list[
             content = []
         return content
 
+
 async def _main() -> None:
     """Entry point for `python -m giljo_mcp.mcp_http_stdin_proxy`."""
     init_options = InitializationOptions(
@@ -113,6 +121,7 @@ async def _main() -> None:
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, init_options)
+
 
 if __name__ == "__main__":
     anyio.run(_main)

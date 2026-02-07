@@ -29,9 +29,9 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.giljo_mcp.agent_message_queue import AgentMessageQueue
-from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate, Project
+from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 

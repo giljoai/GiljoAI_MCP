@@ -12,13 +12,13 @@ These tests use real database connections to verify:
 Target: Comprehensive integration coverage
 """
 
-import pytest
-from datetime import datetime, timezone
 from uuid import uuid4
 
-from src.giljo_mcp.services.product_service import ProductService
+import pytest
+
 from src.giljo_mcp.models.products import Product, VisionDocument
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.services.product_service import ProductService
 
 
 @pytest.mark.asyncio
@@ -34,14 +34,8 @@ class TestMultiTenantIsolation:
         service2 = ProductService(db_manager, tenant2_key)
 
         # Create products in different tenants
-        result1 = await service1.create_product(
-            name="Tenant1 Product",
-            description="Product for tenant 1"
-        )
-        result2 = await service2.create_product(
-            name="Tenant2 Product",
-            description="Product for tenant 2"
-        )
+        result1 = await service1.create_product(name="Tenant1 Product", description="Product for tenant 1")
+        result2 = await service2.create_product(name="Tenant2 Product", description="Product for tenant 2")
 
         assert result1["success"] is True
         assert result2["success"] is True
@@ -85,10 +79,7 @@ class TestMultiTenantIsolation:
         product_id = create_result["product_id"]
 
         # Try to update from tenant2 - should fail
-        update_result = await service2.update_product(
-            product_id=product_id,
-            name="Hacked Name"
-        )
+        update_result = await service2.update_product(product_id=product_id, name="Hacked Name")
         assert update_result["success"] is False
         assert "not found" in update_result["error"]
 
@@ -243,7 +234,7 @@ class TestProductCRUDWorkflows:
             name="Lifecycle Product",
             description="Testing full lifecycle",
             project_path="/projects/lifecycle",
-            config_data={"version": "1.0"}
+            config_data={"version": "1.0"},
         )
         assert create_result["success"] is True
         product_id = create_result["product_id"]
@@ -252,7 +243,7 @@ class TestProductCRUDWorkflows:
         update_result = await service.update_product(
             product_id=product_id,
             description="Updated description",
-            config_data={"version": "2.0", "feature": "enabled"}
+            config_data={"version": "2.0", "feature": "enabled"},
         )
         assert update_result["success"] is True
         assert update_result["data"]["description"] == "Updated description"
@@ -297,10 +288,7 @@ class TestProductCRUDWorkflows:
         # Create five products
         products = []
         for i in range(5):
-            result = await service.create_product(
-                name=f"Product {i+1}",
-                description=f"Description {i+1}"
-            )
+            result = await service.create_product(name=f"Product {i + 1}", description=f"Description {i + 1}")
             assert result["success"] is True
             products.append(result["product_id"])
 
@@ -312,7 +300,7 @@ class TestProductCRUDWorkflows:
         # Verify all names present
         names = [p["name"] for p in list_result["products"]]
         for i in range(5):
-            assert f"Product {i+1}" in names
+            assert f"Product {i + 1}" in names
 
     async def test_duplicate_name_prevention(self, db_manager):
         """Test that duplicate product names are prevented"""
@@ -369,12 +357,12 @@ class TestProductProjectCascade:
             for i in range(3):
                 project = Project(
                     id=str(uuid4()),
-                    name=f"Project {i+1}",
-                    description=f"Project {i+1} description",
-                    mission=f"Mission {i+1}",
+                    name=f"Project {i + 1}",
+                    description=f"Project {i + 1} description",
+                    mission=f"Mission {i + 1}",
                     status="waiting",
                     product_id=product_id,
-                    tenant_key=tenant_key
+                    tenant_key=tenant_key,
                 )
                 session.add(project)
             await session.commit()
@@ -402,7 +390,7 @@ class TestProductProjectCascade:
                 mission="Project mission",
                 status="waiting",
                 product_id=product_id,
-                tenant_key=tenant_key
+                tenant_key=tenant_key,
             )
             session.add(project)
             await session.commit()
@@ -484,21 +472,12 @@ class TestConfigDataPersistence:
         service = ProductService(db_manager, tenant_key)
 
         # Create product with config_data
-        initial_config = {
-            "api_key": "test-key-123",
-            "settings": {"debug": True, "timeout": 30}
-        }
-        create_result = await service.create_product(
-            name="Config Test Product",
-            config_data=initial_config
-        )
+        initial_config = {"api_key": "test-key-123", "settings": {"debug": True, "timeout": 30}}
+        create_result = await service.create_product(name="Config Test Product", config_data=initial_config)
         product_id = create_result["product_id"]
 
         # Update product (without changing config_data)
-        await service.update_product(
-            product_id=product_id,
-            description="Updated description"
-        )
+        await service.update_product(product_id=product_id, description="Updated description")
 
         # Verify config_data preserved
         get_result = await service.get_product(product_id)
@@ -512,17 +491,13 @@ class TestConfigDataPersistence:
 
         # Create product with initial config
         create_result = await service.create_product(
-            name="Config Merge Product",
-            config_data={"field1": "value1", "field2": "value2"}
+            name="Config Merge Product", config_data={"field1": "value1", "field2": "value2"}
         )
         product_id = create_result["product_id"]
 
         # Update with new config_data
         new_config = {"field2": "updated", "field3": "new"}
-        update_result = await service.update_product(
-            product_id=product_id,
-            config_data=new_config
-        )
+        update_result = await service.update_product(product_id=product_id, config_data=new_config)
         assert update_result["success"] is True
 
         # Verify config updated
@@ -549,7 +524,7 @@ class TestVisionDocumentIntegration:
         upload_result = await service.upload_vision_document(
             product_id=product_id,
             content="# Product Vision\n\nThis is our product vision statement.",
-            filename="product_vision.md"
+            filename="product_vision.md",
         )
 
         assert upload_result["success"] is True
@@ -558,9 +533,8 @@ class TestVisionDocumentIntegration:
         # Verify vision document created
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
-            stmt = select(VisionDocument).where(
-                VisionDocument.product_id == product_id
-            )
+
+            stmt = select(VisionDocument).where(VisionDocument.product_id == product_id)
             result = await session.execute(stmt)
             vision_docs = result.scalars().all()
             assert len(vision_docs) >= 1
@@ -571,9 +545,7 @@ class TestVisionDocumentIntegration:
         service = ProductService(db_manager, tenant_key)
 
         upload_result = await service.upload_vision_document(
-            product_id=str(uuid4()),
-            content="# Vision",
-            filename="vision.md"
+            product_id=str(uuid4()), content="# Vision", filename="vision.md"
         )
 
         assert upload_result["success"] is False
@@ -595,6 +567,7 @@ class TestDatabaseTransactions:
         # Verify product exists in new session
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             stmt = select(Product).where(Product.id == product_id)
             result = await session.execute(stmt)
             product = result.scalar_one_or_none()
@@ -611,14 +584,12 @@ class TestDatabaseTransactions:
         product_id = create_result["product_id"]
 
         # Update product
-        await service.update_product(
-            product_id=product_id,
-            name="Updated Name"
-        )
+        await service.update_product(product_id=product_id, name="Updated Name")
 
         # Verify update persisted in new session
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             stmt = select(Product).where(Product.id == product_id)
             result = await session.execute(stmt)
             product = result.scalar_one_or_none()
@@ -637,6 +608,7 @@ class TestDatabaseTransactions:
         # Verify soft delete persisted in new session
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
+
             stmt = select(Product).where(Product.id == product_id)
             result = await session.execute(stmt)
             product = result.scalar_one_or_none()

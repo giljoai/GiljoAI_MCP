@@ -27,6 +27,7 @@ from src.giljo_mcp.validation.rules import (
     ValidationRule,
 )
 
+
 @dataclass
 class TemplateValidationResult:
     """Container for validation results."""
@@ -56,6 +57,7 @@ class TemplateValidationResult:
             "cached": self.cached,
             "has_critical_errors": self.has_critical_errors,
         }
+
 
 class TemplateValidator:
     """

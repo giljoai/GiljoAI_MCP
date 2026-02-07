@@ -1,6 +1,8 @@
 """Test for other_tenant_user fixture - TDD approach"""
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.giljo_mcp.models.auth import User
 
 
@@ -26,16 +28,13 @@ async def test_other_tenant_user_fixture_exists(other_tenant_user: User, test_us
 @pytest.mark.asyncio
 async def test_other_tenant_user_has_api_token(other_tenant_user: User):
     """Test that other_tenant_user has an API token for authentication"""
-    assert hasattr(other_tenant_user, 'api_token')
+    assert hasattr(other_tenant_user, "api_token")
     assert other_tenant_user.api_token is not None
     assert len(other_tenant_user.api_token) > 0
 
 
 @pytest.mark.asyncio
-async def test_other_tenant_user_persisted_in_db(
-    other_tenant_user: User,
-    db_session: AsyncSession
-):
+async def test_other_tenant_user_persisted_in_db(other_tenant_user: User, db_session: AsyncSession):
     """Test that other_tenant_user is properly persisted in database"""
     from sqlalchemy import select
 

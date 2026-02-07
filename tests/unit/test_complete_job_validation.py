@@ -1,9 +1,10 @@
-import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 
-import src.giljo_mcp.services.orchestration_service as orchestration_service
+import pytest
+
 from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTodoItem, Message
+from src.giljo_mcp.services import orchestration_service
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 
@@ -156,9 +157,7 @@ async def test_complete_job_succeeds_when_all_complete(mock_db_manager):
 
 
 @pytest.mark.asyncio
-async def test_complete_job_ignores_messages_after_attempt(
-    mock_db_manager, monkeypatch
-):
+async def test_complete_job_ignores_messages_after_attempt(mock_db_manager, monkeypatch):
     db_manager, session = mock_db_manager
     tenant_manager = Mock()
     tenant_manager.get_current_tenant = Mock(return_value="test-tenant")

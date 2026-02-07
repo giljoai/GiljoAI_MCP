@@ -18,7 +18,6 @@ No mocking of database queries needed - we just create mock AgentExecution objec
 and test the function output.
 """
 
-import pytest
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -107,12 +106,10 @@ class TestTeamContextHeader:
         - Deliverables preview for each agent
         """
         analyzer = create_mock_agent_execution(
-            agent_display_name="analyzer",
-            mission="Analyze folder structure and design architecture"
+            agent_display_name="analyzer", mission="Analyze folder structure and design architecture"
         )
         implementer = create_mock_agent_execution(
-            agent_display_name="implementer",
-            mission="Implement backend API endpoints based on architecture"
+            agent_display_name="implementer", mission="Implement backend API endpoints based on architecture"
         )
 
         all_agents = [analyzer, implementer]
@@ -140,8 +137,9 @@ class TestTeamContextHeader:
         assert "implementer" in header.lower(), "YOUR TEAM must list implementer"
 
         # Verify deliverable previews appear
-        assert "Analyze folder structure" in header or "architecture" in header.lower(), \
+        assert "Analyze folder structure" in header or "architecture" in header.lower(), (
             "YOUR TEAM should show deliverable preview"
+        )
 
     def test_your_dependencies_section_analyzer_has_downstream(self):
         """
@@ -166,16 +164,12 @@ class TestTeamContextHeader:
         assert "## YOUR DEPENDENCIES" in header, "Header must include YOUR DEPENDENCIES section"
 
         # Analyzer has no upstream dependencies
-        assert "You depend on: None" in header, \
-            "Analyzer should have no upstream dependencies"
+        assert "You depend on: None" in header, "Analyzer should have no upstream dependencies"
 
         # Analyzer has downstream dependencies
-        assert "Others depend on you:" in header, \
-            "YOUR DEPENDENCIES must list downstream dependencies"
-        assert "implementer" in header.lower(), \
-            "Analyzer should list implementer as downstream"
-        assert "documenter" in header.lower(), \
-            "Analyzer should list documenter as downstream"
+        assert "Others depend on you:" in header, "YOUR DEPENDENCIES must list downstream dependencies"
+        assert "implementer" in header.lower(), "Analyzer should list implementer as downstream"
+        assert "documenter" in header.lower(), "Analyzer should list documenter as downstream"
 
     def test_your_dependencies_section_documenter_has_upstream(self):
         """
@@ -200,16 +194,12 @@ class TestTeamContextHeader:
         assert "## YOUR DEPENDENCIES" in header, "Header must include YOUR DEPENDENCIES section"
 
         # Documenter has upstream dependencies
-        assert "You depend on:" in header, \
-            "YOUR DEPENDENCIES must list upstream dependencies"
-        assert "analyzer" in header.lower(), \
-            "Documenter should list analyzer as upstream"
-        assert "implementer" in header.lower(), \
-            "Documenter should list implementer as upstream"
+        assert "You depend on:" in header, "YOUR DEPENDENCIES must list upstream dependencies"
+        assert "analyzer" in header.lower(), "Documenter should list analyzer as upstream"
+        assert "implementer" in header.lower(), "Documenter should list implementer as upstream"
 
         # Documenter has no downstream dependencies
-        assert "Others depend on you: None" in header, \
-            "Documenter should have no downstream dependencies"
+        assert "Others depend on you: None" in header, "Documenter should have no downstream dependencies"
 
     def test_your_dependencies_section_implementer_has_both(self):
         """
@@ -236,16 +226,14 @@ class TestTeamContextHeader:
         assert "## YOUR DEPENDENCIES" in header, "Header must include YOUR DEPENDENCIES section"
 
         # Implementer has upstream dependency on analyzer
-        assert "You depend on:" in header and "analyzer" in header.lower(), \
+        assert "You depend on:" in header and "analyzer" in header.lower(), (
             "Implementer should list analyzer as upstream"
+        )
 
         # Implementer has downstream dependencies on tester and documenter
-        assert "Others depend on you:" in header, \
-            "Implementer should have downstream dependencies"
-        assert "tester" in header.lower(), \
-            "Implementer should list tester as downstream"
-        assert "documenter" in header.lower(), \
-            "Implementer should list documenter as downstream"
+        assert "Others depend on you:" in header, "Implementer should have downstream dependencies"
+        assert "tester" in header.lower(), "Implementer should list tester as downstream"
+        assert "documenter" in header.lower(), "Implementer should list documenter as downstream"
 
     def test_coordination_section_mentions_messaging_tools(self):
         """
@@ -268,18 +256,16 @@ class TestTeamContextHeader:
         assert "## COORDINATION" in header, "Header must include COORDINATION section"
 
         # Verify messaging tools are mentioned
-        assert "send_message" in header, \
-            "COORDINATION must reference send_message tool"
-        assert "receive_messages" in header, \
-            "COORDINATION must reference receive_messages tool"
+        assert "send_message" in header, "COORDINATION must reference send_message tool"
+        assert "receive_messages" in header, "COORDINATION must reference receive_messages tool"
 
         # Verify guidance is provided
-        assert "notify teammates" in header.lower() or "status message" in header.lower(), \
+        assert "notify teammates" in header.lower() or "status message" in header.lower(), (
             "COORDINATION must provide messaging guidance"
+        )
 
         # Verify reference to full_protocol
-        assert "full_protocol" in header, \
-            "COORDINATION must reference full_protocol for detailed instructions"
+        assert "full_protocol" in header, "COORDINATION must reference full_protocol for detailed instructions"
 
     def test_single_agent_project_still_gets_all_sections(self):
         """
@@ -322,12 +308,12 @@ class TestTeamContextHeader:
         agent_1 = create_mock_agent_execution(
             agent_display_name="analyzer",
             job_id=job_id_1,
-            mission="Should not appear"  # This should be ignored
+            mission="Should not appear",  # This should be ignored
         )
         agent_2 = create_mock_agent_execution(
             agent_display_name="implementer",
             job_id=job_id_2,
-            mission="Should not appear"  # This should be ignored
+            mission="Should not appear",  # This should be ignored
         )
 
         mission_lookup = {
@@ -344,12 +330,12 @@ class TestTeamContextHeader:
         )
 
         # Verify mission_lookup text appears in deliverables
-        assert "mission_lookup dict" in header, \
-            "Deliverables should use mission_lookup text when provided"
+        assert "mission_lookup dict" in header, "Deliverables should use mission_lookup text when provided"
 
         # Verify original mission attribute text does NOT appear
-        assert "Should not appear" not in header, \
+        assert "Should not appear" not in header, (
             "Deliverables should NOT use mission attribute when mission_lookup provided"
+        )
 
     def test_multi_agent_team_roster_completeness(self):
         """
@@ -383,8 +369,7 @@ class TestTeamContextHeader:
 
         # Verify all agent_ids appear
         for agent in agents:
-            assert agent.agent_id in header, \
-                f"YOUR TEAM must include agent_id for {agent.agent_display_name}"
+            assert agent.agent_id in header, f"YOUR TEAM must include agent_id for {agent.agent_display_name}"
 
     def test_dependency_inference_tester_depends_on_implementer(self):
         """
@@ -405,8 +390,9 @@ class TestTeamContextHeader:
         )
 
         # Tester depends on implementer
-        assert "You depend on:" in header and "implementer" in header.lower(), \
+        assert "You depend on:" in header and "implementer" in header.lower(), (
             "Tester should list implementer as upstream dependency"
+        )
 
     def test_unknown_role_has_no_dependencies(self):
         """
@@ -427,7 +413,5 @@ class TestTeamContextHeader:
         )
 
         # Custom role should have no dependencies
-        assert "You depend on: None" in header, \
-            "Unknown roles should have no upstream dependencies"
-        assert "Others depend on you: None" in header, \
-            "Unknown roles should have no downstream dependencies"
+        assert "You depend on: None" in header, "Unknown roles should have no upstream dependencies"
+        assert "Others depend on you: None" in header, "Unknown roles should have no downstream dependencies"

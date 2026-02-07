@@ -67,6 +67,7 @@ ignore = [
     "FBT001", # Boolean positional arg - sometimes needed
     "FBT002", # Boolean default value - often clearer
     "G004",   # Logging uses f-string - more readable
+    "G201",   # Logging .exception vs .error(exc_info=True) - both valid
     "TRY003", # Avoid long messages outside exception class - sometimes needed
     "EM101",  # Exception string literals - simpler for small exceptions
     "EM102",  # Exception f-string literals - more readable

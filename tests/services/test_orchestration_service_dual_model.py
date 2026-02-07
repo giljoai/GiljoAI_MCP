@@ -25,7 +25,6 @@ Test Coverage:
 """
 
 import uuid
-from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
@@ -126,7 +125,9 @@ class TestSpawnAgentJobDualModel:
         assert execution.agent_display_name == "implementer"
         assert execution.tenant_key == test_tenant_key
 
-    async def test_spawn_stores_mission_in_job_not_execution(self, db_session, db_manager, test_project, test_tenant_key):
+    async def test_spawn_stores_mission_in_job_not_execution(
+        self, db_session, db_manager, test_project, test_tenant_key
+    ):
         """Verify mission is stored in AgentJob, NOT duplicated in AgentExecution."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -185,6 +186,7 @@ class TestSpawnAgentJobDualModel:
         except ValueError:
             pytest.fail("job_id or agent_id is not a valid UUID")
 
+
 # ============================================================================
 # Test Class: Succession Creates New Execution, NOT New Job
 # ============================================================================
@@ -203,7 +205,9 @@ class TestSuccessionDualModel:
     - New execution's spawned_by points to predecessor's decommissioned agent_id
     """
 
-    async def test_succession_creates_new_execution_same_job(self, db_session, db_manager, test_project, test_tenant_key):
+    async def test_succession_creates_new_execution_same_job(
+        self, db_session, db_manager, test_project, test_tenant_key
+    ):
         """Verify succession creates new execution but reuses same job.
 
         Agent ID Swap: Successor TAKES OVER the original agent_id.
@@ -266,7 +270,9 @@ class TestSuccessionDualModel:
         assert initial_agent_id in agent_ids  # Successor has original ID
         assert decommissioned_agent_id in agent_ids  # Predecessor has decomm ID
 
-    async def test_succession_sets_succeeded_by_on_predecessor(self, db_session, db_manager, test_project, test_tenant_key):
+    async def test_succession_sets_succeeded_by_on_predecessor(
+        self, db_session, db_manager, test_project, test_tenant_key
+    ):
         """Verify predecessor's succeeded_by points to original agent_id (now owned by successor).
 
         Agent ID Swap: Old execution gets decommissioned ID, succeeded_by points to original.
@@ -300,9 +306,7 @@ class TestSuccessionDualModel:
         assert new_agent_id == initial_agent_id
 
         # Verify predecessor has decommissioned ID and succeeded_by points to original
-        predecessor_stmt = select(AgentExecution).where(
-            AgentExecution.agent_id == decommissioned_agent_id
-        )
+        predecessor_stmt = select(AgentExecution).where(AgentExecution.agent_id == decommissioned_agent_id)
         predecessor_result = await db_session.execute(predecessor_stmt)
         predecessor = predecessor_result.scalar_one()
         assert predecessor.succeeded_by == initial_agent_id  # Points to original (successor's ID)
@@ -342,12 +346,11 @@ class TestSuccessionDualModel:
         assert new_agent_id == initial_agent_id
 
         # Verify new execution's spawned_by points to decommissioned agent_id
-        new_exec_stmt = select(AgentExecution).where(
-            AgentExecution.agent_id == new_agent_id
-        )
+        new_exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == new_agent_id)
         new_exec_result = await db_session.execute(new_exec_stmt)
         new_execution = new_exec_result.scalar_one()
         assert new_execution.spawned_by == decommissioned_agent_id  # Points to decomm ID
+
 
 # ============================================================================
 # Test Class: Query Methods Correctly Join Job + Execution
@@ -395,7 +398,9 @@ class TestQueryMethodsDualModel:
         assert job_entry["job_id"] == result["job_id"]
         assert job_entry["agent_id"] == result["agent_id"]
 
-    async def test_get_pending_jobs_filters_by_execution_status(self, db_session, db_manager, test_project, test_tenant_key):
+    async def test_get_pending_jobs_filters_by_execution_status(
+        self, db_session, db_manager, test_project, test_tenant_key
+    ):
         """Verify get_pending_jobs filters by AgentExecution.status."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -437,7 +442,9 @@ class TestQueryMethodsDualModel:
         assert waiting_result["job_id"] in pending_job_ids
         assert working_result["job_id"] not in pending_job_ids
 
-    async def test_get_agent_mission_returns_mission_from_job(self, db_session, db_manager, test_project, test_tenant_key):
+    async def test_get_agent_mission_returns_mission_from_job(
+        self, db_session, db_manager, test_project, test_tenant_key
+    ):
         """Verify get_agent_mission returns mission from AgentJob (joined)."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -455,15 +462,15 @@ class TestQueryMethodsDualModel:
         )
 
         # Get mission via job_id (job_id parameter is actually job_id)
-        fetched_mission = await service.get_agent_mission(
-            job_id=result["job_id"], tenant_key=test_tenant_key
-        )
+        fetched_mission = await service.get_agent_mission(job_id=result["job_id"], tenant_key=test_tenant_key)
 
         assert fetched_mission.get("success") is True
         # Mission includes team context header prefix, so check it ends with the original mission
         assert mission in fetched_mission["mission"]
 
-    async def test_get_workflow_status_aggregates_across_executions(self, db_session, db_manager, test_project, test_tenant_key):
+    async def test_get_workflow_status_aggregates_across_executions(
+        self, db_session, db_manager, test_project, test_tenant_key
+    ):
         """Verify get_workflow_status aggregates across all executions correctly."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -563,7 +570,9 @@ class TestUpdateMethodsDualModel:
         job_id = result["job_id"]
 
         # Complete job (requires job_id and result dict)
-        complete_result = await service.complete_job(job_id=job_id, result={"output": "Task done"}, tenant_key=test_tenant_key)
+        complete_result = await service.complete_job(
+            job_id=job_id, result={"output": "Task done"}, tenant_key=test_tenant_key
+        )
 
         assert complete_result.get("status") == "success"
 
@@ -579,7 +588,9 @@ class TestUpdateMethodsDualModel:
         job = job_result.scalar_one()
         assert job.status == "completed"  # Job completes with last execution
 
-    async def test_report_progress_updates_execution_fields(self, db_session, db_manager, test_project, test_tenant_key):
+    async def test_report_progress_updates_execution_fields(
+        self, db_session, db_manager, test_project, test_tenant_key
+    ):
         """Verify report_progress updates AgentExecution fields."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager

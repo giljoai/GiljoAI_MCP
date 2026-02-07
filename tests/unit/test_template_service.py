@@ -10,12 +10,12 @@ Tests cover:
 Target: >80% line coverage
 """
 
-import pytest
 from unittest.mock import AsyncMock, Mock
-from uuid import uuid4
 
-from src.giljo_mcp.services.template_service import TemplateService
+import pytest
+
 from src.giljo_mcp.models import AgentTemplate
+from src.giljo_mcp.services.template_service import TemplateService
 
 
 class TestTemplateServiceCRUD:
@@ -30,10 +30,9 @@ class TestTemplateServiceCRUD:
         session = AsyncMock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = AsyncMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
+        )
 
         session.add = Mock()
         session.commit = AsyncMock()
@@ -42,10 +41,7 @@ class TestTemplateServiceCRUD:
 
         # Act
         result = await service.create_template(
-            name="custom-analyzer",
-            content="You are an analyzer agent...",
-            role="analyzer",
-            category="custom"
+            name="custom-analyzer", content="You are an analyzer agent...", role="analyzer", category="custom"
         )
 
         # Assert
@@ -67,10 +63,7 @@ class TestTemplateServiceCRUD:
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
-        result = await service.create_template(
-            name="test",
-            content="content"
-        )
+        result = await service.create_template(name="test", content="content")
 
         # Assert
         assert result["success"] is False
@@ -84,17 +77,12 @@ class TestTemplateServiceCRUD:
         tenant_manager = Mock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Database error")
-        )
+        db_manager.get_session_async = AsyncMock(side_effect=Exception("Database error"))
 
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
-        result = await service.create_template(
-            name="test",
-            content="content"
-        )
+        result = await service.create_template(name="test", content="content")
 
         # Assert
         assert result["success"] is False
@@ -109,10 +97,9 @@ class TestTemplateServiceCRUD:
         session = AsyncMock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = AsyncMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
+        )
 
         # Mock template
         mock_template = Mock(spec=AgentTemplate)
@@ -151,10 +138,9 @@ class TestTemplateServiceCRUD:
         session = AsyncMock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = AsyncMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
+        )
 
         # Mock template
         mock_template = Mock(spec=AgentTemplate)
@@ -190,10 +176,9 @@ class TestTemplateServiceCRUD:
         session = AsyncMock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = AsyncMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
+        )
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=None)
@@ -235,10 +220,9 @@ class TestTemplateServiceCRUD:
         session = AsyncMock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = AsyncMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
+        )
 
         # Mock templates
         mock_template1 = Mock(spec=AgentTemplate)
@@ -288,10 +272,9 @@ class TestTemplateServiceCRUD:
         session = AsyncMock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = AsyncMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
+        )
 
         mock_result = Mock()
         mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[])))
@@ -334,10 +317,9 @@ class TestTemplateServiceCRUD:
         session = AsyncMock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = AsyncMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
+        )
 
         # Mock existing template
         mock_template = Mock(spec=AgentTemplate)
@@ -357,11 +339,7 @@ class TestTemplateServiceCRUD:
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
-        result = await service.update_template(
-            template_id="test-id",
-            name="new-name",
-            content="new content"
-        )
+        result = await service.update_template(template_id="test-id", name="new-name", content="new content")
 
         # Assert
         assert result["success"] is True
@@ -380,10 +358,9 @@ class TestTemplateServiceCRUD:
         session = AsyncMock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = AsyncMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
+        )
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=None)
@@ -392,10 +369,7 @@ class TestTemplateServiceCRUD:
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
-        result = await service.update_template(
-            template_id="nonexistent",
-            name="new-name"
-        )
+        result = await service.update_template(template_id="nonexistent", name="new-name")
 
         # Assert
         assert result["success"] is False
@@ -410,10 +384,9 @@ class TestTemplateServiceCRUD:
         session = AsyncMock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = AsyncMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
+        )
 
         # Mock existing template
         mock_template = Mock(spec=AgentTemplate)
@@ -430,10 +403,7 @@ class TestTemplateServiceCRUD:
         service = TemplateService(db_manager, tenant_manager)
 
         # Act - only update content
-        result = await service.update_template(
-            template_id="test-id",
-            content="new content"
-        )
+        result = await service.update_template(template_id="test-id", content="new content")
 
         # Assert
         assert result["success"] is True
@@ -453,10 +423,9 @@ class TestTemplateServiceTenantIsolation:
         tenant_manager = Mock()
         session = AsyncMock()
 
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = AsyncMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
+        )
 
         session.add = Mock()
         session.commit = AsyncMock()
@@ -464,11 +433,7 @@ class TestTemplateServiceTenantIsolation:
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
-        result = await service.create_template(
-            name="test",
-            content="content",
-            tenant_key="explicit-tenant"
-        )
+        result = await service.create_template(name="test", content="content", tenant_key="explicit-tenant")
 
         # Assert
         assert result["success"] is True
@@ -488,10 +453,9 @@ class TestTemplateServiceTenantIsolation:
         session = AsyncMock()
 
         tenant_manager.get_current_tenant = Mock(return_value="tenant-1")
-        db_manager.get_session_async = AsyncMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = AsyncMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
+        )
 
         mock_result = Mock()
         mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[])))
@@ -519,17 +483,12 @@ class TestTemplateServiceErrorHandling:
         tenant_manager = Mock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
+        db_manager.get_session_async = AsyncMock(side_effect=Exception("Connection lost"))
 
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
-        result = await service.create_template(
-            name="test",
-            content="content"
-        )
+        result = await service.create_template(name="test", content="content")
 
         # Assert
         assert result["success"] is False
@@ -543,9 +502,7 @@ class TestTemplateServiceErrorHandling:
         tenant_manager = Mock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
+        db_manager.get_session_async = AsyncMock(side_effect=Exception("Connection lost"))
 
         service = TemplateService(db_manager, tenant_manager)
 
@@ -564,17 +521,12 @@ class TestTemplateServiceErrorHandling:
         tenant_manager = Mock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
+        db_manager.get_session_async = AsyncMock(side_effect=Exception("Connection lost"))
 
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
-        result = await service.update_template(
-            template_id="test-id",
-            name="new-name"
-        )
+        result = await service.update_template(template_id="test-id", name="new-name")
 
         # Assert
         assert result["success"] is False

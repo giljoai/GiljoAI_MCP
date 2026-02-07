@@ -5,16 +5,19 @@ import asyncio
 import sys
 from pathlib import Path
 
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from src.giljo_mcp.config_manager import ConfigManager
-from src.giljo_mcp.models.auth import APIKey, User
-from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key
 import uuid
 from datetime import datetime, timezone
+
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
+from src.giljo_mcp.api_key_utils import generate_api_key, hash_api_key
+from src.giljo_mcp.config_manager import ConfigManager
+from src.giljo_mcp.models.auth import APIKey, User
 
 
 async def create_test_key():
@@ -31,12 +34,7 @@ async def create_test_key():
         # Get the first active user
         from sqlalchemy import select
 
-        result = await session.execute(
-            select(User).where(
-                User.is_active == True,
-                User.username == 'patrik'
-            ).limit(1)
-        )
+        result = await session.execute(select(User).where(User.is_active == True, User.username == "patrik").limit(1))
         user = result.scalar_one_or_none()
 
         if not user:
@@ -60,7 +58,7 @@ async def create_test_key():
             key_prefix=key_prefix,
             permissions={},
             is_active=True,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         session.add(api_key_record)

@@ -7,7 +7,9 @@ Handover: 0347a - JSON Context Builder
 """
 
 import json
+
 import pytest
+
 from src.giljo_mcp.json_context_builder import JSONContextBuilder
 
 
@@ -173,11 +175,7 @@ class TestBuild:
         result = builder.build()
 
         assert "priority_map" in result
-        assert result["priority_map"] == {
-            "critical": [],
-            "important": [],
-            "reference": []
-        }
+        assert result["priority_map"] == {"critical": [], "important": [], "reference": []}
         assert result["critical"] == {}
         assert result["important"] == {}
         assert result["reference"] == {}
@@ -265,11 +263,14 @@ class TestEstimateTokens:
         """Should estimate tokens based on content size."""
         builder = JSONContextBuilder()
         builder.add_critical("product_core")
-        builder.add_critical_content("product_core", {
-            "name": "GiljoAI MCP",
-            "description": "Multi-tenant agent orchestration server",
-            "features": ["context prioritization", "agent coordination"]
-        })
+        builder.add_critical_content(
+            "product_core",
+            {
+                "name": "GiljoAI MCP",
+                "description": "Multi-tenant agent orchestration server",
+                "features": ["context prioritization", "agent coordination"],
+            },
+        )
 
         tokens = builder.estimate_tokens()
 
@@ -288,10 +289,13 @@ class TestEstimateTokens:
         for i in range(5):
             field_name = f"field_{i}"
             builder.add_critical(field_name)
-            builder.add_critical_content(field_name, {
-                "data": ["item"] * 100,  # Large list
-                "description": "x" * 1000  # Long string
-            })
+            builder.add_critical_content(
+                field_name,
+                {
+                    "data": ["item"] * 100,  # Large list
+                    "description": "x" * 1000,  # Long string
+                },
+            )
 
         tokens = builder.estimate_tokens()
 
@@ -344,14 +348,7 @@ class TestEdgeCases:
         builder.add_critical("complex")
 
         nested_content = {
-            "level1": {
-                "level2": {
-                    "level3": {
-                        "data": ["item1", "item2"],
-                        "metadata": {"count": 2, "valid": True}
-                    }
-                }
-            }
+            "level1": {"level2": {"level3": {"data": ["item1", "item2"], "metadata": {"count": 2, "valid": True}}}}
         }
 
         builder.add_critical_content("complex", nested_content)
@@ -363,11 +360,7 @@ class TestEdgeCases:
         """Should handle Unicode content correctly."""
         builder = JSONContextBuilder()
         builder.add_critical("i18n")
-        builder.add_critical_content("i18n", {
-            "greeting": "Hello World",
-            "japanese": "こんにちは",
-            "emoji": "Test"
-        })
+        builder.add_critical_content("i18n", {"greeting": "Hello World", "japanese": "こんにちは", "emoji": "Test"})
 
         result = builder.build()
         json_str = json.dumps(result, ensure_ascii=False)
@@ -412,56 +405,60 @@ class TestRealWorldScenarios:
         # Critical fields (always inline)
         builder.add_critical("product_core")
         builder.add_critical("tech_stack")
-        builder.add_critical_content("product_core", {
-            "name": "TinyContacts",
-            "type": "Contact management application",
-            "key_features": ["Photo uploads", "Date tracking", "Tags", "Fuzzy search"]
-        })
-        builder.add_critical_content("tech_stack", {
-            "languages": ["Python 3.11+", "TypeScript 5.0+"],
-            "backend": ["FastAPI", "SQLAlchemy"],
-            "frontend": ["React 18", "Tailwind CSS"],
-            "database": {"dev": "SQLite", "prod": "PostgreSQL"}
-        })
+        builder.add_critical_content(
+            "product_core",
+            {
+                "name": "TinyContacts",
+                "type": "Contact management application",
+                "key_features": ["Photo uploads", "Date tracking", "Tags", "Fuzzy search"],
+            },
+        )
+        builder.add_critical_content(
+            "tech_stack",
+            {
+                "languages": ["Python 3.11+", "TypeScript 5.0+"],
+                "backend": ["FastAPI", "SQLAlchemy"],
+                "frontend": ["React 18", "Tailwind CSS"],
+                "database": {"dev": "SQLite", "prod": "PostgreSQL"},
+            },
+        )
 
         # Important fields (condensed)
         builder.add_important("architecture")
         builder.add_important("testing")
         builder.add_important("agent_templates")
-        builder.add_important_content("architecture", {
-            "pattern": "Modular monolith with service layer",
-            "api": "REST + OpenAPI 3.0",
-            "fetch_details": "fetch_architecture()"
-        })
-        builder.add_important_content("testing", {
-            "target": "80% coverage",
-            "approach": "TDD"
-        })
-        builder.add_important_content("agent_templates", {
-            "discovery_tool": "get_available_agents()",
-            "note": "Fetch agent details on-demand"
-        })
+        builder.add_important_content(
+            "architecture",
+            {
+                "pattern": "Modular monolith with service layer",
+                "api": "REST + OpenAPI 3.0",
+                "fetch_details": "fetch_architecture()",
+            },
+        )
+        builder.add_important_content("testing", {"target": "80% coverage", "approach": "TDD"})
+        builder.add_important_content(
+            "agent_templates", {"discovery_tool": "get_available_agents()", "note": "Fetch agent details on-demand"}
+        )
 
         # Reference fields (summary + fetch pointer)
         builder.add_reference("vision_documents")
         builder.add_reference("memory_360")
         builder.add_reference("git_history")
-        builder.add_reference_content("vision_documents", {
-            "available": True,
-            "depth_setting": "moderate",
-            "estimated_tokens": 12500,
-            "summary": "40K word product vision - UX, specs, benefits",
-            "fetch_tool": "fetch_vision_document(page=N)"
-        })
-        builder.add_reference_content("memory_360", {
-            "projects": 3,
-            "status": "3 completed projects in history",
-            "fetch_tool": "fetch_360_memory(limit=5)"
-        })
-        builder.add_reference_content("git_history", {
-            "commits": 25,
-            "fetch_tool": "fetch_git_history(limit=25)"
-        })
+        builder.add_reference_content(
+            "vision_documents",
+            {
+                "available": True,
+                "depth_setting": "moderate",
+                "estimated_tokens": 12500,
+                "summary": "40K word product vision - UX, specs, benefits",
+                "fetch_tool": "fetch_vision_document(page=N)",
+            },
+        )
+        builder.add_reference_content(
+            "memory_360",
+            {"projects": 3, "status": "3 completed projects in history", "fetch_tool": "fetch_360_memory(limit=5)"},
+        )
+        builder.add_reference_content("git_history", {"commits": 25, "fetch_tool": "fetch_git_history(limit=25)"})
 
         result = builder.build()
 
@@ -487,11 +484,7 @@ class TestRealWorldScenarios:
         builder = JSONContextBuilder()
 
         builder.add_critical("task")
-        builder.add_critical_content("task", {
-            "action": "Fix typo in README",
-            "file": "README.md",
-            "line": 42
-        })
+        builder.add_critical_content("task", {"action": "Fix typo in README", "file": "README.md", "line": 42})
 
         result = builder.build()
         tokens = builder.estimate_tokens()

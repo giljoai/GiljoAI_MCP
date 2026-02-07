@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import json
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import httpx
 
@@ -76,7 +75,9 @@ class APIClient:
         r = await self._client.post(f"/api/v1/products/{product_id}/upload-vision", files=files)
         return self._result(r)
 
-    async def create_project(self, name: str, mission: str, product_id: Optional[str] = None, description: str = "") -> dict:
+    async def create_project(
+        self, name: str, mission: str, product_id: Optional[str] = None, description: str = ""
+    ) -> dict:
         payload = {"name": name, "mission": mission, "product_id": product_id, "description": description}
         r = await self._client.post("/api/v1/projects/", json=payload)
         return self._result(r)
@@ -102,7 +103,9 @@ class APIClient:
         r = await self._client.get("/api/v1/tasks/", params=filters)
         return self._result(r)
 
-    async def create_task(self, title: str, description: str = "", product_id: Optional[str] = None, project_id: Optional[str] = None) -> dict:
+    async def create_task(
+        self, title: str, description: str = "", product_id: Optional[str] = None, project_id: Optional[str] = None
+    ) -> dict:
         payload = {"title": title, "description": description, "product_id": product_id, "project_id": project_id}
         r = await self._client.post("/api/v1/tasks/", json=payload)
         return self._result(r)
@@ -111,7 +114,9 @@ class APIClient:
         r = await self._client.delete(f"/api/v1/tasks/{task_id}")
         return self._result(r)
 
-    async def convert_task(self, task_id: str, project_name: Optional[str] = None, strategy: str = "single", include_subtasks: bool = True) -> dict:
+    async def convert_task(
+        self, task_id: str, project_name: Optional[str] = None, strategy: str = "single", include_subtasks: bool = True
+    ) -> dict:
         payload = {"project_name": project_name, "strategy": strategy, "include_subtasks": include_subtasks}
         r = await self._client.post(f"/api/v1/tasks/{task_id}/convert", json=payload)
         return self._result(r)

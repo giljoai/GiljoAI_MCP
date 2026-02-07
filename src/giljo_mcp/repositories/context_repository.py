@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from ..models import MCPContextIndex, MCPContextSummary
 from .base import BaseRepository
 
+
 class ContextRepository:
     """
     Repository for context indexing and summarization.
