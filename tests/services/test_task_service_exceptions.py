@@ -2,7 +2,7 @@
 Test suite for TaskService Exception Handling - Handover 0480c
 
 This test suite covers exception-based error handling migration from dict returns.
-Tests all error paths for ResourceNotFoundError, ValidationError, and BaseGiljoException.
+Tests all error paths for ResourceNotFoundError, ValidationError, and BaseGiljoError.
 
 Target: All 27 error return statements converted to exception raises.
 """
@@ -17,7 +17,7 @@ from passlib.hash import bcrypt
 
 from src.giljo_mcp.exceptions import (
     AuthorizationError,
-    BaseGiljoException,
+    BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -161,10 +161,10 @@ async def task_service(db_manager, tenant_manager, db_session):
 
 @pytest.mark.asyncio
 async def test_log_task_raises_exception_on_database_error(task_service, tenant_manager):
-    """Test log_task raises BaseGiljoException on database errors"""
+    """Test log_task raises BaseGiljoError on database errors"""
     # Simulate database error
     with patch.object(task_service, "_log_task_impl", side_effect=Exception("Database connection failed")):
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.log_task(content="Test task")
 
         assert "Database connection failed" in str(exc_info.value)
@@ -205,9 +205,9 @@ async def test_list_tasks_raises_validation_error_no_tenant_context(db_manager):
 
 @pytest.mark.asyncio
 async def test_list_tasks_raises_exception_on_database_error(task_service):
-    """Test list_tasks raises BaseGiljoException on database errors"""
+    """Test list_tasks raises BaseGiljoError on database errors"""
     with patch.object(task_service.db_manager, "get_session_async", side_effect=Exception("DB error")):
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.list_tasks()
 
         assert "DB error" in str(exc_info.value)
@@ -231,9 +231,9 @@ async def test_update_task_raises_not_found_on_nonexistent_task(task_service):
 
 @pytest.mark.asyncio
 async def test_update_task_raises_exception_on_database_error(task_service):
-    """Test update_task raises BaseGiljoException on database errors"""
+    """Test update_task raises BaseGiljoError on database errors"""
     with patch.object(task_service.db_manager, "get_session_async", side_effect=Exception("DB error")):
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.update_task(task_id=str(uuid4()), status="completed")
 
         assert "DB error" in str(exc_info.value)
@@ -273,9 +273,9 @@ async def test_get_task_raises_not_found_on_nonexistent_task(task_service):
 
 @pytest.mark.asyncio
 async def test_get_task_raises_exception_on_database_error(task_service):
-    """Test get_task raises BaseGiljoException on database errors"""
+    """Test get_task raises BaseGiljoError on database errors"""
     with patch.object(task_service, "_get_task_impl", side_effect=Exception("DB error")):
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.get_task(task_id=str(uuid4()))
 
         assert "DB error" in str(exc_info.value)
@@ -352,9 +352,9 @@ async def test_delete_task_raises_authorization_error_insufficient_permissions(
 
 @pytest.mark.asyncio
 async def test_delete_task_raises_exception_on_database_error(task_service):
-    """Test delete_task raises BaseGiljoException on database errors"""
+    """Test delete_task raises BaseGiljoError on database errors"""
     with patch.object(task_service, "_delete_task_impl", side_effect=Exception("DB error")):
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.delete_task(task_id=str(uuid4()), user_id=str(uuid4()))
 
         assert "DB error" in str(exc_info.value)
@@ -510,9 +510,9 @@ async def test_convert_to_project_raises_validation_error_no_active_product(
 
 @pytest.mark.asyncio
 async def test_convert_to_project_raises_exception_on_database_error(task_service):
-    """Test convert_to_project raises BaseGiljoException on database errors"""
+    """Test convert_to_project raises BaseGiljoError on database errors"""
     with patch.object(task_service, "_convert_to_project_impl", side_effect=Exception("DB error")):
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.convert_to_project(
                 task_id=str(uuid4()),
                 project_name="Test",
@@ -558,9 +558,9 @@ async def test_change_status_raises_not_found_on_nonexistent_task(task_service):
 
 @pytest.mark.asyncio
 async def test_change_status_raises_exception_on_database_error(task_service):
-    """Test change_status raises BaseGiljoException on database errors"""
+    """Test change_status raises BaseGiljoError on database errors"""
     with patch.object(task_service, "_change_status_impl", side_effect=Exception("DB error")):
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.change_status(task_id=str(uuid4()), new_status="completed")
 
         assert "DB error" in str(exc_info.value)
@@ -588,9 +588,9 @@ async def test_get_summary_raises_validation_error_no_tenant_context(db_manager,
 
 @pytest.mark.asyncio
 async def test_get_summary_raises_exception_on_database_error(task_service):
-    """Test get_summary raises BaseGiljoException on database errors"""
+    """Test get_summary raises BaseGiljoError on database errors"""
     with patch.object(task_service, "_get_summary_impl", side_effect=Exception("DB error")):
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.get_summary()
 
         assert "DB error" in str(exc_info.value)

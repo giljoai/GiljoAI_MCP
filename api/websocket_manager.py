@@ -8,6 +8,11 @@ from api.websocket.
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from api.websocket import WebSocketManager
+
+
+__all__ = ["ConnectionInfo", "WebSocketManager"]
+
 
 @dataclass
 class ConnectionInfo:

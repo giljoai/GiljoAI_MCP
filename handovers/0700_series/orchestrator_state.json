@@ -1,15 +1,10 @@
 {
   "series_id": "0700_code_cleanup",
   "created_at": "2026-02-03T00:00:00Z",
-  "status": "audit_validation_in_progress",
-  "current_handover": "0725-COMPLETE",
+  "status": "remediation_complete_awaiting_0730",
+  "current_handover": "0727-COMPLETE",
   "next_handovers": [
-    "0726-SUPERSEDED",
-    "0727-P0/P1",
-    "0729-P1",
-    "0730-P1",
-    "0731-P2",
-    "0732-P3"
+    "0730-VALIDATE"
   ],
   "handovers": [
     {
@@ -881,7 +876,7 @@
     {
       "id": "0725",
       "title": "Code Health Audit & Validation",
-      "status": "complete",
+      "status": "flawed",
       "effort_hours": "4",
       "priority": "HIGH",
       "dependencies": [
@@ -1003,17 +998,97 @@
         "multi_tenant": "85-95%",
         "blocked_by": "import errors"
       },
-      "note": "RESEARCH ONLY - No code changes made. Comprehensive audit identified security vulnerabilities, orphan code (50% of codebase), and test infrastructure issues. 6 follow-up handovers created with prioritization (P0-P3). Excellent findings: Ruff lint clean (0720), naming 99.5% compliant, repository layer sound. UPDATE 2026-02-07: User research found tenant isolation findings were LARGELY FALSE POSITIVE (24/25 queries safe). One real vulnerability in TaskService being addressed via design change (remove unassigned tasks). 0726 handover SUPERSEDED.",
+      "note": "AUDIT FUNDAMENTALLY FLAWED (2026-02-07). Naive static analysis produced 75%+ false positives. Orphan findings: claimed 129 files, reality 2-5. Tenant isolation: 24/25 false positive. Many flagged files already deleted in 0700 series. Audit failed to detect FastAPI patterns, dynamic imports, frontend calls. Architecture is HEALTHY. Need complete re-audit with proper tooling (0725b).",
       "validation": {
-        "tenant_isolation_findings": {
-          "status": "false_positive",
-          "validated_by": "user_research_agents",
-          "validated_at": "2026-02-07T16:40:30.912705+00:00",
-          "summary": "24/25 flagged queries are safe - intentional cross-tenant or upstream validated",
-          "real_issues": 1,
-          "fix_approach": "Design change (remove unassigned tasks feature)"
-        }
+        "status": "invalid",
+        "validated_by": "user_validation_agents",
+        "validated_at": "2026-02-07T17:05:10.302819+00:00",
+        "false_positive_rate": "75%+",
+        "methodology_flaw": "Naive static analysis without FastAPI awareness",
+        "real_findings": [
+          "6 test import errors",
+          "3 production bugs",
+          "2 actual orphans",
+          "1 API key placeholder"
+        ],
+        "false_findings": [
+          "129 orphan files (actually 2-5)",
+          "25 tenant isolation issues (actually 1)",
+          "100+ dead functions (actually live FastAPI endpoints)"
+        ],
+        "replacement_handover": "0725b"
+      },
+      "superseded_by": {
+        "0726": "0433 (user executing proper tenant isolation fix)"
       }
+    },
+    {
+      "id": "0725b",
+      "title": "Proper Code Health Re-Audit (AST-based)",
+      "status": "complete",
+      "effort_hours": "4",
+      "priority": "HIGH",
+      "dependencies": [
+        "0720"
+      ],
+      "scope": "Replace flawed 0725 audit with proper AST-based analysis. FastAPI-aware tooling, frontend integration checks, validation of findings.",
+      "started_at": "2026-02-07T15:00:00Z",
+      "completed_at": "2026-02-07T17:00:00Z",
+      "worker_session_id": "deep-researcher",
+      "docs_updated": [
+        "handovers/0725b_COMPLETE.md",
+        "handovers/0725b_AUDIT_REPORT.md"
+      ],
+      "actual_results": {
+        "architecture_verdict": "HEALTHY",
+        "false_positive_rate": "<5%",
+        "orphan_files_actual": 2,
+        "orphan_files_0725_claimed": 129,
+        "accuracy_improvement": "98% reduction in false positives",
+        "real_findings": {
+          "test_import_errors": 6,
+          "production_bugs": 3,
+          "orphan_files": 2,
+          "dict_returns": 122
+        },
+        "methodology": "AST analysis + FastAPI patterns + frontend integration"
+      },
+      "note": "Proper re-audit with <5% false positive rate (vs 0725's 75%+). Architecture declared HEALTHY. Only 2 actual orphans found (vs 0725's claim of 129)."
+    },
+    {
+      "id": "0727",
+      "title": "Test Import Fixes & Production Bug Remediation",
+      "status": "complete",
+      "effort_hours": "2",
+      "priority": "HIGH",
+      "dependencies": [
+        "0725b"
+      ],
+      "scope": "Fix 6 test import errors (BaseGiljoException → BaseGiljoError) and 3 production bugs (complete endpoint, summary endpoint, WebSocket imports).",
+      "started_at": "2026-02-07T17:30:00Z",
+      "completed_at": "2026-02-07T19:00:00Z",
+      "worker_session_id": "backend-integration-tester",
+      "docs_updated": [
+        "handovers/0727_COMPLETE.md"
+      ],
+      "actual_results": {
+        "test_import_errors_fixed": 6,
+        "production_bugs_fixed": 3,
+        "files_modified": 8,
+        "lines_changed": 25,
+        "impact": "100% elimination of test import errors and production bugs"
+      },
+      "files_modified": [
+        "tests/unit/test_0433_task_schema_validation.py",
+        "tests/integration/test_0433_task_product_binding_api.py",
+        "tests/integration/test_task_creation_flow.py",
+        "tests/unit/test_tool_accessor_create_task.py",
+        "tests/api/test_endpoints_messages.py",
+        "tests/services/test_agent_communication_queue.py",
+        "api/endpoints/agent_jobs/lifecycle.py",
+        "api/endpoints/projects.py"
+      ],
+      "note": "Surgical fixes for test imports and production bugs. All tests now pass. Agent completion and project summary workflows restored."
     }
   ],
   "doc_mapping": {
@@ -1045,5 +1120,5 @@
     "deprecated_code_lines": 1500,
     "total_addressable_lines": 2000
   },
-  "notes": "COMPLETE (2026-02-07): All 0700 series handovers finished. 0720 achieved 100% delinting (1850→0 issues). 0725 comprehensive audit complete with 6 follow-up handovers created (0726-0732). COMPLETE: 0700a-i, 0700-REMEDIATION, 0702-REVISED, 0703-REVISED, 0704-REVISED, 0706b, 0707-LINT, 0708-TYPES, 0709-SECURITY, 0373, 0720, 0725. SKIPPED: 0710, 0714, 0715, 0711 (all pre-completed). NEXT: 0726-0732 (post-audit remediation). Series saved ~20 hours via validation-first pattern. Critical finding: 50% orphan code, missing tenant isolation (P0 security risk)."
+  "notes": "COMPLETE (2026-02-07): All 0700 series handovers finished. 0720 achieved 100% delinting (1850→0 issues). 0725 INVALIDATED (75%+ false positives), replaced by 0725b re-audit. 0725b confirms HEALTHY architecture with only 2 actual orphans (not 129). 0727 fixed all test imports and production bugs. 0433 task product binding 9/10 phases complete. Orphan cleanup complete (2 files, 627 lines deleted). COMPLETE: 0700a-i, 0700-REMEDIATION, 0702-REVISED, 0703-REVISED, 0704-REVISED, 0706b, 0707-LINT, 0708-TYPES, 0709-SECURITY, 0373, 0720, 0725b, 0727. SKIPPED: 0710, 0714, 0715, 0711 (pre-completed). INVALIDATED: 0725, 0726, 0729. NEXT: 0730 (service response models). Series saved ~20 hours via validation-first pattern. Architecture: HEALTHY."
 }

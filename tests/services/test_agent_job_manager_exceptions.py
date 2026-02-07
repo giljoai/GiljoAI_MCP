@@ -17,7 +17,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import BaseGiljoException, ResourceNotFoundError
+from src.giljo_mcp.exceptions import BaseGiljoError, ResourceNotFoundError
 from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.tenant import TenantManager
 
@@ -47,7 +47,7 @@ class TestSpawnAgentExceptions:
 
     @pytest.mark.asyncio
     async def test_spawn_agent_raises_exception_on_database_error(self, agent_job_manager, mock_db_manager):
-        """Test that spawn_agent raises BaseGiljoException on database errors."""
+        """Test that spawn_agent raises BaseGiljoError on database errors."""
         # Mock session to raise an exception during commit
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.commit.side_effect = Exception("Database connection lost")
@@ -57,7 +57,7 @@ class TestSpawnAgentExceptions:
         mock_db_manager.get_session_async.return_value = mock_session
 
         # Verify exception is raised (not error dict returned)
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await agent_job_manager.spawn_agent(
                 project_id="test-project",
                 agent_display_name="Test Agent",
@@ -99,7 +99,7 @@ class TestUpdateAgentStatusExceptions:
 
     @pytest.mark.asyncio
     async def test_update_agent_status_raises_exception_on_database_error(self, agent_job_manager, mock_db_manager):
-        """Test that update_agent_status raises BaseGiljoException on database errors."""
+        """Test that update_agent_status raises BaseGiljoError on database errors."""
         # Mock session that raises an exception
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.execute.side_effect = Exception("Database error during update")
@@ -109,7 +109,7 @@ class TestUpdateAgentStatusExceptions:
         mock_db_manager.get_session_async.return_value = mock_session
 
         # Verify exception is raised
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await agent_job_manager.update_agent_status(
                 agent_id="test-agent", status="working", tenant_key="test-tenant"
             )
@@ -148,7 +148,7 @@ class TestUpdateAgentProgressExceptions:
 
     @pytest.mark.asyncio
     async def test_update_agent_progress_raises_exception_on_database_error(self, agent_job_manager, mock_db_manager):
-        """Test that update_agent_progress raises BaseGiljoException on database errors."""
+        """Test that update_agent_progress raises BaseGiljoError on database errors."""
         # Mock session that raises an exception
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.execute.side_effect = Exception("Database error during progress update")
@@ -158,7 +158,7 @@ class TestUpdateAgentProgressExceptions:
         mock_db_manager.get_session_async.return_value = mock_session
 
         # Verify exception is raised
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await agent_job_manager.update_agent_progress(agent_id="test-agent", progress=50, tenant_key="test-tenant")
 
         # Verify exception details
@@ -193,7 +193,7 @@ class TestCompleteJobExceptions:
 
     @pytest.mark.asyncio
     async def test_complete_job_raises_exception_on_database_error(self, agent_job_manager, mock_db_manager):
-        """Test that complete_job raises BaseGiljoException on database errors."""
+        """Test that complete_job raises BaseGiljoError on database errors."""
         # Mock session that raises an exception
         mock_session = AsyncMock(spec=AsyncSession)
         mock_session.execute.side_effect = Exception("Database error during job completion")
@@ -203,7 +203,7 @@ class TestCompleteJobExceptions:
         mock_db_manager.get_session_async.return_value = mock_session
 
         # Verify exception is raised
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await agent_job_manager.complete_job(job_id="test-job", tenant_key="test-tenant")
 
         # Verify exception details

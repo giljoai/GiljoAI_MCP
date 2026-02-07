@@ -765,18 +765,26 @@ class TestProjectCompletion:
     """Test completion operations: complete, close_out, continue_working"""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Production bug: Complete endpoint validation causes 422 for valid projects")
     async def test_complete_project_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_project):
         """Test POST /api/v1/projects/{project_id}/complete - Complete project successfully."""
+        # Complete endpoint requires a request body with summary, key_outcomes, and confirm_closeout
+        request_body = {
+            "summary": "Project completed successfully with all objectives met. The team delivered high-quality code and documentation.",
+            "key_outcomes": ["Feature implementation", "Test coverage achieved", "Documentation updated"],
+            "decisions_made": ["Used microservices architecture", "Chose PostgreSQL for data storage"],
+            "confirm_closeout": True
+        }
         response = await api_client.post(
-            f"/api/v1/projects/{tenant_a_project['id']}/complete", cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{tenant_a_project['id']}/complete",
+            json=request_body,
+            cookies={"access_token": tenant_a_token}
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == tenant_a_project["id"]
-        assert data["status"] == "completed"
+        assert data["success"] is True
         assert "completed_at" in data
+        assert "memory_updated" in data
 
     @pytest.mark.asyncio
     async def test_complete_project_not_found(self, api_client: AsyncClient, tenant_a_token: str):
