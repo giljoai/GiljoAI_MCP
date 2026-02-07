@@ -199,7 +199,7 @@ Only use read_file() for:
 
                 return rules
 
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             logger.warning(f"Failed to load optimization rules from database: {e}")
             return self.default_rules.copy()
 
@@ -263,7 +263,7 @@ Only use read_file() for:
                 "priority": 100,  # High priority for critical optimization rules
             }
 
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             logger.error(f"Failed to create optimization augmentation: {e}")
             # Return safe fallback
             return {
@@ -372,7 +372,7 @@ ALWAYS prefer this workflow:
 
                 logger.info(f"Recorded optimization: {operation_type.value} saved {tokens_saved} tokens")
 
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             logger.error(f"Failed to record optimization operation: {e}")
             # Don't raise - tracking failures shouldn't break operations
 
@@ -427,7 +427,7 @@ ALWAYS prefer this workflow:
                     else 0,
                 }
 
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             logger.error(f"Failed to generate savings report: {e}")
             return {
                 "agent_id": agent_id,

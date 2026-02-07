@@ -119,7 +119,7 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to authenticate user: {e}")
-            raise BaseGiljoException(message=f"Authentication failed: {e!s}", context={"username": username})
+            raise BaseGiljoException(message=f"Authentication failed: {e!s}", context={"username": username}) from e
 
     async def _authenticate_user_impl(self, session: AsyncSession, username: str, password: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
@@ -199,7 +199,7 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to update last login: {e}")
-            raise BaseGiljoException(message=f"Failed to update last login: {e!s}", context={"user_id": user_id})
+            raise BaseGiljoException(message=f"Failed to update last login: {e!s}", context={"user_id": user_id}) from e
 
     async def _update_last_login_impl(self, session: AsyncSession, user_id: str, timestamp: datetime) -> None:
         """Implementation that uses provided session"""
@@ -253,7 +253,7 @@ class AuthService:
 
         except Exception as e:
             self._logger.exception(f"Failed to check setup state: {e}")
-            raise BaseGiljoException(message=f"Failed to check setup state: {e!s}", context={"tenant_key": tenant_key})
+            raise BaseGiljoException(message=f"Failed to check setup state: {e!s}", context={"tenant_key": tenant_key}) from e
 
     async def _check_setup_state_impl(self, session: AsyncSession, tenant_key: str) -> Optional[Dict[str, Any]]:
         """Implementation that uses provided session"""
@@ -306,7 +306,7 @@ class AuthService:
 
         except Exception as e:
             self._logger.exception(f"Failed to list API keys: {e}")
-            raise BaseGiljoException(message=f"Failed to list API keys: {e!s}", context={"user_id": user_id})
+            raise BaseGiljoException(message=f"Failed to list API keys: {e!s}", context={"user_id": user_id}) from e
 
     async def _list_api_keys_impl(
         self, session: AsyncSession, user_id: str, include_revoked: bool
@@ -380,7 +380,7 @@ class AuthService:
             self._logger.exception(f"Failed to create API key: {e}")
             raise BaseGiljoException(
                 message=f"Failed to create API key: {e!s}", context={"user_id": user_id, "name": name}
-            )
+            ) from e
 
     async def _create_api_key_impl(
         self, session: AsyncSession, user_id: str, tenant_key: str, name: str, permissions: List[str]
@@ -452,7 +452,7 @@ class AuthService:
             self._logger.exception(f"Failed to revoke API key: {e}")
             raise BaseGiljoException(
                 message=f"Failed to revoke API key: {e!s}", context={"key_id": key_id, "user_id": user_id}
-            )
+            ) from e
 
     async def _revoke_api_key_impl(self, session: AsyncSession, key_id: str, user_id: str) -> None:
         """Implementation that uses provided session"""
@@ -531,7 +531,7 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to register user: {e}")
-            raise BaseGiljoException(message=f"Failed to register user: {e!s}", context={"username": username})
+            raise BaseGiljoException(message=f"Failed to register user: {e!s}", context={"username": username}) from e
 
     async def _register_user_impl(
         self,
@@ -752,7 +752,7 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to create first admin: {e}")
-            raise BaseGiljoException(message=f"Failed to create first admin: {e!s}", context={"username": username})
+            raise BaseGiljoException(message=f"Failed to create first admin: {e!s}", context={"username": username}) from e
 
     async def _create_first_admin_impl(
         self,

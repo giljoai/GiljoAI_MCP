@@ -84,16 +84,16 @@ async def spawn_agent_job(
             context_chunks=request.context_chunks,
         )
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error spawning agent: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
     # Broadcast WebSocket event for real-time UI
     # NOTE: OrchestrationService already broadcasts agent:created, but we broadcast again
@@ -176,7 +176,7 @@ async def acknowledge_job(
         raise
     except Exception as e:
         logger.error(f"Unexpected error acknowledging job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/{job_id}/complete", response_model=JobCompleteResponse)
@@ -222,16 +222,16 @@ async def complete_job(
             message=result.get("message", "Job completed successfully"),
         )
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error completing job: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.post("/{job_id}/error", response_model=JobErrorResponse)
@@ -275,13 +275,13 @@ async def report_job_error(
             message=result.get("message", "Job error reported"),
         )
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error reporting job error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e

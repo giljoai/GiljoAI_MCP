@@ -77,7 +77,7 @@ def get_server_url() -> str:
             host = "localhost"
 
         return f"http://{host}:{port}"
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.warning(f"Failed to get server URL from config: {e}")
         return "http://localhost:7272"
 
@@ -127,7 +127,7 @@ def validate_token(token: str) -> Optional[dict]:
     except jwt.InvalidTokenError as e:
         logger.warning(f"Invalid token: {e}")
         return None
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.error(f"Token validation error: {e}")
         return None
 
@@ -185,20 +185,6 @@ async def get_user_by_id(session: AsyncSession, user_id: str) -> Optional[User]:
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
     return user
-
-    # ORIGINAL IMPLEMENTATION (kept for reference):
-    # This created a new DatabaseManager for each call (anti-pattern)
-    # import os
-    # from src.giljo_mcp.database import DatabaseManager
-    # db_url = os.getenv("DATABASE_URL")
-    # if not db_url:
-    #     raise RuntimeError("DATABASE_URL not configured")
-    # db_manager = DatabaseManager(database_url=db_url, is_async=True)
-    # async with db_manager.get_session_async() as session:
-    #     stmt = select(User).where(User.id == user_id, User.is_active == True)
-    #     result = await session.execute(stmt)
-    #     user = result.scalar_one_or_none()
-    #     return user
 
 
 # API Endpoints
@@ -261,7 +247,7 @@ async def download_windows_installer(current_user: Optional[User] = Depends(get_
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Installer template not found. Please contact administrator.",
-        )
+        ) from e
 
     logger.info(f"Windows installer generated successfully for: {current_user.username}")
 
@@ -327,7 +313,7 @@ async def download_unix_installer(current_user: Optional[User] = Depends(get_cur
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Installer template not found. Please contact administrator.",
-        )
+        ) from e
 
     logger.info(f"Unix installer generated successfully for: {current_user.username}")
 

@@ -116,7 +116,7 @@ async def test_database_connection(request: DatabaseSetupRequest) -> Dict:
     except ImportError:
         raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
 
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
         return {"success": False, "status": "error", "message": f"Connection test failed: {e!s}"}
 
 
@@ -230,7 +230,7 @@ async def setup_database(request: DatabaseSetupRequest) -> Dict:
             "config_backup": str(backup_path),
         }
 
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
         logger.error(f"Database setup failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Database setup failed: {e!s}") from e
 
@@ -367,6 +367,6 @@ async def verify_database_setup() -> Dict:
     except ImportError:
         raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
 
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
         logger.error(f"Database verification failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Database verification failed: {e!s}") from e

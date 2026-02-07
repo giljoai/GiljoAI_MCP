@@ -38,7 +38,7 @@ def read_config() -> Dict[str, Any]:
     try:
         with open(config_path, encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Failed to read config: {e}")
         return {}
 
@@ -49,9 +49,9 @@ def write_config(config: Dict[str, Any]) -> None:
     try:
         with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Failed to write config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/settings")
@@ -66,9 +66,9 @@ async def get_serena_settings():
         serena = config.get("features", {}).get("serena_mcp", {})
 
         return {"use_in_prompts": bool(serena.get("use_in_prompts", False))}
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.exception("Failed to get Serena settings")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/toggle")
@@ -102,9 +102,9 @@ async def toggle_serena(request: SerenaToggleRequest):
             "message": f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}",
         }
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.exception("Failed to toggle Serena")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/status")
@@ -115,6 +115,6 @@ async def get_serena_status():
         enabled = config.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
 
         return {"enabled": enabled, "message": f"Serena prompts {'enabled' if enabled else 'disabled'}"}
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.exception("Failed to get Serena status")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

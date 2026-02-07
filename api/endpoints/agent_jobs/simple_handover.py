@@ -183,7 +183,7 @@ async def simple_handover(
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 )
-        except Exception as ws_error:
+        except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
             logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
         return {
@@ -198,7 +198,7 @@ async def simple_handover(
         raise  # Re-raise HTTP exceptions (400, 404, etc.) without modification
     except Exception as e:
         logger.exception(f"Simple handover failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 def _build_continuation_prompt(

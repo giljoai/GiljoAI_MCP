@@ -7,6 +7,25 @@
 
 ---
 
+## CRITICAL: Large File Handling
+
+**Files over 20K tokens MUST be read in batches.** Do NOT skip large files.
+
+```python
+# For files > 500 lines, read in chunks:
+Read(file_path, offset=0, limit=200)    # Lines 1-200
+Read(file_path, offset=200, limit=200)  # Lines 201-400
+Read(file_path, offset=400, limit=200)  # Lines 401-600
+# Continue until entire file is processed
+```
+
+**Key large files to process in batches:**
+- `src/giljo_mcp/services/*.py` - May contain datetime/subprocess calls
+- `src/giljo_mcp/tools/*.py` - May contain subprocess calls
+- `api/endpoints/**/*.py` - May contain security-sensitive code
+
+---
+
 ## Mission Statement
 
 Address security-related lint issues. Fix timezone handling, subprocess security, and audit for hardcoded credentials.

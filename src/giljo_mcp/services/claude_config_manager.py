@@ -92,7 +92,7 @@ class ClaudeConfigManager:
             raise ConfigurationError(
                 message=f"Invalid JSON in config file: {e}",
                 context={"operation": "inject_serena", "config_path": str(self.claude_config_path)},
-            )
+            ) from e
         except OSError as e:
             logger.error(f"IO error during injection: {e}")
             if backup_path:
@@ -100,17 +100,17 @@ class ClaudeConfigManager:
             raise FileSystemError(
                 message=f"IO error: {e}",
                 context={"operation": "inject_serena", "config_path": str(self.claude_config_path)},
-            )
+            ) from e
         except (ConfigurationError, FileSystemError):
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Unexpected error during injection: {e}")
             if backup_path:
                 self._restore_backup(backup_path)
             raise ConfigurationError(
                 message=f"Unexpected error: {e}", context={"operation": "inject_serena", "error_type": type(e).__name__}
-            )
+            ) from e
 
     def remove_serena(self) -> dict[str, str]:
         """
@@ -159,15 +159,15 @@ class ClaudeConfigManager:
             raise FileSystemError(
                 message=f"IO error during Serena removal: {e}",
                 context={"operation": "remove_serena", "config_path": str(self.claude_config_path)},
-            )
-        except Exception as e:
+            ) from e
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Error during removal: {e}")
             if backup_path:
                 self._restore_backup(backup_path)
             raise ConfigurationError(
                 message=f"Error removing Serena: {e}",
                 context={"operation": "remove_serena", "error_type": type(e).__name__},
-            )
+            ) from e
 
     def _load_config(self) -> dict[str, Any]:
         """
@@ -189,7 +189,7 @@ class ClaudeConfigManager:
 
             return config
         except json.JSONDecodeError as e:
-            raise json.JSONDecodeError(f"Invalid JSON in {self.claude_config_path}", e.doc, e.pos)
+            raise json.JSONDecodeError(f"Invalid JSON in {self.claude_config_path}", e.doc, e.pos) from e
 
     def _backup_claude_config(self) -> Path:
         """
@@ -221,7 +221,7 @@ class ClaudeConfigManager:
         try:
             shutil.copy2(backup_path, self.claude_config_path)
             logger.info(f"Restored config from backup {backup_path}")
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(f"Failed to restore backup: {e}")
 
     def _add_serena_config(self, config: dict[str, Any], project_root: Path) -> dict[str, Any]:
@@ -283,7 +283,7 @@ class ClaudeConfigManager:
 
             return True
 
-        except Exception as e:
+        except (ValueError, KeyError) as e:
             logger.error(f"Validation error: {e}")
             return False
 
@@ -320,6 +320,6 @@ class ClaudeConfigManager:
             # Clean up temp file on error
             try:
                 Path(temp_path).unlink(missing_ok=True)
-            except Exception:
+            except (OSError, RuntimeError):
                 pass  # nosec B110 - temp file cleanup
             raise e

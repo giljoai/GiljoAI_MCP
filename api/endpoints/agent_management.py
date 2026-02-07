@@ -130,7 +130,7 @@ async def get_active_agent_jobs(
             ]
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/agent-jobs", response_model=AgentJobResponse)
@@ -184,7 +184,7 @@ async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(g
             )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.put("/agent-jobs/{job_id}/status", response_model=dict)
@@ -240,7 +240,7 @@ async def update_agent_job_status(
             return {"message": f"Job status updated to {status_update.status}"}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # REMOVED: Duplicate acknowledge endpoint - use /api/agent-jobs/{job_id}/acknowledge from lifecycle.py instead
@@ -294,7 +294,7 @@ async def add_job_message(job_id: str, message_data: AgentJobMessage, tenant_key
             return {"message": "Message added to job successfully"}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/context/search", response_model=List[ContextChunkResponse])
@@ -336,7 +336,7 @@ async def search_context(search_data: ContextSearchRequest, tenant_key: str = De
             ]
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/context/product/{product_id}/chunks", response_model=List[ContextChunkResponse])
@@ -376,7 +376,7 @@ async def get_product_chunks(product_id: str, tenant_key: str = Depends(get_tena
             ]
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/context/stats/{product_id}", response_model=TokenReductionStats)
@@ -405,7 +405,7 @@ async def get_token_reduction_stats(product_id: str, tenant_key: str = Depends(g
             return TokenReductionStats(**stats)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/agent-jobs/stats", response_model=dict)
@@ -427,4 +427,4 @@ async def get_agent_job_statistics(
             return stats
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

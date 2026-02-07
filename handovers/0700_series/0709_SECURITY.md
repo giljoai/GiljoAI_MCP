@@ -7,6 +7,20 @@
 
 ---
 
+## CRITICAL: Large File Handling
+
+**Files over 20K tokens (~500+ lines) MUST be read in batches.** Do NOT skip large files.
+
+```python
+# Read large files in chunks of 200 lines:
+Read(file_path, offset=0, limit=200)    # Lines 1-200
+Read(file_path, offset=200, limit=200)  # Lines 201-400
+Read(file_path, offset=400, limit=200)  # Lines 401-600
+# Continue until entire file is processed
+```
+
+---
+
 ## Mission Statement
 
 Address security-related lint issues and perform security audit. Fix timezone handling, subprocess calls, and other security concerns flagged by ruff's S rules and bandit.

@@ -146,12 +146,12 @@ def _read_config() -> dict:
         logger.error(f"Failed to parse config.yaml: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Configuration file is malformed: {e!s}"
-        )
+        ) from e
     except Exception as e:
         logger.error(f"Failed to read config.yaml: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to read configuration file: {e!s}"
-        )
+        ) from e
 
 
 def _write_config(config: dict) -> None:
@@ -184,7 +184,7 @@ def _write_config(config: dict) -> None:
         logger.error(f"Failed to write config.yaml: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update configuration file: {e!s}"
-        )
+        ) from e
 
 
 def _get_cookie_domains(config: dict) -> List[str]:

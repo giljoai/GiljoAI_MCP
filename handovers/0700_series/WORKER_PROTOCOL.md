@@ -4,6 +4,28 @@
 
 ---
 
+## CRITICAL: Large File Handling
+
+**Files over 20K tokens (~500+ lines) MUST be read in batches.** Do NOT skip large files.
+
+```python
+# Read large files in chunks of 200 lines:
+Read(file_path, offset=0, limit=200)    # Lines 1-200
+Read(file_path, offset=200, limit=200)  # Lines 201-400
+Read(file_path, offset=400, limit=200)  # Lines 401-600
+# Continue until entire file is processed
+```
+
+**Common large files in this codebase:**
+- `src/giljo_mcp/tool_accessor.py` (~1200 lines)
+- `src/giljo_mcp/services/project_service.py` (~1500 lines)
+- `src/giljo_mcp/template_manager.py` (~1000 lines)
+- `api/endpoints/**/*.py` - Various large endpoint files
+
+**Never skip a file because it's "too large" - read it in batches.**
+
+---
+
 ## Your Workflow (6 Phases)
 
 ### Phase 1: Context Acquisition (5 min)
