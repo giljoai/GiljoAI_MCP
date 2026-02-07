@@ -69,12 +69,12 @@
             </v-col>
           </v-row>
 
-          <v-row class="mt-3" justify="center">
+          <v-row v-if="!isChecklistComplete" class="mt-3" justify="center">
             <v-col cols="12" md="8">
               <v-btn
                 :to="{ name: 'UserSettings', query: { tab: 'startup' } }"
-                color="secondary"
-                variant="flat"
+                color="primary"
+                variant="outlined"
                 size="large"
                 block
                 prepend-icon="mdi-rocket-launch"
@@ -100,6 +100,21 @@ import GilMascot from '@/components/GilMascot.vue'
 const theme = useTheme()
 const userStore = useUserStore()
 const productStore = useProductStore()
+
+// Checklist completion tracking (same storage key as StartupQuickStart.vue)
+const CHECKLIST_STORAGE_KEY = 'giljo_startup_checklist_v1'
+const checklistItemIds = ['tools', 'connect', 'slash', 'templates', 'context', 'integrations']
+
+const isChecklistComplete = computed(() => {
+  try {
+    const raw = localStorage.getItem(CHECKLIST_STORAGE_KEY)
+    if (!raw) return false
+    const checklist = JSON.parse(raw)
+    return checklistItemIds.every(id => checklist[id] === true)
+  } catch {
+    return false
+  }
+})
 
 // Mascot handled by inline component (no iframe to avoid background issues)
 
@@ -254,7 +269,30 @@ onMounted(async () => {
 }
 
 .startup-cta {
-  color: rgb(var(--v-theme-primary)) !important;
+  font-weight: 700;
+  position: relative;
+  border: none !important;
+  overflow: hidden;
+}
+
+.startup-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.startup-cta :deep(.v-btn__content) {
+  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   font-weight: 700;
 }
 </style>
