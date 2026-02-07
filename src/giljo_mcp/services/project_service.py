@@ -413,28 +413,27 @@ class ProjectService:
                 result = await session.execute(query)
                 projects = result.scalars().all()
 
-                project_list = []
-                for project in projects:
-                    # For list view, we include basic metrics
-                    # (agent_count and message_count would require additional queries)
-                    project_list.append(
-                        {
-                            "id": str(project.id),
-                            "name": project.name,
-                            "mission": project.mission,
-                            "description": project.description,
-                            "status": project.status,
-                            "staging_status": project.staging_status,
-                            "tenant_key": project.tenant_key,
-                            "product_id": project.product_id,
-                            "created_at": project.created_at.isoformat(),
-                            "updated_at": (
-                                project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat()
-                            ),
-                            "context_budget": 150000,  # Hardcoded default (Project.context_budget removed, using AgentExecution default)
-                            "context_used": project.context_used,
-                        }
-                    )
+                # For list view, we include basic metrics
+                # (agent_count and message_count would require additional queries)
+                project_list = [
+                    {
+                        "id": str(project.id),
+                        "name": project.name,
+                        "mission": project.mission,
+                        "description": project.description,
+                        "status": project.status,
+                        "staging_status": project.staging_status,
+                        "tenant_key": project.tenant_key,
+                        "product_id": project.product_id,
+                        "created_at": project.created_at.isoformat(),
+                        "updated_at": (
+                            project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat()
+                        ),
+                        "context_budget": 150000,  # Hardcoded default (Project.context_budget removed, using AgentExecution default)
+                        "context_used": project.context_used,
+                    }
+                    for project in projects
+                ]
 
                 return project_list
 
@@ -1428,7 +1427,7 @@ class ProjectService:
             job_counts_raw = job_counts_result.all()
 
             # Build job counts dict
-            job_counts = {status: count for status, count in job_counts_raw}
+            job_counts = dict(job_counts_raw)
 
             total_jobs = sum(job_counts.values())
             completed_jobs = job_counts.get("completed", 0)
@@ -1717,7 +1716,7 @@ class ProjectService:
             )
             .group_by(AgentExecution.status)
         )
-        job_counts = {status: count for status, count in job_counts_result.all()}
+        job_counts = dict(job_counts_result.all())
 
         total_agents = sum(job_counts.values())
         completed_agents = job_counts.get("complete", 0) + job_counts.get("completed", 0)

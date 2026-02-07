@@ -108,5 +108,5 @@ class PostgresNotifyWebSocketEventBroker(WebSocketEventBroker):
         for handler in handlers_snapshot:
             try:
                 await handler(message)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - Handler resilience: continue loop on any error
                 logger.warning(f"Broker handler failed: {e}", exc_info=True)

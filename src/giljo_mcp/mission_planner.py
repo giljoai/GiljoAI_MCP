@@ -1704,19 +1704,18 @@ Partial reading defeats the purpose of this configuration."""
         templates = result.scalars().all()
 
         # Convert to dict format with all fields
-        template_dicts = []
-        for template in templates:
-            template_dicts.append(
-                {
-                    "name": template.name,
-                    "role": template.role,
-                    "description": template.description or "",
-                    "content": template.system_instructions or "",  # Full prompt content
-                    "cli_tool": template.cli_tool or "claude-code",
-                    "background_color": template.background_color or "#808080",
-                    "category": template.category or "general",
-                }
-            )
+        template_dicts = [
+            {
+                "name": template.name,
+                "role": template.role,
+                "description": template.description or "",
+                "content": template.system_instructions or "",  # Full prompt content
+                "cli_tool": template.cli_tool or "claude-code",
+                "background_color": template.background_color or "#808080",
+                "category": template.category or "general",
+            }
+            for template in templates
+        ]
 
         logger.debug(
             f"Fetched {len(template_dicts)} full agent templates",
@@ -2289,8 +2288,7 @@ Partial reading defeats the purpose of this configuration."""
                 outcomes = entry.get("key_outcomes", [])
                 if outcomes:
                     sections.append("**Key Outcomes:**")
-                    for outcome in outcomes:
-                        sections.append(f"- {outcome}")
+                    sections.extend([f"- {outcome}" for outcome in outcomes])
                     sections.append("")
 
             # Add decisions for full detail level only
@@ -2298,8 +2296,7 @@ Partial reading defeats the purpose of this configuration."""
                 decisions = entry.get("decisions_made", [])
                 if decisions:
                     sections.append("**Decisions Made:**")
-                    for decision in decisions:
-                        sections.append(f"- {decision}")
+                    sections.extend([f"- {decision}" for decision in decisions])
                     sections.append("")
 
         # Add memory instructions from MemoryInstructionGenerator
@@ -2646,7 +2643,7 @@ Complexity: {analysis.complexity}
 
         # Add config_data section with priority (Handover 0048)
         if remaining_budget > 0:
-            config_section, config_tokens = self._build_config_data_section(product, priority_config, remaining_budget)
+            config_section, _config_tokens = self._build_config_data_section(product, priority_config, remaining_budget)
             mission_content += config_section
         else:
             logger.warning(
@@ -2755,9 +2752,12 @@ Complexity: {analysis.complexity}
             for match in matches:
                 # Check if match is an agent role (or close match)
                 for role in all_agent_roles:
-                    if role.lower() in match.lower() or match.lower() in role.lower():
-                        if role != agent_role and role not in dependencies:
-                            dependencies.append(role)
+                    if (
+                        (role.lower() in match.lower() or match.lower() in role.lower())
+                        and role != agent_role
+                        and role not in dependencies
+                    ):
+                        dependencies.append(role)
 
         logger.debug(
             f"Detected dependencies for {agent_role}: {dependencies}",

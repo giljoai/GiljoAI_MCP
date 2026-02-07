@@ -101,7 +101,7 @@ class WebSocketManager:
             raise ValueError("tenant_key cannot be empty")
 
         if not isinstance(event, dict):
-            raise ValueError("event must be a dictionary")
+            raise TypeError("event must be a dictionary")
 
         event_type = event.get("type")
         if not event_type:
@@ -109,7 +109,7 @@ class WebSocketManager:
 
         data = event.get("data") or {}
         if not isinstance(data, dict):
-            raise ValueError("event.data must be a dictionary")
+            raise TypeError("event.data must be a dictionary")
 
         if "tenant_key" not in data:
             data = {**data, "tenant_key": tenant_key}

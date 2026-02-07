@@ -217,6 +217,6 @@ class ThinPromptResponse(BaseModel):
     estimated_prompt_tokens: int = Field(..., description="Token estimate for prompt (~50)")
     mcp_tool_name: str = Field(..., description="MCP tool to fetch mission")
     instructions_stored: bool = Field(..., description="Whether instructions are stored in database")
-    thin_client: bool = Field(True, description="Always True for thin client architecture")
+    thin_client: bool = Field(default=True, description="Always True for thin client architecture")
 
     model_config = ConfigDict(from_attributes=True)

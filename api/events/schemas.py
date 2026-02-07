@@ -719,17 +719,17 @@ class EventFactory:
 # ============================================================================
 
 __all__ = [
-    # Event Models
-    "ProjectMissionUpdatedEvent",
-    "ProjectMissionUpdatedData",
-    "AgentCreatedEvent",
     "AgentCreatedData",
-    "AgentStatusChangedEvent",
+    "AgentCreatedEvent",
     "AgentStatusChangedData",
+    "AgentStatusChangedEvent",
     # Factory
     "EventFactory",
-    # Type Unions
-    "WebSocketEvent",
     # Metadata
     "EventMetadata",
+    "ProjectMissionUpdatedData",
+    # Event Models
+    "ProjectMissionUpdatedEvent",
+    # Type Unions
+    "WebSocketEvent",
 ]

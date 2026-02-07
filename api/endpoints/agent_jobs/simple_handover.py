@@ -175,7 +175,7 @@ async def simple_handover(
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 )
-        except Exception as ws_error:
+        except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
             logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
         return {

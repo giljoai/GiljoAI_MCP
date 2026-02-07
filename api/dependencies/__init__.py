@@ -26,11 +26,11 @@ get_tenant_key = _legacy_module.get_tenant_key
 get_db = _legacy_module.get_db
 
 __all__ = [
+    "WebSocketDependency",
+    "get_db",
     # Legacy dependencies (backwards compatibility)
     "get_tenant_key",
-    "get_db",
+    "get_websocket_dependency",
     # WebSocket dependencies
     "get_websocket_manager",
-    "get_websocket_dependency",
-    "WebSocketDependency",
 ]

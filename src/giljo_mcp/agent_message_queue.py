@@ -25,7 +25,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Optional
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, func, literal, or_, select, update
 
 from .database import DatabaseManager
 
@@ -310,7 +310,7 @@ class AgentMessageQueue:
                     .where(Message.status == "processing")
                     .values(
                         status="pending",
-                        meta_data=func.json_set(Message.meta_data, "$.recovered_from_crash", True),
+                        meta_data=func.json_set(Message.meta_data, "$.recovered_from_crash", literal(True)),
                     )
                 )
                 result = await session.execute(stmt)
@@ -797,9 +797,7 @@ class RoutingEngine:
         # Step 2: Filter by agent capabilities
         if not candidates:
             # No specific rules, check capabilities
-            for agent in available_agents:
-                if self._can_handle(agent, message):
-                    candidates.append(agent.agent_name)
+            candidates = [agent.agent_name for agent in available_agents if self._can_handle(agent, message)]
 
         # Step 3: Remove duplicates while preserving order
         seen = set()
