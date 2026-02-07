@@ -550,15 +550,15 @@ async def get_timeseries_data(
             timestamp = now - (interval * (points - i - 1))
 
             if metric == "messages":
-                value = random.randint(10, 100)  # nosec B311
+                value = random.randint(10, 100)  # noqa: S311 - Demo data generation only
             elif metric == "agents":
-                value = random.randint(1, 10)  # nosec B311
+                value = random.randint(1, 10)  # noqa: S311 - Demo data generation only
             elif metric == "tasks":
-                value = random.randint(5, 50)  # nosec B311
+                value = random.randint(5, 50)  # noqa: S311 - Demo data generation only
             elif metric == "context_usage":
-                value = random.randint(1000, 150000)  # nosec B311
+                value = random.randint(1000, 150000)  # noqa: S311 - Demo data generation only
             else:  # errors
-                value = random.randint(0, 5)  # nosec B311
+                value = random.randint(0, 5)  # noqa: S311 - Demo data generation only
 
             data_points.append(TimeSeriesDataPoint(timestamp=timestamp, value=float(value)))
 

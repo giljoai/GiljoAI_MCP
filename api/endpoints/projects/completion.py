@@ -12,7 +12,7 @@ All operations use ProjectService.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -113,7 +113,7 @@ async def complete_project(
 
     return ProjectCompleteResponse(
         success=True,
-        completed_at=datetime.utcnow().isoformat(),
+        completed_at=datetime.now(timezone.utc).isoformat(),
         memory_updated=result.get("memory_updated", False),
         sequence_number=result.get("sequence_number", 0),
         git_commits_count=result.get("git_commits_count", 0),

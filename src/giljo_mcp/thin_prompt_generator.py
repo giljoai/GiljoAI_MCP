@@ -41,7 +41,7 @@ Priority: CRITICAL - Enables Commercial Product
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -222,7 +222,7 @@ class ThinClientPromptGenerator:
                     "user_id": user_id,
                     "tool": tool,
                     "created_via": "thin_client_generator",
-                    "reused_at": str(datetime.now()),
+                    "reused_at": str(datetime.now(timezone.utc)),
                 }
                 await self.db.commit()
 
@@ -283,7 +283,7 @@ class ThinClientPromptGenerator:
             # Handover 0425: Set project staging_status to 'staged' when orchestrator is created
             # This enables the Staged column in ProjectsView to show "Yes"
             project.staging_status = "staged"
-            project.updated_at = datetime.now()
+            project.updated_at = datetime.now(timezone.utc)
 
             await self.db.commit()
             await self.db.refresh(agent_job)
