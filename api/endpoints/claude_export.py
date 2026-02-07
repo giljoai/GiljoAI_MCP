@@ -511,7 +511,7 @@ async def export_templates_to_claude_code(
                 }
             )
 
-        except Exception:
+        except Exception:  # noqa: PERF203 - Resilient export: continue with other templates on error
             logger.exception("Failed to export template {template.name}")
             # Continue with other templates rather than failing completely
             continue

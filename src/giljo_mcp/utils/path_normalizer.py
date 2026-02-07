@@ -3,6 +3,7 @@ PathNormalizer utility for consistent cross-platform path handling.
 Ensures all paths use forward slashes and handles edge cases.
 """
 
+from contextlib import suppress
 from pathlib import Path
 from typing import Optional, Union
 
@@ -65,11 +66,9 @@ class PathNormalizer:
             result = result / part
 
         # Resolve .. and . components
-        try:
-            result = result.resolve()
-        except (OSError, RuntimeError):
+        with suppress(OSError, RuntimeError):
             # If resolve fails (e.g., path doesn't exist), just normalize
-            pass
+            result = result.resolve()
 
         return result.as_posix()
 

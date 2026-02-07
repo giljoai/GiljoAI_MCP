@@ -201,7 +201,7 @@ async def set_agent_status(
                         block_reason=reason if status == "blocked" else None,
                         estimated_completion=estimated_completion,
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
                     # Non-critical - continue without WebSocket broadcast
 
@@ -323,7 +323,7 @@ async def report_progress(
                             "timestamp": now.isoformat(),
                         }
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
                     # Non-critical - continue without WebSocket broadcast
 

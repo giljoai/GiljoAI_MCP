@@ -1049,7 +1049,7 @@ class ProjectService:
                                 "mission": project.mission,
                             },
                         )
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                         self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
                 # Handover 0431: Create orchestrator fixture on project activation
@@ -1197,7 +1197,7 @@ class ProjectService:
                     },
                 )
                 self._logger.info(f"[ORCHESTRATOR FIXTURE] Broadcast agent:created for {job_id}")
-            except Exception as ws_error:
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                 self._logger.warning(f"[ORCHESTRATOR FIXTURE] WebSocket broadcast failed: {ws_error}")
 
         return {
@@ -1277,7 +1277,7 @@ class ProjectService:
                             "mission": project.mission,
                         },
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
             return {
@@ -1358,7 +1358,7 @@ class ProjectService:
                             "mission": project.mission,
                         },
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
             return {
@@ -1831,7 +1831,7 @@ class ProjectService:
                             "mission": project.mission,
                         },
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
             return {
@@ -2041,7 +2041,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                             "orchestrator_job_id": orchestrator_job_id,
                         },
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
             return {
@@ -2366,7 +2366,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                             "deleted_counts": deleted_counts,
                         },
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
             return {

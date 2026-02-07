@@ -528,7 +528,7 @@ Success Criteria:
             )
             return ""
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - Serena context resilience: optional feature, return empty on any error
             logger.warning(
                 f"Failed to fetch Serena context: {e}",
                 extra={"project_id": project_id, "tenant_key": tenant_key},
@@ -2774,7 +2774,7 @@ Complexity: {analysis.complexity}
 
         This adds explicit coordination code that:
         1. Checks for COMPLETE messages from dependencies
-        2. Waits up to 5 minutes (10 checks × 30 seconds)
+        2. Waits up to 5 minutes (10 checks x 30 seconds)
         3. Escalates to orchestrator if timeout
 
         Args:
@@ -2810,7 +2810,7 @@ Complexity: {analysis.complexity}
 ```python
 # Dependency coordination for {agent_role}
 dependencies_met = False
-max_checks = 10  # 5 minutes total (30 sec × 10)
+max_checks = 10  # 5 minutes total (30 sec x 10)
 check_count = 0
 required_deps = {deps_set_str}
 completed_deps = set()

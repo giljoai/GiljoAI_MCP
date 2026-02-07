@@ -82,11 +82,7 @@ class MCPToolsPresenceRule(ValidationRule):
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check all required MCP tools are mentioned in template."""
-        missing_tools = []
-
-        for tool in self.REQUIRED_TOOLS:
-            if tool not in content:
-                missing_tools.append(tool)
+        missing_tools = [tool for tool in self.REQUIRED_TOOLS if tool not in content]
 
         if missing_tools:
             return ValidationError(
@@ -202,19 +198,31 @@ class InjectionDetectionRule(ValidationRule):
         detected_patterns = []
 
         # Check SQL injection
-        for pattern in self.SQL_INJECTION_PATTERNS:
-            if re.search(pattern, content_without_code_blocks, re.IGNORECASE | re.MULTILINE):
-                detected_patterns.append(f"SQL injection pattern: {pattern}")
+        detected_patterns.extend(
+            [
+                f"SQL injection pattern: {pattern}"
+                for pattern in self.SQL_INJECTION_PATTERNS
+                if re.search(pattern, content_without_code_blocks, re.IGNORECASE | re.MULTILINE)
+            ]
+        )
 
         # Check command injection
-        for pattern in self.COMMAND_INJECTION_PATTERNS:
-            if re.search(pattern, content_without_code_blocks):
-                detected_patterns.append(f"Command injection pattern: {pattern}")
+        detected_patterns.extend(
+            [
+                f"Command injection pattern: {pattern}"
+                for pattern in self.COMMAND_INJECTION_PATTERNS
+                if re.search(pattern, content_without_code_blocks)
+            ]
+        )
 
         # Check script injection
-        for pattern in self.SCRIPT_INJECTION_PATTERNS:
-            if re.search(pattern, content_without_code_blocks, re.IGNORECASE):
-                detected_patterns.append(f"Script injection pattern: {pattern}")
+        detected_patterns.extend(
+            [
+                f"Script injection pattern: {pattern}"
+                for pattern in self.SCRIPT_INJECTION_PATTERNS
+                if re.search(pattern, content_without_code_blocks, re.IGNORECASE)
+            ]
+        )
 
         if detected_patterns:
             return ValidationError(
