@@ -13,25 +13,19 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi import status as http_status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-# HANDOVER 0420c: Commented out deleted functions from legacy agent_job_manager
-# from src.giljo_mcp.agent_job_manager import force_fail_job, request_job_cancellation
-from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
     AuthorizationError,
     ResourceNotFoundError,
     ValidationError,
 )
 from src.giljo_mcp.models import User
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from .dependencies import get_db_manager, get_tenant_manager
+# HANDOVER 0420c: Commented out deleted functions from legacy agent_job_manager
+# from src.giljo_mcp.agent_job_manager import force_fail_job, request_job_cancellation
 from .models import (
     JobHealthResponse,
     UpdateMissionRequest,
@@ -197,9 +191,11 @@ async def get_job_health(
             minutes_since_progress = time_delta.total_seconds() / 60.0
 
             # Job is stale if no progress in 10+ minutes and not in terminal state
-            is_stale = (
-                minutes_since_progress >= 10.0
-                and execution.status not in ("complete", "failed", "cancelled", "decommissioned")
+            is_stale = minutes_since_progress >= 10.0 and execution.status not in (
+                "complete",
+                "failed",
+                "cancelled",
+                "decommissioned",
             )
 
         # Return health metrics
@@ -223,7 +219,6 @@ async def get_job_health(
     except Exception as e:
         logger.error(f"Unexpected error getting health for job {job_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
-
 
 
 @router.patch("/{job_id}/mission")

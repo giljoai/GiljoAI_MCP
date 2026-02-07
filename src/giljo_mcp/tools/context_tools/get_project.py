@@ -5,11 +5,14 @@ Fetch current project context for orchestrator awareness.
 Returns project metadata, mission, status (excludes context_budget - deprecated).
 """
 
-import structlog
 from typing import Any, Dict, Optional
+
+import structlog
 from sqlalchemy import select
-from src.giljo_mcp.models.projects import Project
+
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.projects import Project
+
 
 logger = structlog.get_logger(__name__)
 
@@ -17,15 +20,13 @@ logger = structlog.get_logger(__name__)
 def estimate_tokens(data: Any) -> int:
     """Estimate token count for data (simple heuristic: 1 token ≈ 4 chars)"""
     import json
+
     text = json.dumps(data)
     return len(text) // 4
 
 
 async def get_project(
-    project_id: str,
-    tenant_key: str,
-    include_summary: bool = False,
-    db_manager: Optional[DatabaseManager] = None
+    project_id: str, tenant_key: str, include_summary: bool = False, db_manager: Optional[DatabaseManager] = None
 ) -> Dict[str, Any]:
     """
     Fetch current project context (Project Context).
@@ -71,10 +72,7 @@ async def get_project(
         )
     """
     logger.info(
-        "fetching_project_description",
-        project_id=project_id,
-        tenant_key=tenant_key,
-        include_summary=include_summary
+        "fetching_project_description", project_id=project_id, tenant_key=tenant_key, include_summary=include_summary
     )
 
     if db_manager is None:
@@ -83,28 +81,16 @@ async def get_project(
 
     async with db_manager.get_session_async() as session:
         # Fetch project with multi-tenant isolation
-        stmt = select(Project).where(
-            Project.id == project_id,
-            Project.tenant_key == tenant_key
-        )
+        stmt = select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
         result = await session.execute(stmt)
         project = result.scalar_one_or_none()
 
         if not project:
-            logger.warning(
-                "project_not_found",
-                project_id=project_id,
-                tenant_key=tenant_key,
-                operation="get_project"
-            )
+            logger.warning("project_not_found", project_id=project_id, tenant_key=tenant_key, operation="get_project")
             return {
                 "source": "project_description",
                 "data": {},
-                "metadata": {
-                    "project_id": project_id,
-                    "tenant_key": tenant_key,
-                    "error": "project_not_found"
-                }
+                "metadata": {"project_id": project_id, "tenant_key": tenant_key, "error": "project_not_found"},
             }
 
         # Build data dict (EXCLUDE context_budget - deprecated)
@@ -115,7 +101,7 @@ async def get_project(
             "orchestrator_mission": project.mission,
             "status": project.status,
             "staging_status": project.staging_status,
-            "context_used": project.context_used
+            "context_used": project.context_used,
         }
 
         # Conditionally include summary
@@ -131,14 +117,11 @@ async def get_project(
             tenant_key=tenant_key,
             status=project.status,
             summary_included=include_summary and bool(project.orchestrator_summary),
-            estimated_tokens=total_tokens
+            estimated_tokens=total_tokens,
         )
 
         return {
             "source": "project_description",
             "data": data,
-            "metadata": {
-                "project_id": project_id,
-                "tenant_key": tenant_key
-            }
+            "metadata": {"project_id": project_id, "tenant_key": tenant_key},
         }

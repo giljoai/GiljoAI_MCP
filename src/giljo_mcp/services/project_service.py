@@ -28,6 +28,12 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import (
+    BaseGiljoException,
+    ProjectStateError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 
 # Import Pattern: Use modular imports from models package (Post-0128a)
 # See models/__init__.py for migration guidance
@@ -35,12 +41,6 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Message, Task
 from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.exceptions import (
-    ResourceNotFoundError,
-    ValidationError,
-    ProjectStateError,
-    BaseGiljoException,
-)
 
 
 logger = logging.getLogger(__name__)
@@ -166,9 +166,7 @@ class ProjectService:
 
                 project_id = str(project.id)
 
-                self._logger.info(
-                    f"Created project {project_id} with status '{status}' " f"and tenant key {tenant_key}"
-                )
+                self._logger.info(f"Created project {project_id} with status '{status}' and tenant key {tenant_key}")
 
                 return {
                     "success": True,
@@ -186,8 +184,7 @@ class ProjectService:
         except Exception as e:
             self._logger.exception(f"Failed to create project: {e}")
             raise BaseGiljoException(
-                message=f"Failed to create project: {str(e)}",
-                context={"name": name, "tenant_key": tenant_key}
+                message=f"Failed to create project: {e!s}", context={"name": name, "tenant_key": tenant_key}
             ) from e
 
     async def get_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
@@ -226,7 +223,7 @@ class ProjectService:
                 if not project:
                     raise ResourceNotFoundError(
                         message="Project not found or access denied",
-                        context={"project_id": project_id, "tenant_key": tenant_key}
+                        context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
                 # Get agent jobs for this project (migrated to AgentJob + AgentExecution - Handover 0367a)
@@ -285,8 +282,7 @@ class ProjectService:
         except Exception as e:
             self._logger.exception(f"Failed to get project: {e}")
             raise BaseGiljoException(
-                message=f"Failed to get project: {str(e)}",
-                context={"project_id": project_id, "tenant_key": tenant_key}
+                message=f"Failed to get project: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
 
     async def get_active_project(self) -> Optional[dict[str, Any]]:
@@ -321,8 +317,7 @@ class ProjectService:
             if not tenant_key:
                 self._logger.error("[get_active_project] No tenant context available!")
                 raise ValidationError(
-                    message="No tenant context available",
-                    context={"operation": "get_active_project"}
+                    message="No tenant context available", context={"operation": "get_active_project"}
                 )
 
             async with self._get_session() as session:
@@ -372,12 +367,11 @@ class ProjectService:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to get active project: {e}")
-            raise BaseGiljoException(
-                message=f"Failed to get active project: {str(e)}",
-                context={}
-            ) from e
+            raise BaseGiljoException(message=f"Failed to get active project: {e!s}", context={}) from e
 
-    async def list_projects(self, status: Optional[str] = None, tenant_key: Optional[str] = None) -> List[dict[str, Any]]:
+    async def list_projects(
+        self, status: Optional[str] = None, tenant_key: Optional[str] = None
+    ) -> List[dict[str, Any]]:
         """
         List all projects with optional filters.
 
@@ -403,10 +397,7 @@ class ProjectService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                raise ValidationError(
-                    message="No tenant context available",
-                    context={"operation": "list_projects"}
-                )
+                raise ValidationError(message="No tenant context available", context={"operation": "list_projects"})
 
             async with self.db_manager.get_tenant_session_async(tenant_key) as session:
                 # TENANT ISOLATION: Only return projects for the specified tenant
@@ -455,8 +446,7 @@ class ProjectService:
         except Exception as e:
             self._logger.exception(f"Failed to list projects: {e}")
             raise BaseGiljoException(
-                message=f"Failed to list projects: {str(e)}",
-                context={"tenant_key": tenant_key}
+                message=f"Failed to list projects: {e!s}", context={"tenant_key": tenant_key}
             ) from e
 
     async def update_project_mission(
@@ -497,28 +487,20 @@ class ProjectService:
                     result = await session.execute(
                         update(Project)
                         .where(Project.tenant_key == tenant_key, Project.id == project_id)
-                        .values(
-                            mission=mission,
-                            staging_status="staged",
-                            updated_at=datetime.utcnow()
-                        )
+                        .values(mission=mission, staging_status="staged", updated_at=datetime.utcnow())
                     )
                 else:
                     # Fallback for backward compatibility - will be deprecated
                     result = await session.execute(
                         update(Project)
                         .where(Project.id == project_id)
-                        .values(
-                            mission=mission,
-                            staging_status="staged",
-                            updated_at=datetime.utcnow()
-                        )
+                        .values(mission=mission, staging_status="staged", updated_at=datetime.utcnow())
                     )
 
                 if result.rowcount == 0:
                     raise ResourceNotFoundError(
                         message="Project not found or access denied",
-                        context={"project_id": project_id, "tenant_key": tenant_key}
+                        context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
                 # Get project for tenant_key (with tenant filter if provided)
@@ -544,8 +526,7 @@ class ProjectService:
         except Exception as e:
             self._logger.exception(f"Failed to update mission: {e}")
             raise BaseGiljoException(
-                message=f"Failed to update mission: {str(e)}",
-                context={"project_id": project_id, "tenant_key": tenant_key}
+                message=f"Failed to update mission: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
 
     # ============================================================================
@@ -581,15 +562,11 @@ class ProjectService:
         try:
             resolved_tenant = tenant_key or self.tenant_manager.get_current_tenant()
             if not resolved_tenant:
-                raise ValidationError(
-                    message="Tenant not set",
-                    context={"operation": "complete_project"}
-                )
+                raise ValidationError(message="Tenant not set", context={"operation": "complete_project"})
 
             if not summary or not summary.strip():
                 raise ValidationError(
-                    message="Summary is required",
-                    context={"operation": "complete_project", "project_id": project_id}
+                    message="Summary is required", context={"operation": "complete_project", "project_id": project_id}
                 )
 
             owns_session = db_session is None
@@ -622,8 +599,8 @@ class ProjectService:
         except Exception as e:
             self._logger.exception(f"Failed to complete project: {e}")
             raise BaseGiljoException(
-                message=f"Failed to complete project: {str(e)}",
-                context={"project_id": project_id, "tenant_key": tenant_key}
+                message=f"Failed to complete project: {e!s}",
+                context={"project_id": project_id, "tenant_key": tenant_key},
             ) from e
 
     async def _complete_project_transaction(
@@ -657,7 +634,7 @@ class ProjectService:
         if not project:
             raise ResourceNotFoundError(
                 message="Project not found or access denied",
-                context={"project_id": project_id, "tenant_key": tenant_key}
+                context={"project_id": project_id, "tenant_key": tenant_key},
             )
 
         project.status = "completed"
@@ -751,10 +728,7 @@ class ProjectService:
                 result = await session.execute(update(Project).where(Project.id == project_id).values(**update_values))
 
                 if result.rowcount == 0:
-                    raise ResourceNotFoundError(
-                        message="Project not found",
-                        context={"project_id": project_id}
-                    )
+                    raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
                 await session.commit()
 
@@ -771,8 +745,7 @@ class ProjectService:
         except Exception as e:
             self._logger.exception(f"Failed to cancel project: {e}")
             raise BaseGiljoException(
-                message=f"Failed to cancel project: {str(e)}",
-                context={"project_id": project_id}
+                message=f"Failed to cancel project: {e!s}", context={"project_id": project_id}
             ) from e
 
     async def close_out_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
@@ -816,7 +789,7 @@ class ProjectService:
                 if not project:
                     raise ResourceNotFoundError(
                         message="Project not found or access denied",
-                        context={"project_id": project_id, "tenant_key": tenant_key}
+                        context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
                 # Mark project as completed
@@ -866,8 +839,8 @@ class ProjectService:
         except Exception as e:
             self._logger.exception(f"Failed to close out project: {e}")
             raise BaseGiljoException(
-                message=f"Failed to close out project: {str(e)}",
-                context={"project_id": project_id, "tenant_key": tenant_key}
+                message=f"Failed to close out project: {e!s}",
+                context={"project_id": project_id, "tenant_key": tenant_key},
             ) from e
 
     async def continue_working(self, project_id: str, tenant_key: str) -> dict[str, Any]:
@@ -912,14 +885,14 @@ class ProjectService:
                 if not project:
                     raise ResourceNotFoundError(
                         message="Project not found or access denied",
-                        context={"project_id": project_id, "tenant_key": tenant_key}
+                        context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
                 # Validate project is in completed state
                 if project.status != "completed":
                     raise ProjectStateError(
                         message=f"Cannot resume project from status '{project.status}'. Project must be completed.",
-                        context={"project_id": project_id, "current_status": project.status}
+                        context={"project_id": project_id, "current_status": project.status},
                     )
 
                 # Reopen project in inactive state.
@@ -966,12 +939,15 @@ class ProjectService:
         except Exception as e:
             self._logger.exception(f"Failed to resume project: {e}")
             raise BaseGiljoException(
-                message=f"Failed to resume project: {str(e)}",
-                context={"project_id": project_id, "tenant_key": tenant_key}
+                message=f"Failed to resume project: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
 
     async def activate_project(
-        self, project_id: str, force: bool = False, websocket_manager: Optional[Any] = None, tenant_key: Optional[str] = None
+        self,
+        project_id: str,
+        force: bool = False,
+        websocket_manager: Optional[Any] = None,
+        tenant_key: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Activate a project.
@@ -1006,23 +982,20 @@ class ProjectService:
             async with self._get_session() as session:
                 # Fetch project
                 result = await session.execute(
-                    select(Project).where(
-                        and_(Project.id == project_id, Project.tenant_key == resolved_tenant)
-                    )
+                    select(Project).where(and_(Project.id == project_id, Project.tenant_key == resolved_tenant))
                 )
                 project = result.scalar_one_or_none()
 
                 if not project:
                     raise ResourceNotFoundError(
-                        message="Project not found",
-                        context={"project_id": project_id, "tenant_key": resolved_tenant}
+                        message="Project not found", context={"project_id": project_id, "tenant_key": resolved_tenant}
                     )
 
                 # Validate state transition
                 if project.status not in ["staging", "inactive"] and not force:
                     raise ProjectStateError(
                         message=f"Cannot activate project from status '{project.status}'",
-                        context={"project_id": project_id, "current_status": project.status}
+                        context={"project_id": project_id, "current_status": project.status},
                     )
 
                 # Check for existing active project in same product (Single Active Project constraint)
@@ -1114,8 +1087,7 @@ class ProjectService:
         except Exception as e:
             self._logger.exception(f"Failed to activate project: {e}")
             raise BaseGiljoException(
-                message=f"Failed to activate project: {str(e)}",
-                context={"project_id": project_id}
+                message=f"Failed to activate project: {e!s}", context={"project_id": project_id}
             ) from e
 
     async def _ensure_orchestrator_fixture(
@@ -1275,16 +1247,13 @@ class ProjectService:
             project = result.scalar_one_or_none()
 
             if not project:
-                raise ResourceNotFoundError(
-                    message="Project not found",
-                    context={"project_id": project_id}
-                )
+                raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
             # Validate state
             if project.status != "active":
                 raise ProjectStateError(
                     message=f"Cannot deactivate project with status '{project.status}'",
-                    context={"project_id": project_id, "current_status": project.status}
+                    context={"project_id": project_id, "current_status": project.status},
                 )
 
             # Deactivate project
@@ -1364,16 +1333,13 @@ class ProjectService:
             project = result.scalar_one_or_none()
 
             if not project:
-                raise ResourceNotFoundError(
-                    message="Project not found",
-                    context={"project_id": project_id}
-                )
+                raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
             # Validate state
             if project.status != "staging":
                 raise ProjectStateError(
                     message=f"Cannot cancel staging for project with status '{project.status}'",
-                    context={"project_id": project_id, "current_status": project.status}
+                    context={"project_id": project_id, "current_status": project.status},
                 )
 
             # Cancel project
@@ -1450,10 +1416,7 @@ class ProjectService:
             project = result.scalar_one_or_none()
 
             if not project:
-                raise ResourceNotFoundError(
-                    message="Project not found",
-                    context={"project_id": project_id}
-                )
+                raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
             # Get job counts by status (migrated to AgentExecution - Handover 0367a)
             job_counts_result = await session.execute(
@@ -1575,10 +1538,7 @@ class ProjectService:
         tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
 
         if not tenant_key:
-            raise ValidationError(
-                message="Tenant context missing",
-                context={"project_id": project_id}
-            )
+            raise ValidationError(message="Tenant context missing", context={"project_id": project_id})
 
         if db_session:
             return await self._build_can_close_response(project_id, tenant_key, db_session)
@@ -1602,10 +1562,7 @@ class ProjectService:
         tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
 
         if not tenant_key:
-            raise ValidationError(
-                message="Tenant context missing",
-                context={"project_id": project_id}
-            )
+            raise ValidationError(message="Tenant context missing", context={"project_id": project_id})
 
         if db_session:
             return await self._build_closeout_prompt(project_id, tenant_key, db_session)
@@ -1625,7 +1582,7 @@ class ProjectService:
         if not project:
             raise ResourceNotFoundError(
                 message="Project not found or access denied",
-                context={"project_id": project_id, "tenant_key": tenant_key}
+                context={"project_id": project_id, "tenant_key": tenant_key},
             )
 
         status_counts = await self._aggregate_agent_statuses(project_id, tenant_key, session)
@@ -1659,7 +1616,7 @@ class ProjectService:
         if not project:
             raise ResourceNotFoundError(
                 message="Project not found or access denied",
-                context={"project_id": project_id, "tenant_key": tenant_key}
+                context={"project_id": project_id, "tenant_key": tenant_key},
             )
 
         status_counts = await self._aggregate_agent_statuses(project_id, tenant_key, session)
@@ -1696,7 +1653,7 @@ class ProjectService:
         if not project:
             raise ResourceNotFoundError(
                 message="Project not found or access denied",
-                context={"project_id": project_id, "tenant_key": tenant_key}
+                context={"project_id": project_id, "tenant_key": tenant_key},
             )
 
         status_counts = await self._aggregate_agent_statuses(project_id, tenant_key, session)
@@ -1845,17 +1802,14 @@ class ProjectService:
             project = result.scalar_one_or_none()
 
             if not project:
-                raise ResourceNotFoundError(
-                    message="Project not found",
-                    context={"project_id": project_id}
-                )
+                raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
             # Handover 0343: Lock execution_mode after staging (mission exists)
             if "execution_mode" in updates:
                 if project.mission and project.mission.strip():
                     raise ProjectStateError(
                         message="Cannot change execution mode after staging. Mission has been generated.",
-                        context={"project_id": project_id}
+                        context={"project_id": project_id},
                     )
 
             # Update allowed fields (Handover 0260: Added execution_mode)
@@ -1947,10 +1901,7 @@ class ProjectService:
             project = result.scalar_one_or_none()
 
             if not project:
-                raise ResourceNotFoundError(
-                    message="Project not found",
-                    context={"project_id": project_id}
-                )
+                raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
             # Activate project if not already active (raises exceptions on error)
             if project.status != "active":
@@ -2138,10 +2089,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             )
 
             if result.rowcount == 0:
-                raise ResourceNotFoundError(
-                    message="Project not found",
-                    context={"project_id": project_id}
-                )
+                raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
             await session.commit()
 
@@ -2192,7 +2140,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             if not project:
                 raise ResourceNotFoundError(
                     message="Project not found or access denied",
-                    context={"project_id": project_id, "tenant_key": tenant_key}
+                    context={"project_id": project_id, "tenant_key": tenant_key},
                 )
 
             # Set tenant context
@@ -2257,10 +2205,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         # Get current tenant from context
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
-            raise ValidationError(
-                message="No tenant context available",
-                context={"project_id": project_id}
-            )
+            raise ValidationError(message="No tenant context available", context={"project_id": project_id})
 
         async with self._get_session() as session:
             # Fetch project with tenant validation
@@ -2276,7 +2221,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             if not project:
                 raise ResourceNotFoundError(
                     message="Project not found or access denied",
-                    context={"project_id": project_id, "tenant_key": tenant_key}
+                    context={"project_id": project_id, "tenant_key": tenant_key},
                 )
 
             project_name = project.name
@@ -2458,9 +2403,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 tenant_key=project.tenant_key,
             )
             if deleted_count > 0:
-                self._logger.info(
-                    f"Marked {deleted_count} memory entries as deleted for project {project.id}"
-                )
+                self._logger.info(f"Marked {deleted_count} memory entries as deleted for project {project.id}")
 
         # Delete agent jobs (migrated to AgentJob - Handover 0367a)
         agent_job_stmt = select(AgentJob).where(AgentJob.project_id == project.id)
@@ -2501,10 +2444,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         # Get current tenant from context
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
-            raise ValidationError(
-                message="No tenant context available",
-                context={"project_id": project_id}
-            )
+            raise ValidationError(message="No tenant context available", context={"project_id": project_id})
 
         async with self._get_session() as session:
             stmt = select(Project).where(
@@ -2520,7 +2460,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             if not project:
                 raise ResourceNotFoundError(
                     message="Project not found or already deleted",
-                    context={"project_id": project_id, "tenant_key": tenant_key}
+                    context={"project_id": project_id, "tenant_key": tenant_key},
                 )
 
             now = datetime.now(timezone.utc)
@@ -2607,10 +2547,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         """
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
-            raise ValidationError(
-                message="No tenant context available",
-                context={}
-            )
+            raise ValidationError(message="No tenant context available", context={})
 
         async with self._get_session() as session:
             stmt = select(Project).where(
@@ -2683,10 +2620,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
         if not self.db_manager:
             self._logger.error("[Nuclear Purge] Cannot purge - database manager not available")
-            raise BaseGiljoException(
-                message="Database not available",
-                context={}
-            )
+            raise BaseGiljoException(message="Database not available", context={})
 
         async with self._get_session() as session:
             # Find projects deleted more than specified days ago
@@ -2781,7 +2715,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             mission: Updated mission text
             tenant_key: Tenant key for routing
         """
-        self._logger.info(f"[WEBSOCKET DEBUG] About to broadcast mission_updated " f"for project {project_id}")
+        self._logger.info(f"[WEBSOCKET DEBUG] About to broadcast mission_updated for project {project_id}")
 
         if not self._websocket_manager:
             self._logger.debug("[WEBSOCKET] No WebSocket manager available for project:mission_updated")

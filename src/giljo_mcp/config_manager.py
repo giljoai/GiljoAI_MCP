@@ -83,7 +83,6 @@ class DatabaseConfig:
     password: str = ""
     pg_pool_size: int = 10
 
-
     def get_connection_string(self, tenant_key: Optional[str] = None) -> str:
         """
         Generate database connection string.
@@ -179,7 +178,6 @@ class AgentConfig:
     context_warning_threshold: int = 140000  # tokens
 
 
-
 @dataclass
 class MessageConfig:
     """Message queue configuration settings."""
@@ -201,7 +199,6 @@ class TenantConfig:
     key_header: str = "X-Tenant-Key"
 
 
-
 @dataclass
 class FeatureFlags:
     """Feature flags for enabling/disabling functionality."""
@@ -211,7 +208,6 @@ class FeatureFlags:
     enable_websockets: bool = True
     auto_handoff: bool = True
     dynamic_discovery: bool = True
-
 
 
 class ConfigFileWatcher(FileSystemEventHandler):

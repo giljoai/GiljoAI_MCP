@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import DatabaseManager
@@ -351,7 +350,9 @@ class VisionDocumentRepository:
 
         return doc
 
-    async def count_by_product(self, session: AsyncSession, tenant_key: str, product_id: str, active_only: bool = True) -> int:
+    async def count_by_product(
+        self, session: AsyncSession, tenant_key: str, product_id: str, active_only: bool = True
+    ) -> int:
         """
         Count vision documents for a product.
 
@@ -366,8 +367,10 @@ class VisionDocumentRepository:
         """
         from sqlalchemy import func
 
-        stmt = select(func.count()).select_from(VisionDocument).where(
-            VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product_id
+        stmt = (
+            select(func.count())
+            .select_from(VisionDocument)
+            .where(VisionDocument.tenant_key == tenant_key, VisionDocument.product_id == product_id)
         )
 
         if active_only:

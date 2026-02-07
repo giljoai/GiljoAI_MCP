@@ -19,16 +19,15 @@ from inspect import iscoroutine
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution, AgentTodoItem
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
-from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -107,25 +106,29 @@ async def _check_closeout_readiness(
         # Check 1: Agent status must be 'complete'
         if execution.status != "complete":
             summary["still_working"] += 1
-            blockers.append({
-                "job_id": execution.job_id,
-                "agent_id": execution.agent_id,
-                "agent_name": execution.agent_name or execution.agent_display_name,
-                "issue_type": "still_working",
-                "status": execution.status,
-            })
+            blockers.append(
+                {
+                    "job_id": execution.job_id,
+                    "agent_id": execution.agent_id,
+                    "agent_name": execution.agent_name or execution.agent_display_name,
+                    "issue_type": "still_working",
+                    "status": execution.status,
+                }
+            )
             continue  # Don't check further issues for this agent
 
         # Check 2: No unread messages
         if execution.messages_waiting_count > 0:
             summary["agents_with_unread"] += 1
-            blockers.append({
-                "job_id": execution.job_id,
-                "agent_id": execution.agent_id,
-                "agent_name": execution.agent_name or execution.agent_display_name,
-                "issue_type": "unread_messages",
-                "messages_waiting": execution.messages_waiting_count,
-            })
+            blockers.append(
+                {
+                    "job_id": execution.job_id,
+                    "agent_id": execution.agent_id,
+                    "agent_name": execution.agent_name or execution.agent_display_name,
+                    "issue_type": "unread_messages",
+                    "messages_waiting": execution.messages_waiting_count,
+                }
+            )
 
         # Check 3: All todos completed
         incomplete_todos_stmt = select(AgentTodoItem).where(
@@ -140,15 +143,17 @@ async def _check_closeout_readiness(
             pending_count = sum(1 for t in incomplete_todos if t.status == "pending")
             in_progress_count = sum(1 for t in incomplete_todos if t.status == "in_progress")
             summary["agents_with_incomplete_todos"] += 1
-            blockers.append({
-                "job_id": execution.job_id,
-                "agent_id": execution.agent_id,
-                "agent_name": execution.agent_name or execution.agent_display_name,
-                "issue_type": "incomplete_todos",
-                "pending_count": pending_count,
-                "in_progress_count": in_progress_count,
-                "incomplete_items": [t.content for t in incomplete_todos],
-            })
+            blockers.append(
+                {
+                    "job_id": execution.job_id,
+                    "agent_id": execution.agent_id,
+                    "agent_name": execution.agent_name or execution.agent_display_name,
+                    "issue_type": "incomplete_todos",
+                    "pending_count": pending_count,
+                    "in_progress_count": in_progress_count,
+                    "incomplete_items": [t.content for t in incomplete_todos],
+                }
+            )
 
     # Check 4: Orchestrator's own todos (if orchestrator_job_id provided)
     if orchestrator_job_id:
@@ -164,13 +169,15 @@ async def _check_closeout_readiness(
             pending_count = sum(1 for t in orch_incomplete if t.status == "pending")
             in_progress_count = sum(1 for t in orch_incomplete if t.status == "in_progress")
             summary["orchestrator_incomplete_todos"] = len(orch_incomplete)
-            blockers.append({
-                "job_id": orchestrator_job_id,
-                "issue_type": "orchestrator_incomplete_todos",
-                "pending_count": pending_count,
-                "in_progress_count": in_progress_count,
-                "incomplete_items": [t.content for t in orch_incomplete],
-            })
+            blockers.append(
+                {
+                    "job_id": orchestrator_job_id,
+                    "issue_type": "orchestrator_incomplete_todos",
+                    "pending_count": pending_count,
+                    "in_progress_count": in_progress_count,
+                    "incomplete_items": [t.content for t in orch_incomplete],
+                }
+            )
 
     # Return results
     if blockers:
@@ -273,10 +280,7 @@ async def write_360_memory(
 
         async with session_ctx as active_session:
             # Get project with tenant isolation
-            project_stmt = select(Project).where(
-                Project.id == project_id,
-                Project.tenant_key == tenant_key
-            )
+            project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
             project_result = await active_session.execute(project_stmt)
             project = project_result.scalar_one_or_none()
             if iscoroutine(project):
@@ -433,11 +437,14 @@ async def write_360_memory(
                     tenant_key=tenant_key,
                     orchestrator_job_id=author_job_id,
                 )
-                result["verified"] = verification_result.get("verified", {
-                    "all_complete": True,
-                    "all_messages_read": True,
-                    "all_todos_done": True,
-                })
+                result["verified"] = verification_result.get(
+                    "verified",
+                    {
+                        "all_complete": True,
+                        "all_messages_read": True,
+                        "all_todos_done": True,
+                    },
+                )
 
             return result
 
@@ -546,8 +553,7 @@ async def _fetch_github_commits(
                         else None,
                         "url": commit.get("html_url"),
                         "files_changed": commit.get("files_changed"),
-                        "lines_added": commit.get("lines_added")
-                        or commit.get("stats", {}).get("additions")
+                        "lines_added": commit.get("lines_added") or commit.get("stats", {}).get("additions")
                         if isinstance(commit.get("stats"), dict)
                         else None,
                     }

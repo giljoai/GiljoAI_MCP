@@ -6,7 +6,7 @@ Provides request/response models for:
 - Agent prompt generation (universal terminal prompts)
 """
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 

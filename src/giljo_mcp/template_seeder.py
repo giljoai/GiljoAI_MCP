@@ -28,8 +28,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.template_manager import UnifiedTemplateManager
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
+from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
 
 logger = logging.getLogger(__name__)
@@ -82,10 +82,7 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
             # Build new system_instructions based on role
             if template.role == "orchestrator":
                 # Orchestrator doesn't need context_request (it doesn't ask itself for context)
-                new_system_instructions = (
-                    f"{mcp_section}\n\n"
-                    f"{check_in_section}\n\n{orchestrator_messaging_section}"
-                )
+                new_system_instructions = f"{mcp_section}\n\n{check_in_section}\n\n{orchestrator_messaging_section}"
             else:
                 # Regular agents get guidelines + context request protocol (Handover 0432)
                 new_system_instructions = (

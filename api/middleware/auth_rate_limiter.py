@@ -8,10 +8,11 @@ Implements per-IP rate limiting for sensitive auth endpoints:
 
 Uses in-memory storage with sliding window algorithm.
 """
+
 import logging
 import time
 from collections import defaultdict, deque
-from typing import Dict, Deque, Optional
+from typing import Deque, Dict, Optional
 
 from fastapi import HTTPException, Request, status
 
@@ -69,13 +70,7 @@ class RateLimiter:
         while requests and requests[0] < now - window:
             requests.popleft()
 
-    def check_rate_limit(
-        self,
-        request: Request,
-        limit: int,
-        window: int = 60,
-        raise_on_limit: bool = False
-    ) -> bool:
+    def check_rate_limit(self, request: Request, limit: int, window: int = 60, raise_on_limit: bool = False) -> bool:
         """
         Check if request is within rate limit.
 
@@ -117,12 +112,9 @@ class RateLimiter:
             return True
 
         # Over limit - log violation
-        endpoint = request.url.path if hasattr(request.url, 'path') else 'unknown'
+        endpoint = request.url.path if hasattr(request.url, "path") else "unknown"
         logger.warning(
-            f"Rate limit exceeded - IP: {ip}, "
-            f"Endpoint: {endpoint}, "
-            f"Limit: {limit}/{window}s, "
-            f"Current: {current_count}"
+            f"Rate limit exceeded - IP: {ip}, Endpoint: {endpoint}, Limit: {limit}/{window}s, Current: {current_count}"
         )
 
         # Calculate retry-after time
@@ -141,11 +133,11 @@ class RateLimiter:
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"Too many requests. Limit: {limit} per {window} seconds. Try again later.",
                 headers={
-                    'Retry-After': str(retry_after),
-                    'X-RateLimit-Limit': str(limit),
-                    'X-RateLimit-Remaining': '0',
-                    'X-RateLimit-Window': str(window)
-                }
+                    "Retry-After": str(retry_after),
+                    "X-RateLimit-Limit": str(limit),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Window": str(window),
+                },
             )
 
         return False

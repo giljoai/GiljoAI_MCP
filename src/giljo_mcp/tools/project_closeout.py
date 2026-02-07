@@ -17,7 +17,6 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
-from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
@@ -133,10 +132,7 @@ async def close_project_and_update_memory(
 
             # Use repository for atomic sequence generation and entry creation
             repo = ProductMemoryRepository()
-            sequence_number = await repo.get_next_sequence(
-                session=active_session,
-                product_id=product.id
-            )
+            sequence_number = await repo.get_next_sequence(session=active_session, product_id=product.id)
 
             deliverables = _extract_deliverables(key_outcomes)
             tags = _extract_tags(summary, key_outcomes, decisions_made)
@@ -406,8 +402,7 @@ async def _fetch_github_commits(
                         else None,
                         "url": commit.get("html_url"),
                         "files_changed": commit.get("files_changed"),
-                        "lines_added": commit.get("lines_added")
-                        or commit.get("stats", {}).get("additions")
+                        "lines_added": commit.get("lines_added") or commit.get("stats", {}).get("additions")
                         if isinstance(commit.get("stats"), dict)
                         else None,
                     }

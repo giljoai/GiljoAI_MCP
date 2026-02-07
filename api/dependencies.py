@@ -3,7 +3,7 @@ FastAPI dependencies for request handling
 """
 
 import os
-from typing import Generator
+from collections.abc import Generator
 
 from fastapi import Request
 from sqlalchemy.orm import Session

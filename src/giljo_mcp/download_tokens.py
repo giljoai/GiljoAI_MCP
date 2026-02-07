@@ -214,7 +214,9 @@ class TokenManager:
                 "download_count": token_record.download_count,
                 "created_at": token_record.created_at.isoformat(),
                 "expires_at": token_record.expires_at.isoformat(),
-                "last_downloaded_at": token_record.last_downloaded_at.isoformat() if token_record.last_downloaded_at else None,
+                "last_downloaded_at": token_record.last_downloaded_at.isoformat()
+                if token_record.last_downloaded_at
+                else None,
             }
 
         except Exception as e:
@@ -251,7 +253,9 @@ class TokenManager:
                 "download_count": token_record.download_count,
                 "created_at": token_record.created_at.isoformat(),
                 "expires_at": token_record.expires_at.isoformat(),
-                "last_downloaded_at": token_record.last_downloaded_at.isoformat() if token_record.last_downloaded_at else None,
+                "last_downloaded_at": token_record.last_downloaded_at.isoformat()
+                if token_record.last_downloaded_at
+                else None,
             }
 
         except Exception as e:

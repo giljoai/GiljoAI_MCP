@@ -9,21 +9,21 @@ Helper functions (get_project_by_alias, etc.) are used by both paths.
 See: api/endpoints/mcp_http.py for HTTP routing.
 """
 
-import os
-import yaml
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from uuid import uuid4
 
+import yaml
 from sqlalchemy import and_, select
 
 from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.logging import get_logger, ErrorCode
-from src.giljo_mcp.models import AgentTemplate, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.logging import ErrorCode, get_logger
+from src.giljo_mcp.models import Product, Project
+
+
 # Handover 0450: Removed dead import of ProjectOrchestrator
 
 
@@ -155,7 +155,9 @@ def _normalize_field_priorities(field_priorities: Dict[str, Any]) -> Dict[str, i
 
 
 async def _get_user_config(
-    user_id: str, tenant_key: str, session: Any  # AsyncSession type hint would create circular import
+    user_id: str,
+    tenant_key: str,
+    session: Any,  # AsyncSession type hint would create circular import
 ) -> Dict[str, Any]:
     """
     Fetch user's field_priority_config and depth_config from database.
@@ -337,9 +339,8 @@ result = await spawn_agent_job(
 Each agent template below includes launch_instructions showing how to start the agent.
 """
         return instructions
-    else:
-        # Legacy mode - manual terminal launches
-        instructions = """**LEGACY MODE - Manual Agent Launches**
+    # Legacy mode - manual terminal launches
+    instructions = """**LEGACY MODE - Manual Agent Launches**
 
 Specialist agents must be launched manually in separate terminals.
 
@@ -352,7 +353,7 @@ Specialist agents must be launched manually in separate terminals.
 **Agent Launch Instructions**:
 Each agent template below includes launch_instructions for manual copying.
 """
-        return instructions
+    return instructions
 
 
 def _format_agent_templates(templates: list, execution_mode: str) -> list[dict]:
@@ -534,7 +535,7 @@ def _build_orchestrator_protocol(
     project_id: str,
     orchestrator_id: str,
     tenant_key: str,
-    include_implementation_reference: bool = True
+    include_implementation_reference: bool = True,
 ) -> dict:
     """
     Build chapter-based orchestrator protocol.
@@ -554,7 +555,7 @@ def _build_orchestrator_protocol(
         Dict with chapter keys and navigation_hint
     """
     # CH1: YOUR MISSION (~180 tokens)
-    ch1 = f"""════════════════════════════════════════════════════════════════════════════
+    ch1 = """════════════════════════════════════════════════════════════════════════════
                            CH1: YOUR MISSION
 ════════════════════════════════════════════════════════════════════════════
 
@@ -952,7 +953,7 @@ END OF IMPLEMENTATION PHASE REFERENCE
         "ch3_agent_spawning_rules": ch3,
         "ch4_error_handling": ch4,
         "ch5_reference": ch5,
-        "navigation_hint": "Reference chapters by name (e.g., 'see CH4 for error handling')"
+        "navigation_hint": "Reference chapters by name (e.g., 'see CH4 for error handling')",
     }
 
 
@@ -994,7 +995,7 @@ async def get_orchestrator_instructions(
 
         from src.giljo_mcp.mission_planner import MissionPlanner
         from src.giljo_mcp.models import AgentTemplate, Product, Project
-        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+        from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
         try:
             # Validate inputs
@@ -1084,7 +1085,7 @@ async def get_orchestrator_instructions(
                             },
                         )
                         logger.info(
-                            f"[WEBSOCKET] Broadcasted job:mission_acknowledged event",
+                            "[WEBSOCKET] Broadcasted job:mission_acknowledged event",
                             extra={
                                 "agent_id": agent_id,
                                 "job_id": job_id,
@@ -1182,9 +1183,10 @@ async def get_orchestrator_instructions(
 
             if include_serena:
                 from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+
                 serena_notice = generate_serena_instructions(enabled=True)
                 full_mission = serena_notice + "\n\n---\n\n" + full_mission
-                logger.info(f"[SERENA] Injected into orchestrator instructions", extra={"agent_id": agent_id})
+                logger.info("[SERENA] Injected into orchestrator instructions", extra={"agent_id": agent_id})
 
             # Calculate token estimate
             estimated_tokens = len(full_mission) // 4
@@ -1291,7 +1293,7 @@ async def get_agent_mission(
     async with db_manager.get_session_async() as session:
         from sqlalchemy import and_, select
 
-        from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+        from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
         try:
             # Phase C: Resolve agent_id → job_id via AgentExecution
@@ -1455,7 +1457,6 @@ async def spawn_agent_job(
     Returns:
         Spawn result dict
     """
-    from uuid import uuid4
 
     from giljo_mcp.config_manager import get_config
     from giljo_mcp.database import DatabaseManager
@@ -1496,12 +1497,11 @@ async def _spawn_agent_job_impl(
                         when spawning successor during handover. The retiring orchestrator
                         provides its own agent_id to authorize successor creation.
     """
-    from uuid import uuid4
 
     from sqlalchemy import and_, select
 
     from giljo_mcp.models import AgentTemplate
-    from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+    from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
     try:
         # Handover 0351: Validate agent_name against active templates (NOT agent_display_name)

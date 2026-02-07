@@ -9,22 +9,22 @@ This table is the SINGLE SOURCE OF TRUTH for 360 memory entries as of v3.3.
 """
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict
 from uuid import uuid4
 
 from sqlalchemy import (
+    Boolean,
     Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
     String,
     Text,
-    Integer,
-    Float,
-    Boolean,
-    DateTime,
-    ForeignKey,
     UniqueConstraint,
-    Index,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from .base import Base

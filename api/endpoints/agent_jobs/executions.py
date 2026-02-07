@@ -3,6 +3,7 @@ Execution endpoints for agent jobs.
 
 Handover 0366d-1: Frontend Core Agent Display
 """
+
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,18 +12,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 from .models import AgentExecutionResponse
+
 
 router = APIRouter()
 
 
 @router.get("/{job_id}/executions", response_model=List[AgentExecutionResponse])
 async def get_job_executions(
-    job_id: str,
-    db: AsyncSession = Depends(get_db_session),
-    current_user: User = Depends(get_current_active_user)
+    job_id: str, db: AsyncSession = Depends(get_db_session), current_user: User = Depends(get_current_active_user)
 ) -> List[AgentExecutionResponse]:
     """
     Get all agent execution instances for a specific job.
@@ -34,10 +34,7 @@ async def get_job_executions(
     """
     # Verify job exists and user has access (tenant isolation)
     result = await db.execute(
-        select(AgentJob).where(
-            AgentJob.job_id == job_id,
-            AgentJob.tenant_key == current_user.tenant_key
-        )
+        select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == current_user.tenant_key)
     )
     job = result.scalar_one_or_none()
 
@@ -46,9 +43,7 @@ async def get_job_executions(
 
     # Fetch all executions for this job
     result = await db.execute(
-        select(AgentExecution)
-        .where(AgentExecution.job_id == job_id)
-        .order_by(AgentExecution.started_at.asc())
+        select(AgentExecution).where(AgentExecution.job_id == job_id).order_by(AgentExecution.started_at.asc())
     )
     executions = result.scalars().all()
 
@@ -60,7 +55,7 @@ async def get_job_executions(
             progress=exec.progress,
             spawned_by=str(exec.spawned_by) if exec.spawned_by else None,
             created_at=exec.created_at,
-            updated_at=exec.updated_at
+            updated_at=exec.updated_at,
         )
         for exec in executions
     ]

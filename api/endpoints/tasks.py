@@ -16,7 +16,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.endpoints.dependencies import get_task_service
@@ -29,7 +28,7 @@ from api.schemas.task import (
     TaskUpdate,
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import Product, Project, Task, User
+from src.giljo_mcp.models import Task, User
 from src.giljo_mcp.services.task_service import TaskService
 
 
@@ -161,7 +160,7 @@ async def list_tasks(
         status=status,
         priority=priority,
         created_by_user_id=created_by_user_id,
-        tenant_key=None  # Will use current tenant from context
+        tenant_key=None,  # Will use current tenant from context
     )
 
     if not result["success"]:
@@ -235,7 +234,7 @@ async def get_task_summary(
         "success": True,
         "summary": data["summary"],
         "total_products": data["total_products"],
-        "total_tasks": data["total_tasks"]
+        "total_tasks": data["total_tasks"],
     }
 
 
@@ -352,11 +351,10 @@ async def delete_task(
         if "not found" in error_msg.lower():
             logger.warning(f"Task {task_id} not found")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        elif "not authorized" in error_msg.lower():
+        if "not authorized" in error_msg.lower():
             logger.warning(f"User {current_user.username} not authorized to delete task {task_id}")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     logger.info(f"Deleted task {task_id} by user {current_user.username}")
 
@@ -404,12 +402,11 @@ async def convert_task_to_project(
         if "not found" in error_msg.lower():
             logger.warning(f"Task {task_id} not found")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        elif "not authorized" in error_msg.lower():
+        if "not authorized" in error_msg.lower():
             logger.warning(f"User {current_user.username} not authorized to convert task {task_id}")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error_msg)
-        else:
-            logger.warning(f"Failed to convert task {task_id}: {error_msg}")
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+        logger.warning(f"Failed to convert task {task_id}: {error_msg}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     data = result["data"]
     logger.info(f"Converted task {task_id} to project {data['project_id']} (strategy: {conversion_request.strategy})")
@@ -439,8 +436,7 @@ async def change_task_status(
         error_msg = result["error"]
         if "not found" in error_msg.lower():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     # Fetch full task data to return complete TaskResponse
     get_result = await task_service.get_task(task_id)

@@ -26,7 +26,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
@@ -119,9 +118,7 @@ class AgentJob(Base):
         Index("idx_agent_jobs_project", "project_id"),
         Index("idx_agent_jobs_tenant_project", "tenant_key", "project_id"),
         Index("idx_agent_jobs_status", "status"),
-        CheckConstraint(
-            "status IN ('active', 'completed', 'cancelled')", name="ck_agent_job_status"
-        ),
+        CheckConstraint("status IN ('active', 'completed', 'cancelled')", name="ck_agent_job_status"),
     )
 
     def __repr__(self) -> str:

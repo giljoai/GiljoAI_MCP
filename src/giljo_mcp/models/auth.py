@@ -8,6 +8,7 @@ This module contains all user authentication and session management models:
 """
 
 from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -17,7 +18,6 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
-    Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
@@ -62,7 +62,7 @@ class User(Base):
         ForeignKey("organizations.id", ondelete="SET NULL"),
         nullable=True,  # FIXED: Must be True for ondelete="SET NULL" to work (0424m)
         index=True,
-        comment="Direct foreign key to organization (Handover 0424m - nullable for SET NULL)"
+        comment="Direct foreign key to organization (Handover 0424m - nullable for SET NULL)",
     )
 
     # Credentials
@@ -127,7 +127,7 @@ class User(Base):
             "architecture_depth": "overview",
             "execution_mode": "claude_code",
         },
-        comment="User depth configuration for context granularity (Handover 0314)"
+        comment="User depth configuration for context granularity (Handover 0314)",
     )
 
     # Relationships

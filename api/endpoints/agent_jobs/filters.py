@@ -12,7 +12,7 @@ Features:
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_db
@@ -20,12 +20,14 @@ from src.giljo_mcp.auth.dependencies import get_current_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
+
 router = APIRouter()
 
 
 # ============================================================================
 # RESPONSE MODELS
 # ============================================================================
+
 
 class FilterOptions(BaseModel):
     """Available filter options for status board"""
@@ -40,6 +42,7 @@ class FilterOptions(BaseModel):
 # ============================================================================
 # ENDPOINT
 # ============================================================================
+
 
 @router.get("/filter-options", response_model=FilterOptions)
 async def get_filter_options(
