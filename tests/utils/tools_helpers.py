@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import Configuration, ContextIndex, Message, Project, Task, Vision
+from src.giljo_mcp.models import Configuration, ContextIndex, Message, Project, Task
 from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 
@@ -101,35 +101,6 @@ class ToolsTestHelper:
         await session.refresh(task)
         return task
 
-    @staticmethod
-    async def create_test_vision(
-        session: AsyncSession,
-        project_id: str,
-        tenant_key: str,
-        document_name: str = "test.md",
-        content: str = "Test vision content",
-    ) -> Vision:
-        """Create a test vision document in the database"""
-        vision = Vision(
-            id=str(uuid.uuid4()),
-            tenant_key=tenant_key,
-            project_id=project_id,
-            document_name=document_name,
-            chunk_number=1,
-            total_chunks=1,
-            content=content,
-            tokens=100,
-            char_start=0,
-            char_end=len(content),
-            boundary_type="document",
-            keywords=["test"],
-            headers=["# Test"],
-            created_at=datetime.now(timezone.utc),
-        )
-        session.add(vision)
-        await session.commit()
-        await session.refresh(vision)
-        return vision
 
     @staticmethod
     async def create_test_context_index(
