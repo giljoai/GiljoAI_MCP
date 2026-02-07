@@ -193,7 +193,7 @@ Only use read_file() for:
                             guidance=db_rule.guidance,
                             context_filter=db_rule.context_filter,
                         )
-                    except (ValueError, AttributeError) as e:
+                    except (ValueError, AttributeError) as e:  # noqa: PERF203 - Rule parsing resilience: skip invalid rules
                         logger.warning(f"Invalid optimization rule in database: {e}")
                         continue
 
