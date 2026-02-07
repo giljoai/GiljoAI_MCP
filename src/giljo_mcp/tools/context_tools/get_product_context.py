@@ -27,7 +27,7 @@ def estimate_tokens(data: Any) -> int:
 
 async def get_product_context(
     product_id: str, tenant_key: str, include_metadata: bool = False, db_manager: Optional[DatabaseManager] = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Fetch general product information (Product Core).
 

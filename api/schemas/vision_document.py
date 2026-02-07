@@ -85,7 +85,7 @@ class VisionDocumentResponse(BaseModel):
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     chunked_at: Optional[datetime] = Field(None, description="Last chunking timestamp")
-    meta_data: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    meta_data: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
     # Summary fields (Handover 0246b: light/medium only, percentage-based)
     is_summarized: bool = Field(False, description="Whether summaries have been generated")

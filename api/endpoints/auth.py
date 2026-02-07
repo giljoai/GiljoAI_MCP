@@ -93,7 +93,7 @@ class APIKeyResponse(BaseModel):
     id: str
     name: str
     key_prefix: str
-    permissions: List[str]
+    permissions: list[str]
     is_active: bool
     created_at: str
     last_used: Optional[str]
@@ -104,7 +104,7 @@ class APIKeyCreateRequest(BaseModel):
     """Request to create new API key"""
 
     name: str = Field(..., min_length=3, max_length=255, description="Description of API key purpose")
-    permissions: List[str] = Field(default=["*"], description="List of permissions (default: all)")
+    permissions: list[str] = Field(default=["*"], description="List of permissions (default: all)")
 
 
 class APIKeyCreateResponse(BaseModel):
@@ -451,7 +451,7 @@ async def get_me(
     )
 
 
-@router.get("/api-keys", response_model=List[APIKeyResponse], tags=["auth"])
+@router.get("/api-keys", response_model=list[APIKeyResponse], tags=["auth"])
 async def list_api_keys(
     include_revoked: bool = Query(False, description="Include revoked keys in results"),
     current_user: User = Depends(get_current_active_user),

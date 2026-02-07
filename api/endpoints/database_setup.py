@@ -35,7 +35,7 @@ class DatabaseSetupRequest(BaseModel):
 
 
 @router.post("/test-connection")
-async def test_database_connection(request: DatabaseSetupRequest) -> Dict:
+async def test_database_connection(request: DatabaseSetupRequest) -> dict:
     """
     Test connection to PostgreSQL server.
 
@@ -121,7 +121,7 @@ async def test_database_connection(request: DatabaseSetupRequest) -> Dict:
 
 
 @router.post("/setup")
-async def setup_database(request: DatabaseSetupRequest) -> Dict:
+async def setup_database(request: DatabaseSetupRequest) -> dict:
     """
     Set up PostgreSQL database for GiljoAI MCP.
 
@@ -236,7 +236,7 @@ async def setup_database(request: DatabaseSetupRequest) -> Dict:
 
 
 @router.get("/verify")
-async def verify_database_setup() -> Dict:
+async def verify_database_setup() -> dict:
     """
     Verify database setup from CLI installation.
 

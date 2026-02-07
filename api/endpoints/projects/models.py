@@ -75,7 +75,7 @@ class ProjectResponse(BaseModel):
     context_used: Optional[int] = 0  # Nullable after project reset
     agent_count: int
     message_count: int
-    agents: List[AgentSimple] = []
+    agents: list[AgentSimple] = []
     # Handover 0260: Execution mode for Claude Code CLI toggle
     execution_mode: str = "multi_terminal"
 
@@ -118,7 +118,7 @@ class ProjectPurgeResponse(BaseModel):
 
     success: bool
     purged_count: int
-    projects: List[PurgedProject] = []
+    projects: list[PurgedProject] = []
     message: Optional[str] = None
 
 
@@ -143,7 +143,7 @@ class MessageSummary(BaseModel):
 
     id: str
     from_agent: str
-    to_agents: List[str]
+    to_agents: list[str]
     content: str
     timestamp: str
 
@@ -156,8 +156,8 @@ class ProjectSummaryResponse(BaseModel):
     description: str
     mission: Optional[str] = None
     status: str
-    agents: List[AgentSummary]
-    messages: List[MessageSummary]
+    agents: list[AgentSummary]
+    messages: list[MessageSummary]
     created_at: str
     completed_at: Optional[str] = None
 

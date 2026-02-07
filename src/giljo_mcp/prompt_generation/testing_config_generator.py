@@ -18,7 +18,7 @@ class TestingConfigGenerator:
     """Generate testing configuration context based on priority and agent type."""
 
     @classmethod
-    def generate_context(cls, testing_config: Optional[Dict[str, Any]], priority: int = 1) -> str:
+    def generate_context(cls, testing_config: Optional[dict[str, Any]], priority: int = 1) -> str:
         """
         Generate testing configuration context.
 
@@ -47,7 +47,7 @@ class TestingConfigGenerator:
         return cls._generate_summary(testing_config)
 
     @classmethod
-    def _generate_full_config(cls, config: Dict[str, Any]) -> str:
+    def _generate_full_config(cls, config: dict[str, Any]) -> str:
         """
         Generate full testing configuration (Priority 1 - CRITICAL).
 
@@ -151,7 +151,7 @@ class Calculator:
 """
 
     @classmethod
-    def _generate_standards_only(cls, config: Dict[str, Any]) -> str:
+    def _generate_standards_only(cls, config: dict[str, Any]) -> str:
         """
         Generate standards and frameworks only (Priority 2 - IMPORTANT).
 
@@ -192,7 +192,7 @@ Use TDD (Test-Driven Development): Write tests first, then implement code to mak
 """
 
     @classmethod
-    def _generate_summary(cls, config: Dict[str, Any]) -> str:
+    def _generate_summary(cls, config: dict[str, Any]) -> str:
         """
         Generate summary only (Priority 3 - NICE_TO_HAVE).
 
@@ -211,7 +211,7 @@ Apply TDD approach: Write tests first, then implement code.
 """
 
     @classmethod
-    def generate_for_agent(cls, testing_config: Optional[Dict[str, Any]], agent_display_name: str) -> str:
+    def generate_for_agent(cls, testing_config: Optional[dict[str, Any]], agent_display_name: str) -> str:
         """
         Generate agent-specific testing guidance.
 
@@ -236,7 +236,7 @@ class TestingConfigValidator:
     """Validate testing configuration structure."""
 
     @staticmethod
-    def validate(config: Optional[Dict[str, Any]]) -> bool:
+    def validate(config: Optional[dict[str, Any]]) -> bool:
         """
         Validate testing configuration.
 

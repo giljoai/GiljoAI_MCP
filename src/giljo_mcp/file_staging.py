@@ -100,7 +100,7 @@ class FileStaging:
     async def stage_slash_commands(
         self,
         staging_path: Path,
-    ) -> Tuple[Optional[Path], str]:
+    ) -> tuple[Optional[Path], str]:
         """
         Stage slash commands as a ZIP file.
 
@@ -159,7 +159,7 @@ class FileStaging:
         staging_path: Path,
         tenant_key: str,
         db_session: Optional[AsyncSession] = None,
-    ) -> Tuple[Optional[Path], str]:
+    ) -> tuple[Optional[Path], str]:
         """
         Stage agent templates as a ZIP file.
 

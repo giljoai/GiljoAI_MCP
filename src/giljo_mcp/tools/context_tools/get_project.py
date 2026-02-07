@@ -27,7 +27,7 @@ def estimate_tokens(data: Any) -> int:
 
 async def get_project(
     project_id: str, tenant_key: str, include_summary: bool = False, db_manager: Optional[DatabaseManager] = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Fetch current project context (Project Context).
 

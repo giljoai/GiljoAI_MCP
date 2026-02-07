@@ -86,12 +86,12 @@ async def create_project(
     )
 
 
-@router.get("/", response_model=List[ProjectResponse])
+@router.get("/", response_model=list[ProjectResponse])
 async def list_projects(
     status_filter: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
-) -> List[ProjectResponse]:
+) -> list[ProjectResponse]:
     """
     List all projects for current tenant.
 
@@ -136,11 +136,11 @@ async def list_projects(
     ]
 
 
-@router.get("/deleted", response_model=List[ProjectResponse])
+@router.get("/deleted", response_model=list[ProjectResponse])
 async def get_deleted_projects(
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
-) -> List[ProjectResponse]:
+) -> list[ProjectResponse]:
     """
     Get soft-deleted projects for recovery (Handover 0070).
 
