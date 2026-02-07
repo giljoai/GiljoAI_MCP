@@ -116,7 +116,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to list users: {e}")
+            self._logger.exception("Failed to list users")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "list_users", "include_all_tenants": include_all_tenants}
             ) from e
@@ -183,7 +183,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to get user: {e}")
+            self._logger.exception("Failed to get user")
             raise BaseGiljoException(message=str(e), context={"operation": "get_user", "user_id": user_id}) from e
 
     async def _get_user_impl(
@@ -263,7 +263,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to create user: {e}")
+            self._logger.exception("Failed to create user")
             raise BaseGiljoException(message=str(e), context={"operation": "create_user", "username": username}) from e
 
     async def _create_user_impl(
@@ -303,7 +303,7 @@ class UserService:
             role=role,
             is_active=is_active,
             tenant_key=self.tenant_key,
-            must_change_password=True if not password else False,  # Force change if default password
+            must_change_password=bool(not password),  # Force change if default password
             must_set_pin=True,  # Force PIN setup on first login
             recovery_pin_hash=None,  # No PIN set initially
             created_at=datetime.now(timezone.utc),
@@ -361,7 +361,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to update user: {e}")
+            self._logger.exception("Failed to update user")
             raise BaseGiljoException(message=str(e), context={"operation": "update_user", "user_id": user_id}) from e
 
     async def _update_user_impl(
@@ -446,7 +446,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to delete user: {e}")
+            self._logger.exception("Failed to delete user")
             raise BaseGiljoException(message=str(e), context={"operation": "delete_user", "user_id": user_id}) from e
 
     async def _delete_user_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
@@ -502,7 +502,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to change role: {e}")
+            self._logger.exception("Failed to change role")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "change_role", "user_id": user_id, "new_role": new_role}
             ) from e
@@ -527,9 +527,7 @@ class UserService:
         # Check if this is the last admin (prevent lockout)
         if user.role == "admin" and new_role != "admin":
             stmt = select(func.count(User.id)).where(
-                and_(
-                    User.tenant_key == self.tenant_key, User.role == "admin", User.is_active, User.id != user_id
-                )
+                and_(User.tenant_key == self.tenant_key, User.role == "admin", User.is_active, User.id != user_id)
             )
             admin_count_result = await session.execute(stmt)
             admin_count = admin_count_result.scalar() or 0
@@ -588,7 +586,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to change password: {e}")
+            self._logger.exception("Failed to change password")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "change_password", "user_id": user_id}
             ) from e
@@ -647,7 +645,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to reset password: {e}")
+            self._logger.exception("Failed to reset password")
             raise BaseGiljoException(message=str(e), context={"operation": "reset_password", "user_id": user_id}) from e
 
     async def _reset_password_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
@@ -706,7 +704,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to check username: {e}")
+            self._logger.exception("Failed to check username")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "check_username_exists", "username": username}
             ) from e
@@ -746,7 +744,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to check email: {e}")
+            self._logger.exception("Failed to check email")
             raise BaseGiljoException(message=str(e), context={"operation": "check_email_exists", "email": email}) from e
 
     async def _check_email_exists_impl(self, session: AsyncSession, email: str) -> dict[str, Any]:
@@ -785,7 +783,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to verify password: {e}")
+            self._logger.exception("Failed to verify password")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "verify_password", "user_id": user_id}
             ) from e
@@ -833,7 +831,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to get field priority config: {e}")
+            self._logger.exception("Failed to get field priority config")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "get_field_priority_config", "user_id": user_id}
             ) from e
@@ -885,7 +883,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to update field priority config: {e}")
+            self._logger.exception("Failed to update field priority config")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "update_field_priority_config", "user_id": user_id}
             ) from e
@@ -955,7 +953,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to reset field priority config: {e}")
+            self._logger.exception("Failed to reset field priority config")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "reset_field_priority_config", "user_id": user_id}
             ) from e
@@ -1003,7 +1001,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to get depth config: {e}")
+            self._logger.exception("Failed to get depth config")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "get_depth_config", "user_id": user_id}
             ) from e
@@ -1058,7 +1056,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            self._logger.exception(f"Failed to update depth config: {e}")
+            self._logger.exception("Failed to update depth config")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "update_depth_config", "user_id": user_id}
             ) from e
@@ -1111,7 +1109,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            logger.error(f"Failed to get execution mode for user {user_id}: {e}")
+            logger.exception("Failed to get execution mode for user {user_id}")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "get_execution_mode", "user_id": user_id}
             ) from e
@@ -1140,7 +1138,7 @@ class UserService:
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except (RuntimeError, ValueError) as e:
-            logger.error(f"Failed to update execution mode for user {user_id}: {e}")
+            logger.exception("Failed to update execution mode for user {user_id}")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "update_execution_mode", "user_id": user_id}
             ) from e

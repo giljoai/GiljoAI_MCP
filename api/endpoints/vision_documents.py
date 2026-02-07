@@ -68,9 +68,9 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
         else:
             # Not an error - could be "no_changes" which is expected
             logger.debug(f"consolidation_skipped: product_id={product_id}, reason={result.get('error')}")
-    except (SQLAlchemyError, ValueError, KeyError) as e:
+    except (SQLAlchemyError, ValueError, KeyError):
         # Don't fail the main operation if consolidation fails
-        logger.error(f"consolidation_failed: product_id={product_id}, error={e!s}")
+        logger.exception(f"consolidation_failed: product_id={product_id}")
 
 
 async def get_db():

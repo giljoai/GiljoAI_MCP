@@ -14,8 +14,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import DatabaseManager
-from ..models import MCPContextIndex, Product, VisionDocument
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import MCPContextIndex, Product, VisionDocument
+
 from .base import BaseRepository
 
 

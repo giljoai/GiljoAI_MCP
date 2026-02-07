@@ -186,7 +186,7 @@ class AgentJobManager:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to spawn agent: {e}")
+            self._logger.exception("Failed to spawn agent")
             raise BaseGiljoException(message=str(e), context={"operation": "spawn_agent"}) from e
 
     # ============================================================================
@@ -268,7 +268,7 @@ class AgentJobManager:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to update agent status: {e}")
+            self._logger.exception("Failed to update agent status")
             raise BaseGiljoException(message=str(e), context={"operation": "update_agent_status"}) from e
 
     async def update_agent_progress(
@@ -325,7 +325,7 @@ class AgentJobManager:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to update agent progress: {e}")
+            self._logger.exception("Failed to update agent progress")
             raise BaseGiljoException(message=str(e), context={"operation": "update_agent_progress"}) from e
 
     # ============================================================================
@@ -390,7 +390,7 @@ class AgentJobManager:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to complete job: {e}")
+            self._logger.exception("Failed to complete job")
             raise BaseGiljoException(message=str(e), context={"operation": "complete_job"}) from e
 
     # ============================================================================
@@ -423,8 +423,8 @@ class AgentJobManager:
                 )
                 return result.scalar_one_or_none()
 
-        except Exception as e:
-            self._logger.exception(f"Failed to get execution by agent_id: {e}")
+        except Exception:
+            self._logger.exception("Failed to get execution by agent_id")
             return None
 
     async def get_job_by_job_id(
@@ -449,8 +449,8 @@ class AgentJobManager:
                 )
                 return result.scalar_one_or_none()
 
-        except Exception as e:
-            self._logger.exception(f"Failed to get job by job_id: {e}")
+        except Exception:
+            self._logger.exception("Failed to get job by job_id")
             return None
 
     async def get_all_executions_for_job(
@@ -477,8 +477,8 @@ class AgentJobManager:
                 )
                 return list(result.scalars().all())
 
-        except Exception as e:
-            self._logger.exception(f"Failed to get executions for job: {e}")
+        except Exception:
+            self._logger.exception("Failed to get executions for job")
             return []
 
     async def get_active_executions_for_project(
@@ -513,8 +513,8 @@ class AgentJobManager:
                 )
                 return list(result.scalars().all())
 
-        except Exception as e:
-            self._logger.exception(f"Failed to get active executions for project: {e}")
+        except Exception:
+            self._logger.exception("Failed to get active executions for project")
             return []
 
     async def list_team_agents(
@@ -595,6 +595,6 @@ class AgentJobManager:
 
                 return team_members
 
-        except Exception as e:
-            self._logger.exception(f"Failed to list team agents: {e}")
+        except Exception:
+            self._logger.exception("Failed to list team agents")
             return []

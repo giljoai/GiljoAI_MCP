@@ -167,7 +167,7 @@ class WorkflowEngine:
                 logger.info(f"Stage {stage.name} completed successfully")
 
             except (RuntimeError, ValueError, KeyError) as e:
-                logger.error(f"Stage {stage.name} failed: {e}")
+                logger.exception("Stage {stage.name} failed")
                 failed_stages.append(stage.name)
 
                 # Handle failure
@@ -175,7 +175,7 @@ class WorkflowEngine:
 
                 # Stop on critical failure
                 if stage.critical:
-                    logger.error(f"Critical stage {stage.name} failed, stopping workflow")
+                    logger.exception(f"Critical stage {stage.name} failed, stopping workflow")
                     break
                 logger.warning(f"Non-critical stage {stage.name} failed, continuing workflow")
 
@@ -306,7 +306,7 @@ class WorkflowEngine:
                     logger.warning(f"Stage {stage.name} attempt {attempt + 1} failed, retrying in {delay}s: {e}")
                     await asyncio.sleep(delay)
                 else:
-                    logger.error(f"Stage {stage.name} failed after {max_attempts} attempts")
+                    logger.exception(f"Stage {stage.name} failed after {max_attempts} attempts")
 
         # All retries exhausted
         raise last_error

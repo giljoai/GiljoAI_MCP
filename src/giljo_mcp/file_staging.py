@@ -149,7 +149,7 @@ class FileStaging:
                 msg = f"Disk error creating slash commands ZIP: {e}"
             else:
                 msg = f"Unexpected error creating slash commands ZIP: {e}"
-            logger.error(msg)
+            logger.exception(msg)
             return (None, msg)
 
     async def stage_agent_templates(
@@ -233,7 +233,7 @@ class FileStaging:
                 msg = f"Disk error staging agent templates: {e}"
             else:
                 msg = f"Unexpected error staging agent templates: {e}"
-            logger.error(msg)
+            logger.exception(msg)
             # Rollback on error
             if session:
                 await session.rollback()
@@ -261,7 +261,7 @@ class FileStaging:
             return metadata_path
 
         except (OSError, ValueError, RuntimeError) as e:
-            logger.error(f"Error saving metadata: {e}")
+            logger.exception("Error saving metadata")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save metadata"
             ) from e

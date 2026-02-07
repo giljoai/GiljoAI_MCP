@@ -72,7 +72,13 @@ class MCPToolsPresenceRule(ValidationRule):
     name = "MCP Tools Presence Check"
     severity = "critical"
 
-    REQUIRED_TOOLS: ClassVar[list[str]] = ["acknowledge_job", "report_progress", "complete_job", "send_message", "receive_messages"]
+    REQUIRED_TOOLS: ClassVar[list[str]] = [
+        "acknowledge_job",
+        "report_progress",
+        "complete_job",
+        "send_message",
+        "receive_messages",
+    ]
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Check all required MCP tools are mentioned in template."""
@@ -181,7 +187,12 @@ class InjectionDetectionRule(ValidationRule):
     ]
 
     # Script injection patterns
-    SCRIPT_INJECTION_PATTERNS: ClassVar[list[str]] = [r"<script[^>]*>", r"onerror\s*=", r"javascript:", r"<iframe[^>]*>"]
+    SCRIPT_INJECTION_PATTERNS: ClassVar[list[str]] = [
+        r"<script[^>]*>",
+        r"onerror\s*=",
+        r"javascript:",
+        r"<iframe[^>]*>",
+    ]
 
     def validate(self, content: str, agent_display_name: str) -> Optional[ValidationError]:
         """Detect injection patterns in template content."""

@@ -141,12 +141,12 @@ def _read_config() -> dict:
         return config
 
     except yaml.YAMLError as e:
-        logger.error(f"Failed to parse config.yaml: {e}")
+        logger.exception("Failed to parse config.yaml")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Configuration file is malformed: {e!s}"
         ) from e
     except Exception as e:
-        logger.error(f"Failed to read config.yaml: {e}")
+        logger.exception("Failed to read config.yaml")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to read configuration file: {e!s}"
         ) from e
@@ -179,7 +179,7 @@ def _write_config(config: dict) -> None:
         logger.info("config.yaml updated successfully")
 
     except Exception as e:
-        logger.error(f"Failed to write config.yaml: {e}")
+        logger.exception("Failed to write config.yaml")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update configuration file: {e!s}"
         ) from e

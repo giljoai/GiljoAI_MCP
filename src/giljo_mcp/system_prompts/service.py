@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import DatabaseManager
-from ..models import Configuration
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import Configuration
 
 
 DEFAULT_ORCHESTRATOR_CONFIG_KEY = "system.orchestrator_prompt"
@@ -179,7 +179,7 @@ class SystemPromptService:
             return self._default_orchestrator_prompt
 
         # Import lazily to avoid circular import issues during startup.
-        from ..template_seeder import (
+        from giljo_mcp.template_seeder import (
             _get_check_in_protocol_section,
             _get_default_templates_v103,
             _get_mcp_coordination_section,

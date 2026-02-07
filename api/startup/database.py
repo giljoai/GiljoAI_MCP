@@ -60,7 +60,7 @@ async def init_database(state: APIState) -> None:
                 f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}"
             )
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "database_url_build_failed",
                 error_code=ErrorCode.DB_CONNECTION_FAILED.value,
                 error_message=str(e),

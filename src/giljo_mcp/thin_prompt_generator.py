@@ -440,8 +440,8 @@ class ThinClientPromptGenerator:
             logger.warning("[ThinPromptGenerator] No mission parts available for regeneration")
             return project.mission or f"Mission for project: {project.name}"
 
-        except Exception as e:
-            logger.exception(f"[ThinPromptGenerator] Failed to regenerate mission: {e}")
+        except Exception:
+            logger.exception("[ThinPromptGenerator] Failed to regenerate mission")
             # Return project mission as fallback
             return project.mission or f"Mission for project: {project.name}"
 

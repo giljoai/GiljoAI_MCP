@@ -10,7 +10,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 logger = logging.getLogger(__name__)
@@ -108,8 +108,8 @@ async def handle_gil_handover(
         )
 
         # Write to 360 Memory
-        from ..database import DatabaseManager
-        from ..tools.write_360_memory import write_360_memory
+        from giljo_mcp.database import DatabaseManager
+        from giljo_mcp.tools.write_360_memory import write_360_memory
 
         db_manager = DatabaseManager()
 
