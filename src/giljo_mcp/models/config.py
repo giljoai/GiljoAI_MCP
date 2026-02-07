@@ -448,7 +448,7 @@ class SetupState(Base):
             setup_version: Optional version string to set
         """
         self.completed = True
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(timezone.utc)
         if setup_version:
             self.setup_version = setup_version
 
@@ -463,10 +463,10 @@ class SetupState(Base):
             self.validation_failures = []
 
         failures = list(self.validation_failures)  # Convert to mutable list
-        failures.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
+        failures.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
         self.validation_failures = failures
         self.validation_passed = False
-        self.last_validation_at = datetime.utcnow()
+        self.last_validation_at = datetime.now(timezone.utc)
 
     def add_validation_warning(self, message: str) -> None:
         """
@@ -479,16 +479,16 @@ class SetupState(Base):
             self.validation_warnings = []
 
         warnings = list(self.validation_warnings)  # Convert to mutable list
-        warnings.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
+        warnings.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
         self.validation_warnings = warnings
-        self.last_validation_at = datetime.utcnow()
+        self.last_validation_at = datetime.now(timezone.utc)
 
     def clear_validation_failures(self) -> None:
         """Clear all validation failures and warnings."""
         self.validation_failures = []
         self.validation_warnings = []
         self.validation_passed = True
-        self.last_validation_at = datetime.utcnow()
+        self.last_validation_at = datetime.now(timezone.utc)
 
     def __repr__(self) -> str:
         return f"<SetupState(id={self.id}, tenant_key='{self.tenant_key}', db_initialized={self.database_initialized})>"

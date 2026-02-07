@@ -146,7 +146,7 @@ class ProjectService:
                     tenant_key = f"tk_{uuid4().hex}"
 
                 # Create project entity
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
                 project = Project(
                     name=name,
                     mission=mission,
@@ -485,14 +485,14 @@ class ProjectService:
                     result = await session.execute(
                         update(Project)
                         .where(Project.tenant_key == tenant_key, Project.id == project_id)
-                        .values(mission=mission, staging_status="staged", updated_at=datetime.utcnow())
+                        .values(mission=mission, staging_status="staged", updated_at=datetime.now(timezone.utc))
                     )
                 else:
                     # Fallback for backward compatibility - will be deprecated
                     result = await session.execute(
                         update(Project)
                         .where(Project.id == project_id)
-                        .values(mission=mission, staging_status="staged", updated_at=datetime.utcnow())
+                        .values(mission=mission, staging_status="staged", updated_at=datetime.now(timezone.utc))
                     )
 
                 if result.rowcount == 0:
@@ -617,7 +617,7 @@ class ProjectService:
         Raises:
             ResourceNotFoundError: When project not found
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         result = await session.execute(
             select(Project).where(
@@ -715,8 +715,8 @@ class ProjectService:
                 # Build update values
                 update_values = {
                     "status": "cancelled",
-                    "completed_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow(),
+                    "completed_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc),
                 }
 
                 # Add reason to meta_data if provided
@@ -792,9 +792,9 @@ class ProjectService:
 
                 # Mark project as completed
                 project.status = "completed"
-                project.completed_at = datetime.utcnow()
-                project.updated_at = datetime.utcnow()
-                project.closeout_executed_at = datetime.utcnow()
+                project.completed_at = datetime.now(timezone.utc)
+                project.updated_at = datetime.now(timezone.utc)
+                project.closeout_executed_at = datetime.now(timezone.utc)
 
                 # Decommission associated agents (migrated to AgentExecution - Handover 0367a)
                 # Query AgentExecution records via join with AgentJob
@@ -814,7 +814,7 @@ class ProjectService:
 
                 for execution in executions_to_decommission:
                     execution.status = "decommissioned"
-                    execution.updated_at = datetime.utcnow()
+                    execution.updated_at = datetime.now(timezone.utc)
                     decommissioned_ids.append(execution.job_id)
 
                 await session.commit()
@@ -897,7 +897,7 @@ class ProjectService:
                 # This avoids violating the Single Active Project per product constraint.
                 project.status = "inactive"
                 project.completed_at = None
-                project.updated_at = datetime.utcnow()
+                project.updated_at = datetime.now(timezone.utc)
 
                 # Resume decommissioned agents (migrated to AgentExecution - Handover 0367a)
                 agent_result = await session.execute(
@@ -916,7 +916,7 @@ class ProjectService:
 
                 for execution in executions_to_resume:
                     execution.status = "waiting"
-                    execution.updated_at = datetime.utcnow()
+                    execution.updated_at = datetime.now(timezone.utc)
                     resumed_ids.append(execution.job_id)
 
                 await session.commit()
@@ -1013,7 +1013,7 @@ class ProjectService:
                     if existing_active:
                         # Auto-deactivate existing active project
                         existing_active.status = "inactive"
-                        existing_active.updated_at = datetime.utcnow()
+                        existing_active.updated_at = datetime.now(timezone.utc)
                         self._logger.info(
                             f"Auto-deactivated project {existing_active.id} due to Single Active Project constraint"
                         )
@@ -1026,11 +1026,11 @@ class ProjectService:
 
                 # Activate project
                 project.status = "active"
-                project.updated_at = datetime.utcnow()
+                project.updated_at = datetime.now(timezone.utc)
 
                 # Set activated_at only on first activation
                 if not project.activated_at:
-                    project.activated_at = datetime.utcnow()
+                    project.activated_at = datetime.now(timezone.utc)
 
                 await session.commit()
                 await session.refresh(project)
@@ -1256,7 +1256,7 @@ class ProjectService:
 
             # Deactivate project
             project.status = "inactive"
-            project.updated_at = datetime.utcnow()
+            project.updated_at = datetime.now(timezone.utc)
 
             # Store reason if provided
             if reason:
@@ -1342,8 +1342,8 @@ class ProjectService:
 
             # Cancel project
             project.status = "cancelled"
-            project.completed_at = datetime.utcnow()  # Using completed_at for cancelled_at
-            project.updated_at = datetime.utcnow()
+            project.completed_at = datetime.now(timezone.utc)  # Using completed_at for cancelled_at
+            project.updated_at = datetime.now(timezone.utc)
 
             await session.commit()
             await session.refresh(project)
@@ -1817,7 +1817,7 @@ class ProjectService:
                 if field in allowed_fields:
                     setattr(project, field, value)
 
-            project.updated_at = datetime.utcnow()
+            project.updated_at = datetime.now(timezone.utc)
 
             await session.commit()
             await session.refresh(project)
@@ -2015,7 +2015,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
             # Set staging_status to 'staged' when orchestrator is launched
             project.staging_status = "staged"
-            project.updated_at = datetime.utcnow()
+            project.updated_at = datetime.now(timezone.utc)
 
             await session.flush()  # Get the IDs without committing
 
@@ -2082,7 +2082,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     status="inactive",
                     completed_at=None,
                     deleted_at=None,
-                    updated_at=datetime.utcnow(),
+                    updated_at=datetime.now(timezone.utc),
                 )
             )
 
@@ -2227,7 +2227,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             # Deactivate project if it's active (to avoid constraint issues)
             if project.status == "active":
                 project.status = "inactive"
-                project.updated_at = datetime.utcnow()
+                project.updated_at = datetime.now(timezone.utc)
                 await session.flush()  # Flush deactivation before deleting
                 self._logger.info(f"Deactivated project {project_id} before nuclear delete")
 
