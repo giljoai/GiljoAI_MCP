@@ -70,11 +70,11 @@ async def sync_api_metrics_to_db(state: APIState):
                             )
                             .on_conflict_do_update(
                                 index_elements=["tenant_key"],
-                                set_=dict(
-                                    total_api_calls=ApiMetrics.total_api_calls + api_count,
-                                    total_mcp_calls=ApiMetrics.total_mcp_calls + mcp_count,
-                                    date=datetime.now(timezone.utc),
-                                ),
+                                set_={
+                                    "total_api_calls": ApiMetrics.total_api_calls + api_count,
+                                    "total_mcp_calls": ApiMetrics.total_mcp_calls + mcp_count,
+                                    "date": datetime.now(timezone.utc),
+                                },
                             )
                         )
                         await session.execute(stmt)

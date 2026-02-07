@@ -74,10 +74,10 @@ class TaskConversionRequest(BaseModel):
     """
 
     project_name: Optional[str] = Field(
-        None, min_length=1, max_length=255, description="Name for new project (defaults to task title)"
+        default=None, min_length=1, max_length=255, description="Name for new project (defaults to task title)"
     )
-    strategy: str = Field("single", description="Conversion strategy: single | individual | grouped")
-    include_subtasks: bool = Field(True, description="Include subtasks in conversion")
+    strategy: str = Field(default="single", description="Conversion strategy: single | individual | grouped")
+    include_subtasks: bool = Field(default=True, description="Include subtasks in conversion")
 
     model_config = ConfigDict(from_attributes=True)
 

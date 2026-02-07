@@ -225,14 +225,14 @@ def validate_priority_config() -> bool:
     for category, config in DEFAULT_FIELD_PRIORITY["priorities"].items():
         # Validate structure
         if not isinstance(config, dict):
-            raise ValueError(f"Category '{category}' must be a dict with 'toggle' and 'priority' keys")
+            raise TypeError(f"Category '{category}' must be a dict with 'toggle' and 'priority' keys")
 
         if "toggle" not in config or "priority" not in config:
             raise ValueError(f"Category '{category}' missing required keys: 'toggle' and 'priority'")
 
         # Validate toggle is boolean
         if not isinstance(config["toggle"], bool):
-            raise ValueError(f"Invalid toggle value for category '{category}'. Must be boolean (True/False)")
+            raise TypeError(f"Invalid toggle value for category '{category}'. Must be boolean (True/False)")
 
         # Validate priority is in valid range
         if config["priority"] not in valid_priorities:

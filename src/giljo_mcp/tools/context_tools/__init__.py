@@ -42,23 +42,23 @@ from .get_vision_document import get_vision_document
 
 
 __all__ = [
-    "fetch_context",  # Handover 0350a: PUBLIC - exposed via MCP HTTP
-    # Internal tools (not exposed, used by fetch_context)
-    "get_vision_document",
-    "get_360_memory",
-    "get_git_history",
-    "get_agent_templates",
-    "get_tech_stack",
-    "get_architecture",
-    "get_product_context",  # Handover 0316: NEW
-    "get_project",  # Handover 0316: NEW
-    "get_testing",  # Handover 0316: NEW
-    "get_self_identity",  # Handover 0430: NEW
     # Framing helpers
     "apply_rich_entry_framing",
     "build_framed_context_response",
     "build_priority_excluded_response",
+    "fetch_context",  # Handover 0350a: PUBLIC - exposed via MCP HTTP
     "format_list_safely",
+    "get_360_memory",
+    "get_agent_templates",
+    "get_architecture",
+    "get_git_history",
+    "get_product_context",  # Handover 0316: NEW
+    "get_project",  # Handover 0316: NEW
+    "get_self_identity",  # Handover 0430: NEW
+    "get_tech_stack",
+    "get_testing",  # Handover 0316: NEW
     "get_user_priority",
+    # Internal tools (not exposed, used by fetch_context)
+    "get_vision_document",
     "inject_priority_framing",
 ]

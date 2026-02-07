@@ -67,7 +67,7 @@ class EventBus:
             raise ValueError("event_type cannot be empty")
 
         if not isinstance(data, dict):
-            raise ValueError("data must be a dictionary")
+            raise TypeError("data must be a dictionary")
 
         async with self._lock:
             listeners = self._listeners.get(event_type, []).copy()
@@ -138,7 +138,7 @@ class EventBus:
             raise ValueError("event_type cannot be empty")
 
         if not callable(handler):
-            raise ValueError("handler must be callable")
+            raise TypeError("handler must be callable")
 
         async with self._lock:
             if event_type not in self._listeners:

@@ -576,18 +576,17 @@ class AgentJobManager:
                 executions = result.scalars().all()
 
                 # Convert to dict format
-                team_members = []
-                for execution in executions:
-                    team_members.append(
-                        {
-                            "agent_id": execution.agent_id,
-                            "job_id": execution.job_id,
-                            "agent_display_name": execution.agent_display_name,
-                            "status": execution.status,
-                            "agent_name": execution.agent_name,
-                            "tenant_key": execution.tenant_key,
-                        }
-                    )
+                team_members = [
+                    {
+                        "agent_id": execution.agent_id,
+                        "job_id": execution.job_id,
+                        "agent_display_name": execution.agent_display_name,
+                        "status": execution.status,
+                        "agent_name": execution.agent_name,
+                        "tenant_key": execution.tenant_key,
+                    }
+                    for execution in executions
+                ]
 
                 self._logger.info(
                     f"Found {len(team_members)} teammates for job {job_id} (include_inactive={include_inactive})"

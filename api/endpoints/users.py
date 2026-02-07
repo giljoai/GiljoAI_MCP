@@ -437,7 +437,8 @@ async def get_user(
     result = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
 
     if not result["success"]:
-        logger.warning(f"User {user_id} not found" + ("" if is_admin else f" in tenant {current_user.tenant_key}"))
+        tenant_info = "" if is_admin else f" in tenant {current_user.tenant_key}"
+        logger.warning("User %s not found%s", user_id, tenant_info)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
 
     user = result["user"]
@@ -494,7 +495,8 @@ async def update_user(
     # Authorization: admin can update any user, non-admin can only update self
     get_result = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
     if not get_result["success"]:
-        logger.warning(f"User {user_id} not found" + ("" if is_admin else f" in tenant {current_user.tenant_key}"))
+        tenant_info = "" if is_admin else f" in tenant {current_user.tenant_key}"
+        logger.warning("User %s not found%s", user_id, tenant_info)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=get_result["error"])
 
     user = get_result["user"]

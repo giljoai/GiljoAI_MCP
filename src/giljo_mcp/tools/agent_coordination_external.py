@@ -195,7 +195,7 @@ class ExternalAgentCoordinationTools:
             # Make request
             async with session.request(method=method, url=url, json=json_data, params=params) as resp:
                 # Handle different status codes
-                if resp.status == 200 or resp.status == 201:
+                if resp.status in {200, 201}:
                     return await resp.json()
 
                 if resp.status == 401:

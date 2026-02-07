@@ -134,11 +134,10 @@ class SerenaToolInterceptor:
             )
 
         # Add reading limits if not specified
-        if "start_line" not in params and "end_line" not in params:
-            # For very large files, suggest chunked reading
-            if self._file_likely_very_large(relative_path):
-                logger.info(f"Large file detected: {relative_path}. Adding read limits.")
-                params["end_line"] = 200  # Limit to first 200 lines
+        # For very large files, suggest chunked reading
+        if "start_line" not in params and "end_line" not in params and self._file_likely_very_large(relative_path):
+            logger.info(f"Large file detected: {relative_path}. Adding read limits.")
+            params["end_line"] = 200  # Limit to first 200 lines
 
         return params
 
