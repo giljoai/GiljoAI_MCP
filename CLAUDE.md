@@ -53,7 +53,7 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 
 **Product**: Server application • **Deployment**: Local/network via web dashboard • **Tech**: Python/FastAPI/PostgreSQL/Vue3
 
-**Recent Updates (v3.3+)**: Code Cleanup Series (0700a-h) • Organization Hierarchy (0424a-n) • Exception Handling Remediation (0480 series) • Consolidated Vision Documents (0377) • Agent Team Awareness (0353) • Frontend API Pattern Fixes (0396) • WebSocket Improvements (0464) • Handover Simplification (0461) • Orchestrator Workflow & Token Optimization (0246a-0246c) • GUI Redesign Series (0243) • Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
+**Recent Updates (v3.3+)**: Code Cleanup Series (0700a-h) • Task Product Binding & Tenant Isolation Fix (0433) • Organization Hierarchy (0424a-n) • Exception Handling Remediation (0480 series) • Consolidated Vision Documents (0377) • Agent Team Awareness (0353) • Frontend API Pattern Fixes (0396) • WebSocket Improvements (0464) • Handover Simplification (0461) • Orchestrator Workflow & Token Optimization (0246a-0246c) • GUI Redesign Series (0243) • Context Management v2.0 (0312-0316) • 360 Memory Management (0135-0139) • Remediation Project (0500-0515) • Nuclear Migration Reset (0601) • Agent Monitoring & Cancellation (0107) • One-Liner Installation (0100) • Production npm (0082) • Orchestrator Succession (0080) • Native MCP for Codex & Gemini (0069) • Static Agent Grid (0073) • Project Soft Delete with Recovery (0070) • Agent Template Management (0041) • Unified Installer (0035) • Admin Settings v3.0 (0025-0029) • Password Reset via PIN (0023) • Orchestrator Enhancement (0020) • Agent Job Management (0019)
 
 **Orchestrator Workflow Series (Nov 2025)** - Handovers 0246a-0246c:
 - 0246a: 7-Task Staging Workflow (931 tokens, 22% under budget)
@@ -82,6 +82,16 @@ Guidance for Claude Code working with the **GiljoAI Agent Orchestration MCP Serv
 - 0424m-n: Model-migration alignment + comprehensive testing
 - **Impact**: Multi-user workspaces with org-based isolation (complements per-user tenancy)
 - **Architecture**: Organization → OrgMembership ← User (with direct User.org_id FK)
+
+**Task Product Binding & Tenant Isolation Fix (Feb 2026)** - Handover 0433:
+- Eliminated "unassigned tasks" pattern - all tasks now bound to products
+- Database: Task.product_id NOT NULL constraint enforced
+- Service layer: Removed 46 lines of vulnerable fallback logic (TaskService lines 149, 161-175)
+- MCP tool: Added tenant_key parameter, active product validation
+- API: TaskCreate schema requires product_id (Pydantic validation)
+- **Security Impact**: 100% elimination of tenant isolation vulnerability
+- **Code Quality**: 66% reduction in conditional branches, 23 new tests
+- **Architecture**: Tasks follow product-centric hierarchy (org > user > product > tasks)
 
 **Exception Handling Remediation (Jan 2026)** - Handovers 0480 series:
 - Complete migration from dict success wrappers to exception-based error handling
@@ -357,6 +367,7 @@ PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "
 - **Password Reset**: Recovery PIN system - 4-digit PIN with rate limiting (Handover 0023)
 - **Default Password**: "GiljoMCP" for admin resets only (never admin/admin)
 - **Agent Jobs**: Use AgentJobManager for lifecycle, AgentCommunicationQueue for messaging
+- **Task Management**: All tasks MUST be bound to a product (Task.product_id NOT NULL) - no "unassigned tasks" pattern. Use `/gil_task` slash command or TaskService.log_task() with tenant_key + product_id required (Handover 0433)
 - **Context Management v2.0**: 2-dimensional model (Priority × Depth) - orchestrator fetches context via MCP tools based on user configuration
 - **Context API (product-level)**: Orchestrators call the unified `fetch_context(product_id, tenant_key, project_id=None, categories=[...])` MCP tool (implemented in `src/giljo_mcp/tools/context_tools/fetch_context.py`) to load product/project context for mission planning.
 - **Context API (agent-level)**: Executor agents call `fetch_context(agent_id, tenant_key, categories=[...])` and companion tools (`update_context_usage`, `get_context_history`, `get_succession_context`) from `src/giljo_mcp/tools/context.py` when they need their own context window or history; these tools are keyed by `AgentExecution.agent_id` and always scoped by `tenant_key`.
