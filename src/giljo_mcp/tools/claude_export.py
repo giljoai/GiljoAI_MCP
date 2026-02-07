@@ -9,7 +9,7 @@ Handover 0084: Agent Export Copy-Command Interface
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import select
 
@@ -17,14 +17,12 @@ from api.endpoints.claude_export import export_templates_to_claude_code
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, User
 
-
 logger = logging.getLogger(__name__)
-
 
 async def export_agents_command(
     db_manager: DatabaseManager,
     tenant_key: str,
-    product_path: Optional[str] = None,
+    product_path: str | None = None,
     personal: bool = False,
 ) -> dict[str, Any]:
     """
@@ -79,10 +77,9 @@ async def export_agents_command(
         logger.exception(f"Export failed: {e}")
         return {"success": False, "error": f"Export failed: {e!s}"}
 
-
 async def get_product_for_tenant(
-    db_manager: DatabaseManager, tenant_key: str, product_id: Optional[str] = None
-) -> Optional[Product]:
+    db_manager: DatabaseManager, tenant_key: str, product_id: str | None = None
+) -> Product | None:
     """
     Get product for tenant, optionally by product ID.
 
@@ -109,7 +106,6 @@ async def get_product_for_tenant(
     except Exception as e:
         logger.exception(f"Failed to get product: {e}")
         return None
-
 
 async def validate_product_path(
     db_manager: DatabaseManager, tenant_key: str, product_id: str, project_path: str

@@ -8,7 +8,6 @@ service layer pattern (similar to ProductService, ProjectService).
 """
 
 import logging
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,10 +22,8 @@ from .models import (
     OrganizationUpdate,
 )
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
 
 def _serialize_organization(org) -> dict:
     """Convert Organization model to dict for JSON response.
@@ -47,11 +44,9 @@ def _serialize_organization(org) -> dict:
         ],
     }
 
-
 def get_org_service(db: AsyncSession = Depends(get_db_session)) -> OrgService:
     """Dependency for OrgService injection."""
     return OrgService(db)
-
 
 @router.post("", response_model=OrganizationResponse, status_code=status.HTTP_201_CREATED)
 async def create_organization(
@@ -101,7 +96,6 @@ async def create_organization(
         logger.error(f"Error creating organization: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
-
 @router.get("", response_model=list[OrganizationResponse])
 async def list_organizations(
     current_user: User = Depends(get_current_active_user), org_service: OrgService = Depends(get_org_service)
@@ -134,7 +128,6 @@ async def list_organizations(
     except Exception as e:
         logger.error(f"Error listing organizations: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
-
 
 @router.get("/{org_id}", response_model=OrganizationResponse)
 async def get_organization(
@@ -190,7 +183,6 @@ async def get_organization(
         logger.error(f"Error getting organization: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
-
 @router.put("/{org_id}", response_model=OrganizationResponse)
 async def update_organization(
     org_id: str,
@@ -237,7 +229,6 @@ async def update_organization(
     except Exception as e:
         logger.error(f"Error updating organization: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
-
 
 @router.delete("/{org_id}")
 async def delete_organization(

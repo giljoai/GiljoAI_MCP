@@ -6,7 +6,6 @@ Provides elegant copy-paste configuration system for connecting AI tools
 """
 
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -16,13 +15,10 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-
 # Pydantic Models
-
 
 class AIToolInfo(BaseModel):
     """Information about a supported AI tool."""
@@ -32,7 +28,6 @@ class AIToolInfo(BaseModel):
     config_format: str = Field(..., description="Configuration format (json/yaml)")
     file_location: str = Field(..., description="Default config file location")
     supported: bool = Field(default=True, description="Whether tool is currently supported")
-
 
 class AIToolConfigResponse(BaseModel):
     """Response containing AI tool configuration."""
@@ -44,15 +39,12 @@ class AIToolConfigResponse(BaseModel):
     instructions: list[str] = Field(..., description="Step-by-step setup instructions")
     download_filename: str = Field(..., description="Filename for markdown guide download")
 
-
 class SupportedToolsResponse(BaseModel):
     """Response listing all supported AI tools."""
 
     tools: list[AIToolInfo]
 
-
 # Configuration Templates
-
 
 def get_claude_code_config(server_url: str, api_key: str) -> str:
     """
@@ -67,7 +59,6 @@ def get_claude_code_config(server_url: str, api_key: str) -> str:
     """
     return f"""claude mcp add --transport http giljo-mcp {server_url}/mcp \\
   --header "X-API-Key: {api_key}" """
-
 
 def get_codex_config(server_url: str, api_key: str) -> str:
     """
@@ -88,7 +79,6 @@ def get_codex_config(server_url: str, api_key: str) -> str:
         f"codex mcp add --url {server_url}/mcp --bearer-token-env-var GILJO_API_KEY giljo-mcp"
     )
 
-
 def get_gemini_config(server_url: str, api_key: str) -> str:
     """
     Generate Gemini CLI MCP HTTP transport command.
@@ -104,7 +94,6 @@ def get_gemini_config(server_url: str, api_key: str) -> str:
         Command string for HTTP transport (single line)
     """
     return f'gemini mcp add -t http -H "X-API-Key: {api_key}" giljo-mcp {server_url}/mcp'
-
 
 def get_http_tool_instructions(tool_id: str) -> list[str]:
     """
@@ -141,9 +130,7 @@ def get_http_tool_instructions(tool_id: str) -> list[str]:
         ]
     return ["Copy the command above", "Run it in your terminal", "Verify the connection", "Start using GiljoAI tools"]
 
-
 # API Endpoints
-
 
 @router.get("/supported", response_model=SupportedToolsResponse, tags=["ai-tools"])
 async def list_supported_tools():
@@ -171,11 +158,10 @@ async def list_supported_tools():
 
     return SupportedToolsResponse(tools=tools)
 
-
 @router.get("/config-generator/{tool_name}", response_model=AIToolConfigResponse, tags=["ai-tools"])
 async def generate_ai_tool_config(
     tool_name: str,
-    current_user: Optional[User] = Depends(get_current_active_user),
+    current_user: User | None = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -265,11 +251,10 @@ async def generate_ai_tool_config(
         download_filename=tool_config["filename"],
     )
 
-
 @router.get("/config-generator/{tool_name}/markdown", tags=["ai-tools"])
 async def download_setup_guide(
     tool_name: str,
-    current_user: Optional[User] = Depends(get_current_active_user),
+    current_user: User | None = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -347,7 +332,6 @@ Copy the configuration below and paste it into your config file:
     markdown += (
         instructions_text
         + """
-
 
 ## Testing the Connection
 

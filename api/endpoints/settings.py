@@ -13,7 +13,7 @@ Handover 0506: Settings endpoints implementation.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -23,32 +23,26 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.settings_service import SettingsService
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-
 # Pydantic Models
-
 
 class SettingsUpdate(BaseModel):
     """Settings update request - settings dict required"""
 
     settings: dict[str, Any]
 
-
 class SettingsResponse(BaseModel):
     """Settings response - wraps settings dict"""
 
     settings: dict[str, Any]
-
 
 class SettingsUpdateResponse(BaseModel):
     """Settings update response - includes success message"""
 
     settings: dict[str, Any]
     message: str
-
 
 class ProductInfoResponse(BaseModel):
     """Product information response"""
@@ -60,7 +54,6 @@ class ProductInfoResponse(BaseModel):
     database: str
     features: list[str]
 
-
 class CookieDomainResponse(BaseModel):
     """Cookie domain configuration response"""
 
@@ -68,9 +61,7 @@ class CookieDomainResponse(BaseModel):
     secure: bool
     same_site: str
 
-
 # API Endpoints
-
 
 @router.get(
     "/general",
@@ -89,7 +80,6 @@ async def get_general_settings(
 
     return SettingsResponse(settings=settings)
 
-
 @router.put(
     "/general",
     response_model=SettingsUpdateResponse,
@@ -106,7 +96,6 @@ async def update_general_settings(
     settings = await service.update_settings("general", request.settings)
 
     return SettingsUpdateResponse(settings=settings, message="Settings updated successfully")
-
 
 @router.get(
     "/network",
@@ -125,7 +114,6 @@ async def get_network_settings(
 
     return SettingsResponse(settings=settings)
 
-
 @router.put(
     "/network",
     response_model=SettingsUpdateResponse,
@@ -143,7 +131,6 @@ async def update_network_settings(
 
     return SettingsUpdateResponse(settings=settings, message="Network settings updated successfully")
 
-
 @router.get(
     "/database",
     response_model=SettingsResponse,
@@ -160,7 +147,6 @@ async def get_database_settings(
     settings = await service.get_settings("database")
 
     return SettingsResponse(settings=settings)
-
 
 @router.get(
     "/product-info",
@@ -190,7 +176,6 @@ async def get_product_info(current_user: User = Depends(get_current_active_user)
             "Agent template management",
         ],
     )
-
 
 @router.get(
     "/cookie-domain",

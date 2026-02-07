@@ -11,16 +11,14 @@ Features:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.context_management.indexer import ContextIndexer
 from src.giljo_mcp.context_management.loader import DynamicContextLoader
 from src.giljo_mcp.context_management.summarizer import ContextSummarizer
 
-
 logger = logging.getLogger(__name__)
-
 
 class ContextManagementSystem:
     """
@@ -81,7 +79,7 @@ class ContextManagementSystem:
         }
 
     def load_context_for_agent(
-        self, tenant_key: str, product_id: str, query: str, role: Optional[str] = None, max_tokens: int = 10000
+        self, tenant_key: str, product_id: str, query: str, role: str | None = None, max_tokens: int = 10000
     ) -> dict[str, Any]:
         """
         Load relevant context chunks for an agent.
@@ -129,7 +127,7 @@ class ContextManagementSystem:
             tenant_key=tenant_key, product_id=product_id, full_content=full_content, condensed_mission=condensed_mission
         )
 
-    def get_token_reduction_stats(self, tenant_key: str, product_id: Optional[str] = None) -> dict[str, Any]:
+    def get_token_reduction_stats(self, tenant_key: str, product_id: str | None = None) -> dict[str, Any]:
         """
         Get context prioritization statistics.
 

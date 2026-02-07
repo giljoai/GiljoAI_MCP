@@ -19,12 +19,11 @@ Handover 0366c Changes:
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import select
 
 from ..models.agent_identity import AgentExecution
-
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +34,7 @@ VALID_STATUSES = {"waiting", "working", "blocked", "complete", "failed", "cancel
 TERMINAL_STATES = {"failed", "cancelled", "decommissioned"}
 
 # Module-level db_manager (initialized by register function or init_for_testing)
-_db_manager: Optional[Any] = None
-
+_db_manager: Any | None = None
 
 def init_for_testing(db_manager):
     """
@@ -51,15 +49,14 @@ def init_for_testing(db_manager):
     global _db_manager
     _db_manager = db_manager
 
-
 async def set_agent_status(
     agent_id: str,
     tenant_key: str,
     status: str,
-    progress: Optional[int] = None,
-    reason: Optional[str] = None,
-    current_task: Optional[str] = None,
-    estimated_completion: Optional[datetime] = None,
+    progress: int | None = None,
+    reason: str | None = None,
+    current_task: str | None = None,
+    estimated_completion: datetime | None = None,
 ) -> dict[str, Any]:
     """
     MCP tool for agents to update their own status in the orchestration grid.
@@ -68,10 +65,10 @@ async def set_agent_status(
         agent_id: Agent execution ID to update (the WHO - specific executor instance)
         tenant_key: Tenant identifier for multi-tenant isolation
         status: One of ['waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned']
-        progress: Optional[int] - Progress percentage (0-100), required for 'working' status
-        reason: Optional[str] - Reason for 'failed' or 'blocked' status
-        current_task: Optional[str] - Description of current task (for 'working' status)
-        estimated_completion: Optional[datetime] - When agent expects to complete
+        progress: int | None - Progress percentage (0-100), required for 'working' status
+        reason: str | None - Reason for 'failed' or 'blocked' status
+        current_task: str | None - Description of current task (for 'working' status)
+        estimated_completion: datetime | None - When agent expects to complete
 
     Returns:
         dict: {
@@ -221,7 +218,6 @@ async def set_agent_status(
     except Exception as e:
         logger.error(f"[set_agent_status] Error updating status: {e}", exc_info=True)
         raise ValueError(f"Failed to update agent status: {e!s}") from e
-
 
 async def report_progress(
     agent_id: str,

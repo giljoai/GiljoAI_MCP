@@ -6,7 +6,6 @@ to follow the repository pattern with CRITICAL tenant isolation.
 """
 
 from datetime import datetime
-from typing import List, Optional, Tuple
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models import Message, Project, Task
 from ..models.agent_identity import AgentExecution, AgentJob
 from ..models.config import ApiMetrics
-
 
 class StatisticsRepository:
     """
@@ -41,7 +39,7 @@ class StatisticsRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-    ) -> Optional[ApiMetrics]:
+    ) -> ApiMetrics | None:
         """
         Get API call metrics for tenant.
 
@@ -129,7 +127,7 @@ class StatisticsRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[Project]:
@@ -256,7 +254,7 @@ class StatisticsRepository:
         session: AsyncSession,
         tenant_key: str,
         project_id: str,
-    ) -> Optional[datetime]:
+    ) -> datetime | None:
         """
         Get timestamp of last message activity for a project.
 
@@ -347,8 +345,8 @@ class StatisticsRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-        project_id: Optional[str] = None,
-        status: Optional[str] = None,
+        project_id: str | None = None,
+        status: str | None = None,
         limit: int = 100,
     ) -> list[AgentExecution]:
         """
@@ -436,7 +434,7 @@ class StatisticsRepository:
         session: AsyncSession,
         tenant_key: str,
         agent_name: str,
-    ) -> Optional[datetime]:
+    ) -> datetime | None:
         """
         Get timestamp of last message sent by agent.
 
@@ -461,7 +459,7 @@ class StatisticsRepository:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> Optional[AgentJob]:
+    ) -> AgentJob | None:
         """
         Get AgentJob by job_id for project lookup.
 
@@ -526,8 +524,8 @@ class StatisticsRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-        project_id: Optional[str] = None,
-        since: Optional[datetime] = None,
+        project_id: str | None = None,
+        since: datetime | None = None,
     ) -> int:
         """
         Count messages with optional filters.
@@ -557,8 +555,8 @@ class StatisticsRepository:
         session: AsyncSession,
         tenant_key: str,
         status: str,
-        project_id: Optional[str] = None,
-        since: Optional[datetime] = None,
+        project_id: str | None = None,
+        since: datetime | None = None,
     ) -> int:
         """
         Count messages by status with optional filters.
