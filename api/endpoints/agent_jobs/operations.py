@@ -24,8 +24,6 @@ from src.giljo_mcp.exceptions import (
 from src.giljo_mcp.models import User
 from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
 
-# HANDOVER 0420c: Commented out deleted functions from legacy agent_job_manager
-# from src.giljo_mcp.agent_job_manager import force_fail_job, request_job_cancellation
 from .models import (
     JobHealthResponse,
     UpdateMissionRequest,
@@ -35,86 +33,6 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-# HANDOVER 0420c: Commented out - force_fail_job function deleted in 0420b cleanup
-# Modern AgentJobManager doesn't have force_fail equivalent - use cancel_job instead
-# TODO: Implement force_fail in AgentJobManager if needed, or remove endpoint
-# @router.post("/{job_id}/force-fail", response_model=ForceFailJobResponse)
-# async def force_fail_job_endpoint(
-#     job_id: str,
-#     request: ForceFailJobRequest,
-#     current_user: User = Depends(get_current_active_user),
-#     db_manager: DatabaseManager = Depends(get_db_manager),
-# ) -> ForceFailJobResponse:
-#     """
-#     Force-fail an agent job without waiting for graceful shutdown (Handover 0107).
-#
-#     Immediately marks job as failed. Use this when agent is unresponsive
-#     or cancellation request has timed out.
-#
-#     Args:
-#         job_id: Job ID to force-fail
-#         request: Force-fail request with reason
-#         current_user: Authenticated user (from dependency)
-#
-#     Returns:
-#         ForceFailJobResponse with success status and updated job details
-#
-#     Raises:
-#         HTTPException 404: Job not found
-#         HTTPException 403: User not authorized (tenant mismatch)
-#         HTTPException 409: Job already failed
-#         HTTPException 400: Invalid request
-#     """
-#     logger.debug(f"User {current_user.username} force-failing job {job_id}")
-#
-#     try:
-#         # Call business logic function
-#         result = await force_fail_job(
-#             tenant_key=current_user.tenant_key,
-#             job_id=job_id,
-#             reason=request.reason,
-#             db_manager=db_manager,
-#         )
-#
-#         # Return success response
-#         return ForceFailJobResponse(
-#             success=result["success"],
-#             job_id=result["job_id"],
-#             status=result["status"],
-#             message=result["message"],
-#         )
-#
-#     except ValueError as e:
-#         error_msg = str(e)
-#
-#         # Handle not found
-#         if "not found" in error_msg.lower():
-#             raise HTTPException(
-#                 status_code=http_status.HTTP_404_NOT_FOUND,
-#                 detail=error_msg
-#             )
-#
-#         # Handle already failed
-#         if "already failed" in error_msg.lower():
-#             raise HTTPException(
-#                 status_code=http_status.HTTP_409_CONFLICT,
-#                 detail=error_msg
-#             )
-#
-#         # General validation error
-#         raise HTTPException(
-#             status_code=http_status.HTTP_400_BAD_REQUEST,
-#             detail=error_msg
-#         )
-#
-#     except Exception as e:
-#         logger.error(f"Unexpected error force-failing job {job_id}: {e}", exc_info=True)
-#         raise HTTPException(
-#             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail=f"Failed to force-fail job: {str(e)}"
-#         )
 
 
 @router.get("/{job_id}/health", response_model=JobHealthResponse)
@@ -164,25 +82,6 @@ async def get_job_health(
 
         if not execution:
             raise ResourceNotFoundError(f"Job {job_id} not found")
-
-        # ORIGINAL QUERY (kept for reference):
-        # stmt = select(AgentExecution).where(
-        #     AgentExecution.tenant_key == current_user.tenant_key,
-        #     AgentExecution.agent_id == job_id,
-        # )
-        # result = await session.execute(stmt)
-        # execution = result.scalar_one_or_none()
-        #
-        # # Fallback to job_id if not found by agent_id
-        # if not execution:
-        #     stmt = select(AgentExecution).where(
-        #         AgentExecution.tenant_key == current_user.tenant_key,
-        #         AgentExecution.job_id == job_id,
-        #     )
-        #     result = await session.execute(stmt)
-        #     execution = result.scalar_one_or_none()
-
-        # Calculate minutes since last progress
         minutes_since_progress: Optional[float] = None
         is_stale = False
 
@@ -209,16 +108,16 @@ async def get_job_health(
         )
 
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error getting health for job {job_id}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.patch("/{job_id}/mission")
@@ -264,16 +163,6 @@ async def update_agent_mission(
 
         if not job:
             raise ResourceNotFoundError(f"Agent job {job_id} not found")
-
-        # ORIGINAL QUERY (kept for reference):
-        # stmt = select(AgentJob).where(
-        #     AgentJob.tenant_key == current_user.tenant_key,
-        #     AgentJob.job_id == job_id,
-        # )
-        # result = await session.execute(stmt)
-        # job = result.scalar_one_or_none()
-
-        # Update mission (stored on AgentJob, not AgentExecution)
         job.mission = request.mission
 
         await session.commit()
@@ -314,13 +203,13 @@ async def update_agent_mission(
         )
 
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error updating mission for job {job_id}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e

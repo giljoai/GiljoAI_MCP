@@ -992,9 +992,6 @@ def get_orchestrator_identity_content() -> str:
     check_in = _get_check_in_protocol_section().strip()
     orchestrator_messaging = _get_orchestrator_messaging_protocol_section().strip()
 
-    # Build the FULL identity content (same structure as SystemPromptService uses)
-    # user_instructions = base_template + orchestrator_response
-    # system_instructions = mcp + check_in + messaging
     return f"""{base_template}
 
 {orchestrator_response}

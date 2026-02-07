@@ -7,6 +7,25 @@
 
 ---
 
+## CRITICAL: Large File Handling
+
+**Files over 20K tokens MUST be read in batches.** Do NOT skip large files.
+
+```python
+# For files > 500 lines, read in chunks:
+Read(file_path, offset=0, limit=200)    # Lines 1-200
+Read(file_path, offset=200, limit=200)  # Lines 201-400
+Read(file_path, offset=400, limit=200)  # Lines 401-600
+# Continue until entire file is processed
+```
+
+**Key large files to process in batches:**
+- `src/giljo_mcp/models/*.py` - Core model files
+- `src/giljo_mcp/services/*.py` - Service layer
+- `api/endpoints/**/*.py` - API endpoints
+
+---
+
 ## Mission Statement
 
 Modernize type annotations to PEP 585+ standards. Remove deprecated typing imports.

@@ -198,7 +198,7 @@ async def set_agent_status(
                         block_reason=reason if status == "blocked" else None,
                         estimated_completion=estimated_completion,
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                     logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
                     # Non-critical - continue without WebSocket broadcast
 
@@ -220,7 +220,7 @@ async def set_agent_status(
         raise
     except Exception as e:
         logger.error(f"[set_agent_status] Error updating status: {e}", exc_info=True)
-        raise ValueError(f"Failed to update agent status: {e!s}")
+        raise ValueError(f"Failed to update agent status: {e!s}") from e
 
 
 async def report_progress(
@@ -320,7 +320,7 @@ async def report_progress(
                             "timestamp": now.isoformat(),
                         }
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
                     logger.warning(f"Failed to broadcast WebSocket event: {ws_error}")
                     # Non-critical - continue without WebSocket broadcast
 
@@ -339,4 +339,4 @@ async def report_progress(
         raise
     except Exception as e:
         logger.error(f"[report_progress] Error reporting progress: {e}", exc_info=True)
-        raise ValueError(f"Failed to report progress: {e!s}")
+        raise ValueError(f"Failed to report progress: {e!s}") from e

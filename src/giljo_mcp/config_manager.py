@@ -10,6 +10,8 @@ This module provides a robust configuration system that:
 - Supports hot-reloading of configuration
 """
 
+import importlib.util
+import json
 import logging
 import os
 import threading
@@ -517,7 +519,7 @@ class ConfigManager:
 
         except Exception as e:
             logger.exception(f"Error loading config file: {e}")
-            raise ConfigValidationError(f"Failed to load config file: {e}")
+            raise ConfigValidationError(f"Failed to load config file: {e}") from e
 
     def _load_from_env(self):
         """Override configuration with environment variables."""
@@ -974,7 +976,7 @@ def extract_architecture_from_claude_md(claude_md_path: Path) -> Optional[str]:
 
     try:
         content = claude_md_path.read_text(encoding="utf-8")
-    except Exception as e:
+    except (OSError, UnicodeDecodeError) as e:
         logger.error(f"Failed to read CLAUDE.md: {e}")
         return None
 
@@ -1024,7 +1026,7 @@ def extract_tech_stack_from_claude_md(claude_md_path: Path) -> list[str]:
 
     try:
         content = claude_md_path.read_text(encoding="utf-8")
-    except Exception as e:
+    except (OSError, UnicodeDecodeError) as e:
         logger.error(f"Failed to read CLAUDE.md: {e}")
         return []
 
@@ -1079,7 +1081,7 @@ def extract_test_commands_from_claude_md(claude_md_path: Path) -> list[str]:
 
     try:
         content = claude_md_path.read_text(encoding="utf-8")
-    except Exception as e:
+    except (OSError, UnicodeDecodeError) as e:
         logger.error(f"Failed to read CLAUDE.md: {e}")
         return []
 
@@ -1145,7 +1147,7 @@ def detect_frontend_framework(root_path: Path) -> Optional[str]:
         if "svelte" in dependencies:
             return "Svelte"
 
-    except Exception as e:
+    except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
         logger.warning(f"Failed to parse package.json: {e}")
 
     return None
@@ -1173,7 +1175,7 @@ def detect_backend_framework(root_path: Path) -> Optional[str]:
                 return "Django"
             if "flask" in content:
                 return "Flask"
-        except Exception as e:
+        except (OSError, UnicodeDecodeError) as e:
             logger.warning(f"Failed to read requirements.txt: {e}")
 
     # Check pyproject.toml
@@ -1188,7 +1190,7 @@ def detect_backend_framework(root_path: Path) -> Optional[str]:
                 return "Django"
             if "flask" in content:
                 return "Flask"
-        except Exception as e:
+        except (OSError, UnicodeDecodeError) as e:
             logger.warning(f"Failed to read pyproject.toml: {e}")
 
     return None
@@ -1246,11 +1248,9 @@ def check_serena_mcp_available() -> bool:
     """
     try:
         # Check if serena-mcp package is importable
-        import importlib.util
-
         spec = importlib.util.find_spec("serena_mcp")
         return spec is not None
-    except Exception:
+    except (ImportError, ModuleNotFoundError, ValueError, AttributeError):
         return False
 
 

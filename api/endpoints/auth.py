@@ -696,7 +696,7 @@ async def create_first_admin_user(
                 template_count = await seed_tenant_templates(db, tenant_key)
                 await db.commit()  # Ensure templates are persisted
             logger.info(f"[SETUP] Seeded {template_count} default agent templates for tenant {tenant_key[:12]}...")
-        except Exception as e:
+        except (ImportError, ValueError) as e:
             # Non-blocking - templates can be added later via UI
             logger.warning(f"[SETUP] Template seeding failed (non-critical): {e}")
             template_count = 0

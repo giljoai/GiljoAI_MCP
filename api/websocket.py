@@ -47,7 +47,7 @@ class WebSocketManager:
         if self._broker_unsubscribe:
             try:
                 self._broker_unsubscribe()
-            except Exception:
+            except (RuntimeError, OSError):
                 logger.debug("Failed unsubscribing broker handler", exc_info=True)
             self._broker_unsubscribe = None
 
@@ -160,7 +160,7 @@ class WebSocketManager:
                 for t in event_types:
                     await websocket.send_json({**message, "type": t})
                     client_sent_any = True
-            except Exception as e:
+            except (RuntimeError, ValueError, KeyError) as e:
                 failed_count += 1
                 logger.warning(
                     "websocket_send_failed",
@@ -188,7 +188,7 @@ class WebSocketManager:
                         origin=self._broker_origin,
                     )
                 )
-            except Exception as e:
+            except (RuntimeError, ValueError, KeyError) as e:
                 logger.warning(
                     "websocket_broker_publish_failed",
                     error_code=ErrorCode.WS_BROADCAST_FAILED.value,
@@ -295,7 +295,7 @@ class WebSocketManager:
             websocket = self.active_connections[client_id]
             try:
                 await websocket.send_text(message)
-            except Exception as e:
+            except (RuntimeError, ValueError, KeyError) as e:
                 logger.exception(
                     "websocket_send_message_error",
                     error_code=ErrorCode.WS_MESSAGE_SEND_FAILED.value,
@@ -545,7 +545,7 @@ class WebSocketManager:
         for client_id, websocket in self.active_connections.items():
             try:
                 await websocket.send_json(heartbeat)
-            except Exception as e:
+            except (RuntimeError, OSError) as e:
                 logger.debug(f"Heartbeat failed for {client_id}: {e}")
                 disconnected.append(client_id)
 

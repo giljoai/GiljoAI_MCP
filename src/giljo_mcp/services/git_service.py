@@ -117,7 +117,7 @@ class GitService:
         except subprocess.TimeoutExpired:
             self.logger.error(f"Git command timeout for {repo_path}")
             return []
-        except Exception as e:
+        except (ValueError, IndexError, KeyError) as e:
             self.logger.exception(f"Failed to fetch commits from {repo_path}: {e}")
             return []
 
@@ -161,7 +161,7 @@ class GitService:
         except subprocess.TimeoutExpired:
             self.logger.debug(f"Git validation timeout: {repo_path}")
             return False
-        except Exception as e:
+        except (ValueError, IndexError, KeyError) as e:
             self.logger.exception(f"Validation error for {repo_path}: {e}")
             return False
 
@@ -202,7 +202,7 @@ class GitService:
 
                 commits.append(commit)
 
-            except Exception as e:
+            except (ValueError, IndexError, KeyError) as e:
                 self.logger.warning(f"Failed to parse git log line: {line}, error: {e}")
                 continue
 
@@ -237,7 +237,7 @@ class GitService:
             self.logger.warning(f"Failed to get branch for {repo_path}: {result.stderr}")
             return None
 
-        except Exception as e:
+        except (ValueError, IndexError, KeyError) as e:
             self.logger.exception(f"Error getting current branch: {e}")
             return None
 
@@ -270,7 +270,7 @@ class GitService:
             self.logger.debug(f"No remote origin for {repo_path}")
             return None
 
-        except Exception as e:
+        except (ValueError, IndexError, KeyError) as e:
             self.logger.exception(f"Error getting remote URL: {e}")
             return None
 
@@ -304,6 +304,6 @@ class GitService:
             self.logger.warning(f"Failed to count commits for {repo_path}: {result.stderr}")
             return 0
 
-        except Exception as e:
+        except (ValueError, IndexError, KeyError) as e:
             self.logger.exception(f"Error counting commits: {e}")
             return 0

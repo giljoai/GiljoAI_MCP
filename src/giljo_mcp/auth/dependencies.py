@@ -62,13 +62,13 @@ async def get_db_session(request: Request = None):
     # Get db_manager from app state (shared instance)
     try:
         db_manager = request.app.state.api_state.db_manager
-    except AttributeError:
+    except AttributeError as e:
         # Fallback if app state not available
         logger.error("db_manager not available in app state")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database not initialized - system may be in setup mode",
-        )
+        ) from e
 
     if db_manager is None:
         logger.error("db_manager is None - setup mode active")
@@ -146,7 +146,7 @@ async def get_current_user(
         except HTTPException as e:
             # Token verification failed - continue to API key check
             logger.warning(f"[AUTH] JWT verification failed: {e.detail}")
-        except Exception as e:
+        except (ValueError, KeyError) as e:
             logger.error(f"[AUTH] JWT authentication error: {e}", exc_info=True)
 
     # Try Authorization: Bearer <token> header (CLI / API clients)
@@ -171,7 +171,7 @@ async def get_current_user(
             logger.warning("[AUTH] Bearer JWT FAILED - User not found: %s", user_id)
         except HTTPException as e:
             logger.warning("[AUTH] Bearer JWT verification failed: %s", e.detail)
-        except Exception as e:
+        except (ValueError, KeyError) as e:
             logger.error("[AUTH] Bearer JWT authentication error: %s", e, exc_info=True)
 
     # Try API key header (MCP tools)
@@ -203,7 +203,7 @@ async def get_current_user(
                     break
 
             logger.warning("Invalid API key provided")
-        except Exception as e:
+        except (ValueError, KeyError) as e:
             logger.error(f"API key authentication error: {e}")
 
     # No valid authentication found

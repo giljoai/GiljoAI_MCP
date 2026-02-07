@@ -147,7 +147,7 @@ class DatabaseManager:
         try:
             yield session
             session.commit()
-        except Exception:
+        except (RuntimeError, OSError):
             session.rollback()
             raise
         finally:
@@ -180,7 +180,7 @@ class DatabaseManager:
             if hasattr(session, "is_active") and session.is_active:
                 try:
                     await session.rollback()
-                except Exception:
+                except (RuntimeError, OSError):
                     pass  # Suppress rollback errors during cleanup  # nosec B110
             raise
         except Exception:
@@ -200,11 +200,11 @@ class DatabaseManager:
             if hasattr(session, "is_active") and session.is_active:
                 try:
                     await session.rollback()
-                except Exception:
+                except (RuntimeError, OSError):
                     pass  # Suppress rollback errors during cleanup  # nosec B110
             try:
                 await session.close()
-            except Exception as close_error:
+            except (RuntimeError, OSError) as close_error:
                 logger.debug(f"Session close during cleanup: {close_error}")
 
     def close(self):

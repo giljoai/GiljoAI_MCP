@@ -149,6 +149,10 @@ inline-quotes = "double"
 "**/conftest.py" = [
     "ARG",    # Unused arguments OK in pytest fixtures
 ]
+# CLI tools with intentional print() statements for user output
+"src/giljo_mcp/cleanup/visualizer.py" = ["T201"]  # CLI dependency visualization tool
+"src/giljo_mcp/database_backup.py" = ["T201"]     # CLI database backup utility
+"src/giljo_mcp/colored_logger.py" = ["T201"]      # Public API for colored console output
 # Installation files - bypass all linting (transient code, user runs once)
 "bootstrap.py" = ["ALL"]
 "setup.py" = ["ALL"]

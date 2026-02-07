@@ -45,7 +45,7 @@ class VisionDocumentChunker:
         # Initialize tiktoken encoder (cl100k_base for GPT-4/GPT-3.5)
         try:
             self.encoding = tiktoken.get_encoding("cl100k_base")
-        except Exception as e:
+        except (ValueError, KeyError, ImportError) as e:
             logger.error(f"Failed to initialize tiktoken encoding: {e}")
             raise
 
@@ -73,7 +73,7 @@ class VisionDocumentChunker:
         try:
             tokens = self.encoding.encode(text)
             return len(tokens)
-        except Exception as e:
+        except (ValueError, KeyError, ImportError) as e:
             logger.error(f"Error counting tokens: {e}")
             # Fallback to character-based estimation
             return len(text) // 4
@@ -314,7 +314,7 @@ class VisionDocumentChunker:
             if doc.storage_type in ("inline", "hybrid") and doc.vision_document:
                 content += doc.vision_document
 
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             error_msg = f"Error reading content for document {vision_document_id}: {e}"
             logger.error(error_msg)
             return {"success": False, "error": error_msg}
