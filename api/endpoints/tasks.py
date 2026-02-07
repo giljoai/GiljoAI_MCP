@@ -182,8 +182,8 @@ async def create_task(
     """
     Create a new task.
 
-    The creator becomes the task owner. Product scoping is optional; when provided,
-    the task is isolated to that product for list filters.
+    The creator becomes the task owner. Product binding is required (Handover 0433)
+    to ensure all tasks are isolated to a specific product.
     """
     logger.debug(f"User {getattr(current_user, 'username', 'unknown')} creating task '{task_create.title}'")
 

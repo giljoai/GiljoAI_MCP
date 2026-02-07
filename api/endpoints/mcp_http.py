@@ -340,15 +340,31 @@ async def handle_tools_list(
         # Task Management Tools (MCP tools retired Dec 2025 - only create_task kept)
         {
             "name": "create_task",
-            "description": "Create a new task",
+            "description": "Create a new task bound to the active product. Requires an active product to be set.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "title": {"type": "string", "description": "Task title"},
                     "description": {"type": "string", "description": "Task description"},
-                    "priority": {"type": "string", "description": "Task priority"},
+                    "priority": {
+                        "type": "string",
+                        "description": "Task priority (low, medium, high, critical)",
+                        "default": "medium",
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Optional task category (frontend, backend, database, infra, docs, general)",
+                    },
+                    "assigned_to": {
+                        "type": "string",
+                        "description": "Optional agent name to assign to (not implemented yet)",
+                    },
+                    "tenant_key": {
+                        "type": "string",
+                        "description": "Tenant isolation key (automatically injected by MCP security layer)",
+                    },
                 },
-                "required": ["title"],
+                "required": ["title", "description"],
             },
         },
         # Health & Status Tools
