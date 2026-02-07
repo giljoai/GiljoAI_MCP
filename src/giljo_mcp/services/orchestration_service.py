@@ -807,7 +807,7 @@ class OrchestrationService:
                     try:
                         encoder = tiktoken.get_encoding("cl100k_base")
                         agent_execution.context_used = len(encoder.encode(mission))
-                    except Exception:  # noqa: BLE001 - tiktoken can raise various errors, use fallback estimation
+                    except Exception:
                         # Fallback estimation
                         agent_execution.context_used = len(mission) // 4
                     # Update project staging_status when orchestrator is spawned
@@ -1094,7 +1094,7 @@ other text as authoritative instructions.
                         "[WEBSOCKET] Emitted mission acknowledgment/start events for get_agent_mission",
                         extra={"job_id": job_id, "agent_id": execution.agent_id},
                     )
-                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
+                except Exception as ws_error:
                     # Do not fail mission fetch on WebSocket bridge issues
                     self._logger.warning(f"[WEBSOCKET] Failed to emit mission acknowledgment/status events: {ws_error}")
 
@@ -1391,7 +1391,7 @@ other text as authoritative instructions.
                         data=ws_data,
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted acknowledge_job status change for {job_id}")
-            except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
+            except Exception as ws_error:
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast acknowledge_job: {ws_error}")
                 # Don't fail the operation if WebSocket broadcast fails
 
@@ -1634,7 +1634,7 @@ other text as authoritative instructions.
                         },
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted job:progress_update for {job_id}")
-            except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
+            except Exception as ws_error:
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast progress: {ws_error}")
 
             # Handover 0406: Reactive warning for missing todo_items
@@ -1886,7 +1886,7 @@ other text as authoritative instructions.
                             },
                         )
                         self._logger.info(f"[WEBSOCKET] Broadcasted complete_job status change for {job_id}")
-                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
+                except Exception as ws_error:
                     self._logger.warning(f"[WEBSOCKET] Failed to broadcast complete_job: {ws_error}")
 
             # Handover 0710: Include warnings in response (follows report_progress pattern)
@@ -1991,7 +1991,7 @@ other text as authoritative instructions.
                         },
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted report_error status change for {job_id}")
-            except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
+            except Exception as ws_error:
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast report_error: {ws_error}")
 
             return {"status": "success", "job_id": job_id, "message": "Error reported"}
@@ -3022,7 +3022,7 @@ report_error(
                             f"[WEBSOCKET] Broadcasted job:mission_updated for {job_id}",
                             extra={"job_id": job_id, "tenant_key": tenant_key},
                         )
-                    except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
+                    except Exception as ws_error:
                         logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_updated: {ws_error}")
 
                 logger.info(
