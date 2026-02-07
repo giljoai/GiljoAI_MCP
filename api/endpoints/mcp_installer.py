@@ -127,8 +127,8 @@ def validate_token(token: str) -> Optional[dict]:
     except jwt.InvalidTokenError as e:
         logger.warning(f"Invalid token: {e}")
         return None
-    except (OSError, ValueError, KeyError) as e:
-        logger.error(f"Token validation error: {e}")
+    except (OSError, ValueError, KeyError):
+        logger.exception("Token validation error")
         return None
 
 
@@ -243,7 +243,7 @@ async def download_windows_installer(current_user: Optional[User] = Depends(get_
             timestamp=datetime.now(timezone.utc).isoformat() + "Z",
         )
     except FileNotFoundError as e:
-        logger.error(f"Template not found: {e}")
+        logger.exception("Template not found")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Installer template not found. Please contact administrator.",
@@ -309,7 +309,7 @@ async def download_unix_installer(current_user: Optional[User] = Depends(get_cur
             timestamp=datetime.now(timezone.utc).isoformat() + "Z",
         )
     except FileNotFoundError as e:
-        logger.error(f"Template not found: {e}")
+        logger.exception("Template not found")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Installer template not found. Please contact administrator.",

@@ -129,7 +129,7 @@ class TemplateService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to list templates: {e}")
+            self._logger.exception("Failed to list templates")
             raise BaseGiljoException(
                 message=f"Failed to list templates: {e!s}", context={"tenant_key": tenant_key}
             ) from e
@@ -215,7 +215,7 @@ class TemplateService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to get template: {e}")
+            self._logger.exception("Failed to get template")
             raise BaseGiljoException(
                 message=f"Failed to get template: {e!s}",
                 context={
@@ -304,7 +304,7 @@ class TemplateService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to create template: {e}")
+            self._logger.exception("Failed to create template")
             raise BaseGiljoException(
                 message=f"Failed to create template: {e!s}",
                 context={
@@ -402,7 +402,7 @@ class TemplateService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to update template: {e}")
+            self._logger.exception("Failed to update template")
             raise BaseGiljoException(
                 message=f"Failed to update template: {e!s}",
                 context={

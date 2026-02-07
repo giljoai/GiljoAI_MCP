@@ -12,7 +12,8 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from ..models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+
 from .base import BaseRepository
 
 
@@ -469,7 +470,7 @@ class AgentJobRepository:
         Example:
             >>> await repo.increment_sent_count(session, "agent-123", "tenant-1")
         """
-        from ..models.agent_identity import AgentExecution
+        from giljo_mcp.models.agent_identity import AgentExecution
 
         stmt = (
             update(AgentExecution)
@@ -499,7 +500,7 @@ class AgentJobRepository:
         Example:
             >>> await repo.increment_waiting_count(session, "agent-123", "tenant-1")
         """
-        from ..models.agent_identity import AgentExecution
+        from giljo_mcp.models.agent_identity import AgentExecution
 
         stmt = (
             update(AgentExecution)
@@ -531,7 +532,7 @@ class AgentJobRepository:
         Example:
             >>> await repo.decrement_waiting_increment_read(session, "agent-123", "tenant-1")
         """
-        from ..models.agent_identity import AgentExecution
+        from giljo_mcp.models.agent_identity import AgentExecution
 
         stmt = (
             update(AgentExecution)

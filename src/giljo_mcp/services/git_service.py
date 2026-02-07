@@ -114,13 +114,13 @@ class GitService:
             return commits
 
         except FileNotFoundError:
-            self.logger.error(f"Git not found or path invalid: {repo_path}")
+            self.logger.exception(f"Git not found or path invalid: {repo_path}")
             return []
         except subprocess.TimeoutExpired:
-            self.logger.error(f"Git command timeout for {repo_path}")
+            self.logger.exception(f"Git command timeout for {repo_path}")
             return []
-        except (ValueError, IndexError, KeyError) as e:
-            self.logger.exception(f"Failed to fetch commits from {repo_path}: {e}")
+        except (ValueError, IndexError, KeyError):
+            self.logger.exception("Failed to fetch commits from {repo_path}")
             return []
 
     async def validate_repository(self, repo_path: str) -> bool:
@@ -165,8 +165,8 @@ class GitService:
         except subprocess.TimeoutExpired:
             self.logger.debug(f"Git validation timeout: {repo_path}")
             return False
-        except (ValueError, IndexError, KeyError) as e:
-            self.logger.exception(f"Validation error for {repo_path}: {e}")
+        except (ValueError, IndexError, KeyError):
+            self.logger.exception("Validation error for {repo_path}")
             return False
 
     def _parse_git_log(self, log_output: str) -> list[dict[str, Any]]:
@@ -243,8 +243,8 @@ class GitService:
             self.logger.warning(f"Failed to get branch for {repo_path}: {result.stderr}")
             return None
 
-        except (ValueError, IndexError, KeyError) as e:
-            self.logger.exception(f"Error getting current branch: {e}")
+        except (ValueError, IndexError, KeyError):
+            self.logger.exception("Error getting current branch")
             return None
 
     async def get_remote_url(self, repo_path: str) -> str | None:
@@ -278,8 +278,8 @@ class GitService:
             self.logger.debug(f"No remote origin for {repo_path}")
             return None
 
-        except (ValueError, IndexError, KeyError) as e:
-            self.logger.exception(f"Error getting remote URL: {e}")
+        except (ValueError, IndexError, KeyError):
+            self.logger.exception("Error getting remote URL")
             return None
 
     async def get_commit_count(self, repo_path: str, branch: str = "HEAD") -> int:
@@ -314,6 +314,6 @@ class GitService:
             self.logger.warning(f"Failed to count commits for {repo_path}: {result.stderr}")
             return 0
 
-        except (ValueError, IndexError, KeyError) as e:
-            self.logger.exception(f"Error counting commits: {e}")
+        except (ValueError, IndexError, KeyError):
+            self.logger.exception("Error counting commits")
             return 0

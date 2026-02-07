@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 # AgentExecution has different statuses: waiting, working, blocked, complete, cancelled, failed, decommissioned
 VALID_STATUSES = {"active", "completed", "cancelled"}
 
+
 # Module-level state holder
 class _AgentJobStatusState:
     """State holder to avoid global statement."""
@@ -467,7 +468,7 @@ async def update_job_status(
 
     except ValueError as ve:
         # Handle invalid status transitions
-        logger.error(f"Invalid status transition for job {job_id}: {ve}")
+        logger.exception(f"Invalid status transition for job {job_id}")
         return {
             "success": False,
             "error": str(ve),

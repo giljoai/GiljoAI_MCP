@@ -58,7 +58,7 @@ async def launch_agent(agent_id: str, tenant_key: str, session) -> dict[str, Any
         }
 
     except Exception as e:
-        logger.exception(f"Failed to launch agent: {e}")
+        logger.exception("Failed to launch agent")
         return {"success": False, "error": str(e)}
 
 
@@ -106,7 +106,7 @@ async def log_interaction_legacy(interaction: dict[str, Any], tenant_key: str, s
         return {"success": True, "message": "Interaction validated"}
 
     except Exception as e:
-        logger.exception(f"Failed to log interaction: {e}")
+        logger.exception("Failed to log interaction")
         return {"success": False, "error": str(e)}
 
 

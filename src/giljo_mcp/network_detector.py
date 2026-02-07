@@ -130,15 +130,14 @@ class AdapterIPDetector:
                     if addr.family == 2:  # AF_INET
                         ip = addr.address
 
-                        if not ip.startswith("127."):
-                            if is_active and not is_loopback:
-                                candidates.append(
-                                    {
-                                        "name": interface_name,
-                                        "ip": ip,
-                                        "is_virtual": is_virtual,
-                                    }
-                                )
+                        if not ip.startswith("127.") and is_active and not is_loopback:
+                            candidates.append(
+                                {
+                                    "name": interface_name,
+                                    "ip": ip,
+                                    "is_virtual": is_virtual,
+                                }
+                            )
 
             if not candidates:
                 logger.warning("No suitable network adapters found")

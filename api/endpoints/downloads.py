@@ -606,7 +606,7 @@ async def generate_download_token(
         }
 
     except (OSError, ValueError, KeyError) as e:
-        logger.error(f"Failed to generate download token: {e}")
+        logger.exception("Failed to generate download token")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate download token: {e!s}",
@@ -711,7 +711,7 @@ async def download_temp_file(
         try:
             content = file_path.read_bytes()
         except (OSError, ValueError, KeyError) as e:
-            logger.error(f"Failed reading file {file_path}: {e}")
+            logger.exception("Failed reading file {file_path}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Server error") from e
 
         # Increment download metrics
@@ -729,7 +729,7 @@ async def download_temp_file(
             },
         )
     except (OSError, ValueError, KeyError) as e:
-        logger.error(f"Unexpected error during download: {e}")
+        logger.exception("Unexpected error during download")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
