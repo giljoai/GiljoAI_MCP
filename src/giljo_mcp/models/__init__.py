@@ -61,40 +61,11 @@ Benefits of Modular Imports:
 """
 
 # Base classes and utilities
-from .base import (
-    Base,
-    generate_uuid,
-    generate_project_alias,
-)
-
-# Auth models
-from .auth import (
-    User,
-    APIKey,
-    MCPSession,
-)
-
-# Product models
-from .products import (
-    Product,
-    VisionDocument,
-    Vision,
-)
-
-# Product Memory models (Handover 0390a)
-from .product_memory_entry import (
-    ProductMemoryEntry,
-)
-
-# Organization models (Handover 0424a)
-from .organizations import (
-    Organization,
-    OrgMembership,
-)
-
-# Project models
-from .projects import (
-    Project,
+# Agent Identity models (Handover 0366a, 0402)
+from .agent_identity import (
+    AgentExecution,
+    AgentJob,
+    AgentTodoItem,
 )
 
 # Agent models
@@ -103,24 +74,29 @@ from .agents import (
     Job,
 )
 
-# Agent Identity models (Handover 0366a, 0402)
-from .agent_identity import (
-    AgentJob,
-    AgentExecution,
-    AgentTodoItem,
+# Auth models
+from .auth import (
+    APIKey,
+    MCPSession,
+    User,
+)
+from .base import (
+    Base,
+    generate_project_alias,
+    generate_uuid,
 )
 
-# Template models
-from .templates import (
-    AgentTemplate,
-    TemplateArchive,
-    TemplateUsageStats,
-)
-
-# Task and message models
-from .tasks import (
-    Task,
-    Message,
+# Configuration models
+from .config import (
+    ApiMetrics,
+    Configuration,
+    DiscoveryConfig,
+    DownloadToken,
+    GitCommit,
+    GitConfig,
+    OptimizationMetric,
+    OptimizationRule,
+    SetupState,
 )
 
 # Context models
@@ -131,21 +107,45 @@ from .context import (
     MCPContextSummary,
 )
 
-# Configuration models
-from .config import (
-    Configuration,
-    DiscoveryConfig,
-    GitConfig,
-    GitCommit,
-    SetupState,
-    OptimizationRule,
-    OptimizationMetric,
-    DownloadToken,
-    ApiMetrics,
+# Organization models (Handover 0424a)
+from .organizations import (
+    Organization,
+    OrgMembership,
+)
+
+# Product Memory models (Handover 0390a)
+from .product_memory_entry import (
+    ProductMemoryEntry,
+)
+
+# Product models
+from .products import (
+    Product,
+    Vision,
+    VisionDocument,
+)
+
+# Project models
+from .projects import (
+    Project,
 )
 
 # Settings models
 from .settings import Settings
+
+# Task and message models
+from .tasks import (
+    Message,
+    Task,
+)
+
+# Template models
+from .templates import (
+    AgentTemplate,
+    TemplateArchive,
+    TemplateUsageStats,
+)
+
 
 # Export all for backward compatibility
 __all__ = [

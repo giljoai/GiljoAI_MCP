@@ -14,6 +14,7 @@ from typing import Any, Dict
 from api.event_bus import EventBus
 from api.events.schemas import EventFactory
 
+
 logger = logging.getLogger(__name__)
 
 

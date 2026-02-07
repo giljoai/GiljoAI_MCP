@@ -8,7 +8,7 @@ All operations enforce tenant isolation for security.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -16,7 +16,6 @@ from api.dependencies import get_tenant_key
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
 from src.giljo_mcp.repositories.context_repository import ContextRepository
-from src.giljo_mcp.tools.chunking import EnhancedChunker
 
 
 router = APIRouter(prefix="/api", tags=["Agent Management"])
@@ -93,6 +92,7 @@ class TokenReductionStats(BaseModel):
 # Handover 0503: Removed duplicate vision upload endpoint
 # Vision uploads now handled by api/endpoints/products/vision.py
 # Use POST /api/v1/products/{product_id}/vision instead
+
 
 @router.get("/agent-jobs/active", response_model=List[AgentJobResponse])
 async def get_active_agent_jobs(

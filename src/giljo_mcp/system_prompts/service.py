@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import DatabaseManager
 from ..models import Configuration
 
+
 DEFAULT_ORCHESTRATOR_CONFIG_KEY = "system.orchestrator_prompt"
 MAX_PROMPT_BYTES = 150_000  # ~150 KB safety limit
 

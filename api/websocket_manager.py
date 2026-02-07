@@ -8,8 +8,6 @@ from api.websocket.
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from api.websocket import WebSocketManager
-
 
 @dataclass
 class ConnectionInfo:

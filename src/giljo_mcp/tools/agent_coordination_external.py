@@ -324,7 +324,9 @@ class ExternalAgentCoordinationTools:
             "spawned_by": spawned_by,
         }
 
-        logger.info(f"[create_agent_job] Creating job for agent_display_name={agent_display_name}, mission_length={len(mission)}")
+        logger.info(
+            f"[create_agent_job] Creating job for agent_display_name={agent_display_name}, mission_length={len(mission)}"
+        )
 
         response = await self._make_request(method="POST", endpoint="/api/agent-jobs", json_data=payload)
 

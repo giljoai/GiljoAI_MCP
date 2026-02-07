@@ -27,17 +27,16 @@ from uuid import uuid4
 from passlib.hash import bcrypt
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.exceptions import (
+    AuthenticationError,
+    AuthorizationError,
     BaseGiljoException,
     ResourceNotFoundError,
     ValidationError,
-    AuthenticationError,
-    AuthorizationError,
 )
+from src.giljo_mcp.models.auth import User
 
 
 logger = logging.getLogger(__name__)
@@ -58,11 +57,7 @@ class UserService:
     """
 
     def __init__(
-        self,
-        db_manager: DatabaseManager,
-        tenant_key: str,
-        websocket_manager=None,
-        session: AsyncSession | None = None
+        self, db_manager: DatabaseManager, tenant_key: str, websocket_manager=None, session: AsyncSession | None = None
     ):
         """
         Initialize UserService with database and tenant isolation.
@@ -105,7 +100,10 @@ class UserService:
                 if (
                     getattr(self._session, "closed", False)
                     or not getattr(self._session, "is_active", True)
-                    or (sync_session is not None and (getattr(sync_session, "closed", False) or not getattr(sync_session, "is_active", True)))
+                    or (
+                        sync_session is not None
+                        and (getattr(sync_session, "closed", False) or not getattr(sync_session, "is_active", True))
+                    )
                     or getattr(self._session, "_is_ctx_manager_closed", False)
                 ):
                     raise RuntimeError("Session is closed")
@@ -120,8 +118,7 @@ class UserService:
         except Exception as e:
             self._logger.exception(f"Failed to list users: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "list_users", "include_all_tenants": include_all_tenants}
+                message=str(e), context={"operation": "list_users", "include_all_tenants": include_all_tenants}
             ) from e
 
     async def _list_users_impl(self, session: AsyncSession, include_all_tenants: bool = False) -> Dict[str, Any]:
@@ -131,35 +128,32 @@ class UserService:
             stmt = select(User).order_by(User.created_at)
         else:
             # Regular tenant-isolated view
-            stmt = (
-                select(User)
-                .where(User.tenant_key == self.tenant_key)
-                .order_by(User.created_at)
-            )
+            stmt = select(User).where(User.tenant_key == self.tenant_key).order_by(User.created_at)
         result = await session.execute(stmt)
         users = result.scalars().all()
 
         user_list = []
         for user in users:
-            user_list.append({
-                "id": str(user.id),
-                "username": user.username,
-                "email": user.email,
-                "full_name": user.full_name,
-                "role": user.role,
-                "tenant_key": user.tenant_key,
-                "is_active": user.is_active,
-                "created_at": user.created_at.isoformat() if user.created_at else None,
-                "last_login": user.last_login.isoformat() if user.last_login else None
-            })
+            user_list.append(
+                {
+                    "id": str(user.id),
+                    "username": user.username,
+                    "email": user.email,
+                    "full_name": user.full_name,
+                    "role": user.role,
+                    "tenant_key": user.tenant_key,
+                    "is_active": user.is_active,
+                    "created_at": user.created_at.isoformat() if user.created_at else None,
+                    "last_login": user.last_login.isoformat() if user.last_login else None,
+                }
+            )
 
-        log_msg = f"Found {len(user_list)} users" + (" (all tenants)" if include_all_tenants else f" for tenant {self.tenant_key}")
+        log_msg = f"Found {len(user_list)} users" + (
+            " (all tenants)" if include_all_tenants else f" for tenant {self.tenant_key}"
+        )
         self._logger.debug(log_msg)
 
-        return {
-            "success": True,
-            "data": user_list
-        }
+        return {"success": True, "data": user_list}
 
     async def get_user(self, user_id: str, include_all_tenants: bool = False) -> Dict[str, Any]:
         """
@@ -190,32 +184,23 @@ class UserService:
             raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to get user: {e}")
-            raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "get_user", "user_id": user_id}
-            ) from e
+            raise BaseGiljoException(message=str(e), context={"operation": "get_user", "user_id": user_id}) from e
 
-    async def _get_user_impl(self, session: AsyncSession, user_id: str, include_all_tenants: bool = False) -> Dict[str, Any]:
+    async def _get_user_impl(
+        self, session: AsyncSession, user_id: str, include_all_tenants: bool = False
+    ) -> Dict[str, Any]:
         """Implementation that uses provided session"""
         if include_all_tenants:
             # Admin cross-tenant fetch
             stmt = select(User).where(User.id == user_id)
         else:
             # Regular tenant-isolated fetch
-            stmt = select(User).where(
-                and_(
-                    User.id == user_id,
-                    User.tenant_key == self.tenant_key
-                )
-            )
+            stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         self._logger.info("Fetched user", extra={"user_id": user_id})
 
@@ -230,8 +215,8 @@ class UserService:
                 "tenant_key": user.tenant_key,
                 "is_active": user.is_active,
                 "created_at": user.created_at.isoformat() if user.created_at else None,
-                "last_login": user.last_login.isoformat() if user.last_login else None
-            }
+                "last_login": user.last_login.isoformat() if user.last_login else None,
+            },
         }
 
     async def create_user(
@@ -241,7 +226,7 @@ class UserService:
         full_name: Optional[str] = None,
         password: Optional[str] = None,
         role: str = "developer",
-        is_active: bool = True
+        is_active: bool = True,
     ) -> Dict[str, Any]:
         """
         Create a new user.
@@ -273,18 +258,13 @@ class UserService:
 
             # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                return await self._create_user_impl(
-                    session, username, email, full_name, password, role, is_active
-                )
+                return await self._create_user_impl(session, username, email, full_name, password, role, is_active)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to create user: {e}")
-            raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "create_user", "username": username}
-            ) from e
+            raise BaseGiljoException(message=str(e), context={"operation": "create_user", "username": username}) from e
 
     async def _create_user_impl(
         self,
@@ -294,27 +274,21 @@ class UserService:
         full_name: Optional[str],
         password: Optional[str],
         role: str,
-        is_active: bool
+        is_active: bool,
     ) -> Dict[str, Any]:
         """Implementation that uses provided session"""
         # Check for duplicate username (global uniqueness)
         stmt = select(User).where(User.username == username)
         result = await session.execute(stmt)
         if result.scalar_one_or_none():
-            raise ValidationError(
-                message=f"Username '{username}' already exists",
-                context={"username": username}
-            )
+            raise ValidationError(message=f"Username '{username}' already exists", context={"username": username})
 
         # Check for duplicate email if provided
         if email:
             stmt = select(User).where(User.email == email)
             result = await session.execute(stmt)
             if result.scalar_one_or_none():
-                raise ValidationError(
-                    message=f"Email '{email}' already exists",
-                    context={"email": email}
-                )
+                raise ValidationError(message=f"Email '{email}' already exists", context={"email": email})
 
         # Hash password (default to "GiljoMCP" per Handover 0023)
         password_hash = bcrypt.hash(password or "GiljoMCP")
@@ -332,7 +306,7 @@ class UserService:
             must_change_password=True if not password else False,  # Force change if default password
             must_set_pin=True,  # Force PIN setup on first login
             recovery_pin_hash=None,  # No PIN set initially
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         session.add(user)
@@ -352,16 +326,11 @@ class UserService:
                 "tenant_key": user.tenant_key,
                 "is_active": user.is_active,
                 "must_change_password": user.must_change_password,
-                "created_at": user.created_at.isoformat() if user.created_at else None
-            }
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+            },
         }
 
-    async def update_user(
-        self,
-        user_id: str,
-        include_all_tenants: bool = False,
-        **updates
-    ) -> Dict[str, Any]:
+    async def update_user(self, user_id: str, include_all_tenants: bool = False, **updates) -> Dict[str, Any]:
         """
         Update a user.
 
@@ -393,10 +362,7 @@ class UserService:
             raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to update user: {e}")
-            raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "update_user", "user_id": user_id}
-            ) from e
+            raise BaseGiljoException(message=str(e), context={"operation": "update_user", "user_id": user_id}) from e
 
     async def _update_user_impl(
         self, session: AsyncSession, user_id: str, updates: dict, include_all_tenants: bool = False
@@ -407,20 +373,12 @@ class UserService:
             stmt = select(User).where(User.id == user_id)
         else:
             # Regular tenant-isolated update
-            stmt = select(User).where(
-                and_(
-                    User.id == user_id,
-                    User.tenant_key == self.tenant_key
-                )
-            )
+            stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Check for duplicate email if changing email
         if "email" in updates and updates["email"] and updates["email"] != user.email:
@@ -430,7 +388,7 @@ class UserService:
             if existing_user:
                 raise ValidationError(
                     message=f"Email '{updates['email']}' already exists",
-                    context={"email": updates['email'], "user_id": user_id}
+                    context={"email": updates["email"], "user_id": user_id},
                 )
 
         # Apply updates (only allowed fields)
@@ -440,8 +398,9 @@ class UserService:
                 setattr(user, field, value)
 
         # Handle password update separately (needs hashing)
-        if "password" in updates and updates["password"]:
+        if updates.get("password"):
             from passlib.hash import bcrypt
+
             user.password_hash = bcrypt.hash(updates["password"])
             self._logger.info(f"Password updated for user {user_id}")
 
@@ -458,8 +417,8 @@ class UserService:
                 "email": user.email,
                 "full_name": user.full_name,
                 "role": user.role,
-                "is_active": user.is_active
-            }
+                "is_active": user.is_active,
+            },
         }
 
     async def delete_user(self, user_id: str) -> Dict[str, Any]:
@@ -488,27 +447,16 @@ class UserService:
             raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to delete user: {e}")
-            raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "delete_user", "user_id": user_id}
-            ) from e
+            raise BaseGiljoException(message=str(e), context={"operation": "delete_user", "user_id": user_id}) from e
 
     async def _delete_user_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Soft delete
         user.is_active = False
@@ -521,7 +469,7 @@ class UserService:
             "success": True,
             "message": "User deactivated successfully",
             "user_id": str(user.id),
-            "username": user.username
+            "username": user.username,
         }
 
     # ============================================================================
@@ -556,45 +504,31 @@ class UserService:
         except Exception as e:
             self._logger.exception(f"Failed to change role: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "change_role", "user_id": user_id, "new_role": new_role}
+                message=str(e), context={"operation": "change_role", "user_id": user_id, "new_role": new_role}
             ) from e
 
-    async def _change_role_impl(
-        self, session: AsyncSession, user_id: str, new_role: str
-    ) -> Dict[str, Any]:
+    async def _change_role_impl(self, session: AsyncSession, user_id: str, new_role: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
         # Validate role
         valid_roles = ["admin", "developer", "viewer"]
         if new_role not in valid_roles:
             raise ValidationError(
                 message=f"Invalid role. Must be one of: {', '.join(valid_roles)}",
-                context={"new_role": new_role, "valid_roles": valid_roles}
+                context={"new_role": new_role, "valid_roles": valid_roles},
             )
 
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Check if this is the last admin (prevent lockout)
         if user.role == "admin" and new_role != "admin":
             stmt = select(func.count(User.id)).where(
                 and_(
-                    User.tenant_key == self.tenant_key,
-                    User.role == "admin",
-                    User.is_active == True,
-                    User.id != user_id
+                    User.tenant_key == self.tenant_key, User.role == "admin", User.is_active == True, User.id != user_id
                 )
             )
             admin_count_result = await session.execute(stmt)
@@ -603,7 +537,7 @@ class UserService:
             if admin_count == 0:
                 raise AuthorizationError(
                     message="Cannot demote the last admin. At least one admin must remain.",
-                    context={"user_id": user_id, "current_role": "admin", "new_role": new_role}
+                    context={"user_id": user_id, "current_role": "admin", "new_role": new_role},
                 )
 
         # Update role
@@ -614,25 +548,14 @@ class UserService:
 
         self._logger.info(f"Changed role for user {user.username}: {old_role} -> {new_role}")
 
-        return {
-            "success": True,
-            "user": {
-                "id": str(user.id),
-                "username": user.username,
-                "role": user.role
-            }
-        }
+        return {"success": True, "user": {"id": str(user.id), "username": user.username, "role": user.role}}
 
     # ============================================================================
     # Password Management
     # ============================================================================
 
     async def change_password(
-        self,
-        user_id: str,
-        old_password: Optional[str],
-        new_password: str,
-        is_admin: bool = False
+        self, user_id: str, old_password: Optional[str], new_password: str, is_admin: bool = False
     ) -> Dict[str, Any]:
         """
         Change user password with verification.
@@ -656,62 +579,38 @@ class UserService:
         try:
             # Use provided session if available (test mode)
             if self._session:
-                return await self._change_password_impl(
-                    self._session, user_id, old_password, new_password, is_admin
-                )
+                return await self._change_password_impl(self._session, user_id, old_password, new_password, is_admin)
 
             # Otherwise create new session (production mode)
             async with self.db_manager.get_session_async() as session:
-                return await self._change_password_impl(
-                    session, user_id, old_password, new_password, is_admin
-                )
+                return await self._change_password_impl(session, user_id, old_password, new_password, is_admin)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoException):
             raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to change password: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "change_password", "user_id": user_id}
+                message=str(e), context={"operation": "change_password", "user_id": user_id}
             ) from e
 
     async def _change_password_impl(
-        self,
-        session: AsyncSession,
-        user_id: str,
-        old_password: Optional[str],
-        new_password: str,
-        is_admin: bool
+        self, session: AsyncSession, user_id: str, old_password: Optional[str], new_password: str, is_admin: bool
     ) -> Dict[str, Any]:
         """Implementation that uses provided session"""
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # If not admin, verify old password
         if not is_admin:
             if not old_password:
-                raise ValidationError(
-                    message="Current password is required",
-                    context={"user_id": user_id}
-                )
+                raise ValidationError(message="Current password is required", context={"user_id": user_id})
 
             if not bcrypt.verify(old_password, user.password_hash):
-                raise AuthenticationError(
-                    message="Current password is incorrect",
-                    context={"user_id": user_id}
-                )
+                raise AuthenticationError(message="Current password is incorrect", context={"user_id": user_id})
 
         # Hash and update password
         user.password_hash = bcrypt.hash(new_password)
@@ -721,10 +620,7 @@ class UserService:
 
         self._logger.info(f"Password changed for user: {user.username}")
 
-        return {
-            "success": True,
-            "message": "Password updated successfully"
-        }
+        return {"success": True, "message": "Password updated successfully"}
 
     async def reset_password(self, user_id: str) -> Dict[str, Any]:
         """
@@ -752,27 +648,16 @@ class UserService:
             raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to reset password: {e}")
-            raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "reset_password", "user_id": user_id}
-            ) from e
+            raise BaseGiljoException(message=str(e), context={"operation": "reset_password", "user_id": user_id}) from e
 
     async def _reset_password_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Reset password to default 'GiljoMCP'
         user.password_hash = bcrypt.hash("GiljoMCP")
@@ -788,10 +673,7 @@ class UserService:
 
         self._logger.info(f"Reset password for user: {user.username}")
 
-        return {
-            "success": True,
-            "message": "Password reset successful"
-        }
+        return {"success": True, "message": "Password reset successful"}
 
     # ============================================================================
     # Validation Methods
@@ -826,8 +708,7 @@ class UserService:
         except Exception as e:
             self._logger.exception(f"Failed to check username: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "check_username_exists", "username": username}
+                message=str(e), context={"operation": "check_username_exists", "username": username}
             ) from e
 
     async def _check_username_exists_impl(self, session: AsyncSession, username: str) -> Dict[str, Any]:
@@ -836,10 +717,7 @@ class UserService:
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
-        return {
-            "success": True,
-            "exists": user is not None
-        }
+        return {"success": True, "exists": user is not None}
 
     async def check_email_exists(self, email: str) -> Dict[str, Any]:
         """
@@ -869,10 +747,7 @@ class UserService:
             raise  # Re-raise without wrapping
         except Exception as e:
             self._logger.exception(f"Failed to check email: {e}")
-            raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "check_email_exists", "email": email}
-            ) from e
+            raise BaseGiljoException(message=str(e), context={"operation": "check_email_exists", "email": email}) from e
 
     async def _check_email_exists_impl(self, session: AsyncSession, email: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
@@ -880,10 +755,7 @@ class UserService:
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
-        return {
-            "success": True,
-            "exists": user is not None
-        }
+        return {"success": True, "exists": user is not None}
 
     async def verify_password(self, user_id: str, password: str) -> Dict[str, Any]:
         """
@@ -915,35 +787,21 @@ class UserService:
         except Exception as e:
             self._logger.exception(f"Failed to verify password: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "verify_password", "user_id": user_id}
+                message=str(e), context={"operation": "verify_password", "user_id": user_id}
             ) from e
 
-    async def _verify_password_impl(
-        self, session: AsyncSession, user_id: str, password: str
-    ) -> Dict[str, Any]:
+    async def _verify_password_impl(self, session: AsyncSession, user_id: str, password: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         verified = bcrypt.verify(password, user.password_hash)
 
-        return {
-            "success": True,
-            "verified": verified
-        }
+        return {"success": True, "verified": verified}
 
     # ============================================================================
     # Configuration Management
@@ -977,49 +835,28 @@ class UserService:
         except Exception as e:
             self._logger.exception(f"Failed to get field priority config: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "get_field_priority_config", "user_id": user_id}
+                message=str(e), context={"operation": "get_field_priority_config", "user_id": user_id}
             ) from e
 
-    async def _get_field_priority_config_impl(
-        self, session: AsyncSession, user_id: str
-    ) -> Dict[str, Any]:
+    async def _get_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Return custom config if set, otherwise defaults
         if user.field_priority_config:
-            return {
-                "success": True,
-                "config": user.field_priority_config
-            }
+            return {"success": True, "config": user.field_priority_config}
 
         # Return system defaults (v2.0)
         from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
 
-        return {
-            "success": True,
-            "config": DEFAULT_FIELD_PRIORITY
-        }
+        return {"success": True, "config": DEFAULT_FIELD_PRIORITY}
 
-    async def update_field_priority_config(
-        self,
-        user_id: str,
-        config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def update_field_priority_config(self, user_id: str, config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Update user's field priority configuration.
 
@@ -1050,8 +887,7 @@ class UserService:
         except Exception as e:
             self._logger.exception(f"Failed to update field priority config: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "update_field_priority_config", "user_id": user_id}
+                message=str(e), context={"operation": "update_field_priority_config", "user_id": user_id}
             ) from e
 
     async def _update_field_priority_config_impl(
@@ -1062,7 +898,7 @@ class UserService:
         if "version" not in config or "priorities" not in config:
             raise ValidationError(
                 message="Invalid config structure. Must contain 'version' and 'priorities'",
-                context={"config_keys": list(config.keys())}
+                context={"config_keys": list(config.keys())},
             )
 
         # Validate priorities (1-4 range)
@@ -1070,23 +906,15 @@ class UserService:
             if not isinstance(priority, int) or priority < 1 or priority > 4:
                 raise ValidationError(
                     message=f"Invalid priority {priority} for category '{category}'. Must be 1-4",
-                    context={"category": category, "priority": priority}
+                    context={"category": category, "priority": priority},
                 )
 
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Update config
         user.field_priority_config = config
@@ -1097,17 +925,10 @@ class UserService:
         # Emit WebSocket event if manager available
         await self._emit_websocket_event(
             event_type="priority_config_updated",
-            data={
-                "user_id": user_id,
-                "priorities": config["priorities"],
-                "version": config["version"]
-            }
+            data={"user_id": user_id, "priorities": config["priorities"], "version": config["version"]},
         )
 
-        return {
-            "success": True,
-            "message": "Field priority config updated successfully"
-        }
+        return {"success": True, "message": "Field priority config updated successfully"}
 
     async def reset_field_priority_config(self, user_id: str) -> Dict[str, Any]:
         """
@@ -1136,28 +957,17 @@ class UserService:
         except Exception as e:
             self._logger.exception(f"Failed to reset field priority config: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "reset_field_priority_config", "user_id": user_id}
+                message=str(e), context={"operation": "reset_field_priority_config", "user_id": user_id}
             ) from e
 
-    async def _reset_field_priority_config_impl(
-        self, session: AsyncSession, user_id: str
-    ) -> Dict[str, Any]:
+    async def _reset_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Clear custom config
         user.field_priority_config = None
@@ -1165,10 +975,7 @@ class UserService:
 
         self._logger.info(f"Reset field priority config for user {user.username}")
 
-        return {
-            "success": True,
-            "message": "Field priority config reset to defaults"
-        }
+        return {"success": True, "message": "Field priority config reset to defaults"}
 
     async def get_depth_config(self, user_id: str) -> Dict[str, Any]:
         """
@@ -1198,26 +1005,17 @@ class UserService:
         except Exception as e:
             self._logger.exception(f"Failed to get depth config: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "get_depth_config", "user_id": user_id}
+                message=str(e), context={"operation": "get_depth_config", "user_id": user_id}
             ) from e
 
     async def _get_depth_config_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
         """Implementation that uses provided session"""
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Return depth config (from user or defaults)
         depth_config = user.depth_config or {
@@ -1226,19 +1024,12 @@ class UserService:
             "git_commits": 25,
             "agent_templates": "type_only",
             "tech_stack_sections": "all",
-            "architecture_depth": "overview"
+            "architecture_depth": "overview",
         }
 
-        return {
-            "success": True,
-            "config": depth_config
-        }
+        return {"success": True, "config": depth_config}
 
-    async def update_depth_config(
-        self,
-        user_id: str,
-        config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def update_depth_config(self, user_id: str, config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Update user's depth configuration.
 
@@ -1269,8 +1060,7 @@ class UserService:
         except Exception as e:
             self._logger.exception(f"Failed to update depth config: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "update_depth_config", "user_id": user_id}
+                message=str(e), context={"operation": "update_depth_config", "user_id": user_id}
             ) from e
 
     async def _update_depth_config_impl(
@@ -1286,23 +1076,15 @@ class UserService:
         if "vision_documents" in config and config["vision_documents"] not in valid_vision:
             raise ValidationError(
                 message=f"Invalid vision_documents. Must be one of: {', '.join(valid_vision)}",
-                context={"vision_documents": config["vision_documents"], "valid_values": valid_vision}
+                context={"vision_documents": config["vision_documents"], "valid_values": valid_vision},
             )
 
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Update config
         user.depth_config = config
@@ -1312,17 +1094,10 @@ class UserService:
 
         # Emit WebSocket event if manager available
         await self._emit_websocket_event(
-            event_type="depth_config_updated",
-            data={
-                "user_id": user_id,
-                "depth_config": config
-            }
+            event_type="depth_config_updated", data={"user_id": user_id, "depth_config": config}
         )
 
-        return {
-            "success": True,
-            "message": "Depth config updated successfully"
-        }
+        return {"success": True, "message": "Depth config updated successfully"}
 
     # ------------------------------------------------------------------
     # Execution mode (stored in depth_config.execution_mode)
@@ -1341,25 +1116,16 @@ class UserService:
         except Exception as e:
             logger.error(f"Failed to get execution mode for user {user_id}: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "get_execution_mode", "user_id": user_id}
+                message=str(e), context={"operation": "get_execution_mode", "user_id": user_id}
             ) from e
 
     async def _get_execution_mode_impl(self, session: AsyncSession, user_id: str) -> Dict[str, Any]:
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         depth_config = user.depth_config or {}
         mode = depth_config.get("execution_mode", "claude_code")
@@ -1379,8 +1145,7 @@ class UserService:
         except Exception as e:
             logger.error(f"Failed to update execution mode for user {user_id}: {e}")
             raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "update_execution_mode", "user_id": user_id}
+                message=str(e), context={"operation": "update_execution_mode", "user_id": user_id}
             ) from e
 
     async def _update_execution_mode_impl(
@@ -1390,23 +1155,15 @@ class UserService:
         if execution_mode not in valid_modes:
             raise ValidationError(
                 message="Invalid execution_mode. Must be claude_code or multi_terminal",
-                context={"execution_mode": execution_mode, "valid_modes": list(valid_modes)}
+                context={"execution_mode": execution_mode, "valid_modes": list(valid_modes)},
             )
 
-        stmt = select(User).where(
-            and_(
-                User.id == user_id,
-                User.tenant_key == self.tenant_key
-            )
-        )
+        stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ResourceNotFoundError(
-                message="User not found",
-                context={"user_id": user_id}
-            )
+            raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         depth_config = user.depth_config or {
             "vision_documents": "medium",
@@ -1443,11 +1200,7 @@ class UserService:
     # Private Helper Methods
     # ============================================================================
 
-    async def _emit_websocket_event(
-        self,
-        event_type: str,
-        data: Dict[str, Any]
-    ) -> None:
+    async def _emit_websocket_event(self, event_type: str, data: Dict[str, Any]) -> None:
         """
         Emit WebSocket event to tenant clients (Handover 0139a).
 
@@ -1464,9 +1217,7 @@ class UserService:
         """
         if not self._websocket_manager:
             # No WebSocket manager - gracefully skip event emission
-            self._logger.debug(
-                f"No WebSocket manager available for event: {event_type}"
-            )
+            self._logger.debug(f"No WebSocket manager available for event: {event_type}")
             return
 
         try:
@@ -1474,23 +1225,16 @@ class UserService:
             event_data_with_timestamp = {
                 **data,
                 "tenant_key": self.tenant_key,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
             # Broadcast to tenant clients
             await self._websocket_manager.broadcast_to_tenant(
-                tenant_key=self.tenant_key,
-                event_type=event_type,
-                data=event_data_with_timestamp
+                tenant_key=self.tenant_key, event_type=event_type, data=event_data_with_timestamp
             )
 
-            self._logger.debug(
-                f"WebSocket event emitted: {event_type} for tenant {self.tenant_key}"
-            )
+            self._logger.debug(f"WebSocket event emitted: {event_type} for tenant {self.tenant_key}")
 
         except Exception as e:
             # Log error but don't fail the operation
-            self._logger.warning(
-                f"Failed to emit WebSocket event {event_type}: {e}",
-                exc_info=True
-            )
+            self._logger.warning(f"Failed to emit WebSocket event {event_type}: {e}", exc_info=True)

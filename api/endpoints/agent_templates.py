@@ -11,7 +11,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
@@ -110,8 +109,7 @@ def build_template_markdown(template: AgentTemplate) -> str:
 
 @router.get("/", response_model=TemplateListResponse)
 async def list_agent_templates(
-    current_user: User = Depends(get_current_active_user),
-    session: AsyncSession = Depends(get_db_session)
+    current_user: User = Depends(get_current_active_user), session: AsyncSession = Depends(get_db_session)
 ):
     """
     List all available agent templates
@@ -189,7 +187,7 @@ async def list_agent_templates(
 async def download_agent_template(
     filename: str,
     current_user: User = Depends(get_current_active_user),
-    session: AsyncSession = Depends(get_db_session)
+    session: AsyncSession = Depends(get_db_session),
 ):
     """
     Download an agent template as a markdown file

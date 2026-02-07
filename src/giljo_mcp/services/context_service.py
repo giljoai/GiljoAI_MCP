@@ -58,10 +58,7 @@ class ContextService:
     # Context Index (Stub)
     # ============================================================================
 
-    async def get_context_index(
-        self,
-        product_id: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def get_context_index(self, product_id: Optional[str] = None) -> dict[str, Any]:
         """
         Get the context index for intelligent querying.
 
@@ -80,23 +77,13 @@ class ContextService:
         """
         self._logger.debug(f"get_context_index called for product_id={product_id} (stub)")
 
-        return {
-            "success": True,
-            "index": {
-                "documents": [],
-                "sections": []
-            }
-        }
+        return {"success": True, "index": {"documents": [], "sections": []}}
 
     # ============================================================================
     # Vision Document (Stub)
     # ============================================================================
 
-    async def get_vision(
-        self,
-        part: int = 1,
-        max_tokens: int = 20000
-    ) -> dict[str, Any]:
+    async def get_vision(self, part: int = 1, max_tokens: int = 20000) -> dict[str, Any]:
         """
         Get a vision document part.
 
@@ -140,22 +127,13 @@ class ContextService:
         """
         self._logger.debug("get_vision_index called (stub)")
 
-        return {
-            "success": True,
-            "index": {
-                "files": [],
-                "chunks": []
-            }
-        }
+        return {"success": True, "index": {"files": [], "chunks": []}}
 
     # ============================================================================
     # Product Settings (Stub)
     # ============================================================================
 
-    async def get_product_settings(
-        self,
-        product_id: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def get_product_settings(self, product_id: Optional[str] = None) -> dict[str, Any]:
         """
         Get all product settings for analysis.
 
@@ -176,9 +154,5 @@ class ContextService:
 
         return {
             "success": True,
-            "settings": {
-                "product_id": product_id or "default",
-                "config": {}
-            },
+            "settings": {"product_id": product_id or "default", "config": {}},
         }
-

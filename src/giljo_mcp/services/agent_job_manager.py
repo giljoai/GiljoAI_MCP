@@ -21,9 +21,9 @@ Design Philosophy:
 """
 
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
-from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from sqlalchemy import and_, select
@@ -31,7 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import BaseGiljoException, ResourceNotFoundError
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -83,6 +83,7 @@ class AgentJobManager:
             @asynccontextmanager
             async def _test_session_wrapper():
                 yield self._test_session
+
             return _test_session_wrapper()
 
         # Return the context manager directly
@@ -186,10 +187,7 @@ class AgentJobManager:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to spawn agent: {e}")
-            raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "spawn_agent"}
-            ) from e
+            raise BaseGiljoException(message=str(e), context={"operation": "spawn_agent"}) from e
 
     # ============================================================================
     # Execution Status Updates (execution-specific, not job-level)
@@ -232,19 +230,16 @@ class AgentJobManager:
             async with self._get_session() as session:
                 # Get execution (Handover 0429: get latest instance)
                 result = await session.execute(
-                    select(AgentExecution).where(
-                        and_(
-                            AgentExecution.agent_id == agent_id,
-                            AgentExecution.tenant_key == tenant_key
-                        )
-                    ).order_by(AgentExecution.started_at.desc()).limit(1)
+                    select(AgentExecution)
+                    .where(and_(AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == tenant_key))
+                    .order_by(AgentExecution.started_at.desc())
+                    .limit(1)
                 )
                 execution = result.scalar_one_or_none()
 
                 if not execution:
                     raise ResourceNotFoundError(
-                        message=f"Execution {agent_id} not found",
-                        context={"agent_id": agent_id}
+                        message=f"Execution {agent_id} not found", context={"agent_id": agent_id}
                     )
 
                 # Update execution status
@@ -265,9 +260,7 @@ class AgentJobManager:
                 await session.commit()
                 await session.refresh(execution)
 
-                self._logger.info(
-                    f"Updated execution {agent_id} status to {status}"
-                )
+                self._logger.info(f"Updated execution {agent_id} status to {status}")
 
                 return {"success": True, "status": status}
 
@@ -276,10 +269,7 @@ class AgentJobManager:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to update agent status: {e}")
-            raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "update_agent_status"}
-            ) from e
+            raise BaseGiljoException(message=str(e), context={"operation": "update_agent_status"}) from e
 
     async def update_agent_progress(
         self,
@@ -309,19 +299,16 @@ class AgentJobManager:
             async with self._get_session() as session:
                 # Handover 0429: Get latest instance by agent_id
                 result = await session.execute(
-                    select(AgentExecution).where(
-                        and_(
-                            AgentExecution.agent_id == agent_id,
-                            AgentExecution.tenant_key == tenant_key
-                        )
-                    ).order_by(AgentExecution.started_at.desc()).limit(1)
+                    select(AgentExecution)
+                    .where(and_(AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == tenant_key))
+                    .order_by(AgentExecution.started_at.desc())
+                    .limit(1)
                 )
                 execution = result.scalar_one_or_none()
 
                 if not execution:
                     raise ResourceNotFoundError(
-                        message=f"Execution {agent_id} not found",
-                        context={"agent_id": agent_id}
+                        message=f"Execution {agent_id} not found", context={"agent_id": agent_id}
                     )
 
                 execution.progress = progress
@@ -339,10 +326,7 @@ class AgentJobManager:
             raise
         except Exception as e:
             self._logger.exception(f"Failed to update agent progress: {e}")
-            raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "update_agent_progress"}
-            ) from e
+            raise BaseGiljoException(message=str(e), context={"operation": "update_agent_progress"}) from e
 
     # ============================================================================
     # Job Completion (decommissions all executions)
@@ -375,29 +359,19 @@ class AgentJobManager:
             async with self._get_session() as session:
                 # Get job
                 job_result = await session.execute(
-                    select(AgentJob).where(
-                        and_(
-                            AgentJob.job_id == job_id,
-                            AgentJob.tenant_key == tenant_key
-                        )
-                    )
+                    select(AgentJob).where(and_(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key))
                 )
                 job = job_result.scalar_one_or_none()
 
                 if not job:
-                    raise ResourceNotFoundError(
-                        message=f"Job {job_id} not found",
-                        context={"job_id": job_id}
-                    )
+                    raise ResourceNotFoundError(message=f"Job {job_id} not found", context={"job_id": job_id})
 
                 # Mark job complete
                 job.status = "completed"
                 job.completed_at = datetime.now(timezone.utc)
 
                 # Decommission ALL executions for this job
-                executions_result = await session.execute(
-                    select(AgentExecution).where(AgentExecution.job_id == job_id)
-                )
+                executions_result = await session.execute(select(AgentExecution).where(AgentExecution.job_id == job_id))
                 executions = executions_result.scalars().all()
 
                 for execution in executions:
@@ -408,25 +382,16 @@ class AgentJobManager:
                 for execution in executions:
                     await session.refresh(execution)
 
-                self._logger.info(
-                    f"Completed job {job_id} and marked {len(executions)} execution(s) as complete"
-                )
+                self._logger.info(f"Completed job {job_id} and marked {len(executions)} execution(s) as complete")
 
-                return {
-                    "success": True,
-                    "job_id": job_id,
-                    "executions_decommissioned": len(executions)
-                }
+                return {"success": True, "job_id": job_id, "executions_decommissioned": len(executions)}
 
         except (ResourceNotFoundError, BaseGiljoException):
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
             self._logger.exception(f"Failed to complete job: {e}")
-            raise BaseGiljoException(
-                message=str(e),
-                context={"operation": "complete_job"}
-            ) from e
+            raise BaseGiljoException(message=str(e), context={"operation": "complete_job"}) from e
 
     # ============================================================================
     # Query Operations
@@ -451,12 +416,10 @@ class AgentJobManager:
             async with self._get_session() as session:
                 # Handover 0429: Get latest instance by agent_id
                 result = await session.execute(
-                    select(AgentExecution).where(
-                        and_(
-                            AgentExecution.agent_id == agent_id,
-                            AgentExecution.tenant_key == tenant_key
-                        )
-                    ).order_by(AgentExecution.started_at.desc()).limit(1)
+                    select(AgentExecution)
+                    .where(and_(AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == tenant_key))
+                    .order_by(AgentExecution.started_at.desc())
+                    .limit(1)
                 )
                 return result.scalar_one_or_none()
 
@@ -482,12 +445,7 @@ class AgentJobManager:
         try:
             async with self._get_session() as session:
                 result = await session.execute(
-                    select(AgentJob).where(
-                        and_(
-                            AgentJob.job_id == job_id,
-                            AgentJob.tenant_key == tenant_key
-                        )
-                    )
+                    select(AgentJob).where(and_(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key))
                 )
                 return result.scalar_one_or_none()
 
@@ -513,12 +471,9 @@ class AgentJobManager:
         try:
             async with self._get_session() as session:
                 result = await session.execute(
-                    select(AgentExecution).where(
-                        and_(
-                            AgentExecution.job_id == job_id,
-                            AgentExecution.tenant_key == tenant_key
-                        )
-                    ).order_by(AgentExecution.started_at)
+                    select(AgentExecution)
+                    .where(and_(AgentExecution.job_id == job_id, AgentExecution.tenant_key == tenant_key))
+                    .order_by(AgentExecution.started_at)
                 )
                 return list(result.scalars().all())
 
@@ -546,11 +501,13 @@ class AgentJobManager:
         try:
             async with self._get_session() as session:
                 result = await session.execute(
-                    select(AgentExecution).join(AgentJob).where(
+                    select(AgentExecution)
+                    .join(AgentJob)
+                    .where(
                         and_(
                             AgentJob.project_id == project_id,
                             AgentExecution.status.in_(["waiting", "working", "blocked"]),
-                            AgentExecution.tenant_key == tenant_key
+                            AgentExecution.tenant_key == tenant_key,
                         )
                     )
                 )
@@ -606,18 +563,13 @@ class AgentJobManager:
             async with self._get_session() as session:
                 # Build query
                 query = select(AgentExecution).where(
-                    and_(
-                        AgentExecution.job_id == job_id,
-                        AgentExecution.tenant_key == tenant_key
-                    )
+                    and_(AgentExecution.job_id == job_id, AgentExecution.tenant_key == tenant_key)
                 )
 
                 # Filter by status unless include_inactive is True
                 if not include_inactive:
                     # Only return active statuses (waiting, working, blocked)
-                    query = query.where(
-                        AgentExecution.status.in_(["waiting", "working", "blocked"])
-                    )
+                    query = query.where(AgentExecution.status.in_(["waiting", "working", "blocked"]))
 
                 # Execute query
                 result = await session.execute(query.order_by(AgentExecution.started_at))
@@ -626,18 +578,19 @@ class AgentJobManager:
                 # Convert to dict format
                 team_members = []
                 for execution in executions:
-                    team_members.append({
-                        "agent_id": execution.agent_id,
-                        "job_id": execution.job_id,
-                        "agent_display_name": execution.agent_display_name,
-                        "status": execution.status,
-                        "agent_name": execution.agent_name,
-                        "tenant_key": execution.tenant_key,
-                    })
+                    team_members.append(
+                        {
+                            "agent_id": execution.agent_id,
+                            "job_id": execution.job_id,
+                            "agent_display_name": execution.agent_display_name,
+                            "status": execution.status,
+                            "agent_name": execution.agent_name,
+                            "tenant_key": execution.tenant_key,
+                        }
+                    )
 
                 self._logger.info(
-                    f"Found {len(team_members)} teammates for job {job_id} "
-                    f"(include_inactive={include_inactive})"
+                    f"Found {len(team_members)} teammates for job {job_id} (include_inactive={include_inactive})"
                 )
 
                 return team_members

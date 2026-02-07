@@ -421,11 +421,7 @@ async def generate_share_link(current_user: Optional[User] = Depends(get_current
 
 
 @router.get("/download/{token}/{platform}", tags=["MCP Integration"])
-async def download_via_token(
-    token: str,
-    platform: str,
-    session: AsyncSession = Depends(get_db_session)
-):
+async def download_via_token(token: str, platform: str, session: AsyncSession = Depends(get_db_session)):
     """
     Public download endpoint using secure token.
 

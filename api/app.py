@@ -10,7 +10,6 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
-from datetime import datetime, timezone
 
 
 # Set up logging early to catch import issues
@@ -93,10 +92,10 @@ try:
         prompts,
         serena,
         settings,
-        system_prompts,
         setup_security,
         slash_commands,
         statistics,
+        system_prompts,
         tasks,
         templates,
         user_settings,
@@ -104,17 +103,18 @@ try:
         vision_documents,
         websocket_bridge,
     )
-    from .endpoints.organizations import crud as org_crud, members as org_members
+    from .endpoints.organizations import crud as org_crud
+    from .endpoints.organizations import members as org_members
+    from .exception_handlers import register_exception_handlers
     from .middleware import (
         APIMetricsMiddleware,
         AuthMiddleware,
-        RateLimitMiddleware,
-        SecurityHeadersMiddleware,
         InputValidationMiddleware,
         # CSRFProtectionMiddleware,  # Optional - requires frontend integration
+        RateLimitMiddleware,
+        SecurityHeadersMiddleware,
     )
     from .websocket import WebSocketManager
-    from .exception_handlers import register_exception_handlers
 
     logger.info("API endpoint modules loaded successfully")
 except ImportError as e:
@@ -243,7 +243,6 @@ def create_app() -> FastAPI:
                 "name": "projects",
                 "description": "Project management operations - create, update, and monitor AI development projects",
             },
-
             {
                 "name": "Agent Management",
                 "description": "Agent management operations - vision chunking, job coordination, and context search (Handover 0017)",
@@ -625,7 +624,6 @@ def create_app() -> FastAPI:
             state.websocket_manager.disconnect(client_id)
             if client_id in state.connections:
                 del state.connections[client_id]
-
 
     # Register global exception handlers (Handover 0480a)
     register_exception_handlers(app)

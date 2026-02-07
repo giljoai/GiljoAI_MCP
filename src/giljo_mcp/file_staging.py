@@ -191,10 +191,7 @@ class FileStaging:
             zip_path = staging_path / "agent_templates.zip"
 
             # Query active templates for tenant
-            stmt = (
-                select(AgentTemplate)
-                .where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True)
-            )
+            stmt = select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True)
 
             result = await session.execute(stmt)
             all_active = result.scalars().all()
@@ -226,9 +223,7 @@ class FileStaging:
 
             await session.commit()
 
-            logger.info(
-                f"Updated last_exported_at for {len(selected)} templates at {export_timestamp.isoformat()}"
-            )
+            logger.info(f"Updated last_exported_at for {len(selected)} templates at {export_timestamp.isoformat()}")
             # ═══════════════════════════════════════════════════════════════════════
 
             logger.info(

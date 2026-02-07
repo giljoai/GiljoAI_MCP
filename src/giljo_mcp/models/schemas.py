@@ -35,12 +35,7 @@ class ProjectSummaryResponse(BaseModel):
     pending_jobs: int = Field(0, description="Number of pending jobs")
 
     # Progress tracking
-    completion_percentage: float = Field(
-        0.0,
-        ge=0.0,
-        le=100.0,
-        description="Project completion percentage (0-100)"
-    )
+    completion_percentage: float = Field(0.0, ge=0.0, le=100.0, description="Project completion percentage (0-100)")
 
     # Timestamps
     created_at: datetime = Field(..., description="Project creation timestamp")

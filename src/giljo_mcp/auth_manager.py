@@ -17,8 +17,6 @@ from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config_manager import get_config
-from .database import DatabaseManager
-from .models import Configuration
 
 
 logger = logging.getLogger(__name__)

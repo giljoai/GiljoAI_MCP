@@ -6,9 +6,10 @@ Single source of truth for all template operations
 
 import logging
 import re
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from .database import DatabaseManager
+
 # NOTE: TemplateAugmentation import removed (Handover 0423 - using dict-based augmentations only)
 from .services.config_service import ConfigService
 from .template_cache import TemplateCache
@@ -89,7 +90,7 @@ def process_template(
         if all(hasattr(a, "priority") or "priority" in a for a in augmentations):
             sorted_augs = sorted(
                 augmentations,
-                key=lambda x: (x.priority if hasattr(x, "priority") else x.get("priority", 0)),
+                key=lambda x: x.priority if hasattr(x, "priority") else x.get("priority", 0),
             )
 
         for aug in sorted_augs:
@@ -1032,5 +1033,3 @@ def get_template_manager(
             logger.info("TemplateCache re-initialized with database manager")
 
     return _template_manager_instance
-
-

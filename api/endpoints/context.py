@@ -228,6 +228,7 @@ async def chunk_vision_document(
                 # Mark vision document as chunked
                 if vision_doc_id:
                     from src.giljo_mcp.models.products import VisionDocument
+
                     stmt = select(VisionDocument).where(VisionDocument.id == vision_doc_id)
                     vision_result = await db.execute(stmt)
                     vision_doc = vision_result.scalar_one_or_none()

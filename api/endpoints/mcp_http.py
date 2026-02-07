@@ -53,11 +53,7 @@ logger = logging.getLogger(__name__)
 
 
 def validate_and_override_tenant_key(
-    arguments: dict,
-    session_tenant_key: str,
-    session_user_id: str | None,
-    tool_name: str,
-    tool_func: callable = None
+    arguments: dict, session_tenant_key: str, session_user_id: str | None, tool_name: str, tool_func: callable = None
 ) -> dict:
     """
     SECURITY: Override client-supplied tenant_key with session tenant_key.
@@ -110,8 +106,8 @@ def validate_and_override_tenant_key(
                 "session_tenant_key": session_tenant_key,
                 "client_tenant_key": client_tenant_key,
                 "user_id": session_user_id,
-                "security_event": "tenant_key_override"
-            }
+                "security_event": "tenant_key_override",
+            },
         )
 
     return arguments
@@ -235,7 +231,10 @@ async def handle_tools_list(
                 "properties": {
                     "job_id": {"type": "string", "description": "AgentJob UUID (work order identifier)"},
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
-                    "mission": {"type": "string", "description": "Execution plan to persist (agent order, dependencies, checkpoints)"},
+                    "mission": {
+                        "type": "string",
+                        "description": "Execution plan to persist (agent order, dependencies, checkpoints)",
+                    },
                 },
                 "required": ["job_id", "mission"],
             },
@@ -304,22 +303,22 @@ async def handle_tools_list(
                     "limit": {
                         "type": "integer",
                         "description": "Maximum messages to retrieve (default: 10)",
-                        "default": 10
+                        "default": 10,
                     },
                     "exclude_self": {
                         "type": "boolean",
                         "description": "Filter out messages from same agent_id (default: true)",
-                        "default": True
+                        "default": True,
                     },
                     "exclude_progress": {
                         "type": "boolean",
                         "description": "Filter out progress-type messages (default: true)",
-                        "default": True
+                        "default": True,
                     },
                     "message_types": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Optional allow-list of message types (e.g., ['direct', 'broadcast']). If not provided, all types (except filtered) are included."
+                        "description": "Optional allow-list of message types (e.g., ['direct', 'broadcast']). If not provided, all types (except filtered) are included.",
                     },
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
@@ -370,7 +369,7 @@ async def handle_tools_list(
                     "content_type": {
                         "type": "string",
                         "enum": ["agent_templates", "slash_commands"],
-                        "description": "Type of content to download"
+                        "description": "Type of content to download",
                     },
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
@@ -536,36 +535,49 @@ async def handle_tools_list(
                     "product_id": {"type": "string", "description": "Product UUID"},
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                     "project_id": {"type": "string", "description": "Project UUID (required for 'project' category)"},
-                    "agent_name": {"type": "string", "description": "Agent template name (e.g., 'orchestrator-coordinator'). Required when category is 'self_identity'."},
+                    "agent_name": {
+                        "type": "string",
+                        "description": "Agent template name (e.g., 'orchestrator-coordinator'). Required when category is 'self_identity'.",
+                    },
                     "categories": {
                         "type": "array",
                         "items": {
                             "type": "string",
-                            "enum": ["all", "product_core", "vision_documents", "tech_stack",
-                                     "architecture", "testing", "memory_360", "git_history",
-                                     "agent_templates", "project", "self_identity"]
+                            "enum": [
+                                "all",
+                                "product_core",
+                                "vision_documents",
+                                "tech_stack",
+                                "architecture",
+                                "testing",
+                                "memory_360",
+                                "git_history",
+                                "agent_templates",
+                                "project",
+                                "self_identity",
+                            ],
                         },
                         "description": "Categories to fetch. ['all'] for everything.",
-                        "default": ["all"]
+                        "default": ["all"],
                     },
                     "depth_config": {
                         "type": "object",
-                        "description": "Override depth per category. Example: {\"vision_documents\": \"light\"}"
+                        "description": 'Override depth per category. Example: {"vision_documents": "light"}',
                     },
                     "apply_user_config": {
                         "type": "boolean",
                         "description": "Apply user's saved settings (default: true)",
-                        "default": True
+                        "default": True,
                     },
                     "format": {
                         "type": "string",
                         "enum": ["structured", "flat"],
                         "description": "Response format (default: structured)",
-                        "default": "structured"
-                    }
+                        "default": "structured",
+                    },
                 },
-                "required": ["product_id"]
-            }
+                "required": ["product_id"],
+            },
         },
         # Project Closeout Tool (Handover 0411)
         {
@@ -575,21 +587,24 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "project_id": {"type": "string", "description": "UUID of the project to close"},
-                    "summary": {"type": "string", "description": "2-3 paragraph summary of project delivery focusing on outcomes and next steps"},
+                    "summary": {
+                        "type": "string",
+                        "description": "2-3 paragraph summary of project delivery focusing on outcomes and next steps",
+                    },
                     "key_outcomes": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of key deliverables and outcomes achieved"
+                        "description": "List of key deliverables and outcomes achieved",
                     },
                     "decisions_made": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of architectural or technical decisions made during the project"
+                        "description": "List of architectural or technical decisions made during the project",
                     },
-                    "tenant_key": {"type": "string", "description": "Tenant isolation key"}
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
-                "required": ["project_id", "summary", "key_outcomes", "decisions_made"]
-            }
+                "required": ["project_id", "summary", "key_outcomes", "decisions_made"],
+            },
         },
         # 360 Memory Writing Tool (Handover 0412)
         {
@@ -604,30 +619,32 @@ async def handle_tools_list(
                     "key_outcomes": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "3-5 specific achievements"
+                        "description": "3-5 specific achievements",
                     },
                     "decisions_made": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "3-5 architectural/design decisions"
+                        "description": "3-5 architectural/design decisions",
                     },
                     "entry_type": {
                         "type": "string",
                         "enum": ["project_completion", "handover_closeout"],
                         "description": "Type of 360 memory entry",
-                        "default": "project_completion"
+                        "default": "project_completion",
                     },
-                    "author_job_id": {"type": "string", "description": "Job ID of agent writing entry"}
+                    "author_job_id": {"type": "string", "description": "Job ID of agent writing entry"},
                 },
-                "required": ["project_id", "summary", "key_outcomes", "decisions_made"]
-            }
+                "required": ["project_id", "summary", "key_outcomes", "decisions_made"],
+            },
         },
     ]
 
     # Filter out hidden tools (still callable, just not advertised)
     visible_tools = [t for t in tools if t["name"] not in HIDDEN_FROM_SCHEMA_TOOLS]
 
-    logger.debug(f"Listed {len(visible_tools)} tools for session {session_id} ({len(tools) - len(visible_tools)} hidden)")
+    logger.debug(
+        f"Listed {len(visible_tools)} tools for session {session_id} ({len(tools) - len(visible_tools)} hidden)"
+    )
 
     return {"tools": visible_tools}
 
@@ -709,9 +726,9 @@ async def handle_tools_call(
     arguments = validate_and_override_tenant_key(
         arguments=arguments,
         session_tenant_key=session.tenant_key,
-        session_user_id=getattr(session, 'user_id', None),
+        session_user_id=getattr(session, "user_id", None),
         tool_name=tool_name,
-        tool_func=tool_func
+        tool_func=tool_func,
     )
 
     try:

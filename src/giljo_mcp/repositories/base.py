@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 """
 Base repository with automatic tenant filtering.
 
@@ -70,9 +71,7 @@ class BaseRepository(Generic[T]):
             Entity instance or None if not found
         """
         result = await session.execute(
-            select(self.model_class).where(
-                self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id
-            )
+            select(self.model_class).where(self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id)
         )
         return result.scalar_one_or_none()
 
@@ -141,8 +140,6 @@ class BaseRepository(Generic[T]):
             True if entity exists for tenant, False otherwise
         """
         result = await session.execute(
-            select(self.model_class).where(
-                self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id
-            )
+            select(self.model_class).where(self.model_class.tenant_key == tenant_key, self.model_class.id == entity_id)
         )
         return result.scalar_one_or_none() is not None

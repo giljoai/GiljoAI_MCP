@@ -14,8 +14,10 @@ from pydantic import BaseModel, Field
 # CRUD Models
 # ============================================================================
 
+
 class ProjectCreate(BaseModel):
     """Request model for project creation."""
+
     name: str = Field(..., description="Project name")
     description: str = Field(..., description="User-written project description (what you want to accomplish)")
     mission: str = Field(
@@ -26,12 +28,13 @@ class ProjectCreate(BaseModel):
     # Handover 0260: Execution mode for Claude Code CLI toggle
     execution_mode: str = Field(
         default="multi_terminal",
-        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)"
+        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
     )
 
 
 class ProjectUpdate(BaseModel):
     """Request model for project updates."""
+
     name: Optional[str] = None
     description: Optional[str] = None
     mission: Optional[str] = None
@@ -39,12 +42,13 @@ class ProjectUpdate(BaseModel):
     # Handover 0260: Execution mode for Claude Code CLI toggle
     execution_mode: Optional[str] = Field(
         None,
-        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)"
+        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
     )
 
 
 class AgentSimple(BaseModel):
     """Simple agent schema for project response."""
+
     id: str  # job_id
     job_id: str
     agent_display_name: str
@@ -55,6 +59,7 @@ class AgentSimple(BaseModel):
 
 class ProjectResponse(BaseModel):
     """Response model for project details."""
+
     id: str
     alias: str
     name: str
@@ -77,6 +82,7 @@ class ProjectResponse(BaseModel):
 
 class DeletedProjectResponse(BaseModel):
     """Response model for deleted project listing."""
+
     id: str
     alias: str
     name: str
@@ -120,8 +126,10 @@ class ProjectPurgeResponse(BaseModel):
 # Summary/Status Models
 # ============================================================================
 
+
 class AgentSummary(BaseModel):
     """Summary of an agent used in the project (Handover 0062)."""
+
     id: str
     name: str
     type: str
@@ -132,6 +140,7 @@ class AgentSummary(BaseModel):
 
 class MessageSummary(BaseModel):
     """Summary of a message in the project (Handover 0062)."""
+
     id: str
     from_agent: str
     to_agents: List[str]
@@ -141,6 +150,7 @@ class MessageSummary(BaseModel):
 
 class ProjectSummaryResponse(BaseModel):
     """Comprehensive project summary for after-action review (Handover 0062)."""
+
     project_id: str
     project_name: str
     description: str
@@ -156,8 +166,10 @@ class ProjectSummaryResponse(BaseModel):
 # Lifecycle Models
 # ============================================================================
 
+
 class StagingCancellationResponse(BaseModel):
     """Response model for staging cancellation (Handover 0108)."""
+
     success: bool = Field(..., description="Whether staging cancellation succeeded")
     agents_deleted: int = Field(..., description="Number of agents deleted/soft-deleted")
     agents_protected: int = Field(..., description="Number of agents protected (already launched)")
@@ -170,8 +182,10 @@ class StagingCancellationResponse(BaseModel):
 # Completion Models
 # ============================================================================
 
+
 class ProjectCloseOutResponse(BaseModel):
     """Response for project close-out operation (Handover 0113)."""
+
     success: bool
     message: str
     agents_decommissioned: int
@@ -181,6 +195,7 @@ class ProjectCloseOutResponse(BaseModel):
 
 class ContinueWorkingResponse(BaseModel):
     """Response for continue working operation (Handover 0113)."""
+
     success: bool
     message: str
     agents_resumed: int
@@ -191,6 +206,7 @@ class ContinueWorkingResponse(BaseModel):
 # ============================================================================
 # Orchestrator Models (Handover 0135)
 # ============================================================================
+
 
 class OrchestratorJobResponse(BaseModel):
     """Orchestrator job details for project."""

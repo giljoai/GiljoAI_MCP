@@ -15,11 +15,10 @@ from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import AgentTemplate, TemplateArchive, User
+from src.giljo_mcp.models import AgentTemplate, User
 from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.template_validation import get_role_color, slugify_name, validate_system_prompt
@@ -42,10 +41,7 @@ def _is_system_managed_role(role: Optional[str]) -> bool:
 
 def get_tenant_and_product_from_user(user: User) -> dict:
     """Extract tenant_key and product_id from authenticated user"""
-    return {
-        "tenant_key": user.tenant_key,
-        "product_id": getattr(user, "active_product_id", None)
-    }
+    return {"tenant_key": user.tenant_key, "product_id": getattr(user, "active_product_id", None)}
 
 
 def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
@@ -121,9 +117,7 @@ async def get_template(
     # result = await session.execute(stmt)
     # template = result.scalar_one_or_none()
 
-    template = await template_service.get_template_by_id(
-        session, template_id, current_user.tenant_key
-    )
+    template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
 
     if not template:
         raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
@@ -164,7 +158,7 @@ async def list_templates(
 
     except Exception as e:
         logger.exception(f"Failed to list templates: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list templates: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list templates: {e!s}")
 
 
 @router.post("/", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
@@ -205,9 +199,7 @@ async def create_template(
         # result = await session.execute(stmt)
         # if result.scalar_one_or_none():
 
-        if await template_service.check_template_name_exists(
-            session, context["tenant_key"], generated_name
-        ):
+        if await template_service.check_template_name_exists(session, context["tenant_key"], generated_name):
             raise HTTPException(status_code=400, detail=f"Agent name '{generated_name}' already exists")
 
         # Validate system prompt
@@ -287,7 +279,7 @@ async def create_template(
         raise  # Re-raise HTTP exceptions (400, 404, etc.) without modification
     except Exception as e:
         logger.error(f"Failed to create template: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to create template: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create template: {e!s}")
 
 
 @router.put("/{template_id}", response_model=TemplateResponse)
@@ -316,9 +308,7 @@ async def update_template(
         # result = await session.execute(stmt)
         # template = result.scalar_one_or_none()
 
-        template = await template_service.get_template_by_id(
-            session, template_id, context["tenant_key"]
-        )
+        template = await template_service.get_template_by_id(session, template_id, context["tenant_key"])
 
         if not template:
             # ORIGINAL QUERY: crud.py line 311-314 (replaced with service call)
@@ -356,7 +346,7 @@ async def update_template(
                 template,
                 archive_reason="Update user instructions",
                 archive_type="auto",
-                archived_by=current_user.username
+                archived_by=current_user.username,
             )
 
         # Enforce 8-role active limit when toggling is_active for user-managed roles
@@ -394,7 +384,7 @@ async def update_template(
         raise  # Re-raise HTTP exceptions (400, 403, 404, 409, etc.) without modification
     except Exception as e:
         logger.error(f"Failed to update template: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to update template: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update template: {e!s}")
 
 
 @router.delete("/{template_id}")
@@ -415,9 +405,6 @@ async def delete_template(
 
     NOTE: TemplateAugmentation removed (Handover 0423 - dead code cleanup)
     """
-    from src.giljo_mcp.models.agent_identity import AgentJob
-    from src.giljo_mcp.models.templates import TemplateArchive, TemplateUsageStats
-    from sqlalchemy import update, delete as sql_delete
 
     try:
         context = get_tenant_and_product_from_user(current_user)
@@ -432,9 +419,7 @@ async def delete_template(
         # result = await session.execute(stmt)
         # template = result.scalar_one_or_none()
 
-        template = await template_service.get_template_by_id(
-            session, template_id, context["tenant_key"]
-        )
+        template = await template_service.get_template_by_id(session, template_id, context["tenant_key"])
 
         if not template:
             raise HTTPException(status_code=404, detail="Template not found")
@@ -455,9 +440,7 @@ async def delete_template(
         # 4. Delete the template itself
         # await session.delete(template)
 
-        deleted = await template_service.hard_delete_template(
-            session, template_id, context["tenant_key"]
-        )
+        deleted = await template_service.hard_delete_template(session, template_id, context["tenant_key"])
 
         if not deleted:
             raise HTTPException(status_code=500, detail="Failed to delete template")
@@ -473,7 +456,7 @@ async def delete_template(
     except Exception as e:
         logger.error(f"Failed to delete template: {e}")
         await session.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to delete template: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete template: {e!s}")
 
 
 @router.get("/stats/active-count", response_model=dict)
@@ -501,14 +484,12 @@ async def get_active_count(
         # result = await session.execute(stmt)
         # count = result.scalar()
 
-        count = await template_service.get_active_user_managed_count(
-            session, context["tenant_key"]
-        )
+        count = await template_service.get_active_user_managed_count(session, context["tenant_key"])
 
         return {
             "active_count": count,
             "limit": USER_MANAGED_AGENT_LIMIT,
-            "available": max(0, USER_MANAGED_AGENT_LIMIT - count)
+            "available": max(0, USER_MANAGED_AGENT_LIMIT - count),
         }
 
     except Exception as e:

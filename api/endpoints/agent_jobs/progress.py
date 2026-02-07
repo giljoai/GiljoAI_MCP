@@ -8,7 +8,8 @@ All operations use OrchestrationService (no direct DB access).
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+
+from fastapi import APIRouter, Depends
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
@@ -49,15 +50,14 @@ async def report_progress(
         HTTPException 400: Invalid progress data
     """
     logger.debug(
-        f"User {current_user.username} reporting progress for job {job_id}: "
-        f"{progress_request.progress_percent}%"
+        f"User {current_user.username} reporting progress for job {job_id}: {progress_request.progress_percent}%"
     )
 
     # Build progress data dict for legacy format
     progress_data = {
         "percent": progress_request.progress_percent,  # Service expects "percent", not "progress_percent"
         "message": progress_request.status_message,
-        "current_step": progress_request.current_task
+        "current_step": progress_request.current_task,
     }
 
     # Service raises ValidationError, ResourceNotFoundError, or OrchestrationError
@@ -65,16 +65,15 @@ async def report_progress(
     result = await orchestration_service.report_progress(
         job_id=job_id,
         tenant_key=current_user.tenant_key,
-        progress=progress_data  # Fixed: parameter name is "progress", not "progress_data"
+        progress=progress_data,  # Fixed: parameter name is "progress", not "progress_data"
     )
 
     logger.info(
-        f"Reported progress for job {job_id}: {progress_request.progress_percent}% "
-        f"for tenant {current_user.tenant_key}"
+        f"Reported progress for job {job_id}: {progress_request.progress_percent}% for tenant {current_user.tenant_key}"
     )
 
     return ProgressReportResponse(
         job_id=job_id,
         progress_percent=progress_request.progress_percent,
-        message=result.get("message", "Progress reported successfully")
+        message=result.get("message", "Progress reported successfully"),
     )

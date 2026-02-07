@@ -168,34 +168,34 @@ async def list_messages(
     messages = []
 
     for msg in messages_data.get("messages", []):
-            # Apply agent_name filter if provided
-            if agent_name and msg.get("from_agent") != agent_name and msg.get("to_agent") != agent_name:
-                continue
+        # Apply agent_name filter if provided
+        if agent_name and msg.get("from_agent") != agent_name and msg.get("to_agent") != agent_name:
+            continue
 
-            # Parse created_at
-            created_at_str = msg.get("created_at")
-            if created_at_str:
-                try:
-                    created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-                except (ValueError, AttributeError):
-                    created_at = datetime.now(timezone.utc)
-            else:
+        # Parse created_at
+        created_at_str = msg.get("created_at")
+        if created_at_str:
+            try:
+                created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+            except (ValueError, AttributeError):
                 created_at = datetime.now(timezone.utc)
+        else:
+            created_at = datetime.now(timezone.utc)
 
-            to_agent_val = msg.get("to_agent")
-            messages.append(
-                MessageResponse(
-                    id=msg.get("id", str(uuid4())),
-                    from_agent=msg.get("from_agent", "developer"),
-                    to_agents=[to_agent_val] if to_agent_val else [],
-                    to_agent=to_agent_val,
-                    content=msg.get("content", ""),
-                    message_type=msg.get("type", "direct"),
-                    priority=msg.get("priority", "normal"),
-                    status=msg.get("status", "pending"),
-                    created_at=created_at,
-                )
+        to_agent_val = msg.get("to_agent")
+        messages.append(
+            MessageResponse(
+                id=msg.get("id", str(uuid4())),
+                from_agent=msg.get("from_agent", "developer"),
+                to_agents=[to_agent_val] if to_agent_val else [],
+                to_agent=to_agent_val,
+                content=msg.get("content", ""),
+                message_type=msg.get("type", "direct"),
+                priority=msg.get("priority", "normal"),
+                status=msg.get("status", "pending"),
+                created_at=created_at,
             )
+        )
 
     # Sort by timestamp (newest first)
     messages.sort(key=lambda m: m.created_at, reverse=True)
