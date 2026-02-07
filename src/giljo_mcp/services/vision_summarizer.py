@@ -139,7 +139,7 @@ class VisionDocumentSummarizer:
                 parser = PlaintextParser.from_string(chunk, Tokenizer(self.language))
                 sentences = self.summarizer(parser.document, sentences_per_chunk)
                 summaries.append(" ".join(str(s) for s in sentences))
-            except (ValueError, ImportError, RuntimeError):
+            except (ValueError, ImportError, RuntimeError):  # noqa: PERF203 - Chunk processing resilience: skip bad chunks
                 # If chunk summarization fails, skip it
                 # This handles edge cases like very short chunks
                 continue  # nosec B112
