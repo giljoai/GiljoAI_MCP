@@ -32,8 +32,8 @@ class ErrorCode(str, Enum):
     # ============================================================================
 
     AUTH_INVALID_CREDENTIALS = "AUTH001"  # Invalid username/password
-    AUTH_TOKEN_EXPIRED = "AUTH002"  # JWT token expired
-    AUTH_TOKEN_INVALID = "AUTH003"  # JWT token malformed/invalid
+    AUTH_TOKEN_EXPIRED = "AUTH002"  # JWT token expired  # noqa: S105 - Error code constant, not password
+    AUTH_TOKEN_INVALID = "AUTH003"  # JWT token malformed/invalid  # noqa: S105 - Error code constant, not password
     AUTH_UNAUTHORIZED = "AUTH004"  # User not authorized for resource
     AUTH_SESSION_EXPIRED = "AUTH005"  # Session timeout
     AUTH_PIN_INVALID = "AUTH006"  # Password recovery PIN invalid

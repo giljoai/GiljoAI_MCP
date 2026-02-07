@@ -93,8 +93,10 @@ class GitService:
                 cmd.insert(4, f"--since={since}")
 
             # Execute git log
-            result = subprocess.run(  # nosec B603 B607
+            result = subprocess.run(  # noqa: S603, S607 - git is standard system tool, repo_path validated
                 cmd,
+                shell=False,
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -139,8 +141,10 @@ class GitService:
                 return False
 
             # Try to run git command to verify
-            result = subprocess.run(  # nosec B603 B607
-                ["git", "-C", repo_path, "rev-parse", "--git-dir"],
+            result = subprocess.run(  # noqa: S603 - git is standard system tool, repo_path validated
+                ["git", "-C", repo_path, "rev-parse", "--git-dir"],  # noqa: S607 - git is standard system tool
+                shell=False,
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -222,8 +226,10 @@ class GitService:
             "main"
         """
         try:
-            result = subprocess.run(  # nosec B603 B607
-                ["git", "-C", repo_path, "rev-parse", "--abbrev-ref", "HEAD"],
+            result = subprocess.run(  # noqa: S603 - git is standard system tool, repo_path validated
+                ["git", "-C", repo_path, "rev-parse", "--abbrev-ref", "HEAD"],  # noqa: S607 - git is standard system tool
+                shell=False,
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -255,8 +261,10 @@ class GitService:
             "https://github.com/user/repo.git"
         """
         try:
-            result = subprocess.run(  # nosec B603 B607
-                ["git", "-C", repo_path, "config", "--get", "remote.origin.url"],
+            result = subprocess.run(  # noqa: S603 - git is standard system tool, repo_path validated
+                ["git", "-C", repo_path, "config", "--get", "remote.origin.url"],  # noqa: S607 - git is standard system tool
+                shell=False,
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -289,8 +297,10 @@ class GitService:
             42
         """
         try:
-            result = subprocess.run(  # nosec B603 B607
-                ["git", "-C", repo_path, "rev-list", "--count", branch],
+            result = subprocess.run(  # noqa: S603 - git is standard system tool, repo_path validated
+                ["git", "-C", repo_path, "rev-list", "--count", branch],  # noqa: S607 - git is standard system tool
+                shell=False,
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,

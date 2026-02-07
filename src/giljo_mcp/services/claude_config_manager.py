@@ -9,7 +9,7 @@ import json
 import logging
 import shutil
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -202,7 +202,7 @@ class ClaudeConfigManager:
         self.backup_dir.mkdir(parents=True, exist_ok=True)
 
         # Create timestamped backup filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         backup_path = self.backup_dir / f"claude_config_backup_{timestamp}.json"
 
         # Copy the file
