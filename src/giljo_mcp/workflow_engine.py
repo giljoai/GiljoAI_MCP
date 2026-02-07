@@ -34,6 +34,10 @@ from .services.agent_job_manager import AgentJobManager
 logger = logging.getLogger(__name__)
 
 
+class WorkflowStageFailureError(Exception):
+    """Raised when a workflow stage has failed jobs."""
+
+
 class WorkflowEngine:
     """
     Execute multi-agent workflows with different coordination patterns.
@@ -369,7 +373,7 @@ class WorkflowEngine:
 
         # Check for failures
         if wait_result["failed"] > 0:
-            raise Exception(f"Stage {stage.name} had {wait_result['failed']} failed jobs")
+            raise WorkflowStageFailureError(f"Stage {stage.name} had {wait_result['failed']} failed jobs")
 
         # Aggregate results from all jobs
         aggregated = await self.job_coordinator.aggregate_child_results(

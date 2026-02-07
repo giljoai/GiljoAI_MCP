@@ -610,9 +610,9 @@ class ConfigManager:
         if len(ports) != len(set(ports)):
             errors.append("Port conflict: All service ports must be unique")
 
-        for port in ports:
-            if not 1024 <= port <= 65535:
-                errors.append(f"Invalid port {port}: Must be between 1024 and 65535")
+        errors.extend(
+            [f"Invalid port {port}: Must be between 1024 and 65535" for port in ports if not 1024 <= port <= 65535]
+        )
 
         # Database validation
         if self.database.type != "postgresql":
@@ -620,10 +620,14 @@ class ConfigManager:
 
         if self.database.type == "postgresql":
             # Only require password if no database URL is provided
-            if not self.database.database_url and not self.database.password and not os.getenv("DB_PASSWORD"):
-                # Check if we're in setup mode (allows placeholder password during initial setup)
-                if not getattr(self, "setup_mode", False):
-                    errors.append("PostgreSQL password is required")
+            # Check if we're in setup mode (allows placeholder password during initial setup)
+            if (
+                not self.database.database_url
+                and not self.database.password
+                and not os.getenv("DB_PASSWORD")
+                and not getattr(self, "setup_mode", False)
+            ):
+                errors.append("PostgreSQL password is required")
 
         # Agent configuration validation
         if self.agent.context_warning_threshold >= self.agent.default_context_budget:
@@ -1143,7 +1147,7 @@ def detect_frontend_framework(root_path: Path) -> Optional[str]:
 
         if "vue" in dependencies:
             version = dependencies["vue"]
-            if version.startswith("^3") or version.startswith("3."):
+            if version.startswith(("^3", "3.")):
                 return "Vue 3"
             return "Vue.js"
         if "react" in dependencies:

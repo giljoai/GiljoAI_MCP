@@ -65,15 +65,14 @@ async def list_tools() -> list[types.Tool]:
             raise RuntimeError(f"Backend MCP error during tools/list: {body['error']}")
         tools_raw = (body.get("result") or {}).get("tools", [])
 
-        tools: list[types.Tool] = []
-        for t in tools_raw:
-            tools.append(
-                types.Tool(
-                    name=t["name"],
-                    description=t.get("description", ""),
-                    inputSchema=t.get("inputSchema", {"type": "object"}),
-                )
+        tools: list[types.Tool] = [
+            types.Tool(
+                name=t["name"],
+                description=t.get("description", ""),
+                inputSchema=t.get("inputSchema", {"type": "object"}),
             )
+            for t in tools_raw
+        ]
         return tools
 
 

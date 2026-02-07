@@ -149,54 +149,54 @@ from .templates import (
 
 # Export all for backward compatibility
 __all__ = [
-    # Base
-    "Base",
-    "generate_uuid",
-    "generate_project_alias",
-    # Auth
-    "User",
     "APIKey",
-    "MCPSession",
-    # Products
-    "Product",
-    "VisionDocument",
-    "Vision",
-    # Product Memory (Handover 0390a)
-    "ProductMemoryEntry",
-    # Organizations (Handover 0424a)
-    "Organization",
-    "OrgMembership",
-    # Projects
-    "Project",
+    "AgentExecution",
     # Agents
     "AgentInteraction",
-    "Job",
     # Agent Identity (Handover 0366a, 0402)
     "AgentJob",
-    "AgentExecution",
-    "AgentTodoItem",
     # Templates
     "AgentTemplate",
-    "TemplateArchive",
-    "TemplateUsageStats",
-    # Tasks
-    "Task",
-    "Message",
+    "AgentTodoItem",
+    "ApiMetrics",
+    # Base
+    "Base",
+    # Config
+    "Configuration",
     # Context
     "ContextIndex",
+    "DiscoveryConfig",
+    "DownloadToken",
+    "GitCommit",
+    "GitConfig",
+    "Job",
     "LargeDocumentIndex",
     "MCPContextIndex",
     "MCPContextSummary",
-    # Config
-    "Configuration",
-    "DiscoveryConfig",
-    "GitConfig",
-    "GitCommit",
-    "SetupState",
-    "OptimizationRule",
+    "MCPSession",
+    "Message",
     "OptimizationMetric",
-    "DownloadToken",
-    "ApiMetrics",
+    "OptimizationRule",
+    "OrgMembership",
+    # Organizations (Handover 0424a)
+    "Organization",
+    # Products
+    "Product",
+    # Product Memory (Handover 0390a)
+    "ProductMemoryEntry",
+    # Projects
+    "Project",
     # Settings
     "Settings",
+    "SetupState",
+    # Tasks
+    "Task",
+    "TemplateArchive",
+    "TemplateUsageStats",
+    # Auth
+    "User",
+    "Vision",
+    "VisionDocument",
+    "generate_project_alias",
+    "generate_uuid",
 ]

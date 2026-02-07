@@ -4,7 +4,7 @@ DatabaseManager for GiljoAI MCP with PostgreSQL support.
 Provides connection pooling, tenant isolation, and production-ready database management.
 """
 
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager, suppress
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
@@ -178,10 +178,8 @@ class DatabaseManager:
             # GeneratorExit is BaseException (not Exception) - raised by FastAPI
             # when HTTPException occurs or client disconnects
             if hasattr(session, "is_active") and session.is_active:
-                try:
+                with suppress(RuntimeError, OSError):
                     await session.rollback()
-                except (RuntimeError, OSError):
-                    pass  # Suppress rollback errors during cleanup  # nosec B110
             raise
         except Exception:
             # Regular exceptions - rollback and re-raise
@@ -198,10 +196,8 @@ class DatabaseManager:
         finally:
             # Always close session - but check state first to prevent IllegalStateChangeError
             if hasattr(session, "is_active") and session.is_active:
-                try:
+                with suppress(RuntimeError, OSError):
                     await session.rollback()
-                except (RuntimeError, OSError):
-                    pass  # Suppress rollback errors during cleanup  # nosec B110
             try:
                 await session.close()
             except (RuntimeError, OSError) as close_error:

@@ -172,9 +172,8 @@ async def get_organization(
 
         # Allow access if user's org_id matches OR has membership
         # This handles cases where user has org_id but no membership record
-        if str(current_user.org_id) != str(org_id):
-            if not await org_service.can_view_org(org_id, current_user.id):
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization")
+        if str(current_user.org_id) != str(org_id) and not await org_service.can_view_org(org_id, current_user.id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization")
 
         result = await org_service.get_organization(org_id)
 

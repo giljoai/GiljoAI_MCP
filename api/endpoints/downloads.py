@@ -235,7 +235,7 @@ async def download_agent_templates(
     access_token: Optional[str] = Cookie(None),
     x_api_key: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db_session),
-    active_only: bool = Query(True, description="Only include active templates"),
+    active_only: bool = Query(default=True, description="Only include active templates"),
 ):
     """
     Download agent templates as complete ZIP file (dynamic content from database).

@@ -280,7 +280,7 @@ async def fetch_context(
                     "error": "Agent execution not found or unauthorized",
                 }
 
-            execution, job, project, product = row
+            execution, _job, project, product = row
 
             # Resolve project and product for this job (executor → job → project → product)
             project_id = str(project.id) if project is not None else None

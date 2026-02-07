@@ -159,12 +159,8 @@ This project has {num_agents} agent(s) working together:
 
     if agent_display_name in dependency_rules:
         rules = dependency_rules[agent_display_name]
-        for upstream in rules["upstream"]:
-            if upstream in other_types:
-                dependencies_upstream.append(upstream)
-        for downstream in rules["downstream"]:
-            if downstream in other_types:
-                dependencies_downstream.append(downstream)
+        dependencies_upstream.extend([upstream for upstream in rules["upstream"] if upstream in other_types])
+        dependencies_downstream.extend([downstream for downstream in rules["downstream"] if downstream in other_types])
 
     if dependencies_upstream:
         upstream_text = f"- You depend on: {', '.join(dependencies_upstream)} (wait for their outputs if needed)"
