@@ -67,17 +67,17 @@
         <slot name="actions" :can-confirm="canConfirm" :loading="loading">
           <v-btn
             variant="text"
-            @click="handleCancel"
             :disabled="loading"
+            @click="handleCancel"
           >
             {{ cancelText }}
           </v-btn>
           <v-btn
             :color="confirmButtonColor"
             :variant="confirmButtonVariant"
-            @click="handleConfirm"
             :loading="loading"
             :disabled="!canConfirm"
+            @click="handleConfirm"
           >
             {{ confirmLabel }}
           </v-btn>

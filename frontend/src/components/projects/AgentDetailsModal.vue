@@ -7,7 +7,7 @@
         <span v-if="isOrchestrator">System Orchestrator Prompt</span>
         <span v-else>Agent Details: {{ agent?.agent_name || 'Unknown Agent' }}</span>
         <v-spacer></v-spacer>
-        <v-btn icon variant="text" @click="handleClose" aria-label="Close dialog">
+        <v-btn icon variant="text" aria-label="Close dialog" @click="handleClose">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>

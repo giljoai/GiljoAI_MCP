@@ -36,10 +36,10 @@
           variant="text"
           size="small"
           color="light-blue"
-          @click="downloadSlashCommands"
           :loading="downloading"
           class="d-flex align-center"
           style="margin-left: -5px"
+          @click="downloadSlashCommands"
         >
           <v-icon size="20" class="mr-2">mdi-slash-forward-box</v-icon>
           Download slash commands

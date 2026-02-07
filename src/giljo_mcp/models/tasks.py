@@ -86,7 +86,7 @@ class Task(Base):
         "Project", back_populates="tasks", foreign_keys=[project_id]
     )  # Specify FK to avoid ambiguity with converted_to_project_id
     subtasks = relationship("Task", back_populates="parent_task", foreign_keys="Task.parent_task_id")
-    parent_task = relationship("Task", back_populates="subtasks", remote_side=[id])
+    parent_task = relationship("Task", back_populates="subtasks", remote_side="Task.id")
 
     # Phase 4: User relationships (Handover 0076: removed assigned_to_user)
     created_by_user = relationship("User", foreign_keys=[created_by_user_id], back_populates="created_tasks")

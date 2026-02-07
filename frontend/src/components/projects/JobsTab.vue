@@ -25,8 +25,8 @@
               <button
                 type="button"
                 class="agent-avatar-button"
-                @click="handleAgentRole(agent)"
                 aria-label="View agent details"
+                @click="handleAgentRole(agent)"
               >
                 <v-avatar :color="getAgentColor(agent?.agent_name || agent?.agent_display_name)" size="32" class="agent-avatar">
                   <span class="avatar-text">{{ getAgentAbbr(getPrimaryAgentLabel(agent)) }}</span>
@@ -73,8 +73,8 @@
                         type="button"
                         class="id-value id-value-button"
                         v-bind="tooltipProps"
-                        @click="copyId(agent.agent_id || agent.job_id, 'Agent ID')"
                         aria-label="Show full agent ID"
+                        @click="copyId(agent.agent_id || agent.job_id, 'Agent ID')"
                       >
                         {{ getShortId(agent.agent_id || agent.job_id) }}
                       </button>
@@ -94,8 +94,8 @@
                         type="button"
                         class="id-value id-value-button"
                         v-bind="tooltipProps"
-                        @click="copyId(agent.job_id, 'Job ID')"
                         aria-label="Show full job ID"
+                        @click="copyId(agent.job_id, 'Job ID')"
                       >
                         {{ getShortId(agent.job_id) }}
                       </button>
@@ -164,8 +164,8 @@
               <button
                 type="button"
                 class="message-count-button"
-                @click="handleMessages(agent)"
                 aria-label="View messages sent"
+                @click="handleMessages(agent)"
               >
                 <span class="message-count">{{ getMessagesSent(agent) }}</span>
               </button>
@@ -176,8 +176,8 @@
               <button
                 type="button"
                 class="message-count-button"
-                @click="handleMessages(agent)"
                 aria-label="View messages waiting"
+                @click="handleMessages(agent)"
               >
                 <span class="message-count message-waiting">{{ getMessagesWaiting(agent) }}</span>
               </button>
@@ -188,8 +188,8 @@
               <button
                 type="button"
                 class="message-count-button"
-                @click="handleMessages(agent)"
                 aria-label="View messages read"
+                @click="handleMessages(agent)"
               >
                 <span class="message-count message-read">{{ getMessagesRead(agent) }}</span>
               </button>

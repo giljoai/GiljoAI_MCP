@@ -392,10 +392,6 @@ def create_app() -> FastAPI:
 
     # CSRF protection middleware (optional - requires frontend integration)
     # Handover 0129c: Uncomment when frontend is ready to send X-CSRF-Token headers
-    # app.add_middleware(
-    #     CSRFProtectionMiddleware,
-    #     exempt_paths=["/api/auth/login", "/api/auth/signup", "/api/health", "/api/metrics"]
-    # )
 
     # v3.0: Setup mode middleware removed - unified authentication for all endpoints
 

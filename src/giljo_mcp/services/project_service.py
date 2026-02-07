@@ -1055,7 +1055,7 @@ class ProjectService:
 
                 # Handover 0431: Create orchestrator fixture on project activation
                 # This ensures orchestrator appears in UI before "Stage Project" is clicked
-                orchestrator_data = await self._ensure_orchestrator_fixture(
+                await self._ensure_orchestrator_fixture(
                     session=session,
                     project=project,
                     websocket_manager=ws_mgr,
@@ -1116,10 +1116,7 @@ class ProjectService:
         tenant_key = self.tenant_manager.get_current_tenant()
 
         # Check if orchestrator already exists for this project
-        # FIX 1 (Handover 0485): Use exclusion-based filter instead of inclusion-based
-        # OLD: AgentExecution.status.in_(["waiting", "working"])
-        # NEW: ~AgentExecution.status.in_(["failed", "cancelled"])
-        # This finds orchestrators in: waiting, working, complete, blocked
+        # FIX 1 (Handover 0485): Use exclusion-based filter (finds: waiting, working, complete, blocked)
         existing_stmt = (
             select(AgentExecution)
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)

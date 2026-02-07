@@ -151,7 +151,7 @@ class VisionDocumentRepository:
         )
 
         if active_only:
-            stmt = stmt.where(VisionDocument.is_active == True)
+            stmt = stmt.where(VisionDocument.is_active)
 
         stmt = stmt.order_by(VisionDocument.display_order, VisionDocument.created_at)
         result = await session.execute(stmt)
@@ -296,7 +296,7 @@ class VisionDocumentRepository:
                 VisionDocument.tenant_key == tenant_key,
                 VisionDocument.product_id == product_id,
                 VisionDocument.document_type == document_type,
-                VisionDocument.is_active == True,
+                VisionDocument.is_active,
             )
             .order_by(VisionDocument.display_order)
         )
@@ -374,7 +374,7 @@ class VisionDocumentRepository:
         )
 
         if active_only:
-            stmt = stmt.where(VisionDocument.is_active == True)
+            stmt = stmt.where(VisionDocument.is_active)
 
         result = await session.execute(stmt)
         return result.scalar()

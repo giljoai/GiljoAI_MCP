@@ -640,7 +640,7 @@ class TemplateService:
         filters = [
             AgentTemplate.tenant_key == tenant_key,
             AgentTemplate.role == role,
-            AgentTemplate.is_default == True,
+            AgentTemplate.is_default,
         ]
         if product_id:
             filters.append(AgentTemplate.product_id == product_id)
@@ -672,7 +672,7 @@ class TemplateService:
         stmt = select(func.count(AgentTemplate.id)).where(
             and_(
                 AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.is_active == True,
+                AgentTemplate.is_active,
                 AgentTemplate.role.not_in(SYSTEM_MANAGED_ROLES),
             )
         )

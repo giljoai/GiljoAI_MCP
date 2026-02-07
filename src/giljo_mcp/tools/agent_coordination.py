@@ -20,17 +20,19 @@ from ..database import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
-# Global database manager for module-level functions (set via init or auto-created)
-_db_manager_instance = None
-_test_session = None
+# Module-level state holder
+class _AgentCoordinationState:
+    """State holder to avoid global statement."""
+
+    db_manager_instance: Optional[DatabaseManager] = None
+    test_session = None
 
 
 def _get_db_manager() -> DatabaseManager:
     """Get or create database manager instance."""
-    global _db_manager_instance
-    if _db_manager_instance is None:
-        _db_manager_instance = DatabaseManager()
-    return _db_manager_instance
+    if _AgentCoordinationState.db_manager_instance is None:
+        _AgentCoordinationState.db_manager_instance = DatabaseManager()
+    return _AgentCoordinationState.db_manager_instance
 
 
 def set_db_manager(db_manager: DatabaseManager) -> None:
@@ -39,8 +41,7 @@ def set_db_manager(db_manager: DatabaseManager) -> None:
 
     This allows tests to inject a specific database manager instance.
     """
-    global _db_manager_instance
-    _db_manager_instance = db_manager
+    _AgentCoordinationState.db_manager_instance = db_manager
 
 
 def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
@@ -61,9 +62,8 @@ def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
             agent_coordination.init_for_testing(db_manager, db_session)
             yield
     """
-    global _db_manager_instance, _test_session
-    _db_manager_instance = db_manager
-    _test_session = db_session
+    _AgentCoordinationState.db_manager_instance = db_manager
+    _AgentCoordinationState.test_session = db_session
 
 
 # Module-level functions for direct import (Handover 0366c)
@@ -138,8 +138,8 @@ async def spawn_agent(
         db_manager = _get_db_manager()
 
         # Use test session if available (for test isolation), otherwise create new session
-        if _test_session is not None:
-            session = _test_session
+        if _AgentCoordinationState.test_session is not None:
+            session = _AgentCoordinationState.test_session
             # Don't use context manager for test session (managed by test fixtures)
             # Verify job exists and belongs to tenant
             job_query = select(AgentJob).where(
@@ -199,7 +199,7 @@ async def spawn_agent(
                 }
 
             # Get next instance number (count existing executions + 1)
-            existing_executions_query = select(AgentExecution).where(
+            select(AgentExecution).where(
                 AgentExecution.job_id == job_id,
                 AgentExecution.tenant_key == tenant_key,
             )
@@ -300,8 +300,8 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> dict[str, Any]:
         db_manager = _get_db_manager()
 
         # Use test session if available (for test isolation), otherwise create new session
-        if _test_session is not None:
-            session = _test_session
+        if _AgentCoordinationState.test_session is not None:
+            session = _AgentCoordinationState.test_session
             # Query AgentExecution by agent_id (executor UUID)
             execution_query = select(AgentExecution).where(
                 AgentExecution.agent_id == agent_id,
@@ -464,7 +464,7 @@ async def get_team_agents(
         job_manager = AgentJobManager(
             db_manager=db_manager,
             tenant_manager=tenant_manager,
-            test_session=_test_session,  # Use test session if available
+            test_session=_AgentCoordinationState.test_session,  # Use test session if available
         )
 
         # Call service method
