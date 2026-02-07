@@ -186,12 +186,7 @@ class ThinClientPromptGenerator:
         # Handover 0111 - Issue #2: Check for existing active orchestrator BEFORE creating new one
         # This prevents duplicate orchestrator creation on every "Stage Project" button click
         # Handover 0367c-2: Use AgentExecution only (no fallback to MCPAgentJob)
-
-        # Check for existing active orchestrator (AgentExecution)
-        # FIX 2 (Handover 0485): Use exclusion-based filter instead of inclusion-based
-        # OLD: AgentExecution.status.in_(["waiting", "working"])
-        # NEW: ~AgentExecution.status.in_(["failed", "cancelled"])
-        # This finds orchestrators in: waiting, working, complete, blocked
+        # FIX 2 (Handover 0485): Use exclusion-based filter (finds: waiting, working, complete, blocked)
         existing_exec_stmt = (
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))  # Eager load for job_metadata access

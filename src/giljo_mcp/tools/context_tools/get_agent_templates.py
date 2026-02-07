@@ -97,7 +97,7 @@ async def get_agent_templates(
         # Query agent templates for this tenant (reuse pattern from thin_prompt_generator)
         stmt = (
             select(AgentTemplate)
-            .where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True)
+            .where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active)
             .order_by(AgentTemplate.name)
         )
 

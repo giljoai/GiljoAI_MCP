@@ -810,7 +810,7 @@ describe('JobsTab Component', () => {
     })
 
     it('handles very long project IDs gracefully', () => {
-      const longId = 'proj-' + 'x'.repeat(200)
+      const longId = `proj-${  'x'.repeat(200)}`
 
       wrapper = mount(JobsTab, {
         props: {

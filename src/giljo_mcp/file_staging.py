@@ -144,12 +144,11 @@ class FileStaging:
 
             logger.info(f"Staged slash commands ZIP: {zip_path} ({len(templates)} files)")
             return (zip_path, f"Successfully staged {len(templates)} slash commands")
-        except OSError as e:
-            msg = f"Disk error creating slash commands ZIP: {e}"
-            logger.error(msg)
-            return (None, msg)
         except (OSError, ValueError, RuntimeError) as e:
-            msg = f"Unexpected error creating slash commands ZIP: {e}"
+            if isinstance(e, OSError):
+                msg = f"Disk error creating slash commands ZIP: {e}"
+            else:
+                msg = f"Unexpected error creating slash commands ZIP: {e}"
             logger.error(msg)
             return (None, msg)
 
@@ -190,7 +189,7 @@ class FileStaging:
             zip_path = staging_path / "agent_templates.zip"
 
             # Query active templates for tenant
-            stmt = select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True)
+            stmt = select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active)
 
             result = await session.execute(stmt)
             all_active = result.scalars().all()
@@ -229,12 +228,11 @@ class FileStaging:
                 f"Staged agent templates ZIP: {zip_path} ({len(selected)} files from {len(all_active)} active templates)"
             )
             return (zip_path, f"Successfully staged {len(selected)} agent templates")
-        except OSError as e:
-            msg = f"Disk error staging agent templates: {e}"
-            logger.error(msg)
-            return (None, msg)
         except (OSError, ValueError, RuntimeError) as e:
-            msg = f"Unexpected error staging agent templates: {e}"
+            if isinstance(e, OSError):
+                msg = f"Disk error staging agent templates: {e}"
+            else:
+                msg = f"Unexpected error staging agent templates: {e}"
             logger.error(msg)
             # Rollback on error
             if session:

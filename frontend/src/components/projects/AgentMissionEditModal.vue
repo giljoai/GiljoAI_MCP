@@ -14,7 +14,7 @@
             {{ characterCount.toLocaleString() }} chars
           </v-chip>
         </div>
-        <v-btn icon size="small" @click="handleClose" aria-label="Close">
+        <v-btn icon size="small" aria-label="Close" @click="handleClose">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
@@ -88,8 +88,8 @@
       <v-card-actions>
         <v-btn
           variant="text"
-          @click="resetToOriginal"
           :disabled="!hasChanges || loading"
+          @click="resetToOriginal"
         >
           <v-icon start>mdi-restore</v-icon>
           Reset
@@ -97,17 +97,17 @@
         <v-spacer />
         <v-btn
           variant="text"
-          @click="handleClose"
           :disabled="loading"
+          @click="handleClose"
         >
           Cancel
         </v-btn>
         <v-btn
           color="primary"
           variant="flat"
-          @click="saveMission"
           :loading="loading"
           :disabled="!isValid || !hasChanges"
+          @click="saveMission"
         >
           <v-icon start>mdi-content-save</v-icon>
           Save Mission

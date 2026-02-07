@@ -34,8 +34,11 @@ VALID_STATUSES = {"waiting", "working", "blocked", "complete", "failed", "cancel
 # Terminal states (cannot transition from these)
 TERMINAL_STATES = {"failed", "cancelled", "decommissioned"}
 
-# Module-level db_manager (initialized by register function or init_for_testing)
-_db_manager: Any | None = None
+# Module-level state holder
+class _AgentStatusState:
+    """State holder to avoid global statement."""
+
+    db_manager: Any | None = None
 
 
 def init_for_testing(db_manager):
@@ -48,8 +51,7 @@ def init_for_testing(db_manager):
     Args:
         db_manager: Database manager instance for testing
     """
-    global _db_manager
-    _db_manager = db_manager
+    _AgentStatusState.db_manager = db_manager
 
 
 async def set_agent_status(
@@ -128,12 +130,12 @@ async def set_agent_status(
             websocket_manager = None
 
         # Use module-level db_manager (injected by tests or register function)
-        if _db_manager is None:
+        if _AgentStatusState.db_manager is None:
             from ..database import DatabaseManager
 
             db_manager = DatabaseManager()
         else:
-            db_manager = _db_manager
+            db_manager = _AgentStatusState.db_manager
 
         async with db_manager.get_session_async() as session:
             # Get execution with tenant isolation (Handover 0366c)
@@ -273,12 +275,12 @@ async def report_progress(
             websocket_manager = None
 
         # Use module-level db_manager (injected by tests or register function)
-        if _db_manager is None:
+        if _AgentStatusState.db_manager is None:
             from ..database import DatabaseManager
 
             db_manager = DatabaseManager()
         else:
-            db_manager = _db_manager
+            db_manager = _AgentStatusState.db_manager
 
         async with db_manager.get_session_async() as session:
             # Get execution with tenant isolation (Handover 0366c)

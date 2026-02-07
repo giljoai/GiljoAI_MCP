@@ -4,9 +4,9 @@
       <!-- Left: Logo and Mobile Nav Toggle -->
       <div style="flex: 0 0 auto; display: flex; align-items: center">
         <v-app-bar-nav-icon
-          @click="$emit('toggle-drawer')"
           v-if="mobile"
           aria-label="Toggle navigation drawer"
+          @click="$emit('toggle-drawer')"
         ></v-app-bar-nav-icon>
 
         <!-- GiljoAI Logo -->
@@ -41,8 +41,8 @@
             <v-list-item
               v-if="currentUser"
               prepend-icon="mdi-account"
-              @click="profileDialog = true"
               style="cursor: pointer"
+              @click="profileDialog = true"
             >
               <v-list-item-title class="font-weight-medium">
                 {{ currentUser.username }}

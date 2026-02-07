@@ -12,7 +12,7 @@
           <v-img src="/giljo_YW_Face.svg" width="32" height="32" class="mr-2" />
           <span>AI Tool Configuration</span>
         </div>
-        <v-btn icon="mdi-close" variant="text" @click="showWizard = false" aria-label="Close" />
+        <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="showWizard = false" />
       </v-card-title>
 
       <!-- Quick Path -->
@@ -36,15 +36,15 @@
 
         <v-btn
           :loading="busy"
-          @click="generateQuickPrompt"
           block
           color="success"
           prepend-icon="mdi-wand"
+          @click="generateQuickPrompt"
         >
           Generate Configuration Prompt
         </v-btn>
 
-        <v-btn @click="showAdvanced = true" variant="text" block class="mt-2">
+        <v-btn variant="text" block class="mt-2" @click="showAdvanced = true">
           Customize Settings
         </v-btn>
 
@@ -60,10 +60,10 @@
             variant="outlined"
             class="font-monospace no-resize"
             append-inner-icon="mdi-content-copy"
-            @click:append-inner="copyPrompt"
             :messages="
               copied ? 'Command copied to clipboard!' : 'Click the copy icon to copy the command'
             "
+            @click:append-inner="copyPrompt"
           />
         </div>
       </v-card-text>
@@ -120,10 +120,10 @@
             variant="outlined"
             class="font-monospace no-resize"
             append-inner-icon="mdi-content-copy"
-            @click:append-inner="copyPrompt"
             :messages="
               copied ? 'Command copied to clipboard!' : 'Click the copy icon to copy the command'
             "
+            @click:append-inner="copyPrompt"
           />
         </div>
 

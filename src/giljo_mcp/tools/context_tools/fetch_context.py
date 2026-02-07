@@ -77,7 +77,7 @@ async def fetch_context(
     categories: list[str | None] = None,
     depth_config: dict[str, Any | None] = None,
     apply_user_config: bool = True,
-    format: str = "structured",
+    output_format: str = "structured",
     agent_name: str | None = None,
     db_manager: DatabaseManager | None = None,
 ) -> dict[str, Any]:
@@ -159,7 +159,7 @@ async def fetch_context(
         project_id=project_id,
         categories=categories,
         apply_user_config=apply_user_config,
-        format=format,
+        format=output_format,
         agent_name=agent_name,
     )
 
@@ -233,9 +233,9 @@ async def fetch_context(
         "source": "fetch_context",
         "categories_requested": [category],
         "categories_returned": [category] if data else [],
-        "data": {category: data} if format == "structured" else data,
+        "data": {category: data} if output_format == "structured" else data,
         "metadata": {
-            "format": format,
+            "format": output_format,
             "apply_user_config": apply_user_config,
             "depth_config_applied": {category: effective_depths.get(category)},
         },

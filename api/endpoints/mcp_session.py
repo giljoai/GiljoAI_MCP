@@ -43,7 +43,7 @@ class MCPSessionManager:
 
     async def authenticate_api_key(self, api_key_value: str):
         try:
-            stmt = select(APIKey).where(APIKey.is_active == True)
+            stmt = select(APIKey).where(APIKey.is_active)
             result = await self.db.execute(stmt)
             api_keys = result.scalars().all()
 
@@ -52,7 +52,7 @@ class MCPSessionManager:
                     key_record.last_used = datetime.now(timezone.utc)
                     await self.db.commit()
 
-                    stmt = select(User).where(User.id == key_record.user_id, User.is_active == True)
+                    stmt = select(User).where(User.id == key_record.user_id, User.is_active)
                     result = await self.db.execute(stmt)
                     user = result.scalar_one_or_none()
 

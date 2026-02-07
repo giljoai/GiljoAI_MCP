@@ -101,7 +101,7 @@ async def get_product_for_tenant(
                 query = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
             else:
                 # Get active product for tenant
-                query = select(Product).where(Product.tenant_key == tenant_key, Product.is_active == True).limit(1)
+                query = select(Product).where(Product.tenant_key == tenant_key, Product.is_active).limit(1)
 
             result = await session.execute(query)
             return result.scalar_one_or_none()

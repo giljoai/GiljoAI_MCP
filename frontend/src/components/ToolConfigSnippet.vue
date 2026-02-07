@@ -9,8 +9,8 @@
         color="primary"
         class="copy-button"
         data-test="copy-button"
-        @click="copyToClipboard"
         :aria-label="`Copy ${language} configuration to clipboard`"
+        @click="copyToClipboard"
       >
         <v-icon>mdi-content-copy</v-icon>
         <v-tooltip activator="parent" location="top">Copy to clipboard</v-tooltip>

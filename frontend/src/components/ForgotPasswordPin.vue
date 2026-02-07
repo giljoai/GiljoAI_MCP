@@ -17,9 +17,9 @@
           icon="mdi-close"
           variant="text"
           size="small"
-          @click="handleClose"
           :disabled="loading"
           aria-label="Close dialog"
+          @click="handleClose"
         />
       </v-card-title>
 
@@ -80,9 +80,9 @@
               autofocus
               autocomplete="username"
               class="mb-4"
-              @input="error = ''"
               aria-label="Enter your username"
               aria-required="true"
+              @input="error = ''"
             />
 
             <!-- Recovery PIN -->
@@ -99,12 +99,12 @@
               :disabled="loading"
               autocomplete="off"
               class="mb-4"
-              @input="handlePinInput"
-              @keypress="onlyNumbers"
               aria-label="Enter your 4-digit recovery PIN"
               aria-required="true"
               hint="Enter the 4-digit PIN you set during account setup"
               persistent-hint
+              @input="handlePinInput"
+              @keypress="onlyNumbers"
             />
 
             <!-- Info -->
@@ -122,7 +122,7 @@
               :disabled="!username || !pin || pin.length !== 4 || loading"
               aria-label="Verify PIN and proceed to password reset"
             >
-              <v-icon start v-if="!loading">mdi-shield-check</v-icon>
+              <v-icon v-if="!loading" start>mdi-shield-check</v-icon>
               {{ loading ? 'Verifying...' : 'Verify PIN' }}
             </v-btn>
           </v-form>
@@ -148,10 +148,10 @@
               autocomplete="new-password"
               autofocus
               class="mb-4"
-              @click:append-inner="showPassword = !showPassword"
-              @input="error = ''"
               aria-label="Enter your new password"
               aria-required="true"
+              @click:append-inner="showPassword = !showPassword"
+              @input="error = ''"
             />
 
             <!-- Confirm Password -->
@@ -166,10 +166,10 @@
               :disabled="loading"
               autocomplete="new-password"
               class="mb-4"
-              @click:append-inner="showConfirmPassword = !showConfirmPassword"
-              @input="error = ''"
               aria-label="Confirm your new password"
               aria-required="true"
+              @click:append-inner="showConfirmPassword = !showConfirmPassword"
+              @input="error = ''"
             />
 
             <!-- Password Requirements -->
@@ -198,7 +198,7 @@
               :disabled="!isPasswordValid || loading"
               aria-label="Reset password and return to login"
             >
-              <v-icon start v-if="!loading">mdi-lock-reset</v-icon>
+              <v-icon v-if="!loading" start>mdi-lock-reset</v-icon>
               {{ loading ? 'Resetting...' : 'Reset Password' }}
             </v-btn>
           </v-form>
@@ -209,7 +209,7 @@
 
       <v-card-actions class="pa-4">
         <v-spacer />
-        <v-btn variant="text" @click="handleClose" :disabled="loading"> Cancel </v-btn>
+        <v-btn variant="text" :disabled="loading" @click="handleClose"> Cancel </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

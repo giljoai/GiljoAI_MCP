@@ -46,9 +46,9 @@
                 color="primary"
                 size="large"
                 prepend-icon="mdi-refresh"
-                @click="retryConnection"
                 :loading="retrying"
                 class="mb-2"
+                @click="retryConnection"
               >
                 Retry Connection
               </v-btn>
@@ -71,7 +71,7 @@
           </v-card-text>
 
           <v-card-actions class="pa-6 pt-0">
-            <v-btn variant="text" prepend-icon="mdi-logout" @click="logout" block>
+            <v-btn variant="text" prepend-icon="mdi-logout" block @click="logout">
               Return to Login
             </v-btn>
           </v-card-actions>
