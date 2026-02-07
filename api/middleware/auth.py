@@ -126,7 +126,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     def _is_public_endpoint(self, path: str) -> bool:
         """Check if endpoint is public (no authentication required)"""
-        PUBLIC_PATHS = [
+        public_paths = [
             "/health",
             "/docs",
             "/redoc",
@@ -146,4 +146,4 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Always allow token download path (token is the auth)
         if path.startswith("/api/download/temp") or "/api/download/temp/" in path:
             return True
-        return any(path.startswith(p) for p in PUBLIC_PATHS)
+        return any(path.startswith(p) for p in public_paths)

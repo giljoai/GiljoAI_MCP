@@ -325,7 +325,7 @@ class WebSocketManager:
         for client_id, websocket in self.active_connections.items():
             try:
                 await websocket.send_text(message)
-            except Exception as e:
+            except Exception as e:  # noqa: PERF203 - Broadcast resilience: continue sending to other clients on error
                 logger.exception(
                     "websocket_broadcast_error",
                     error_code=ErrorCode.WS_BROADCAST_FAILED.value,
@@ -545,7 +545,7 @@ class WebSocketManager:
         for client_id, websocket in self.active_connections.items():
             try:
                 await websocket.send_json(heartbeat)
-            except (RuntimeError, OSError) as e:
+            except (RuntimeError, OSError) as e:  # noqa: PERF203 - Heartbeat resilience: continue pinging other clients
                 logger.debug(f"Heartbeat failed for {client_id}: {e}")
                 disconnected.append(client_id)
 
