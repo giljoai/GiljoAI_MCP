@@ -31,7 +31,7 @@ class HealthCheckConfig:
     heartbeat_timeout_minutes: int = 10
 
     # Per-agent type overrides
-    timeout_overrides: Dict[str, int] = field(
+    timeout_overrides: dict[str, int] = field(
         default_factory=lambda: {
             "orchestrator": 15,  # Orchestrators get more time
             "analyzer": 5,

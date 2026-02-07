@@ -135,10 +135,10 @@ class ProductService:
         name: str,
         description: Optional[str] = None,
         project_path: Optional[str] = None,
-        config_data: Optional[Dict[str, Any]] = None,
-        product_memory: Optional[Dict[str, Any]] = None,  # Handover 0135
+        config_data: Optional[dict[str, Any]] = None,
+        product_memory: Optional[dict[str, Any]] = None,  # Handover 0135
         target_platforms: Optional[list[str]] = None,  # Handover 0425
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new product.
 
@@ -234,7 +234,7 @@ class ProductService:
                 context={"product_name": name, "tenant_key": self.tenant_key},
             ) from e
 
-    async def get_product(self, product_id: str, include_metrics: bool = True) -> Dict[str, Any]:
+    async def get_product(self, product_id: str, include_metrics: bool = True) -> dict[str, Any]:
         """
         Get a specific product by ID with optional metrics.
 
@@ -321,7 +321,7 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def list_products(self, include_inactive: bool = False, include_metrics: bool = True) -> Dict[str, Any]:
+    async def list_products(self, include_inactive: bool = False, include_metrics: bool = True) -> dict[str, Any]:
         """
         List all products for tenant with optional filtering.
 
@@ -396,7 +396,7 @@ class ProductService:
             self._logger.exception(f"Failed to list products: {e}")
             raise BaseGiljoException(message=f"Failed to list products: {e!s}", context={"tenant_key": self.tenant_key}) from e
 
-    async def update_product(self, product_id: str, **updates) -> Dict[str, Any]:
+    async def update_product(self, product_id: str, **updates) -> dict[str, Any]:
         """
         Update a product.
 
@@ -486,7 +486,7 @@ class ProductService:
         product_id: str,
         quality_standards: str,
         tenant_key: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Update quality standards for a product.
 
@@ -570,7 +570,7 @@ class ProductService:
     # Lifecycle Management
     # ============================================================================
 
-    async def activate_product(self, product_id: str) -> Dict[str, Any]:
+    async def activate_product(self, product_id: str) -> dict[str, Any]:
         """
         Activate a product (deactivates other products for tenant).
 
@@ -671,7 +671,7 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def deactivate_product(self, product_id: str) -> Dict[str, Any]:
+    async def deactivate_product(self, product_id: str) -> dict[str, Any]:
         """
         Deactivate a product.
 
@@ -728,7 +728,7 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def delete_product(self, product_id: str) -> Dict[str, Any]:
+    async def delete_product(self, product_id: str) -> dict[str, Any]:
         """
         Soft delete a product.
 
@@ -783,7 +783,7 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def restore_product(self, product_id: str) -> Dict[str, Any]:
+    async def restore_product(self, product_id: str) -> dict[str, Any]:
         """
         Restore a soft-deleted product.
 
@@ -845,7 +845,7 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def list_deleted_products(self) -> Dict[str, Any]:
+    async def list_deleted_products(self) -> dict[str, Any]:
         """
         List soft-deleted products with purge information.
 
@@ -912,7 +912,7 @@ class ProductService:
     # Active Product Management
     # ============================================================================
 
-    async def get_active_product(self) -> Dict[str, Any]:
+    async def get_active_product(self) -> dict[str, Any]:
         """
         Get the currently active product for the tenant.
 
@@ -976,7 +976,7 @@ class ProductService:
     # Metrics & Statistics
     # ============================================================================
 
-    async def get_product_statistics(self, product_id: str) -> Dict[str, Any]:
+    async def get_product_statistics(self, product_id: str) -> dict[str, Any]:
         """
         Get comprehensive statistics for a product.
 
@@ -1032,7 +1032,7 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def get_cascade_impact(self, product_id: str) -> Dict[str, Any]:
+    async def get_cascade_impact(self, product_id: str) -> dict[str, Any]:
         """
         Get cascade impact analysis for product deletion.
 
@@ -1109,7 +1109,7 @@ class ProductService:
         enabled: bool,
         commit_limit: int = 20,
         default_branch: str = "main",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Update Git integration settings for a product (Handover 013B - Simplified).
 
@@ -1216,7 +1216,7 @@ class ProductService:
         filename: str,
         auto_chunk: bool = True,
         max_tokens: int = 25000,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Upload and optionally chunk vision document for product.
 
@@ -1458,7 +1458,7 @@ class ProductService:
     # WebSocket Event Emission (Handover 0139a)
     # ============================================================================
 
-    async def _emit_websocket_event(self, event_type: str, data: Dict[str, Any]) -> None:
+    async def _emit_websocket_event(self, event_type: str, data: dict[str, Any]) -> None:
         """
         Emit WebSocket event to tenant clients (Handover 0139a).
 
@@ -1630,7 +1630,7 @@ class ProductService:
             await session.refresh(product)
             self._logger.info(f"Product {product.id}: Updated product_memory structure")
 
-    async def _get_product_metrics(self, session: AsyncSession, product_id: str) -> Dict[str, Any]:
+    async def _get_product_metrics(self, session: AsyncSession, product_id: str) -> dict[str, Any]:
         """
         Get metrics for a product (projects, tasks, vision documents).
 

@@ -20,10 +20,10 @@ from .models import AgentExecutionResponse
 router = APIRouter()
 
 
-@router.get("/{job_id}/executions", response_model=List[AgentExecutionResponse])
+@router.get("/{job_id}/executions", response_model=list[AgentExecutionResponse])
 async def get_job_executions(
     job_id: str, db: AsyncSession = Depends(get_db_session), current_user: User = Depends(get_current_active_user)
-) -> List[AgentExecutionResponse]:
+) -> list[AgentExecutionResponse]:
     """
     Get all agent execution instances for a specific job.
 

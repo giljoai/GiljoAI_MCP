@@ -41,7 +41,7 @@ async def get_360_memory(
     limit: int = None,
     db_manager: Optional[DatabaseManager] = None,
     session: Optional[AsyncSession] = None,  # For testing only
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Fetch 360 memory (sequential project history) for given product with depth control and pagination.
 

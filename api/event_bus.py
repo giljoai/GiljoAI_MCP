@@ -47,12 +47,12 @@ class EventBus:
 
     def __init__(self):
         """Initialize event bus with empty listener registry."""
-        self._listeners: Dict[str, List[Callable]] = {}
+        self._listeners: dict[str, list[Callable]] = {}
         self._lock = asyncio.Lock()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        self._event_counts: Dict[str, int] = {}
+        self._event_counts: dict[str, int] = {}
 
-    async def publish(self, event_type: str, data: Dict[str, Any]) -> int:
+    async def publish(self, event_type: str, data: dict[str, Any]) -> int:
         """
         Publish event to all registered listeners.
 

@@ -34,19 +34,19 @@ router = APIRouter()
 class SettingsUpdate(BaseModel):
     """Settings update request - settings dict required"""
 
-    settings: Dict[str, Any]
+    settings: dict[str, Any]
 
 
 class SettingsResponse(BaseModel):
     """Settings response - wraps settings dict"""
 
-    settings: Dict[str, Any]
+    settings: dict[str, Any]
 
 
 class SettingsUpdateResponse(BaseModel):
     """Settings update response - includes success message"""
 
-    settings: Dict[str, Any]
+    settings: dict[str, Any]
     message: str
 
 

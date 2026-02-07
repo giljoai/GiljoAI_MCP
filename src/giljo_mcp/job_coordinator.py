@@ -52,10 +52,10 @@ class JobCoordinator:
         self,
         tenant_key: str,
         parent_job_id: str,
-        child_specs: List[Dict[str, Any]],
+        child_specs: list[dict[str, Any]],
         send_notifications: bool = False,
         validate_parent: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Spawn multiple child jobs from a parent job.
 
@@ -123,8 +123,8 @@ class JobCoordinator:
         return {"success": True, "job_ids": result.get("job_ids", []), "count": result.get("count", 0)}
 
     async def spawn_parallel_jobs(
-        self, tenant_key: str, parent_job_id: str, job_specs: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, tenant_key: str, parent_job_id: str, job_specs: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Spawn parallel jobs without dependencies.
 
@@ -144,7 +144,7 @@ class JobCoordinator:
 
     async def wait_for_children(
         self, tenant_key: str, parent_job_id: str, timeout: float = 300.0, poll_interval: float = 1.0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Wait for all child jobs to complete.
 
@@ -206,7 +206,7 @@ class JobCoordinator:
 
     async def aggregate_child_results(
         self, tenant_key: str, parent_job_id: str, strategy: str = "collect"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Aggregate results from child jobs.
 
@@ -258,8 +258,8 @@ class JobCoordinator:
             return {"strategy": "merge", "merged_data": merged_data, "count": len(children)}
 
     async def create_job_chain(
-        self, tenant_key: str, parent_job_id: str, chain_specs: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, tenant_key: str, parent_job_id: str, chain_specs: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Create a sequential job dependency chain.
 
@@ -324,7 +324,7 @@ class JobCoordinator:
 
         return {"success": True, "chain_id": chain_id, "job_ids": job_ids, "chain_length": len(job_ids)}
 
-    async def execute_next_in_chain(self, tenant_key: str, current_job_id: str) -> Dict[str, Any]:
+    async def execute_next_in_chain(self, tenant_key: str, current_job_id: str) -> dict[str, Any]:
         """
         Execute the next job in a dependency chain.
 
@@ -366,7 +366,7 @@ class JobCoordinator:
 
         return {"success": True, "next_job_id": next_job_id, "chain_complete": False}
 
-    async def get_job_tree_status(self, tenant_key: str, root_job_id: str, max_depth: int = 10) -> Dict[str, Any]:
+    async def get_job_tree_status(self, tenant_key: str, root_job_id: str, max_depth: int = 10) -> dict[str, Any]:
         """
         Get recursive job tree status.
 
@@ -437,7 +437,7 @@ class JobCoordinator:
             "tree_depth": tree_depth,
         }
 
-    async def get_coordination_metrics(self, tenant_key: str, parent_job_id: str) -> Dict[str, Any]:
+    async def get_coordination_metrics(self, tenant_key: str, parent_job_id: str) -> dict[str, Any]:
         """
         Calculate coordination metrics for a parent job.
 

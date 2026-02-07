@@ -124,7 +124,7 @@ async def get_project_by_alias(alias: str, tenant_key: str, session) -> dict[str
 # (DEFAULT_FIELD_PRIORITIES and DEFAULT_DEPTH_CONFIG are now unified across the codebase)
 
 
-def _normalize_field_priorities(field_priorities: Dict[str, Any]) -> Dict[str, int]:
+def _normalize_field_priorities(field_priorities: dict[str, Any]) -> dict[str, int]:
     """
     Normalize field_priorities from nested format to integer format.
 
@@ -158,7 +158,7 @@ async def _get_user_config(
     user_id: str,
     tenant_key: str,
     session: Any,  # AsyncSession type hint would create circular import
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Fetch user's field_priority_config and depth_config from database.
 

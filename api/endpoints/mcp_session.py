@@ -145,7 +145,7 @@ class MCPSessionManager:
 
         return session
 
-    async def update_session_data(self, session_id: str, data: Dict[str, Any], merge: bool = True) -> bool:
+    async def update_session_data(self, session_id: str, data: dict[str, Any], merge: bool = True) -> bool:
         session = await self.get_session(session_id)
         if not session:
             return False

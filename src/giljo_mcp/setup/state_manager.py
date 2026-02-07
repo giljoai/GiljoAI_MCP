@@ -37,7 +37,7 @@ class SetupStateManager:
     Implements singleton pattern per tenant for consistency.
     """
 
-    _instances: Dict[str, "SetupStateManager"] = {}
+    _instances: dict[str, "SetupStateManager"] = {}
     _lock = Lock()
 
     def __init__(
@@ -104,7 +104,7 @@ class SetupStateManager:
                 )
             return cls._instances[tenant_key]
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """
         Get current setup state.
 
@@ -139,7 +139,7 @@ class SetupStateManager:
         # Return default state
         return self._get_default_state()
 
-    def _get_state_from_database(self) -> Optional[Dict[str, Any]]:
+    def _get_state_from_database(self) -> Optional[dict[str, Any]]:
         """Get state from database."""
         from src.giljo_mcp.models import SetupState
 
@@ -148,7 +148,7 @@ class SetupStateManager:
             return state.to_dict()
         return None
 
-    def _get_state_from_file(self) -> Optional[Dict[str, Any]]:
+    def _get_state_from_file(self) -> Optional[dict[str, Any]]:
         """Get state from file."""
         if not self.state_file.exists():
             return None
@@ -168,7 +168,7 @@ class SetupStateManager:
 
         return None
 
-    def _get_default_state(self) -> Dict[str, Any]:
+    def _get_default_state(self) -> dict[str, Any]:
         """Get default state structure."""
         return {
             "tenant_key": self.tenant_key,
@@ -194,7 +194,7 @@ class SetupStateManager:
     def mark_database_initialized(
         self,
         setup_version: Optional[str] = None,
-        config_snapshot: Optional[Dict[str, Any]] = None,
+        config_snapshot: Optional[dict[str, Any]] = None,
     ) -> None:
         """
         Mark database as initialized (tables created and ready for use).
@@ -229,7 +229,7 @@ class SetupStateManager:
     def _mark_database_initialized_in_database(
         self,
         setup_version: Optional[str],
-        config_snapshot: Optional[Dict[str, Any]],
+        config_snapshot: Optional[dict[str, Any]],
     ) -> None:
         """Mark database initialized in database."""
         from src.giljo_mcp.models import SetupState
@@ -248,7 +248,7 @@ class SetupStateManager:
     def _mark_database_initialized_in_file(
         self,
         setup_version: Optional[str],
-        config_snapshot: Optional[Dict[str, Any]],
+        config_snapshot: Optional[dict[str, Any]],
     ) -> None:
         """Mark database initialized in file."""
         # Ensure directory exists
@@ -410,7 +410,7 @@ class SetupStateManager:
         # Compare versions
         return stored_version != self.current_version
 
-    def validate_state(self) -> Tuple[bool, List[str]]:
+    def validate_state(self) -> tuple[bool, list[str]]:
         """
         Validate current state against requirements.
 
@@ -608,7 +608,7 @@ class SetupStateManager:
 
         return bool(value)
 
-    def get_config_snapshot(self) -> Optional[Dict[str, Any]]:
+    def get_config_snapshot(self) -> Optional[dict[str, Any]]:
         """
         Get configuration snapshot.
 

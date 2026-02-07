@@ -54,7 +54,7 @@ class VisionDocumentRepository:
         is_active: bool = True,
         display_order: int = 0,
         version: str = "1.0.0",
-        meta_data: Optional[Dict] = None,
+        meta_data: Optional[dict] = None,
     ) -> VisionDocument:
         """
         Create a new vision document with automatic content hashing.
@@ -133,7 +133,7 @@ class VisionDocumentRepository:
 
     async def list_by_product(
         self, session: AsyncSession, tenant_key: str, product_id: str, active_only: bool = True
-    ) -> List[VisionDocument]:
+    ) -> list[VisionDocument]:
         """
         List all vision documents for a product with tenant isolation.
 
@@ -201,7 +201,7 @@ class VisionDocumentRepository:
         await session.flush()
         return doc
 
-    async def delete(self, session: AsyncSession, tenant_key: str, document_id: str) -> Dict[str, Any]:
+    async def delete(self, session: AsyncSession, tenant_key: str, document_id: str) -> dict[str, Any]:
         """
         Delete vision document and all associated chunks.
 
@@ -277,7 +277,7 @@ class VisionDocumentRepository:
 
     async def get_by_type(
         self, session: AsyncSession, tenant_key: str, product_id: str, document_type: str
-    ) -> List[VisionDocument]:
+    ) -> list[VisionDocument]:
         """
         Get all vision documents of a specific type for a product.
 

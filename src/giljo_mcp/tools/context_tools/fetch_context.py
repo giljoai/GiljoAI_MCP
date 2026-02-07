@@ -74,13 +74,13 @@ async def fetch_context(
     product_id: str,
     tenant_key: str,
     project_id: Optional[str] = None,
-    categories: Optional[List[str]] = None,
-    depth_config: Optional[Dict[str, Any]] = None,
+    categories: Optional[list[str]] = None,
+    depth_config: Optional[dict[str, Any]] = None,
     apply_user_config: bool = True,
     format: str = "structured",
     agent_name: Optional[str] = None,
     db_manager: Optional[DatabaseManager] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Unified context fetcher - dispatches to internal tools.
 
@@ -257,7 +257,7 @@ async def _fetch_category(
     depth: Any,
     agent_name: Optional[str],
     db_manager: DatabaseManager,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Dispatch to internal tool based on category.
 
@@ -326,7 +326,7 @@ async def _fetch_category(
     return await tool_func(**kwargs)
 
 
-def _flatten_results(results: Dict[str, Any]) -> Dict[str, Any]:
+def _flatten_results(results: dict[str, Any]) -> dict[str, Any]:
     """
     Flatten nested category results into single dict with prefixed keys.
 

@@ -90,7 +90,7 @@ Related:
 from typing import Any, Dict
 
 
-DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
+DEFAULT_FIELD_PRIORITY: dict[str, Any] = {
     "version": "2.1",
     "priorities": {
         # Priority 1 (CRITICAL): Orchestrator MUST call these MCP tools
@@ -118,7 +118,7 @@ DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
 }
 
 
-DEFAULT_DEPTH_CONFIG: Dict[str, Any] = {
+DEFAULT_DEPTH_CONFIG: dict[str, Any] = {
     "version": "1.0",
     "depths": {
         # Vision documents: medium = 66% summary

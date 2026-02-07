@@ -21,7 +21,7 @@ from src.giljo_mcp.models import AgentTemplate
 logger = structlog.get_logger(__name__)
 
 
-def estimate_tokens(data: Dict[str, Any]) -> int:
+def estimate_tokens(data: dict[str, Any]) -> int:
     """
     Estimate token count for response data.
 
@@ -42,7 +42,7 @@ async def get_self_identity(
     tenant_key: str,
     db_manager: Optional[DatabaseManager] = None,
     session: Optional[AsyncSession] = None,  # For testing only
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Fetch agent template by name for self-identity context.
 

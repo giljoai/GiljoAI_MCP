@@ -24,7 +24,7 @@ def get_config_path() -> Path:
     return Path.cwd() / "config.yaml"
 
 
-def read_config() -> Dict[str, Any]:
+def read_config() -> dict[str, Any]:
     """Read config.yaml."""
     config_path = get_config_path()
     if not config_path.exists():
@@ -38,7 +38,7 @@ def read_config() -> Dict[str, Any]:
         return {}
 
 
-def write_config(config: Dict[str, Any]) -> None:
+def write_config(config: dict[str, Any]) -> None:
     """Write config.yaml."""
     config_path = get_config_path()
     try:
@@ -70,7 +70,7 @@ class GitToggleResponse(BaseModel):
     success: bool
     enabled: bool
     message: str
-    settings: Dict[str, Any]
+    settings: dict[str, Any]
 
 
 @router.post("/toggle", response_model=GitToggleResponse)
@@ -174,7 +174,7 @@ async def update_git_settings(
 
 
 @router.get("/settings")
-async def get_git_settings(current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
+async def get_git_settings(current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
     """
     Get current Git integration settings from config.
     """

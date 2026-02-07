@@ -79,7 +79,7 @@ class WebSocketDependency:
         self,
         tenant_key: str,
         event_type: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         schema_version: str = "1.0",
         exclude_client: Optional[str] = None,
     ) -> int:
@@ -135,7 +135,7 @@ class WebSocketDependency:
         )
 
     async def send_to_project(
-        self, tenant_key: str, project_id: str, event_type: str, data: Dict[str, Any], schema_version: str = "1.0"
+        self, tenant_key: str, project_id: str, event_type: str, data: dict[str, Any], schema_version: str = "1.0"
     ) -> int:
         """
         Broadcast event to all clients watching a specific project.

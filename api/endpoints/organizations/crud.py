@@ -102,7 +102,7 @@ async def create_organization(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
-@router.get("", response_model=List[OrganizationResponse])
+@router.get("", response_model=list[OrganizationResponse])
 async def list_organizations(
     current_user: User = Depends(get_current_active_user), org_service: OrgService = Depends(get_org_service)
 ):

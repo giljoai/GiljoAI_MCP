@@ -371,7 +371,7 @@ class ProjectService:
 
     async def list_projects(
         self, status: Optional[str] = None, tenant_key: Optional[str] = None
-    ) -> List[dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         List all projects with optional filters.
 
