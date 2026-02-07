@@ -196,6 +196,9 @@ export const api = {
     getGitIntegration: (id) => apiClient.get(`/api/v1/products/${id}/git-integration`),
     updateGitIntegration: (id, settings) =>
       apiClient.post(`/api/v1/products/${id}/git-integration`, settings),
+    // 360 Memory endpoints (Handover 0490)
+    getMemoryEntries: (productId, params) =>
+      apiClient.get(`/api/v1/products/${productId}/memory-entries`, { params }),
   },
 
   // Projects
