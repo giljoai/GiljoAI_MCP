@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from src.giljo_mcp.exceptions import BaseGiljoException
+from src.giljo_mcp.exceptions import BaseGiljoError
 
 
 logger = logging.getLogger(__name__)
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 def register_exception_handlers(app):
     """Register all exception handlers with FastAPI app."""
 
-    @app.exception_handler(BaseGiljoException)
-    async def giljo_exception_handler(request: Request, exc: BaseGiljoException):
+    @app.exception_handler(BaseGiljoError)
+    async def giljo_exception_handler(request: Request, exc: BaseGiljoError):
         """Handle all GiljoAI domain exceptions."""
         logger.error(f"{exc.error_code}: {exc.message}", extra={"context": exc.context})
         return JSONResponse(status_code=exc.default_status_code, content=exc.to_dict())
