@@ -116,7 +116,7 @@ async def get_job_health(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error getting health for job {job_id}: {e}")
+        logger.exception("Unexpected error getting health for job {job_id}")
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
@@ -211,5 +211,5 @@ async def update_agent_mission(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error updating mission for job {job_id}: {e}")
+        logger.exception("Unexpected error updating mission for job {job_id}")
         raise HTTPException(status_code=500, detail="Internal server error") from e

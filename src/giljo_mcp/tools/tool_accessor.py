@@ -83,7 +83,7 @@ async def activate_project(project_id: str, tenant_key: str, session) -> dict[st
         }
 
     except Exception as e:
-        logger.exception(f"Failed to activate project: {e}")
+        logger.exception("Failed to activate project")
         return {"success": False, "error": str(e)}
 
 
@@ -410,7 +410,7 @@ class ToolAccessor:
             return result
 
         except Exception as e:
-            logger.exception(f"Failed to export agents: {e}")
+            logger.exception("Failed to export agents")
             return {"success": False, "error": str(e)}
 
     async def set_product_path(
@@ -451,7 +451,7 @@ class ToolAccessor:
             return result
 
         except Exception as e:
-            logger.exception(f"Failed to set product path: {e}")
+            logger.exception("Failed to set product path")
             return {"success": False, "error": str(e)}
 
     async def get_product_path(
@@ -488,7 +488,7 @@ class ToolAccessor:
             }
 
         except Exception as e:
-            logger.exception(f"Failed to get product path: {e}")
+            logger.exception("Failed to get product path")
             return {"success": False, "error": str(e)}
 
     # Orchestration Tools
@@ -569,7 +569,7 @@ class ToolAccessor:
                     "one_time_use": True,
                 }
         except Exception as e:
-            logger.exception(f"Failed to generate download token: {e}")
+            logger.exception("Failed to generate download token")
             return {"success": False, "error": str(e)}
 
     async def get_orchestrator_instructions(self, job_id: str, tenant_key: str) -> dict[str, Any]:
@@ -744,7 +744,7 @@ class ToolAccessor:
                     await session.commit()
             return {"success": True, "project_id": project_id, "agent_count": len(agents)}
         except Exception as e:
-            logger.exception(f"gil_launch failed: {e}")
+            logger.exception("gil_launch failed")
             return {"success": False, "error": str(e)}
 
     async def close_project_and_update_memory(

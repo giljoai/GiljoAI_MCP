@@ -263,8 +263,8 @@ Only use read_file() for:
                 "priority": 100,  # High priority for critical optimization rules
             }
 
-        except (ValueError, KeyError, OSError) as e:
-            logger.error(f"Failed to create optimization augmentation: {e}")
+        except (ValueError, KeyError, OSError):
+            logger.exception("Failed to create optimization augmentation")
             # Return safe fallback
             return {
                 "type": "inject",
@@ -372,8 +372,8 @@ ALWAYS prefer this workflow:
 
                 logger.info(f"Recorded optimization: {operation_type.value} saved {tokens_saved} tokens")
 
-        except (ValueError, KeyError, OSError) as e:
-            logger.error(f"Failed to record optimization operation: {e}")
+        except (ValueError, KeyError, OSError):
+            logger.exception("Failed to record optimization operation")
             # Don't raise - tracking failures shouldn't break operations
 
     async def generate_savings_report(self, agent_id: str) -> dict[str, Any]:
@@ -428,7 +428,7 @@ ALWAYS prefer this workflow:
                 }
 
         except (ValueError, KeyError, OSError) as e:
-            logger.error(f"Failed to generate savings report: {e}")
+            logger.exception("Failed to generate savings report")
             return {
                 "agent_id": agent_id,
                 "total_operations": 0,

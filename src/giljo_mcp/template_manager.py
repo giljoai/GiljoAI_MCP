@@ -1009,9 +1009,7 @@ class _TemplateManagerHolder:
     _instance: Optional[UnifiedTemplateManager] = None
 
     @classmethod
-    def get_instance(
-        cls, db_manager: Optional[DatabaseManager] = None, redis_client=None
-    ) -> UnifiedTemplateManager:
+    def get_instance(cls, db_manager: Optional[DatabaseManager] = None, redis_client=None) -> UnifiedTemplateManager:
         if cls._instance is None:
             cls._instance = UnifiedTemplateManager(db_manager, redis_client)
         elif db_manager and cls._instance.db_manager is None:

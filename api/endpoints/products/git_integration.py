@@ -86,7 +86,7 @@ async def update_git_integration(
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Failed to update git integration: {e}")
+        logger.exception("Failed to update git integration")
         raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}")
 
 
@@ -134,5 +134,5 @@ async def get_git_integration(
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Failed to get git integration: {e}")
+        logger.exception("Failed to get git integration")
         raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}")

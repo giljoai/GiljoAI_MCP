@@ -98,7 +98,7 @@ class SerenaDetector:
         except subprocess.CalledProcessError as e:
             return False, f"uvx check failed: {e.stderr}"
         except (OSError, RuntimeError) as e:
-            logger.error(f"Unexpected error checking uvx: {e}")
+            logger.exception("Unexpected error checking uvx")
             return False, f"Unexpected error: {e!s}"
 
     def _check_serena(self) -> tuple[bool, Optional[str], Optional[str]]:
@@ -129,7 +129,7 @@ class SerenaDetector:
             error_msg = e.stderr if hasattr(e, "stderr") else str(e)
             return False, None, f"Serena not found: {error_msg}"
         except (OSError, RuntimeError) as e:
-            logger.error(f"Unexpected error checking Serena: {e}")
+            logger.exception("Unexpected error checking Serena")
             return False, None, f"Unexpected error: {e!s}"
 
     def _parse_version(self, version_output: str) -> Optional[str]:

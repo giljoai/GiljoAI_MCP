@@ -33,8 +33,8 @@ def read_config() -> dict[str, Any]:
     try:
         with open(config_path, encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
-    except (OSError, ValueError) as e:
-        logger.error(f"Failed to read config: {e}")
+    except (OSError, ValueError):
+        logger.exception("Failed to read config")
         return {}
 
 
@@ -45,7 +45,7 @@ def write_config(config: dict[str, Any]) -> None:
         with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
     except (OSError, ValueError) as e:
-        logger.error(f"Failed to write config: {e}")
+        logger.exception("Failed to write config")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -129,7 +129,7 @@ async def toggle_git_integration(
         )
 
     except (OSError, ValueError) as e:
-        logger.error(f"Failed to toggle Git integration: {e!s}")
+        logger.exception("Failed to toggle Git integration")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -169,7 +169,7 @@ async def update_git_settings(
         )
 
     except (OSError, ValueError) as e:
-        logger.error(f"Failed to update Git settings: {e!s}")
+        logger.exception("Failed to update Git settings")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -193,5 +193,5 @@ async def get_git_settings(current_user: dict = Depends(get_current_user)) -> di
         }
 
     except (OSError, ValueError) as e:
-        logger.error(f"Failed to get Git settings: {e!s}")
+        logger.exception("Failed to get Git settings")
         raise HTTPException(status_code=500, detail=str(e)) from e

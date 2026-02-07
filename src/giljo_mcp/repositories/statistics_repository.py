@@ -10,9 +10,9 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import Message, Project, Task
-from ..models.agent_identity import AgentExecution, AgentJob
-from ..models.config import ApiMetrics
+from src.giljo_mcp.models import Message, Project, Task
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.config import ApiMetrics
 
 
 class StatisticsRepository:

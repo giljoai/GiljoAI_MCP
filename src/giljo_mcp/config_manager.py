@@ -518,7 +518,7 @@ class ConfigManager:
                 self.features.dynamic_discovery = feat.get("dynamic_discovery", self.features.dynamic_discovery)
 
         except Exception as e:
-            logger.exception(f"Error loading config file: {e}")
+            logger.exception("Error loading config file")
             raise ConfigValidationError(f"Failed to load config file: {e}") from e
 
     def _load_from_env(self):
@@ -653,8 +653,8 @@ class ConfigManager:
         try:
             self.load()
             logger.info("Configuration reloaded successfully")
-        except Exception as e:
-            logger.exception(f"Failed to reload configuration: {e}")
+        except Exception:
+            logger.exception("Failed to reload configuration")
             raise
 
     def _setup_file_watcher(self):
@@ -983,8 +983,8 @@ def extract_architecture_from_claude_md(claude_md_path: Path) -> Optional[str]:
 
     try:
         content = claude_md_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as e:
-        logger.error(f"Failed to read CLAUDE.md: {e}")
+    except (OSError, UnicodeDecodeError):
+        logger.exception("Failed to read CLAUDE.md")
         return None
 
     # Look for architecture section
@@ -1033,8 +1033,8 @@ def extract_tech_stack_from_claude_md(claude_md_path: Path) -> list[str]:
 
     try:
         content = claude_md_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as e:
-        logger.error(f"Failed to read CLAUDE.md: {e}")
+    except (OSError, UnicodeDecodeError):
+        logger.exception("Failed to read CLAUDE.md")
         return []
 
     tech_stack = []
@@ -1088,8 +1088,8 @@ def extract_test_commands_from_claude_md(claude_md_path: Path) -> list[str]:
 
     try:
         content = claude_md_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as e:
-        logger.error(f"Failed to read CLAUDE.md: {e}")
+    except (OSError, UnicodeDecodeError):
+        logger.exception("Failed to read CLAUDE.md")
         return []
 
     test_commands = []

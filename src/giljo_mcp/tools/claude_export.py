@@ -76,7 +76,7 @@ async def export_agents_command(
         return {"success": False, "error": str(e)}
 
     except Exception as e:
-        logger.exception(f"Export failed: {e}")
+        logger.exception("Export failed")
         return {"success": False, "error": f"Export failed: {e!s}"}
 
 
@@ -106,8 +106,8 @@ async def get_product_for_tenant(
             result = await session.execute(query)
             return result.scalar_one_or_none()
 
-    except Exception as e:
-        logger.exception(f"Failed to get product: {e}")
+    except Exception:
+        logger.exception("Failed to get product")
         return None
 
 
@@ -155,5 +155,5 @@ async def validate_product_path(
             }
 
     except Exception as e:
-        logger.exception(f"Failed to validate product path: {e}")
+        logger.exception("Failed to validate product path")
         return {"success": False, "error": f"Path validation failed: {e!s}"}

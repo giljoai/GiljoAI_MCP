@@ -1414,8 +1414,8 @@ async def get_generic_agent_template(
         }
 
     except (ValueError, KeyError, RuntimeError) as e:
-        logger.error(
-            f"Failed to render generic agent template: {e}",
+        logger.exception(
+            "Failed to render generic agent template",
             extra={"agent_id": agent_id, "job_id": job_id, "tenant_key": tenant_key},
         )
         return {

@@ -118,7 +118,7 @@ class TaskService:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to log task: {e}")
+            self._logger.exception("Failed to log task")
             raise BaseGiljoException(message=str(e), context={"operation": "log_task"}) from e
 
     async def _log_task_impl(
@@ -293,9 +293,7 @@ class TaskService:
                         # Get active product for tenant
                         from src.giljo_mcp.models.products import Product
 
-                        product_query = select(Product).where(
-                            and_(Product.tenant_key == tenant_key, Product.is_active)
-                        )
+                        product_query = select(Product).where(and_(Product.tenant_key == tenant_key, Product.is_active))
                         product_result = await session.execute(product_query)
                         active_product = product_result.scalar_one_or_none()
 
@@ -365,7 +363,7 @@ class TaskService:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to list tasks: {e}")
+            self._logger.exception("Failed to list tasks")
             raise BaseGiljoException(message=str(e), context={"operation": "list_tasks"}) from e
 
     # ============================================================================
@@ -437,7 +435,7 @@ class TaskService:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to update task: {e}")
+            self._logger.exception("Failed to update task")
             raise BaseGiljoException(message=str(e), context={"operation": "update_task", "task_id": task_id}) from e
 
     async def assign_task(self, task_id: str, agent_name: str) -> dict[str, Any]:
@@ -514,7 +512,7 @@ class TaskService:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to get task {task_id}: {e}")
+            self._logger.exception("Failed to get task {task_id}")
             raise BaseGiljoException(message=str(e), context={"operation": "get_task", "task_id": task_id}) from e
 
     async def _get_task_impl(self, session: AsyncSession, task_id: str) -> dict[str, Any]:
@@ -590,7 +588,7 @@ class TaskService:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to delete task {task_id}: {e}")
+            self._logger.exception("Failed to delete task {task_id}")
             raise BaseGiljoException(message=str(e), context={"operation": "delete_task", "task_id": task_id}) from e
 
     async def _delete_task_impl(self, session: AsyncSession, task_id: str, user_id: str) -> dict[str, Any]:
@@ -690,7 +688,7 @@ class TaskService:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to convert task {task_id} to project: {e}")
+            self._logger.exception("Failed to convert task {task_id} to project")
             raise BaseGiljoException(
                 message=str(e), context={"operation": "convert_to_project", "task_id": task_id}
             ) from e
@@ -858,7 +856,7 @@ class TaskService:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to change task {task_id} status: {e}")
+            self._logger.exception("Failed to change task {task_id} status")
             raise BaseGiljoException(message=str(e), context={"operation": "change_status", "task_id": task_id}) from e
 
     async def _change_status_impl(self, session: AsyncSession, task_id: str, new_status: str) -> dict[str, Any]:
@@ -954,7 +952,7 @@ class TaskService:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to get task summary: {e}")
+            self._logger.exception("Failed to get task summary")
             raise BaseGiljoException(message=str(e), context={"operation": "get_summary"}) from e
 
     async def _get_summary_impl(self, session: AsyncSession, product_id: Optional[str] = None) -> dict[str, Any]:

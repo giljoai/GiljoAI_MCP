@@ -54,8 +54,8 @@ async def get_setup_state(db: AsyncSession = None) -> dict[str, Any]:
         logger.warning("[WS SETUP DEBUG] No SetupState rows found; treating database as initialized")
         return {"database_initialized": True}
 
-    except (SQLAlchemyError, ValueError) as e:
-        logger.error(f"Failed to get setup state: {e}")
+    except (SQLAlchemyError, ValueError):
+        logger.exception("Failed to get setup state")
         return {"database_initialized": False}
 
 
@@ -189,8 +189,8 @@ async def validate_jwt_token(token: str, db: AsyncSession = None) -> Optional[di
             "permissions": ["*"],  # JWT users have full permissions
         }
 
-    except (ImportError, ValueError, KeyError) as e:
-        logger.error(f"JWT validation failed: {e}")
+    except (ImportError, ValueError, KeyError):
+        logger.exception("JWT validation failed")
         return None
 
 
@@ -228,8 +228,8 @@ async def validate_api_key(api_key: str, db: AsyncSession = None) -> Optional[di
 
         return None
 
-    except (ImportError, SQLAlchemyError, ValueError) as e:
-        logger.error(f"API key validation failed: {e}")
+    except (ImportError, SQLAlchemyError, ValueError):
+        logger.exception("API key validation failed")
         return None
 
 
