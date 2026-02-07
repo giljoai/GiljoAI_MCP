@@ -103,7 +103,7 @@ class EventBus:
 
                 success_count += 1
 
-            except Exception as e:
+            except Exception as e:  # noqa: PERF203 - Resilient dispatch: continue calling handlers on error
                 failed_count += 1
                 self.logger.error(
                     f"Event handler failed for {event_type}: {e}",

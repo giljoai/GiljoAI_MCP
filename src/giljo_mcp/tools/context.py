@@ -436,17 +436,17 @@ async def get_succession_context(
             all_executions = all_result.scalars().all()
 
             # Build chain in order
-            for execution in all_executions:
-                succession_chain.append(
-                    {
-                        "agent_id": execution.agent_id,
-                        "agent_display_name": execution.agent_display_name,
-                        "status": execution.status,
-                        "context_used": execution.context_used,
-                        "context_budget": execution.context_budget,
-                        "spawned_by": execution.spawned_by,
-                    }
-                )
+            succession_chain = [
+                {
+                    "agent_id": execution.agent_id,
+                    "agent_display_name": execution.agent_display_name,
+                    "status": execution.status,
+                    "context_used": execution.context_used,
+                    "context_budget": execution.context_budget,
+                    "spawned_by": execution.spawned_by,
+                }
+                for execution in all_executions
+            ]
 
             return {
                 "success": True,

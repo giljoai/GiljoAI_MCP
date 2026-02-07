@@ -538,25 +538,24 @@ async def _fetch_github_commits(
                 return None
 
             commits_data = response.json()
-            commits: list[dict[str, Any]] = []
-            for commit in commits_data[:100]:
-                commits.append(
-                    {
-                        "sha": commit.get("sha"),
-                        "message": commit.get("commit", {}).get("message"),
-                        "author": commit.get("commit", {}).get("author", {}).get("name")
-                        if isinstance(commit.get("commit", {}).get("author"), dict)
-                        else commit.get("commit", {}).get("author"),
-                        "date": commit.get("commit", {}).get("author", {}).get("date")
-                        if isinstance(commit.get("commit", {}).get("author"), dict)
-                        else None,
-                        "url": commit.get("html_url"),
-                        "files_changed": commit.get("files_changed"),
-                        "lines_added": commit.get("lines_added") or commit.get("stats", {}).get("additions")
-                        if isinstance(commit.get("stats"), dict)
-                        else None,
-                    }
-                )
+            commits: list[dict[str, Any]] = [
+                {
+                    "sha": commit.get("sha"),
+                    "message": commit.get("commit", {}).get("message"),
+                    "author": commit.get("commit", {}).get("author", {}).get("name")
+                    if isinstance(commit.get("commit", {}).get("author"), dict)
+                    else commit.get("commit", {}).get("author"),
+                    "date": commit.get("commit", {}).get("author", {}).get("date")
+                    if isinstance(commit.get("commit", {}).get("author"), dict)
+                    else None,
+                    "url": commit.get("html_url"),
+                    "files_changed": commit.get("files_changed"),
+                    "lines_added": commit.get("lines_added") or commit.get("stats", {}).get("additions")
+                    if isinstance(commit.get("stats"), dict)
+                    else None,
+                }
+                for commit in commits_data[:100]
+            ]
 
             logger.info(f"Fetched {len(commits)} GitHub commits for {repo_owner}/{repo_name}")
             return commits

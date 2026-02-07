@@ -316,8 +316,6 @@ class ClaudeConfigManager:
 
         except Exception:
             # Clean up temp file on error
-            try:
+            with suppress(OSError, RuntimeError):
                 Path(temp_path).unlink(missing_ok=True)
-            except (OSError, RuntimeError):
-                pass  # nosec B110 - temp file cleanup
             raise
