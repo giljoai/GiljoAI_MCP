@@ -774,10 +774,23 @@ function isIntroTourHidden() {
   }
 }
 
+function isChecklistComplete() {
+  try {
+    const raw = localStorage.getItem('giljo_startup_checklist_v1')
+    if (!raw) return false
+    const checklist = JSON.parse(raw)
+    const itemIds = ['tools', 'connect', 'slash', 'templates', 'context', 'integrations']
+    return itemIds.every(id => checklist[id] === true)
+  } catch {
+    return false
+  }
+}
+
 function maybeShowIntroTour() {
   if (introTourShownThisSession.value) return
   if (activeTab.value !== 'startup') return
   if (isIntroTourHidden()) return
+  if (isChecklistComplete()) return // Don't show if checklist is complete
   showIntroTour.value = true
   introTourShownThisSession.value = true
 }
