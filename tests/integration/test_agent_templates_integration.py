@@ -48,27 +48,18 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
                 "languages": ["Python", "TypeScript"],
                 "backend": "FastAPI",
                 "frontend": "Vue 3",
-                "database": "PostgreSQL"
+                "database": "PostgreSQL",
             },
-            "architecture": {
-                "pattern": "Service Layer",
-                "api_style": "REST"
-            }
+            "architecture": {"pattern": "Service Layer", "api_style": "REST"},
         },
         product_memory={
             "learnings": [
                 {"summary": "Previous project insight 1", "type": "architecture"},
-                {"summary": "Previous project insight 2", "type": "testing"}
+                {"summary": "Previous project insight 2", "type": "testing"},
             ],
-            "context": {
-                "objectives": ["Build scalable API", "Maintain >80% test coverage"]
-            },
-            "git_integration": {
-                "enabled": True,
-                "default_branch": "main",
-                "commit_limit": 20
-            }
-        }
+            "context": {"objectives": ["Build scalable API", "Maintain >80% test coverage"]},
+            "git_integration": {"enabled": True, "default_branch": "main", "commit_limit": 20},
+        },
     )
     db_session.add(product)
 
@@ -85,9 +76,9 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
                     "Implement features",
                     "Write service methods",
                     "Create API endpoints",
-                    "Design database schemas"
-                ]
-            }
+                    "Design database schemas",
+                ],
+            },
         },
         {
             "name": "tester",
@@ -100,9 +91,9 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
                     "Write unit tests",
                     "Create integration tests",
                     "Validate functionality",
-                    "Review test coverage"
-                ]
-            }
+                    "Review test coverage",
+                ],
+            },
         },
         {
             "name": "frontend_implementer",
@@ -115,10 +106,10 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
                     "Build Vue components",
                     "Implement UI features",
                     "Integrate with backend APIs",
-                    "Ensure responsive design"
-                ]
-            }
-        }
+                    "Ensure responsive design",
+                ],
+            },
+        },
     ]
 
     for template_data in agent_templates_data:
@@ -129,10 +120,9 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
             role=template_data["role"],
             category="role",
             description=template_data["description"],
-            template_content=f"Template content for {template_data['name']}",
             system_instructions=f"System instructions for {template_data['name']}",
             meta_data=template_data["meta_data"],
-            is_active=True
+            is_active=True,
         )
         db_session.add(template)
 
@@ -145,8 +135,8 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
             "agent_templates": 2,  # Summary detail level
             "tech_stack.languages": 1,
             "tech_stack.backend": 1,
-            "architecture.pattern": 1
-        }
+            "architecture.pattern": 1,
+        },
     )
     db_session.add(user)
 
@@ -158,7 +148,7 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
         tenant_key=tenant_key,
         description="This is an integration test project to validate agent templates in context generation workflow.",
         mission="Integration test mission",
-        context_budget=150000
+        context_budget=150000,
     )
     db_session.add(project)
 
@@ -167,9 +157,7 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
     # ACT - Generate orchestrator prompt
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
     result = await generator.generate(
-        project_id=project.id,
-        user_id=user.id,
-        field_priorities=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
     )
 
     thin_prompt = result["thin_prompt"]
@@ -178,22 +166,25 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
     # ASSERT - Verify complete integration
 
     # 1. Agent templates section exists
-    assert "## Available Agents" in thin_prompt, \
-        "Agent templates section should be present in context"
+    assert "## Available Agents" in thin_prompt, "Agent templates section should be present in context"
 
     # 2. All three agent templates appear
     assert "implementer" in thin_prompt.lower(), "Implementer agent should be present"
     assert "tester" in thin_prompt.lower(), "Tester agent should be present"
-    assert "frontend_implementer" in thin_prompt.lower() or "frontend implementer" in thin_prompt.lower(), \
+    assert "frontend_implementer" in thin_prompt.lower() or "frontend implementer" in thin_prompt.lower(), (
         "Frontend implementer agent should be present"
+    )
 
     # 3. Priority 2 detail level (capabilities present, expertise/tasks absent)
-    assert "**Capabilities**:" in thin_prompt or "Capabilities:" in thin_prompt, \
+    assert "**Capabilities**:" in thin_prompt or "Capabilities:" in thin_prompt, (
         "Priority 2 should include capabilities"
-    assert "**Expertise**:" not in thin_prompt and "Expertise:" not in thin_prompt, \
+    )
+    assert "**Expertise**:" not in thin_prompt and "Expertise:" not in thin_prompt, (
         "Priority 2 should NOT include expertise"
-    assert "**Typical Tasks**:" not in thin_prompt and "Typical Tasks:" not in thin_prompt, \
+    )
+    assert "**Typical Tasks**:" not in thin_prompt and "Typical Tasks:" not in thin_prompt, (
         "Priority 2 should NOT include typical tasks"
+    )
 
     # 4. Section ordering verification
     # Expected order: IDENTITY → MCP CONNECTION → 360 Memory → Git → Agents → YOUR ROLE → TOOLS
@@ -225,13 +216,14 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
     assert estimated_tokens > 100, "Context should include substantial content (>100 tokens)"
 
     # 6. 360 Memory integration
-    assert "Product has 2 previous project learnings" in thin_prompt or \
-           "previous project learnings" in thin_prompt, \
+    assert "Product has 2 previous project learnings" in thin_prompt or "previous project learnings" in thin_prompt, (
         "360 Memory should reference product learnings"
+    )
 
     # 7. Git integration (enabled in product_memory)
-    assert "git log" in thin_prompt.lower() or "git integration" in thin_prompt.lower(), \
+    assert "git log" in thin_prompt.lower() or "git integration" in thin_prompt.lower(), (
         "Git integration should be present (enabled in product config)"
+    )
 
     # 8. Multi-tenant isolation (verify tenant_key in prompt)
     assert tenant_key in thin_prompt, "Tenant key should appear in prompt for MCP tool calls"

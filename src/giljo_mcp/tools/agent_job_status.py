@@ -22,9 +22,9 @@ from typing import Any, Optional
 
 from sqlalchemy import select
 
-from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -35,10 +35,14 @@ logger = logging.getLogger(__name__)
 # AgentExecution has different statuses: waiting, working, blocked, complete, cancelled, failed, decommissioned
 VALID_STATUSES = {"active", "completed", "cancelled"}
 
-# Module-level db_manager, job_manager, and test_session (initialized by register function or tests)
-_db_manager: Optional[DatabaseManager] = None
-_job_manager: Optional[AgentJobManager] = None
-_test_session: Optional[Any] = None  # AsyncSession for testing
+
+# Module-level state holder
+class _AgentJobStatusState:
+    """State holder to avoid global statement."""
+
+    db_manager: Optional[DatabaseManager] = None
+    job_manager: Optional[AgentJobManager] = None
+    test_session: Optional[Any] = None  # AsyncSession for testing
 
 
 def init_for_testing(
@@ -57,12 +61,11 @@ def init_for_testing(
         test_session: Optional AsyncSession for transaction-based test isolation
         tenant_manager: TenantManager instance for testing (required for AgentJobManager)
     """
-    global _db_manager, _job_manager, _test_session
-    _db_manager = db_manager
+    _AgentJobStatusState.db_manager = db_manager
     if tenant_manager is None:
         raise ValueError("tenant_manager is required for initializing AgentJobManager")
-    _job_manager = AgentJobManager(db_manager, tenant_manager)
-    _test_session = test_session
+    _AgentJobStatusState.job_manager = AgentJobManager(db_manager, tenant_manager)
+    _AgentJobStatusState.test_session = test_session
 
 
 async def get_job_status(
@@ -106,7 +109,7 @@ async def get_job_status(
     - Response includes execution history to show all agents who worked
     """
     # Use provided db_manager or fall back to module-level
-    db_mgr = db_manager if db_manager is not None else _db_manager
+    db_mgr = db_manager if db_manager is not None else _AgentJobStatusState.db_manager
 
     if db_mgr is None:
         raise RuntimeError("get_job_status called before registration and no db_manager provided")
@@ -129,13 +132,12 @@ async def get_job_status(
 
         # Use test session if available (for transaction isolation in tests)
         # Otherwise create new session
-        if _test_session is not None:
-            session = _test_session
+        if _AgentJobStatusState.test_session is not None:
+            session = _AgentJobStatusState.test_session
             # Process query directly without context manager (test session managed externally)
             return await _get_job_status_impl(session, job_id, tenant_key)
-        else:
-            async with db_mgr.get_session_async() as session:
-                return await _get_job_status_impl(session, job_id, tenant_key)
+        async with db_mgr.get_session_async() as session:
+            return await _get_job_status_impl(session, job_id, tenant_key)
 
     except Exception as e:
         logger.exception(f"Failed to get status for job {job_id}")
@@ -191,7 +193,7 @@ async def _get_job_status_impl(session, job_id: str, tenant_key: str) -> dict[st
             AgentExecution.tenant_key == tenant_key,
             AgentExecution.job_id == job_id,
         )
-        .order_by(AgentExecution.instance_number)
+        .order_by(AgentExecution.started_at)
     )
     exec_result = await session.execute(exec_stmt)
     executions = exec_result.scalars().all()
@@ -199,31 +201,19 @@ async def _get_job_status_impl(session, job_id: str, tenant_key: str) -> dict[st
     if executions:
         response["executions"] = [
             {
-                "agent_id": exec.agent_id,
-                "status": exec.status,
-                "instance_number": exec.instance_number,
-                "progress": exec.progress,
-                "started_at": exec.started_at.isoformat() if exec.started_at else None,
-                "completed_at": exec.completed_at.isoformat()
-                if exec.completed_at
-                else None,
-                "decommissioned_at": exec.decommissioned_at.isoformat()
-                if exec.decommissioned_at
-                else None,
+                "agent_id": execution.agent_id,
+                "status": execution.status,
+                "progress": execution.progress,
+                "started_at": execution.started_at.isoformat() if execution.started_at else None,
+                "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
             }
-            for exec in executions
+            for execution in executions
         ]
 
-        # Find current agent (non-decommissioned with highest instance number)
-        active_execs = [
-            e for e in executions if e.decommissioned_at is None
-        ]
-        if active_execs:
-            current_exec = max(
-                active_execs, key=lambda e: e.instance_number
-            )
+        # Find current agent (most recent by started_at)
+        if executions:
+            current_exec = max(executions, key=lambda e: e.started_at or datetime.min.replace(tzinfo=timezone.utc))
             response["current_agent_id"] = current_exec.agent_id
-            response["current_instance"] = current_exec.instance_number
 
     logger.info(f"Retrieved status for job {job_id} (tenant: {tenant_key})")
     return response
@@ -256,11 +246,9 @@ async def get_agent_status(
         - job_id: Work order UUID (context - which job is this agent working on)
         - status: Execution status (waiting, working, blocked, complete, etc.)
         - agent_display_name: Type of agent (orchestrator, implementer, etc.)
-        - instance_number: Sequential instance number (1, 2, 3, ...)
         - progress: Completion progress (0-100%)
         - current_task: Description of current task
         - spawned_by: Parent agent_id (succession chain)
-        - decommissioned_at: Timestamp when agent was decommissioned
 
     Example:
         # Query agent status
@@ -275,7 +263,7 @@ async def get_agent_status(
     - Response includes job_id for context (which work order is this agent executing)
     """
     # Use provided db_manager or fall back to module-level
-    db_mgr = db_manager if db_manager is not None else _db_manager
+    db_mgr = db_manager if db_manager is not None else _AgentJobStatusState.db_manager
 
     if db_mgr is None:
         raise RuntimeError("get_agent_status called before registration and no db_manager provided")
@@ -298,13 +286,12 @@ async def get_agent_status(
 
         # Use test session if available (for transaction isolation in tests)
         # Otherwise create new session
-        if _test_session is not None:
-            session = _test_session
+        if _AgentJobStatusState.test_session is not None:
+            session = _AgentJobStatusState.test_session
             # Process query directly without context manager (test session managed externally)
             return await _get_agent_status_impl(session, agent_id, tenant_key)
-        else:
-            async with db_mgr.get_session_async() as session:
-                return await _get_agent_status_impl(session, agent_id, tenant_key)
+        async with db_mgr.get_session_async() as session:
+            return await _get_agent_status_impl(session, agent_id, tenant_key)
 
     except Exception as e:
         logger.exception(f"Failed to get status for agent {agent_id}")
@@ -348,7 +335,6 @@ async def _get_agent_status_impl(session, agent_id: str, tenant_key: str) -> dic
         "job_id": execution.job_id,  # Context: which job is this agent working on
         "status": execution.status,
         "agent_display_name": execution.agent_display_name,
-        "instance_number": execution.instance_number,
         "progress": execution.progress,
     }
 
@@ -359,24 +345,16 @@ async def _get_agent_status_impl(session, agent_id: str, tenant_key: str) -> dic
     if execution.spawned_by:
         response["spawned_by"] = execution.spawned_by
 
-    if execution.succeeded_by:
-        response["succeeded_by"] = execution.succeeded_by
-
     if execution.started_at:
         response["started_at"] = execution.started_at.isoformat()
 
     if execution.completed_at:
         response["completed_at"] = execution.completed_at.isoformat()
 
-    if execution.decommissioned_at:
-        response["decommissioned_at"] = execution.decommissioned_at.isoformat()
-
     if execution.block_reason:
         response["block_reason"] = execution.block_reason
 
-    logger.info(
-        f"Retrieved status for agent {agent_id} (job: {execution.job_id}, tenant: {tenant_key})"
-    )
+    logger.info(f"Retrieved status for agent {agent_id} (job: {execution.job_id}, tenant: {tenant_key})")
     return response
 
 
@@ -447,7 +425,7 @@ async def update_job_status(
     Handover 0366c: Uses AgentJob model (not deprecated Job model)
     """
     # Use provided db_manager or fall back to module-level
-    db_mgr = db_manager if db_manager is not None else _db_manager
+    db_mgr = db_manager if db_manager is not None else _AgentJobStatusState.db_manager
 
     if db_mgr is None:
         raise RuntimeError("update_job_status called before registration and no db_manager provided")
@@ -481,17 +459,16 @@ async def update_job_status(
 
         # Use test session if available (for transaction isolation in tests)
         # Otherwise create new session
-        if _test_session is not None:
-            session = _test_session
+        if _AgentJobStatusState.test_session is not None:
+            session = _AgentJobStatusState.test_session
             # Process query directly without context manager (test session managed externally)
             return await _update_job_status_impl(session, job_id, tenant_key, new_status, reason)
-        else:
-            async with db_mgr.get_session_async() as session:
-                return await _update_job_status_impl(session, job_id, tenant_key, new_status, reason)
+        async with db_mgr.get_session_async() as session:
+            return await _update_job_status_impl(session, job_id, tenant_key, new_status, reason)
 
     except ValueError as ve:
         # Handle invalid status transitions
-        logger.error(f"Invalid status transition for job {job_id}: {ve}")
+        logger.exception(f"Invalid status transition for job {job_id}")
         return {
             "success": False,
             "error": str(ve),
@@ -573,13 +550,14 @@ async def _update_job_status_impl(
     if reason:
         response["reason"] = reason
 
+    reason_part = f" (reason: {reason})" if reason else ""
     logger.info(
-        f"Job {job_id} status updated: {old_status} -> {job.status} "
-        f"for tenant {tenant_key}" + (f" (reason: {reason})" if reason else "")
+        "Job %s status updated: %s -> %s for tenant %s%s",
+        job_id,
+        old_status,
+        job.status,
+        tenant_key,
+        reason_part,
     )
-
-    # TODO: Trigger WebSocket event for Kanban board real-time updates
-    # This will be implemented in the next phase
-    # await websocket_manager.broadcast_job_status_changed(...)
 
     return response

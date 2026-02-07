@@ -10,7 +10,7 @@ Created: 2025-11-07
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -27,7 +27,7 @@ class WebSocketEventRequest(BaseModel):
 
     event_type: str
     tenant_key: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
 
 
 class WebSocketEventResponse(BaseModel):
@@ -36,7 +36,7 @@ class WebSocketEventResponse(BaseModel):
     success: bool
     event_type: str
     clients_notified: int
-    message: Optional[str] = None
+    message: str | None = None
 
 
 @router.post("/emit", response_model=WebSocketEventResponse)
@@ -85,21 +85,20 @@ async def emit_websocket_event(
         # Validate required fields
         if not request.event_type or not request.tenant_key:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="event_type and tenant_key are required"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="event_type and tenant_key are required"
             )
 
         # Check if WebSocket manager is available
         if not ws_dep.manager:
             logger.warning(
                 "WebSocket manager not available for broadcast",
-                extra={"event_type": request.event_type, "tenant_key": request.tenant_key}
+                extra={"event_type": request.event_type, "tenant_key": request.tenant_key},
             )
             return WebSocketEventResponse(
                 success=False,
                 event_type=request.event_type,
                 clients_notified=0,
-                message="WebSocket manager not available"
+                message="WebSocket manager not available",
             )
 
         clients_notified = await ws_dep.broadcast_to_tenant(
@@ -133,5 +132,5 @@ async def emit_websocket_event(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to emit WebSocket event: {str(e)}",
+            detail=f"Failed to emit WebSocket event: {e!s}",
         ) from e

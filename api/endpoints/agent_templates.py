@@ -11,7 +11,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
@@ -105,13 +104,12 @@ def build_template_markdown(template: AgentTemplate) -> str:
 """
 
     # Combine header + template content + MCP integration
-    return header + template.template_content + MCP_INTEGRATION_SECTION
+    return header + template.system_instructions + MCP_INTEGRATION_SECTION
 
 
 @router.get("/", response_model=TemplateListResponse)
 async def list_agent_templates(
-    current_user: User = Depends(get_current_active_user),
-    session: AsyncSession = Depends(get_db_session)
+    current_user: User = Depends(get_current_active_user), session: AsyncSession = Depends(get_db_session)
 ):
     """
     List all available agent templates
@@ -149,19 +147,6 @@ async def list_agent_templates(
             session=session,
             tenant_key=current_user.tenant_key,
         )
-
-        # ORIGINAL QUERY (kept for reference):
-        # stmt = (
-        #     select(AgentTemplate)
-        #     .where(AgentTemplate.tenant_key == current_user.tenant_key)
-        #     .where(AgentTemplate.is_active == True)
-        #     .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
-        #     .order_by(AgentTemplate.role, AgentTemplate.name)
-        # )
-        # result = await session.execute(stmt)
-        # templates = result.scalars().all()
-
-        # Build template metadata list
         files = []
         for template in templates:
             filename = format_filename(template.role or template.name)
@@ -182,14 +167,14 @@ async def list_agent_templates(
 
     except Exception as e:
         logger.error(f"Failed to list agent templates: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/{filename}")
 async def download_agent_template(
     filename: str,
     current_user: User = Depends(get_current_active_user),
-    session: AsyncSession = Depends(get_db_session)
+    session: AsyncSession = Depends(get_db_session),
 ):
     """
     Download an agent template as a markdown file
@@ -222,23 +207,12 @@ async def download_agent_template(
         raise HTTPException(status_code=404, detail=f"Template '{filename}' not found")
 
     try:
-        # Initialize service and get template by role
         template_service = TemplateService()
         template = await template_service.get_template_by_role(
             session=session,
             tenant_key=current_user.tenant_key,
             role=role,
         )
-
-        # ORIGINAL QUERY (kept for reference):
-        # stmt = (
-        #     select(AgentTemplate)
-        #     .where(AgentTemplate.tenant_key == current_user.tenant_key)
-        #     .where(AgentTemplate.role == role)
-        #     .where(AgentTemplate.is_active == True)
-        # )
-        # result = await session.execute(stmt)
-        # template = result.scalar_one_or_none()
 
         if not template:
             logger.warning(f"Template not found: {filename} for tenant {current_user.tenant_key}")
@@ -258,4 +232,4 @@ async def download_agent_template(
 
     except Exception as e:
         logger.error(f"Failed to download template {filename}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

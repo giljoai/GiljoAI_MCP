@@ -8,21 +8,18 @@ PRODUCTION-GRADE: Validates cross-process MCP-to-WebSocket communication
 """
 
 import asyncio
-from datetime import datetime
-from pathlib import Path
 from typing import List
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-import httpx
 from sqlalchemy.orm import Session
 
 from api.dependencies.websocket import WebSocketDependency
 from api.websocket import WebSocketManager
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 class MockWebSocket:
@@ -90,8 +87,7 @@ async def seed_agent_templates(db_session, test_user_a: User, test_product: Prod
                 tenant_key=test_user_a.tenant_key,
                 product_id=test_product.id,
                 name=name,
-                template_content=f"Template for {name}",
-                system_instructions="",
+                system_instructions=f"Template for {name}",
                 user_instructions="",
                 is_active=True,
             )
@@ -235,7 +231,7 @@ class TestAgentCardRealTimeBroadcasting:
         """
         PRODUCTION-GRADE: Validate HTTP bridge endpoint works correctly
         """
-        from api.endpoints.websocket_bridge import emit_websocket_event, WebSocketEventRequest
+        from api.endpoints.websocket_bridge import WebSocketEventRequest, emit_websocket_event
 
         # Arrange: Connect WebSocket client
         client = MockWebSocket("test_client", test_user_a.tenant_key)
@@ -474,7 +470,7 @@ class TestHttpBridgeEdgeCases:
         """
         Validate graceful handling when WebSocket manager unavailable
         """
-        from api.endpoints.websocket_bridge import emit_websocket_event, WebSocketEventRequest
+        from api.endpoints.websocket_bridge import WebSocketEventRequest, emit_websocket_event
 
         # Act: Call bridge with no WebSocket manager
         ws_dep = WebSocketDependency(websocket_manager=None)
@@ -496,8 +492,9 @@ class TestHttpBridgeEdgeCases:
         """
         Validate error handling for invalid event types
         """
-        from api.endpoints.websocket_bridge import emit_websocket_event, WebSocketEventRequest
         from fastapi import HTTPException
+
+        from api.endpoints.websocket_bridge import WebSocketEventRequest, emit_websocket_event
 
         ws_dep = WebSocketDependency(websocket_manager=websocket_manager)
 

@@ -12,6 +12,7 @@ Coverage Target: >90%
 """
 
 import pytest
+
 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
 
@@ -128,10 +129,7 @@ class TestSimplifiedSummarization:
         original_text = generate_realistic_document(tokens=10000)
 
         # Summarize with light level (should target ~3,300 tokens)
-        result = summarizer.summarize_multi_level(
-            original_text,
-            levels={"light": 3300, "medium": 6600}
-        )
+        result = summarizer.summarize_multi_level(original_text, levels={"light": 3300, "medium": 6600})
 
         # Verify light summary exists
         assert "light" in result, "Result should contain 'light' key"
@@ -144,7 +142,7 @@ class TestSimplifiedSummarization:
 
         # Assert 33% ± 10% (23% to 43%)
         assert 0.23 <= actual_percentage <= 0.43, (
-            f"Light summary is {actual_percentage*100:.1f}% of original, "
+            f"Light summary is {actual_percentage * 100:.1f}% of original, "
             f"expected 33% ± 10% (23-43%). "
             f"Tokens: {light_tokens}/{original_tokens}"
         )
@@ -164,10 +162,7 @@ class TestSimplifiedSummarization:
         original_text = generate_realistic_document(tokens=10000)
 
         # Summarize with medium level (should target ~6,600 tokens)
-        result = summarizer.summarize_multi_level(
-            original_text,
-            levels={"light": 3300, "medium": 6600}
-        )
+        result = summarizer.summarize_multi_level(original_text, levels={"light": 3300, "medium": 6600})
 
         # Verify medium summary exists
         assert "medium" in result, "Result should contain 'medium' key"
@@ -180,7 +175,7 @@ class TestSimplifiedSummarization:
 
         # Assert 66% ± 10% (56% to 76%)
         assert 0.56 <= actual_percentage <= 0.76, (
-            f"Medium summary is {actual_percentage*100:.1f}% of original, "
+            f"Medium summary is {actual_percentage * 100:.1f}% of original, "
             f"expected 66% ± 10% (56-76%). "
             f"Tokens: {medium_tokens}/{original_tokens}"
         )
@@ -209,9 +204,7 @@ class TestSimplifiedSummarization:
         assert "medium" in result, "Result must contain 'medium' level"
 
         # Verify heavy does NOT exist
-        assert "heavy" not in result, (
-            "Result should NOT contain 'heavy' level (removed in Handover 0246b)"
-        )
+        assert "heavy" not in result, "Result should NOT contain 'heavy' level (removed in Handover 0246b)"
 
         # Verify metadata fields exist
         assert "original_tokens" in result, "Result should include original_tokens"
@@ -235,12 +228,12 @@ class TestSimplifiedSummarization:
         result = summarizer.summarize_multi_level(original_text)
 
         # Split original into sentences for verification
-        original_sentences = [s.strip() for s in original_text.split('.') if s.strip()]
+        original_sentences = [s.strip() for s in original_text.split(".") if s.strip()]
 
         # Verify both light and medium summaries are extractive
         for level in ["light", "medium"]:
             summary_text = result[level]["summary"]
-            summary_sentences = [s.strip() for s in summary_text.split('.') if s.strip()]
+            summary_sentences = [s.strip() for s in summary_text.split(".") if s.strip()]
 
             # At least 80% of summary sentences should match original
             matches = 0
@@ -260,7 +253,7 @@ class TestSimplifiedSummarization:
 
             assert match_ratio >= 0.80, (
                 f"{level.capitalize()} summary appears non-extractive: "
-                f"only {match_ratio*100:.0f}% of sentences match original. "
+                f"only {match_ratio * 100:.0f}% of sentences match original. "
                 f"This indicates potential hallucination - CRITICAL FAILURE. "
                 f"Matched: {matches}/{len(valid_summary_sentences)} sentences"
             )
@@ -321,9 +314,7 @@ class TestSimplifiedSummarization:
 
         # Verify light target (~5K tokens ± 20%)
         light_tokens = result["light"]["tokens"]
-        assert 4000 <= light_tokens <= 6000, (
-            f"Light summary has {light_tokens} tokens, expected ~5K (4K-6K range)"
-        )
+        assert 4000 <= light_tokens <= 6000, f"Light summary has {light_tokens} tokens, expected ~5K (4K-6K range)"
 
         # Verify medium target (~10K tokens ± 20%)
         medium_tokens = result["medium"]["tokens"]
@@ -345,10 +336,7 @@ class TestSimplifiedSummarization:
         original_text = generate_realistic_document(tokens=20000)
 
         # Custom targets for light and medium only
-        custom_levels = {
-            "light": 4000,
-            "medium": 10000
-        }
+        custom_levels = {"light": 4000, "medium": 10000}
 
         result = summarizer.summarize_multi_level(original_text, levels=custom_levels)
 
@@ -409,9 +397,7 @@ class TestSimplifiedSummarization:
         elapsed = time.time() - start
 
         # Should complete in <15 seconds
-        assert elapsed < 15.0, (
-            f"Summarization took {elapsed:.2f}s, exceeds 15s requirement for 50K tokens"
-        )
+        assert elapsed < 15.0, f"Summarization took {elapsed:.2f}s, exceeds 15s requirement for 50K tokens"
 
         # Verify processing time is tracked
         assert result["processing_time_ms"] > 0
@@ -554,12 +540,15 @@ class TestEdgeCases:
         """Unicode characters should be handled correctly."""
         summarizer = VisionDocumentSummarizer()
 
-        unicode_text = """
+        unicode_text = (
+            """
         The system supports internationalization with Unicode characters.
         测试中文字符处理能力。
         Тестирование кириллических символов.
         Testing emoji support: 🚀 💻 📊
-        """ * 100  # Repeat to get reasonable token count
+        """
+            * 100
+        )  # Repeat to get reasonable token count
 
         result = summarizer.summarize_multi_level(unicode_text)
 

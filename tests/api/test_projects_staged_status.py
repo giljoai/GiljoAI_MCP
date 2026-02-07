@@ -18,19 +18,22 @@ Coverage:
 - Field is properly serialized in ProjectResponse schema
 """
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 
 # ============================================================================
 # FIXTURES - Test Users and Authentication
 # ============================================================================
 
+
 @pytest.fixture
 async def test_user(db_manager):
     """Create test user with unique credentials."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -113,6 +116,7 @@ async def test_project(api_client: AsyncClient, test_user_token, test_product):
 # TESTS - Staged Status Field Presence
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_list_projects_includes_staging_status_field(
     api_client: AsyncClient,
@@ -142,15 +146,14 @@ async def test_list_projects_includes_staging_status_field(
     # CRITICAL: Verify staging_status field exists in response
     first_project = projects[0]
     assert "staging_status" in first_project, (
-        "staging_status field missing from ProjectResponse. "
-        "This test should FAIL initially (RED phase)"
+        "staging_status field missing from ProjectResponse. This test should FAIL initially (RED phase)"
     )
 
     # Verify field can be null (default state for new projects)
     # Note: This assertion should pass even if staging_status is None
-    assert first_project["staging_status"] is None or isinstance(
-        first_project["staging_status"], str
-    ), "staging_status should be None or a string"
+    assert first_project["staging_status"] is None or isinstance(first_project["staging_status"], str), (
+        "staging_status should be None or a string"
+    )
 
 
 @pytest.mark.asyncio
@@ -186,9 +189,7 @@ async def test_project_without_agents_has_null_staging_status(
 
     # Verify new project has null staging_status
     assert "staging_status" in project, "staging_status field should exist"
-    assert project["staging_status"] is None, (
-        "New project should have null staging_status"
-    )
+    assert project["staging_status"] is None, "New project should have null staging_status"
     assert project["agent_count"] == 0, "New project should have 0 agents"
 
 
@@ -234,16 +235,11 @@ async def test_project_with_staging_status_set(
     projects = response.json()
 
     # Find our staged project
-    staged_project = next(
-        (p for p in projects if p["id"] == project_id),
-        None
-    )
+    staged_project = next((p for p in projects if p["id"] == project_id), None)
 
     assert staged_project is not None, "Should find staged project in list"
     assert "staging_status" in staged_project, "staging_status field should exist"
-    assert staged_project["staging_status"] == "staged", (
-        "staging_status should be 'staged'"
-    )
+    assert staged_project["staging_status"] == "staged", "staging_status should be 'staged'"
 
 
 @pytest.mark.asyncio
@@ -262,18 +258,13 @@ async def test_get_single_project_includes_staging_status(
     headers = {"Cookie": f"access_token={test_user_token}"}
     project_id = test_project["id"]
 
-    response = await api_client.get(
-        f"/api/v1/projects/{project_id}",
-        headers=headers
-    )
+    response = await api_client.get(f"/api/v1/projects/{project_id}", headers=headers)
 
     assert response.status_code == 200
     project = response.json()
 
     # Verify staging_status field exists
-    assert "staging_status" in project, (
-        "staging_status field should exist in single project response"
-    )
+    assert "staging_status" in project, "staging_status field should exist in single project response"
 
 
 @pytest.mark.asyncio
@@ -319,14 +310,13 @@ async def test_staging_status_field_schema_validation(
                 "launching",
                 "active",
             ]
-            assert staging_status in valid_statuses, (
-                f"staging_status '{staging_status}' not in valid statuses"
-            )
+            assert staging_status in valid_statuses, f"staging_status '{staging_status}' not in valid statuses"
 
 
 # ============================================================================
 # TESTS - Integration with Agent Count
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_project_staging_status_with_agent_count(
@@ -373,22 +363,15 @@ async def test_project_staging_status_with_agent_count(
     projects = response.json()
 
     # Find our staged project
-    staged_project = next(
-        (p for p in projects if p["id"] == project_id),
-        None
-    )
+    staged_project = next((p for p in projects if p["id"] == project_id), None)
 
     assert staged_project is not None, "Should find staged project in list"
     assert "staging_status" in staged_project, "staging_status field should exist"
     assert "agent_count" in staged_project, "agent_count field should exist"
 
     # Verify staging_status is correctly returned
-    assert staged_project["staging_status"] == "staged", (
-        "staging_status should be 'staged'"
-    )
+    assert staged_project["staging_status"] == "staged", "staging_status should be 'staged'"
 
     # Frontend logic can now use: agent_count > 0 OR staging_status == 'staged'
     # This project qualifies via staging_status alone
-    assert staged_project["staging_status"] == "staged", (
-        "Project should be considered 'staged' by frontend logic"
-    )
+    assert staged_project["staging_status"] == "staged", "Project should be considered 'staged' by frontend logic"

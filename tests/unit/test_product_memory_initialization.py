@@ -11,9 +11,10 @@ Tests ensure:
 4. Valid memory structures are unchanged
 """
 
-import pytest
 import uuid
-from unittest.mock import AsyncMock, Mock
+
+import pytest
+
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.services.product_service import ProductService
 
@@ -45,7 +46,7 @@ class TestProductMemoryInitialization:
             unique_name = f"Auto-Init Product {uuid.uuid4().hex[:8]}"
             result = await product_service.create_product(
                 name=unique_name,
-                description="Testing automatic memory initialization"
+                description="Testing automatic memory initialization",
                 # NOTE: product_memory NOT provided - should auto-initialize
             )
 
@@ -54,11 +55,7 @@ class TestProductMemoryInitialization:
                 print(f"ERROR: {result.get('error', 'Unknown error')}")
             assert result["success"] is True
             assert "product_memory" in result
-            assert result["product_memory"] == {
-                "github": {},
-                "learnings": [],
-                "context": {}
-            }
+            assert result["product_memory"] == {"github": {}, "learnings": [], "context": {}}
         finally:
             await db_manager.close_async()
 
@@ -72,9 +69,10 @@ class TestProductMemoryInitialization:
         THEN: product_memory is initialized to default structure
         """
         # ARRANGE
+        from sqlalchemy import update
+
         from src.giljo_mcp.database import DatabaseManager
         from tests.helpers.test_db_helper import PostgreSQLTestHelper
-        from sqlalchemy import select, update
 
         connection_string = PostgreSQLTestHelper.get_test_db_url()
         db_manager = DatabaseManager(connection_string, is_async=True)
@@ -85,18 +83,13 @@ class TestProductMemoryInitialization:
 
             # Create a product normally
             result = await product_service.create_product(
-                name="Null Memory Product " + uuid.uuid4().hex[:8],
-                description="Testing NULL memory handling"
+                name="Null Memory Product " + uuid.uuid4().hex[:8], description="Testing NULL memory handling"
             )
             product_id = result["product_id"]
 
             # Force product_memory to NULL (simulate edge case)
             async with db_manager.get_session_async() as session:
-                stmt = (
-                    update(Product)
-                    .where(Product.id == product_id)
-                    .values(product_memory=None)
-                )
+                stmt = update(Product).where(Product.id == product_id).values(product_memory=None)
                 await session.execute(stmt)
                 await session.commit()
 
@@ -111,11 +104,7 @@ class TestProductMemoryInitialization:
             # NOTE: This test will FAIL until we implement _ensure_product_memory_initialized()
             # Expected behavior: NULL memory should be replaced with default structure
             assert "product_memory" in product_data
-            assert product_data["product_memory"] == {
-                "github": {},
-                "learnings": [],
-                "context": {}
-            }
+            assert product_data["product_memory"] == {"github": {}, "learnings": [], "context": {}}
         finally:
             await db_manager.close_async()
 
@@ -129,9 +118,10 @@ class TestProductMemoryInitialization:
         THEN: product_memory is updated to include all required keys
         """
         # ARRANGE
+        from sqlalchemy import update
+
         from src.giljo_mcp.database import DatabaseManager
         from tests.helpers.test_db_helper import PostgreSQLTestHelper
-        from sqlalchemy import update
 
         connection_string = PostgreSQLTestHelper.get_test_db_url()
         db_manager = DatabaseManager(connection_string, is_async=True)
@@ -142,18 +132,13 @@ class TestProductMemoryInitialization:
 
             # Create a product
             result = await product_service.create_product(
-                name="Empty Memory Product " + uuid.uuid4().hex[:8],
-                description="Testing empty dict memory handling"
+                name="Empty Memory Product " + uuid.uuid4().hex[:8], description="Testing empty dict memory handling"
             )
             product_id = result["product_id"]
 
             # Force product_memory to empty dict
             async with db_manager.get_session_async() as session:
-                stmt = (
-                    update(Product)
-                    .where(Product.id == product_id)
-                    .values(product_memory={})
-                )
+                stmt = update(Product).where(Product.id == product_id).values(product_memory={})
                 await session.execute(stmt)
                 await session.commit()
 
@@ -165,11 +150,7 @@ class TestProductMemoryInitialization:
             product_data = retrieved["product"]
 
             # NOTE: This test will FAIL until we implement _ensure_product_memory_initialized()
-            assert product_data["product_memory"] == {
-                "github": {},
-                "learnings": [],
-                "context": {}
-            }
+            assert product_data["product_memory"] == {"github": {}, "learnings": [], "context": {}}
         finally:
             await db_manager.close_async()
 
@@ -183,9 +164,10 @@ class TestProductMemoryInitialization:
         THEN: Missing "learnings" and "context" keys are added, "github" is preserved
         """
         # ARRANGE
+        from sqlalchemy import update
+
         from src.giljo_mcp.database import DatabaseManager
         from tests.helpers.test_db_helper import PostgreSQLTestHelper
-        from sqlalchemy import update
 
         connection_string = PostgreSQLTestHelper.get_test_db_url()
         db_manager = DatabaseManager(connection_string, is_async=True)
@@ -196,19 +178,14 @@ class TestProductMemoryInitialization:
 
             # Create a product
             result = await product_service.create_product(
-                name="Partial Memory Product " + uuid.uuid4().hex[:8],
-                description="Testing partial memory completion"
+                name="Partial Memory Product " + uuid.uuid4().hex[:8], description="Testing partial memory completion"
             )
             product_id = result["product_id"]
 
             # Set partial memory (only github key)
             partial_memory = {"github": {"enabled": True, "repo": "test/repo"}}
             async with db_manager.get_session_async() as session:
-                stmt = (
-                    update(Product)
-                    .where(Product.id == product_id)
-                    .values(product_memory=partial_memory)
-                )
+                stmt = update(Product).where(Product.id == product_id).values(product_memory=partial_memory)
                 await session.execute(stmt)
                 await session.commit()
 
@@ -258,30 +235,22 @@ class TestProductMemoryInitialization:
 
             # Create product with valid memory
             valid_memory = {
-                "github": {
-                    "enabled": True,
-                    "repo_url": "https://github.com/test/repo",
-                    "auto_commit": False
-                },
+                "github": {"enabled": True, "repo_url": "https://github.com/test/repo", "auto_commit": False},
                 "learnings": [
                     {
                         "timestamp": "2025-11-16T10:00:00Z",
                         "project_id": "proj_001",
                         "summary": "Test learning",
-                        "tags": ["test"]
+                        "tags": ["test"],
                     }
                 ],
-                "context": {
-                    "last_updated": "2025-11-16T10:00:00Z",
-                    "token_count": 15000,
-                    "summary": "Test summary"
-                }
+                "context": {"last_updated": "2025-11-16T10:00:00Z", "token_count": 15000, "summary": "Test summary"},
             }
 
             result = await product_service.create_product(
                 name="Valid Memory Product " + uuid.uuid4().hex[:8],
                 description="Testing valid memory preservation",
-                product_memory=valid_memory
+                product_memory=valid_memory,
             )
             product_id = result["product_id"]
 
@@ -307,9 +276,10 @@ class TestProductMemoryInitialization:
         THEN: All products have properly initialized product_memory
         """
         # ARRANGE
+        from sqlalchemy import update
+
         from src.giljo_mcp.database import DatabaseManager
         from tests.helpers.test_db_helper import PostgreSQLTestHelper
-        from sqlalchemy import update
 
         connection_string = PostgreSQLTestHelper.get_test_db_url()
         db_manager = DatabaseManager(connection_string, is_async=True)
@@ -322,25 +292,16 @@ class TestProductMemoryInitialization:
             product_ids = []
             for i in range(3):
                 result = await product_service.create_product(
-                    name=f"List Product {i} " + uuid.uuid4().hex[:8],
-                    description=f"Product {i}"
+                    name=f"List Product {i} " + uuid.uuid4().hex[:8], description=f"Product {i}"
                 )
                 product_ids.append(result["product_id"])
 
             # Force different memory states
             async with db_manager.get_session_async() as session:
                 # Product 0: NULL
-                await session.execute(
-                    update(Product)
-                    .where(Product.id == product_ids[0])
-                    .values(product_memory=None)
-                )
+                await session.execute(update(Product).where(Product.id == product_ids[0]).values(product_memory=None))
                 # Product 1: Empty dict
-                await session.execute(
-                    update(Product)
-                    .where(Product.id == product_ids[1])
-                    .values(product_memory={})
-                )
+                await session.execute(update(Product).where(Product.id == product_ids[1]).values(product_memory={}))
                 # Product 2: Valid (no change needed)
                 await session.commit()
 
@@ -374,9 +335,10 @@ class TestProductMemoryInitialization:
         THEN: Memory is initialized once and remains consistent
         """
         # ARRANGE
+        from sqlalchemy import update
+
         from src.giljo_mcp.database import DatabaseManager
         from tests.helpers.test_db_helper import PostgreSQLTestHelper
-        from sqlalchemy import update
 
         connection_string = PostgreSQLTestHelper.get_test_db_url()
         db_manager = DatabaseManager(connection_string, is_async=True)
@@ -387,18 +349,13 @@ class TestProductMemoryInitialization:
 
             # Create product
             result = await product_service.create_product(
-                name="Idempotent Test Product " + uuid.uuid4().hex[:8],
-                description="Testing idempotent initialization"
+                name="Idempotent Test Product " + uuid.uuid4().hex[:8], description="Testing idempotent initialization"
             )
             product_id = result["product_id"]
 
             # Force NULL memory
             async with db_manager.get_session_async() as session:
-                await session.execute(
-                    update(Product)
-                    .where(Product.id == product_id)
-                    .values(product_memory=None)
-                )
+                await session.execute(update(Product).where(Product.id == product_id).values(product_memory=None))
                 await session.commit()
 
             # ACT - Retrieve product multiple times
@@ -413,10 +370,6 @@ class TestProductMemoryInitialization:
             memory3 = result3["product"]["product_memory"]
 
             assert memory1 == memory2 == memory3
-            assert memory1 == {
-                "github": {},
-                "learnings": [],
-                "context": {}
-            }
+            assert memory1 == {"github": {}, "learnings": [], "context": {}}
         finally:
             await db_manager.close_async()

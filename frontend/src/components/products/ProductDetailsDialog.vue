@@ -68,8 +68,8 @@
                     variant="tonal"
                     color="success"
                     :loading="loadingSummary.docId === doc.id && loadingSummary.level === 'light'"
-                    @click="showSummary(doc, 'light')"
                     class="cursor-pointer"
+                    @click="showSummary(doc, 'light')"
                   >
                     Light
                     <v-icon end size="14">mdi-eye</v-icon>
@@ -82,8 +82,8 @@
                     variant="tonal"
                     color="warning"
                     :loading="loadingSummary.docId === doc.id && loadingSummary.level === 'medium'"
-                    @click="showSummary(doc, 'medium')"
                     class="cursor-pointer"
+                    @click="showSummary(doc, 'medium')"
                   >
                     Medium
                     <v-icon end size="14">mdi-eye</v-icon>
@@ -96,8 +96,8 @@
                     variant="tonal"
                     color="primary-lighten-1"
                     :loading="loadingSummary.docId === doc.id && loadingSummary.level === 'full'"
-                    @click="showSummary(doc, 'full')"
                     class="cursor-pointer"
+                    @click="showSummary(doc, 'full')"
                   >
                     Full
                     <v-icon end size="14">mdi-eye</v-icon>
@@ -147,8 +147,8 @@
               size="small"
               variant="tonal"
               color="success"
-              @click="showConsolidatedSummary('light')"
               class="cursor-pointer"
+              @click="showConsolidatedSummary('light')"
             >
               Light (33%)
               <v-tooltip activator="parent" location="bottom">
@@ -161,8 +161,8 @@
               size="small"
               variant="tonal"
               color="info"
-              @click="showConsolidatedSummary('medium')"
               class="cursor-pointer"
+              @click="showConsolidatedSummary('medium')"
             >
               Medium (66%)
               <v-tooltip activator="parent" location="bottom">
@@ -171,7 +171,7 @@
             </v-chip>
           </div>
 
-          <div class="text-caption text-medium-emphasis mb-3" v-if="product?.consolidated_at">
+          <div v-if="product?.consolidated_at" class="text-caption text-medium-emphasis mb-3">
             <v-icon size="14" class="mr-1">mdi-clock-outline</v-icon>
             Last consolidated: {{ formatDate(product.consolidated_at) }}
             <span v-if="product?.consolidated_vision_hash" class="ml-2">
@@ -183,10 +183,10 @@
             size="small"
             variant="outlined"
             color="info"
-            @click="regenerateConsolidation"
             :loading="regeneratingConsolidation"
             :disabled="!visionDocuments?.length"
             class="mb-2"
+            @click="regenerateConsolidation"
           >
             <v-icon start>mdi-refresh</v-icon>
             Regenerate
@@ -353,7 +353,7 @@
         <div class="text-caption text-medium-emphasis mb-2">
           <v-icon size="14" class="mr-1">mdi-counter</v-icon>
           ~{{ formatTokens(consolidatedSummaryTokens) }} tokens
-          <span class="ml-2" v-if="consolidatedSummaryHash">
+          <span v-if="consolidatedSummaryHash" class="ml-2">
             Hash: {{ consolidatedSummaryHash.substring(0, 12) }}...
           </span>
         </div>
@@ -512,7 +512,7 @@ async function showSummary(doc, level) {
 function formatTokens(tokens) {
   if (!tokens) return '0'
   if (tokens >= 1000) {
-    return (tokens / 1000).toFixed(1) + 'K'
+    return `${(tokens / 1000).toFixed(1)  }K`
   }
   return tokens.toString()
 }
@@ -537,9 +537,9 @@ const totalFileSize = computed(() => {
 
 // Helper functions
 function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  if (bytes < 1024) return `${bytes  } B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)  } KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)  } MB`
 }
 
 function formatDate(dateString) {

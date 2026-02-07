@@ -8,7 +8,7 @@ including idempotency, data migration, and multi-tenant isolation.
 import pytest
 from sqlalchemy import inspect, text
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 class TestMetadataMigration:
@@ -32,7 +32,10 @@ class TestMetadataMigration:
         """Verify job_metadata defaults to empty JSON object."""
         # Create a minimal job without job_metadata
         job = AgentExecution(
-            tenant_key="test-tenant", project_id="test-project", agent_display_name="orchestrator", mission="test mission"
+            tenant_key="test-tenant",
+            project_id="test-project",
+            agent_display_name="orchestrator",
+            mission="test mission",
         )
 
         db_session.add(job)
@@ -121,7 +124,9 @@ class TestMetadataFunctionality:
         db_session.commit()
 
         # Query for claude-code jobs using JSONB operator
-        result = db_session.query(AgentExecution).filter(AgentExecution.job_metadata["tool"].astext == "claude-code").all()
+        result = (
+            db_session.query(AgentExecution).filter(AgentExecution.job_metadata["tool"].astext == "claude-code").all()
+        )
 
         assert len(result) == 1
         assert result[0].job_metadata["tool"] == "claude-code"
@@ -187,7 +192,7 @@ class TestMultiTenantIsolation:
         assert len(tenant2_result) == 1
         assert tenant2_result[0].job_metadata["secret"] == "tenant-2-secret"
 
-    def test_job_metadata_query_with_tenant_filter(self, db_session):
+    def test_job_metadata_tenant_filtered_query(self, db_session):
         """Test querying job_metadata with mandatory tenant isolation."""
         # Create jobs for multiple tenants
         jobs = [

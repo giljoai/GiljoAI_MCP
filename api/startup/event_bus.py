@@ -56,9 +56,9 @@ async def init_event_bus(state: APIState) -> None:
         logger.info("EVENT BUS INITIALIZATION COMPLETE")
         logger.info("=" * 70)
     except Exception as e:
-        logger.error("=" * 70)
-        logger.error(f"FAILED TO INITIALIZE EVENT BUS: {e}")
-        logger.error("=" * 70)
-        logger.error(f"Exception type: {type(e).__name__}")
+        logger.exception("=" * 70)
+        logger.exception("FAILED TO INITIALIZE EVENT BUS")
+        logger.exception("=" * 70)
+        logger.exception(f"Exception type: {type(e).__name__}")
         logger.error(f"Exception args: {e.args}", exc_info=True)
         raise

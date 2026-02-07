@@ -50,8 +50,7 @@ let unsubscribe = null
 
 // Listen for product status changes via WebSocket (tenant-scoped)
 // Whenever a product is activated/deactivated, refresh the display
-const handleProductStatusChanged = async (payload) => {
-  console.log('[ActiveProductDisplay] WebSocket product:status:changed received:', payload)
+const handleProductStatusChanged = async (_payload) => {
   try {
     await productsStore.fetchActiveProduct()
   } catch (err) {
@@ -64,19 +63,14 @@ onMounted(async () => {
   // 1. Subscribe to WebSocket events first
   try {
     unsubscribe = wsStore.on('product:status:changed', handleProductStatusChanged)
-    console.log('[ActiveProductDisplay] Subscribed to product:status:changed events')
-  } catch (e) {
-    console.warn('[ActiveProductDisplay] Failed to register WS handler:', e)
+  } catch (_e) {
+    console.warn('[ActiveProductDisplay] Failed to register WS handler')
   }
 
   // 2. Fetch initial active product
   loading.value = true
   try {
     await productsStore.fetchActiveProduct()
-    console.log(
-      '[ActiveProductDisplay] Initial active product:',
-      productsStore.activeProduct?.name || 'null',
-    )
   } catch (err) {
     console.error('[ActiveProductDisplay] Failed to fetch active product:', err)
   } finally {
@@ -87,11 +81,8 @@ onMounted(async () => {
 // Watch for changes to activeProduct (for debugging and reactivity)
 watch(
   () => productsStore.activeProduct,
-  (newProduct, oldProduct) => {
-    console.log('[ActiveProductDisplay] Active product changed:', {
-      from: oldProduct?.name || 'null',
-      to: newProduct?.name || 'null',
-    })
+  (_newProduct, _oldProduct) => {
+    // Active product changed
   },
   { immediate: false },
 )
@@ -101,9 +92,8 @@ onUnmounted(() => {
   try {
     if (typeof unsubscribe === 'function') {
       unsubscribe()
-      console.log('[ActiveProductDisplay] Unsubscribed from product:status:changed events')
     }
-  } catch (e) {
+  } catch (_e) {
     // no-op
   }
 })

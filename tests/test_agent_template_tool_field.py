@@ -46,7 +46,7 @@ class TestToolFieldBasics:
             name="test_agent",
             role="tester",
             category="role",
-            template_content="Test template content",
+            system_instructions="Test template content",
         )
 
         # Act
@@ -68,7 +68,7 @@ class TestToolFieldBasics:
                 name=f"test_agent_{tool}",
                 role="tester",
                 category="role",
-                template_content=f"Test template for {tool}",
+                system_instructions=f"Test template for {tool}",
                 tool=tool,
             )
 
@@ -88,7 +88,7 @@ class TestToolFieldBasics:
             name="test_agent",
             role="tester",
             category="role",
-            template_content="Test content",
+            system_instructions="Test content",
             tool="claude",  # Explicitly set to avoid default
         )
 
@@ -121,7 +121,7 @@ class TestToolFieldQuerying:
                 name=name,
                 role="tester",
                 category="role",
-                template_content=f"Test template for {tool}",
+                system_instructions=f"Test template for {tool}",
                 tool=tool,
             )
             db_session.add(template)
@@ -156,7 +156,7 @@ class TestToolFieldQuerying:
                 name=name,
                 role="tester",
                 category="role",
-                template_content=f"Test template for {tool}",
+                system_instructions=f"Test template for {tool}",
                 tool=tool,
             )
             db_session.add(template)
@@ -194,7 +194,7 @@ class TestToolFieldQuerying:
                 name=name,
                 role="tester",
                 category="role",
-                template_content=f"Test template for {tool}",
+                system_instructions=f"Test template for {tool}",
                 tool=tool,
             )
             db_session.add(template)
@@ -227,7 +227,7 @@ class TestMultiTenantIsolation:
             name="shared_name",
             role="tester",
             category="role",
-            template_content="Tenant 1 template",
+            system_instructions="Tenant 1 template",
             tool="claude",
         )
 
@@ -236,7 +236,7 @@ class TestMultiTenantIsolation:
             name="shared_name",
             role="tester",
             category="role",
-            template_content="Tenant 2 template",
+            system_instructions="Tenant 2 template",
             tool="claude",
         )
 
@@ -253,7 +253,7 @@ class TestMultiTenantIsolation:
         # Assert - should only get tenant1's template
         assert len(tenant1_templates) == 1, "Should find exactly 1 template"
         assert tenant1_templates[0].tenant_key == tenant_key, "Should be tenant1's template"
-        assert "Tenant 1" in tenant1_templates[0].template_content, "Should have tenant1's content"
+        assert "Tenant 1" in tenant1_templates[0].system_instructions, "Should have tenant1's content"
 
     async def test_zero_cross_tenant_leakage(self, db_session: AsyncSession, tenant_key: str, other_tenant_key: str):
         """CRITICAL: Verify zero cross-tenant data leakage with tool filtering"""
@@ -267,7 +267,7 @@ class TestMultiTenantIsolation:
                 name=f"tenant1_agent_{i}",
                 role="tester",
                 category="role",
-                template_content=f"Tenant 1 template {i}",
+                system_instructions=f"Tenant 1 template {i}",
                 tool=tool,
             )
             db_session.add(template1)
@@ -278,7 +278,7 @@ class TestMultiTenantIsolation:
                 name=f"tenant2_agent_{i}",
                 role="tester",
                 category="role",
-                template_content=f"Tenant 2 template {i}",
+                system_instructions=f"Tenant 2 template {i}",
                 tool=tool,
             )
             db_session.add(template2)
@@ -301,8 +301,8 @@ class TestMultiTenantIsolation:
         assert all(t.tenant_key == other_tenant_key for t in tenant2_claude), "No tenant1 data in tenant2 results"
 
         # Verify content isolation
-        tenant1_content = [t.template_content for t in tenant1_claude]
-        tenant2_content = [t.template_content for t in tenant2_claude]
+        tenant1_content = [t.system_instructions for t in tenant1_claude]
+        tenant2_content = [t.system_instructions for t in tenant2_claude]
 
         assert all("Tenant 1" in c for c in tenant1_content), "Tenant1 content should contain 'Tenant 1'"
         assert all("Tenant 2" in c for c in tenant2_content), "Tenant2 content should contain 'Tenant 2'"
@@ -340,7 +340,7 @@ class TestToolIndexPerformance:
                 name=f"agent_{i}",
                 role="tester",
                 category="role",
-                template_content=f"Template {i}",
+                system_instructions=f"Template {i}",
                 tool="claude",
             )
             db_session.add(template)
@@ -419,7 +419,7 @@ class TestToolFieldUpdateScenarios:
             name="switchable_agent",
             role="implementer",
             category="role",
-            template_content="Test template",
+            system_instructions="Test template",
             tool="claude",
         )
         db_session.add(template)
@@ -448,7 +448,7 @@ class TestToolFieldUpdateScenarios:
                 name=f"bulk_agent_{i}",
                 role="tester",
                 category="role",
-                template_content=f"Template {i}",
+                system_instructions=f"Template {i}",
                 tool="claude",
             )
             db_session.add(template)
@@ -492,7 +492,7 @@ class TestToolFieldEdgeCases:
             name="edge_agent",
             role="tester",
             category="role",
-            template_content="Test",
+            system_instructions="Test",
             tool="claude",  # Explicitly set due to NOT NULL constraint
         )
 
@@ -513,7 +513,7 @@ class TestToolFieldEdgeCases:
                 name=f"{role}_template",
                 role=role,
                 category=category,
-                template_content=f"{role} template content",
+                system_instructions=f"{role} template content",
                 tool=tool,
                 is_active=True,
             )

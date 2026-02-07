@@ -12,15 +12,15 @@ the acknowledged boolean. Only mission_acknowledged_at remains.
 Backend Integration Tester Agent - GiljoAI MCP
 """
 
-import pytest
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-from sqlalchemy import select
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import AgentExecution, Project, Product
-from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 from api.websocket import WebSocketManager
+from src.giljo_mcp.models import AgentExecution, Product, Project
+from src.giljo_mcp.services.agent_job_manager import AgentJobManager
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ async def test_project(db_session: AsyncSession, tenant_key: str):
         id="test-product-123",
         name="Test Product",
         tenant_key=tenant_key,
-        description="Test product for mission tracking"
+        description="Test product for mission tracking",
     )
     db_session.add(product)
     await db_session.flush()
@@ -56,7 +56,7 @@ async def test_project(db_session: AsyncSession, tenant_key: str):
         product_id=product.id,
         description="Test project for mission tracking",
         mission="Test mission for mission tracking tests",
-        status="active"
+        status="active",
     )
     db_session.add(project)
     await db_session.commit()
@@ -85,12 +85,10 @@ async def test_orchestrator(db_session: AsyncSession, test_project: Project, ten
 # TEST: mission_acknowledged_at Auto-Setting
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_mission_acknowledged_at_set_by_get_orchestrator_instructions(
-    db_session: AsyncSession,
-    test_orchestrator: AgentExecution,
-    tenant_key: str,
-    db_manager
+    db_session: AsyncSession, test_orchestrator: AgentExecution, tenant_key: str, db_manager
 ):
     """
     Test that get_orchestrator_instructions() auto-sets mission_acknowledged_at.
@@ -108,9 +106,7 @@ async def test_mission_acknowledged_at_set_by_get_orchestrator_instructions(
 
     # Action: Fetch orchestrator instructions (should set mission_acknowledged_at)
     result = await get_orchestrator_instructions(
-        orchestrator_id=test_orchestrator.job_id,
-        tenant_key=tenant_key,
-        db_manager=db_manager
+        orchestrator_id=test_orchestrator.job_id, tenant_key=tenant_key, db_manager=db_manager
     )
 
     # Verify: Result is valid
@@ -121,38 +117,35 @@ async def test_mission_acknowledged_at_set_by_get_orchestrator_instructions(
     await db_session.refresh(test_orchestrator)
 
     # Assert: mission_acknowledged_at should now be set
-    assert test_orchestrator.mission_acknowledged_at is not None, \
+    assert test_orchestrator.mission_acknowledged_at is not None, (
         "mission_acknowledged_at should be set after first fetch"
+    )
     assert isinstance(test_orchestrator.mission_acknowledged_at, datetime)
 
     first_ack_time = test_orchestrator.mission_acknowledged_at
 
     # Second fetch should NOT update timestamp
     result2 = await get_orchestrator_instructions(
-        orchestrator_id=test_orchestrator.job_id,
-        tenant_key=tenant_key,
-        db_manager=db_manager
+        orchestrator_id=test_orchestrator.job_id, tenant_key=tenant_key, db_manager=db_manager
     )
 
     assert "error" not in result2
     await db_session.refresh(test_orchestrator)
 
     # Assert: mission_acknowledged_at should NOT change (idempotent)
-    assert test_orchestrator.mission_acknowledged_at == first_ack_time, \
+    assert test_orchestrator.mission_acknowledged_at == first_ack_time, (
         "mission_acknowledged_at should not update on subsequent fetches"
+    )
 
 
 # ==============================================================================
 # TEST: mission_acknowledged_at WebSocket Event Emission
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_mission_acknowledged_event_emitted_when_status_becomes_working(
-    db_session: AsyncSession,
-    test_project: Project,
-    tenant_key: str,
-    mock_websocket_manager: MagicMock,
-    db_manager
+    db_session: AsyncSession, test_project: Project, tenant_key: str, mock_websocket_manager: MagicMock, db_manager
 ):
     """
     RED TEST: Verify WebSocket event is emitted when job transitions to 'working'.
@@ -188,22 +181,19 @@ async def test_mission_acknowledged_event_emitted_when_status_becomes_working(
     job_manager = AgentJobManager(db_manager)
 
     # Patch WebSocket manager
-    with patch('api.app.state') as mock_state:
+    with patch("api.app.state") as mock_state:
         mock_state.websocket_manager = mock_websocket_manager
 
         # Action: Update status to 'working' (simulating agent acknowledging mission)
-        await job_manager.update_status(
-            job_id=agent_job.job_id,
-            new_status="working",
-            tenant_key=tenant_key
-        )
+        await job_manager.update_status(job_id=agent_job.job_id, new_status="working", tenant_key=tenant_key)
 
         # Refresh job from database
         await db_session.refresh(agent_job)
 
         # Assert: mission_acknowledged_at should be set
-        assert agent_job.mission_acknowledged_at is not None, \
+        assert agent_job.mission_acknowledged_at is not None, (
             "mission_acknowledged_at should be set when status becomes 'working'"
+        )
         assert isinstance(agent_job.mission_acknowledged_at, datetime)
 
         # Assert: WebSocket broadcast_to_tenant was called
@@ -218,8 +208,7 @@ async def test_mission_acknowledged_event_emitted_when_status_becomes_working(
                 mission_ack_call = kwargs
                 break
 
-        assert mission_ack_call is not None, \
-            "job:mission_acknowledged event should be emitted"
+        assert mission_ack_call is not None, "job:mission_acknowledged event should be emitted"
 
         # Verify event structure
         assert mission_ack_call["tenant_key"] == tenant_key
@@ -231,11 +220,7 @@ async def test_mission_acknowledged_event_emitted_when_status_becomes_working(
 
 @pytest.mark.asyncio
 async def test_mission_acknowledged_event_not_emitted_for_other_status_transitions(
-    db_session: AsyncSession,
-    test_project: Project,
-    tenant_key: str,
-    mock_websocket_manager: MagicMock,
-    db_manager
+    db_session: AsyncSession, test_project: Project, tenant_key: str, mock_websocket_manager: MagicMock, db_manager
 ):
     """
     RED TEST: Verify mission_acknowledged event is ONLY emitted for 'working' status.
@@ -261,40 +246,37 @@ async def test_mission_acknowledged_event_not_emitted_for_other_status_transitio
     job_manager = AgentJobManager(db_manager)
 
     # Patch WebSocket manager
-    with patch('api.app.state') as mock_state:
+    with patch("api.app.state") as mock_state:
         mock_state.websocket_manager = mock_websocket_manager
 
         # Action: Update status to 'failed' (NOT 'working')
-        await job_manager.update_status(
-            job_id=agent_job.job_id,
-            new_status="failed",
-            tenant_key=tenant_key
-        )
+        await job_manager.update_status(job_id=agent_job.job_id, new_status="failed", tenant_key=tenant_key)
 
         # Refresh job from database
         await db_session.refresh(agent_job)
 
         # Assert: mission_acknowledged_at should NOT be set
-        assert agent_job.mission_acknowledged_at is None, \
+        assert agent_job.mission_acknowledged_at is None, (
             "mission_acknowledged_at should only be set for 'working' status"
+        )
 
         # Assert: job:mission_acknowledged event should NOT be emitted
         if mock_websocket_manager.broadcast_to_tenant.called:
             for call in mock_websocket_manager.broadcast_to_tenant.call_args_list:
                 kwargs = call.kwargs
-                assert kwargs.get("event_type") != "job:mission_acknowledged", \
+                assert kwargs.get("event_type") != "job:mission_acknowledged", (
                     "job:mission_acknowledged should not be emitted for non-working status"
+                )
 
 
 # ==============================================================================
 # TEST: Multi-Tenant Isolation
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_mission_tracking_events_scoped_to_tenant(
-    db_session: AsyncSession,
-    mock_websocket_manager: MagicMock,
-    db_manager
+    db_session: AsyncSession, mock_websocket_manager: MagicMock, db_manager
 ):
     """
     RED TEST: Verify WebSocket events are tenant-scoped (CRITICAL for security).
@@ -314,46 +296,57 @@ async def test_mission_tracking_events_scoped_to_tenant(
     tenant_b = "tenant-b"
 
     # Tenant A: Product + Project + Orchestrator
-    product_a = Product(
-        id="product-a", name="Product A", tenant_key=tenant_a
-    )
+    product_a = Product(id="product-a", name="Product A", tenant_key=tenant_a)
     project_a = Project(
-        id="project-a", name="Project A", tenant_key=tenant_a, product_id=product_a.id,
-        mission="Tenant A mission", status="active"
+        id="project-a",
+        name="Project A",
+        tenant_key=tenant_a,
+        product_id=product_a.id,
+        mission="Tenant A mission",
+        status="active",
     )
     orch_a = AgentExecution(
-        job_id="orch-a", tenant_key=tenant_a, project_id=project_a.id,
-        agent_display_name="orchestrator", agent_name="Orch A", mission="Tenant A orch mission",
-        status="waiting"
+        job_id="orch-a",
+        tenant_key=tenant_a,
+        project_id=project_a.id,
+        agent_display_name="orchestrator",
+        agent_name="Orch A",
+        mission="Tenant A orch mission",
+        status="waiting",
     )
 
     # Tenant B: Product + Project + Orchestrator
-    product_b = Product(
-        id="product-b", name="Product B", tenant_key=tenant_b
-    )
+    product_b = Product(id="product-b", name="Product B", tenant_key=tenant_b)
     project_b = Project(
-        id="project-b", name="Project B", tenant_key=tenant_b, product_id=product_b.id,
-        mission="Tenant B mission", status="active"
+        id="project-b",
+        name="Project B",
+        tenant_key=tenant_b,
+        product_id=product_b.id,
+        mission="Tenant B mission",
+        status="active",
     )
     orch_b = AgentExecution(
-        job_id="orch-b", tenant_key=tenant_b, project_id=project_b.id,
-        agent_display_name="orchestrator", agent_name="Orch B", mission="Tenant B orch mission",
-        status="waiting"
+        job_id="orch-b",
+        tenant_key=tenant_b,
+        project_id=project_b.id,
+        agent_display_name="orchestrator",
+        agent_name="Orch B",
+        mission="Tenant B orch mission",
+        status="waiting",
     )
 
     db_session.add_all([product_a, project_a, orch_a, product_b, project_b, orch_b])
     await db_session.commit()
 
     # Patch WebSocket manager
-    with patch('api.app.state') as mock_state:
+    with patch("api.app.state") as mock_state:
         mock_state.websocket_manager = mock_websocket_manager
 
         # Action: Tenant A fetches mission
         from giljo_mcp.tools.orchestration import get_orchestrator_instructions
+
         result = await get_orchestrator_instructions(
-            orchestrator_id=orch_a.job_id,
-            tenant_key=tenant_a,
-            db_manager=db_manager
+            orchestrator_id=orch_a.job_id, tenant_key=tenant_a, db_manager=db_manager
         )
 
         # Verify: Result is valid
@@ -365,25 +358,20 @@ async def test_mission_tracking_events_scoped_to_tenant(
         # Verify: ALL broadcast calls used tenant_a (NOT tenant_b)
         for call in mock_websocket_manager.broadcast_to_tenant.call_args_list:
             kwargs = call.kwargs
-            assert kwargs["tenant_key"] == tenant_a, \
-                f"Event should be scoped to {tenant_a}, got {kwargs['tenant_key']}"
+            assert kwargs["tenant_key"] == tenant_a, f"Event should be scoped to {tenant_a}, got {kwargs['tenant_key']}"
 
             # Additional check: Verify tenant_b is NEVER used
-            assert kwargs["tenant_key"] != tenant_b, \
-                f"Event MUST NOT be sent to {tenant_b}"
+            assert kwargs["tenant_key"] != tenant_b, f"Event MUST NOT be sent to {tenant_b}"
 
 
 # ==============================================================================
 # TEST: Event Payload Structure
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_mission_acknowledged_event_has_correct_payload_structure(
-    db_session: AsyncSession,
-    test_project: Project,
-    tenant_key: str,
-    mock_websocket_manager: MagicMock,
-    db_manager
+    db_session: AsyncSession, test_project: Project, tenant_key: str, mock_websocket_manager: MagicMock, db_manager
 ):
     """
     RED TEST: Verify job:mission_acknowledged event has correct payload structure.
@@ -408,18 +396,15 @@ async def test_mission_acknowledged_event_has_correct_payload_structure(
     await db_session.commit()
 
     from giljo_mcp.database import DatabaseManager
+
     db_manager = DatabaseManager()
     job_manager = AgentJobManager(db_manager)
 
-    with patch('api.app.state') as mock_state:
+    with patch("api.app.state") as mock_state:
         mock_state.websocket_manager = mock_websocket_manager
 
         # Update status to working
-        await job_manager.update_status(
-            job_id=agent_job.job_id,
-            new_status="working",
-            tenant_key=tenant_key
-        )
+        await job_manager.update_status(job_id=agent_job.job_id, new_status="working", tenant_key=tenant_key)
 
         # Find job:mission_acknowledged call
         mission_ack_call = None
@@ -442,6 +427,7 @@ async def test_mission_acknowledged_event_has_correct_payload_structure(
 
         # Assert: Timestamps are ISO-formatted strings
         from datetime import datetime
+
         try:
             datetime.fromisoformat(event_data["mission_acknowledged_at"])
             datetime.fromisoformat(event_data["timestamp"])

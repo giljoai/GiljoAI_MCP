@@ -2,7 +2,7 @@
   <v-container>
     <div class="d-flex justify-space-between align-center mb-6">
       <h1 class="text-h4">User Management</h1>
-      <v-btn color="primary" @click="showCreateDialog = true" aria-label="Create new user">
+      <v-btn color="primary" aria-label="Create new user" @click="showCreateDialog = true">
         <v-icon start>mdi-account-plus</v-icon>
         Create User
       </v-btn>
@@ -50,17 +50,17 @@
             icon="mdi-pencil"
             size="small"
             variant="text"
-            @click="editUser(item)"
             title="Edit user"
+            @click="editUser(item)"
           />
           <v-btn
             icon="mdi-delete"
             size="small"
             variant="text"
             color="error"
-            @click="confirmDelete(item)"
             title="Delete user"
             :disabled="item.username === userStore.currentUser?.username"
+            @click="confirmDelete(item)"
           />
         </template>
       </v-data-table>
@@ -200,7 +200,7 @@ function getRoleColor(role) {
 function formatDate(dateString) {
   if (!dateString) return 'N/A'
   const date = new Date(dateString)
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
+  return `${date.toLocaleDateString()  } ${  date.toLocaleTimeString()}`
 }
 
 function editUser(user) {

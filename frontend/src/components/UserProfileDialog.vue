@@ -5,7 +5,7 @@
         <v-icon start>mdi-account</v-icon>
         Edit Profile
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" @click="close" aria-label="Close" />
+        <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="close" />
       </v-card-title>
 
       <v-card-text>
@@ -93,7 +93,7 @@
 
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="close" :disabled="saving">Cancel</v-btn>
+        <v-btn variant="text" :disabled="saving" @click="close">Cancel</v-btn>
         <v-btn color="primary" :loading="saving" :disabled="saving" @click="save"
           >Save Changes</v-btn
         >

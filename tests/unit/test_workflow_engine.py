@@ -76,7 +76,7 @@ def sample_agent_config():
     return AgentConfig(
         role="implementor",
         template_id="impl-001",
-        template_content="Template content",
+        system_instructions="Template content",
         priority="high",
         mission_scope="Implement feature X",
         mission=mission,
@@ -96,7 +96,7 @@ def sample_waterfall_stages(sample_agent_config):
     stage1_agent = AgentConfig(
         role="implementor",
         template_id="impl-001",
-        template_content="Template",
+        system_instructions="Template",
         priority="high",
         mission_scope="Implementation",
         mission=stage1_mission,
@@ -112,7 +112,7 @@ def sample_waterfall_stages(sample_agent_config):
     stage2_agent = AgentConfig(
         role="code-reviewer",
         template_id="review-001",
-        template_content="Template",
+        system_instructions="Template",
         priority="high",
         mission_scope="Code Review",
         mission=stage2_mission,
@@ -128,7 +128,7 @@ def sample_waterfall_stages(sample_agent_config):
     stage3_agent = AgentConfig(
         role="tester",
         template_id="test-001",
-        template_content="Template",
+        system_instructions="Template",
         priority="medium",
         mission_scope="Testing",
         mission=stage3_mission,
@@ -172,7 +172,7 @@ def sample_parallel_stages():
     frontend_agent = AgentConfig(
         role="implementor",
         template_id="impl-001",
-        template_content="Template",
+        system_instructions="Template",
         priority="high",
         mission_scope="Frontend",
         mission=frontend_mission,
@@ -188,7 +188,7 @@ def sample_parallel_stages():
     backend_agent = AgentConfig(
         role="implementor",
         template_id="impl-002",
-        template_content="Template",
+        system_instructions="Template",
         priority="high",
         mission_scope="Backend",
         mission=backend_mission,
@@ -204,7 +204,7 @@ def sample_parallel_stages():
     docs_agent = AgentConfig(
         role="documenter",
         template_id="docs-001",
-        template_content="Template",
+        system_instructions="Template",
         priority="medium",
         mission_scope="Documentation",
         mission=docs_mission,

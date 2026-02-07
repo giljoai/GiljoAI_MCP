@@ -62,13 +62,13 @@ async def get_db_session(request: Request = None):
     # Get db_manager from app state (shared instance)
     try:
         db_manager = request.app.state.api_state.db_manager
-    except AttributeError:
+    except AttributeError as e:
         # Fallback if app state not available
-        logger.error("db_manager not available in app state")
+        logger.exception("db_manager not available in app state")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database not initialized - system may be in setup mode",
-        )
+        ) from e
 
     if db_manager is None:
         logger.error("db_manager is None - setup mode active")
@@ -135,7 +135,7 @@ async def get_current_user(
             # Query user from database
             from sqlalchemy import select
 
-            stmt = select(User).where(User.id == user_id, User.is_active == True)
+            stmt = select(User).where(User.id == user_id, User.is_active)
             result = await db.execute(stmt)
             user = result.scalar_one_or_none()
 
@@ -146,7 +146,7 @@ async def get_current_user(
         except HTTPException as e:
             # Token verification failed - continue to API key check
             logger.warning(f"[AUTH] JWT verification failed: {e.detail}")
-        except Exception as e:
+        except (ValueError, KeyError) as e:
             logger.error(f"[AUTH] JWT authentication error: {e}", exc_info=True)
 
     # Try Authorization: Bearer <token> header (CLI / API clients)
@@ -161,7 +161,7 @@ async def get_current_user(
             user_id = payload["sub"]
             from sqlalchemy import select
 
-            stmt = select(User).where(User.id == user_id, User.is_active == True)
+            stmt = select(User).where(User.id == user_id, User.is_active)
             result = await db.execute(stmt)
             user = result.scalar_one_or_none()
 
@@ -171,7 +171,7 @@ async def get_current_user(
             logger.warning("[AUTH] Bearer JWT FAILED - User not found: %s", user_id)
         except HTTPException as e:
             logger.warning("[AUTH] Bearer JWT verification failed: %s", e.detail)
-        except Exception as e:
+        except (ValueError, KeyError) as e:
             logger.error("[AUTH] Bearer JWT authentication error: %s", e, exc_info=True)
 
     # Try API key header (MCP tools)
@@ -180,7 +180,7 @@ async def get_current_user(
             # Query all active API keys (optimized with index)
             from sqlalchemy import select
 
-            stmt = select(APIKey).where(APIKey.is_active == True)
+            stmt = select(APIKey).where(APIKey.is_active)
             result = await db.execute(stmt)
             api_keys = result.scalars().all()
 
@@ -203,8 +203,8 @@ async def get_current_user(
                     break
 
             logger.warning("Invalid API key provided")
-        except Exception as e:
-            logger.error(f"API key authentication error: {e}")
+        except (ValueError, KeyError):
+            logger.exception("API key authentication error")
 
     # No valid authentication found
     logger.error(

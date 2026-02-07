@@ -8,7 +8,6 @@ Following TDD principles: Tests written BEFORE implementation.
 """
 
 from unittest.mock import AsyncMock, Mock, patch
-from typing import Any, Dict
 
 import pytest
 
@@ -26,10 +25,9 @@ class TestLeanOrchestratorInstructions:
         db_manager.is_async = True
         # Mock session for async context manager
         mock_session = AsyncMock()
-        db_manager.get_session_async = Mock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_session),
-            __aexit__=AsyncMock()
-        ))
+        db_manager.get_session_async = Mock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_session), __aexit__=AsyncMock())
+        )
         return db_manager
 
     @pytest.fixture
@@ -51,10 +49,7 @@ class TestLeanOrchestratorInstructions:
             "tech_stack": ["Python", "FastAPI", "PostgreSQL"],
             "features": ["authentication", "api"],
         }
-        product.product_memory = {
-            "sequential_history": [],
-            "git_integration": {"enabled": False}
-        }
+        product.product_memory = {"sequential_history": [], "git_integration": {"enabled": False}}
 
         # Mock chunked vision documents
         vision_doc = Mock(spec=VisionDocument)
@@ -76,10 +71,7 @@ class TestLeanOrchestratorInstructions:
         product.primary_vision_text = "Chapter 1: Extensive Product Vision\n\n" + "X" * 100000
         product.primary_vision_path = None
         product.config_data = {"tech_stack": ["Python"]}
-        product.product_memory = {
-            "sequential_history": [],
-            "git_integration": {"enabled": False}
-        }
+        product.product_memory = {"sequential_history": [], "git_integration": {"enabled": False}}
 
         # Mock large chunked vision
         vision_doc = Mock(spec=VisionDocument)
@@ -103,9 +95,7 @@ class TestLeanOrchestratorInstructions:
         return project
 
     @pytest.mark.asyncio
-    async def test_get_vision_overview_returns_metadata_only(
-        self, mission_planner, mock_product_with_vision
-    ):
+    async def test_get_vision_overview_returns_metadata_only(self, mission_planner, mock_product_with_vision):
         """_get_vision_overview should return chunk count and token estimate, not content."""
         # Mock database query result
         mock_session = AsyncMock()
@@ -144,9 +134,7 @@ class TestLeanOrchestratorInstructions:
         assert "Chapter 1" not in str(overview)
 
     @pytest.mark.asyncio
-    async def test_get_vision_overview_returns_none_for_no_chunks(
-        self, mission_planner, mock_product_with_vision
-    ):
+    async def test_get_vision_overview_returns_none_for_no_chunks(self, mission_planner, mock_product_with_vision):
         """_get_vision_overview should return None when no chunks exist."""
         # Mock database query result with 0 chunks
         mock_session = AsyncMock()
@@ -170,9 +158,7 @@ class TestLeanOrchestratorInstructions:
         assert overview is None
 
     @pytest.mark.asyncio
-    async def test_get_vision_overview_has_correct_fetch_instruction(
-        self, mission_planner, mock_product_with_vision
-    ):
+    async def test_get_vision_overview_has_correct_fetch_instruction(self, mission_planner, mock_product_with_vision):
         """Overview fetch_instruction should guide orchestrator to use MCP tool."""
         # Mock database query result
         mock_session = AsyncMock()
@@ -213,10 +199,10 @@ class TestLeanOrchestratorInstructions:
         mock_overview = {
             "total_chunks": 5,
             "total_tokens": 125000,
-            "fetch_instruction": "You have 5 vision chunks (~125,000 tokens). Use fetch_vision_document(chunk=N) to read them."
+            "fetch_instruction": "You have 5 vision chunks (~125,000 tokens). Use fetch_vision_document(chunk=N) to read them.",
         }
 
-        with patch.object(mission_planner, '_get_vision_overview', return_value=mock_overview):
+        with patch.object(mission_planner, "_get_vision_overview", return_value=mock_overview):
             result = await mission_planner._build_context_with_priorities(
                 product=mock_product_with_vision,
                 project=mock_project,
@@ -237,10 +223,10 @@ class TestLeanOrchestratorInstructions:
         mock_overview = {
             "total_chunks": 5,
             "total_tokens": 125000,
-            "fetch_instruction": "You have 5 vision chunks (~125,000 tokens). Use fetch_vision_document(chunk=N) to read them."
+            "fetch_instruction": "You have 5 vision chunks (~125,000 tokens). Use fetch_vision_document(chunk=N) to read them.",
         }
 
-        with patch.object(mission_planner, '_get_vision_overview', return_value=mock_overview):
+        with patch.object(mission_planner, "_get_vision_overview", return_value=mock_overview):
             result = await mission_planner._build_context_with_priorities(
                 product=mock_product_with_vision,
                 project=mock_project,
@@ -251,7 +237,7 @@ class TestLeanOrchestratorInstructions:
         # Should mention vision chunks/overview
         result_lower = result.lower()
         assert "vision" in result_lower
-        assert ("5 chunks" in result_lower or "5 vision chunks" in result_lower)
+        assert "5 chunks" in result_lower or "5 vision chunks" in result_lower
 
         # Should include fetch instruction
         assert "fetch_vision_document" in result
@@ -265,10 +251,10 @@ class TestLeanOrchestratorInstructions:
         mock_overview = {
             "total_chunks": 5,
             "total_tokens": 125000,
-            "fetch_instruction": "You have 5 vision chunks (~125,000 tokens). Use fetch_vision_document(chunk=N) to read them."
+            "fetch_instruction": "You have 5 vision chunks (~125,000 tokens). Use fetch_vision_document(chunk=N) to read them.",
         }
 
-        with patch.object(mission_planner, '_get_vision_overview', return_value=mock_overview):
+        with patch.object(mission_planner, "_get_vision_overview", return_value=mock_overview):
             result = await mission_planner._build_context_with_priorities(
                 product=mock_product_with_vision,
                 project=mock_project,
@@ -300,10 +286,10 @@ class TestLeanOrchestratorInstructions:
         mock_overview = {
             "total_chunks": 25,
             "total_tokens": 150000,
-            "fetch_instruction": "You have 25 vision chunks (~150,000 tokens). Use fetch_vision_document(chunk=N) to read them."
+            "fetch_instruction": "You have 25 vision chunks (~150,000 tokens). Use fetch_vision_document(chunk=N) to read them.",
         }
 
-        with patch.object(mission_planner, '_get_vision_overview', return_value=mock_overview):
+        with patch.object(mission_planner, "_get_vision_overview", return_value=mock_overview):
             result = await mission_planner._build_context_with_priorities(
                 product=mock_product_with_large_vision,
                 project=mock_project,
@@ -334,10 +320,10 @@ class TestLeanOrchestratorInstructions:
         mock_overview = {
             "total_chunks": 5,
             "total_tokens": 125000,
-            "fetch_instruction": "You have 5 vision chunks (~125,000 tokens). Use fetch_vision_document(chunk=N) to read them."
+            "fetch_instruction": "You have 5 vision chunks (~125,000 tokens). Use fetch_vision_document(chunk=N) to read them.",
         }
 
-        with patch.object(mission_planner, '_get_vision_overview', return_value=mock_overview) as mock_method:
+        with patch.object(mission_planner, "_get_vision_overview", return_value=mock_overview) as mock_method:
             result = await mission_planner._build_context_with_priorities(
                 product=mock_product_with_vision,
                 project=mock_project,
@@ -352,9 +338,7 @@ class TestLeanOrchestratorInstructions:
         assert "vision" not in result_lower or "fetch_vision_document" not in result
 
     @pytest.mark.asyncio
-    async def test_vision_overview_query_filters_by_tenant_and_product(
-        self, mission_planner, mock_product_with_vision
-    ):
+    async def test_vision_overview_query_filters_by_tenant_and_product(self, mission_planner, mock_product_with_vision):
         """_get_vision_overview must filter by tenant_key and product_id for multi-tenant isolation."""
         mock_session = AsyncMock()
         mock_row = Mock()
@@ -385,4 +369,4 @@ class TestLeanOrchestratorInstructions:
         # Verify the statement is a select query (basic check)
         # Full SQL inspection would require more complex mocking
         # At minimum, verify it's a SQLAlchemy statement object
-        assert hasattr(executed_stmt, '_where_criteria') or hasattr(executed_stmt, 'whereclause') or str(executed_stmt)
+        assert hasattr(executed_stmt, "_where_criteria") or hasattr(executed_stmt, "whereclause") or str(executed_stmt)

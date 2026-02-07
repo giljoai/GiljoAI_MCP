@@ -17,8 +17,9 @@ from api.app import app
 def _create_test_client_with_mock_auth():
     """Helper function to create test client with mocked authentication"""
     from unittest.mock import AsyncMock, MagicMock
-    from src.giljo_mcp.auth import AuthManager
+
     from api.middleware.auth import AuthMiddleware
+    from src.giljo_mcp.auth import AuthManager
 
     # Monkey-patch AuthMiddleware.dispatch to bypass authentication
     original_dispatch = AuthMiddleware.dispatch
@@ -40,13 +41,15 @@ def _create_test_client_with_mock_auth():
 
     # Create a mock auth manager for app state
     mock_auth = MagicMock(spec=AuthManager)
-    mock_auth.authenticate_request = AsyncMock(return_value={
-        "authenticated": True,
-        "user_id": "test_user",
-        "user_obj": None,
-        "is_auto_login": True,
-        "tenant_key": "test_tenant_key"
-    })
+    mock_auth.authenticate_request = AsyncMock(
+        return_value={
+            "authenticated": True,
+            "user_id": "test_user",
+            "user_obj": None,
+            "is_auto_login": True,
+            "tenant_key": "test_tenant_key",
+        }
+    )
     app.state.auth = mock_auth
 
     return TestClient(app), original_dispatch

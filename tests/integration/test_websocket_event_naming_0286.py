@@ -22,8 +22,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
 from api.websocket import WebSocketManager
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 # ============================================================================
@@ -53,23 +53,14 @@ async def mock_websocket_connection(websocket_manager):
 
     # Add connection with authentication
     websocket_manager.active_connections[client_id] = mock_ws
-    websocket_manager.auth_contexts[client_id] = {
-        "tenant_key": tenant_key,
-        "user_id": str(uuid.uuid4())
-    }
+    websocket_manager.auth_contexts[client_id] = {"tenant_key": tenant_key, "user_id": str(uuid.uuid4())}
 
-    return {
-        "manager": websocket_manager,
-        "client_id": client_id,
-        "tenant_key": tenant_key,
-        "mock_ws": mock_ws
-    }
+    return {"manager": websocket_manager, "client_id": client_id, "tenant_key": tenant_key, "mock_ws": mock_ws}
 
 
 @pytest_asyncio.fixture
 async def test_agent_job_data(db_session, test_project):
     """Create test agent job and execution in database"""
-    from src.giljo_mcp.models.agent_identity import AgentJob
 
     # Create AgentJob first (contains project_id)
     job = AgentJob(
@@ -121,9 +112,7 @@ async def test_message_data(test_agent_job_data, test_project):
 
 
 @pytest.mark.asyncio
-async def test_status_change_emits_agent_status_changed_event(
-    mock_websocket_connection, test_agent_job_data
-):
+async def test_status_change_emits_agent_status_changed_event(mock_websocket_connection, test_agent_job_data):
     """
     Test that status changes emit 'agent:status_changed' event.
 
@@ -147,7 +136,7 @@ async def test_status_change_emits_agent_status_changed_event(
         agent_display_name=test_agent_job_data["execution"].agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
-        new_status="working"
+        new_status="working",
     )
 
     # Verify WebSocket was called
@@ -165,9 +154,7 @@ async def test_status_change_emits_agent_status_changed_event(
 
 
 @pytest.mark.asyncio
-async def test_message_sent_emits_message_sent_event(
-    mock_websocket_connection, test_message_data
-):
+async def test_message_sent_emits_message_sent_event(mock_websocket_connection, test_message_data):
     """
     Test that sending messages emits 'message:sent' event.
 
@@ -193,7 +180,7 @@ async def test_message_sent_emits_message_sent_event(
         to_agent=test_message_data["to_agent"],
         message_type="task",
         content_preview="Test message",
-        priority=1
+        priority=1,
     )
 
     # Verify WebSocket was called
@@ -211,9 +198,7 @@ async def test_message_sent_emits_message_sent_event(
 
 
 @pytest.mark.asyncio
-async def test_message_acknowledged_emits_message_acknowledged_event(
-    mock_websocket_connection, test_message_data
-):
+async def test_message_acknowledged_emits_message_acknowledged_event(mock_websocket_connection, test_message_data):
     """
     Test that message acknowledgment emits 'message:acknowledged' event.
 
@@ -235,7 +220,7 @@ async def test_message_acknowledged_emits_message_acknowledged_event(
         message_id=test_message_data["id"],
         job_id=str(uuid.uuid4()),
         tenant_key=tenant_key,
-        agent_id=test_message_data["to_agent"]
+        agent_id=test_message_data["to_agent"],
     )
 
     # Verify WebSocket was called
@@ -253,9 +238,7 @@ async def test_message_acknowledged_emits_message_acknowledged_event(
 
 
 @pytest.mark.asyncio
-async def test_new_message_emits_message_new_event(
-    mock_websocket_connection, test_message_data
-):
+async def test_new_message_emits_message_new_event(mock_websocket_connection, test_message_data):
     """
     Test that new messages emit 'message:new' event.
 
@@ -280,7 +263,7 @@ async def test_new_message_emits_message_new_event(
         tenant_key=tenant_key,
         to_agent=test_message_data["to_agent"],
         message_type="status",
-        content_preview="New message from agent"
+        content_preview="New message from agent",
     )
 
     # Verify WebSocket was called
@@ -303,9 +286,7 @@ async def test_new_message_emits_message_new_event(
 
 
 @pytest.mark.asyncio
-async def test_status_payload_includes_status_field_not_new_status(
-    mock_websocket_connection, test_agent_job_data
-):
+async def test_status_payload_includes_status_field_not_new_status(mock_websocket_connection, test_agent_job_data):
     """
     Test that status change payload uses 'status' field, not 'new_status'.
 
@@ -328,7 +309,7 @@ async def test_status_payload_includes_status_field_not_new_status(
         agent_display_name=test_agent_job_data["execution"].agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
-        new_status="working"
+        new_status="working",
     )
 
     # Get the message that was sent
@@ -336,21 +317,16 @@ async def test_status_payload_includes_status_field_not_new_status(
 
     # Frontend handler: agent.status = data.status
     assert "status" in sent_message["data"], (
-        "Payload must include 'status' field for frontend compatibility. "
-        "Frontend expects: data.status"
+        "Payload must include 'status' field for frontend compatibility. Frontend expects: data.status"
     )
-    assert sent_message["data"]["status"] == "working", (
-        "status field should contain the new status value"
-    )
+    assert sent_message["data"]["status"] == "working", "status field should contain the new status value"
 
     # Backend should NOT use 'new_status' as primary field
     # (Can keep for backwards compatibility but 'status' is required)
 
 
 @pytest.mark.asyncio
-async def test_message_payload_includes_message_field_not_content_preview(
-    mock_websocket_connection, test_message_data
-):
+async def test_message_payload_includes_message_field_not_content_preview(mock_websocket_connection, test_message_data):
     """
     Test that message payload uses 'message' field, not 'content_preview'.
 
@@ -378,7 +354,7 @@ async def test_message_payload_includes_message_field_not_content_preview(
         to_agent=test_message_data["to_agent"],
         message_type="task",
         content_preview=test_message_text,
-        priority=1
+        priority=1,
     )
 
     # Get the message that was sent
@@ -386,8 +362,7 @@ async def test_message_payload_includes_message_field_not_content_preview(
 
     # Frontend handler: text: data.message
     assert "message" in sent_message["data"], (
-        "Payload must include 'message' field for frontend compatibility. "
-        "Frontend expects: data.message"
+        "Payload must include 'message' field for frontend compatibility. Frontend expects: data.message"
     )
     # Backend should rename 'content_preview' to 'message'
 
@@ -419,7 +394,7 @@ async def test_all_events_include_tenant_key_in_payload(
         agent_display_name=test_agent_job_data["execution"].agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
-        new_status="active"
+        new_status="active",
     )
 
     sent_message = mock_ws.send_json.call_args[0][0]
@@ -427,9 +402,7 @@ async def test_all_events_include_tenant_key_in_payload(
         "Status update payload must include tenant_key. "
         "Frontend checks: if (data.tenant_key !== currentTenantKey.value)"
     )
-    assert sent_message["data"]["tenant_key"] == tenant_key, (
-        "tenant_key must match the broadcast value"
-    )
+    assert sent_message["data"]["tenant_key"] == tenant_key, "tenant_key must match the broadcast value"
 
     # Test 2: Message sent event
     await manager.broadcast_message_sent(
@@ -440,26 +413,22 @@ async def test_all_events_include_tenant_key_in_payload(
         to_agent=test_message_data["to_agent"],
         message_type="task",
         content_preview="Test",
-        priority=1
+        priority=1,
     )
 
     sent_message = mock_ws.send_json.call_args[0][0]
-    assert "tenant_key" in sent_message["data"], (
-        "Message sent payload must include tenant_key"
-    )
+    assert "tenant_key" in sent_message["data"], "Message sent payload must include tenant_key"
 
     # Test 3: Message acknowledged event
     await manager.broadcast_message_acknowledged(
         message_id=test_message_data["id"],
         job_id=str(uuid.uuid4()),
         tenant_key=tenant_key,
-        agent_id=test_message_data["to_agent"]
+        agent_id=test_message_data["to_agent"],
     )
 
     sent_message = mock_ws.send_json.call_args[0][0]
-    assert "tenant_key" in sent_message["data"], (
-        "Message acknowledged payload must include tenant_key"
-    )
+    assert "tenant_key" in sent_message["data"], "Message acknowledged payload must include tenant_key"
 
     # Test 4: New message event
     await manager.broadcast_job_message(
@@ -469,13 +438,11 @@ async def test_all_events_include_tenant_key_in_payload(
         tenant_key=tenant_key,
         to_agent=test_message_data["to_agent"],
         message_type="status",
-        content_preview="Test"
+        content_preview="Test",
     )
 
     sent_message = mock_ws.send_json.call_args[0][0]
-    assert "tenant_key" in sent_message["data"], (
-        "New message payload must include tenant_key"
-    )
+    assert "tenant_key" in sent_message["data"], "New message payload must include tenant_key"
 
 
 # ============================================================================
@@ -518,7 +485,7 @@ async def test_events_only_broadcast_to_matching_tenant():
         agent_display_name="worker",
         tenant_key=tenant1_key,
         old_status="waiting",
-        new_status="working"
+        new_status="working",
     )
 
     # Verify only tenant1 client received the message
@@ -532,9 +499,7 @@ async def test_events_only_broadcast_to_matching_tenant():
 
 
 @pytest.mark.asyncio
-async def test_status_change_event_complete_structure(
-    mock_websocket_connection, test_agent_job_data
-):
+async def test_status_change_event_complete_structure(mock_websocket_connection, test_agent_job_data):
     """
     Test the complete expected structure of agent:status_changed event.
 
@@ -559,7 +524,7 @@ async def test_status_change_event_complete_structure(
         agent_display_name=test_agent_job_data["execution"].agent_display_name,
         tenant_key=tenant_key,
         old_status="waiting",
-        new_status="working"
+        new_status="working",
     )
 
     sent_message = mock_ws.send_json.call_args[0][0]
@@ -587,9 +552,7 @@ async def test_status_change_event_complete_structure(
 
 
 @pytest.mark.asyncio
-async def test_message_sent_event_complete_structure(
-    mock_websocket_connection, test_message_data
-):
+async def test_message_sent_event_complete_structure(mock_websocket_connection, test_message_data):
     """
     Test the complete expected structure of message:sent event.
 
@@ -621,7 +584,7 @@ async def test_message_sent_event_complete_structure(
         to_agent=test_message_data["to_agent"],
         message_type="task",
         content_preview=test_message,
-        priority=1
+        priority=1,
     )
 
     sent_message = mock_ws.send_json.call_args[0][0]
@@ -650,9 +613,7 @@ async def test_message_sent_event_complete_structure(
 
 
 @pytest.mark.asyncio
-async def test_status_update_includes_project_id_when_provided(
-    mock_websocket_connection, test_agent_job_data
-):
+async def test_status_update_includes_project_id_when_provided(mock_websocket_connection, test_agent_job_data):
     """
     Test that project_id is included in agent:status_changed payload when provided.
 
@@ -705,9 +666,7 @@ async def test_status_update_includes_project_id_when_provided(
 
 
 @pytest.mark.asyncio
-async def test_status_update_excludes_project_id_when_not_provided(
-    mock_websocket_connection, test_agent_job_data
-):
+async def test_status_update_excludes_project_id_when_not_provided(mock_websocket_connection, test_agent_job_data):
     """
     Test backward compatibility - project_id NOT in payload when not provided.
 
@@ -757,9 +716,7 @@ async def test_status_update_excludes_project_id_when_not_provided(
 
 
 @pytest.mark.asyncio
-async def test_status_update_with_explicit_none_project_id(
-    mock_websocket_connection, test_agent_job_data
-):
+async def test_status_update_with_explicit_none_project_id(mock_websocket_connection, test_agent_job_data):
     """
     Test explicit None project_id excludes field from payload.
 
@@ -787,15 +744,12 @@ async def test_status_update_with_explicit_none_project_id(
 
     # CRITICAL: Explicit None should exclude field from payload
     assert "project_id" not in sent_message["data"], (
-        "Explicit project_id=None should exclude field from payload, "
-        "maintaining backward compatibility."
+        "Explicit project_id=None should exclude field from payload, maintaining backward compatibility."
     )
 
 
 @pytest.mark.asyncio
-async def test_project_id_enables_cross_project_filtering(
-    mock_websocket_connection, test_agent_job_data
-):
+async def test_project_id_enables_cross_project_filtering(mock_websocket_connection, test_agent_job_data):
     """
     Integration test: project_id enables frontend to filter cross-project events.
 

@@ -18,9 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Import colored logger and filter utilities
 try:
     from src.giljo_mcp.colored_logger import (
-        ColoredFormatter,
         LogFilter,
-        get_colored_logger,
         print_error,
         print_highlight,
         print_info,
@@ -65,7 +63,7 @@ def find_available_port(preferred_port: int) -> int:
             result = sock.connect_ex(("127.0.0.1", preferred_port))
             if result != 0:  # Port is available
                 return preferred_port
-    except Exception:
+    except OSError:  # Socket operations can fail
         pass  # nosec B110 - best effort port check
 
     # Try some alternative ports
@@ -78,7 +76,7 @@ def find_available_port(preferred_port: int) -> int:
                 if result != 0:  # Port is available
                     logging.warning(f"Port {preferred_port} is occupied, using alternative port {port}")
                     return port
-        except Exception:
+        except OSError:  # noqa: PERF203 - Port scan resilience: continue trying ports on socket errors
             continue  # nosec B112 - best effort port scan
 
     raise RuntimeError(f"Could not find available port (preferred: {preferred_port})")
@@ -105,7 +103,7 @@ def get_port_from_sources() -> int:
             port = manager.get_api_port(check_availability=True)
             logging.info(f"Using port {port} from PortManager")
             return port
-        except Exception as e:
+        except (ImportError, RuntimeError, ValueError, OSError) as e:
             logging.warning(f"PortManager failed, using fallback: {e}")
 
     # Fallback to environment variable or default
@@ -165,7 +163,7 @@ def get_default_host() -> str:
                 # v3.0 default: bind to all interfaces (firewall controls access)
                 logging.info("No host configured, using v3.0 default: 0.0.0.0 (all interfaces)")
                 return "0.0.0.0"
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logging.warning(f"Could not read config: {e}, using v3.0 default: 0.0.0.0")
 
     # v3.0 safe default: bind to all interfaces (firewall controls access)
@@ -309,7 +307,7 @@ def main():
         )
     except KeyboardInterrupt:
         logger.info("\nShutting down server...")
-    except Exception:
+    except (RuntimeError, OSError, ImportError):
         logger.exception("Failed to start server")
         sys.exit(1)
 

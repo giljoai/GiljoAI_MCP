@@ -70,9 +70,9 @@
                   variant="flat"
                   size="small"
                   prepend-icon="mdi-restore"
-                  @click="handleRestore(product.id)"
                   :loading="restoringProductId === product.id"
                   :disabled="restoringProductId !== null"
+                  @click="handleRestore(product.id)"
                 >
                   Restore
                 </v-btn>

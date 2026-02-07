@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Callable
 
 
 @dataclass(frozen=True)
 class WebSocketBrokerMessage:
     tenant_key: str
     event: dict[str, Any]
-    exclude_client: Optional[str] = None
-    origin: Optional[str] = None
+    exclude_client: str | None = None
+    origin: str | None = None
 
 
 BrokerHandler = Callable[[WebSocketBrokerMessage], Awaitable[None]]

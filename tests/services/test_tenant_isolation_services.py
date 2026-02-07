@@ -20,10 +20,9 @@ from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 
-from src.giljo_mcp.models import Product, Project, Task
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -194,8 +193,9 @@ async def test_message_service_send_message_blocks_cross_tenant_project(db_sessi
     )
 
     # Should fail - cannot send to cross-tenant project
-    assert result.get("success") is False or result.get("error") is not None, \
+    assert result.get("success") is False or result.get("error") is not None, (
         "Cross-tenant message send allowed! Security vulnerability at message_service.py:111"
+    )
 
 
 @pytest.mark.tenant_isolation
@@ -219,8 +219,7 @@ async def test_message_service_same_tenant_succeeds(db_session, two_tenant_servi
     )
 
     # Should succeed for same-tenant
-    assert result.get("success") is True or result.get("message_id") is not None, \
-        "Same-tenant message send failed!"
+    assert result.get("success") is True or result.get("message_id") is not None, "Same-tenant message send failed!"
 
 
 # ============================================================================
@@ -248,8 +247,9 @@ async def test_project_service_get_project_blocks_cross_tenant(db_session, two_t
     )
 
     # Should fail or return None - cannot access cross-tenant project
-    assert result is None or result.get("success") is False or result.get("error") is not None, \
+    assert result is None or result.get("success") is False or result.get("error") is not None, (
         "Cross-tenant project access allowed! Security vulnerability at project_service.py:201"
+    )
 
 
 @pytest.mark.tenant_isolation
@@ -295,13 +295,13 @@ async def test_project_service_update_mission_blocks_cross_tenant(db_session, tw
     )
 
     # Should fail - cannot update cross-tenant project
-    assert result is None or result.get("success") is False or result.get("error") is not None, \
+    assert result is None or result.get("success") is False or result.get("error") is not None, (
         "Cross-tenant mission update allowed! Security vulnerability at project_service.py:438"
+    )
 
     # Verify mission was NOT changed
     await db_session.refresh(project_b)
-    assert project_b.mission == "Test mission B", \
-        "Cross-tenant mission was modified! Data corruption."
+    assert project_b.mission == "Test mission B", "Cross-tenant mission was modified! Data corruption."
 
 
 @pytest.mark.tenant_isolation
@@ -324,8 +324,9 @@ async def test_project_service_switch_project_blocks_cross_tenant(db_session, tw
     )
 
     # Should fail - cannot switch to cross-tenant project
-    assert result is None or result.get("success") is False or result.get("error") is not None, \
+    assert result is None or result.get("success") is False or result.get("error") is not None, (
         "Cross-tenant project switch allowed! Security vulnerability at project_service.py:1950"
+    )
 
 
 # ============================================================================
@@ -355,8 +356,9 @@ async def test_task_service_log_task_blocks_cross_tenant_project(db_session, two
     )
 
     # Should fail - cannot log task to cross-tenant project
-    assert result is None or result.get("success") is False or result.get("error") is not None, \
+    assert result is None or result.get("success") is False or result.get("error") is not None, (
         "Cross-tenant task logging allowed! Security vulnerability at task_service.py:117"
+    )
 
 
 @pytest.mark.tenant_isolation
@@ -378,8 +380,9 @@ async def test_task_service_log_task_same_tenant_succeeds(db_session, two_tenant
     )
 
     # Should succeed for same-tenant
-    assert result is not None and (result.get("success") is True or result.get("task_id") is not None), \
+    assert result is not None and (result.get("success") is True or result.get("task_id") is not None), (
         "Same-tenant task logging failed!"
+    )
 
 
 # ============================================================================
@@ -415,26 +418,22 @@ async def test_full_tenant_isolation_workflow(db_session, two_tenant_service_set
 
     # Test 2: Cross-tenant mission update
     result = await project_service_a.update_project_mission(
-        project_id=project_b.id,
-        mission="Hijacked mission",
-        tenant_key=tenant_a
+        project_id=project_b.id, mission="Hijacked mission", tenant_key=tenant_a
     )
     if result and result.get("success") is True:
         violations.append("update_project_mission() allowed cross-tenant modification")
 
     # Test 3: Cross-tenant task creation
     result = await task_service_a.log_task(
-        project_id=project_b.id,
-        content="Cross-tenant attack",
-        category="Malicious task",
-        tenant_key=tenant_a
+        project_id=project_b.id, content="Cross-tenant attack", category="Malicious task", tenant_key=tenant_a
     )
     if result and (result.get("success") is True or result.get("task_id")):
         violations.append("log_task() allowed cross-tenant creation")
 
     # Assert no violations occurred
-    assert len(violations) == 0, \
-        f"CRITICAL: Tenant isolation violated!\nViolations:\n" + "\n".join(f"- {v}" for v in violations)
+    assert len(violations) == 0, "CRITICAL: Tenant isolation violated!\nViolations:\n" + "\n".join(
+        f"- {v}" for v in violations
+    )
 
 
 @pytest.mark.tenant_isolation
@@ -461,14 +460,12 @@ async def test_tenant_isolation_does_not_break_normal_access(db_session, two_ten
 
     # Test 2: Same-tenant task creation
     result = await task_service_a.log_task(
-        project_id=project_a.id,
-        content="Same-tenant task",
-        category="Valid task",
-        tenant_key=tenant_a
+        project_id=project_a.id, content="Same-tenant task", category="Valid task", tenant_key=tenant_a
     )
     if result is None or (isinstance(result, dict) and result.get("success") is False):
         failures.append("log_task() failed for same-tenant access")
 
     # Assert no failures occurred
-    assert len(failures) == 0, \
-        f"Normal access broken by tenant isolation!\nFailures:\n" + "\n".join(f"- {f}" for f in failures)
+    assert len(failures) == 0, "Normal access broken by tenant isolation!\nFailures:\n" + "\n".join(
+        f"- {f}" for f in failures
+    )

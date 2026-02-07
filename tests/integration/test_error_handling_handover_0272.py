@@ -17,25 +17,20 @@ Tests validate graceful degradation: system should NEVER crash, always provide
 useful error messages or fallback behavior.
 """
 
-import pytest
-import pytest_asyncio
 from uuid import uuid4
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from src.giljo_mcp.models import (
-    User, Product, Project
-)
-from src.giljo_mcp.models.agent_identity import AgentExecution
+import pytest_asyncio
+from sqlalchemy.exc import IntegrityError
+
 from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
-
-from tests.fixtures.base_fixtures import db_manager, db_session
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def error_test_tenant():
@@ -46,6 +41,7 @@ async def error_test_tenant():
 # ============================================================================
 # TEST SUITE 1: Missing or Incomplete User Settings
 # ============================================================================
+
 
 class TestMissingUserSettings:
     """
@@ -99,7 +95,7 @@ class TestMissingUserSettings:
                 "priorities": {
                     "product_core": 1,
                     # Missing other priorities
-                }
+                },
             },
             serena_enabled=False,
         )
@@ -130,8 +126,8 @@ class TestMissingUserSettings:
                 "version": "2.0",
                 "priorities": {
                     "product_core": 99,  # Invalid (should be 1-4)
-                    "git_history": -1,   # Invalid
-                }
+                    "git_history": -1,  # Invalid
+                },
             },
             serena_enabled=False,
         )
@@ -172,6 +168,7 @@ class TestMissingUserSettings:
 # ============================================================================
 # TEST SUITE 2: Missing or Incomplete Product Settings
 # ============================================================================
+
 
 class TestMissingProductSettings:
     """
@@ -215,7 +212,7 @@ class TestMissingProductSettings:
             testing_config={
                 "framework": "pytest",
                 # Missing other fields
-            }
+            },
         )
         db_session.add(product)
         await db_session.flush()
@@ -260,7 +257,7 @@ class TestMissingProductSettings:
             tenant_key=error_test_tenant,
             product_memory={
                 "sequential_history": "NOT_A_LIST",  # Should be list
-            }
+            },
         )
         db_session.add(product)
         await db_session.flush()
@@ -294,6 +291,7 @@ class TestMissingProductSettings:
 # ============================================================================
 # TEST SUITE 3: Missing Relationships
 # ============================================================================
+
 
 class TestMissingRelationships:
     """
@@ -352,6 +350,7 @@ class TestMissingRelationships:
 # TEST SUITE 4: Malformed Data Structures
 # ============================================================================
 
+
 class TestMalformedDataStructures:
     """
     Validate handling of invalid or unexpected data structures
@@ -377,8 +376,8 @@ class TestMalformedDataStructures:
                 "version": "2.0",
                 "priorities": {
                     "product_core": "one",  # String instead of int
-                    "git_history": None,    # None instead of int
-                }
+                    "git_history": None,  # None instead of int
+                },
             },
         )
         db_session.add(user)
@@ -409,7 +408,7 @@ class TestMalformedDataStructures:
                         "project_id": str(uuid4()),
                     }
                 ]
-            }
+            },
         )
         db_session.add(product)
         await db_session.flush()
@@ -434,7 +433,7 @@ class TestMalformedDataStructures:
             testing_config={
                 "framework": 123,  # Should be string
                 "coverage_target": "not_a_number",  # Should be number
-            }
+            },
         )
         db_session.add(product)
         await db_session.flush()
@@ -447,6 +446,7 @@ class TestMalformedDataStructures:
 # ============================================================================
 # TEST SUITE 5: Edge Cases in Context Generation
 # ============================================================================
+
 
 class TestContextGenerationEdgeCases:
     """
@@ -477,7 +477,7 @@ class TestContextGenerationEdgeCases:
                     "git_history": 4,
                     "testing": 4,
                     "memory_360": 4,
-                }
+                },
             },
         )
         db_session.add(user)
@@ -501,7 +501,7 @@ class TestContextGenerationEdgeCases:
             tenant_key=error_test_tenant,
             product_memory={
                 "sequential_history": []  # Empty
-            }
+            },
         )
         db_session.add(product)
         await db_session.flush()
@@ -533,7 +533,7 @@ class TestContextGenerationEdgeCases:
                         "project_id": str(uuid4()),
                     }
                 ]
-            }
+            },
         )
         db_session.add(product)
         await db_session.flush()
@@ -546,6 +546,7 @@ class TestContextGenerationEdgeCases:
 # ============================================================================
 # TEST SUITE 6: Concurrency and Race Conditions
 # ============================================================================
+
 
 class TestConcurrencyEdgeCases:
     """
@@ -567,10 +568,7 @@ class TestConcurrencyEdgeCases:
             tenant_key=error_test_tenant,
             role="developer",
             password_hash="hash",
-            field_priority_config={
-                "version": "2.0",
-                "priorities": {"git_history": 3}
-            },
+            field_priority_config={"version": "2.0", "priorities": {"git_history": 3}},
         )
         db_session.add(user)
         await db_session.flush()
@@ -604,11 +602,13 @@ class TestConcurrencyEdgeCases:
 
         # Add entries in sequence (simulating concurrent additions)
         for i in range(5):
-            product.product_memory["sequential_history"].append({
-                "sequence": i + 1,
-                "type": "project_closeout",
-                "project_id": str(uuid4()),
-            })
+            product.product_memory["sequential_history"].append(
+                {
+                    "sequence": i + 1,
+                    "type": "project_closeout",
+                    "project_id": str(uuid4()),
+                }
+            )
 
         await db_session.flush()
 
@@ -620,6 +620,7 @@ class TestConcurrencyEdgeCases:
 # ============================================================================
 # TEST SUITE 7: Database Transaction Failures
 # ============================================================================
+
 
 class TestDatabaseFailureHandling:
     """
@@ -699,6 +700,7 @@ class TestDatabaseFailureHandling:
 # ============================================================================
 # TEST SUITE 8: Graceful Degradation
 # ============================================================================
+
 
 class TestGracefulDegradation:
     """

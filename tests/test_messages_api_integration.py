@@ -5,15 +5,13 @@ Tests routing, endpoint implementation, and ToolAccessor integration.
 Handover 0130: Inter-agent messaging system validation
 """
 
+from datetime import datetime, timezone
+
 import pytest
 from httpx import AsyncClient
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch, MagicMock
-from sqlalchemy import select
 
 from api.app import create_app
-from src.giljo_mcp.models import AgentExecution, Project, User
-from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import AgentExecution, Project
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -46,7 +44,7 @@ async def test_project(db_session, test_tenant):
         name="Test Project",
         description="Test project for messaging",
         tenant_key=test_tenant["tenant_key"],
-        mission="Test mission"
+        mission="Test mission",
     )
     db_session.add(project)
     await db_session.commit()
@@ -80,14 +78,12 @@ class TestMessagesRouterRegistration:
     async def test_messages_router_registered(self, client):
         """Verify /api/v1/messages endpoint exists"""
         # This will return 401 without auth, but proves the route is registered
-        response = await client.get(
-            "/api/v1/messages/",
-            headers={"Authorization": "Bearer invalid"}
-        )
+        response = await client.get("/api/v1/messages/", headers={"Authorization": "Bearer invalid"})
         # 401 means route exists but auth failed
         # 404 would mean route doesn't exist
-        assert response.status_code in [401, 403, 400], \
+        assert response.status_code in [401, 403, 400], (
             f"Expected auth error, got {response.status_code}: {response.text}"
+        )
 
     @pytest.mark.asyncio
     async def test_openapi_includes_messages_routes(self, client):
@@ -123,7 +119,7 @@ class TestMessagesEndpoints:
                 "to_agents": ["agent1"],
                 "content": "Test message",
                 "project_id": "test-proj",
-            }
+            },
         )
         # Not 404 = endpoint exists
         assert response.status_code != 404
@@ -145,10 +141,7 @@ class TestMessagesEndpoints:
     @pytest.mark.asyncio
     async def test_acknowledge_endpoint_exists(self, client):
         """Test POST /api/v1/messages/{message_id}/acknowledge endpoint"""
-        response = await client.post(
-            "/api/v1/messages/test-msg-id/acknowledge",
-            params={"agent_name": "test-agent"}
-        )
+        response = await client.post("/api/v1/messages/test-msg-id/acknowledge", params={"agent_name": "test-agent"})
         # Not 404 = endpoint exists
         assert response.status_code != 404
 
@@ -156,8 +149,7 @@ class TestMessagesEndpoints:
     async def test_complete_endpoint_exists(self, client):
         """Test POST /api/v1/messages/{message_id}/complete endpoint"""
         response = await client.post(
-            "/api/v1/messages/test-msg-id/complete",
-            params={"agent_name": "test-agent", "result": "completed"}
+            "/api/v1/messages/test-msg-id/complete", params={"agent_name": "test-agent", "result": "completed"}
         )
         # Not 404 = endpoint exists
         assert response.status_code != 404
@@ -169,42 +161,47 @@ class TestToolAccessorIntegration:
     def test_tool_accessor_has_send_message(self):
         """Test ToolAccessor.send_message() exists"""
         from giljo_mcp.tools.tool_accessor import ToolAccessor
-        assert hasattr(ToolAccessor, 'send_message')
-        assert callable(getattr(ToolAccessor, 'send_message'))
+
+        assert hasattr(ToolAccessor, "send_message")
+        assert callable(ToolAccessor.send_message)
 
     def test_tool_accessor_has_get_messages(self):
         """Test ToolAccessor.get_messages() exists"""
         from giljo_mcp.tools.tool_accessor import ToolAccessor
-        assert hasattr(ToolAccessor, 'get_messages')
-        assert callable(getattr(ToolAccessor, 'get_messages'))
+
+        assert hasattr(ToolAccessor, "get_messages")
+        assert callable(ToolAccessor.get_messages)
 
     def test_tool_accessor_has_acknowledge_message(self):
         """Test ToolAccessor.acknowledge_message() exists"""
         from giljo_mcp.tools.tool_accessor import ToolAccessor
-        assert hasattr(ToolAccessor, 'acknowledge_message')
-        assert callable(getattr(ToolAccessor, 'acknowledge_message'))
+
+        assert hasattr(ToolAccessor, "acknowledge_message")
+        assert callable(ToolAccessor.acknowledge_message)
 
     def test_tool_accessor_has_complete_message(self):
         """Test ToolAccessor.complete_message() exists"""
         from giljo_mcp.tools.tool_accessor import ToolAccessor
-        assert hasattr(ToolAccessor, 'complete_message')
-        assert callable(getattr(ToolAccessor, 'complete_message'))
+
+        assert hasattr(ToolAccessor, "complete_message")
+        assert callable(ToolAccessor.complete_message)
 
     def test_tool_accessor_has_list_messages(self):
         """Test ToolAccessor.list_messages() exists"""
         from giljo_mcp.tools.tool_accessor import ToolAccessor
-        assert hasattr(ToolAccessor, 'list_messages')
-        assert callable(getattr(ToolAccessor, 'list_messages'))
+
+        assert hasattr(ToolAccessor, "list_messages")
+        assert callable(ToolAccessor.list_messages)
 
     def test_tool_accessor_has_message_service(self):
         """Test ToolAccessor initializes MessageService"""
-        from giljo_mcp.tools.tool_accessor import ToolAccessor
-        from giljo_mcp.message_service import MessageService
-
         # Check __init__ creates _message_service
         import inspect
+
+        from giljo_mcp.tools.tool_accessor import ToolAccessor
+
         init_source = inspect.getsource(ToolAccessor.__init__)
-        assert '_message_service = MessageService' in init_source
+        assert "_message_service = MessageService" in init_source
 
 
 class TestMessageServiceIntegration:
@@ -213,12 +210,14 @@ class TestMessageServiceIntegration:
     def test_message_service_exists(self):
         """Test MessageService can be imported"""
         from giljo_mcp.message_service import MessageService
+
         assert MessageService is not None
 
     def test_message_service_has_send_method(self):
         """Test MessageService has send method"""
         from giljo_mcp.message_service import MessageService
-        assert hasattr(MessageService, 'send_message')
+
+        assert hasattr(MessageService, "send_message")
 
 
 class TestEndpointModels:
@@ -229,11 +228,7 @@ class TestEndpointModels:
         from api.endpoints.messages import MessageSend
 
         # Create valid model
-        msg = MessageSend(
-            to_agents=["agent1"],
-            content="Test",
-            project_id="proj-123"
-        )
+        msg = MessageSend(to_agents=["agent1"], content="Test", project_id="proj-123")
         assert msg.to_agents == ["agent1"]
         assert msg.content == "Test"
         assert msg.project_id == "proj-123"
@@ -252,7 +247,7 @@ class TestEndpointModels:
             message_type="direct",
             priority="normal",
             status="waiting",
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
         assert msg.id == "msg-123"
         assert msg.status == "pending"
@@ -273,7 +268,7 @@ class TestDatabaseIntegration:
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "status": "pending",
             "type": "direct",
-            "priority": "normal"
+            "priority": "normal",
         }
 
         test_agent_job.messages.append(message)

@@ -5,14 +5,15 @@ Handover 0017: Provides agent job coordination and lifecycle management.
 Separate from user tasks - handles agent-to-agent job coordination for agentic orchestration.
 """
 
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from ..models.agent_identity import AgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+
 from .base import BaseRepository
 
 
@@ -40,8 +41,8 @@ class AgentJobRepository:
         tenant_key: str,
         agent_display_name: str,
         mission: str,
-        spawned_by: Optional[str] = None,
-        context_chunks: Optional[List[str]] = None,
+        spawned_by: str | None = None,
+        context_chunks: list[str | None] = None,
     ) -> AgentJob:
         """
         Create a new agent job.
@@ -67,7 +68,7 @@ class AgentJobRepository:
             context_chunks=context_chunks or [],
         )
 
-    async def get_job_by_job_id(self, session: AsyncSession, tenant_key: str, job_id: str) -> Optional[AgentJob]:
+    async def get_job_by_job_id(self, session: AsyncSession, tenant_key: str, job_id: str) -> AgentJob | None:
         """
         Get a job by its job_id.
 
@@ -79,7 +80,9 @@ class AgentJobRepository:
         Returns:
             AgentJob instance or None if not found
         """
-        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
+        result = await session.execute(
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
+        )
         return result.scalar_one_or_none()
 
     async def update_status(
@@ -88,8 +91,8 @@ class AgentJobRepository:
         tenant_key: str,
         job_id: str,
         status: str,
-        started_at: Optional[datetime] = None,
-        completed_at: Optional[datetime] = None,
+        started_at: datetime | None = None,
+        completed_at: datetime | None = None,
     ) -> bool:
         """
         Update job status with optional timestamps.
@@ -105,7 +108,9 @@ class AgentJobRepository:
         Returns:
             True if job was updated, False if not found
         """
-        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
+        result = await session.execute(
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
+        )
         job = result.scalar_one_or_none()
 
         if job:
@@ -113,18 +118,20 @@ class AgentJobRepository:
             if started_at:
                 job.started_at = started_at
             elif status == "active" and not job.started_at:
-                job.started_at = datetime.utcnow()
+                job.started_at = datetime.now(timezone.utc)
 
             if completed_at:
                 job.completed_at = completed_at
             elif status in ["completed", "failed"] and not job.completed_at:
-                job.completed_at = datetime.utcnow()
+                job.completed_at = datetime.now(timezone.utc)
 
             await session.flush()
             return True
         return False
 
-    async def get_active_jobs(self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None) -> List[AgentJob]:
+    async def get_active_jobs(
+        self, session: AsyncSession, tenant_key: str, agent_display_name: str | None = None
+    ) -> list[AgentJob]:
         """
         Get all active jobs (pending or active status).
 
@@ -145,7 +152,7 @@ class AgentJobRepository:
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_jobs_by_status(self, session: AsyncSession, tenant_key: str, status: str) -> List[AgentJob]:
+    async def get_jobs_by_status(self, session: AsyncSession, tenant_key: str, status: str) -> list[AgentJob]:
         """
         Get all jobs with a specific status.
 
@@ -158,11 +165,13 @@ class AgentJobRepository:
             List of AgentJob instances with the specified status
         """
         result = await session.execute(
-            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.status == status).order_by(AgentJob.created_at.desc())
+            select(AgentJob)
+            .where(AgentJob.tenant_key == tenant_key, AgentJob.status == status)
+            .order_by(AgentJob.created_at.desc())
         )
         return list(result.scalars().all())
 
-    async def get_jobs_by_spawner(self, session: AsyncSession, tenant_key: str, spawned_by: str) -> List[AgentJob]:
+    async def get_jobs_by_spawner(self, session: AsyncSession, tenant_key: str, spawned_by: str) -> list[AgentJob]:
         """
         Get all jobs spawned by a specific agent.
 
@@ -175,11 +184,13 @@ class AgentJobRepository:
             List of AgentJob instances spawned by the agent
         """
         result = await session.execute(
-            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.spawned_by == spawned_by).order_by(AgentJob.created_at.desc())
+            select(AgentJob)
+            .where(AgentJob.tenant_key == tenant_key, AgentJob.spawned_by == spawned_by)
+            .order_by(AgentJob.created_at.desc())
         )
         return list(result.scalars().all())
 
-    async def add_message(self, session: AsyncSession, tenant_key: str, job_id: str, message: Dict[str, Any]) -> bool:
+    async def add_message(self, session: AsyncSession, tenant_key: str, job_id: str, message: dict[str, Any]) -> bool:
         """
         Add message to job's message array.
 
@@ -192,7 +203,9 @@ class AgentJobRepository:
         Returns:
             True if message was added, False if job not found
         """
-        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
+        result = await session.execute(
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
+        )
         job = result.scalar_one_or_none()
 
         if job:
@@ -201,7 +214,7 @@ class AgentJobRepository:
 
             # Add timestamp if not present
             if "timestamp" not in message:
-                message["timestamp"] = datetime.utcnow().isoformat()
+                message["timestamp"] = datetime.now(timezone.utc).isoformat()
 
             messages.append(message)
             job.messages = messages
@@ -221,7 +234,9 @@ class AgentJobRepository:
         Returns:
             True if job was acknowledged, False if not found
         """
-        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
+        result = await session.execute(
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
+        )
         job = result.scalar_one_or_none()
 
         if job:
@@ -229,7 +244,7 @@ class AgentJobRepository:
             if job.status == "pending":
                 job.status = "active"
                 if not job.started_at:
-                    job.started_at = datetime.utcnow()
+                    job.started_at = datetime.now(timezone.utc)
             await session.flush()
             return True
         return False
@@ -247,7 +262,9 @@ class AgentJobRepository:
         Returns:
             True if chunk was added, False if job not found
         """
-        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
+        result = await session.execute(
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
+        )
         job = result.scalar_one_or_none()
 
         if job:
@@ -259,7 +276,9 @@ class AgentJobRepository:
             return True
         return False
 
-    async def get_job_statistics(self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None) -> Dict[str, Any]:
+    async def get_job_statistics(
+        self, session: AsyncSession, tenant_key: str, agent_display_name: str | None = None
+    ) -> dict[str, Any]:
         """
         Get job statistics for a tenant.
 
@@ -287,19 +306,22 @@ class AgentJobRepository:
         status_counts = result.all()
 
         # Count by agent display name
-        type_stmt = select(AgentJob.agent_display_name, func.count(AgentJob.id)).where(AgentJob.tenant_key == tenant_key).group_by(AgentJob.agent_display_name)
+        type_stmt = (
+            select(AgentJob.agent_display_name, func.count(AgentJob.id))
+            .where(AgentJob.tenant_key == tenant_key)
+            .group_by(AgentJob.agent_display_name)
+        )
         result = await session.execute(type_stmt)
         type_counts = result.all()
 
         return {
             "total_jobs": total_jobs,
-            "by_status": {status: count for status, count in status_counts},
-            "by_agent_display_name": {agent_display_name: count for agent_display_name, count in type_counts},
+            "by_status": dict(status_counts),
+            "by_agent_display_name": dict(type_counts),
             "active_jobs": len([s for s, c in status_counts if s in ["pending", "active"]]),
             "completed_jobs": len([s for s, c in status_counts if s == "completed"]),
             "failed_jobs": len([s for s, c in status_counts if s == "failed"]),
         }
-
 
     # ============================================================================
     # Agent Execution & AgentJob Methods (Handover 1011 - Phase 4)
@@ -310,7 +332,7 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         agent_id: str,
-    ) -> Optional["AgentExecution"]:
+    ) -> "AgentExecution" | None:
         """
         Get agent execution by agent_id with tenant isolation.
 
@@ -328,8 +350,6 @@ class AgentJobRepository:
             ...     print(execution.status)
         """
         # ORIGINAL QUERY: operations.py lines 226-230 (get_job_health endpoint)
-        from ..models.agent_identity import AgentExecution
-
         stmt = select(AgentExecution).where(
             AgentExecution.tenant_key == tenant_key,
             AgentExecution.agent_id == agent_id,
@@ -342,7 +362,7 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> Optional["AgentExecution"]:
+    ) -> "AgentExecution" | None:
         """
         Get agent execution by job_id with tenant isolation (fallback lookup).
 
@@ -358,8 +378,6 @@ class AgentJobRepository:
             >>> execution = await repo.get_execution_by_job_id(session, "tenant-1", "job-456")
         """
         # ORIGINAL QUERY: operations.py lines 235-239 (get_job_health endpoint fallback)
-        from ..models.agent_identity import AgentExecution
-
         stmt = select(AgentExecution).where(
             AgentExecution.tenant_key == tenant_key,
             AgentExecution.job_id == job_id,
@@ -372,7 +390,7 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> Optional["AgentJob"]:
+    ) -> "AgentJob" | None:
         """
         Get agent job by job_id with tenant isolation.
 
@@ -390,8 +408,6 @@ class AgentJobRepository:
             ...     print(job.mission)
         """
         # ORIGINAL QUERY: operations.py lines 318-322 (update_agent_mission endpoint)
-        from ..models.agent_identity import AgentJob
-
         stmt = select(AgentJob).where(
             AgentJob.tenant_key == tenant_key,
             AgentJob.job_id == job_id,
@@ -404,9 +420,9 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> Optional["AgentExecution"]:
+    ) -> "AgentExecution" | None:
         """
-        Get the latest execution instance for a job (by instance_number desc).
+        Get the latest execution instance for a job (by started_at desc).
 
         Args:
             session: Async database session
@@ -419,18 +435,16 @@ class AgentJobRepository:
         Example:
             >>> execution = await repo.get_latest_execution_for_job(session, "tenant-1", "job-123")
             >>> if execution:
-            ...     print(f"Instance #{execution.instance_number}")
+            ...     print(f"Status: {execution.status}")
         """
         # ORIGINAL QUERY: operations.py lines 343-348 (update_agent_mission WebSocket event)
-        from ..models.agent_identity import AgentExecution
-
         stmt = (
             select(AgentExecution)
             .where(
                 AgentExecution.job_id == job_id,
                 AgentExecution.tenant_key == tenant_key,
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
         )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
@@ -456,7 +470,7 @@ class AgentJobRepository:
         Example:
             >>> await repo.increment_sent_count(session, "agent-123", "tenant-1")
         """
-        from ..models.agent_identity import AgentExecution
+        from giljo_mcp.models.agent_identity import AgentExecution
 
         stmt = (
             update(AgentExecution)
@@ -486,7 +500,7 @@ class AgentJobRepository:
         Example:
             >>> await repo.increment_waiting_count(session, "agent-123", "tenant-1")
         """
-        from ..models.agent_identity import AgentExecution
+        from giljo_mcp.models.agent_identity import AgentExecution
 
         stmt = (
             update(AgentExecution)
@@ -518,7 +532,7 @@ class AgentJobRepository:
         Example:
             >>> await repo.decrement_waiting_increment_read(session, "agent-123", "tenant-1")
         """
-        from ..models.agent_identity import AgentExecution
+        from giljo_mcp.models.agent_identity import AgentExecution
 
         stmt = (
             update(AgentExecution)

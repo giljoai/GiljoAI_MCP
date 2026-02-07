@@ -10,14 +10,15 @@ to ThinClientPromptGenerator, causing orchestrator to always get empty dict.
 Handover: Field Priority Bug Fix
 """
 
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models import User, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 @pytest_asyncio.fixture
@@ -31,13 +32,8 @@ async def test_user_with_field_config(db_session: AsyncSession):
         password_hash="hashed_password",
         field_priority_config={
             "version": "1.0",
-            "fields": {
-                "codebase_summary": 8,
-                "product_vision": 10,
-                "architecture": 7,
-                "dependencies": 4
-            }
-        }
+            "fields": {"codebase_summary": 8, "product_vision": 10, "architecture": 7, "dependencies": 4},
+        },
     )
     db_session.add(user)
     await db_session.commit()
@@ -54,7 +50,7 @@ async def test_user_without_field_config(db_session: AsyncSession):
         tenant_key=f"tenant_{uuid4().hex[:8]}",
         role="developer",
         password_hash="hashed_password",
-        field_priority_config=None  # Explicitly no config
+        field_priority_config=None,  # Explicitly no config
     )
     db_session.add(user)
     await db_session.commit()
@@ -69,7 +65,7 @@ async def test_product(db_session: AsyncSession, test_user_with_field_config: Us
         name=f"Test Product {uuid4().hex[:8]}",
         description="Test product description.",
         tenant_key=test_user_with_field_config.tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product)
     await db_session.commit()
@@ -78,11 +74,7 @@ async def test_product(db_session: AsyncSession, test_user_with_field_config: Us
 
 
 @pytest_asyncio.fixture
-async def test_project(
-    db_session: AsyncSession,
-    test_user_with_field_config: User,
-    test_product: Product
-):
+async def test_project(db_session: AsyncSession, test_user_with_field_config: User, test_product: Product):
     """Create test project."""
     project = Project(
         name=f"Test Project {uuid4().hex[:8]}",
@@ -91,7 +83,7 @@ async def test_project(
         tenant_key=test_user_with_field_config.tenant_key,
         status="planning",
         mission="Test mission for orchestrator.",
-        context_budget=180000
+        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -101,9 +93,7 @@ async def test_project(
 
 @pytest.mark.asyncio
 async def test_user_field_priorities_passed_to_orchestrator_job(
-    db_session: AsyncSession,
-    test_user_with_field_config: User,
-    test_project: Project
+    db_session: AsyncSession, test_user_with_field_config: User, test_project: Project
 ):
     """
     CRITICAL TEST: When user has configured field priorities in My Settings,
@@ -126,19 +116,11 @@ async def test_user_field_priorities_passed_to_orchestrator_job(
 
     # ARRANGE: User already has field_priority_config in fixture
     assert test_user_with_field_config.field_priority_config is not None
-    expected_priorities = {
-        "codebase_summary": 8,
-        "product_vision": 10,
-        "architecture": 7,
-        "dependencies": 4
-    }
+    expected_priorities = {"codebase_summary": 8, "product_vision": 10, "architecture": 7, "dependencies": 4}
     assert test_user_with_field_config.field_priority_config["fields"] == expected_priorities
 
     # ACT: Call the staging prompt generator (simulating endpoint behavior)
-    generator = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=test_user_with_field_config.tenant_key
-    )
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=test_user_with_field_config.tenant_key)
 
     # THIS IS THE BUG: The endpoint should fetch user.field_priority_config
     # and pass it to generate(), but currently it doesn't
@@ -150,7 +132,7 @@ async def test_user_field_priorities_passed_to_orchestrator_job(
         project_id=str(test_project.id),
         user_id=str(test_user_with_field_config.id),
         tool="claude-code",
-        field_priorities=field_priorities  # Should be passed by endpoint
+        field_priorities=field_priorities,  # Should be passed by endpoint
     )
 
     # ASSERT: Verify orchestrator job has field priorities in metadata
@@ -174,8 +156,7 @@ async def test_user_field_priorities_passed_to_orchestrator_job(
 
 @pytest.mark.asyncio
 async def test_user_without_field_config_uses_empty_dict(
-    db_session: AsyncSession,
-    test_user_without_field_config: User
+    db_session: AsyncSession, test_user_without_field_config: User
 ):
     """
     When user has NOT configured field priorities,
@@ -192,7 +173,7 @@ async def test_user_without_field_config_uses_empty_dict(
         name=f"Test Product {uuid4().hex[:8]}",
         description="Test product description.",
         tenant_key=test_user_without_field_config.tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product)
     await db_session.commit()
@@ -205,7 +186,7 @@ async def test_user_without_field_config_uses_empty_dict(
         tenant_key=test_user_without_field_config.tenant_key,
         status="planning",
         mission="Test mission.",
-        context_budget=180000
+        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -215,10 +196,7 @@ async def test_user_without_field_config_uses_empty_dict(
     assert test_user_without_field_config.field_priority_config is None
 
     # ACT: Generate staging prompt
-    generator = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=test_user_without_field_config.tenant_key
-    )
+    generator = ThinClientPromptGenerator(db=db_session, tenant_key=test_user_without_field_config.tenant_key)
 
     # Simulate what FIXED endpoint should do with None config
     user_field_config = test_user_without_field_config.field_priority_config or {}
@@ -228,7 +206,7 @@ async def test_user_without_field_config_uses_empty_dict(
         project_id=str(project.id),
         user_id=str(test_user_without_field_config.id),
         tool="claude-code",
-        field_priorities=field_priorities
+        field_priorities=field_priorities,
     )
 
     # ASSERT: Verify orchestrator job has EMPTY field priorities
@@ -243,16 +221,11 @@ async def test_user_without_field_config_uses_empty_dict(
 
     # Should have empty dict when user has no config
     actual_priorities = orchestrator_job.job_metadata.get("field_priorities", {})
-    assert actual_priorities == {}, (
-        f"Expected empty field_priorities {{}}, got {actual_priorities}"
-    )
+    assert actual_priorities == {}, f"Expected empty field_priorities {{}}, got {actual_priorities}"
 
 
 @pytest.mark.asyncio
-async def test_field_priorities_respect_tenant_isolation(
-    db_session: AsyncSession,
-    test_user_with_field_config: User
-):
+async def test_field_priorities_respect_tenant_isolation(db_session: AsyncSession, test_user_with_field_config: User):
     """
     Field priorities should respect tenant isolation.
 
@@ -279,9 +252,9 @@ async def test_field_priorities_respect_tenant_isolation(
             "fields": {
                 "codebase_summary": 2,  # Different priorities
                 "product_vision": 3,
-                "architecture": 1
-            }
-        }
+                "architecture": 1,
+            },
+        },
     )
     db_session.add(tenant_b_user)
     await db_session.commit()
@@ -292,7 +265,7 @@ async def test_field_priorities_respect_tenant_isolation(
         name=f"Product A {uuid4().hex[:8]}",
         description="Product for tenant A.",
         tenant_key=test_user_with_field_config.tenant_key,
-        is_active=True
+        is_active=True,
     )
     db_session.add(product_a)
     await db_session.commit()
@@ -305,17 +278,14 @@ async def test_field_priorities_respect_tenant_isolation(
         tenant_key=test_user_with_field_config.tenant_key,
         status="planning",
         mission="Mission A.",
-        context_budget=180000
+        context_budget=180000,
     )
     db_session.add(project_a)
     await db_session.commit()
     await db_session.refresh(project_a)
 
     # ACT: Generate staging prompt for tenant_A user
-    generator_a = ThinClientPromptGenerator(
-        db=db_session,
-        tenant_key=test_user_with_field_config.tenant_key
-    )
+    generator_a = ThinClientPromptGenerator(db=db_session, tenant_key=test_user_with_field_config.tenant_key)
 
     user_a_config = test_user_with_field_config.field_priority_config or {}
     field_priorities_a = user_a_config.get("fields", {})
@@ -324,7 +294,7 @@ async def test_field_priorities_respect_tenant_isolation(
         project_id=str(project_a.id),
         user_id=str(test_user_with_field_config.id),
         tool="claude-code",
-        field_priorities=field_priorities_a
+        field_priorities=field_priorities_a,
     )
 
     # ASSERT: Verify tenant_A got their own priorities
@@ -338,27 +308,19 @@ async def test_field_priorities_respect_tenant_isolation(
     assert orchestrator_job_a.tenant_key == test_user_with_field_config.tenant_key
 
     actual_priorities_a = orchestrator_job_a.job_metadata.get("field_priorities", {})
-    expected_priorities_a = {
-        "codebase_summary": 8,
-        "product_vision": 10,
-        "architecture": 7,
-        "dependencies": 4
-    }
+    expected_priorities_a = {"codebase_summary": 8, "product_vision": 10, "architecture": 7, "dependencies": 4}
 
     assert actual_priorities_a == expected_priorities_a, (
-        f"Tenant A should get their own priorities. "
-        f"Expected {expected_priorities_a}, got {actual_priorities_a}"
+        f"Tenant A should get their own priorities. Expected {expected_priorities_a}, got {actual_priorities_a}"
     )
 
     # Verify tenant_B user CANNOT access tenant_A's orchestrator job
     # (by checking tenant_key isolation in database query)
     stmt_b = select(AgentExecution).where(
         AgentExecution.job_id == orchestrator_id_a,
-        AgentExecution.tenant_key == tenant_b_user.tenant_key  # Different tenant
+        AgentExecution.tenant_key == tenant_b_user.tenant_key,  # Different tenant
     )
     job_result_b = await db_session.execute(stmt_b)
     orchestrator_job_b = job_result_b.scalar_one_or_none()
 
-    assert orchestrator_job_b is None, (
-        "Tenant B should NOT be able to access Tenant A's orchestrator job"
-    )
+    assert orchestrator_job_b is None, "Tenant B should NOT be able to access Tenant A's orchestrator job"

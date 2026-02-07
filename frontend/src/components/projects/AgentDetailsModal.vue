@@ -7,7 +7,7 @@
         <span v-if="isOrchestrator">System Orchestrator Prompt</span>
         <span v-else>Agent Details: {{ agent?.agent_name || 'Unknown Agent' }}</span>
         <v-spacer></v-spacer>
-        <v-btn icon variant="text" @click="handleClose" aria-label="Close dialog">
+        <v-btn icon variant="text" aria-label="Close dialog" @click="handleClose">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
@@ -189,7 +189,7 @@
             </v-expansion-panel>
 
             <!-- Template Content (for backward compatibility) -->
-            <v-expansion-panel v-if="templateData.template_content">
+            <v-expansion-panel v-if="templateData.system_instructions">
               <v-expansion-panel-title>
                 <div class="d-flex align-center">
                   <v-icon start size="small">mdi-file-document</v-icon>
@@ -202,13 +202,13 @@
                     size="small"
                     variant="tonal"
                     prepend-icon="mdi-content-copy"
-                    @click="copyToClipboard(templateData.template_content)"
+                    @click="copyToClipboard(templateData.system_instructions)"
                   >
                     Copy
                   </v-btn>
                 </div>
                 <v-card variant="outlined" class="template-content-card">
-                  <pre class="template-content">{{ templateData.template_content }}</pre>
+                  <pre class="template-content">{{ templateData.system_instructions }}</pre>
                 </v-card>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -289,11 +289,9 @@ const emit = defineEmits(['update:modelValue'])
 const instance = getCurrentInstance()
 const apiClient = instance?.appContext.config.globalProperties.$api || api
 
-// Theme-aware giljo face icon (Handover 0358)
-const theme = useTheme()
+// Giljo face icon (dark theme only)
 const giljoFaceIcon = computed(() => {
-  const isDark = theme.global.current.value.dark
-  return isDark ? '/giljo_YW_Face.svg' : '/Giljo_BY_Face.svg'
+  return '/giljo_YW_Face.svg'
 })
 
 // State

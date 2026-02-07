@@ -29,13 +29,16 @@ from httpx import AsyncClient
 # FIXTURES - Test Users and Authentication
 # ============================================================================
 
+
 @pytest.fixture
 async def test_user(db_manager):
     """Create a test user for authenticated requests."""
+    from uuid import uuid4
+
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
-    from uuid import uuid4
 
     unique_id = uuid4().hex[:8]
     username = f"health_test_{unique_id}"
@@ -85,6 +88,7 @@ def auth_headers(auth_token):
 # ============================================================================
 # TEST CLASS - Health/Status Endpoints
 # ============================================================================
+
 
 @pytest.mark.asyncio
 class TestHealthStatusAPI:
@@ -160,13 +164,9 @@ class TestHealthStatusAPI:
     # Database Health Check (Authenticated)
     # ========================================================================
 
-    async def test_database_health_check_success(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_database_health_check_success(self, api_client: AsyncClient, auth_headers: dict):
         """Test database health check returns success when DB is available."""
-        response = await api_client.get(
-            "/api/v1/config/health/database", headers=auth_headers
-        )
+        response = await api_client.get("/api/v1/config/health/database", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -189,13 +189,9 @@ class TestHealthStatusAPI:
         # Should require authentication
         assert response.status_code == 401
 
-    async def test_database_health_check_validates_connection(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_database_health_check_validates_connection(self, api_client: AsyncClient, auth_headers: dict):
         """Test database health check actually validates DB connection."""
-        response = await api_client.get(
-            "/api/v1/config/health/database", headers=auth_headers
-        )
+        response = await api_client.get("/api/v1/config/health/database", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -212,13 +208,9 @@ class TestHealthStatusAPI:
     # Detailed Health Check (Authenticated)
     # ========================================================================
 
-    async def test_detailed_health_check_success(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_detailed_health_check_success(self, api_client: AsyncClient, auth_headers: dict):
         """Test detailed health check returns comprehensive system status."""
-        response = await api_client.get(
-            "/api/v1/stats/health/detailed", headers=auth_headers
-        )
+        response = await api_client.get("/api/v1/stats/health/detailed", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -236,13 +228,9 @@ class TestHealthStatusAPI:
         assert data["checks_passed"] >= 0
         assert data["checks_failed"] >= 0
 
-    async def test_detailed_health_check_components(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_detailed_health_check_components(self, api_client: AsyncClient, auth_headers: dict):
         """Test detailed health check includes all system components."""
-        response = await api_client.get(
-            "/api/v1/stats/health/detailed", headers=auth_headers
-        )
+        response = await api_client.get("/api/v1/stats/health/detailed", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -257,13 +245,9 @@ class TestHealthStatusAPI:
             # Each component should have a status
             assert "status" in components[component]
 
-    async def test_detailed_health_check_api_component(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_detailed_health_check_api_component(self, api_client: AsyncClient, auth_headers: dict):
         """Test detailed health check API component includes uptime."""
-        response = await api_client.get(
-            "/api/v1/stats/health/detailed", headers=auth_headers
-        )
+        response = await api_client.get("/api/v1/stats/health/detailed", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -274,13 +258,9 @@ class TestHealthStatusAPI:
         assert "uptime_seconds" in api_component
         assert api_component["uptime_seconds"] >= 0
 
-    async def test_detailed_health_check_database_component(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_detailed_health_check_database_component(self, api_client: AsyncClient, auth_headers: dict):
         """Test detailed health check validates database component."""
-        response = await api_client.get(
-            "/api/v1/stats/health/detailed", headers=auth_headers
-        )
+        response = await api_client.get("/api/v1/stats/health/detailed", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -293,13 +273,9 @@ class TestHealthStatusAPI:
         if db_component["status"] == "unhealthy":
             assert "error" in db_component
 
-    async def test_detailed_health_check_websocket_component(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_detailed_health_check_websocket_component(self, api_client: AsyncClient, auth_headers: dict):
         """Test detailed health check includes WebSocket connections."""
-        response = await api_client.get(
-            "/api/v1/stats/health/detailed", headers=auth_headers
-        )
+        response = await api_client.get("/api/v1/stats/health/detailed", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -320,13 +296,9 @@ class TestHealthStatusAPI:
         # Should require authentication
         assert response.status_code == 401
 
-    async def test_detailed_health_overall_status_logic(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_detailed_health_overall_status_logic(self, api_client: AsyncClient, auth_headers: dict):
         """Test detailed health check overall status logic."""
-        response = await api_client.get(
-            "/api/v1/stats/health/detailed", headers=auth_headers
-        )
+        response = await api_client.get("/api/v1/stats/health/detailed", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -355,13 +327,9 @@ class TestHealthStatusAPI:
         # Should require authentication
         assert response.status_code == 401
 
-    async def test_system_stats_endpoint_exists(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_system_stats_endpoint_exists(self, api_client: AsyncClient, auth_headers: dict):
         """Test system statistics endpoint exists (note: has known schema bug)."""
-        response = await api_client.get(
-            "/api/v1/stats/system", headers=auth_headers
-        )
+        response = await api_client.get("/api/v1/stats/system", headers=auth_headers)
 
         # Endpoint exists and is accessible (even if it has a schema bug)
         # Response should be 200 or 500 (schema validation error)
@@ -371,18 +339,12 @@ class TestHealthStatusAPI:
     # Cross-Endpoint Consistency
     # ========================================================================
 
-    async def test_health_endpoints_consistency(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_health_endpoints_consistency(self, api_client: AsyncClient, auth_headers: dict):
         """Test consistency across different health check endpoints."""
         # Get all health endpoints
         basic_health = await api_client.get("/health")
-        detailed_health = await api_client.get(
-            "/api/v1/stats/health/detailed", headers=auth_headers
-        )
-        db_health = await api_client.get(
-            "/api/v1/config/health/database", headers=auth_headers
-        )
+        detailed_health = await api_client.get("/api/v1/stats/health/detailed", headers=auth_headers)
+        db_health = await api_client.get("/api/v1/config/health/database", headers=auth_headers)
 
         assert basic_health.status_code == 200
         assert detailed_health.status_code == 200
@@ -402,13 +364,9 @@ class TestHealthStatusAPI:
             assert basic_db == "healthy"
             assert detailed_db == "healthy"
 
-    async def test_detailed_health_components_consistency(
-        self, api_client: AsyncClient, auth_headers: dict
-    ):
+    async def test_detailed_health_components_consistency(self, api_client: AsyncClient, auth_headers: dict):
         """Test detailed health check components are properly structured."""
-        response = await api_client.get(
-            "/api/v1/stats/health/detailed", headers=auth_headers
-        )
+        response = await api_client.get("/api/v1/stats/health/detailed", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -416,9 +374,9 @@ class TestHealthStatusAPI:
         # Each component should have consistent structure
         for component_name, component_data in data["components"].items():
             assert "status" in component_data, f"Component {component_name} missing status"
-            assert component_data["status"] in [
-                "healthy", "degraded", "unhealthy", "not_configured", "not_loaded"
-            ], f"Component {component_name} has invalid status: {component_data['status']}"
+            assert component_data["status"] in ["healthy", "degraded", "unhealthy", "not_configured", "not_loaded"], (
+                f"Component {component_name} has invalid status: {component_data['status']}"
+            )
 
 
 # ============================================================================

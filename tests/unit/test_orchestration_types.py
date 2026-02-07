@@ -230,14 +230,14 @@ class TestAgentConfig:
         config = AgentConfig(
             role="architect",
             template_id="arch_001",
-            template_content="You are an expert architect...",
+            system_instructions="You are an expert architect...",
             priority="high",
             mission_scope="Design authentication system",
         )
 
         assert config.role == "architect"
         assert config.template_id == "arch_001"
-        assert config.template_content == "You are an expert architect..."
+        assert config.system_instructions == "You are an expert architect..."
         assert config.priority == "high"
         assert config.mission_scope == "Design authentication system"
         assert config.mission is None
@@ -256,7 +256,7 @@ class TestAgentConfig:
         config = AgentConfig(
             role="implementor",
             template_id="impl_001",
-            template_content="You are an expert implementor...",
+            system_instructions="You are an expert implementor...",
             priority="required",
             mission_scope="OAuth2 implementation",
             mission=mission,
@@ -271,7 +271,7 @@ class TestAgentConfig:
         config = AgentConfig(
             role="analyst",
             template_id="anal_001",
-            template_content="You are an analyst...",
+            system_instructions="You are an analyst...",
             priority="medium",
             mission_scope="Analyze requirements",
         )
@@ -281,7 +281,7 @@ class TestAgentConfig:
         assert isinstance(params, dict)
         assert params["agent_role"] == "analyst"
         assert params["template_id"] == "anal_001"
-        assert params["template_content"] == "You are an analyst..."
+        assert params["system_instructions"] == "You are an analyst..."
         assert params["priority"] == "medium"
         assert params["mission_scope"] == "Analyze requirements"
         assert params["mission"] is None
@@ -300,7 +300,7 @@ class TestAgentConfig:
         config = AgentConfig(
             role="tester",
             template_id="test_001",
-            template_content="You are a tester...",
+            system_instructions="You are a tester...",
             priority="high",
             mission_scope="Testing scope",
             mission=mission,
@@ -317,7 +317,7 @@ class TestAgentConfig:
         config = AgentConfig(
             role="reviewer",
             template_id="rev_001",
-            template_content="You are a reviewer...",
+            system_instructions="You are a reviewer...",
             priority="low",
             mission_scope="Review code",
         )
@@ -335,7 +335,7 @@ class TestWorkflowStage:
         agent_config = AgentConfig(
             role="architect",
             template_id="arch_001",
-            template_content="Template",
+            system_instructions="Template",
             priority="high",
             mission_scope="Design",
         )
@@ -358,14 +358,14 @@ class TestWorkflowStage:
         agent1 = AgentConfig(
             role="implementor",
             template_id="impl_001",
-            template_content="Template 1",
+            system_instructions="Template 1",
             priority="high",
             mission_scope="Scope 1",
         )
         agent2 = AgentConfig(
             role="tester",
             template_id="test_001",
-            template_content="Template 2",
+            system_instructions="Template 2",
             priority="medium",
             mission_scope="Scope 2",
         )

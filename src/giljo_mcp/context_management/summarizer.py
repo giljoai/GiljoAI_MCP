@@ -11,7 +11,6 @@ Features:
 """
 
 import logging
-from typing import Dict, Optional
 
 import tiktoken
 
@@ -50,7 +49,7 @@ class ContextSummarizer:
 
     def create_summary(
         self, tenant_key: str, product_id: str, full_content: str, condensed_mission: str
-    ) -> Dict[str, any]:
+    ) -> dict[str, any]:
         """
         Create summary and track context prioritization.
 
@@ -94,7 +93,7 @@ class ContextSummarizer:
             "tokens_saved": tokens_saved,
         }
 
-    def get_reduction_stats(self, tenant_key: str, product_id: Optional[str] = None) -> Dict[str, any]:
+    def get_reduction_stats(self, tenant_key: str, product_id: str | None = None) -> dict[str, any]:
         """
         Get context prioritization statistics.
 

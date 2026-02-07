@@ -127,13 +127,16 @@ class TestWebSocketEventListener:
         listener = WebSocketEventListener(event_bus, ws_manager)
         await listener.start()
 
-        await event_bus.publish("project:mission_updated", {
-            "tenant_key": "tenant_123",
-            "project_id": "proj_456",
-            "mission": "Updated mission",
-            "user_config_applied": True,
-            "token_estimate": 500,
-        })
+        await event_bus.publish(
+            "project:mission_updated",
+            {
+                "tenant_key": "tenant_123",
+                "project_id": "proj_456",
+                "mission": "Updated mission",
+                "user_config_applied": True,
+                "token_estimate": 500,
+            },
+        )
 
         await asyncio.sleep(0.01)
 
@@ -153,14 +156,17 @@ class TestWebSocketEventListener:
         listener = WebSocketEventListener(event_bus, ws_manager)
         await listener.start()
 
-        await event_bus.publish("agent:created", {
-            "tenant_key": "tenant_123",
-            "project_id": "proj_456",
-            "agent_id": "agent_789",
-            "agent_display_name": "implementer",
-            "agent_name": "Backend Implementer",
-            "status": "pending",
-        })
+        await event_bus.publish(
+            "agent:created",
+            {
+                "tenant_key": "tenant_123",
+                "project_id": "proj_456",
+                "agent_id": "agent_789",
+                "agent_display_name": "implementer",
+                "agent_name": "Backend Implementer",
+                "status": "pending",
+            },
+        )
 
         await asyncio.sleep(0.01)
 
@@ -180,13 +186,16 @@ class TestWebSocketEventListener:
         listener = WebSocketEventListener(event_bus, ws_manager)
         await listener.start()
 
-        await event_bus.publish("project:mission_updated", {
-            "tenant_key": "tenant_A",
-            "project_id": "proj_1",
-            "mission": "Mission A",
-            "user_config_applied": False,
-            "token_estimate": 100,
-        })
+        await event_bus.publish(
+            "project:mission_updated",
+            {
+                "tenant_key": "tenant_A",
+                "project_id": "proj_1",
+                "mission": "Mission A",
+                "user_config_applied": False,
+                "token_estimate": 100,
+            },
+        )
 
         await asyncio.sleep(0.01)
 

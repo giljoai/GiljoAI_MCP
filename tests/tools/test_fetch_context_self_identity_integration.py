@@ -5,9 +5,9 @@ Handover 0430: Verifies self_identity integration into unified fetch_context() A
 """
 
 import pytest
-from sqlalchemy import select
-from src.giljo_mcp.tools.context_tools.fetch_context import fetch_context
+
 from src.giljo_mcp.models import AgentTemplate
+from src.giljo_mcp.tools.context_tools.fetch_context import fetch_context
 
 
 @pytest.mark.asyncio
@@ -19,13 +19,12 @@ async def test_fetch_context_self_identity_success(db_manager, test_tenant_key):
             name="orchestrator-coordinator",
             role="Orchestrator",
             description="Coordinates all agents",
-            system_instructions="Use MCP tools for coordination",
+            system_instructions="You are the orchestrator coordinator",
             user_instructions="Follow the staging workflow",
-            template_content="You are the orchestrator coordinator",
             behavioral_rules=["Always verify identity", "Report progress"],
             success_criteria=["All agents completed", "No errors"],
             tenant_key=test_tenant_key,
-            is_active=True
+            is_active=True,
         )
         session.add(template)
         await session.commit()
@@ -36,7 +35,7 @@ async def test_fetch_context_self_identity_success(db_manager, test_tenant_key):
         tenant_key=test_tenant_key,
         categories=["self_identity"],
         agent_name="orchestrator-coordinator",
-        db_manager=db_manager
+        db_manager=db_manager,
     )
 
     # Verify structure
@@ -67,7 +66,7 @@ async def test_fetch_context_self_identity_missing_agent_name(db_manager, test_t
         tenant_key=test_tenant_key,
         categories=["self_identity"],
         agent_name=None,  # Missing required parameter
-        db_manager=db_manager
+        db_manager=db_manager,
     )
 
     # Should return error in metadata
@@ -88,7 +87,7 @@ async def test_fetch_context_self_identity_template_not_found(db_manager, test_t
         tenant_key=test_tenant_key,
         categories=["self_identity"],
         agent_name="nonexistent-agent",
-        db_manager=db_manager
+        db_manager=db_manager,
     )
 
     assert result["source"] == "fetch_context"
@@ -108,9 +107,9 @@ async def test_fetch_context_self_identity_tenant_isolation(db_manager, test_ten
             name="test-agent",
             role="Tester",
             description="Test role",
-            template_content="You are a test agent",
+            system_instructions="You are a test agent",
             tenant_key=test_tenant_key,
-            is_active=True
+            is_active=True,
         )
         session.add(template)
         await session.commit()
@@ -121,7 +120,7 @@ async def test_fetch_context_self_identity_tenant_isolation(db_manager, test_ten
         tenant_key="different_tenant_key",
         categories=["self_identity"],
         agent_name="test-agent",
-        db_manager=db_manager
+        db_manager=db_manager,
     )
 
     # Should return empty - template belongs to different tenant
@@ -138,9 +137,9 @@ async def test_fetch_context_self_identity_flat_format(db_manager, test_tenant_k
             name="implementor-agent",
             role="Implementer",
             description="Implements features",
-            template_content="You are an implementer agent",
+            system_instructions="You are an implementer agent",
             tenant_key=test_tenant_key,
-            is_active=True
+            is_active=True,
         )
         session.add(template)
         await session.commit()
@@ -152,7 +151,7 @@ async def test_fetch_context_self_identity_flat_format(db_manager, test_tenant_k
         categories=["self_identity"],
         agent_name="implementor-agent",
         format="flat",
-        db_manager=db_manager
+        db_manager=db_manager,
     )
 
     # In flat mode, data should be at top level (not nested in "self_identity")

@@ -17,7 +17,7 @@ All routers use /api/v1/products prefix and Products tag.
 
 from fastapi import APIRouter
 
-from . import crud, git_integration, lifecycle, vision
+from . import crud, git_integration, lifecycle, memory, vision
 
 
 # Create main router for products module
@@ -31,5 +31,6 @@ router.include_router(lifecycle.router)  # Has /refresh-active, /deleted
 router.include_router(crud.router)  # Has /{product_id} - must come after specific routes
 router.include_router(vision.router)
 router.include_router(git_integration.router)  # NEW - Handover 013B
+router.include_router(memory.router)  # NEW - Handover 0490
 
 __all__ = ["router"]

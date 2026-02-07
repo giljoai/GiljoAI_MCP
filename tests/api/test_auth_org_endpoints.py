@@ -29,8 +29,9 @@ async def test_create_first_admin_accepts_workspace_name(api_client, db_manager)
     NOTE: This test clears all users first to simulate fresh install.
     """
     # Arrange - Clear all users to simulate fresh install
-    from src.giljo_mcp.models.auth import User
     from sqlalchemy import delete
+
+    from src.giljo_mcp.models.auth import User
 
     async with db_manager.get_session_async() as session:
         await session.execute(delete(User))
@@ -41,7 +42,7 @@ async def test_create_first_admin_accepts_workspace_name(api_client, db_manager)
         "password": "SecureAdmin123!@#",
         "email": "admin@example.com",
         "full_name": "Administrator",
-        "workspace_name": "Acme Corporation"
+        "workspace_name": "Acme Corporation",
     }
 
     # Act
@@ -57,8 +58,9 @@ async def test_create_first_admin_accepts_workspace_name(api_client, db_manager)
 
     # Verify organization was created with correct name
     from sqlalchemy import select
-    from src.giljo_mcp.models.organizations import Organization
+
     from src.giljo_mcp.models.auth import User
+    from src.giljo_mcp.models.organizations import Organization
 
     async with db_manager.get_session_async() as session:
         # Get user
@@ -90,8 +92,9 @@ async def test_create_first_admin_defaults_workspace_name(api_client, db_manager
     NOTE: This test clears all users first to simulate fresh install.
     """
     # Arrange - Clear all users to simulate fresh install
-    from src.giljo_mcp.models.auth import User
     from sqlalchemy import delete
+
+    from src.giljo_mcp.models.auth import User
 
     async with db_manager.get_session_async() as session:
         await session.execute(delete(User))
@@ -101,7 +104,7 @@ async def test_create_first_admin_defaults_workspace_name(api_client, db_manager
         "username": "admin",
         "password": "SecureAdmin123!@#",
         "email": "admin@example.com",
-        "full_name": "Administrator"
+        "full_name": "Administrator",
         # workspace_name intentionally omitted
     }
 
@@ -116,8 +119,9 @@ async def test_create_first_admin_defaults_workspace_name(api_client, db_manager
 
     # Verify organization was created with default name
     from sqlalchemy import select
-    from src.giljo_mcp.models.organizations import Organization
+
     from src.giljo_mcp.models.auth import User
+    from src.giljo_mcp.models.organizations import Organization
 
     async with db_manager.get_session_async() as session:
         # Get user
@@ -147,8 +151,9 @@ async def test_auth_me_returns_org_data(api_client, db_manager):
     NOTE: This test clears all users first to simulate fresh install.
     """
     # Arrange - Clear all users to simulate fresh install
-    from src.giljo_mcp.models.auth import User
     from sqlalchemy import delete
+
+    from src.giljo_mcp.models.auth import User
 
     async with db_manager.get_session_async() as session:
         await session.execute(delete(User))
@@ -161,8 +166,8 @@ async def test_auth_me_returns_org_data(api_client, db_manager):
             "username": "admin",
             "password": "SecureAdmin123!@#",
             "email": "admin@example.com",
-            "workspace_name": "Test Organization"
-        }
+            "workspace_name": "Test Organization",
+        },
     )
     assert create_response.status_code == 201
 
@@ -198,8 +203,9 @@ async def test_auth_me_returns_org_fields(api_client, db_manager):
     This test verifies the API returns org fields for authenticated user.
     """
     # Arrange - Clear all users to simulate fresh install
-    from src.giljo_mcp.models.auth import User
     from sqlalchemy import delete
+
+    from src.giljo_mcp.models.auth import User
 
     async with db_manager.get_session_async() as session:
         await session.execute(delete(User))
@@ -212,8 +218,8 @@ async def test_auth_me_returns_org_fields(api_client, db_manager):
             "username": "testuser",
             "password": "SecureAdmin123!@#",
             "email": "test@example.com",
-            "workspace_name": "User Workspace"
-        }
+            "workspace_name": "User Workspace",
+        },
     )
     assert create_response.status_code == 201
 

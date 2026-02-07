@@ -87,72 +87,45 @@ Related:
     - src/giljo_mcp/models/auth.py: User.field_priority_config column
 """
 
-from typing import Any, Dict
+from typing import Any
 
 
-DEFAULT_FIELD_PRIORITY: Dict[str, Any] = {
+DEFAULT_FIELD_PRIORITY: dict[str, Any] = {
     "version": "2.1",
     "priorities": {
         # Priority 1 (CRITICAL): Orchestrator MUST call these MCP tools
         # These tools are mentioned with mandatory framing in instructions
-        "product_core": {
-            "toggle": True,
-            "priority": 1
-        },
+        "product_core": {"toggle": True, "priority": 1},
         "project_description": {  # Locked - always CRITICAL
             "toggle": True,
-            "priority": 1
+            "priority": 1,
         },
-        "memory_360": {
-            "toggle": True,
-            "priority": 1
-        },
-
+        "memory_360": {"toggle": True, "priority": 1},
         # Priority 2 (IMPORTANT): Orchestrator SHOULD call if budget allows
         # These tools are mentioned with strong recommendation in instructions
-        "tech_stack": {
-            "toggle": True,
-            "priority": 2
-        },
-        "testing": {
-            "toggle": True,
-            "priority": 2
-        },
-
+        "tech_stack": {"toggle": True, "priority": 2},
+        "testing": {"toggle": True, "priority": 2},
         # Priority 3 (REFERENCE): Orchestrator MAY call if project scope requires
         # These tools are mentioned as optional supplemental context
-        "vision_documents": {
-            "toggle": True,
-            "priority": 3
-        },
-        "architecture": {
-            "toggle": True,
-            "priority": 3
-        },
-        "agent_templates": {
-            "toggle": True,
-            "priority": 3
-        },
+        "vision_documents": {"toggle": True, "priority": 3},
+        "architecture": {"toggle": True, "priority": 3},
+        "agent_templates": {"toggle": True, "priority": 3},
         "git_history": {
             "toggle": False,  # OFF by default until Git Integration enabled
-            "priority": 3
+            "priority": 3,
         },
     },
 }
 
-
-DEFAULT_DEPTH_CONFIG: Dict[str, Any] = {
+DEFAULT_DEPTH_CONFIG: dict[str, Any] = {
     "version": "1.0",
     "depths": {
         # Vision documents: medium = 66% summary
         "vision_documents": "medium",
-
         # 360 Memory: last 3 projects
         "memory_360": 3,
-
         # Git history: last 5 commits (toggle OFF by default)
         "git_history": 5,
-
         # Agent templates: type_only = ~250 tokens (name, type, description only)
         "agent_templates": "type_only",
     },
@@ -177,9 +150,8 @@ def get_categories_by_priority(priority_level: int, include_toggled_off: bool = 
     """
     result = []
     for category, config in DEFAULT_FIELD_PRIORITY["priorities"].items():
-        if config["priority"] == priority_level:
-            if include_toggled_off or config["toggle"]:
-                result.append(category)
+        if config["priority"] == priority_level and (include_toggled_off or config["toggle"]):
+            result.append(category)
     return result
 
 
@@ -253,14 +225,14 @@ def validate_priority_config() -> bool:
     for category, config in DEFAULT_FIELD_PRIORITY["priorities"].items():
         # Validate structure
         if not isinstance(config, dict):
-            raise ValueError(f"Category '{category}' must be a dict with 'toggle' and 'priority' keys")
+            raise TypeError(f"Category '{category}' must be a dict with 'toggle' and 'priority' keys")
 
         if "toggle" not in config or "priority" not in config:
             raise ValueError(f"Category '{category}' missing required keys: 'toggle' and 'priority'")
 
         # Validate toggle is boolean
         if not isinstance(config["toggle"], bool):
-            raise ValueError(f"Invalid toggle value for category '{category}'. Must be boolean (True/False)")
+            raise TypeError(f"Invalid toggle value for category '{category}'. Must be boolean (True/False)")
 
         # Validate priority is in valid range
         if config["priority"] not in valid_priorities:
@@ -271,8 +243,7 @@ def validate_priority_config() -> bool:
 
     # Ensure at least one category is CRITICAL (Priority 1) and toggled ON
     critical_categories = [
-        cat for cat, cfg in DEFAULT_FIELD_PRIORITY["priorities"].items()
-        if cfg["priority"] == 1 and cfg["toggle"]
+        cat for cat, cfg in DEFAULT_FIELD_PRIORITY["priorities"].items() if cfg["priority"] == 1 and cfg["toggle"]
     ]
     if not critical_categories:
         raise ValueError("At least one category must have Priority 1 (CRITICAL) with toggle=True")

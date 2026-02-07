@@ -34,8 +34,8 @@ async def test_staging_prompt_no_shell_commands(db_session: AsyncSession):
         description="Test product for prompt generation",
         config_data={
             "tech_stack": {"languages": ["Python 3.11+"], "frameworks": ["FastAPI"]},
-            "architecture": {"patterns": ["REST API", "MVC"]}
-        }
+            "architecture": {"patterns": ["REST API", "MVC"]},
+        },
     )
     db_session.add(product)
 
@@ -47,7 +47,7 @@ async def test_staging_prompt_no_shell_commands(db_session: AsyncSession):
         name="Test Project",
         description="Test project description",
         mission="Test mission",
-        context_budget=200000
+        context_budget=200000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -55,23 +55,14 @@ async def test_staging_prompt_no_shell_commands(db_session: AsyncSession):
     # Generate staging prompt
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
     prompt = await generator.generate_staging_prompt(
-        orchestrator_id="orch-789",
-        project_id=project.id,
-        claude_code_mode=False
+        orchestrator_id="orch-789", project_id=project.id, claude_code_mode=False
     )
 
     # Assertions
     assert prompt, "Prompt should not be empty"
 
     # CRITICAL: No shell commands
-    forbidden_patterns = [
-        "ls ~/.claude",
-        "ls ~",
-        "Windows equivalent",
-        "Execute: ls",
-        "grep",
-        "find ~/.claude"
-    ]
+    forbidden_patterns = ["ls ~/.claude", "ls ~", "Windows equivalent", "Execute: ls", "grep", "find ~/.claude"]
 
     for pattern in forbidden_patterns:
         assert pattern not in prompt, (
@@ -104,10 +95,7 @@ async def test_staging_prompt_simplified_workflow(db_session: AsyncSession):
 
     # Create test product
     product = Product(
-        id="product-abc",
-        tenant_key=tenant_key,
-        name="Test Product 2",
-        description="Another test product"
+        id="product-abc", tenant_key=tenant_key, name="Test Product 2", description="Another test product"
     )
     db_session.add(product)
 
@@ -119,7 +107,7 @@ async def test_staging_prompt_simplified_workflow(db_session: AsyncSession):
         name="Test Project 2",
         description="Project requirements here",
         mission="Test mission 2",  # Required field
-        context_budget=200000
+        context_budget=200000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -129,11 +117,11 @@ async def test_staging_prompt_simplified_workflow(db_session: AsyncSession):
     prompt = await generator.generate_staging_prompt(
         orchestrator_id="orch-xyz",
         project_id=project.id,
-        claude_code_mode=True  # Test Claude Code mode
+        claude_code_mode=True,  # Test Claude Code mode
     )
 
     # Count lines (rough estimate)
-    line_count = len(prompt.split('\n'))
+    line_count = len(prompt.split("\n"))
 
     # Should be simplified (not massive 7-task workflow)
     # Allow up to 100 lines for mode-specific instructions
@@ -161,12 +149,7 @@ async def test_claude_code_mode_instructions(db_session: AsyncSession):
     tenant_key = "test-tenant-3"
 
     # Create test product
-    product = Product(
-        id="product-ghi",
-        tenant_key=tenant_key,
-        name="Test Product 3",
-        description="CC mode test"
-    )
+    product = Product(id="product-ghi", tenant_key=tenant_key, name="Test Product 3", description="CC mode test")
     db_session.add(product)
 
     # Create test project
@@ -177,7 +160,7 @@ async def test_claude_code_mode_instructions(db_session: AsyncSession):
         name="Test Project 3",
         description="CC test project",
         mission="Test mission 3",  # Required field
-        context_budget=200000
+        context_budget=200000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -185,20 +168,11 @@ async def test_claude_code_mode_instructions(db_session: AsyncSession):
     # Generate staging prompt in Claude Code mode
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
     prompt = await generator.generate_staging_prompt(
-        orchestrator_id="orch-cc",
-        project_id=project.id,
-        claude_code_mode=True
+        orchestrator_id="orch-cc", project_id=project.id, claude_code_mode=True
     )
 
     # Should have Claude Code specific instructions
-    cc_indicators = [
-        "Claude Code CLI",
-        "Task tool",
-        "agent_display_name",
-        "get_agent_mission"
-    ]
+    cc_indicators = ["Claude Code CLI", "Task tool", "agent_display_name", "get_agent_mission"]
 
     for indicator in cc_indicators:
-        assert indicator in prompt, (
-            f"Claude Code mode prompt should mention '{indicator}'"
-        )
+        assert indicator in prompt, f"Claude Code mode prompt should mention '{indicator}'"

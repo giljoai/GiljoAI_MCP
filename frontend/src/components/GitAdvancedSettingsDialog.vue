@@ -83,7 +83,7 @@
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn variant="text" @click="$emit('update:model-value', false)">Cancel</v-btn>
-        <v-btn color="primary" :disabled="!valid" @click="handleSave" :loading="saving">Save</v-btn>
+        <v-btn color="primary" :disabled="!valid" :loading="saving" @click="handleSave">Save</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

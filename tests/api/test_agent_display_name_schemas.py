@@ -26,14 +26,16 @@ Expected Failures:
 - AssertionError: 'agent_display_name' should not be present after migration
 """
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 from pydantic import ValidationError
 
-from api.schemas.agent_job import JobCreateRequest, JobResponse, ChildJobSpec
-from api.events.schemas import AgentStatusChangedData, AgentCreatedData, EventFactory
-from api.endpoints.agent_jobs.models import SpawnAgentRequest, JobResponse as EndpointJobResponse
+from api.endpoints.agent_jobs.models import JobResponse as EndpointJobResponse
+from api.endpoints.agent_jobs.models import SpawnAgentRequest
+from api.events.schemas import AgentCreatedData, AgentStatusChangedData, EventFactory
+from api.schemas.agent_job import ChildJobSpec, JobResponse
 
 
 class TestSpawnAgentRequestSchema:
@@ -52,7 +54,7 @@ class TestSpawnAgentRequestSchema:
             agent_name="system-architect",  # Template key (KEEP)
             mission="Design the system architecture",
             project_id=str(uuid4()),
-            context_chunks=[]
+            context_chunks=[],
         )
 
         assert request.agent_display_name == "System Architect"
@@ -70,7 +72,7 @@ class TestSpawnAgentRequestSchema:
             "agent_name": "tdd-implementor",
             "mission": "Implement features using TDD",
             "project_id": str(uuid4()),
-            "context_chunks": []
+            "context_chunks": [],
         }
 
         # Should succeed with agent_display_name
@@ -93,7 +95,7 @@ class TestSpawnAgentRequestSchema:
                 agent_name="database-expert",
                 mission="Optimize database queries",
                 project_id=str(uuid4()),
-                context_chunks=[]
+                context_chunks=[],
                 # agent_display_name missing - should FAIL
             )
 
@@ -124,7 +126,7 @@ class TestJobResponseSchema:
             spawned_by=None,
             context_chunks=[],
             messages=[],
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         assert response.agent_display_name == "Documentation Manager"
@@ -150,7 +152,7 @@ class TestJobResponseSchema:
             spawned_by=None,
             context_chunks=[],
             messages=[],
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         # Should NOT have agent_display_name attribute
@@ -172,7 +174,7 @@ class TestChildJobSpecSchema:
             agent_display_name="UX Designer",  # NEW FIELD NAME (will fail)
             agent_name="ux-designer",  # Template key (KEEP)
             mission="Design user experience flows",
-            context_chunks=[]
+            context_chunks=[],
         )
 
         assert spec.agent_display_name == "UX Designer"
@@ -189,7 +191,7 @@ class TestChildJobSpecSchema:
             agent_display_name="Network Security Engineer",
             agent_name="network-security-engineer",
             mission="Secure network communications",
-            context_chunks=[]
+            context_chunks=[],
         )
 
         assert not hasattr(spec, "agent_display_name"), "agent_display_name should not exist after migration"
@@ -213,7 +215,7 @@ class TestAgentStatusChangedEventSchema:
             old_status="waiting",
             new_status="working",
             agent_display_name="Orchestrator Coordinator",  # NEW FIELD NAME (will fail)
-            duration_seconds=None
+            duration_seconds=None,
         )
 
         assert data.agent_display_name == "Orchestrator Coordinator"
@@ -232,7 +234,7 @@ class TestAgentStatusChangedEventSchema:
             old_status="working",
             new_status="complete",
             agent_display_name="Deep Researcher",
-            duration_seconds=120.5
+            duration_seconds=120.5,
         )
 
         assert not hasattr(data, "agent_display_name"), "agent_display_name should not exist after migration"
@@ -255,7 +257,7 @@ class TestAgentStatusChangedEventSchema:
             new_status="active",
             agent_display_name="Version Manager",  # NEW PARAMETER NAME (will fail)
             project_id=str(uuid4()),
-            duration_seconds=None
+            duration_seconds=None,
         )
 
         assert event["data"]["agent_display_name"] == "Version Manager"
@@ -278,14 +280,10 @@ class TestAgentCreatedEventSchema:
             "agent_name": "backend-integration-tester",  # Template key (KEEP)
             "status": "pending",
             "mission": "Test backend integrations",
-            "mode": "claude"
+            "mode": "claude",
         }
 
-        data = AgentCreatedData(
-            project_id=str(uuid4()),
-            tenant_key="tenant-abc",
-            agent=agent_data
-        )
+        data = AgentCreatedData(project_id=str(uuid4()), tenant_key="tenant-abc", agent=agent_data)
 
         assert data.agent["agent_display_name"] == "Backend Integration Tester"
         assert data.agent["agent_name"] == "backend-integration-tester"
@@ -301,14 +299,10 @@ class TestAgentCreatedEventSchema:
             "id": str(uuid4()),
             "agent_display_name": "Installation Flow Agent",
             "agent_name": "installation-flow-agent",
-            "status": "pending"
+            "status": "pending",
         }
 
-        data = AgentCreatedData(
-            project_id=str(uuid4()),
-            tenant_key="tenant-abc",
-            agent=agent_data
-        )
+        data = AgentCreatedData(project_id=str(uuid4()), tenant_key="tenant-abc", agent=agent_data)
 
         assert "agent_display_name" not in data.agent, "agent_display_name should not exist in agent data"
 
@@ -345,7 +339,7 @@ class TestAPIEndpointResponseSchemas:
             created_at=datetime.now(timezone.utc),
             updated_at=None,
             mission_acknowledged_at=datetime.now(timezone.utc),
-            steps={"total": 5, "completed": 2}
+            steps={"total": 5, "completed": 2},
         )
 
         assert response.agent_display_name == "Database Expert"
@@ -374,9 +368,9 @@ class TestAPIIntegrationEndToEnd:
                 "agent_name": "system-architect",  # Template key (KEEP)
                 "mission": "Design system architecture",
                 "project_id": tenant_a_project["id"],
-                "context_chunks": []
+                "context_chunks": [],
             },
-            cookies={"access_token": tenant_a_admin_token}
+            cookies={"access_token": tenant_a_admin_token},
         )
 
         assert response.status_code == 201
@@ -396,10 +390,7 @@ class TestAPIIntegrationEndToEnd:
 
         Note: This test requires api_client and tenant fixtures from conftest.py
         """
-        response = await api_client.get(
-            "/api/agent-jobs/",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response = await api_client.get("/api/agent-jobs/", cookies={"access_token": tenant_a_admin_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -426,10 +417,7 @@ class TestAPIIntegrationEndToEnd:
         """
         job_id = tenant_a_agent_job["job_id"]
 
-        response = await api_client.get(
-            f"/api/agent-jobs/{job_id}",
-            cookies={"access_token": tenant_a_admin_token}
-        )
+        response = await api_client.get(f"/api/agent-jobs/{job_id}", cookies={"access_token": tenant_a_admin_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -459,7 +447,7 @@ class TestWebSocketEventSchemas:
             old_status="pending",
             new_status="working",
             agent_display_name="Orchestrator Coordinator",  # NEW PARAMETER
-            project_id=project_id
+            project_id=project_id,
         )
 
         assert event["data"]["agent_display_name"] == "Orchestrator Coordinator"
@@ -477,14 +465,10 @@ class TestWebSocketEventSchemas:
             "agent_display_name": "TDD Implementor",
             "agent_name": "tdd-implementor",
             "status": "pending",
-            "mission": "Implement using TDD"
+            "mission": "Implement using TDD",
         }
 
-        event = EventFactory.agent_created(
-            project_id=str(uuid4()),
-            tenant_key="tenant-abc",
-            agent=agent_data
-        )
+        event = EventFactory.agent_created(project_id=str(uuid4()), tenant_key="tenant-abc", agent=agent_data)
 
         assert event["data"]["agent"]["agent_display_name"] == "TDD Implementor"
         assert "agent_display_name" not in event["data"]["agent"]
@@ -516,7 +500,7 @@ class TestBackwardCompatibilityConsiderations:
                 agent_display_name="orchestrator",  # OLD FIELD NAME (should fail after migration)
                 mission="Test mission",
                 project_id=str(uuid4()),
-                context_chunks=[]
+                context_chunks=[],
             )
 
     def test_agent_name_preserved_for_template_lookup(self):
@@ -531,7 +515,7 @@ class TestBackwardCompatibilityConsiderations:
             agent_name="system-architect",  # NORTH STAR - never changes
             mission="Design system",
             project_id=str(uuid4()),
-            context_chunks=[]
+            context_chunks=[],
         )
 
         # Both fields should coexist

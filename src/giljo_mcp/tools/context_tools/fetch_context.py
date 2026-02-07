@@ -18,22 +18,24 @@ Security (SaaS):
 - LLM cannot bypass - code-level enforcement
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 import structlog
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
+from src.giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
+from src.giljo_mcp.tools.context_tools.get_architecture import get_architecture
+from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
 
 # Internal tools (NOT exposed via MCP)
 from src.giljo_mcp.tools.context_tools.get_product_context import get_product_context
-from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
-from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
-from src.giljo_mcp.tools.context_tools.get_architecture import get_architecture
-from src.giljo_mcp.tools.context_tools.get_testing import get_testing
-from src.giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
-from src.giljo_mcp.tools.context_tools.get_git_history import get_git_history
-from src.giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
 from src.giljo_mcp.tools.context_tools.get_project import get_project
 from src.giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
+from src.giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
+from src.giljo_mcp.tools.context_tools.get_testing import get_testing
+from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
+
 
 logger = structlog.get_logger(__name__)
 
@@ -53,16 +55,16 @@ CATEGORY_TOOLS = {
 
 # Default depth settings per category
 DEFAULT_DEPTHS = {
-    "product_core": None,        # No depth param
+    "product_core": None,  # No depth param
     "vision_documents": "medium",
-    "tech_stack": None,          # No depth param (Handover 0351)
-    "architecture": None,        # No depth param (Handover 0351)
-    "testing": None,             # No depth param (Handover 0351)
-    "memory_360": 5,             # last_n_projects
-    "git_history": 25,           # commits
+    "tech_stack": None,  # No depth param (Handover 0351)
+    "architecture": None,  # No depth param (Handover 0351)
+    "testing": None,  # No depth param (Handover 0351)
+    "memory_360": 5,  # last_n_projects
+    "git_history": 25,  # commits
     "agent_templates": "type_only",  # Renamed from "standard" (Handover 0351)
-    "project": None,             # No depth param
-    "self_identity": None,       # No depth param (Handover 0430)
+    "project": None,  # No depth param
+    "self_identity": None,  # No depth param (Handover 0430)
 }
 
 ALL_CATEGORIES = list(CATEGORY_TOOLS.keys())
@@ -71,14 +73,14 @@ ALL_CATEGORIES = list(CATEGORY_TOOLS.keys())
 async def fetch_context(
     product_id: str,
     tenant_key: str,
-    project_id: Optional[str] = None,
-    categories: Optional[List[str]] = None,
-    depth_config: Optional[Dict[str, Any]] = None,
+    project_id: str | None = None,
+    categories: list[str | None] = None,
+    depth_config: dict[str, Any | None] = None,
     apply_user_config: bool = True,
-    format: str = "structured",
-    agent_name: Optional[str] = None,
-    db_manager: Optional[DatabaseManager] = None,
-) -> Dict[str, Any]:
+    output_format: str = "structured",
+    agent_name: str | None = None,
+    db_manager: DatabaseManager | None = None,
+) -> dict[str, Any]:
     """
     Unified context fetcher - dispatches to internal tools.
 
@@ -157,8 +159,8 @@ async def fetch_context(
         project_id=project_id,
         categories=categories,
         apply_user_config=apply_user_config,
-        format=format,
-        agent_name=agent_name
+        format=output_format,
+        agent_name=agent_name,
     )
 
     # Handover 0351: ENFORCE single-category calls (SaaS security)
@@ -170,7 +172,7 @@ async def fetch_context(
             "message": "fetch_context requires exactly ONE category per call. Call multiple times for multiple categories.",
             "valid_categories": ALL_CATEGORIES,
             "example": "fetch_context(categories=['tech_stack'], ...)",
-            "metadata": {}
+            "metadata": {},
         }
 
     # Reject "all" - forces sequential calls
@@ -181,37 +183,25 @@ async def fetch_context(
             "message": "categories=['all'] is not allowed. Call fetch_context once per category to stay within token budget.",
             "valid_categories": ALL_CATEGORIES,
             "example": "fetch_context(categories=['vision_documents'], ...)",
-            "metadata": {}
+            "metadata": {},
         }
 
     # Reject multi-category calls
     if len(categories) > 1:
-        logger.warning(
-            "fetch_context_multi_category_rejected",
-            tenant_key=tenant_key,
-            categories_requested=categories
-        )
+        logger.warning("fetch_context_multi_category_rejected", tenant_key=tenant_key, categories_requested=categories)
         return {
             "error": "SINGLE_CATEGORY_REQUIRED",
             "message": f"Only ONE category per call allowed. You requested {len(categories)}: {categories}",
             "valid_categories": ALL_CATEGORIES,
             "example": "Call fetch_context separately for each category",
-            "metadata": {}
+            "metadata": {},
         }
 
     # Validate the single category
     category = categories[0]
     if category not in CATEGORY_TOOLS:
-        logger.warning(
-            "invalid_category",
-            invalid_category=category,
-            valid_categories=ALL_CATEGORIES
-        )
-        return {
-            "error": f"Invalid category: {category}",
-            "valid_categories": ALL_CATEGORIES,
-            "metadata": {}
-        }
+        logger.warning("invalid_category", invalid_category=category, valid_categories=ALL_CATEGORIES)
+        return {"error": f"Invalid category: {category}", "valid_categories": ALL_CATEGORIES, "metadata": {}}
 
     # Load user config if requested
     effective_depths = DEFAULT_DEPTHS.copy()
@@ -229,17 +219,12 @@ async def fetch_context(
             project_id=project_id,
             depth=effective_depths.get(category),
             agent_name=agent_name,
-            db_manager=db_manager
+            db_manager=db_manager,
         )
         data = result.get("data", {})
         error = None
     except Exception as e:
-        logger.error(
-            "category_fetch_error",
-            category=category,
-            error=str(e),
-            exc_info=True
-        )
+        logger.error("category_fetch_error", category=category, error=str(e), exc_info=True)
         data = {}
         error = {"category": category, "error": str(e)}
 
@@ -248,22 +233,18 @@ async def fetch_context(
         "source": "fetch_context",
         "categories_requested": [category],
         "categories_returned": [category] if data else [],
-        "data": {category: data} if format == "structured" else data,
+        "data": {category: data} if output_format == "structured" else data,
         "metadata": {
-            "format": format,
+            "format": output_format,
             "apply_user_config": apply_user_config,
             "depth_config_applied": {category: effective_depths.get(category)},
-        }
+        },
     }
 
     if error:
         response["errors"] = [error]
 
-    logger.info(
-        "fetch_context_completed",
-        category=category,
-        had_error=error is not None
-    )
+    logger.info("fetch_context_completed", category=category, had_error=error is not None)
 
     return response
 
@@ -272,11 +253,11 @@ async def _fetch_category(
     category: str,
     product_id: str,
     tenant_key: str,
-    project_id: Optional[str],
+    project_id: str | None,
     depth: Any,
-    agent_name: Optional[str],
+    agent_name: str | None,
     db_manager: DatabaseManager,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Dispatch to internal tool based on category.
 
@@ -291,12 +272,7 @@ async def _fetch_category(
     if category == "project":
         if not project_id:
             logger.warning("project_category_missing_project_id")
-            return {
-                "data": {},
-                "metadata": {
-                    "error": "project_id required for 'project' category"
-                }
-            }
+            return {"data": {}, "metadata": {"error": "project_id required for 'project' category"}}
         kwargs["project_id"] = project_id
         kwargs["tenant_key"] = tenant_key
         # No depth param for project
@@ -307,9 +283,7 @@ async def _fetch_category(
             return {
                 "source": "self_identity",
                 "data": {},
-                "metadata": {
-                    "error": "agent_name required for 'self_identity' category"
-                }
+                "metadata": {"error": "agent_name required for 'self_identity' category"},
             }
         kwargs["agent_name"] = agent_name
         kwargs["tenant_key"] = tenant_key
@@ -339,12 +313,7 @@ async def _fetch_category(
         if depth:
             kwargs["commits"] = int(depth)
 
-    elif category == "tech_stack":
-        kwargs["product_id"] = product_id
-        kwargs["tenant_key"] = tenant_key
-        # No depth param (Handover 0351)
-
-    elif category in ("architecture", "testing"):
+    elif category == "tech_stack" or category in ("architecture", "testing"):
         kwargs["product_id"] = product_id
         kwargs["tenant_key"] = tenant_key
         # No depth param (Handover 0351)
@@ -357,7 +326,7 @@ async def _fetch_category(
     return await tool_func(**kwargs)
 
 
-def _flatten_results(results: Dict[str, Any]) -> Dict[str, Any]:
+def _flatten_results(results: dict[str, Any]) -> dict[str, Any]:
     """
     Flatten nested category results into single dict with prefixed keys.
 

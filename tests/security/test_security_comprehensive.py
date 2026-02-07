@@ -5,10 +5,8 @@ Tests all security measures implemented in Handover 0129c.
 
 Created in Handover 0129c - Security Hardening & OWASP Compliance
 """
+
 import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch
-import time
 
 
 class TestSecurityHeaders:
@@ -189,9 +187,7 @@ class TestRequestSanitizer:
         dirty_dict = {
             "name": "<b>Bold Name</b>",
             "description": "Normal text",
-            "nested": {
-                "value": "<script>alert('xss')</script>"
-            }
+            "nested": {"value": "<script>alert('xss')</script>"},
         }
 
         clean_dict = sanitizer.sanitize_dict(dirty_dict)
@@ -208,7 +204,7 @@ class TestRequestSanitizer:
         clean_list = sanitizer.sanitize_list(dirty_list)
 
         assert "&lt;script&gt;" in clean_list[0]
-        assert "normal text" == clean_list[1]
+        assert clean_list[1] == "normal text"
         assert "&lt;img" in clean_list[2]
 
 
@@ -240,7 +236,7 @@ class TestCSRFProtection:
             "/api/products",
             json={"name": "Test"},
             headers={"X-CSRF-Token": csrf_token},
-            cookies={"csrf_token": csrf_token}
+            cookies={"csrf_token": csrf_token},
         )
         # Should not be blocked by CSRF (might fail for other reasons)
         assert response.status_code != 403

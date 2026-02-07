@@ -33,9 +33,9 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
+from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from src.giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
 
@@ -145,9 +145,7 @@ class TestProjectCloseoutTable:
     """Tests for close_project_and_update_memory with table-based writes."""
 
     @pytest.mark.asyncio
-    async def test_creates_closeout_entry(
-        self, db_session, db_manager, tenant_key, test_project, test_product
-    ):
+    async def test_creates_closeout_entry(self, db_session, db_manager, tenant_key, test_project, test_product):
         """Entry should be created with type='project_closeout'."""
         result = await close_project_and_update_memory(
             project_id=test_project.id,
@@ -178,9 +176,7 @@ class TestProjectCloseoutTable:
         assert entry.source == "closeout_v1"
 
     @pytest.mark.asyncio
-    async def test_all_fields_populated(
-        self, db_session, db_manager, tenant_key, test_project, test_product
-    ):
+    async def test_all_fields_populated(self, db_session, db_manager, tenant_key, test_project, test_product):
         """All fields should be populated (including computed fields)."""
         result = await close_project_and_update_memory(
             project_id=test_project.id,
@@ -193,9 +189,7 @@ class TestProjectCloseoutTable:
         )
 
         # Verify entry in database
-        stmt = select(ProductMemoryEntry).where(
-            ProductMemoryEntry.id == result["entry_id"]
-        )
+        stmt = select(ProductMemoryEntry).where(ProductMemoryEntry.id == result["entry_id"])
         db_result = await db_session.execute(stmt)
         entry = db_result.scalar_one()
 
@@ -237,9 +231,7 @@ class TestProjectCloseoutTable:
         assert entry.deleted_by_user is False
 
     @pytest.mark.asyncio
-    async def test_no_jsonb_mutation(
-        self, db_session, db_manager, tenant_key, test_project, test_product
-    ):
+    async def test_no_jsonb_mutation(self, db_session, db_manager, tenant_key, test_project, test_product):
         """JSONB product_memory should NOT be mutated."""
         # Verify JSONB is empty before
         assert test_product.product_memory == {}
@@ -260,9 +252,7 @@ class TestProjectCloseoutTable:
         assert "sequential_history" not in test_product.product_memory
 
     @pytest.mark.asyncio
-    async def test_atomic_sequence_generation(
-        self, db_session, db_manager, tenant_key, test_product
-    ):
+    async def test_atomic_sequence_generation(self, db_session, db_manager, tenant_key, test_product):
         """Sequence numbers should be atomic and sequential."""
         # Create 3 projects and close them
         # Note: Only one active project allowed per product, so we set status="completed"
@@ -272,8 +262,8 @@ class TestProjectCloseoutTable:
             project = Project(
                 id=str(uuid4()),
                 tenant_key=tenant_key,
-                name=f"Project {i+1}",
-                description=f"Project {i+1}",
+                name=f"Project {i + 1}",
+                description=f"Project {i + 1}",
                 product_id=test_product.id,
                 mission="Test mission",
                 status="active",
@@ -286,9 +276,9 @@ class TestProjectCloseoutTable:
             result = await close_project_and_update_memory(
                 project_id=project.id,
                 tenant_key=tenant_key,
-                summary=f"Summary {i+1}",
-                key_outcomes=[f"Outcome {i+1}"],
-                decisions_made=[f"Decision {i+1}"],
+                summary=f"Summary {i + 1}",
+                key_outcomes=[f"Outcome {i + 1}"],
+                decisions_made=[f"Decision {i + 1}"],
                 db_manager=db_manager,
                 session=db_session,
             )
@@ -304,10 +294,14 @@ class TestProjectCloseoutTable:
         assert results[2]["sequence_number"] == 3
 
         # Verify in database
-        stmt = select(ProductMemoryEntry).where(
-            ProductMemoryEntry.product_id == test_product.id,
-            ProductMemoryEntry.tenant_key == tenant_key,
-        ).order_by(ProductMemoryEntry.sequence)
+        stmt = (
+            select(ProductMemoryEntry)
+            .where(
+                ProductMemoryEntry.product_id == test_product.id,
+                ProductMemoryEntry.tenant_key == tenant_key,
+            )
+            .order_by(ProductMemoryEntry.sequence)
+        )
         db_result = await db_session.execute(stmt)
         entries = db_result.scalars().all()
 
@@ -317,9 +311,7 @@ class TestProjectCloseoutTable:
         assert entries[2].sequence == 3
 
     @pytest.mark.asyncio
-    async def test_returns_entry_id(
-        self, db_session, db_manager, tenant_key, test_project
-    ):
+    async def test_returns_entry_id(self, db_session, db_manager, tenant_key, test_project):
         """Return should include entry_id from table."""
         result = await close_project_and_update_memory(
             project_id=test_project.id,
@@ -337,6 +329,7 @@ class TestProjectCloseoutTable:
 
         # Verify entry_id is a valid UUID
         from uuid import UUID
+
         try:
             UUID(result["entry_id"])
         except ValueError:
@@ -352,9 +345,7 @@ class TestProjectCloseoutComputedFields:
     """Tests for computed fields (deliverables, metrics, priority, etc.)."""
 
     @pytest.mark.asyncio
-    async def test_deliverables_extracted_from_outcomes(
-        self, db_session, db_manager, tenant_key, test_project
-    ):
+    async def test_deliverables_extracted_from_outcomes(self, db_session, db_manager, tenant_key, test_project):
         """Deliverables should be extracted from key_outcomes."""
         result = await close_project_and_update_memory(
             project_id=test_project.id,
@@ -366,9 +357,7 @@ class TestProjectCloseoutComputedFields:
             session=db_session,
         )
 
-        stmt = select(ProductMemoryEntry).where(
-            ProductMemoryEntry.id == result["entry_id"]
-        )
+        stmt = select(ProductMemoryEntry).where(ProductMemoryEntry.id == result["entry_id"])
         db_result = await db_session.execute(stmt)
         entry = db_result.scalar_one()
 
@@ -376,9 +365,7 @@ class TestProjectCloseoutComputedFields:
         assert entry.deliverables == ["Deliverable A", "Deliverable B"]
 
     @pytest.mark.asyncio
-    async def test_metrics_includes_test_coverage(
-        self, db_session, db_manager, tenant_key, test_project
-    ):
+    async def test_metrics_includes_test_coverage(self, db_session, db_manager, tenant_key, test_project):
         """Metrics should include test_coverage from project.meta_data."""
         result = await close_project_and_update_memory(
             project_id=test_project.id,
@@ -390,18 +377,14 @@ class TestProjectCloseoutComputedFields:
             session=db_session,
         )
 
-        stmt = select(ProductMemoryEntry).where(
-            ProductMemoryEntry.id == result["entry_id"]
-        )
+        stmt = select(ProductMemoryEntry).where(ProductMemoryEntry.id == result["entry_id"])
         db_result = await db_session.execute(stmt)
         entry = db_result.scalar_one()
 
         assert entry.metrics["test_coverage"] == 85.5  # From fixture
 
     @pytest.mark.asyncio
-    async def test_priority_derived_from_content(
-        self, db_session, db_manager, tenant_key, test_project
-    ):
+    async def test_priority_derived_from_content(self, db_session, db_manager, tenant_key, test_project):
         """Priority should be derived from summary/outcomes."""
         # Critical priority (contains "incident")
         result = await close_project_and_update_memory(
@@ -414,18 +397,14 @@ class TestProjectCloseoutComputedFields:
             session=db_session,
         )
 
-        stmt = select(ProductMemoryEntry).where(
-            ProductMemoryEntry.id == result["entry_id"]
-        )
+        stmt = select(ProductMemoryEntry).where(ProductMemoryEntry.id == result["entry_id"])
         db_result = await db_session.execute(stmt)
         entry = db_result.scalar_one()
 
         assert entry.priority == 1  # CRITICAL
 
     @pytest.mark.asyncio
-    async def test_significance_score_calculated(
-        self, db_session, db_manager, tenant_key, test_project
-    ):
+    async def test_significance_score_calculated(self, db_session, db_manager, tenant_key, test_project):
         """Significance score should be calculated based on outcomes/commits."""
         result = await close_project_and_update_memory(
             project_id=test_project.id,
@@ -437,9 +416,7 @@ class TestProjectCloseoutComputedFields:
             session=db_session,
         )
 
-        stmt = select(ProductMemoryEntry).where(
-            ProductMemoryEntry.id == result["entry_id"]
-        )
+        stmt = select(ProductMemoryEntry).where(ProductMemoryEntry.id == result["entry_id"])
         db_result = await db_session.execute(stmt)
         entry = db_result.scalar_one()
 
@@ -447,9 +424,7 @@ class TestProjectCloseoutComputedFields:
         assert entry.significance_score > 0.0  # Should have some significance
 
     @pytest.mark.asyncio
-    async def test_token_estimate_calculated(
-        self, db_session, db_manager, tenant_key, test_project
-    ):
+    async def test_token_estimate_calculated(self, db_session, db_manager, tenant_key, test_project):
         """Token estimate should be calculated from content length."""
         result = await close_project_and_update_memory(
             project_id=test_project.id,
@@ -461,18 +436,14 @@ class TestProjectCloseoutComputedFields:
             session=db_session,
         )
 
-        stmt = select(ProductMemoryEntry).where(
-            ProductMemoryEntry.id == result["entry_id"]
-        )
+        stmt = select(ProductMemoryEntry).where(ProductMemoryEntry.id == result["entry_id"])
         db_result = await db_session.execute(stmt)
         entry = db_result.scalar_one()
 
         assert entry.token_estimate > 0
 
     @pytest.mark.asyncio
-    async def test_tags_extracted(
-        self, db_session, db_manager, tenant_key, test_project
-    ):
+    async def test_tags_extracted(self, db_session, db_manager, tenant_key, test_project):
         """Tags should be extracted from summary/outcomes/decisions."""
         result = await close_project_and_update_memory(
             project_id=test_project.id,
@@ -484,9 +455,7 @@ class TestProjectCloseoutComputedFields:
             session=db_session,
         )
 
-        stmt = select(ProductMemoryEntry).where(
-            ProductMemoryEntry.id == result["entry_id"]
-        )
+        stmt = select(ProductMemoryEntry).where(ProductMemoryEntry.id == result["entry_id"])
         db_result = await db_session.execute(stmt)
         entry = db_result.scalar_one()
 
@@ -524,9 +493,7 @@ class TestProjectCloseoutGitHub:
         assert result["git_commits_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_no_github_fetch_when_disabled(
-        self, db_session, db_manager, tenant_key, test_project, test_product
-    ):
+    async def test_no_github_fetch_when_disabled(self, db_session, db_manager, tenant_key, test_project, test_product):
         """Should not attempt GitHub fetch when integration is disabled."""
         result = await close_project_and_update_memory(
             project_id=test_project.id,
@@ -566,9 +533,7 @@ class TestProjectCloseoutValidation:
         assert "project_id is required" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_requires_summary(
-        self, db_manager, tenant_key, test_project
-    ):
+    async def test_requires_summary(self, db_manager, tenant_key, test_project):
         """Should return error if summary is missing."""
         result = await close_project_and_update_memory(
             project_id=test_project.id,
@@ -592,9 +557,7 @@ class TestProjectCloseoutTenantIsolation:
     """Tests for multi-tenant isolation."""
 
     @pytest.mark.asyncio
-    async def test_tenant_isolation(
-        self, db_session, db_manager, tenant_key, other_tenant_key, test_project
-    ):
+    async def test_tenant_isolation(self, db_session, db_manager, tenant_key, other_tenant_key, test_project):
         """Should not allow closing another tenant's project."""
         result = await close_project_and_update_memory(
             project_id=test_project.id,

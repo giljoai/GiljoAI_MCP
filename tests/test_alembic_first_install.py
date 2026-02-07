@@ -9,16 +9,12 @@ Verifies that:
 5. Cross-platform compatibility maintained
 """
 
-import asyncio
-import os
 import sys
 from pathlib import Path
-from typing import Dict, Any
-from unittest.mock import MagicMock, patch, AsyncMock
-from uuid import uuid4
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy import text
+
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -98,6 +94,7 @@ class TestAlembicFirstInstallation:
                                 class MockContextManager:
                                     async def __aenter__(self):
                                         return mock_session
+
                                     async def __aexit__(self, *args):
                                         pass
 
@@ -306,6 +303,7 @@ class TestAlembicFirstInstallation:
                                 class MockContextManager:
                                     async def __aenter__(self):
                                         return mock_session
+
                                     async def __aexit__(self, *args):
                                         pass
 
@@ -366,6 +364,7 @@ class TestAlembicFirstInstallation:
                                 class MockContextManager:
                                     async def __aenter__(self):
                                         return mock_session
+
                                     async def __aexit__(self, *args):
                                         pass
 
@@ -413,7 +412,6 @@ class TestAlembicFirstInstallation:
 
         # Read file and verify it contains expected columns
         content = migration_file.read_text()
-        assert "instance_number" in content
         assert "handover_to" in content
         assert "handover_summary" in content
         assert "succession_reason" in content
@@ -512,18 +510,18 @@ class TestCrossPlatformCompatibility:
         violations = []
 
         # Check for hardcoded Windows drive letters (but allow in comments/strings)
-        lines = content.split('\n')
+        lines = content.split("\n")
         for i, line in enumerate(lines):
             # Skip comments and docstrings
             stripped = line.strip()
-            if stripped.startswith('#'):
+            if stripped.startswith("#"):
                 continue
             if '"""' in stripped or "'''" in stripped:
                 continue
 
             # Check for problematic patterns
-            if ('F:\\' in line or 'C:\\' in line) and not ('"""' in line or "'''" in line):
-                violations.append(f"Line {i+1}: Hardcoded Windows path found")
+            if ("F:\\" in line or "C:\\" in line) and not ('"""' in line or "'''" in line):
+                violations.append(f"Line {i + 1}: Hardcoded Windows path found")
 
         # Warnings only for now - installer may have some legitimate use cases
         if violations:

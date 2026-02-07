@@ -11,13 +11,13 @@ Tests cover:
 Target: 60%+ line coverage (pragmatic given complexity)
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, Mock
-from uuid import uuid4
 
+import pytest
+
+from src.giljo_mcp.models import Project, Task
 from src.giljo_mcp.services.task_service import TaskService
-from src.giljo_mcp.models import Task, Project
 
 
 @pytest.fixture
@@ -57,11 +57,9 @@ class TestTaskServiceCreation:
         mock_project = Mock(spec=Project)
         mock_project.id = "project-id"
         mock_project.tenant_key = "test-tenant"
-        mock_project.product_id = None
+        mock_project.product_id = "product-1"
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=mock_project)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=mock_project)))
 
         service = TaskService(db_manager, mock_tenant_manager)
 
@@ -69,7 +67,9 @@ class TestTaskServiceCreation:
         result = await service.log_task(
             content="Fix authentication bug",
             category="bug",
-            priority="high"
+            priority="high",
+            product_id="product-1",
+            tenant_key="test-tenant"
         )
 
         # Assert
@@ -79,29 +79,25 @@ class TestTaskServiceCreation:
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_log_task_creates_default_project_if_none_exists(self, mock_db_manager, mock_tenant_manager):
-        """Test that log_task creates a default project if none exists"""
+    async def test_log_task_without_project(self, mock_db_manager, mock_tenant_manager):
+        """Test that log_task creates task without project when only product_id provided"""
         # Arrange
         db_manager, session = mock_db_manager
 
-        # Mock no active project found
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
-
         service = TaskService(db_manager, mock_tenant_manager)
 
-        # Act
+        # Act - No project_id, only product_id
         result = await service.log_task(
             content="First task",
-            priority="medium"
+            priority="medium",
+            product_id="product-1",
+            tenant_key="test-tenant"
         )
 
         # Assert
         assert result["success"] is True
-        # Verify that add was called (for both project and task)
-        assert session.add.call_count == 2
-        session.flush.assert_awaited_once()
+        # Verify that add was called once for the task (no project lookup)
+        assert session.add.call_count == 1
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -116,16 +112,16 @@ class TestTaskServiceCreation:
         mock_project.tenant_key = "test-tenant"
         mock_project.product_id = "product-1"
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=mock_project)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=mock_project)))
 
         service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.log_task(
             content="Task for specific project",
-            project_id="specific-project"
+            project_id="specific-project",
+            product_id="product-1",
+            tenant_key="test-tenant"
         )
 
         # Assert
@@ -137,23 +133,15 @@ class TestTaskServiceCreation:
         # Arrange
         db_manager, session = mock_db_manager
 
-        # Mock existing project
-        mock_project = Mock(spec=Project)
-        mock_project.id = "project-id"
-        mock_project.tenant_key = "test-tenant"
-        mock_project.product_id = None
-
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=mock_project)
-        ))
-
         service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.create_task(
             title="Implement feature X",
             description="Add new feature X with unit tests",
-            priority="high"
+            priority="high",
+            product_id="product-1",
+            tenant_key="test-tenant"
         )
 
         # Assert
@@ -219,9 +207,9 @@ class TestTaskServiceRetrieval:
         mock_task2.actual_effort = None
 
         # Setup mock result - only ONE execute call (no filter_type means no product lookup)
-        session.execute = AsyncMock(return_value=Mock(
-            scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_task1, mock_task2])))
-        ))
+        session.execute = AsyncMock(
+            return_value=Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_task1, mock_task2]))))
+        )
 
         service = TaskService(db_manager, mock_tenant_manager)
 
@@ -268,9 +256,9 @@ class TestTaskServiceRetrieval:
         mock_task.actual_effort = None
 
         # Only ONE execute call (no filter_type means no product lookup)
-        session.execute = AsyncMock(return_value=Mock(
-            scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_task])))
-        ))
+        session.execute = AsyncMock(
+            return_value=Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_task]))))
+        )
 
         service = TaskService(db_manager, mock_tenant_manager)
 
@@ -289,9 +277,7 @@ class TestTaskServiceRetrieval:
         db_manager, session = mock_db_manager
 
         # Only ONE execute call (no filter_type means no product lookup)
-        session.execute = AsyncMock(return_value=Mock(
-            scalars=Mock(return_value=Mock(all=Mock(return_value=[])))
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))))
 
         service = TaskService(db_manager, mock_tenant_manager)
 
@@ -328,9 +314,7 @@ class TestTaskServiceRetrieval:
         db_manager, session = mock_db_manager
 
         # Mock no active product found (for filter_type="product_tasks")
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = TaskService(db_manager, mock_tenant_manager)
 
@@ -358,18 +342,12 @@ class TestTaskServiceUpdates:
         mock_task.status = "pending"
         mock_task.priority = "medium"
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=mock_task)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=mock_task)))
 
         service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
-        result = await service.update_task(
-            task_id="task-id",
-            status="in_progress",
-            priority="high"
-        )
+        result = await service.update_task(task_id="task-id", status="in_progress", priority="high")
 
         # Assert
         assert result["success"] is True
@@ -388,18 +366,13 @@ class TestTaskServiceUpdates:
         # Arrange
         db_manager, session = mock_db_manager
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=None)))
 
         service = TaskService(db_manager, mock_tenant_manager)
 
         # Act & Assert
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await service.update_task(
-                task_id="nonexistent",
-                status="completed"
-            )
+            await service.update_task(task_id="nonexistent", status="completed")
 
         assert "not found" in str(exc_info.value)
 
@@ -415,17 +388,12 @@ class TestTaskServiceUpdates:
         mock_task.status = "pending"
         mock_task.assigned_to = None
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=mock_task)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=mock_task)))
 
         service = TaskService(db_manager, mock_tenant_manager)
 
         # Act
-        result = await service.assign_task(
-            task_id="task-id",
-            agent_name="impl-1"
-        )
+        result = await service.assign_task(task_id="task-id", agent_name="impl-1")
 
         # Assert
         assert result["success"] is True
@@ -443,9 +411,7 @@ class TestTaskServiceUpdates:
         mock_task.id = "task-id"
         mock_task.status = "in_progress"
 
-        session.execute = AsyncMock(return_value=Mock(
-            scalar_one_or_none=Mock(return_value=mock_task)
-        ))
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=mock_task)))
 
         service = TaskService(db_manager, mock_tenant_manager)
 
@@ -463,7 +429,7 @@ class TestTaskServiceErrorHandling:
     @pytest.mark.asyncio
     async def test_log_task_database_exception(self, mock_tenant_manager):
         """Test database exception raises BaseGiljoException in log_task"""
-        from src.giljo_mcp.exceptions import BaseGiljoException
+        from src.giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
         db_manager = Mock()
@@ -475,7 +441,7 @@ class TestTaskServiceErrorHandling:
         service = TaskService(db_manager, mock_tenant_manager)
 
         # Act & Assert
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.log_task(content="test task")
 
         assert "Connection lost" in str(exc_info.value)
@@ -483,7 +449,7 @@ class TestTaskServiceErrorHandling:
     @pytest.mark.asyncio
     async def test_list_tasks_database_exception(self, mock_tenant_manager):
         """Test database exception raises BaseGiljoException in list_tasks"""
-        from src.giljo_mcp.exceptions import BaseGiljoException
+        from src.giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
         db_manager = Mock()
@@ -495,7 +461,7 @@ class TestTaskServiceErrorHandling:
         service = TaskService(db_manager, mock_tenant_manager)
 
         # Act & Assert
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.list_tasks()
 
         assert "Connection lost" in str(exc_info.value)
@@ -503,7 +469,7 @@ class TestTaskServiceErrorHandling:
     @pytest.mark.asyncio
     async def test_update_task_database_exception(self, mock_tenant_manager):
         """Test database exception raises BaseGiljoException in update_task"""
-        from src.giljo_mcp.exceptions import BaseGiljoException
+        from src.giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
         db_manager = Mock()
@@ -515,10 +481,99 @@ class TestTaskServiceErrorHandling:
         service = TaskService(db_manager, mock_tenant_manager)
 
         # Act & Assert
-        with pytest.raises(BaseGiljoException) as exc_info:
-            await service.update_task(
-                task_id="task-id",
-                status="completed"
-            )
+        with pytest.raises(BaseGiljoError) as exc_info:
+            await service.update_task(task_id="task-id", status="completed")
 
         assert "Connection lost" in str(exc_info.value)
+
+
+class TestTaskServiceTenantIsolation:
+    """Test tenant isolation and security requirements (Handover 0433 Phase 2)"""
+
+    @pytest.mark.asyncio
+    async def test_create_task_requires_tenant_key(self, mock_db_manager):
+        """Task creation must fail if tenant_key is None."""
+        from src.giljo_mcp.exceptions import ValidationError
+
+        # Arrange
+        db_manager, session = mock_db_manager
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value=None)  # No tenant context
+
+        service = TaskService(db_manager, tenant_manager)
+
+        # Act & Assert
+        with pytest.raises(ValidationError, match="tenant_key.*required"):
+            await service.log_task(
+                content="Test task",
+                tenant_key=None  # Explicitly None
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_task_requires_product_id(self, mock_db_manager, mock_tenant_manager):
+        """Task creation must fail if product_id is None."""
+        from src.giljo_mcp.exceptions import ValidationError
+
+        # Arrange
+        db_manager, session = mock_db_manager
+        service = TaskService(db_manager, mock_tenant_manager)
+
+        # Act & Assert
+        with pytest.raises(ValidationError, match="product_id.*required"):
+            await service.log_task(
+                content="Test task",
+                tenant_key="test-tenant",
+                product_id=None  # Should raise ValidationError
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_task_tenant_isolation(self, mock_db_manager, mock_tenant_manager):
+        """Cannot create task with project from different tenant."""
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
+
+        # Arrange
+        db_manager, session = mock_db_manager
+
+        # Mock project NOT found (cross-tenant access blocked)
+        session.execute = AsyncMock(
+            return_value=Mock(scalar_one_or_none=Mock(return_value=None))
+        )
+
+        service = TaskService(db_manager, mock_tenant_manager)
+
+        # Act & Assert - Attempting to use tenant_b's project from tenant_a
+        with pytest.raises(ResourceNotFoundError, match="not found or access denied"):
+            await service.log_task(
+                content="Test task",
+                tenant_key="tenant_a",
+                product_id="product-from-tenant-b",
+                project_id="project-from-tenant-b"
+            )
+
+    @pytest.mark.asyncio
+    async def test_cannot_query_other_tenant_project(self):
+        """Verify fallback logic removed - no queries without tenant_key filtering."""
+        # This is a code inspection test - verify lines 149, 161-175 are removed
+        import inspect
+        from src.giljo_mcp.services.task_service import TaskService
+
+        source = inspect.getsource(TaskService._log_task_impl)
+
+        # Verify unsafe fallback patterns are NOT in the code
+        assert "Fallback for backward compatibility" not in source, \
+            "Line 148-149 unsafe fallback should be removed"
+        assert "Find first active project" not in source or \
+               "tenant_key" in source.split("Find first active project")[1].split("session.execute")[0], \
+            "Lines 161-175 should be removed or require tenant_key filtering"
+
+    @pytest.mark.asyncio
+    async def test_list_tasks_all_tasks_filter_removed(self):
+        """Verify filter_type='all_tasks' special handling is removed."""
+        import inspect
+        from src.giljo_mcp.services.task_service import TaskService
+
+        source = inspect.getsource(TaskService.list_tasks)
+
+        # Verify filter_type="all_tasks" handling is removed (lines 306-308)
+        assert 'filter_type == "all_tasks"' not in source, \
+            "Lines 306-308 filter_type='all_tasks' handling should be removed"

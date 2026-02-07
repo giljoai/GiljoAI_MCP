@@ -22,22 +22,22 @@ import logging
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import and_, delete as sql_delete, func, select, update
+from sqlalchemy import and_, func, select, update
+from sqlalchemy import delete as sql_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import (
+    BaseGiljoError,
+    TemplateNotFoundError,
+    ValidationError,
+)
+
 # Model imports: Use domain-specific imports (Post-0128a)
 from src.giljo_mcp.models.agent_identity import AgentJob
 from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.exceptions import (
-    TemplateNotFoundError,
-    TemplateValidationError,
-    TemplateRenderError,
-    ValidationError,
-    BaseGiljoException,
-)
 
 
 logger = logging.getLogger(__name__)
@@ -75,10 +75,7 @@ class TemplateService:
     # CRUD Operations
     # ============================================================================
 
-    async def list_templates(
-        self,
-        tenant_key: Optional[str] = None
-    ) -> dict[str, Any]:
+    async def list_templates(self, tenant_key: Optional[str] = None) -> dict[str, Any]:
         """
         List all agent templates for a tenant.
 
@@ -90,7 +87,7 @@ class TemplateService:
 
         Raises:
             ValidationError: When no tenant context is available
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.list_templates()
@@ -103,53 +100,39 @@ class TemplateService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                raise ValidationError(
-                    message="No tenant context available",
-                    context={"operation": "list_templates"}
-                )
+                raise ValidationError(message="No tenant context available", context={"operation": "list_templates"})
 
             async with self.db_manager.get_session_async() as session:
                 # TENANT ISOLATION: Only return templates for the specified tenant
-                result = await session.execute(
-                    select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
-                )
+                result = await session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
                 templates = result.scalars().all()
 
-                template_list = []
-                for t in templates:
-                    template_list.append({
+                template_list = [
+                    {
                         "id": str(t.id),
                         "name": t.name,
                         "role": t.role,
-                        "content": t.template_content,
+                        "content": t.system_instructions,
                         "cli_tool": t.cli_tool,
                         "background_color": t.background_color,
                         "category": t.category,
                         "tenant_key": t.tenant_key,
                         "product_id": t.product_id,
-                    })
+                    }
+                    for t in templates
+                ]
 
-                return {
-                    "success": True,
-                    "templates": template_list,
-                    "count": len(template_list)
-                }
+                return {"success": True, "templates": template_list, "count": len(template_list)}
 
         except ValidationError:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to list templates: {e}")
-            raise BaseGiljoException(
-                message=f"Failed to list templates: {str(e)}",
-                context={"tenant_key": tenant_key}
-            ) from e
+            self._logger.exception("Failed to list templates")
+            raise BaseGiljoError(message=f"Failed to list templates: {e!s}", context={"tenant_key": tenant_key}) from e
 
     async def get_template(
-        self,
-        template_id: Optional[str] = None,
-        template_name: Optional[str] = None,
-        tenant_key: Optional[str] = None
+        self, template_id: Optional[str] = None, template_name: Optional[str] = None, tenant_key: Optional[str] = None
     ) -> dict[str, Any]:
         """
         Get a specific template by ID or name.
@@ -165,7 +148,7 @@ class TemplateService:
         Raises:
             ValidationError: When neither template_id nor template_name provided, or no tenant context
             TemplateNotFoundError: When template not found
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.get_template(template_name="orchestrator")
@@ -175,7 +158,7 @@ class TemplateService:
             if not template_id and not template_name:
                 raise ValidationError(
                     message="Either template_id or template_name must be provided",
-                    context={"operation": "get_template"}
+                    context={"operation": "get_template"},
                 )
 
             # Use provided tenant_key or get from context
@@ -183,22 +166,17 @@ class TemplateService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                raise ValidationError(
-                    message="No tenant context available",
-                    context={"operation": "get_template"}
-                )
+                raise ValidationError(message="No tenant context available", context={"operation": "get_template"})
 
             async with self.db_manager.get_session_async() as session:
                 # Build query based on provided identifier
                 if template_id:
                     query = select(AgentTemplate).where(
-                        AgentTemplate.id == template_id,
-                        AgentTemplate.tenant_key == tenant_key
+                        AgentTemplate.id == template_id, AgentTemplate.tenant_key == tenant_key
                     )
                 else:
                     query = select(AgentTemplate).where(
-                        AgentTemplate.name == template_name,
-                        AgentTemplate.tenant_key == tenant_key
+                        AgentTemplate.name == template_name, AgentTemplate.tenant_key == tenant_key
                     )
 
                 result = await session.execute(query)
@@ -212,7 +190,7 @@ class TemplateService:
                             "template_id": template_id,
                             "template_name": template_name,
                             "tenant_key": tenant_key,
-                        }
+                        },
                     )
 
                 return {
@@ -221,7 +199,7 @@ class TemplateService:
                         "id": str(template.id),
                         "name": template.name,
                         "role": template.role,
-                        "content": template.template_content,
+                        "content": template.system_instructions,
                         "cli_tool": template.cli_tool,
                         "background_color": template.background_color,
                         "category": template.category,
@@ -234,14 +212,14 @@ class TemplateService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to get template: {e}")
-            raise BaseGiljoException(
-                message=f"Failed to get template: {str(e)}",
+            self._logger.exception("Failed to get template")
+            raise BaseGiljoError(
+                message=f"Failed to get template: {e!s}",
                 context={
                     "template_id": template_id,
                     "template_name": template_name,
                     "tenant_key": tenant_key,
-                }
+                },
             ) from e
 
     async def create_template(
@@ -254,7 +232,7 @@ class TemplateService:
         background_color: Optional[str] = None,
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> dict[str, Any]:
         """
         Create a new agent template.
@@ -274,7 +252,7 @@ class TemplateService:
 
         Raises:
             ValidationError: When no tenant context is available
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.create_template(
@@ -290,10 +268,7 @@ class TemplateService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                raise ValidationError(
-                    message="No tenant context available",
-                    context={"operation": "create_template"}
-                )
+                raise ValidationError(message="No tenant context available", context={"operation": "create_template"})
 
             async with self.db_manager.get_session_async() as session:
                 # Create template entity
@@ -302,7 +277,6 @@ class TemplateService:
                     tenant_key=tenant_key,
                     product_id=product_id,
                     name=name,
-                    template_content=content,
                     role=role or name,  # Default role to name if not provided
                     category=category,
                     cli_tool=cli_tool,
@@ -314,10 +288,7 @@ class TemplateService:
 
                 template_id = str(template.id)
 
-                self._logger.info(
-                    f"Created template '{name}' (ID: {template_id}) "
-                    f"for tenant {tenant_key}"
-                )
+                self._logger.info(f"Created template '{name}' (ID: {template_id}) for tenant {tenant_key}")
 
                 return {
                     "success": True,
@@ -330,13 +301,13 @@ class TemplateService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to create template: {e}")
-            raise BaseGiljoException(
-                message=f"Failed to create template: {str(e)}",
+            self._logger.exception("Failed to create template")
+            raise BaseGiljoError(
+                message=f"Failed to create template: {e!s}",
                 context={
                     "name": name,
                     "tenant_key": tenant_key,
-                }
+                },
             ) from e
 
     async def update_template(
@@ -349,7 +320,7 @@ class TemplateService:
         cli_tool: Optional[str] = None,
         background_color: Optional[str] = None,
         tenant_key: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> dict[str, Any]:
         """
         Update an existing template.
@@ -370,7 +341,7 @@ class TemplateService:
         Raises:
             ValidationError: When no tenant context is available
             TemplateNotFoundError: When template not found
-            BaseGiljoException: When operation fails
+            BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.update_template(
@@ -384,18 +355,12 @@ class TemplateService:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                raise ValidationError(
-                    message="No tenant context available",
-                    context={"operation": "update_template"}
-                )
+                raise ValidationError(message="No tenant context available", context={"operation": "update_template"})
 
             async with self.db_manager.get_session_async() as session:
                 # Get template with tenant isolation
                 result = await session.execute(
-                    select(AgentTemplate).where(
-                        AgentTemplate.id == template_id,
-                        AgentTemplate.tenant_key == tenant_key
-                    )
+                    select(AgentTemplate).where(AgentTemplate.id == template_id, AgentTemplate.tenant_key == tenant_key)
                 )
                 template = result.scalar_one_or_none()
 
@@ -405,14 +370,12 @@ class TemplateService:
                         context={
                             "template_id": template_id,
                             "tenant_key": tenant_key,
-                        }
+                        },
                     )
 
                 # Update fields if provided
                 if name is not None:
                     template.name = name
-                if content is not None:
-                    template.template_content = content
                 if role is not None:
                     template.role = role
                 if category is not None:
@@ -436,13 +399,13 @@ class TemplateService:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            self._logger.exception(f"Failed to update template: {e}")
-            raise BaseGiljoException(
-                message=f"Failed to update template: {str(e)}",
+            self._logger.exception("Failed to update template")
+            raise BaseGiljoError(
+                message=f"Failed to update template: {e!s}",
                 context={
                     "template_id": template_id,
                     "tenant_key": tenant_key,
-                }
+                },
             ) from e
 
     # ============================================================================
@@ -524,7 +487,7 @@ class TemplateService:
             select(AgentTemplate.role)
             .where(
                 AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.is_active == True,  # noqa: E712
+                AgentTemplate.is_active,
                 AgentTemplate.id != template_id,
             )
             .where(AgentTemplate.role.notin_(system_roles))
@@ -642,12 +605,7 @@ class TemplateService:
             ... )
         """
         # ORIGINAL QUERY: crud.py line 197-205 (create_template uniqueness check)
-        stmt = select(AgentTemplate).where(
-            and_(
-                AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.name == name
-            )
-        )
+        stmt = select(AgentTemplate).where(and_(AgentTemplate.tenant_key == tenant_key, AgentTemplate.name == name))
         result = await session.execute(stmt)
         return result.scalar_one_or_none() is not None
 
@@ -679,7 +637,7 @@ class TemplateService:
         filters = [
             AgentTemplate.tenant_key == tenant_key,
             AgentTemplate.role == role,
-            AgentTemplate.is_default == True,
+            AgentTemplate.is_default,
         ]
         if product_id:
             filters.append(AgentTemplate.product_id == product_id)
@@ -711,8 +669,8 @@ class TemplateService:
         stmt = select(func.count(AgentTemplate.id)).where(
             and_(
                 AgentTemplate.tenant_key == tenant_key,
-                AgentTemplate.is_active == True,
-                AgentTemplate.role.not_in(SYSTEM_MANAGED_ROLES)
+                AgentTemplate.is_active,
+                AgentTemplate.role.not_in(SYSTEM_MANAGED_ROLES),
             )
         )
         result = await session.execute(stmt)
@@ -756,25 +714,15 @@ class TemplateService:
             return False
 
         # 1. Set AgentJob.template_id to NULL for historical jobs
-        await session.execute(
-            update(AgentJob)
-            .where(AgentJob.template_id == template_id)
-            .values(template_id=None)
-        )
+        await session.execute(update(AgentJob).where(AgentJob.template_id == template_id).values(template_id=None))
 
         # NOTE: TemplateAugmentation deletion removed (Handover 0423 - table removed)
 
         # 2. Delete related TemplateUsageStats records
-        await session.execute(
-            sql_delete(TemplateUsageStats)
-            .where(TemplateUsageStats.template_id == template_id)
-        )
+        await session.execute(sql_delete(TemplateUsageStats).where(TemplateUsageStats.template_id == template_id))
 
         # 4. Delete related TemplateArchive records (version history)
-        await session.execute(
-            sql_delete(TemplateArchive)
-            .where(TemplateArchive.template_id == template_id)
-        )
+        await session.execute(sql_delete(TemplateArchive).where(TemplateArchive.template_id == template_id))
 
         # 5. Delete the template itself
         await session.delete(template)
@@ -878,8 +826,6 @@ class TemplateService:
             ...     session, template, "Update user instructions", "auto", "alice"
             ... )
         """
-        # ORIGINAL QUERIES: history.py lines 112-132, 175-195, 239-259
-        # (restore_template, reset_template, reset_system_instructions)
         archive = TemplateArchive(
             tenant_key=template.tenant_key,
             template_id=template.id,
@@ -889,7 +835,6 @@ class TemplateService:
             role=template.role,
             system_instructions=template.system_instructions,
             user_instructions=template.user_instructions,
-            template_content=template.template_content,
             variables=template.variables,
             behavioral_rules=template.behavioral_rules,
             success_criteria=template.success_criteria,
@@ -921,7 +866,6 @@ class TemplateService:
             >>> await service.restore_template_from_archive(session, template, archive)
         """
         # ORIGINAL QUERY: history.py line 135-139 (restore_template endpoint)
-        template.template_content = archive.template_content
         template.variables = archive.variables
         template.behavioral_rules = archive.behavioral_rules
         template.success_criteria = archive.success_criteria
@@ -1000,7 +944,6 @@ class TemplateService:
         result = await session.execute(stmt)
         return result.scalar_one_or_none() is not None
 
-
     # ============================================================================
     # Template Download Methods (Handover 1011 - Phase 4)
     # ============================================================================
@@ -1031,7 +974,7 @@ class TemplateService:
         stmt = (
             select(AgentTemplate)
             .where(AgentTemplate.tenant_key == tenant_key)
-            .where(AgentTemplate.is_active == True)  # noqa: E712
+            .where(AgentTemplate.is_active)
             .where(AgentTemplate.role.notin_(list(SYSTEM_MANAGED_ROLES)))
             .order_by(AgentTemplate.role, AgentTemplate.name)
         )
@@ -1059,14 +1002,14 @@ class TemplateService:
         Example:
             >>> template = await service.get_template_by_role(session, "tenant-1", "backend developer")
             >>> if template:
-            ...     print(template.template_content)
+            ...     print(template.system_instructions)
         """
         # ORIGINAL QUERY: agent_templates.py lines 218-226 (download_agent_template endpoint)
         stmt = (
             select(AgentTemplate)
             .where(AgentTemplate.tenant_key == tenant_key)
             .where(AgentTemplate.role == role)
-            .where(AgentTemplate.is_active == True)  # noqa: E712
+            .where(AgentTemplate.is_active)
         )
 
         result = await session.execute(stmt)

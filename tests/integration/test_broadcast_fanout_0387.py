@@ -11,14 +11,15 @@ Key Behaviors Tested:
 4. Sender is excluded from broadcast recipients
 """
 
-import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.models import Message, Project, AgentJob, AgentExecution
-from sqlalchemy import select, func
+import pytest
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import JSONB
+
+from src.giljo_mcp.models import AgentExecution, AgentJob, Message, Project
+from src.giljo_mcp.services.message_service import MessageService
 
 
 class TestBroadcastFanout:
@@ -73,7 +74,6 @@ class TestBroadcastFanout:
                 tenant_key=tenant_key,
                 agent_display_name="orchestrator",
                 agent_name="Test Orchestrator",
-                instance_number=1,
                 status="working",
                 progress=0,
                 messages_sent_count=0,
@@ -90,7 +90,7 @@ class TestBroadcastFanout:
                     tenant_key=tenant_key,
                     project_id=project_id,
                     job_type="worker",
-                    mission=f"Worker {i+1} mission",
+                    mission=f"Worker {i + 1} mission",
                     status="active",
                 )
                 setup_session.add(job)
@@ -100,13 +100,12 @@ class TestBroadcastFanout:
                     job_id=job.job_id,
                     tenant_key=tenant_key,
                     agent_display_name="implementer",
-                    agent_name=f"Worker Agent {i+1}",
-                    instance_number=1,
+                    agent_name=f"Worker Agent {i + 1}",
                     status="waiting",
                     progress=0,
                     messages_sent_count=0,
-                messages_waiting_count=0,
-                messages_read_count=0,
+                    messages_waiting_count=0,
+                    messages_read_count=0,
                     health_status="healthy",
                 )
                 setup_session.add(execution)
@@ -127,7 +126,7 @@ class TestBroadcastFanout:
             message_type="broadcast",
             priority="normal",
             from_agent="orchestrator",
-            tenant_key=tenant_key
+            tenant_key=tenant_key,
         )
 
         # ASSERT: Send succeeded
@@ -136,21 +135,15 @@ class TestBroadcastFanout:
         # ACTION 2: Each agent receives messages
         messages_received = []
         for agent_id in agent_ids:
-            result = await message_service.receive_messages(
-                agent_id=agent_id,
-                limit=10,
-                tenant_key=tenant_key
-            )
+            result = await message_service.receive_messages(agent_id=agent_id, limit=10, tenant_key=tenant_key)
             assert result["success"] is True
-            messages_received.append({
-                "agent_id": agent_id,
-                "messages": result["messages"],
-                "count": result["count"]
-            })
+            messages_received.append({"agent_id": agent_id, "messages": result["messages"], "count": result["count"]})
 
         # ASSERT: Each agent receives exactly 1 message
         for agent_data in messages_received:
-            assert agent_data["count"] == 1, f"Agent {agent_data['agent_id']} received {agent_data['count']} messages, expected 1"
+            assert agent_data["count"] == 1, (
+                f"Agent {agent_data['agent_id']} received {agent_data['count']} messages, expected 1"
+            )
             msg = agent_data["messages"][0]
             assert msg["content"] == "Broadcast message to all agents"
             assert msg["type"] == "broadcast"
@@ -160,10 +153,7 @@ class TestBroadcastFanout:
         async with db_manager.get_session_async() as verify_session:
             # Get all messages created by this broadcast
             result = await verify_session.execute(
-                select(Message).where(
-                    Message.tenant_key == tenant_key,
-                    Message.project_id == project_id
-                )
+                select(Message).where(Message.tenant_key == tenant_key, Message.project_id == project_id)
             )
             all_messages = result.scalars().all()
 
@@ -172,7 +162,9 @@ class TestBroadcastFanout:
 
             # Each message should be acknowledged by exactly 1 agent
             for msg in all_messages:
-                assert len(msg.acknowledged_by) == 1, f"Message {msg.id} acknowledged by {len(msg.acknowledged_by)} agents"
+                assert len(msg.acknowledged_by) == 1, (
+                    f"Message {msg.id} acknowledged by {len(msg.acknowledged_by)} agents"
+                )
                 assert msg.acknowledged_by[0] in agent_ids, f"Unexpected acknowledger: {msg.acknowledged_by[0]}"
 
     @pytest.mark.asyncio
@@ -219,7 +211,6 @@ class TestBroadcastFanout:
                 tenant_key=tenant_key,
                 agent_display_name="orchestrator",
                 agent_name="Test Orchestrator",
-                instance_number=1,
                 status="working",
             )
             setup_session.add(orch_execution)
@@ -231,7 +222,7 @@ class TestBroadcastFanout:
                     tenant_key=tenant_key,
                     project_id=project_id,
                     job_type="worker",
-                    mission=f"Worker {i+1} mission",
+                    mission=f"Worker {i + 1} mission",
                     status="active",
                 )
                 setup_session.add(job)
@@ -241,8 +232,7 @@ class TestBroadcastFanout:
                     job_id=job.job_id,
                     tenant_key=tenant_key,
                     agent_display_name="implementer",
-                    agent_name=f"Worker {i+1}",
-                    instance_number=1,
+                    agent_name=f"Worker {i + 1}",
                     status="waiting",
                 )
                 setup_session.add(execution)
@@ -263,7 +253,7 @@ class TestBroadcastFanout:
             message_type="broadcast",
             priority="normal",
             from_agent="orchestrator",
-            tenant_key=tenant_key
+            tenant_key=tenant_key,
         )
 
         assert result["success"] is True
@@ -274,19 +264,19 @@ class TestBroadcastFanout:
             # PostgreSQL JSONB contains operator @>
             query_all_literal = select(Message).where(
                 Message.tenant_key == tenant_key,
-                func.cast(Message.to_agents, JSONB).op('@>')(func.cast(["all"], JSONB))
+                func.cast(Message.to_agents, JSONB).op("@>")(func.cast(["all"], JSONB)),
             )
             result = await verify_session.execute(query_all_literal)
             messages_with_all = result.scalars().all()
 
             # ASSERT: NO messages should have literal "all"
-            assert len(messages_with_all) == 0, f"Found {len(messages_with_all)} messages with literal 'all' in to_agents"
+            assert len(messages_with_all) == 0, (
+                f"Found {len(messages_with_all)} messages with literal 'all' in to_agents"
+            )
 
             # Query all broadcast messages
             query_broadcasts = select(Message).where(
-                Message.tenant_key == tenant_key,
-                Message.project_id == project_id,
-                Message.message_type == "broadcast"
+                Message.tenant_key == tenant_key, Message.project_id == project_id, Message.message_type == "broadcast"
             )
             result = await verify_session.execute(query_broadcasts)
             all_broadcasts = result.scalars().all()
@@ -344,7 +334,6 @@ class TestBroadcastFanout:
                 tenant_key=tenant_key,
                 agent_display_name="orchestrator",
                 agent_name="Test Orchestrator",
-                instance_number=1,
                 status="working",
             )
             setup_session.add(orch_execution)
@@ -356,7 +345,7 @@ class TestBroadcastFanout:
                     tenant_key=tenant_key,
                     project_id=project_id,
                     job_type="worker",
-                    mission=f"Worker {i+1} mission",
+                    mission=f"Worker {i + 1} mission",
                     status="active",
                 )
                 setup_session.add(job)
@@ -366,9 +355,7 @@ class TestBroadcastFanout:
                     job_id=job.job_id,
                     tenant_key=tenant_key,
                     agent_display_name="implementer",
-                    agent_name=f"Agent {chr(65 + i)}",  # Agent A, B, C
-                    instance_number=1,
-                    status="waiting",
+                    agent_name=f"Agent {chr(65 + i)}",  # Agent A, B, C                    status="waiting",
                 )
                 setup_session.add(execution)
                 agent_ids.append(execution.agent_id)
@@ -390,27 +377,20 @@ class TestBroadcastFanout:
             message_type="broadcast",
             priority="normal",
             from_agent="orchestrator",
-            tenant_key=tenant_key
+            tenant_key=tenant_key,
         )
 
         assert result["success"] is True
 
         # ACTION: Agent A reads messages (auto-acknowledge)
-        result_a = await message_service.receive_messages(
-            agent_id=agent_a_id,
-            limit=10,
-            tenant_key=tenant_key
-        )
+        result_a = await message_service.receive_messages(agent_id=agent_a_id, limit=10, tenant_key=tenant_key)
         assert result_a["success"] is True
         assert result_a["count"] == 1
 
         # VERIFY: Agent A's message is acknowledged, Agent B and C are still pending
         async with db_manager.get_session_async() as verify_session:
             result = await verify_session.execute(
-                select(Message).where(
-                    Message.tenant_key == tenant_key,
-                    Message.project_id == project_id
-                )
+                select(Message).where(Message.tenant_key == tenant_key, Message.project_id == project_id)
             )
             all_messages = result.scalars().all()
 
@@ -428,27 +408,24 @@ class TestBroadcastFanout:
             assert agent_a_id in msg_a.acknowledged_by, "Agent A not in acknowledged_by"
 
             assert msg_b.status == "pending", f"Agent B message should be pending, got: {msg_b.status}"
-            assert msg_b.acknowledged_by == [] or msg_b.acknowledged_by is None, f"Agent B acknowledged_by should be empty: {msg_b.acknowledged_by}"
+            assert msg_b.acknowledged_by == [] or msg_b.acknowledged_by is None, (
+                f"Agent B acknowledged_by should be empty: {msg_b.acknowledged_by}"
+            )
 
             assert msg_c.status == "pending", f"Agent C message should be pending, got: {msg_c.status}"
-            assert msg_c.acknowledged_by == [] or msg_c.acknowledged_by is None, f"Agent C acknowledged_by should be empty: {msg_c.acknowledged_by}"
+            assert msg_c.acknowledged_by == [] or msg_c.acknowledged_by is None, (
+                f"Agent C acknowledged_by should be empty: {msg_c.acknowledged_by}"
+            )
 
         # ACTION: Agent B reads messages (auto-acknowledge)
-        result_b = await message_service.receive_messages(
-            agent_id=agent_b_id,
-            limit=10,
-            tenant_key=tenant_key
-        )
+        result_b = await message_service.receive_messages(agent_id=agent_b_id, limit=10, tenant_key=tenant_key)
         assert result_b["success"] is True
         assert result_b["count"] == 1
 
         # VERIFY: Agent A and B acknowledged, Agent C still pending
         async with db_manager.get_session_async() as verify_session:
             result = await verify_session.execute(
-                select(Message).where(
-                    Message.tenant_key == tenant_key,
-                    Message.project_id == project_id
-                )
+                select(Message).where(Message.tenant_key == tenant_key, Message.project_id == project_id)
             )
             all_messages = result.scalars().all()
 
@@ -465,7 +442,9 @@ class TestBroadcastFanout:
 
             # ASSERT: C still pending (NOT affected by A and B)
             assert msg_c.status == "pending", f"Agent C message should be pending, got: {msg_c.status}"
-            assert msg_c.acknowledged_by == [] or msg_c.acknowledged_by is None, f"Agent C should not be acknowledged: {msg_c.acknowledged_by}"
+            assert msg_c.acknowledged_by == [] or msg_c.acknowledged_by is None, (
+                f"Agent C should not be acknowledged: {msg_c.acknowledged_by}"
+            )
 
     @pytest.mark.asyncio
     async def test_sender_excluded_from_broadcast(self, db_manager, tenant_manager):
@@ -511,7 +490,6 @@ class TestBroadcastFanout:
                 tenant_key=tenant_key,
                 agent_display_name="orchestrator",
                 agent_name="Test Orchestrator",
-                instance_number=1,
                 status="working",
             )
             setup_session.add(orch_execution)
@@ -524,7 +502,7 @@ class TestBroadcastFanout:
                     tenant_key=tenant_key,
                     project_id=project_id,
                     job_type="worker",
-                    mission=f"Worker {i+1} mission",
+                    mission=f"Worker {i + 1} mission",
                     status="active",
                 )
                 setup_session.add(job)
@@ -534,8 +512,7 @@ class TestBroadcastFanout:
                     job_id=job.job_id,
                     tenant_key=tenant_key,
                     agent_display_name="implementer",
-                    agent_name=f"Worker {i+1}",
-                    instance_number=1,
+                    agent_name=f"Worker {i + 1}",
                     status="waiting",
                 )
                 setup_session.add(execution)
@@ -555,7 +532,7 @@ class TestBroadcastFanout:
             message_type="broadcast",
             priority="normal",
             from_agent="orchestrator",
-            tenant_key=tenant_key
+            tenant_key=tenant_key,
         )
 
         assert result["success"] is True
@@ -563,10 +540,7 @@ class TestBroadcastFanout:
         # VERIFY: Database has 2 messages (workers only, orchestrator excluded)
         async with db_manager.get_session_async() as verify_session:
             result = await verify_session.execute(
-                select(Message).where(
-                    Message.tenant_key == tenant_key,
-                    Message.project_id == project_id
-                )
+                select(Message).where(Message.tenant_key == tenant_key, Message.project_id == project_id)
             )
             all_messages = result.scalars().all()
 
@@ -575,14 +549,12 @@ class TestBroadcastFanout:
 
             # VERIFY: Orchestrator agent_id is NOT in any to_agents
             for msg in all_messages:
-                assert orch_agent_id not in msg.to_agents, f"Orchestrator {orch_agent_id} should not be in recipients: {msg.to_agents}"
+                assert orch_agent_id not in msg.to_agents, (
+                    f"Orchestrator {orch_agent_id} should not be in recipients: {msg.to_agents}"
+                )
 
         # VERIFY: Orchestrator receives 0 messages when calling receive_messages
-        orch_result = await message_service.receive_messages(
-            agent_id=orch_agent_id,
-            limit=10,
-            tenant_key=tenant_key
-        )
+        orch_result = await message_service.receive_messages(agent_id=orch_agent_id, limit=10, tenant_key=tenant_key)
 
         assert orch_result["success"] is True
         assert orch_result["count"] == 0, f"Orchestrator should receive 0 messages, got {orch_result['count']}"

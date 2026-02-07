@@ -30,8 +30,8 @@
           <v-btn
             icon="mdi-close"
             variant="text"
-            @click="toast.show = false"
             aria-label="Close notification"
+            @click="toast.show = false"
           />
         </template>
       </v-snackbar>

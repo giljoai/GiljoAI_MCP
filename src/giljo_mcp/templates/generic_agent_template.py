@@ -90,10 +90,10 @@ MCP tools are **native tools** (like Read/Write/Bash/Glob), already connected in
 - WRONG: Use of `curl`, raw HTTP requests, SDKs, or custom clients
 
 Key tools used by this agent:
-- `mcp__giljo-mcp__get_agent_mission(job_id, tenant_key)` – Fetches mission + protocol
-- `mcp__giljo-mcp__report_progress(job_id, progress)` – Progress and check-ins
-- `mcp__giljo-mcp__complete_job(job_id, result)` – Completion
-- `mcp__giljo-mcp__report_error(job_id, error)` – Blocking errors
+- `mcp__giljo-mcp__get_agent_mission(job_id, tenant_key)` - Fetches mission + protocol
+- `mcp__giljo-mcp__report_progress(job_id, progress)` - Progress and check-ins
+- `mcp__giljo-mcp__complete_job(job_id, result)` - Completion
+- `mcp__giljo-mcp__report_error(job_id, error)` - Blocking errors
 
 ---
 

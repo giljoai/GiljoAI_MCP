@@ -16,9 +16,9 @@
       <v-col cols="12" md="4" class="d-flex justify-end">
         <v-btn
           color="primary"
-          @click="openCreateDialog"
           :disabled="loading"
           prepend-icon="mdi-account-plus"
+          @click="openCreateDialog"
         >
           Add User
         </v-btn>
@@ -106,7 +106,7 @@
               <v-list-item-title>Reset Password</v-list-item-title>
             </v-list-item>
             <v-divider />
-            <v-list-item @click="toggleUserStatus(item)" :disabled="item.id === currentUser?.id">
+            <v-list-item :disabled="item.id === currentUser?.id" @click="toggleUserStatus(item)">
               <template v-slot:prepend>
                 <v-icon>{{ item.is_active ? 'mdi-account-off' : 'mdi-account-check' }}</v-icon>
               </template>
@@ -184,8 +184,8 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="closeUserDialog" :disabled="saving"> Cancel </v-btn>
-          <v-btn color="primary" @click="saveUser" :loading="saving">
+          <v-btn variant="text" :disabled="saving" @click="closeUserDialog"> Cancel </v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveUser">
             {{ isEditMode ? 'Update' : 'Create' }}
           </v-btn>
         </v-card-actions>
@@ -217,10 +217,10 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="closePasswordDialog" :disabled="changingPassword">
+          <v-btn variant="text" :disabled="changingPassword" @click="closePasswordDialog">
             Cancel
           </v-btn>
-          <v-btn color="primary" @click="changePassword" :loading="changingPassword">
+          <v-btn color="primary" :loading="changingPassword" @click="changePassword">
             Change Password
           </v-btn>
         </v-card-actions>
@@ -260,10 +260,10 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="closeResetPasswordDialog" :disabled="resettingPassword">
+          <v-btn variant="text" :disabled="resettingPassword" @click="closeResetPasswordDialog">
             Cancel
           </v-btn>
-          <v-btn color="warning" @click="confirmResetPassword" :loading="resettingPassword">
+          <v-btn color="warning" :loading="resettingPassword" @click="confirmResetPassword">
             Reset Password
           </v-btn>
         </v-card-actions>
@@ -302,13 +302,13 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="closeStatusDialog" :disabled="togglingStatus">
+          <v-btn variant="text" :disabled="togglingStatus" @click="closeStatusDialog">
             Cancel
           </v-btn>
           <v-btn
             :color="statusUser?.is_active ? 'warning' : 'success'"
-            @click="confirmToggleStatus"
             :loading="togglingStatus"
+            @click="confirmToggleStatus"
           >
             {{ statusUser?.is_active ? 'Deactivate' : 'Activate' }}
           </v-btn>

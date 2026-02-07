@@ -9,23 +9,21 @@ TDD: RED phase - tests should FAIL before fix is applied.
 Handover: Bug fix for "Project not ready to launch" error
 """
 
-import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 
 
 class TestOrchestratorStatusFiltering:
     """Tests for orchestrator status filtering behavior."""
 
     @pytest.mark.asyncio
-    async def test_get_orchestrator_excludes_cancelled(
-        self, db_session: AsyncSession, test_project
-    ):
+    async def test_get_orchestrator_excludes_cancelled(self, db_session: AsyncSession, test_project):
         """
         BEHAVIOR: When multiple orchestrators exist, return active one (not cancelled).
         """
@@ -37,7 +35,6 @@ class TestOrchestratorStatusFiltering:
             agent_display_name="orchestrator",
             agent_name="Orchestrator #1",
             status="cancelled",
-            instance_number=2,
             decommissioned_at=datetime.now(timezone.utc),
             mission="Cancelled mission",
         )
@@ -51,7 +48,6 @@ class TestOrchestratorStatusFiltering:
             agent_display_name="orchestrator",
             agent_name="Orchestrator #2",
             status="waiting",
-            instance_number=1,
             mission="Active mission",
         )
         db_session.add(active_orch)
@@ -65,7 +61,7 @@ class TestOrchestratorStatusFiltering:
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == test_project.tenant_key,
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
         )
         buggy_result = await db_session.execute(buggy_stmt)
         buggy_orchestrator = buggy_result.scalars().first()
@@ -82,7 +78,7 @@ class TestOrchestratorStatusFiltering:
                 AgentExecution.tenant_key == test_project.tenant_key,
                 AgentExecution.status.in_(["waiting", "working", "blocked"]),
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
         )
         fixed_result = await db_session.execute(fixed_stmt)
         fixed_orchestrator = fixed_result.scalars().first()
@@ -93,9 +89,7 @@ class TestOrchestratorStatusFiltering:
         assert fixed_orchestrator.job_id == active_orch.job_id
 
     @pytest.mark.asyncio
-    async def test_get_orchestrator_returns_none_when_all_terminal(
-        self, db_session: AsyncSession, test_project
-    ):
+    async def test_get_orchestrator_returns_none_when_all_terminal(self, db_session: AsyncSession, test_project):
         """
         BEHAVIOR: Return None when all orchestrators are in terminal states.
         """
@@ -107,7 +101,6 @@ class TestOrchestratorStatusFiltering:
             agent_display_name="orchestrator",
             agent_name="Cancelled Orchestrator",
             status="cancelled",
-            instance_number=1,
             mission="Cancelled",
         )
         db_session.add(cancelled_orch)
@@ -119,7 +112,6 @@ class TestOrchestratorStatusFiltering:
             agent_display_name="orchestrator",
             agent_name="Failed Orchestrator",
             status="failed",
-            instance_number=2,
             mission="Failed",
         )
         db_session.add(failed_orch)
@@ -134,7 +126,7 @@ class TestOrchestratorStatusFiltering:
                 AgentExecution.tenant_key == test_project.tenant_key,
                 AgentExecution.status.in_(["waiting", "working", "blocked"]),
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
         )
         result = await db_session.execute(fixed_stmt)
         orchestrator = result.scalars().first()

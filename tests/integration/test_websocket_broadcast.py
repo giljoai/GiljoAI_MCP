@@ -18,11 +18,11 @@ from typing import Dict, List
 from uuid import uuid4
 
 import pytest
-from api.websocket_manager import ConnectionInfo, WebSocketManager
 from sqlalchemy.orm import Session
 
 from api.dependencies.websocket import WebSocketDependency
 from api.events.schemas import EventFactory
+from api.websocket_manager import ConnectionInfo, WebSocketManager
 from src.giljo_mcp.models import User
 
 

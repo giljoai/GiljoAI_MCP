@@ -21,15 +21,15 @@ Usage:
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate
-from src.giljo_mcp.template_manager import UnifiedTemplateManager
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
+from src.giljo_mcp.template_manager import UnifiedTemplateManager
 
 
 logger = logging.getLogger(__name__)
@@ -82,10 +82,7 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
             # Build new system_instructions based on role
             if template.role == "orchestrator":
                 # Orchestrator doesn't need context_request (it doesn't ask itself for context)
-                new_system_instructions = (
-                    f"{mcp_section}\n\n"
-                    f"{check_in_section}\n\n{orchestrator_messaging_section}"
-                )
+                new_system_instructions = f"{mcp_section}\n\n{check_in_section}\n\n{orchestrator_messaging_section}"
             else:
                 # Regular agents get guidelines + context request protocol (Handover 0432)
                 new_system_instructions = (
@@ -95,14 +92,6 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
 
             # Update only system_instructions (preserves user_instructions)
             template.system_instructions = new_system_instructions
-
-            # Update legacy template_content for backward compatibility
-            # CRITICAL section (in new_system_instructions) must come FIRST for agent comprehension
-            # ALWAYS update template_content (fixed: was only updating when user_instructions existed)
-            if template.user_instructions:
-                template.template_content = f"{new_system_instructions}\n\n---\n\n## Role-Specific Instructions\n\n{template.user_instructions}"
-            else:
-                template.template_content = new_system_instructions
 
             updated_count += 1
             logger.debug(f"Updated system_instructions for template '{template.name}' (tenant: {tenant_key})")
@@ -133,7 +122,6 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
     Version 3.1.1: Dual-field template system (Handover 0106)
     - system_instructions: Protected MCP coordination (non-editable)
     - user_instructions: Role-specific guidance (editable by users)
-    - template_content: Deprecated legacy field (system + user for compatibility)
 
     Args:
         session: AsyncSession - Database session for operations
@@ -170,12 +158,11 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
 
         # Load legacy templates from template_manager
         logger.debug(f"Loading legacy templates for tenant '{tenant_key}'")
-        template_mgr = UnifiedTemplateManager()
-        legacy_templates = template_mgr._legacy_templates
+        UnifiedTemplateManager()
 
         # Define comprehensive metadata for each template
         # Extracted from original template content and handover requirements
-        template_metadata = _get_template_metadata()
+        _get_template_metadata()
 
         # Get MCP coordination section to append to all templates
         mcp_section = _get_mcp_coordination_section()
@@ -220,16 +207,12 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
                 system_instructions = f"{agent_guidelines_section}\n\n{mcp_section}\n\n{context_request_section}\n\n{check_in_section}\n\n{agent_messaging_section}"
 
             # Get role-specific user instructions
-            user_instructions = template_def["template_content"]
+            user_instructions = template_def["user_instructions"]
 
             # Handover 0109: Add orchestrator-specific context response instructions
             if template_def["role"] == "orchestrator":
                 orchestrator_response_section = _get_orchestrator_context_response_section()
                 user_instructions = f"{user_instructions}\n\n{orchestrator_response_section}"
-
-            # Legacy template_content = CRITICAL (system) first, then role-specific (user)
-            # CRITICAL section must be at TOP for agent comprehension
-            legacy_template_content = f"{system_instructions}\n\n---\n\n## Role-Specific Instructions\n\n{user_instructions}"
 
             # Create template instance with Handover 0106 dual-field format
             template = AgentTemplate(
@@ -242,11 +225,9 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
                 cli_tool=template_def["cli_tool"],
                 background_color=template_def["background_color"],
                 description=template_def["description"],
-                # NEW (Handover 0106): Dual-field system
+                # Handover 0106: Dual-field system
                 system_instructions=system_instructions,  # Protected MCP coordination
                 user_instructions=user_instructions,  # Editable role-specific guidance
-                # DEPRECATED: Legacy field for backward compatibility
-                template_content=legacy_template_content,
                 model=template_def.get("model", "sonnet"),
                 tools=template_def.get("tools"),
                 variables=[],  # No variables in new format
@@ -296,7 +277,7 @@ def _get_default_templates_v103() -> list[dict[str, Any]]:
             "cli_tool": "claude",
             "background_color": "#D4A574",
             "description": "Project orchestrator responsible for coordinating agent workflows",
-            "template_content": """# GiljoAI Orchestrator Agent
+            "user_instructions": """# GiljoAI Orchestrator Agent
 
 ## Identity & Environment
 
@@ -379,7 +360,7 @@ Detailed closeout protocol in `full_protocol`.
             "cli_tool": "claude",
             "background_color": "#3498DB",
             "description": "Implementation specialist for writing production-grade code",
-            "template_content": """You are an implementation specialist responsible for writing clean, production-grade code.
+            "user_instructions": """You are an implementation specialist responsible for writing clean, production-grade code.
 
 Your primary responsibilities:
 - Implement features according to specifications
@@ -425,7 +406,7 @@ Success criteria:
             "cli_tool": "claude",
             "background_color": "#FFC300",
             "description": "Testing specialist for comprehensive test coverage and quality assurance",
-            "template_content": """You are a testing specialist responsible for ensuring code quality through comprehensive testing.
+            "user_instructions": """You are a testing specialist responsible for ensuring code quality through comprehensive testing.
 
 Your primary responsibilities:
 - Write unit tests for new code (80%+ coverage target)
@@ -466,7 +447,7 @@ Success criteria:
             "cli_tool": "claude",
             "background_color": "#E74C3C",
             "description": "Analysis specialist for requirements breakdown and technical planning",
-            "template_content": """You are an analysis specialist responsible for breaking down requirements into actionable tasks.
+            "user_instructions": """You are an analysis specialist responsible for breaking down requirements into actionable tasks.
 
 Your primary responsibilities:
 - Analyze user requirements and clarify ambiguities
@@ -512,7 +493,7 @@ Success criteria:
             "cli_tool": "claude",
             "background_color": "#9B59B6",
             "description": "Code review specialist for quality assurance and best practices enforcement",
-            "template_content": """You are a code review specialist responsible for ensuring code quality before merge.
+            "user_instructions": """You are a code review specialist responsible for ensuring code quality before merge.
 
 Your primary responsibilities:
 - Review code for correctness, clarity, and maintainability
@@ -553,7 +534,7 @@ Success criteria:
             "cli_tool": "claude",
             "background_color": "#27AE60",
             "description": "Documentation specialist for clear, comprehensive project documentation",
-            "template_content": """You are a documentation specialist responsible for maintaining clear, up-to-date documentation.
+            "user_instructions": """You are a documentation specialist responsible for maintaining clear, up-to-date documentation.
 
 Your primary responsibilities:
 - Document new features and API changes
@@ -596,7 +577,7 @@ Success criteria:
     ]
 
 
-def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
+def _get_template_metadata() -> dict[str, dict[str, Any]]:
     """
     Get comprehensive metadata for each agent role template.
 
@@ -633,15 +614,15 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Create 3 documentation artifacts at project close",
                 "Coordinate multiple agents effectively",
                 "Monitor agent progress and respond to blockers",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "All project objectives met",
                 "Clean handoff documentation created",
                 "Zero scope creep maintained",
                 "Effective team coordination achieved",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "product_name", "project_mission"],
         },
         "analyzer": {
@@ -653,15 +634,15 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Focus on architecture and patterns",
                 "Report analysis findings incrementally (don't wait until end)",
                 "Include file analysis progress in context_used tracking",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "Complete requirements documented",
                 "Architecture aligned with vision",
                 "All risks and dependencies identified",
                 "Clear specifications for implementer",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "custom_mission"],
         },
         "implementer": {
@@ -673,15 +654,15 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Test changes incrementally",
                 "Report file modifications after each implementation step",
                 "Include token usage in progress reports (track context carefully)",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "All specified features implemented correctly",
                 "Code follows project standards",
                 "Tests passing",
                 "No unauthorized scope changes",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "custom_mission"],
         },
         "tester": {
@@ -693,15 +674,15 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Validate against requirements",
                 "Report test results in completion summary (pass/fail counts, coverage)",
                 "Include test file paths in progress reports",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "All features have test coverage",
                 "Tests validate requirements correctly",
                 "Coverage meets project standards",
                 "Test documentation complete",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "custom_mission"],
         },
         "reviewer": {
@@ -713,15 +694,15 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Validate architectural compliance",
                 "Document all findings with severity levels",
                 "Mark completion only after all review comments addressed",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "Code meets quality standards",
                 "Security best practices followed",
                 "No critical issues remaining",
                 "All feedback is actionable",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "custom_mission"],
         },
         "documenter": {
@@ -733,15 +714,15 @@ def _get_template_metadata() -> Dict[str, Dict[str, Any]]:
                 "Focus on implemented features only",
                 "Report documentation files created/updated in progress",
                 "Include documentation coverage in completion summary",
-            ]
-            + mcp_rules,
+                *mcp_rules,
+            ],
             "success_criteria": [
                 "Documentation complete and accurate",
                 "Usage examples provided",
                 "All artifacts updated",
                 "Documentation follows project style",
-            ]
-            + mcp_success,
+                *mcp_success,
+            ],
             "variables": ["project_name", "custom_mission"],
         },
     }
@@ -1001,7 +982,7 @@ def get_orchestrator_identity_content() -> str:
     base_template = ""
     for template_def in _get_default_templates_v103():
         if template_def.get("role") == "orchestrator":
-            base_template = template_def["template_content"].strip()
+            base_template = template_def["user_instructions"].strip()
             break
 
     # Get all protocol sections
@@ -1010,9 +991,6 @@ def get_orchestrator_identity_content() -> str:
     check_in = _get_check_in_protocol_section().strip()
     orchestrator_messaging = _get_orchestrator_messaging_protocol_section().strip()
 
-    # Build the FULL identity content (same structure as SystemPromptService uses)
-    # user_instructions = base_template + orchestrator_response
-    # system_instructions = mcp + check_in + messaging
     return f"""{base_template}
 
 {orchestrator_response}

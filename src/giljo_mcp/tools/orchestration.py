@@ -9,23 +9,23 @@ Helper functions (get_project_by_alias, etc.) are used by both paths.
 See: api/endpoints/mcp_http.py for HTTP routing.
 """
 
-import os
-import yaml
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
+import yaml
 from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.logging import get_logger, ErrorCode
-from src.giljo_mcp.models import AgentTemplate, Product, Project
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-# Handover 0450: Removed dead import of ProjectOrchestrator
+from src.giljo_mcp.logging import ErrorCode, get_logger
+from src.giljo_mcp.models import Product, Project
 
+
+# Handover 0450: Removed dead import of ProjectOrchestrator
 
 logger = get_logger(__name__)
 
@@ -34,7 +34,6 @@ logger = get_logger(__name__)
 # This code expects flat structure: {"field": {"toggle": True, "priority": X}}
 DEFAULT_FIELD_PRIORITIES = _DEFAULT_FIELD_PRIORITY["priorities"]
 DEFAULT_DEPTH_CONFIG = _DEFAULT_DEPTH_CONFIG["depths"]
-
 
 # ============================================================================
 # STANDALONE HELPER FUNCTIONS (For Testing and Tenant Isolation)
@@ -109,7 +108,7 @@ async def get_project_by_alias(alias: str, tenant_key: str, session) -> dict[str
             ),
         }
 
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.error(
             "project_fetch_by_alias_failed",
             error_code=ErrorCode.MCP_ORCHESTRATOR_ERROR.value,
@@ -124,7 +123,7 @@ async def get_project_by_alias(alias: str, tenant_key: str, session) -> dict[str
 # (DEFAULT_FIELD_PRIORITIES and DEFAULT_DEPTH_CONFIG are now unified across the codebase)
 
 
-def _normalize_field_priorities(field_priorities: Dict[str, Any]) -> Dict[str, int]:
+def _normalize_field_priorities(field_priorities: dict[str, Any]) -> dict[str, int]:
     """
     Normalize field_priorities from nested format to integer format.
 
@@ -155,8 +154,10 @@ def _normalize_field_priorities(field_priorities: Dict[str, Any]) -> Dict[str, i
 
 
 async def _get_user_config(
-    user_id: str, tenant_key: str, session: Any  # AsyncSession type hint would create circular import
-) -> Dict[str, Any]:
+    user_id: str,
+    tenant_key: str,
+    session: Any,  # AsyncSession type hint would create circular import
+) -> dict[str, Any]:
     """
     Fetch user's field_priority_config and depth_config from database.
 
@@ -179,7 +180,7 @@ async def _get_user_config(
     try:
         # Query user with tenant isolation
         result = await session.execute(
-            select(User).where(and_(User.id == user_id, User.tenant_key == tenant_key, User.is_active == True))
+            select(User).where(and_(User.id == user_id, User.tenant_key == tenant_key, User.is_active))
         )
         user = result.scalar_one_or_none()
 
@@ -253,7 +254,7 @@ async def _get_user_config(
 
         return {"field_priorities": field_priorities, "depth_config": depth_config}
 
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.error(
             "user_config_fetch_failed",
             error_code=ErrorCode.MCP_CONTEXT_FETCH_FAILED.value,
@@ -337,9 +338,8 @@ result = await spawn_agent_job(
 Each agent template below includes launch_instructions showing how to start the agent.
 """
         return instructions
-    else:
-        # Legacy mode - manual terminal launches
-        instructions = """**LEGACY MODE - Manual Agent Launches**
+    # Legacy mode - manual terminal launches
+    instructions = """**LEGACY MODE - Manual Agent Launches**
 
 Specialist agents must be launched manually in separate terminals.
 
@@ -352,7 +352,7 @@ Specialist agents must be launched manually in separate terminals.
 **Agent Launch Instructions**:
 Each agent template below includes launch_instructions for manual copying.
 """
-        return instructions
+    return instructions
 
 
 def _format_agent_templates(templates: list, execution_mode: str) -> list[dict]:
@@ -399,7 +399,6 @@ def _format_agent_templates(templates: list, execution_mode: str) -> list[dict]:
 # All context fetched via get_orchestrator_instructions() MCP tool
 # ========================================================================
 
-
 # ========================================================================
 # Standalone Functions for Testing
 # These are test-friendly wrappers that can be imported directly
@@ -439,10 +438,12 @@ def _get_post_staging_behavior(cli_mode: bool) -> dict:
 
     Returns:
         Dict with mode-specific behavior guidance
+
+    Handover 0709b: Mention staging_directive in broadcast response
     """
     return {
-        "cli_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. DO NOT call complete_job(). Implementation happens in separate execution.",
-        "multi_terminal_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. DO NOT call complete_job(). User manually launches agents via [Copy Prompt] buttons.",
+        "cli_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. Server returns staging_directive with STOP action. DO NOT call complete_job(). Implementation happens in separate execution.",
+        "multi_terminal_mode": "Staging orchestrator SESSION ENDS after STAGING_COMPLETE broadcast. Server returns staging_directive with STOP action. DO NOT call complete_job(). User manually launches agents via [Copy Prompt] buttons.",
     }
 
 
@@ -452,6 +453,8 @@ def _get_required_final_action() -> dict:
 
     Returns:
         Dict with required broadcast action for enabling Implement button
+
+    Handover 0709b: Broadcast response enriched with staging_directive
     """
     return {
         "action": "send_message",
@@ -461,6 +464,7 @@ def _get_required_final_action() -> dict:
             "content_template": "STAGING_COMPLETE: Mission created, {N} agents spawned",
         },
         "why": "Enables Implement button in UI - REQUIRED",
+        "response_note": "Server returns staging_directive field with STOP action when this broadcast succeeds",
     }
 
 
@@ -529,7 +533,7 @@ def _build_orchestrator_protocol(
     project_id: str,
     orchestrator_id: str,
     tenant_key: str,
-    include_implementation_reference: bool = True
+    include_implementation_reference: bool = True,
 ) -> dict:
     """
     Build chapter-based orchestrator protocol.
@@ -549,7 +553,7 @@ def _build_orchestrator_protocol(
         Dict with chapter keys and navigation_hint
     """
     # CH1: YOUR MISSION (~180 tokens)
-    ch1 = f"""════════════════════════════════════════════════════════════════════════════
+    ch1 = """════════════════════════════════════════════════════════════════════════════
                            CH1: YOUR MISSION
 ════════════════════════════════════════════════════════════════════════════
 
@@ -588,7 +592,6 @@ Completion protocol applies (see CH5 - shown in implementation only)
 ════════════════════════════════════════════════════════════════════════════
 
 Follow these steps IN ORDER (Steps 1-7 for staging):
-
 
 ── STEP 0: Detect Environment ──────────────────────────────────────────────
 Before planning, detect your development environment:
@@ -678,6 +681,10 @@ Call: send_message(
 Note: tenant_key auto-injected by server from API key session
 
 This broadcast enables the "Implement" button in UI (REQUIRED)
+
+The server will confirm staging completion in the response with a
+`staging_directive` field containing status: "STAGING_SESSION_COMPLETE".
+When you receive this directive, your session is DONE. Stop immediately.
 
 ⚠️  STAGING ENDS HERE - DO NOT call complete_job() or write_360_memory()
    Your session is done. Implementation happens in a new session.
@@ -943,14 +950,14 @@ END OF IMPLEMENTATION PHASE REFERENCE
         "ch3_agent_spawning_rules": ch3,
         "ch4_error_handling": ch4,
         "ch5_reference": ch5,
-        "navigation_hint": "Reference chapters by name (e.g., 'see CH4 for error handling')"
+        "navigation_hint": "Reference chapters by name (e.g., 'see CH4 for error handling')",
     }
 
 
 async def get_orchestrator_instructions(
     agent_id: str,
     tenant_key: str,
-    user_id: Optional[str] = None,  # Handover 0281 Phase 1: User-specific config
+    user_id: str | None = None,  # Handover 0281 Phase 1: User-specific config
     db_manager: "DatabaseManager" = None,
 ) -> dict[str, Any]:
     """
@@ -985,7 +992,7 @@ async def get_orchestrator_instructions(
 
         from src.giljo_mcp.mission_planner import MissionPlanner
         from src.giljo_mcp.models import AgentTemplate, Product, Project
-        from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+        from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
         try:
             # Validate inputs
@@ -1075,7 +1082,7 @@ async def get_orchestrator_instructions(
                             },
                         )
                         logger.info(
-                            f"[WEBSOCKET] Broadcasted job:mission_acknowledged event",
+                            "[WEBSOCKET] Broadcasted job:mission_acknowledged event",
                             extra={
                                 "agent_id": agent_id,
                                 "job_id": job_id,
@@ -1083,7 +1090,7 @@ async def get_orchestrator_instructions(
                                 "mission_acknowledged_at": agent_execution.mission_acknowledged_at.isoformat(),
                             },
                         )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001
                     # Non-blocking - WebSocket failures shouldn't break MCP tool
                     logger.warning(
                         f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged event: {ws_error}",
@@ -1168,17 +1175,18 @@ async def get_orchestrator_instructions(
                     with open(config_path, encoding="utf-8") as f:
                         config_data = yaml.safe_load(f) or {}
                     include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
-            except Exception as e:
+            except (OSError, ValueError, KeyError) as e:
                 logger.warning(f"[SERENA] Failed to read config in get_orchestrator_instructions: {e}")
 
             if include_serena:
                 from giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+
                 serena_notice = generate_serena_instructions(enabled=True)
                 full_mission = serena_notice + "\n\n---\n\n" + full_mission
-                logger.info(f"[SERENA] Injected into orchestrator instructions", extra={"agent_id": agent_id})
+                logger.info("[SERENA] Injected into orchestrator instructions", extra={"agent_id": agent_id})
 
             # Calculate token estimate
-            estimated_tokens = len(full_mission) // 4
+            len(full_mission) // 4
 
             # Handover 0346: Read execution mode from Project table for live switching (not frozen metadata)
             execution_mode = getattr(project, "execution_mode", None) or metadata.get(
@@ -1200,7 +1208,6 @@ async def get_orchestrator_instructions(
                 "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                 "field_priorities": field_priorities,
                 "token_reduction_applied": bool(field_priorities),
-                "instance_number": agent_execution.instance_number or 1,
                 "thin_client": True,
                 # Handover 0347c: Add 6 new guidance fields
                 "post_staging_behavior": _get_post_staging_behavior(cli_mode),
@@ -1222,7 +1229,7 @@ async def get_orchestrator_instructions(
                     select(AgentTemplate.name).where(
                         and_(
                             AgentTemplate.tenant_key == tenant_key,
-                            AgentTemplate.is_active == True,  # noqa: E712
+                            AgentTemplate.is_active,
                         )
                     )
                 )
@@ -1257,7 +1264,7 @@ async def get_orchestrator_instructions(
 
 
 async def get_agent_mission(
-    agent_id: str, tenant_key: str, db_manager: Optional["DatabaseManager"] = None
+    agent_id: str, tenant_key: str, db_manager: "DatabaseManager" | None = None
 ) -> dict[str, Any]:
     """
     Fetch agent mission (standalone for testing - Phase C).
@@ -1283,7 +1290,7 @@ async def get_agent_mission(
     async with db_manager.get_session_async() as session:
         from sqlalchemy import and_, select
 
-        from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+        from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
         try:
             # Phase C: Resolve agent_id → job_id via AgentExecution
@@ -1317,7 +1324,7 @@ async def get_agent_mission(
             if not agent_job:
                 return {"error": "NOT_FOUND", "message": f"Agent job {job_id} not found"}
 
-            estimated_tokens = len(agent_job.mission or "") // 4
+            len(agent_job.mission or "") // 4
 
             return {
                 "agent_id": agent_id,  # Phase C: WHO is executing
@@ -1406,9 +1413,9 @@ async def get_generic_agent_template(
             "protocol_version": template.version,
         }
 
-    except Exception as e:
-        logger.error(
-            f"Failed to render generic agent template: {e}",
+    except (ValueError, KeyError, RuntimeError) as e:
+        logger.exception(
+            "Failed to render generic agent template",
             extra={"agent_id": agent_id, "job_id": job_id, "tenant_key": tenant_key},
         )
         return {
@@ -1425,10 +1432,10 @@ async def spawn_agent_job(
     mission: str,
     project_id: str,
     tenant_key: str,
-    parent_job_id: Optional[str] = None,
-    parent_agent_id: Optional[str] = None,
-    db_manager: Optional["DatabaseManager"] = None,
-    session: Optional["AsyncSession"] = None,
+    parent_job_id: str | None = None,
+    parent_agent_id: str | None = None,
+    db_manager: "DatabaseManager" | None = None,
+    session: "AsyncSession" | None = None,
 ) -> dict[str, Any]:
     """
     Spawn agent job (standalone for testing).
@@ -1447,7 +1454,6 @@ async def spawn_agent_job(
     Returns:
         Spawn result dict
     """
-    from uuid import uuid4
 
     from giljo_mcp.config_manager import get_config
     from giljo_mcp.database import DatabaseManager
@@ -1464,9 +1470,9 @@ async def spawn_agent_job(
         db_url = config.database.database_url
         db_manager = DatabaseManager(database_url=db_url, is_async=True)
 
-    async with db_manager.get_session_async() as session:
+    async with db_manager.get_session_async() as db_session:
         return await _spawn_agent_job_impl(
-            session, agent_display_name, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
+            db_session, agent_display_name, agent_name, mission, project_id, tenant_key, parent_job_id, parent_agent_id
         )
 
 
@@ -1477,8 +1483,8 @@ async def _spawn_agent_job_impl(
     mission: str,
     project_id: str,
     tenant_key: str,
-    parent_job_id: Optional[str] = None,
-    parent_agent_id: Optional[str] = None,
+    parent_job_id: str | None = None,
+    parent_agent_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Internal implementation of spawn_agent_job.
@@ -1488,12 +1494,11 @@ async def _spawn_agent_job_impl(
                         when spawning successor during handover. The retiring orchestrator
                         provides its own agent_id to authorize successor creation.
     """
-    from uuid import uuid4
 
     from sqlalchemy import and_, select
 
     from giljo_mcp.models import AgentTemplate
-    from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+    from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
     try:
         # Handover 0351: Validate agent_name against active templates (NOT agent_display_name)
@@ -1505,7 +1510,7 @@ async def _spawn_agent_job_impl(
                 select(AgentTemplate.name).where(
                     and_(
                         AgentTemplate.tenant_key == tenant_key,
-                        AgentTemplate.is_active == True,  # noqa: E712
+                        AgentTemplate.is_active,
                     )
                 )
             )
@@ -1612,7 +1617,6 @@ async def _spawn_agent_job_impl(
             tenant_key=tenant_key,
             agent_display_name=agent_display_name,
             agent_name=agent_name,
-            instance_number=1,  # First instance
             status="waiting",  # AgentExecution uses 'waiting'
             spawned_by=parent_job_id,  # Link to parent agent_id (not job_id)
             context_budget=10000,
@@ -1703,14 +1707,13 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
                         "agent_display_name": agent_display_name,
                         "agent_name": agent_name,
                         "status": "waiting",
-                        "instance_number": 1,  # Handover 0457: First instance
                         "thin_client": True,
                         "prompt_tokens": prompt_tokens,
                         "mission_tokens": mission_tokens,
                         "mission": mission,  # Handover 0464: Include mission for UI display
                     },
                 )
-        except Exception as ws_error:
+        except Exception as ws_error:  # noqa: BLE001
             logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
 
         # Build base response
@@ -1719,7 +1722,6 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
             "job_id": job_id,  # Work order UUID
             "agent_id": agent_id,  # Executor UUID
             "execution_id": agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
-            "instance_number": 1,  # Handover 0457: First instance
             "agent_prompt": thin_prompt,
             "prompt_tokens": prompt_tokens,
             "mission_tokens": mission_tokens,

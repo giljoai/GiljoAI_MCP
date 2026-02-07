@@ -19,20 +19,22 @@ Technical Validation:
 - Descending timestamp ordering (newest first)
 """
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
-from datetime import datetime, timezone
 
 
 # ============================================================================
 # FIXTURES - Test Users
 # ============================================================================
 
+
 @pytest.fixture
 async def tenant_a_admin(db_manager):
     """Create Tenant A admin user."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -62,6 +64,7 @@ async def tenant_a_admin(db_manager):
 async def tenant_b_admin(db_manager):
     """Create Tenant B admin user for cross-tenant testing."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -122,6 +125,7 @@ async def auth_headers_b(api_client: AsyncClient, tenant_b_admin):
 # ============================================================================
 # FIXTURES - Test Data
 # ============================================================================
+
 
 @pytest.fixture
 async def agent_job_with_messages(db_manager, tenant_a_admin):
@@ -293,6 +297,7 @@ async def agent_job_cross_tenant(db_manager, tenant_b_admin):
 # TESTS - Happy Path
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_get_job_messages_success(
     api_client: AsyncClient,
@@ -449,6 +454,7 @@ async def test_get_job_messages_empty_result(
 # TESTS - Multi-Tenant Isolation
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_get_job_messages_cross_tenant_isolation(
     api_client: AsyncClient,
@@ -470,6 +476,7 @@ async def test_get_job_messages_cross_tenant_isolation(
 # TESTS - Authentication & Authorization
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_get_job_messages_unauthenticated(
     api_client: AsyncClient,
@@ -487,6 +494,7 @@ async def test_get_job_messages_unauthenticated(
 # ============================================================================
 # TESTS - Error Conditions
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_get_job_messages_not_found(
@@ -541,6 +549,7 @@ async def test_get_job_messages_limit_exceeds_max(
 # ============================================================================
 # TESTS - Message Content Truncation
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_get_job_messages_truncation(

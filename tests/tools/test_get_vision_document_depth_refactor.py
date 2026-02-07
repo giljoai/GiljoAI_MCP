@@ -247,7 +247,7 @@ class TestVisionDocumentDepthFullChunks:
                     tenant_key=tenant_key,
                     product_id=product_id,
                     vision_document_id=vision_doc_id,
-                    content=f"Chunk {i+1} content with substantial text...",
+                    content=f"Chunk {i + 1} content with substantial text...",
                     chunk_order=i + 1,
                     token_count=2000,
                 )

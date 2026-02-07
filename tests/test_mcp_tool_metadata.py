@@ -60,9 +60,9 @@ class TestMCPToolMetadata:
                 ), f"Argument '{arg_name}' missing type indicator: {arg_desc}"
 
                 # Check for REQUIRED/OPTIONAL markers
-                assert any(
-                    marker in arg_desc for marker in ["REQUIRED", "OPTIONAL"]
-                ), f"Argument '{arg_name}' missing REQUIRED/OPTIONAL marker: {arg_desc}"
+                assert any(marker in arg_desc for marker in ["REQUIRED", "OPTIONAL"]), (
+                    f"Argument '{arg_name}' missing REQUIRED/OPTIONAL marker: {arg_desc}"
+                )
 
             # Verify examples section exists
             assert "examples" in tool, f"Tool '{tool['name']}' missing examples"
@@ -198,9 +198,9 @@ class TestMCPToolMetadata:
                         if field in payload:
                             uuid_value = payload[field]
                             # Should be a string with dashes or underscores (realistic format)
-                            assert isinstance(
-                                uuid_value, str
-                            ), f"UUID field '{field}' should be string in {tool['name']}"
+                            assert isinstance(uuid_value, str), (
+                                f"UUID field '{field}' should be string in {tool['name']}"
+                            )
                             assert len(uuid_value) > 8, f"UUID field '{field}' too short in {tool['name']}"
 
     def test_priority_values_in_examples(self, client):
@@ -219,9 +219,9 @@ class TestMCPToolMetadata:
                     payload = example["payload"]
 
                     if "priority" in payload:
-                        assert (
-                            payload["priority"] in valid_priorities
-                        ), f"Invalid priority '{payload['priority']}' in {tool['name']}"
+                        assert payload["priority"] in valid_priorities, (
+                            f"Invalid priority '{payload['priority']}' in {tool['name']}"
+                        )
 
     def test_status_values_in_examples(self, client):
         """Verify status fields use valid values"""
@@ -239,9 +239,9 @@ class TestMCPToolMetadata:
                     payload = example["payload"]
 
                     if "status" in payload:
-                        assert (
-                            payload["status"] in valid_statuses
-                        ), f"Invalid status '{payload['status']}' in {tool['name']}"
+                        assert payload["status"] in valid_statuses, (
+                            f"Invalid status '{payload['status']}' in {tool['name']}"
+                        )
 
     def _verify_tool_metadata(self, tool):
         """Helper method to verify tool has complete metadata"""
@@ -256,9 +256,9 @@ class TestMCPToolMetadata:
             ), f"Argument '{arg_name}' missing type indicator in '{tool['name']}': {arg_desc}"
 
             # Check for REQUIRED/OPTIONAL markers
-            assert any(
-                marker in arg_desc for marker in ["REQUIRED", "OPTIONAL"]
-            ), f"Argument '{arg_name}' missing REQUIRED/OPTIONAL marker in '{tool['name']}': {arg_desc}"
+            assert any(marker in arg_desc for marker in ["REQUIRED", "OPTIONAL"]), (
+                f"Argument '{arg_name}' missing REQUIRED/OPTIONAL marker in '{tool['name']}': {arg_desc}"
+            )
 
         # Verify examples
         assert "examples" in tool, f"Tool '{tool['name']}' missing examples"
@@ -285,9 +285,7 @@ class TestSpecificToolExamples:
         response = client.get("/api/v1/mcp-tools/list")
         data = response.json()
 
-        spawn_tool = next(
-            (tool for tool in data["tools"]["orchestration"] if tool["name"] == "spawn_agent_job"), None
-        )
+        spawn_tool = next((tool for tool in data["tools"]["orchestration"] if tool["name"] == "spawn_agent_job"), None)
 
         assert spawn_tool is not None
 
@@ -335,16 +333,16 @@ class TestSpecificToolExamples:
 
         # Check progress parameter shows as object/dict
         assert "progress" in progress_tool["arguments"]
-        assert any(
-            keyword in progress_tool["arguments"]["progress"].lower() for keyword in ["object", "dict"]
-        ), "Progress should be described as object/dict"
+        assert any(keyword in progress_tool["arguments"]["progress"].lower() for keyword in ["object", "dict"]), (
+            "Progress should be described as object/dict"
+        )
 
         # Verify examples show progress as dict
         for example in progress_tool["examples"]:
             assert "progress" in example["payload"]
-            assert isinstance(
-                example["payload"]["progress"], dict
-            ), "Progress should be a dict in examples, not a string"
+            assert isinstance(example["payload"]["progress"], dict), (
+                "Progress should be a dict in examples, not a string"
+            )
 
 
 if __name__ == "__main__":

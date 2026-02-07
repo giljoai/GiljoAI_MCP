@@ -9,18 +9,20 @@ PURPOSE: Test-Driven Development (TDD) for prompt injection functionality.
 These tests define expected behavior BEFORE implementation.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def mock_db_session():
@@ -38,27 +40,13 @@ def product_with_git_enabled():
         name="Test Product",
         description="Product with git enabled",
         product_memory={
-            "git_integration": {
-                "enabled": True,
-                "commit_limit": 20,
-                "default_branch": "main"
-            },
+            "git_integration": {"enabled": True, "commit_limit": 20, "default_branch": "main"},
             "learnings": [
-                {
-                    "sequence": 1,
-                    "summary": "Initial setup completed",
-                    "timestamp": "2025-11-01T10:00:00Z"
-                },
-                {
-                    "sequence": 2,
-                    "summary": "Database migration successful",
-                    "timestamp": "2025-11-05T14:30:00Z"
-                }
+                {"sequence": 1, "summary": "Initial setup completed", "timestamp": "2025-11-01T10:00:00Z"},
+                {"sequence": 2, "summary": "Database migration successful", "timestamp": "2025-11-05T14:30:00Z"},
             ],
-            "context": {
-                "objectives": ["Build scalable system", "Maintain high test coverage"]
-            }
-        }
+            "context": {"objectives": ["Build scalable system", "Maintain high test coverage"]},
+        },
     )
     return product
 
@@ -72,20 +60,12 @@ def product_with_git_disabled():
         name="Test Product No Git",
         description="Product without git",
         product_memory={
-            "git_integration": {
-                "enabled": False
-            },
+            "git_integration": {"enabled": False},
             "learnings": [
-                {
-                    "sequence": 1,
-                    "summary": "Manual summary without git",
-                    "timestamp": "2025-11-10T12:00:00Z"
-                }
+                {"sequence": 1, "summary": "Manual summary without git", "timestamp": "2025-11-10T12:00:00Z"}
             ],
-            "context": {
-                "objectives": ["Quick prototyping"]
-            }
-        }
+            "context": {"objectives": ["Quick prototyping"]},
+        },
     )
     return product
 
@@ -99,13 +79,9 @@ def product_with_custom_commit_limit():
         name="Test Product Custom Limit",
         description="Product with custom commit limit",
         product_memory={
-            "git_integration": {
-                "enabled": True,
-                "commit_limit": 50,
-                "default_branch": "develop"
-            },
-            "learnings": []
-        }
+            "git_integration": {"enabled": True, "commit_limit": 50, "default_branch": "develop"},
+            "learnings": [],
+        },
     )
     return product
 
@@ -118,7 +94,7 @@ def product_no_memory():
         tenant_key="test-tenant",
         name="Test Product No Memory",
         description="Product with empty memory",
-        product_memory={"github": {}, "learnings": [], "context": {}}
+        product_memory={"github": {}, "learnings": [], "context": {}},
     )
     return product
 
@@ -132,7 +108,7 @@ def mock_project():
         name="Test Project",
         description="Test project description",
         mission="Test mission",
-        context_budget=180000
+        context_budget=180000,
     )
     return project
 
@@ -140,6 +116,7 @@ def mock_project():
 # ============================================================================
 # TEST SUITE 1: 360 MEMORY INJECTION (ALWAYS PRESENT)
 # ============================================================================
+
 
 class TestMemoryInjection:
     """Test 360 memory injection logic (always included in prompts)."""
@@ -193,6 +170,7 @@ class TestMemoryInjection:
 # ============================================================================
 # TEST SUITE 2: GIT INTEGRATION INJECTION (CONDITIONAL)
 # ============================================================================
+
 
 class TestGitInjection:
     """Test git integration prompt injection (only when enabled)."""
@@ -273,27 +251,24 @@ class TestGitInjection:
 # TEST SUITE 3: COMBINED INJECTION (BOTH SOURCES)
 # ============================================================================
 
+
 class TestCombinedInjection:
     """Test combining 360 memory + git integration in prompts."""
 
     def test_orchestrator_prompt_includes_both_when_git_enabled(
-        self,
-        mock_db_session,
-        product_with_git_enabled,
-        mock_project
+        self, mock_db_session, product_with_git_enabled, mock_project
     ):
         """BEHAVIOR: Orchestrator prompt includes BOTH 360 memory AND git when enabled."""
         generator = ThinClientPromptGenerator(db=mock_db_session, tenant_key="test-tenant")
 
         # Mock database queries to return our test data
-        with patch.object(generator, '_fetch_product', return_value=product_with_git_enabled):
+        with patch.object(generator, "_fetch_product", return_value=product_with_git_enabled):
             prompt = generator._build_thin_prompt_with_memory(
                 orchestrator_id="orch-123",
                 project_id="proj-123",
                 project_name="Test Project",
-                instance_number=1,
                 tool="universal",
-                product=product_with_git_enabled
+                product=product_with_git_enabled,
             )
 
         # Assert both sections present
@@ -305,22 +280,18 @@ class TestCombinedInjection:
         assert prompt.count("##") >= 2  # At least 2 section headers
 
     def test_orchestrator_prompt_only_memory_when_git_disabled(
-        self,
-        mock_db_session,
-        product_with_git_disabled,
-        mock_project
+        self, mock_db_session, product_with_git_disabled, mock_project
     ):
         """BEHAVIOR: Orchestrator prompt has 360 memory but NO git when disabled."""
         generator = ThinClientPromptGenerator(db=mock_db_session, tenant_key="test-tenant")
 
-        with patch.object(generator, '_fetch_product', return_value=product_with_git_disabled):
+        with patch.object(generator, "_fetch_product", return_value=product_with_git_disabled):
             prompt = generator._build_thin_prompt_with_memory(
                 orchestrator_id="orch-123",
                 project_id="proj-123",
                 project_name="Test Project",
-                instance_number=1,
                 tool="universal",
-                product=product_with_git_disabled
+                product=product_with_git_disabled,
             )
 
         # Assert 360 memory present
@@ -330,22 +301,17 @@ class TestCombinedInjection:
         assert "git log" not in prompt
         assert "Git Integration" not in prompt
 
-    def test_prompt_injection_preserves_existing_sections(
-        self,
-        mock_db_session,
-        product_with_git_enabled
-    ):
+    def test_prompt_injection_preserves_existing_sections(self, mock_db_session, product_with_git_enabled):
         """BEHAVIOR: Injected sections don't break existing prompt structure."""
         generator = ThinClientPromptGenerator(db=mock_db_session, tenant_key="test-tenant")
 
-        with patch.object(generator, '_fetch_product', return_value=product_with_git_enabled):
+        with patch.object(generator, "_fetch_product", return_value=product_with_git_enabled):
             prompt = generator._build_thin_prompt_with_memory(
                 orchestrator_id="orch-123",
                 project_id="proj-123",
                 project_name="Test Project",
-                instance_number=1,
                 tool="universal",
-                product=product_with_git_enabled
+                product=product_with_git_enabled,
             )
 
         # Assert existing sections still present
@@ -358,6 +324,7 @@ class TestCombinedInjection:
 # ============================================================================
 # TEST SUITE 4: EDGE CASES & ERROR HANDLING
 # ============================================================================
+
 
 class TestEdgeCases:
     """Test edge cases and error handling."""
@@ -374,7 +341,7 @@ class TestEdgeCases:
                     "enabled": True
                     # commit_limit MISSING
                 }
-            }
+            },
         )
 
         generator = ThinClientPromptGenerator(db=AsyncMock(), tenant_key="test-tenant")
@@ -393,10 +360,10 @@ class TestEdgeCases:
             product_memory={
                 "git_integration": {
                     "enabled": True,
-                    "commit_limit": 30
+                    "commit_limit": 30,
                     # default_branch MISSING
                 }
-            }
+            },
         )
 
         generator = ThinClientPromptGenerator(db=AsyncMock(), tenant_key="test-tenant")
@@ -415,8 +382,8 @@ class TestEdgeCases:
             name="Edge Case Product 3",
             product_memory={
                 "learnings": [],  # Empty list
-                "context": {}
-            }
+                "context": {},
+            },
         )
 
         generator = ThinClientPromptGenerator(db=AsyncMock(), tenant_key="test-tenant")
@@ -432,7 +399,7 @@ class TestEdgeCases:
             id="prod-edge4",
             tenant_key="test-tenant",
             name="Edge Case Product 4",
-            product_memory=None  # NULL memory
+            product_memory=None,  # NULL memory
         )
 
         generator = ThinClientPromptGenerator(db=AsyncMock(), tenant_key="test-tenant")
@@ -449,66 +416,58 @@ class TestEdgeCases:
 # TEST SUITE 5: INTEGRATION TESTS
 # ============================================================================
 
+
 class TestPromptIntegration:
     """Integration tests with real prompt generation workflow."""
 
     @pytest.mark.asyncio
     async def test_full_prompt_generation_with_git_enabled(
-        self,
-        mock_db_session,
-        product_with_git_enabled,
-        mock_project
+        self, mock_db_session, product_with_git_enabled, mock_project
     ):
         """INTEGRATION: Full prompt generation includes git + memory."""
-        from unittest.mock import MagicMock
-        
+
         generator = ThinClientPromptGenerator(db=mock_db_session, tenant_key="test-tenant")
 
         # Mock database execute to return proper scalar results
         mock_project.product_id = product_with_git_enabled.id
-        
+
         # Mock project query
         mock_project_result = MagicMock()
         mock_project_result.scalar_one_or_none.return_value = mock_project
-        
+
         # Mock product query
         mock_product_result = MagicMock()
         mock_product_result.scalar_one_or_none.return_value = product_with_git_enabled
-        
+
         # Mock orchestrator query (no existing orchestrator)
         mock_orch_result = MagicMock()
         mock_orch_scalars = MagicMock()
         mock_orch_scalars.first.return_value = None
         mock_orch_result.scalars.return_value = mock_orch_scalars
-        
+
         # Mock instance number query
         mock_instance_result = MagicMock()
         mock_instance_result.scalar.return_value = 0
-        
+
         # Setup execute mock to return appropriate results
         async def mock_execute(stmt):
             # Detect query type by inspecting statement
             stmt_str = str(stmt)
             if "projects" in stmt_str.lower() and "product_id" not in stmt_str.lower():
                 return mock_project_result
-            elif "products" in stmt_str.lower():
+            if "products" in stmt_str.lower():
                 return mock_product_result
-            elif "mcp_agent_jobs" in stmt_str.lower() and "max" in stmt_str.lower():
+            if "mcp_agent_jobs" in stmt_str.lower() and "max" in stmt_str.lower():
                 return mock_instance_result
-            else:
-                return mock_orch_result
-        
+            return mock_orch_result
+
         mock_db_session.execute = mock_execute
         mock_db_session.commit = AsyncMock()
         mock_db_session.refresh = AsyncMock()
 
         # Generate full prompt
         result = await generator.generate(
-            project_id="proj-123",
-            user_id="user-123",
-            tool="universal",
-            instance_number=1,
-            field_priorities=None
+            project_id="proj-123", user_id="user-123", tool="universal", field_priorities=None
         )
 
         # Assert result structure
@@ -527,59 +486,50 @@ class TestPromptIntegration:
 
     @pytest.mark.asyncio
     async def test_full_prompt_generation_with_git_disabled(
-        self,
-        mock_db_session,
-        product_with_git_disabled,
-        mock_project
+        self, mock_db_session, product_with_git_disabled, mock_project
     ):
         """INTEGRATION: Full prompt generation excludes git when disabled."""
-        from unittest.mock import MagicMock
-        
+
         generator = ThinClientPromptGenerator(db=mock_db_session, tenant_key="test-tenant")
 
         # Mock database execute to return proper scalar results
         mock_project.product_id = product_with_git_disabled.id
-        
+
         # Mock project query
         mock_project_result = MagicMock()
         mock_project_result.scalar_one_or_none.return_value = mock_project
-        
+
         # Mock product query
         mock_product_result = MagicMock()
         mock_product_result.scalar_one_or_none.return_value = product_with_git_disabled
-        
+
         # Mock orchestrator query (no existing orchestrator)
         mock_orch_result = MagicMock()
         mock_orch_scalars = MagicMock()
         mock_orch_scalars.first.return_value = None
         mock_orch_result.scalars.return_value = mock_orch_scalars
-        
+
         # Mock instance number query
         mock_instance_result = MagicMock()
         mock_instance_result.scalar.return_value = 0
-        
+
         # Setup execute mock to return appropriate results
         async def mock_execute(stmt):
             stmt_str = str(stmt)
             if "projects" in stmt_str.lower() and "product_id" not in stmt_str.lower():
                 return mock_project_result
-            elif "products" in stmt_str.lower():
+            if "products" in stmt_str.lower():
                 return mock_product_result
-            elif "mcp_agent_jobs" in stmt_str.lower() and "max" in stmt_str.lower():
+            if "mcp_agent_jobs" in stmt_str.lower() and "max" in stmt_str.lower():
                 return mock_instance_result
-            else:
-                return mock_orch_result
-        
+            return mock_orch_result
+
         mock_db_session.execute = mock_execute
         mock_db_session.commit = AsyncMock()
         mock_db_session.refresh = AsyncMock()
 
         result = await generator.generate(
-            project_id="proj-123",
-            user_id="user-123",
-            tool="universal",
-            instance_number=1,
-            field_priorities=None
+            project_id="proj-123", user_id="user-123", tool="universal", field_priorities=None
         )
 
         prompt = result["thin_prompt"]
@@ -592,6 +542,7 @@ class TestPromptIntegration:
 # ============================================================================
 # TEST SUITE 6: TOKEN BUDGET VERIFICATION
 # ============================================================================
+
 
 class TestTokenBudget:
     """Verify injected prompts stay within token budget."""

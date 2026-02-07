@@ -5,13 +5,11 @@ Handover 1011: Migrates configuration queries from api/endpoints/configuration.p
 and setup.py to follow the repository pattern with CRITICAL tenant isolation.
 """
 
-from typing import List, Optional
-
 from sqlalchemy import delete, distinct, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import Configuration
-from ..models.auth import User
+from src.giljo_mcp.models import Configuration
+from src.giljo_mcp.models.auth import User
 
 
 class ConfigurationRepository:
@@ -38,7 +36,7 @@ class ConfigurationRepository:
     async def list_tenant_keys(
         self,
         session: AsyncSession,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         List all distinct tenant keys that have custom configurations.
 
@@ -49,9 +47,7 @@ class ConfigurationRepository:
             List of tenant keys with configurations
         """
         result = await session.execute(
-            select(distinct(Configuration.tenant_key)).where(
-                Configuration.tenant_key.isnot(None)
-            )
+            select(distinct(Configuration.tenant_key)).where(Configuration.tenant_key.isnot(None))
         )
         return [row[0] for row in result]
 
@@ -59,7 +55,7 @@ class ConfigurationRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-    ) -> List[Configuration]:
+    ) -> list[Configuration]:
         """
         Get all configurations for a specific tenant.
 
@@ -70,9 +66,7 @@ class ConfigurationRepository:
         Returns:
             List of Configuration instances for the tenant
         """
-        result = await session.execute(
-            select(Configuration).where(Configuration.tenant_key == tenant_key)
-        )
+        result = await session.execute(select(Configuration).where(Configuration.tenant_key == tenant_key))
         return list(result.scalars().all())
 
     async def get_configuration_by_key(
@@ -80,7 +74,7 @@ class ConfigurationRepository:
         session: AsyncSession,
         tenant_key: str,
         key: str,
-    ) -> Optional[Configuration]:
+    ) -> Configuration | None:
         """
         Get a specific configuration by tenant and key.
 
@@ -93,10 +87,7 @@ class ConfigurationRepository:
             Configuration instance or None if not found
         """
         result = await session.execute(
-            select(Configuration).where(
-                Configuration.tenant_key == tenant_key,
-                Configuration.key == key
-            )
+            select(Configuration).where(Configuration.tenant_key == tenant_key, Configuration.key == key)
         )
         return result.scalar_one_or_none()
 
@@ -115,9 +106,7 @@ class ConfigurationRepository:
         Returns:
             Number of configurations deleted
         """
-        result = await session.execute(
-            delete(Configuration).where(Configuration.tenant_key == tenant_key)
-        )
+        result = await session.execute(delete(Configuration).where(Configuration.tenant_key == tenant_key))
         return result.rowcount
 
     # ============================================================================
@@ -137,9 +126,7 @@ class ConfigurationRepository:
         Returns:
             True if admin user exists, False otherwise
         """
-        result = await session.execute(
-            select(User).where(User.role == "admin").limit(1)
-        )
+        result = await session.execute(select(User).where(User.role == "admin").limit(1))
         return result.scalar_one_or_none() is not None
 
     # ============================================================================
@@ -162,5 +149,5 @@ class ConfigurationRepository:
         try:
             await session.execute(text("SELECT 1"))
             return True
-        except Exception:
+        except (RuntimeError, OSError):
             return False

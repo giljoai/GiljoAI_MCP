@@ -17,7 +17,7 @@ import yaml
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.utils.path_resolver import PathResolver
+from src.giljo_mcp.utils.path_normalizer import PathNormalizer
 
 
 def test_basic_path_operations():
@@ -34,8 +34,8 @@ def test_basic_path_operations():
 
     all_passed = True
     for windows_path, expected_posix in test_cases:
-        # Use PathResolver for normalization
-        posix_str = PathResolver.normalize(windows_path)
+        # Use PathNormalizer for normalization
+        posix_str = PathNormalizer.normalize(windows_path)
 
         passed = posix_str == expected_posix
         all_passed = all_passed and passed
@@ -57,8 +57,8 @@ def test_path_joining():
 
     all_passed = True
     for addition, expected in test_cases:
-        # Use PathResolver for joining and resolving
-        result_posix = PathResolver.resolve_relative(base, addition)
+        # Use PathNormalizer for joining and resolving
+        result_posix = PathNormalizer.resolve_relative(base, addition)
 
         # For ../sibling case, we need special handling
         if addition == "../sibling":
@@ -190,7 +190,7 @@ def check_source_for_path_issues():
         (r"~/", "Hardcoded Unix home directory"),
     ]
 
-    # Files to check (exclude path_resolver.py as it needs to handle backslashes)
+    # Files to check (exclude path_normalizer.py as it needs to handle backslashes)
     src_dir = Path(__file__).parent.parent / "src"
     if not src_dir.exists():
         return True
@@ -199,8 +199,8 @@ def check_source_for_path_issues():
 
     # Check Python files
     for py_file in src_dir.rglob("*.py"):
-        # Skip path_resolver.py as it legitimately handles backslashes
-        if py_file.name == "path_resolver.py":
+        # Skip path_normalizer.py as it legitimately handles backslashes
+        if py_file.name == "path_normalizer.py":
             continue
 
         try:
@@ -221,9 +221,9 @@ def check_source_for_path_issues():
 
 
 def test_path_resolver_utility():
-    """Test PathResolver utility pattern"""
+    """Test PathNormalizer utility pattern"""
 
-    class PathResolver:
+    class PathNormalizer:
         """Utility for consistent path handling"""
 
         @staticmethod
@@ -244,7 +244,7 @@ def test_path_resolver_utility():
             return (project_root / relative_path).as_posix()
 
     # Test resolver
-    resolver = PathResolver()
+    resolver = PathNormalizer()
 
     tests = [
         ("Windows path", resolver.to_posix(r"C:\Windows\System32")),
@@ -273,7 +273,7 @@ def run_all_tests():
     results.append(("JSON/YAML paths", test_json_yaml_paths()))
     results.append(("File operations", test_real_file_operations()))
     results.append(("Source code check", check_source_for_path_issues()))
-    results.append(("PathResolver utility", test_path_resolver_utility()))
+    results.append(("PathNormalizer utility", test_path_resolver_utility()))
 
     # Summary
 

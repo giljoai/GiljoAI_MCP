@@ -13,6 +13,7 @@ Usage:
 import sys
 from pathlib import Path
 
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -43,7 +44,9 @@ def verify_tool_accessor():
     content = tool_accessor_file.read_text()
 
     assert "async def write_360_memory(" in content, "write_360_memory method not found in ToolAccessor"
-    assert "from giljo_mcp.tools.write_360_memory import write_360_memory as tool_func" in content, "write_360_memory import not found"
+    assert "from giljo_mcp.tools.write_360_memory import write_360_memory as tool_func" in content, (
+        "write_360_memory import not found"
+    )
 
     print("  [OK] ToolAccessor.write_360_memory() method exists")
     print("  [OK] Method signature verified")
@@ -135,6 +138,7 @@ def main():
         print("=" * 60)
         print(f"\nError: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

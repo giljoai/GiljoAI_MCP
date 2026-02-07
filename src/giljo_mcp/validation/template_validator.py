@@ -11,30 +11,30 @@ Performance:
 - Cache TTL: 1 hour
 """
 
-from dataclasses import dataclass
-from typing import List, Optional
-from datetime import datetime, timezone
 import hashlib
 import json
-import time
 import threading
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from src.giljo_mcp.validation.rules import (
-    ValidationRule,
-    ValidationError,
+    InjectionDetectionRule,
     MCPToolsPresenceRule,
     PlaceholderVerificationRule,
-    InjectionDetectionRule,
-    ToolUsageBestPracticesRule
+    ToolUsageBestPracticesRule,
+    ValidationError,
+    ValidationRule,
 )
 
 
 @dataclass
 class TemplateValidationResult:
     """Container for validation results."""
+
     is_valid: bool
-    errors: List[ValidationError]
-    warnings: List[ValidationError]
+    errors: list[ValidationError]
+    warnings: list[ValidationError]
     template_id: str
     validated_at: datetime
     validation_duration_ms: float
@@ -55,7 +55,7 @@ class TemplateValidationResult:
             "validated_at": self.validated_at.isoformat(),
             "validation_duration_ms": self.validation_duration_ms,
             "cached": self.cached,
-            "has_critical_errors": self.has_critical_errors
+            "has_critical_errors": self.has_critical_errors,
         }
 
 
@@ -85,7 +85,7 @@ class TemplateValidator:
     # Cache TTL: 1 hour
     CACHE_TTL_SECONDS = 3600
 
-    def __init__(self, redis_client: Optional[any] = None):
+    def __init__(self, redis_client: any | None = None):
         """
         Initialize validator.
 
@@ -94,22 +94,18 @@ class TemplateValidator:
                          If None, caching is disabled.
         """
         self.redis = redis_client
-        self.rules: List[ValidationRule] = []
+        self.rules: list[ValidationRule] = []
         self._lock = threading.Lock()
         self._register_core_rules()
 
     def validate(
-        self,
-        template_content: str,
-        template_id: str,
-        agent_display_name: str,
-        use_cache: bool = True
+        self, content: str, template_id: str, agent_display_name: str, use_cache: bool = True
     ) -> TemplateValidationResult:
         """
         Validate template against all registered rules.
 
         Args:
-            template_content: Full template text to validate
+            content: Full template text to validate
             template_id: Unique template identifier
             agent_display_name: Type of agent (orchestrator, implementer, etc.)
             use_cache: Whether to use Redis caching (default: True)
@@ -123,13 +119,13 @@ class TemplateValidator:
         """
         # Check cache first
         if use_cache and self.redis:
-            cached = self._get_cached_result(template_id, template_content)
+            cached = self._get_cached_result(template_id, content)
             if cached:
                 return cached
 
         # Run validation
         start_time = time.time()
-        errors, warnings = self._run_all_rules(template_content, agent_display_name)
+        errors, warnings = self._run_all_rules(content, agent_display_name)
         duration_ms = (time.time() - start_time) * 1000
 
         # Determine if valid (no critical errors)
@@ -142,12 +138,12 @@ class TemplateValidator:
             template_id=template_id,
             validated_at=datetime.now(timezone.utc),
             validation_duration_ms=duration_ms,
-            cached=False
+            cached=False,
         )
 
         # Cache result
         if use_cache and self.redis:
-            self._cache_result(template_id, template_content, result)
+            self._cache_result(template_id, content, result)
 
         return result
 
@@ -157,19 +153,17 @@ class TemplateValidator:
             MCPToolsPresenceRule(),
             PlaceholderVerificationRule(),
             InjectionDetectionRule(),
-            ToolUsageBestPracticesRule()
+            ToolUsageBestPracticesRule(),
         ]
 
     def _run_all_rules(
-        self,
-        template_content: str,
-        agent_display_name: str
-    ) -> tuple[List[ValidationError], List[ValidationError]]:
+        self, content: str, agent_display_name: str
+    ) -> tuple[list[ValidationError], list[ValidationError]]:
         """
         Execute all validation rules.
 
         Args:
-            template_content: Template text to validate
+            content: Template text to validate
             agent_display_name: Agent type
 
         Returns:
@@ -179,7 +173,7 @@ class TemplateValidator:
         warnings = []
 
         for rule in self.rules:
-            result = rule.validate(template_content, agent_display_name)
+            result = rule.validate(content, agent_display_name)
 
             if result is not None:
                 if result.severity == "critical":
@@ -205,11 +199,7 @@ class TemplateValidator:
         content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
         return f"validation:{template_id}:{content_hash}"
 
-    def _get_cached_result(
-        self,
-        template_id: str,
-        content: str
-    ) -> Optional[TemplateValidationResult]:
+    def _get_cached_result(self, template_id: str, content: str) -> TemplateValidationResult | None:
         """
         Retrieve cached validation result.
 
@@ -236,20 +226,14 @@ class TemplateValidator:
             # Reconstruct ValidationError objects
             errors = [
                 ValidationError(
-                    rule_id=e["rule_id"],
-                    severity=e["severity"],
-                    message=e["message"],
-                    remediation=e.get("remediation")
+                    rule_id=e["rule_id"], severity=e["severity"], message=e["message"], remediation=e.get("remediation")
                 )
                 for e in data["errors"]
             ]
 
             warnings = [
                 ValidationError(
-                    rule_id=w["rule_id"],
-                    severity=w["severity"],
-                    message=w["message"],
-                    remediation=w.get("remediation")
+                    rule_id=w["rule_id"], severity=w["severity"], message=w["message"], remediation=w.get("remediation")
                 )
                 for w in data["warnings"]
             ]
@@ -263,23 +247,18 @@ class TemplateValidator:
                 template_id=data["template_id"],
                 validated_at=datetime.fromisoformat(data["validated_at"]),
                 validation_duration_ms=(time.time() - start_time) * 1000,
-                cached=True
+                cached=True,
             )
 
             return result
 
-        except Exception as e:
+        except (ValueError, KeyError, RuntimeError):
             # Log error but don't fail validation
             # Fall through to uncached validation
-            pass  # nosec B110
+            # nosec B110
             return None
 
-    def _cache_result(
-        self,
-        template_id: str,
-        content: str,
-        result: TemplateValidationResult
-    ):
+    def _cache_result(self, template_id: str, content: str, result: TemplateValidationResult):
         """
         Cache validation result with 1-hour TTL.
 
@@ -301,17 +280,13 @@ class TemplateValidator:
                 "warnings": [w.to_dict() for w in result.warnings],
                 "template_id": result.template_id,
                 "validated_at": result.validated_at.isoformat(),
-                "validation_duration_ms": result.validation_duration_ms
+                "validation_duration_ms": result.validation_duration_ms,
             }
 
             # Store in Redis with TTL
-            self.redis.setex(
-                cache_key,
-                self.CACHE_TTL_SECONDS,
-                json.dumps(cache_data)
-            )
+            self.redis.setex(cache_key, self.CACHE_TTL_SECONDS, json.dumps(cache_data))
 
-        except Exception as e:
+        except (ValueError, KeyError, RuntimeError):
             # Log error but don't fail validation
             pass  # nosec B110
 
@@ -325,7 +300,7 @@ class TemplateValidator:
         with self._lock:
             self.rules.append(rule)
 
-    def clear_cache(self, template_id: Optional[str] = None):
+    def clear_cache(self, template_id: str | None = None):
         """
         Clear validation cache.
 
@@ -350,6 +325,6 @@ class TemplateValidator:
                 if keys:
                     self.redis.delete(*keys)
 
-        except Exception as e:
+        except (ValueError, KeyError, RuntimeError):
             # Log error but don't fail
             pass  # nosec B110

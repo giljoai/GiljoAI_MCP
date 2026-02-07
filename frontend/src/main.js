@@ -22,7 +22,7 @@ import '@/styles/global-tabs.scss'
 console.log('[MAIN] Vuetify imports loaded')
 
 // Theme configuration
-import { darkTheme, lightTheme } from './config/theme'
+import { darkTheme } from './config/theme'
 
 console.log('[MAIN] Theme configuration loaded')
 
@@ -34,7 +34,6 @@ const vuetify = createVuetify({
     defaultTheme: 'dark',
     themes: {
       dark: darkTheme,
-      light: lightTheme,
     },
   },
   icons: {
@@ -61,19 +60,11 @@ console.log('[MAIN] Pinia registered')
 app.use(vuetify)
 console.log('[MAIN] Vuetify registered')
 
-// Restore theme preference from localStorage BEFORE mounting
-// This prevents theme flashing and ensures Settings page reads correct theme
-const savedTheme = localStorage.getItem('theme-preference')
-if (savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
-  vuetify.theme.change(savedTheme)
-  document.documentElement.setAttribute('data-theme', savedTheme)
-  console.log(`[MAIN] Theme restored from localStorage: ${savedTheme}`)
-} else {
-  // Set default theme in localStorage if not present
-  localStorage.setItem('theme-preference', 'dark')
-  document.documentElement.setAttribute('data-theme', 'dark')
-  console.log('[MAIN] Theme initialized to default: dark')
-}
+// Always use dark theme
+localStorage.setItem('theme-preference', 'dark')
+vuetify.theme.change('dark')
+document.documentElement.setAttribute('data-theme', 'dark')
+console.log('[MAIN] Dark theme initialized')
 
 // Mount app SYNCHRONOUSLY
 app.mount('#app')

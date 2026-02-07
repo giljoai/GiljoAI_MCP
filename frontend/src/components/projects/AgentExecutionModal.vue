@@ -5,7 +5,7 @@
         <v-icon start>mdi-robot-outline</v-icon>
         <span>Agent Execution Details</span>
         <v-spacer></v-spacer>
-        <v-btn icon variant="text" @click="close" aria-label="Close">
+        <v-btn icon variant="text" aria-label="Close" @click="close">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
@@ -27,15 +27,7 @@
                 <code class="info-value" data-testid="modal-job-id">{{ execution.job_id }}</code>
               </div>
             </v-col>
-            <v-col cols="6">
-              <div class="info-item">
-                <span class="info-label">Instance Number:</span>
-                <v-chip size="small" color="blue-grey" label data-testid="modal-instance">
-                  #{{ execution.instance_number || 1 }}
-                </v-chip>
-              </div>
-            </v-col>
-            <v-col cols="6">
+            <v-col cols="12">
               <div class="info-item">
                 <span class="info-label">Status:</span>
                 <span data-testid="modal-status">{{ execution.status }}</span>
@@ -45,7 +37,7 @@
         </div>
 
         <!-- Mission Section (from job, not execution) -->
-        <div class="mission-section" v-if="job">
+        <div v-if="job" class="mission-section">
           <h4 class="text-subtitle-1 font-weight-bold mb-2">Mission</h4>
           <v-card variant="outlined" class="pa-3">
             <pre class="mission-text" data-testid="modal-mission">{{ job.mission || 'No mission assigned.' }}</pre>
@@ -53,7 +45,7 @@
         </div>
 
         <!-- Progress Section -->
-        <div class="progress-section mt-4" v-if="execution.progress">
+        <div v-if="execution.progress" class="progress-section mt-4">
           <h4 class="text-subtitle-1 font-weight-bold mb-2">Progress</h4>
           <v-card variant="outlined" class="pa-3">
             <pre class="progress-text">{{ execution.progress }}</pre>
@@ -82,10 +74,11 @@ import api from '@/services/api'
  * Displays agent execution details including:
  * - agent_id (execution instance UUID)
  * - job_id (foreign key to AgentJob)
- * - instance_number (human-readable instance tracking)
  * - status
  * - mission (fetched from job)
  * - progress (if available)
+ *
+ * Handover 0700i: Removed instance_number display
  */
 
 const props = defineProps({

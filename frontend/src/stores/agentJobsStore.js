@@ -7,16 +7,13 @@ function ensureArray(value) {
 
 function normalizeJob(rawJob) {
   const job_id = rawJob?.job_id || rawJob?.id || rawJob?.agent_id
-  const instance_number = rawJob?.instance_number || 1
   // Handover 0462: Prefer agent_id (executor UUID) - always present and unique after spawn
   // This prevents unique_key mismatches between WebSocket and API data
-  const unique_key = rawJob?.agent_id ||
-                     rawJob?.execution_id ||
-                     `${job_id}-${instance_number}`
+  // Handover 0700i: Removed instance_number - use agent_id as unique_key
+  const unique_key = rawJob?.agent_id || rawJob?.execution_id || job_id
   return {
     ...rawJob,
     job_id,
-    instance_number,
     unique_key,
     messages_sent_count: rawJob?.messages_sent_count ?? 0,
     messages_waiting_count: rawJob?.messages_waiting_count ?? 0,
@@ -90,13 +87,9 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     return list
   })
 
-  function getJob(jobId, instanceNumber = null) {
+  function getJob(jobId) {
     if (!jobId) return null
-    // Try unique_key first if instanceNumber provided
-    if (instanceNumber !== null) {
-      const uniqueKey = `${jobId}-${instanceNumber}`
-      return jobsById.value.get(uniqueKey) || null
-    }
+    // Handover 0700i: Removed instanceNumber parameter
     // Try direct lookup (might be unique_key already)
     if (jobsById.value.has(jobId)) {
       return jobsById.value.get(jobId)
@@ -132,11 +125,11 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
   function upsertJob(patch) {
     const jobId = patch?.job_id || patch?.id || patch?.agent_id
     const agentId = patch?.agent_id
-    const instanceNumber = patch?.instance_number || 1
     if (!jobId && !agentId) return
 
     // CRITICAL FIX: Find existing job FIRST before computing unique_key
     // This prevents creating duplicates when WebSocket events use different ID formats
+    // Handover 0700i: Removed instance_number matching
     let existingJob = null
     let existingKey = null
 
@@ -166,7 +159,7 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     // 4. Search by job_id (work order UUID)
     if (!existingJob && jobId) {
       for (const [key, job] of jobsById.value.entries()) {
-        if (job.job_id === jobId && job.instance_number === instanceNumber) {
+        if (job.job_id === jobId) {
           existingKey = key
           existingJob = job
           break
@@ -175,7 +168,7 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     }
 
     // Compute unique_key only if no existing job found (new entry)
-    const uniqueKey = existingKey || patch?.execution_id || patch?.unique_key || `${jobId}-${instanceNumber}`
+    const uniqueKey = existingKey || patch?.execution_id || patch?.unique_key || jobId
 
     // Handover 0388: Filter undefined values to prevent state corruption
     // Spread operator preserves undefined, which overwrites existing valid data

@@ -62,7 +62,7 @@
               <CodexMarkIcon
                 class="codex-mark"
                 :style="{
-                  color: theme.global.current.value.dark ? '#ffffff' : '#000000',
+                  color: '#ffffff',
                   width: '53px',
                   height: '53px',
                 }"

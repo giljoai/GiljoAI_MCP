@@ -14,18 +14,15 @@ Coverage Targets:
 - Message read counts persist across page refresh (API reload)
 """
 
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from sqlalchemy import select
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.tasks import Message
-from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -57,6 +54,7 @@ async def test_tenant_key(tenant_manager) -> str:
 @pytest.fixture
 async def message_service_factory(db_manager, db_session, mock_websocket_manager, tenant_manager, test_tenant_key):
     """Factory fixture to create MessageService instances with proper dependencies."""
+
     def _create(tenant_key: str = None):
         # Use provided tenant_key or default to test_tenant_key
         key = tenant_key or test_tenant_key
@@ -68,6 +66,7 @@ async def message_service_factory(db_manager, db_session, mock_websocket_manager
             websocket_manager=mock_websocket_manager,
             test_session=db_session,
         )
+
     return _create
 
 
@@ -244,10 +243,7 @@ class TestUnifiedWebSocketPlatform:
         assert len(execution.messages) > 0, "Should have at least one message in JSONB"
 
         # Find the message in JSONB
-        jsonb_message = next(
-            (m for m in execution.messages if m.get("id") == message_id),
-            None
-        )
+        jsonb_message = next((m for m in execution.messages if m.get("id") == message_id), None)
         assert jsonb_message is not None, "Message should exist in JSONB"
         assert jsonb_message.get("status") == "waiting", "Initial status should be 'waiting'"
 
@@ -260,10 +256,7 @@ class TestUnifiedWebSocketPlatform:
 
         # Step 4: CRITICAL ASSERTION - Verify JSONB status updated
         await db_session.refresh(execution)
-        jsonb_message_after = next(
-            (m for m in execution.messages if m.get("id") == message_id),
-            None
-        )
+        jsonb_message_after = next((m for m in execution.messages if m.get("id") == message_id), None)
         assert jsonb_message_after is not None, "Message should still exist in JSONB"
         # Status should be 'acknowledged' after receive_messages
         assert jsonb_message_after.get("status") == "acknowledged", (
@@ -295,7 +288,7 @@ class TestUnifiedWebSocketPlatform:
             result = await message_service.send_message(
                 from_agent=sender_execution.agent_id,
                 to_agents=[execution.agent_id],
-                content=f"Test message {i+1}",
+                content=f"Test message {i + 1}",
                 message_type="direct",
                 project_id=test_project.id,
             )
@@ -304,14 +297,8 @@ class TestUnifiedWebSocketPlatform:
 
         # Step 2: Verify initial state - 3 waiting, 0 read
         await db_session.refresh(execution)
-        waiting_count = sum(
-            1 for m in execution.messages
-            if m.get("status") == "waiting"
-        )
-        read_count = sum(
-            1 for m in execution.messages
-            if m.get("status") in ("acknowledged", "read")
-        )
+        waiting_count = sum(1 for m in execution.messages if m.get("status") == "waiting")
+        read_count = sum(1 for m in execution.messages if m.get("status") in ("acknowledged", "read"))
         assert waiting_count == 3, f"Should have 3 waiting messages, got {waiting_count}"
         assert read_count == 0, f"Should have 0 read messages, got {read_count}"
 
@@ -325,14 +312,8 @@ class TestUnifiedWebSocketPlatform:
         # Step 4: CRITICAL - Refresh and verify persistence
         await db_session.refresh(execution)
 
-        waiting_after = sum(
-            1 for m in execution.messages
-            if m.get("status") == "waiting"
-        )
-        read_after = sum(
-            1 for m in execution.messages
-            if m.get("status") in ("acknowledged", "read")
-        )
+        waiting_after = sum(1 for m in execution.messages if m.get("status") == "waiting")
+        read_after = sum(1 for m in execution.messages if m.get("status") in ("acknowledged", "read"))
 
         # Expected: 1 waiting (unread), 2 acknowledged (read)
         assert waiting_after == 1, f"Should have 1 waiting after reading 2, got {waiting_after}"
@@ -447,7 +428,7 @@ class TestWebSocketPayloadIntegrity:
             await message_service.send_message(
                 from_agent=sender_execution.agent_id,
                 to_agents=[execution.agent_id],
-                content=f"Count test message {i+1}",
+                content=f"Count test message {i + 1}",
                 message_type="direct",
                 project_id=test_project.id,
             )

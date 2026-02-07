@@ -17,6 +17,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -26,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -148,7 +149,7 @@ class E2ECloseoutFixtures:
         print(f"  - Username: {self.TEST_USERNAME}")
         print(f"  - Password: {self.TEST_PASSWORD}")
         print(f"  - Tenant: {tenant_key}")
-        print(f"  - Role: developer")
+        print("  - Role: developer")
 
         return user
 
@@ -164,15 +165,12 @@ class E2ECloseoutFixtures:
             Product: Created product instance
         """
         # Check if product already exists for this tenant
-        stmt = select(Product).where(
-            Product.tenant_key == tenant_key,
-            Product.name == "Test Product"
-        )
+        stmt = select(Product).where(Product.tenant_key == tenant_key, Product.name == "Test Product")
         result = await session.execute(stmt)
         existing_product = result.scalar_one_or_none()
 
         if existing_product:
-            print(f"[OK] Test product already exists: Test Product")
+            print("[OK] Test product already exists: Test Product")
             return existing_product
 
         # Create new product
@@ -196,15 +194,13 @@ class E2ECloseoutFixtures:
         session.add(product)
         await session.flush()  # Flush to get product.id
 
-        print(f"[OK] Created test product: Test Product")
+        print("[OK] Created test product: Test Product")
         print(f"  - Tenant: {tenant_key}")
-        print(f"  - Status: Active")
+        print("  - Status: Active")
 
         return product
 
-    async def _create_test_project(
-        self, session: AsyncSession, tenant_key: str, product_id: str
-    ) -> Project:
+    async def _create_test_project(self, session: AsyncSession, tenant_key: str, product_id: str) -> Project:
         """
         Create test project.
 
@@ -217,15 +213,12 @@ class E2ECloseoutFixtures:
             Project: Created project instance
         """
         # Check if project already exists
-        stmt = select(Project).where(
-            Project.tenant_key == tenant_key,
-            Project.name == "Mock Project"
-        )
+        stmt = select(Project).where(Project.tenant_key == tenant_key, Project.name == "Mock Project")
         result = await session.execute(stmt)
         existing_project = result.scalar_one_or_none()
 
         if existing_project:
-            print(f"[OK] Test project already exists: Mock Project")
+            print("[OK] Test project already exists: Mock Project")
             return existing_project
 
         # Create new project
@@ -246,10 +239,10 @@ class E2ECloseoutFixtures:
         session.add(project)
         await session.flush()  # Flush to get project.id
 
-        print(f"[OK] Created test project: Mock Project")
+        print("[OK] Created test project: Mock Project")
         print(f"  - Tenant: {tenant_key}")
         print(f"  - Product: {product_id}")
-        print(f"  - Status: active")
+        print("  - Status: active")
 
         return project
 
@@ -299,7 +292,6 @@ class E2ECloseoutFixtures:
                 started_at=datetime.now(timezone.utc),
                 completed_at=datetime.now(timezone.utc),
                 tool_type="claude-code",
-                instance_number=1,
                 context_budget=150000,
                 context_used=50000,
                 health_status="healthy",
@@ -340,10 +332,7 @@ class E2ECloseoutFixtures:
         print(f"[OK] User verified: {user.email}")
 
         # Verify product
-        stmt = select(Product).where(
-            Product.tenant_key == tenant_key,
-            Product.is_active == True
-        )
+        stmt = select(Product).where(Product.tenant_key == tenant_key, Product.is_active == True)
         result = await session.execute(stmt)
         product = result.scalar_one_or_none()
 
@@ -353,10 +342,7 @@ class E2ECloseoutFixtures:
         print(f"[OK] Product verified: {product.name}")
 
         # Verify project
-        stmt = select(Project).where(
-            Project.tenant_key == tenant_key,
-            Project.status == "active"
-        )
+        stmt = select(Project).where(Project.tenant_key == tenant_key, Project.status == "active")
         result = await session.execute(stmt)
         project = result.scalar_one_or_none()
 
@@ -369,7 +355,7 @@ class E2ECloseoutFixtures:
         stmt = select(AgentExecution).where(
             AgentExecution.tenant_key == tenant_key,
             AgentExecution.project_id == project.id,
-            AgentExecution.status == "complete"
+            AgentExecution.status == "complete",
         )
         result = await session.execute(stmt)
         agents = result.scalars().all()
@@ -455,13 +441,11 @@ async def main():
             fixtures = await fixture_creator.create_all_fixtures(session)
 
             # Verify fixtures
-            success = await fixture_creator.verify_fixtures(
-                session, fixtures["tenant_key"]
-            )
+            success = await fixture_creator.verify_fixtures(session, fixtures["tenant_key"])
 
             if success:
                 print("\n=== Success ===")
-                print(f"Test user credentials:")
+                print("Test user credentials:")
                 print(f"  Email: {E2ECloseoutFixtures.TEST_EMAIL}")
                 print(f"  Password: {E2ECloseoutFixtures.TEST_PASSWORD}")
                 print(f"  Tenant: {fixtures['tenant_key']}")
@@ -474,9 +458,10 @@ async def main():
                 return 1
 
     except Exception as e:
-        print(f"\n=== Error ===")
+        print("\n=== Error ===")
         print(f"Failed to create fixtures: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

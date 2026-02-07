@@ -11,9 +11,9 @@ AgentExecution has different statuses: waiting, working, blocked, complete, canc
 """
 
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
-from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
@@ -28,7 +28,7 @@ from src.giljo_mcp.tenant import TenantManager
 @pytest_asyncio.fixture
 async def test_job_active(db_session, test_tenant_key):
     """Create a test AgentJob in active status."""
-    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+    from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
     # Create AgentJob (work order) - statuses: active, completed, cancelled
     job = AgentJob(
@@ -50,7 +50,6 @@ async def test_job_active(db_session, test_tenant_key):
         tenant_key=test_tenant_key,
         agent_display_name="implementer",
         agent_name="Test Implementer",
-        instance_number=1,
         status="working",
         progress=0,
         messages_sent_count=0,
@@ -100,9 +99,7 @@ class TestUpdateJobStatusValidation:
         from src.giljo_mcp.tools.agent_job_status import update_job_status
 
         fake_job_id = str(uuid4())
-        result = await update_job_status(
-            job_id=fake_job_id, tenant_key=test_tenant_key, new_status="active"
-        )
+        result = await update_job_status(job_id=fake_job_id, tenant_key=test_tenant_key, new_status="active")
 
         assert result["success"] is False
         assert "not found" in result["error"].lower()
@@ -114,7 +111,7 @@ class TestUpdateJobStatusTransitions:
     @pytest.mark.asyncio
     async def test_active_to_completed(self, test_tenant_key, test_job_active):
         """Test transition from active to completed sets completed_at."""
-        from src.giljo_mcp.tools.agent_job_status import update_job_status, get_job_status
+        from src.giljo_mcp.tools.agent_job_status import get_job_status, update_job_status
 
         # Verify initial state
         assert test_job_active.status == "active"
@@ -138,7 +135,7 @@ class TestUpdateJobStatusTransitions:
     @pytest.mark.asyncio
     async def test_active_to_cancelled(self, test_tenant_key, test_job_active):
         """Test transition from active to cancelled sets completed_at."""
-        from src.giljo_mcp.tools.agent_job_status import update_job_status, get_job_status
+        from src.giljo_mcp.tools.agent_job_status import get_job_status, update_job_status
 
         # Update to cancelled
         result = await update_job_status(
@@ -159,7 +156,7 @@ class TestUpdateJobStatusTransitions:
     @pytest.mark.asyncio
     async def test_active_to_cancelled_with_reason(self, test_tenant_key, test_job_active):
         """Test transition from active to cancelled with reason."""
-        from src.giljo_mcp.tools.agent_job_status import update_job_status, get_job_status
+        from src.giljo_mcp.tools.agent_job_status import get_job_status, update_job_status
 
         # Update to cancelled with reason
         reason = "Need database schema clarification"
@@ -185,8 +182,8 @@ class TestUpdateJobStatusMultiTenant:
     @pytest.mark.asyncio
     async def test_cannot_update_other_tenant_job(self, db_session):
         """Test that a tenant cannot update another tenant's job."""
-        from src.giljo_mcp.tools.agent_job_status import update_job_status
         from src.giljo_mcp.models.agent_identity import AgentJob
+        from src.giljo_mcp.tools.agent_job_status import update_job_status
 
         # Create two tenants
         tenant1_key = TenantManager.generate_tenant_key()
@@ -207,9 +204,7 @@ class TestUpdateJobStatusMultiTenant:
         await db_session.commit()
 
         # Try to update with tenant2's key
-        result = await update_job_status(
-            job_id=job.job_id, tenant_key=tenant2_key, new_status="completed"
-        )
+        result = await update_job_status(job_id=job.job_id, tenant_key=tenant2_key, new_status="completed")
 
         assert result["success"] is False
         assert "not found" in result["error"].lower()
@@ -221,8 +216,8 @@ class TestUpdateJobStatusMultiTenant:
     @pytest.mark.asyncio
     async def test_tenant_isolation_in_queries(self, db_session):
         """Test that jobs are properly isolated by tenant."""
-        from src.giljo_mcp.tools.agent_job_status import update_job_status, get_job_status
         from src.giljo_mcp.models.agent_identity import AgentJob
+        from src.giljo_mcp.tools.agent_job_status import get_job_status, update_job_status
 
         # Create two tenants with same-named jobs
         tenant1_key = TenantManager.generate_tenant_key()
@@ -254,14 +249,10 @@ class TestUpdateJobStatusMultiTenant:
         await db_session.commit()
 
         # Update job1 to cancelled
-        result1 = await update_job_status(
-            job_id=job1.job_id, tenant_key=tenant1_key, new_status="cancelled"
-        )
+        result1 = await update_job_status(job_id=job1.job_id, tenant_key=tenant1_key, new_status="cancelled")
 
         # Update job2 to completed
-        result2 = await update_job_status(
-            job_id=job2.job_id, tenant_key=tenant2_key, new_status="completed"
-        )
+        result2 = await update_job_status(job_id=job2.job_id, tenant_key=tenant2_key, new_status="completed")
 
         assert result1["success"] is True
         assert result2["success"] is True
@@ -280,8 +271,8 @@ class TestUpdateJobStatusTimestamps:
     @pytest.mark.asyncio
     async def test_completed_at_set_on_terminal_states(self, db_session, test_tenant_key):
         """Test that completed_at is set for completed and cancelled states."""
-        from src.giljo_mcp.tools.agent_job_status import update_job_status
         from src.giljo_mcp.models.agent_identity import AgentJob
+        from src.giljo_mcp.tools.agent_job_status import update_job_status
 
         # Test completed status
         job1 = AgentJob(
@@ -310,9 +301,7 @@ class TestUpdateJobStatusTimestamps:
         db_session.add(job2)
         await db_session.commit()
 
-        result1 = await update_job_status(
-            job_id=job1.job_id, tenant_key=test_tenant_key, new_status="completed"
-        )
+        result1 = await update_job_status(job_id=job1.job_id, tenant_key=test_tenant_key, new_status="completed")
         assert result1["completed_at"] is not None
 
         result2 = await update_job_status(
@@ -365,9 +354,7 @@ class TestUpdateJobStatusErrorHandling:
         from src.giljo_mcp.tools.agent_job_status import update_job_status
 
         # Try to update non-existent job
-        result = await update_job_status(
-            job_id=str(uuid4()), tenant_key=test_tenant_key, new_status="active"
-        )
+        result = await update_job_status(job_id=str(uuid4()), tenant_key=test_tenant_key, new_status="active")
 
         assert result["success"] is False
         assert "error" in result
@@ -375,8 +362,8 @@ class TestUpdateJobStatusErrorHandling:
     @pytest.mark.asyncio
     async def test_concurrent_updates(self, db_session, test_tenant_key):
         """Test handling of concurrent status updates."""
-        from src.giljo_mcp.tools.agent_job_status import update_job_status, get_job_status
         from src.giljo_mcp.models.agent_identity import AgentJob
+        from src.giljo_mcp.tools.agent_job_status import get_job_status, update_job_status
 
         job = AgentJob(
             job_id=str(uuid4()),
@@ -393,14 +380,10 @@ class TestUpdateJobStatusErrorHandling:
 
         # Simulate concurrent updates (in real scenario, would use asyncio.gather)
         # First update: still active (no change)
-        result1 = await update_job_status(
-            job_id=job.job_id, tenant_key=test_tenant_key, new_status="active"
-        )
+        result1 = await update_job_status(job_id=job.job_id, tenant_key=test_tenant_key, new_status="active")
 
         # Second update: completed
-        result2 = await update_job_status(
-            job_id=job.job_id, tenant_key=test_tenant_key, new_status="completed"
-        )
+        result2 = await update_job_status(job_id=job.job_id, tenant_key=test_tenant_key, new_status="completed")
 
         # Both should succeed (last write wins)
         assert result1["success"] is True

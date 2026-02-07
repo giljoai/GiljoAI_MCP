@@ -14,9 +14,8 @@ No more Agent ID Swap. No new AgentExecution rows. Just simple context reset.
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +23,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -70,7 +70,7 @@ async def simple_handover(
                 AgentExecution.agent_id == job_id,
                 AgentExecution.tenant_key == current_user.tenant_key,
             )
-            .order_by(AgentExecution.instance_number.desc())
+            .order_by(AgentExecution.started_at.desc())
             .limit(1)
         )
         result = await db.execute(stmt)
@@ -84,7 +84,7 @@ async def simple_handover(
                     AgentExecution.job_id == job_id,
                     AgentExecution.tenant_key == current_user.tenant_key,
                 )
-                .order_by(AgentExecution.instance_number.desc())
+                .order_by(AgentExecution.started_at.desc())
                 .limit(1)
             )
             result = await db.execute(stmt)
@@ -105,33 +105,20 @@ async def simple_handover(
             raise HTTPException(status_code=500, detail="Job not found")
 
         # Build session context for 360 Memory
-        session_context = {
-            "context_used": execution.context_used,
-            "context_budget": execution.context_budget,
-            "progress": execution.progress,
-            "current_task": execution.current_task,
-            "agent_id": execution.agent_id,
-            "job_id": execution.job_id,
-        }
 
         # Calculate context usage percentage (avoid division by zero)
         context_percent = (
-            int((execution.context_used / execution.context_budget) * 100)
-            if execution.context_budget > 0
-            else 0
+            int((execution.context_used / execution.context_budget) * 100) if execution.context_budget > 0 else 0
         )
 
         # Write to 360 Memory
-        from src.giljo_mcp.tools.write_360_memory import write_360_memory
         from api.app import app
+        from src.giljo_mcp.tools.write_360_memory import write_360_memory
 
         # Get database manager from app state (Handover 0461c fix)
         db_manager = getattr(app.state, "db_manager", None)
         if db_manager is None:
-            raise HTTPException(
-                status_code=500,
-                detail="Database manager not initialized"
-            )
+            raise HTTPException(status_code=500, detail="Database manager not initialized")
 
         memory_result = await write_360_memory(
             project_id=str(job.project_id),
@@ -188,7 +175,7 @@ async def simple_handover(
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 )
-        except Exception as ws_error:
+        except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
             logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
         return {
@@ -202,8 +189,8 @@ async def simple_handover(
     except HTTPException:
         raise  # Re-raise HTTP exceptions (400, 404, etc.) without modification
     except Exception as e:
-        logger.exception(f"Simple handover failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Simple handover failed")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 def _build_continuation_prompt(
