@@ -10,10 +10,9 @@ Provides request/response models for:
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-
 
 class VisionDocumentCreate(BaseModel):
     """
@@ -31,14 +30,13 @@ class VisionDocumentCreate(BaseModel):
         "vision",
         description="Document category: vision, architecture, features, setup, api, testing, deployment, custom",
     )
-    content: Optional[str] = Field(None, description="Inline document content (for inline or hybrid storage)")
+    content: str | None = Field(None, description="Inline document content (for inline or hybrid storage)")
     storage_type: str = Field("inline", description="Storage mode: file, inline, hybrid")
     auto_chunk: bool = Field(True, description="Automatically chunk document after creation")
     display_order: int = Field(0, description="Display order in UI (lower numbers first)")
     version: str = Field("1.0.0", description="Semantic version")
 
     model_config = ConfigDict(from_attributes=True)
-
 
 class VisionDocumentUpdate(BaseModel):
     """
@@ -54,7 +52,6 @@ class VisionDocumentUpdate(BaseModel):
     auto_rechunk: bool = Field(True, description="Automatically re-chunk after update")
 
     model_config = ConfigDict(from_attributes=True)
-
 
 class VisionDocumentResponse(BaseModel):
     """
@@ -72,28 +69,28 @@ class VisionDocumentResponse(BaseModel):
     document_name: str = Field(..., description="Document name")
     document_type: str = Field(..., description="Document category")
     storage_type: str = Field(..., description="Storage mode: file, inline, hybrid")
-    vision_path: Optional[str] = Field(None, description="File path (if file-based storage)")
-    vision_document: Optional[str] = Field(None, description="Inline content (if inline storage)")
+    vision_path: str | None = Field(None, description="File path (if file-based storage)")
+    vision_document: str | None = Field(None, description="Inline content (if inline storage)")
     chunked: bool = Field(..., description="Has document been chunked")
     chunk_count: int = Field(..., description="Number of chunks created")
-    total_tokens: Optional[int] = Field(None, description="Estimated total tokens")
-    file_size: Optional[int] = Field(None, description="Original file size in bytes")
-    content_hash: Optional[str] = Field(None, description="SHA-256 content hash")
+    total_tokens: int | None = Field(None, description="Estimated total tokens")
+    file_size: int | None = Field(None, description="Original file size in bytes")
+    content_hash: str | None = Field(None, description="SHA-256 content hash")
     version: str = Field(..., description="Document version")
     is_active: bool = Field(..., description="Active status")
     display_order: int = Field(..., description="Display order")
     created_at: datetime = Field(..., description="Creation timestamp")
-    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
-    chunked_at: Optional[datetime] = Field(None, description="Last chunking timestamp")
+    updated_at: datetime | None = Field(None, description="Last update timestamp")
+    chunked_at: datetime | None = Field(None, description="Last chunking timestamp")
     meta_data: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
     # Summary fields (Handover 0246b: light/medium only, percentage-based)
     is_summarized: bool = Field(False, description="Whether summaries have been generated")
-    summary_light: Optional[str] = Field(None, description="Light summary (33% of original)")
-    summary_medium: Optional[str] = Field(None, description="Medium summary (66% of original)")
-    summary_light_tokens: Optional[int] = Field(None, description="Token count for light summary")
-    summary_medium_tokens: Optional[int] = Field(None, description="Token count for medium summary")
-    original_token_count: Optional[int] = Field(None, description="Original document token count")
+    summary_light: str | None = Field(None, description="Light summary (33% of original)")
+    summary_medium: str | None = Field(None, description="Medium summary (66% of original)")
+    summary_light_tokens: int | None = Field(None, description="Token count for light summary")
+    summary_medium_tokens: int | None = Field(None, description="Token count for medium summary")
+    original_token_count: int | None = Field(None, description="Original document token count")
     has_summaries: bool = Field(False, description="Whether summaries have been generated (computed)")
 
     model_config = ConfigDict(from_attributes=True)
@@ -103,7 +100,6 @@ class VisionDocumentResponse(BaseModel):
         """Compute has_summaries based on presence of summary fields (Handover 0246b)."""
         self.has_summaries = bool(self.summary_light or self.summary_medium)
         return self
-
 
 class RechunkRequest(BaseModel):
     """
@@ -116,7 +112,6 @@ class RechunkRequest(BaseModel):
     """
 
     # No fields - just a trigger endpoint
-
 
 class RechunkResponse(BaseModel):
     """
@@ -131,7 +126,6 @@ class RechunkResponse(BaseModel):
     old_chunks_deleted: int = Field(..., description="Number of old chunks deleted")
 
     model_config = ConfigDict(from_attributes=True)
-
 
 class DeleteResponse(BaseModel):
     """

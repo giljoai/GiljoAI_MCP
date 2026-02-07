@@ -13,18 +13,15 @@ Production-grade features:
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from ..database import DatabaseManager
 
-
 logger = logging.getLogger(__name__)
-
 
 # Global database manager for module-level functions (set via init or auto-created)
 _db_manager_instance = None
 _test_session = None
-
 
 def _get_db_manager() -> DatabaseManager:
     """Get or create database manager instance."""
@@ -32,7 +29,6 @@ def _get_db_manager() -> DatabaseManager:
     if _db_manager_instance is None:
         _db_manager_instance = DatabaseManager()
     return _db_manager_instance
-
 
 def set_db_manager(db_manager: DatabaseManager) -> None:
     """
@@ -42,7 +38,6 @@ def set_db_manager(db_manager: DatabaseManager) -> None:
     """
     global _db_manager_instance
     _db_manager_instance = db_manager
-
 
 def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
     """
@@ -65,7 +60,6 @@ def init_for_testing(db_manager: DatabaseManager, db_session) -> None:
     global _db_manager_instance, _test_session
     _db_manager_instance = db_manager
     _test_session = db_session
-
 
 # Module-level functions for direct import (Handover 0366c)
 async def spawn_agent(
@@ -240,7 +234,6 @@ async def spawn_agent(
             "error": str(e),
         }
 
-
 async def get_agent_status(agent_id: str, tenant_key: str) -> dict[str, Any]:
     """
     Get status for SPECIFIC executor instance (Handover 0366c).
@@ -378,7 +371,6 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> dict[str, Any]:
             "success": False,
             "error": str(e),
         }
-
 
 async def get_team_agents(
     job_id: str,

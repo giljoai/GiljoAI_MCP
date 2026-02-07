@@ -8,19 +8,17 @@ Handover 0347e: 4-level vision depth validation
 Validates vision_documents depth values (optional, light, medium, full).
 """
 
-from typing import Any, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from api.dependencies import get_tenant_key
 
-
 router = APIRouter()
 
 # Handover 0347e: Valid vision depth values for 4-level system
 VALID_VISION_DEPTH_VALUES = ["optional", "light", "medium", "full"]
-
 
 class ContextIndexResponse(BaseModel):
     product_id: str
@@ -28,17 +26,14 @@ class ContextIndexResponse(BaseModel):
     document_count: int
     total_sections: int
 
-
 class VisionResponse(BaseModel):
     part: int
     total_parts: int
     content: str
     tokens: int
 
-
 class ChunkVisionRequest(BaseModel):
     force_rechunk: bool = Field(False, description="Force rechunking even if already chunked")
-
 
 class ChunkVisionResponse(BaseModel):
     success: bool
@@ -46,17 +41,15 @@ class ChunkVisionResponse(BaseModel):
     chunks_created: int
     total_tokens: int
     original_size: int
-    reduction_percentage: Optional[float] = None
-    message: Optional[str] = None
-
+    reduction_percentage: float | None = None
+    message: str | None = None
 
 class ContextChunk(BaseModel):
     chunk_id: str
     content: str
     tokens: int
     chunk_number: int
-    relevance_score: Optional[float] = None
-
+    relevance_score: float | None = None
 
 class SearchContextResponse(BaseModel):
     query: str
@@ -64,13 +57,11 @@ class SearchContextResponse(BaseModel):
     total_chunks: int
     total_tokens: int
 
-
 class LoadContextRequest(BaseModel):
     agent_display_name: str = Field(..., description="Human-readable display name for UI")
     mission: str = Field(..., description="Mission or query for context selection")
     product_id: str = Field(..., description="Product ID")
     max_tokens: int = Field(10000, description="Maximum tokens to load")
-
 
 class LoadContextResponse(BaseModel):
     agent_display_name: str
@@ -78,8 +69,7 @@ class LoadContextResponse(BaseModel):
     total_chunks: int
     total_tokens: int
     average_relevance: float
-    reduction_percentage: Optional[float] = None
-
+    reduction_percentage: float | None = None
 
 class TokenStatsResponse(BaseModel):
     product_id: str
@@ -88,16 +78,14 @@ class TokenStatsResponse(BaseModel):
     reduction_percentage: float
     chunks_count: int
 
-
 class HealthCheckResponse(BaseModel):
     status: str
     chunk_count: int
-    search_performance_ms: Optional[float] = None
-    message: Optional[str] = None
-
+    search_performance_ms: float | None = None
+    message: str | None = None
 
 @router.get("/index", response_model=ContextIndexResponse)
-async def get_context_index(product_id: Optional[str] = Query(None, description="Product ID")):
+async def get_context_index(product_id: str | None = Query(None, description="Product ID")):
     """Get the context index for intelligent querying"""
     from src.giljo_mcp.tools.context import get_context_index
 
@@ -110,7 +98,6 @@ async def get_context_index(product_id: Optional[str] = Query(None, description=
         document_count=len(index.get("documents", [])),
         total_sections=sum(len(doc.get("sections", [])) for doc in index.get("documents", [])),
     )
-
 
 @router.get("/vision", response_model=VisionResponse)
 async def get_vision(
@@ -130,7 +117,6 @@ async def get_vision(
         tokens=result.get("tokens", 0),
     )
 
-
 @router.get("/vision/index", response_model=dict[str, Any])
 async def get_vision_index():
     """Get the vision document index"""
@@ -139,15 +125,13 @@ async def get_vision_index():
     # Tool raises exceptions on error
     return await get_vision_index()
 
-
 @router.get("/settings", response_model=dict[str, Any])
-async def get_product_settings(product_id: Optional[str] = Query(None, description="Product ID")):
+async def get_product_settings(product_id: str | None = Query(None, description="Product ID")):
     """Get all product settings for analysis"""
     from src.giljo_mcp.tools.context import get_product_settings
 
     # Tool raises exceptions on error
     return await get_product_settings(product_id=product_id)
-
 
 @router.post("/products/{product_id}/chunk-vision", response_model=ChunkVisionResponse)
 async def chunk_vision_document(
@@ -251,11 +235,10 @@ async def chunk_vision_document(
     except (ValueError, KeyError, RuntimeError) as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-
 @router.get("/search", response_model=SearchContextResponse)
 async def search_context(
     query: str = Query(..., description="Search query"),
-    product_id: Optional[str] = Query(None, description="Filter by product ID"),
+    product_id: str | None = Query(None, description="Filter by product ID"),
     limit: int = Query(10, description="Maximum chunks to return"),
     tenant_key: str = Depends(get_tenant_key),
 ):
@@ -302,7 +285,6 @@ async def search_context(
 
     except (ValueError, KeyError, RuntimeError) as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
-
 
 @router.post("/load-for-agent", response_model=LoadContextResponse)
 async def load_context_for_agent(
@@ -357,7 +339,6 @@ async def load_context_for_agent(
     except (ValueError, KeyError, RuntimeError) as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-
 @router.get("/products/{product_id}/token-stats", response_model=TokenStatsResponse)
 async def get_token_stats(
     product_id: str,
@@ -406,7 +387,6 @@ async def get_token_stats(
 
     except (ValueError, KeyError, RuntimeError) as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
-
 
 @router.get("/health", response_model=HealthCheckResponse)
 async def health_check(

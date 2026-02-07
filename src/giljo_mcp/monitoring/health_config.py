@@ -7,8 +7,6 @@ data structures for tracking health status.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict
-
 
 @dataclass
 class HealthCheckConfig:
@@ -58,7 +56,6 @@ class HealthCheckConfig:
             Timeout in minutes for this agent type
         """
         return self.timeout_overrides.get(agent_display_name, self.heartbeat_timeout_minutes)
-
 
 @dataclass
 class AgentHealthStatus:

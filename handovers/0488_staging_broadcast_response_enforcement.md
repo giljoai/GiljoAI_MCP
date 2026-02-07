@@ -6,7 +6,7 @@
 **Priority:** HIGH
 **Estimated Complexity:** 3-4 hours
 **Status:** Ready for Implementation
-**Parent:** 0709 (Implementation Phase Gate)
+**Parent:** 0487 (Implementation Phase Gate)
 
 ---
 
@@ -14,7 +14,7 @@
 
 Enrich the `send_message()` response with an explicit STOP directive when a staging-phase orchestrator broadcasts to all agents. Currently the STAGING_COMPLETE broadcast returns a generic `{"success": true}` response with no reinforcement that the session should end. This causes orchestrators to continue into implementation despite protocol instructions.
 
-**Why it's important:** In alpha testing, orchestrators repeatedly ignored the "STAGING ENDS HERE" text instruction and proceeded to spawn Task() agents. The 0709 gate catches the spawned agents (they get BLOCKED at `get_agent_mission()`), but the orchestrator still wastes tokens attempting implementation. A stronger signal in the broadcast response would reduce this.
+**Why it's important:** In alpha testing, orchestrators repeatedly ignored the "STAGING ENDS HERE" text instruction and proceeded to spawn Task() agents. The 0487 gate catches the spawned agents (they get BLOCKED at `get_agent_mission()`), but the orchestrator still wastes tokens attempting implementation. A stronger signal in the broadcast response would reduce this.
 
 **Expected outcome:** When the staging orchestrator sends the STAGING_COMPLETE broadcast, the server returns an enriched response containing a clear `staging_directive` that tells the LLM to stop.
 
@@ -24,7 +24,7 @@ Enrich the `send_message()` response with an explicit STOP directive when a stag
 
 ### The Gap (Discovered in Alpha Testing)
 
-0709 added hard server-side gates on `get_agent_mission()` and `acknowledge_job()`. These catch **agents** that are prematurely launched. But nothing catches the **orchestrator itself** from continuing after staging.
+0487 added hard server-side gates on `get_agent_mission()` and `acknowledge_job()`. These catch **agents** that are prematurely launched. But nothing catches the **orchestrator itself** from continuing after staging.
 
 The orchestrator's flow:
 1. Steps 1-7: Create mission, spawn agents, persist plan -- all correct
@@ -58,10 +58,10 @@ This handover adds **Layer 5.5** to the existing defense stack:
 |-------|-----------|------|----------|
 | 1-4 | Prompt framing, protocol, metadata | Advisory | 0415, 0246a |
 | 5 | CH5 exclusion during staging | Soft gate | 0420d |
-| **5.5** | **Enriched broadcast response (THIS)** | **Reinforced advisory** | **0709b** |
-| 6 | `get_agent_mission()` BLOCKED | Hard gate | 0709 |
-| 7 | `acknowledge_job()` BLOCKED | Hard gate | 0709 |
-| 8 | User action gate (Implement button) | Hard gate | 0709 |
+| **5.5** | **Enriched broadcast response (THIS)** | **Reinforced advisory** | **0488** |
+| 6 | `get_agent_mission()` BLOCKED | Hard gate | 0487 |
+| 7 | `acknowledge_job()` BLOCKED | Hard gate | 0487 |
+| 8 | User action gate (Implement button) | Hard gate | 0487 |
 
 ---
 
@@ -92,7 +92,7 @@ response = {
     }
 }
 
-# 0709b: Detect staging orchestrator broadcasting to all
+# 0488: Detect staging orchestrator broadcasting to all
 # Conditions: sender is orchestrator + job in "waiting" status + broadcast
 if is_staging_orchestrator_broadcast:
     response["staging_directive"] = {
@@ -238,7 +238,7 @@ async def test_staging_broadcast_then_blocked_agent_flow():
     # 3. Spawn agent jobs
     # 4. Orchestrator broadcasts STAGING_COMPLETE
     # 5. Verify response has staging_directive
-    # 6. Agent calls get_agent_mission() -> BLOCKED (0709 gate still works)
+    # 6. Agent calls get_agent_mission() -> BLOCKED (0487 gate still works)
 ```
 
 ---
@@ -246,7 +246,7 @@ async def test_staging_broadcast_then_blocked_agent_flow():
 ## Dependencies and Blockers
 
 **Dependencies:**
-- 0709 (Implementation Phase Gate) -- COMPLETE. This handover builds on top of 0709's infrastructure.
+- 0487 (Implementation Phase Gate) -- COMPLETE. This handover builds on top of 0487's infrastructure.
 
 **No blockers.** All required models and services already exist.
 
@@ -272,7 +272,7 @@ Low-risk change. Rollback = remove the detection block in `send_message()`. The 
 
 ## Related
 
-- **Parent:** 0709 (Implementation Phase Gate) -- `handovers/0709_implementation_phase_gate.md`
+- **Parent:** 0487 (Implementation Phase Gate) -- `handovers/0487_implementation_phase_gate.md`
 - **Protocol:** `_build_orchestrator_protocol()` in `src/giljo_mcp/tools/orchestration.py`
 - **Message Service:** `src/giljo_mcp/services/message_service.py`
 - **Orchestrator Instructions:** `src/giljo_mcp/services/orchestration_service.py`

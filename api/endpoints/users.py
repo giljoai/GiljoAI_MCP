@@ -18,7 +18,7 @@ All endpoints enforce role-based access control and multi-tenant isolation.
 """
 
 import logging
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -34,19 +34,17 @@ from src.giljo_mcp.auth.dependencies import (
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import UserService
 
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Pydantic Models for Request/Response
 
-
 class UserCreate(BaseModel):
     """Request model for creating a new user"""
 
     username: str = Field(..., min_length=3, max_length=64, description="Unique username")
-    email: Optional[EmailStr] = Field(None, description="User email address")
-    full_name: Optional[str] = Field(None, max_length=255, description="Full name")
+    email: EmailStr | None = Field(None, description="User email address")
+    full_name: str | None = Field(None, max_length=255, description="Full name")
     password: str = Field(..., min_length=8, description="User password (min 8 characters)")
     role: str = Field("developer", description="User role: admin, developer, viewer")
     is_active: bool = Field(default=True, description="Whether user account is active")
@@ -60,36 +58,32 @@ class UserCreate(BaseModel):
             raise ValueError(f"Role must be one of: {', '.join(allowed_roles)}")
         return v
 
-
 class UserUpdate(BaseModel):
     """Request model for updating user profile"""
 
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = Field(None, max_length=255)
-    is_active: Optional[bool] = None
-    password: Optional[str] = Field(None, min_length=8, description="New password (min 8 chars)")
-
+    email: EmailStr | None = None
+    full_name: str | None = Field(None, max_length=255)
+    is_active: bool | None = None
+    password: str | None = Field(None, min_length=8, description="New password (min 8 chars)")
 
 class UserResponse(BaseModel):
     """Response model for user data (password excluded)"""
 
     id: str
     username: str
-    email: Optional[str]
-    full_name: Optional[str]
+    email: str | None
+    full_name: str | None
     role: str
     tenant_key: str
     is_active: bool
     created_at: str
-    last_login: Optional[str]
-
+    last_login: str | None
 
 class PasswordChange(BaseModel):
     """Request model for password change"""
 
-    old_password: Optional[str] = Field(None, min_length=8, description="Current password (required for non-admin)")
+    old_password: str | None = Field(None, min_length=8, description="Current password (required for non-admin)")
     new_password: str = Field(..., min_length=8, description="New password (min 8 characters)")
-
 
 class RoleChange(BaseModel):
     """Request model for role change"""
@@ -105,14 +99,12 @@ class RoleChange(BaseModel):
             raise ValueError(f"Role must be one of: {', '.join(allowed_roles)}")
         return v
 
-
 class UserDeleteResponse(BaseModel):
     """Response model for user deletion"""
 
     message: str
     user_id: str
     username: str
-
 
 class RoleChangeResponse(BaseModel):
     """Response model for role change"""
@@ -122,12 +114,10 @@ class RoleChangeResponse(BaseModel):
     username: str
     role: str
 
-
 class PasswordChangeResponse(BaseModel):
     """Response model for password change"""
 
     message: str
-
 
 class FieldPriorityConfig(BaseModel):
     """
@@ -204,14 +194,12 @@ class FieldPriorityConfig(BaseModel):
 
         return v
 
-
 class ExecutionModeUpdate(BaseModel):
     """Request model for updating execution mode."""
 
     execution_mode: Literal["claude_code", "multi_terminal"] = Field(
         ..., description="Execution mode: claude_code or multi_terminal"
     )
-
 
 class DepthConfig(BaseModel):
     """
@@ -257,15 +245,12 @@ class DepthConfig(BaseModel):
         }
     )
 
-
 class UpdateDepthConfigRequest(BaseModel):
     """Request to update user depth configuration."""
 
     depth_config: DepthConfig
 
-
 # Helper Functions
-
 
 def user_to_response(user: User) -> UserResponse:
     """Convert User model to UserResponse (excludes password)"""
@@ -280,7 +265,6 @@ def user_to_response(user: User) -> UserResponse:
         created_at=user.created_at.isoformat() if user.created_at else "",
         last_login=user.last_login.isoformat() if user.last_login else None,
     )
-
 
 def migrate_project_context_to_description(user_config: dict[str, Any]) -> dict[str, Any]:
     """
@@ -303,9 +287,7 @@ def migrate_project_context_to_description(user_config: dict[str, Any]) -> dict[
         user_config["project_description"] = user_config.pop("project_context")
     return user_config
 
-
 # API Endpoints
-
 
 @router.get("/", response_model=list[UserResponse])
 async def list_users(
@@ -351,7 +333,6 @@ async def list_users(
         )
         for user in result["data"]
     ]
-
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
@@ -405,7 +386,6 @@ async def create_user(
         last_login=None,
     )
 
-
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: UUID,
@@ -458,7 +438,6 @@ async def get_user(
         created_at=user["created_at"],
         last_login=user["last_login"],
     )
-
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
@@ -533,7 +512,6 @@ async def update_user(
         last_login=user["last_login"],
     )
 
-
 @router.delete("/{user_id}", response_model=UserDeleteResponse)
 async def delete_user(
     user_id: UUID,
@@ -567,7 +545,6 @@ async def delete_user(
 
     logger.info(f"Deactivated user: {result['username']}")
     return UserDeleteResponse(message=result["message"], user_id=result["user_id"], username=result["username"])
-
 
 @router.put("/{user_id}/role", response_model=RoleChangeResponse)
 async def change_user_role(
@@ -623,7 +600,6 @@ async def change_user_role(
         role=user["role"],
     )
 
-
 @router.put("/{user_id}/password", response_model=PasswordChangeResponse)
 async def change_password(
     user_id: UUID,
@@ -677,7 +653,6 @@ async def change_password(
     logger.info(f"Password changed for user: {user_id}")
     return PasswordChangeResponse(message=result["message"])
 
-
 @router.post("/{user_id}/reset-password", response_model=PasswordChangeResponse)
 async def reset_password(
     user_id: UUID,
@@ -714,9 +689,7 @@ async def reset_password(
     logger.info(f"Admin {current_user.username} reset password for user: {user_id}")
     return PasswordChangeResponse(message=result["message"])
 
-
 # Field Priority Configuration Endpoints (Handover 0048)
-
 
 @router.get("/me/field-priority", response_model=FieldPriorityConfig)
 async def get_field_priority_config(
@@ -762,7 +735,6 @@ async def get_field_priority_config(
 
     logger.debug(f"Returning field priority config for user {current_user.username}")
     return FieldPriorityConfig(**result["config"])
-
 
 @router.put("/me/field-priority", response_model=FieldPriorityConfig)
 async def update_field_priority_config(
@@ -831,7 +803,6 @@ async def update_field_priority_config(
 
     return config
 
-
 @router.post("/me/field-priority/reset", response_model=FieldPriorityConfig)
 async def reset_field_priority_config(
     current_user: User = Depends(get_current_active_user),
@@ -874,9 +845,7 @@ async def reset_field_priority_config(
 
     return FieldPriorityConfig(**DEFAULT_FIELD_PRIORITY)
 
-
 # Depth Configuration Endpoints (Handover 0314)
-
 
 @router.get("/me/context/depth", response_model=dict[str, Any])
 async def get_depth_config(
@@ -921,7 +890,6 @@ async def get_depth_config(
     logger.debug(f"Returning depth config for user {current_user.username}")
 
     return {"depth_config": result["config"]}
-
 
 @router.put("/me/context/depth", response_model=dict[str, Any])
 async def update_depth_config(
@@ -982,11 +950,9 @@ async def update_depth_config(
 
     return {"depth_config": get_result["config"]}
 
-
 # ---------------------------------------------------------------------------
 # Execution mode settings (0248c)
 # ---------------------------------------------------------------------------
-
 
 @router.get("/me/settings/execution_mode")
 async def get_execution_mode(
@@ -998,7 +964,6 @@ async def get_execution_mode(
     if not result["success"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
     return {"execution_mode": result["execution_mode"]}
-
 
 @router.put("/me/settings/execution_mode")
 async def update_execution_mode(

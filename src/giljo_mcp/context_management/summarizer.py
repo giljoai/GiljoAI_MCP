@@ -11,15 +11,12 @@ Features:
 """
 
 import logging
-from typing import Dict, Optional
 
 import tiktoken
 
 from src.giljo_mcp.repositories.context_repository import ContextRepository
 
-
 logger = logging.getLogger(__name__)
-
 
 class ContextSummarizer:
     """
@@ -94,7 +91,7 @@ class ContextSummarizer:
             "tokens_saved": tokens_saved,
         }
 
-    def get_reduction_stats(self, tenant_key: str, product_id: Optional[str] = None) -> dict[str, any]:
+    def get_reduction_stats(self, tenant_key: str, product_id: str | None = None) -> dict[str, any]:
         """
         Get context prioritization statistics.
 

@@ -4,8 +4,6 @@ Execution endpoints for agent jobs.
 Handover 0366d-1: Frontend Core Agent Display
 """
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,9 +14,7 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 from .models import AgentExecutionResponse
 
-
 router = APIRouter()
-
 
 @router.get("/{job_id}/executions", response_model=list[AgentExecutionResponse])
 async def get_job_executions(

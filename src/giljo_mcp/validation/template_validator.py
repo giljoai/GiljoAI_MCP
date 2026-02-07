@@ -17,7 +17,6 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List, Optional
 
 from src.giljo_mcp.validation.rules import (
     InjectionDetectionRule,
@@ -27,7 +26,6 @@ from src.giljo_mcp.validation.rules import (
     ValidationError,
     ValidationRule,
 )
-
 
 @dataclass
 class TemplateValidationResult:
@@ -59,7 +57,6 @@ class TemplateValidationResult:
             "has_critical_errors": self.has_critical_errors,
         }
 
-
 class TemplateValidator:
     """
     Production-grade template validation with caching.
@@ -86,7 +83,7 @@ class TemplateValidator:
     # Cache TTL: 1 hour
     CACHE_TTL_SECONDS = 3600
 
-    def __init__(self, redis_client: Optional[any] = None):
+    def __init__(self, redis_client: any | None = None):
         """
         Initialize validator.
 
@@ -200,7 +197,7 @@ class TemplateValidator:
         content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
         return f"validation:{template_id}:{content_hash}"
 
-    def _get_cached_result(self, template_id: str, content: str) -> Optional[TemplateValidationResult]:
+    def _get_cached_result(self, template_id: str, content: str) -> TemplateValidationResult | None:
         """
         Retrieve cached validation result.
 
@@ -301,7 +298,7 @@ class TemplateValidator:
         with self._lock:
             self.rules.append(rule)
 
-    def clear_cache(self, template_id: Optional[str] = None):
+    def clear_cache(self, template_id: str | None = None):
         """
         Clear validation cache.
 

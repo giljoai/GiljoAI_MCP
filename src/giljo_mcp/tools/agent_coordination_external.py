@@ -25,15 +25,13 @@ Production-grade implementation following industry best practices.
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 
 from ..config_manager import ConfigManager
 
-
 logger = logging.getLogger(__name__)
-
 
 class ExternalAgentCoordinationTools:
     """
@@ -53,8 +51,8 @@ class ExternalAgentCoordinationTools:
 
     def __init__(
         self,
-        session: Optional[aiohttp.ClientSession] = None,
-        config: Optional[ConfigManager] = None,
+        session: aiohttp.ClientSession | None = None,
+        config: ConfigManager | None = None,
         max_retries: int = 3,
         timeout: int = 30,
     ):
@@ -146,8 +144,8 @@ class ExternalAgentCoordinationTools:
         self,
         method: str,
         endpoint: str,
-        json_data: Optional[dict[str, Any]] = None,
-        params: Optional[dict[str, Any]] = None,
+        json_data: dict[str, Any | None] = None,
+        params: dict[str, Any | None] = None,
         retry_count: int = 0,
     ) -> dict[str, Any]:
         """
@@ -282,8 +280,8 @@ class ExternalAgentCoordinationTools:
         self,
         agent_display_name: str,
         mission: str,
-        context_chunks: Optional[list[str]] = None,
-        spawned_by: Optional[str] = None,
+        context_chunks: list[str | None] = None,
+        spawned_by: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a new agent job via POST /api/agent-jobs.
@@ -474,7 +472,7 @@ class ExternalAgentCoordinationTools:
             }
         return response
 
-    async def complete_agent_job(self, job_id: str, result: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    async def complete_agent_job(self, job_id: str, result: dict[str, Any | None] = None) -> dict[str, Any]:
         """
         Complete agent job via POST /api/agent-jobs/{job_id}/complete.
 
@@ -521,7 +519,7 @@ class ExternalAgentCoordinationTools:
             }
         return response
 
-    async def fail_agent_job(self, job_id: str, error: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    async def fail_agent_job(self, job_id: str, error: dict[str, Any | None] = None) -> dict[str, Any]:
         """
         Fail agent job via POST /api/agent-jobs/{job_id}/fail.
 
@@ -564,7 +562,7 @@ class ExternalAgentCoordinationTools:
         return response
 
     async def list_active_agent_jobs(
-        self, status: Optional[str] = None, agent_display_name: Optional[str] = None, limit: int = 100
+        self, status: str | None = None, agent_display_name: str | None = None, limit: int = 100
     ) -> dict[str, Any]:
         """
         List active agent jobs via GET /api/agent-jobs.
@@ -617,7 +615,6 @@ class ExternalAgentCoordinationTools:
         if self.session:
             await self.session.close()
             logger.info("[ExternalAgentCoordinationTools] HTTP session closed")
-
 
 def register_external_agent_coordination_tools(tools: dict, config: dict) -> None:
     """

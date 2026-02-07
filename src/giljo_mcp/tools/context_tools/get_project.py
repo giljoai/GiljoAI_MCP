@@ -5,7 +5,7 @@ Fetch current project context for orchestrator awareness.
 Returns project metadata, mission, status (excludes context_budget - deprecated).
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -13,9 +13,7 @@ from sqlalchemy import select
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.projects import Project
 
-
 logger = structlog.get_logger(__name__)
-
 
 def estimate_tokens(data: Any) -> int:
     """Estimate token count for data (simple heuristic: 1 token ≈ 4 chars)"""
@@ -24,9 +22,8 @@ def estimate_tokens(data: Any) -> int:
     text = json.dumps(data)
     return len(text) // 4
 
-
 async def get_project(
-    project_id: str, tenant_key: str, include_summary: bool = False, db_manager: Optional[DatabaseManager] = None
+    project_id: str, tenant_key: str, include_summary: bool = False, db_manager: DatabaseManager | None = None
 ) -> dict[str, Any]:
     """
     Fetch current project context (Project Context).

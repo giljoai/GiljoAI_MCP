@@ -8,7 +8,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 from inspect import iscoroutine
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,15 +18,12 @@ from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
 
-
 logger = logging.getLogger(__name__)
-
 
 # Field length constraints (added for validation)
 MAX_SUMMARY_LENGTH = 10000  # ~2,500 tokens
 MAX_KEY_OUTCOMES = 100
 MAX_DECISIONS_MADE = 100
-
 
 async def close_project_and_update_memory(
     project_id: str,
@@ -34,8 +31,8 @@ async def close_project_and_update_memory(
     key_outcomes: list[str],
     decisions_made: list[str],
     tenant_key: str,
-    db_manager: Optional[DatabaseManager] = None,
-    session: Optional[AsyncSession] = None,
+    db_manager: DatabaseManager | None = None,
+    session: AsyncSession | None = None,
 ) -> dict[str, Any]:
     """
     Close project and update product memory with history entry.
@@ -116,7 +113,7 @@ async def close_project_and_update_memory(
                 product_memory = {}
 
             git_config = _get_git_config(product_memory)
-            git_commits: Optional[list[dict[str, Any]]] = None
+            git_commits: list[dict[str, Any | None]] = None
 
             if git_config.get("enabled") and git_config.get("repo_name") and git_config.get("repo_owner"):
                 git_commits = await _fetch_github_commits(
@@ -192,14 +189,12 @@ async def close_project_and_update_memory(
         logger.exception("Failed to close project and update memory", extra={"error": str(exc)})
         return {"success": False, "error": str(exc)}
 
-
 def _get_git_config(product_memory: dict[str, Any]) -> dict[str, Any]:
     """Normalize git integration configuration."""
     if not isinstance(product_memory, dict):
         return {}
     git_cfg = product_memory.get("git_integration") or product_memory.get("github") or {}
     return git_cfg if isinstance(git_cfg, dict) else {}
-
 
 def _extract_deliverables(key_outcomes: list[str]) -> list[str]:
     """Derive deliverables from key outcomes (deduplicated)."""
@@ -211,7 +206,6 @@ def _extract_deliverables(key_outcomes: list[str]) -> list[str]:
             seen.add(normalized)
             deliverables.append(normalized)
     return deliverables
-
 
 def _extract_tags(summary: str, key_outcomes: list[str], decisions_made: list[str]) -> list[str]:
     """Extract lightweight tags from summary/outcomes/decisions."""
@@ -233,7 +227,6 @@ def _extract_tags(summary: str, key_outcomes: list[str], decisions_made: list[st
             tags.append(token)
     return tags[:10]
 
-
 def _derive_priority(project: Project, summary: str, key_outcomes: list[str]) -> int:
     """Derive priority (1=CRITICAL, 2=IMPORTANT, 3=REFERENCE)."""
     summary_text = summary.lower() if summary else ""
@@ -244,14 +237,12 @@ def _derive_priority(project: Project, summary: str, key_outcomes: list[str]) ->
         return 2
     return 3
 
-
 def _calculate_significance(project: Project, key_outcomes: list[str], git_commits: list[dict[str, Any]]) -> float:
     """Calculate significance score between 0.0 and 1.0."""
     outcome_factor = min(len(key_outcomes or []), 5) * 0.1
     commit_factor = min(len(git_commits or []), 20) * 0.01
     base = 0.3 + outcome_factor + commit_factor
     return round(min(1.0, base), 2)
-
 
 def _estimate_tokens(summary: str, key_outcomes: list[str], decisions_made: list[str]) -> int:
     """Rough token estimate based on content length."""
@@ -260,7 +251,6 @@ def _estimate_tokens(summary: str, key_outcomes: list[str], decisions_made: list
     lengths.extend(len(item or "") for item in decisions_made or [])
     estimate = sum(lengths) // 4
     return max(estimate, 1)
-
 
 def _count_files_changed(git_commits: list[dict[str, Any]]) -> int:
     """Count files changed across commits."""
@@ -274,7 +264,6 @@ def _count_files_changed(git_commits: list[dict[str, Any]]) -> int:
             total += len(commit["files"])
     return total
 
-
 def _count_lines_added(git_commits: list[dict[str, Any]]) -> int:
     """Count lines added across commits."""
     total = 0
@@ -286,7 +275,6 @@ def _count_lines_added(git_commits: list[dict[str, Any]]) -> int:
         elif isinstance(commit.get("stats"), dict):
             total += int(commit["stats"].get("additions", 0))
     return total
-
 
 def _build_metrics(git_commits: list[dict[str, Any]], meta_data: dict[str, Any]) -> dict[str, Any]:
     """Build metrics block for history entry."""
@@ -308,7 +296,6 @@ def _build_metrics(git_commits: list[dict[str, Any]], meta_data: dict[str, Any])
         "lines_added": 0,
         "test_coverage": test_coverage,
     }
-
 
 async def emit_websocket_event(
     event_type: str,
@@ -344,14 +331,13 @@ async def emit_websocket_event(
     except (RuntimeError, ValueError, KeyError) as exc:  # pragma: no cover - best-effort emit
         logger.warning("WebSocket emit failed", extra={"error": str(exc), "event_type": event_type})
 
-
 async def _fetch_github_commits(
-    repo_name: Optional[str],
-    repo_owner: Optional[str],
-    access_token: Optional[str],
+    repo_name: str | None,
+    repo_owner: str | None,
+    access_token: str | None,
     project_created_at: datetime,
-    project_completed_at: Optional[datetime],
-) -> Optional[list[dict[str, Any]]]:
+    project_completed_at: datetime | None,
+) -> list[dict[str, Any | None]]:
     """
     Fetch GitHub commits between project creation and completion.
 
@@ -414,7 +400,6 @@ async def _fetch_github_commits(
     except Exception as exc:
         logger.exception("Failed to fetch GitHub commits", extra={"error": str(exc)})
         return None
-
 
 async def fetch_github_commits(*args: Any, **kwargs: Any) -> list:
     """Backward-compatible wrapper for GitHub commit fetcher."""

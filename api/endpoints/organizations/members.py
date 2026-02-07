@@ -12,7 +12,6 @@ Features:
 """
 
 import logging
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,17 +22,14 @@ from src.giljo_mcp.services.org_service import OrgService
 
 from .models import MemberInvite, MemberResponse, MemberRoleUpdate, OwnershipTransfer
 
-
 logger = logging.getLogger(__name__)
 
 # Router for member operations
 router = APIRouter()
 
-
 def get_org_service(db: AsyncSession = Depends(get_db_session)) -> OrgService:
     """Dependency for OrgService injection."""
     return OrgService(db)
-
 
 @router.get("/{org_id}/members", response_model=list[MemberResponse])
 async def list_members(
@@ -74,7 +70,6 @@ async def list_members(
     except Exception as e:
         logger.error(f"Error listing members: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
-
 
 @router.post("/{org_id}/members", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)
 async def invite_member(
@@ -138,7 +133,6 @@ async def invite_member(
         logger.error(f"Error inviting member: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
-
 @router.put("/{org_id}/members/{user_id}", response_model=MemberResponse)
 async def change_member_role(
     org_id: str,
@@ -194,7 +188,6 @@ async def change_member_role(
         logger.error(f"Error changing member role: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
-
 @router.delete("/{org_id}/members/{user_id}")
 async def remove_member(
     org_id: str,
@@ -246,10 +239,8 @@ async def remove_member(
         logger.error(f"Error removing member: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
-
 # Separate router for transfer endpoint (different path pattern)
 transfer_router = APIRouter()
-
 
 @transfer_router.post("/{org_id}/transfer")
 async def transfer_ownership(

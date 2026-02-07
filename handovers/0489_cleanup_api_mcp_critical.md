@@ -1,4 +1,4 @@
-# Handover 0711: Cleanup API MCP (CRITICAL)
+# Handover 0489: Cleanup API MCP (CRITICAL)
 
 **Date:** 2026-01-27
 **From Agent:** orchestrator-coordinator
@@ -6,7 +6,7 @@
 **Priority:** Critical
 **Estimated Complexity:** 4-6 hours
 **Status:** Not Started
-**Depends On:** 0710 (API Lifecycle)
+**Depends On:** None (0710 not created yet - was planned for API Lifecycle cleanup)
 
 ---
 
@@ -192,13 +192,13 @@ pytest tests/api/ -v
 
 **CRITICAL: Create backup branch:**
 ```bash
-git checkout -b backup/pre-0711-mcp-cleanup
+git checkout -b backup/pre-0489-mcp-cleanup
 git checkout <working-branch>
 ```
 
 If issues:
 ```bash
-git checkout backup/pre-0711-mcp-cleanup -- api/mcp_http.py
+git checkout backup/pre-0489-mcp-cleanup -- api/mcp_http.py
 ```
 
 ---

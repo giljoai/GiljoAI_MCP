@@ -21,7 +21,7 @@ Design Principles:
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import and_, func, select, update
@@ -42,9 +42,7 @@ from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Message, Task
 from src.giljo_mcp.tenant import TenantManager
 
-
 logger = logging.getLogger(__name__)
-
 
 class ProjectService:
     """
@@ -63,8 +61,8 @@ class ProjectService:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        test_session: Optional[AsyncSession] = None,
-        websocket_manager: Optional[Any] = None,
+        test_session: AsyncSession | None = None,
+        websocket_manager: Any | None = None,
     ):
         """
         Initialize ProjectService with database and tenant management.
@@ -112,8 +110,8 @@ class ProjectService:
         name: str,
         mission: str,
         description: str = "",
-        product_id: Optional[str] = None,
-        tenant_key: Optional[str] = None,
+        product_id: str | None = None,
+        tenant_key: str | None = None,
         status: str = "inactive",
     ) -> dict[str, Any]:
         """
@@ -285,7 +283,7 @@ class ProjectService:
                 message=f"Failed to get project: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
 
-    async def get_active_project(self) -> Optional[dict[str, Any]]:
+    async def get_active_project(self) -> dict[str, Any | None]:
         """
         Get the currently active project for the current tenant.
 
@@ -370,7 +368,7 @@ class ProjectService:
             raise BaseGiljoException(message=f"Failed to get active project: {e!s}", context={}) from e
 
     async def list_projects(
-        self, status: Optional[str] = None, tenant_key: Optional[str] = None
+        self, status: str | None = None, tenant_key: str | None = None
     ) -> list[dict[str, Any]]:
         """
         List all projects with optional filters.
@@ -450,7 +448,7 @@ class ProjectService:
             ) from e
 
     async def update_project_mission(
-        self, project_id: str, mission: str, tenant_key: Optional[str] = None
+        self, project_id: str, mission: str, tenant_key: str | None = None
     ) -> dict[str, Any]:
         """
         Update the mission field after orchestrator analysis.
@@ -539,8 +537,8 @@ class ProjectService:
         summary: str,
         key_outcomes: list[str],
         decisions_made: list[str],
-        tenant_key: Optional[str] = None,
-        db_session: Optional[Any] = None,
+        tenant_key: str | None = None,
+        db_session: Any | None = None,
     ) -> dict[str, Any]:
         """
         Mark a project as completed and trigger 360 memory update.
@@ -691,7 +689,7 @@ class ProjectService:
             "git_commits_count": git_commits_count,
         }
 
-    async def cancel_project(self, project_id: str, reason: Optional[str] = None) -> dict[str, Any]:
+    async def cancel_project(self, project_id: str, reason: str | None = None) -> dict[str, Any]:
         """
         Cancel a project with completed_at timestamp.
 
@@ -946,8 +944,8 @@ class ProjectService:
         self,
         project_id: str,
         force: bool = False,
-        websocket_manager: Optional[Any] = None,
-        tenant_key: Optional[str] = None,
+        websocket_manager: Any | None = None,
+        tenant_key: str | None = None,
     ) -> dict[str, Any]:
         """
         Activate a project.
@@ -1094,8 +1092,8 @@ class ProjectService:
         self,
         session: AsyncSession,
         project: Project,
-        websocket_manager: Optional[Any] = None,
-    ) -> Optional[dict[str, Any]]:
+        websocket_manager: Any | None = None,
+    ) -> dict[str, Any | None]:
         """
         Ensure an orchestrator fixture exists for the activated project (Handover 0431).
 
@@ -1212,7 +1210,7 @@ class ProjectService:
         }
 
     async def deactivate_project(
-        self, project_id: str, reason: Optional[str] = None, websocket_manager: Optional[Any] = None
+        self, project_id: str, reason: str | None = None, websocket_manager: Any | None = None
     ) -> dict[str, Any]:
         """
         Deactivate an active project.
@@ -1300,7 +1298,7 @@ class ProjectService:
                 "product_id": project.product_id,
             }
 
-    async def cancel_staging(self, project_id: str, websocket_manager: Optional[Any] = None) -> dict[str, Any]:
+    async def cancel_staging(self, project_id: str, websocket_manager: Any | None = None) -> dict[str, Any]:
         """
         Cancel a project in staging state.
 
@@ -1502,7 +1500,7 @@ class ProjectService:
                 "product_name": product_name,
             }
 
-    async def get_closeout_data(self, project_id: str, db_session: Optional[Any] = None) -> dict[str, Any]:
+    async def get_closeout_data(self, project_id: str, db_session: Any | None = None) -> dict[str, Any]:
         """
         Generate dynamic closeout checklist and prompt for project completion.
 
@@ -1523,7 +1521,7 @@ class ProjectService:
             return await self._build_closeout_data(project_id, tenant_key, session)
 
     async def can_close_project(
-        self, project_id: str, tenant_key: Optional[str] = None, db_session: Optional[Any] = None
+        self, project_id: str, tenant_key: str | None = None, db_session: Any | None = None
     ) -> dict[str, Any]:
         """
         Determine whether a project can be closed based on agent status.
@@ -1547,7 +1545,7 @@ class ProjectService:
             return await self._build_can_close_response(project_id, tenant_key, session)
 
     async def generate_closeout_prompt(
-        self, project_id: str, tenant_key: Optional[str] = None, db_session: Optional[Any] = None
+        self, project_id: str, tenant_key: str | None = None, db_session: Any | None = None
     ) -> dict[str, Any]:
         """
         Generate closeout prompt with checklist and agent summary.
@@ -1752,7 +1750,7 @@ class ProjectService:
             "active": active_agents,
         }
 
-    async def _get_project_for_tenant(self, project_id: str, tenant_key: str, session: Any) -> Optional[Project]:
+    async def _get_project_for_tenant(self, project_id: str, tenant_key: str, session: Any) -> Project | None:
         """
         Fetch a project scoped to tenant for closeout operations.
         """
@@ -1762,7 +1760,7 @@ class ProjectService:
         return result.scalar_one_or_none()
 
     async def update_project(
-        self, project_id: str, updates: dict[str, Any], websocket_manager: Optional[Any] = None
+        self, project_id: str, updates: dict[str, Any], websocket_manager: Any | None = None
     ) -> dict[str, Any]:
         """
         Update project fields.
@@ -1859,9 +1857,9 @@ class ProjectService:
     async def launch_project(
         self,
         project_id: str,
-        user_id: Optional[str] = None,
-        launch_config: Optional[dict[str, Any]] = None,
-        websocket_manager: Optional[Any] = None,
+        user_id: str | None = None,
+        launch_config: dict[str, Any | None] = None,
+        websocket_manager: Any | None = None,
     ) -> dict[str, Any]:
         """
         Launch project orchestrator.
@@ -2103,7 +2101,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
     # State & Metrics
     # ============================================================================
 
-    async def switch_project(self, project_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def switch_project(self, project_id: str, tenant_key: str | None = None) -> dict[str, Any]:
         """
         Switch to a different project context.
 
@@ -2163,7 +2161,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
     # Maintenance & Cleanup Methods
     # ============================================================================
 
-    async def nuclear_delete_project(self, project_id: str, websocket_manager: Optional[Any] = None) -> dict[str, Any]:
+    async def nuclear_delete_project(self, project_id: str, websocket_manager: Any | None = None) -> dict[str, Any]:
         """
         Immediately and permanently delete a project and ALL related data (nuclear delete).
 

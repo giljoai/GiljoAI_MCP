@@ -6,7 +6,7 @@ All operations enforce tenant isolation for security.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -17,17 +17,13 @@ from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
 from src.giljo_mcp.repositories.context_repository import ContextRepository
 
-
 router = APIRouter(prefix="/api", tags=["Agent Management"])
 
-
 # Pydantic models for request/response
-
 
 class VisionUploadRequest(BaseModel):
     product_id: str = Field(..., description="Product ID to upload vision for")
     content: str = Field(..., description="Vision document content")
-
 
 class VisionUploadResponse(BaseModel):
     message: str
@@ -36,50 +32,43 @@ class VisionUploadResponse(BaseModel):
     total_tokens: int
     chunked: bool
 
-
 class ContextChunkResponse(BaseModel):
     chunk_id: str
     content: str
     keywords: list[str]
     token_count: int
     chunk_order: int
-    summary: Optional[str]
+    summary: str | None
     created_at: datetime
-
 
 class ContextSearchRequest(BaseModel):
     product_id: str = Field(..., description="Product ID to search within")
     query: str = Field(..., description="Search query")
     limit: int = Field(10, description="Maximum results to return")
 
-
 class AgentJobCreate(BaseModel):
     agent_display_name: str = Field(..., description="Human-readable display name for UI")
     mission: str = Field(..., description="Agent mission/instructions")
-    spawned_by: Optional[str] = Field(None, description="Agent ID that spawned this job")
+    spawned_by: str | None = Field(None, description="Agent ID that spawned this job")
     context_chunks: list[str] = Field(default_factory=list, description="Context chunk IDs")
-
 
 class AgentJobResponse(BaseModel):
     job_id: str
     agent_display_name: str
     mission: str
     status: str
-    spawned_by: Optional[str]
-    template_id: Optional[str] = None  # Handover 0244a: Link to source template
+    spawned_by: str | None
+    template_id: str | None = None  # Handover 0244a: Link to source template
     context_chunks: list[str]
     created_at: datetime
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
-
+    started_at: datetime | None
+    completed_at: datetime | None
 
 class AgentJobStatusUpdate(BaseModel):
     status: str = Field(..., description="New status (pending, active, completed, failed)")
 
-
 class AgentJobMessage(BaseModel):
     message: dict[str, Any] = Field(..., description="Message object to add")
-
 
 class TokenReductionStats(BaseModel):
     total_summaries: int
@@ -88,15 +77,13 @@ class TokenReductionStats(BaseModel):
     total_original_tokens: int
     total_condensed_tokens: int
 
-
 # Handover 0503: Removed duplicate vision upload endpoint
 # Vision uploads now handled by api/endpoints/products/vision.py
 # Use POST /api/v1/products/{product_id}/vision instead
 
-
 @router.get("/agent-jobs/active", response_model=list[AgentJobResponse])
 async def get_active_agent_jobs(
-    agent_display_name: Optional[str] = Query(None, description="Filter by agent display name"),
+    agent_display_name: str | None = Query(None, description="Filter by agent display name"),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """List all active agent jobs for tenant."""
@@ -131,7 +118,6 @@ async def get_active_agent_jobs(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
-
 
 @router.post("/agent-jobs", response_model=AgentJobResponse)
 async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(get_tenant_key)):
@@ -185,7 +171,6 @@ async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(g
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
-
 
 @router.put("/agent-jobs/{job_id}/status", response_model=dict)
 async def update_agent_job_status(
@@ -242,11 +227,9 @@ async def update_agent_job_status(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-
 # REMOVED: Duplicate acknowledge endpoint - use /api/agent-jobs/{job_id}/acknowledge from lifecycle.py instead
 # This legacy endpoint was superseded by Handover 0124 (api/endpoints/agent_jobs/lifecycle.py)
 # which returns proper JobAcknowledgeResponse with job_id, status, started_at, message fields.
-
 
 @router.post("/agent-jobs/{job_id}/messages", response_model=dict)
 async def add_job_message(job_id: str, message_data: AgentJobMessage, tenant_key: str = Depends(get_tenant_key)):
@@ -296,7 +279,6 @@ async def add_job_message(job_id: str, message_data: AgentJobMessage, tenant_key
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-
 @router.post("/context/search", response_model=list[ContextChunkResponse])
 async def search_context(search_data: ContextSearchRequest, tenant_key: str = Depends(get_tenant_key)):
     """Full-text search on vision chunks."""
@@ -338,7 +320,6 @@ async def search_context(search_data: ContextSearchRequest, tenant_key: str = De
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-
 @router.get("/context/product/{product_id}/chunks", response_model=list[ContextChunkResponse])
 async def get_product_chunks(product_id: str, tenant_key: str = Depends(get_tenant_key)):
     """Get all context chunks for a product."""
@@ -378,7 +359,6 @@ async def get_product_chunks(product_id: str, tenant_key: str = Depends(get_tena
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-
 @router.get("/context/stats/{product_id}", response_model=TokenReductionStats)
 async def get_token_reduction_stats(product_id: str, tenant_key: str = Depends(get_tenant_key)):
     """Get context prioritization statistics for a product."""
@@ -407,10 +387,9 @@ async def get_token_reduction_stats(product_id: str, tenant_key: str = Depends(g
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-
 @router.get("/agent-jobs/stats", response_model=dict)
 async def get_agent_job_statistics(
-    agent_display_name: Optional[str] = Query(None, description="Filter by agent display name"),
+    agent_display_name: str | None = Query(None, description="Filter by agent display name"),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """Get agent job statistics for tenant."""

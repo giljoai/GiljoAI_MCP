@@ -6,13 +6,11 @@ to enforce token efficiency and optimization rules.
 """
 
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from .serena_optimizer import OperationType, SerenaOptimizer
 
-
 logger = logging.getLogger(__name__)
-
 
 class SerenaToolInterceptor:
     """
@@ -267,7 +265,6 @@ class SerenaToolInterceptor:
         )
 
         logger.debug(f"Recorded optimization for {tool_name}: {result_size} chars")
-
 
 class MissionOptimizationInjector:
     """
