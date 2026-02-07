@@ -654,49 +654,58 @@
       "id": "0710",
       "title": "Models Agents Cleanup",
       "status": "pending",
-      "effort_hours": "6-8",
-      "priority": "MEDIUM",
+      "effort_hours": "4-6",
+      "priority": "CRITICAL",
       "dependencies": [
         "0709-SECURITY"
       ],
-      "scope": "Type hints for AgentJob model, cascade verification - fills gaps not covered by 0700b-h",
+      "scope": "Clean agent_identity.py and agents.py - resolve DEPRECATED/TODO markers. Note: 0706b verified architecture is HEALTHY.",
       "started_at": null,
       "completed_at": null,
       "worker_session_id": null,
       "docs_updated": [],
-      "note": "Renumbered from 0706"
+      "spec_file": "handovers/0700_series/0710_cleanup_models_agents.md",
+      "kickoff_file": "handovers/0700_series/kickoff_prompts/0710_cleanup_models_agents_kickoff.md",
+      "validation_required": true,
+      "note": "Moved from root 0706_cleanup_models_agents.md"
     },
     {
       "id": "0714",
       "title": "Services Leaf Cleanup",
       "status": "pending",
-      "effort_hours": "4-6",
+      "effort_hours": "3-4",
       "priority": "MEDIUM",
       "dependencies": [
         "0710"
       ],
-      "scope": "Clean up leaf services (settings, templates) - no upstream dependencies",
+      "scope": "Clean leaf services: git_service, serena_detector, template_service, task_service, message_service. Verify counter-based messaging.",
       "started_at": null,
       "completed_at": null,
       "worker_session_id": null,
       "docs_updated": [],
-      "note": "Renumbered from 0707"
+      "spec_file": "handovers/0700_series/0714_cleanup_services_leaf.md",
+      "kickoff_file": "handovers/0700_series/kickoff_prompts/0714_cleanup_services_leaf_kickoff.md",
+      "validation_required": true,
+      "note": "Moved from root 0707_cleanup_services_leaf.md"
     },
     {
       "id": "0715",
       "title": "Services Core Cleanup",
       "status": "pending",
-      "effort_hours": "6-8",
+      "effort_hours": "4-6",
       "priority": "HIGH",
       "dependencies": [
         "0714"
       ],
-      "scope": "Clean up core services (OrchestrationService, ProductService)",
+      "scope": "Clean core services: orchestration_service (12 TODOs), project_service, product_service, settings_service, context_service.",
       "started_at": null,
       "completed_at": null,
       "worker_session_id": null,
       "docs_updated": [],
-      "note": "Renumbered from 0708"
+      "spec_file": "handovers/0700_series/0715_cleanup_services_core.md",
+      "kickoff_file": "handovers/0700_series/kickoff_prompts/0715_cleanup_services_core_kickoff.md",
+      "validation_required": true,
+      "note": "Moved from root 0708_cleanup_services_core.md"
     },
     {
       "id": "0711",

@@ -1,12 +1,35 @@
-# Handover 0707: Cleanup Services Leaf
+# Handover 0714: Cleanup Services Leaf
 
-**Date:** 2026-01-27
+**Series:** 0700 Code Cleanup Series
+**Date:** 2026-01-27 (Updated: 2026-02-07)
 **From Agent:** orchestrator-coordinator
 **To Agent:** tdd-implementor
 **Priority:** Medium
 **Estimated Complexity:** 3-4 hours
-**Status:** Not Started
-**Depends On:** 0706 (Models Agents)
+**Status:** Pending
+**Depends On:** 0710 (Models Agents)
+
+---
+
+## CRITICAL: Large File Handling
+
+**Files over 20K tokens (~500+ lines) MUST be read in batches.** Do NOT skip large files.
+
+```python
+# Read large files in chunks of 200 lines:
+Read(file_path, offset=0, limit=200)    # Lines 1-200
+Read(file_path, offset=200, limit=200)  # Lines 201-400
+```
+
+---
+
+## NOTE: Partial Work Already Done
+
+Some items may have been addressed:
+- **0700e**: Template system cleanup (template_content removed)
+- **0707-LINT**: Lint issues auto-fixed and manual cleanup
+
+Focus on remaining TODO/DEPRECATED markers and verify counter-based message handling.
 
 ---
 
@@ -134,4 +157,4 @@ pytest tests/integration/ -v -k "git or template or task or message"
 
 ## Next Handover
 
-**0708_cleanup_services_core.md** - Clean up core services (orchestration_service, project_service).
+**0715_cleanup_services_core.md** - Clean up core services (orchestration_service, project_service).
