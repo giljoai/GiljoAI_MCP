@@ -261,11 +261,11 @@ async def write_360_memory(
         decisions_made = decisions_made[:MAX_DECISIONS_MADE]
 
     # Validate entry_type
-    VALID_ENTRY_TYPES = {"project_completion", "handover_closeout", "session_handover"}
-    if entry_type not in VALID_ENTRY_TYPES:
+    valid_entry_types = {"project_completion", "handover_closeout", "session_handover"}
+    if entry_type not in valid_entry_types:
         return {
             "success": False,
-            "error": f"Invalid entry_type '{entry_type}'. Must be one of: {VALID_ENTRY_TYPES}",
+            "error": f"Invalid entry_type '{entry_type}'. Must be one of: {valid_entry_types}",
         }
 
     try:

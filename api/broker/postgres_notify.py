@@ -94,7 +94,11 @@ class PostgresNotifyWebSocketEventBroker(WebSocketEventBroker):
 
     def _on_notification(self, _connection: asyncpg.Connection, _pid: int, _channel: str, payload: str) -> None:
         # Fire and forget - task will run in background
-        _ = asyncio.create_task(self._handle_payload(payload))
+        task = asyncio.create_task(self._handle_payload(payload))
+        # Store reference to prevent task from being garbage collected
+        self._background_tasks = getattr(self, "_background_tasks", set())
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     async def _handle_payload(self, payload: str) -> None:
         try:

@@ -33,11 +33,13 @@ class PathNormalizer:
 
             # Handle special relative path cases
             if original.startswith((".\\", "./")):
-                # Preserve ./ prefix
-                path = "./" + path.lstrip("./")
+                # Preserve ./ prefix - strip each separately
+                path = "./" + path.lstrip(".")
+                path = path.lstrip("/")
             elif original.startswith(("..\\", "../")):
-                # Preserve ../ prefix
-                path = "../" + path.lstrip("../")
+                # Preserve ../ prefix - strip each separately
+                path = "../" + path.lstrip(".")
+                path = path.lstrip("/")
 
             return path
 
