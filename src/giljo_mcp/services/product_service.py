@@ -863,7 +863,7 @@ class ProductService:
             ...     print(f"{product['name']} - purge in {product['days_until_purge']} days")
         """
         try:
-            PURGE_DAYS = 10  # 10-day purge policy (matches purge_expired_deleted_products)
+            purge_days = 10  # 10-day purge policy (matches purge_expired_deleted_products)
 
             async with self._get_session() as session:
                 stmt = (
@@ -878,7 +878,7 @@ class ProductService:
                 product_list = []
                 for product in deleted_products:
                     # Calculate purge date
-                    purge_date = product.deleted_at + timedelta(days=PURGE_DAYS)
+                    purge_date = product.deleted_at + timedelta(days=purge_days)
                     days_until_purge = max(0, (purge_date - datetime.now(timezone.utc)).days)
 
                     # Count related entities

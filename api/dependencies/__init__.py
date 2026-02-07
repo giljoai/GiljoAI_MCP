@@ -11,7 +11,6 @@ Created: 2025-11-02
 # Import legacy dependencies from the sibling dependencies.py file
 # Use importlib to load the .py file directly (avoiding package/module conflict)
 import importlib.util
-import os
 from pathlib import Path
 
 from .websocket import WebSocketDependency, get_websocket_dependency, get_websocket_manager

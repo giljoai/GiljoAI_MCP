@@ -76,7 +76,7 @@ def find_available_port(preferred_port: int) -> int:
                 if result != 0:  # Port is available
                     logging.warning(f"Port {preferred_port} is occupied, using alternative port {port}")
                     return port
-        except OSError:  # Socket operations can fail
+        except OSError:  # noqa: PERF203 - Port scan resilience: continue trying ports on socket errors
             continue  # nosec B112 - best effort port scan
 
     raise RuntimeError(f"Could not find available port (preferred: {preferred_port})")
