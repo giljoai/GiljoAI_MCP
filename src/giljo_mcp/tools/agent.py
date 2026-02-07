@@ -78,7 +78,7 @@ async def log_interaction_legacy(interaction: dict[str, Any], tenant_key: str, s
     """
     try:
         # Validate tenant matches
-        agent_id = interaction.get("agent_id")
+        interaction.get("agent_id")
         parent_agent_id = interaction.get("parent_agent_id")
         project_id = interaction.get("project_id")
 

@@ -2,20 +2,20 @@
   <v-navigation-drawer
     id="navigation"
     :model-value="modelValue"
-    @update:model-value="$emit('update:model-value', $event)"
     :rail="rail"
     permanent
     color="surface"
     width="180"
     class="navigation-drawer-container"
+    @update:model-value="$emit('update:model-value', $event)"
   >
     <!-- Edge-Aligned Collapse/Expand Tab -->
     <div
       class="edge-toggle-tab"
-      @click="$emit('toggle-rail')"
       :aria-label="rail ? 'Expand sidebar' : 'Collapse sidebar'"
       role="button"
       tabindex="0"
+      @click="$emit('toggle-rail')"
       @keydown.enter="$emit('toggle-rail')"
       @keydown.space.prevent="$emit('toggle-rail')"
     >
@@ -26,7 +26,7 @@
     <div style="height: 8px"></div>
 
     <!-- Navigation Items -->
-    <v-list density="compact" nav v-model:selected="selected" select-strategy="single">
+    <v-list v-model:selected="selected" density="compact" nav select-strategy="single">
       <v-list-item
         v-for="item in navigationItems"
         :key="item.name"
@@ -143,7 +143,7 @@ const updateSelectedFromRoute = () => {
   let best = null
   for (const item of items) {
     if (!item.path) continue
-    if (currentPath === item.path || currentPath.startsWith(item.path + '/')) {
+    if (currentPath === item.path || currentPath.startsWith(`${item.path  }/`)) {
       if (!best || item.path.length > best.path.length) {
         best = item
       }

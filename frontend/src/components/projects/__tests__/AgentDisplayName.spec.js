@@ -135,8 +135,8 @@ vi.mock('@/stores/user', () => ({
  * Currently uses agent_display_name (to be replaced by agent_display_name)
  */
 const createMockAgent = (overrides = {}) => ({
-  job_id: 'job-' + Math.random().toString(36).slice(2, 9),
-  agent_id: 'agent-' + Math.random().toString(36).slice(2, 9),
+  job_id: `job-${  Math.random().toString(36).slice(2, 9)}`,
+  agent_id: `agent-${  Math.random().toString(36).slice(2, 9)}`,
   agent_display_name: 'implementer', // OLD - being replaced
   // agent_display_name would go here after migration
   agent_name: 'implementer',
@@ -153,7 +153,7 @@ const createMockAgent = (overrides = {}) => ({
 })
 
 const createMockProject = (overrides = {}) => ({
-  project_id: 'proj-' + Math.random().toString(36).slice(2, 9),
+  project_id: `proj-${  Math.random().toString(36).slice(2, 9)}`,
   id: 'proj-123',
   name: 'Test Project',
   description: 'Test Description',
@@ -325,7 +325,6 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
         const agent = createMockAgent({
           agent_name: 'My Custom Tester',
           agent_display_name: 'Frontend Tester',
-          agent_display_name: 'tester', // Old field
         })
 
         const wrapper = mount(JobsTab, {
@@ -369,7 +368,6 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
          */
         const agent = createMockAgent({
           agent_display_name: 'Code Reviewer',
-          agent_display_name: 'reviewer', // Old field
         })
 
         expect(agent).toHaveProperty('agent_display_name')
@@ -413,7 +411,6 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
          */
         const agent = createMockAgent({
           agent_display_name: 'Code Implementer',
-          agent_display_name: 'implementer',
         })
 
         expect(agent).toHaveProperty('agent_display_name')
@@ -464,7 +461,6 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
         const agent = createMockAgent({
           agent_name: 'implementer', // North star - template lookup
           agent_display_name: 'Code Implementation Specialist', // UI display
-          agent_display_name: 'implementer', // Old field
         })
 
         expect(agent).toHaveProperty('agent_display_name')
@@ -603,7 +599,6 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
         const agent = createMockAgent({
           agent_name: 'tester',
           agent_display_name: 'Frontend Test Specialist',
-          agent_display_name: 'tester',
         })
 
         expect(agent).toHaveProperty('agent_display_name')
@@ -617,7 +612,6 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
          */
         const agent = createMockAgent({
           agent_display_name: 'Frontend Test Specialist',
-          agent_display_name: 'tester',
         })
 
         // Component should display agent_display_name, not agent_display_name

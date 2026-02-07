@@ -80,8 +80,8 @@ export const useAgentJobsStore = defineStore('agentJobs', () => {
         return (priA - priB) * order
       }
 
-      let aVal = a[sortKey]
-      let bVal = b[sortKey]
+      const aVal = a[sortKey]
+      const bVal = b[sortKey]
 
       if (aVal === bVal) return 0
       if (aVal == null) return 1

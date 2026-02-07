@@ -345,7 +345,7 @@ class ProductService:
                 conditions = [Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None)]
 
                 if not include_inactive:
-                    conditions.append(Product.is_active == True)
+                    conditions.append(Product.is_active)
 
                 # Eagerly load vision_documents to avoid lazy loading in property access
                 # Sort: active products first, then by creation date (newest first)
@@ -608,7 +608,7 @@ class ProductService:
                 # Deactivate all other products for tenant FIRST
                 # Must flush deactivation before activation due to unique constraint
                 deactivate_stmt = select(Product).where(
-                    and_(Product.tenant_key == self.tenant_key, Product.is_active == True, Product.id != product_id)
+                    and_(Product.tenant_key == self.tenant_key, Product.is_active, Product.id != product_id)
                 )
                 deactivate_result = await session.execute(deactivate_stmt)
                 products_to_deactivate = deactivate_result.scalars().all()
@@ -937,7 +937,7 @@ class ProductService:
                     .where(
                         and_(
                             Product.tenant_key == self.tenant_key,
-                            Product.is_active == True,
+                            Product.is_active,
                             Product.deleted_at.is_(None),
                         )
                     )

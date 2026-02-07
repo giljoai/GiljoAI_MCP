@@ -265,11 +265,8 @@ class SetupState(Base):
     python_version = Column(String(20), nullable=True)
     node_version = Column(String(20), nullable=True)
 
-    # REMOVED (Handover 0034): Default password tracking fields
-    # Legacy admin/admin pattern no longer used
+    # REMOVED (Handover 0034): Default password tracking fields removed
     # Fresh install now creates admin via CreateAdminAccount.vue
-    # default_password_active = Column(...)  # REMOVED
-    # password_changed_at = Column(...)  # REMOVED
 
     # First admin creation tracking (Handover 0035: Security Enhancement)
     # CRITICAL SECURITY: Atomic flag preventing duplicate admin creation after first user setup

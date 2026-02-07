@@ -110,8 +110,8 @@
             :color="confirmationConfig.color || 'error'"
             variant="text"
             data-test="confirm-dialog-confirm"
-            @click="executeConfirmedAction"
             :loading="confirmationLoading"
+            @click="executeConfirmedAction"
           >
             {{ confirmationConfig.confirmText }}
           </v-btn>

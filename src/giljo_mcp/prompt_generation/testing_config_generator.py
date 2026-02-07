@@ -38,12 +38,10 @@ class TestingConfigGenerator:
         if testing_config is None:
             return ""
 
-        # Generate based on priority level
         if priority == 1:
             return cls._generate_full_config(testing_config)
         if priority == 2:
             return cls._generate_standards_only(testing_config)
-        # priority == 3
         return cls._generate_summary(testing_config)
 
     @classmethod
@@ -169,7 +167,7 @@ class Calculator:
         frameworks_list = []
         if frameworks:
             if isinstance(frameworks, dict):
-                for platform, libs in frameworks.items():
+                for libs in frameworks.values():
                     if libs:
                         frameworks_list.extend(libs)
             else:

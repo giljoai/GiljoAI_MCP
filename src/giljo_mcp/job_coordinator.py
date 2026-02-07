@@ -284,7 +284,7 @@ class JobCoordinator:
 
         # Create all jobs in the chain
         jobs = []
-        for i, spec in enumerate(chain_specs):
+        for spec in chain_specs:
             job_data = {
                 "tenant_key": tenant_key,
                 "agent_display_name": spec["agent_display_name"],

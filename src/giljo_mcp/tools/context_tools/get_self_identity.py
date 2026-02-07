@@ -108,7 +108,7 @@ async def get_self_identity(
     try:
         # Query template by name with multi-tenant isolation
         stmt = select(AgentTemplate).where(
-            AgentTemplate.name == agent_name, AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True
+            AgentTemplate.name == agent_name, AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active
         )
         result = await session_to_use.execute(stmt)
         template = result.scalar_one_or_none()

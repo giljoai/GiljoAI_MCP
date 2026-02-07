@@ -47,13 +47,13 @@ async def get_job_executions(
 
     return [
         AgentExecutionResponse(
-            agent_id=str(exec.agent_id),
-            job_id=str(exec.job_id),
-            status=exec.status,
-            progress=exec.progress,
-            spawned_by=str(exec.spawned_by) if exec.spawned_by else None,
-            created_at=exec.created_at,
-            updated_at=exec.updated_at,
+            agent_id=str(execution.agent_id),
+            job_id=str(execution.job_id),
+            status=execution.status,
+            progress=execution.progress,
+            spawned_by=str(execution.spawned_by) if execution.spawned_by else None,
+            created_at=execution.created_at,
+            updated_at=execution.updated_at,
         )
-        for exec in executions
+        for execution in executions
     ]

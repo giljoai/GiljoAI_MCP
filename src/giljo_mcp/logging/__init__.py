@@ -39,7 +39,7 @@ Environment Variables:
 import logging
 import os
 import sys
-from typing import Any, Optional
+from typing import Optional
 
 import structlog
 from structlog.types import FilteringBoundLogger
@@ -51,8 +51,11 @@ from .error_codes import ErrorCode, get_error_description
 __all__ = ["ErrorCode", "configure_logging", "get_colored_logger", "get_error_description", "get_logger"]
 
 
-# Global flag to track if structlog is configured
-_CONFIGURED = False
+# Module-level configuration state
+class _LoggingState:
+    """Configuration state holder to avoid global statement."""
+
+    configured = False
 
 
 def configure_logging(
@@ -68,9 +71,7 @@ def configure_logging(
         log_level: Logging level (default: INFO)
         force_json: Force JSON output regardless of environment
     """
-    global _CONFIGURED
-
-    if _CONFIGURED:
+    if _LoggingState.configured:
         return
 
     # Determine environment
@@ -119,7 +120,7 @@ def configure_logging(
         cache_logger_on_first_use=True,
     )
 
-    _CONFIGURED = True
+    _LoggingState.configured = True
 
 
 def get_logger(name: Optional[str] = None) -> FilteringBoundLogger:
@@ -142,7 +143,7 @@ def get_logger(name: Optional[str] = None) -> FilteringBoundLogger:
         )
     """
     # Ensure logging is configured
-    if not _CONFIGURED:
+    if not _LoggingState.configured:
         configure_logging()
 
     # Get structlog logger
@@ -171,8 +172,7 @@ def get_colored_logger(name: Optional[str] = None) -> FilteringBoundLogger:
 # This ensures backward compatibility - existing code just works
 def _init_logging() -> None:
     """Initialize logging configuration on module import"""
-    global _CONFIGURED
-    if not _CONFIGURED:
+    if not _LoggingState.configured:
         configure_logging()
 
 

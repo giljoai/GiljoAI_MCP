@@ -188,7 +188,7 @@ class TemplateCache:
             AgentTemplate.tenant_key == tenant_key,
             AgentTemplate.product_id == product_id,
             AgentTemplate.role == role,
-            AgentTemplate.is_active == True,
+            AgentTemplate.is_active,
         )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
@@ -201,7 +201,7 @@ class TemplateCache:
             AgentTemplate.tenant_key == tenant_key,
             AgentTemplate.product_id.is_(None),
             AgentTemplate.role == role,
-            AgentTemplate.is_active == True,
+            AgentTemplate.is_active,
         )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
@@ -211,7 +211,7 @@ class TemplateCache:
         stmt = select(AgentTemplate).where(
             AgentTemplate.tenant_key == "system",
             AgentTemplate.role == role,
-            AgentTemplate.is_default == True,
+            AgentTemplate.is_default,
         )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()

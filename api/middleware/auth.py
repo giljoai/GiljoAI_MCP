@@ -82,7 +82,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
             has_authorization=bool(request.headers.get("authorization")),
         )
 
-        # Authenticate (auto-login or credentials)
         auth_result = await auth_manager.authenticate_request(request)
 
         # DIAGNOSTIC: Log auth result

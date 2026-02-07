@@ -356,8 +356,21 @@ class DatabaseManager:
         return TenantManager.generate_tenant_key(project_name)
 
 
-# Global instance for convenience (can be overridden)
-_db_manager: Optional[DatabaseManager] = None
+# Module-level database manager holder
+class _DatabaseManagerHolder:
+    """Lazy singleton holder to avoid global statement."""
+
+    _instance: Optional[DatabaseManager] = None
+
+    @classmethod
+    def get_instance(cls, database_url: Optional[str] = None, is_async: bool = False) -> DatabaseManager:
+        if cls._instance is None or (database_url and cls._instance.database_url != database_url):
+            cls._instance = DatabaseManager(database_url, is_async)
+        return cls._instance
+
+    @classmethod
+    def set_instance(cls, manager: DatabaseManager):
+        cls._instance = manager
 
 
 def get_db_manager(database_url: Optional[str] = None, is_async: bool = False) -> DatabaseManager:
@@ -371,18 +384,12 @@ def get_db_manager(database_url: Optional[str] = None, is_async: bool = False) -
     Returns:
         DatabaseManager instance
     """
-    global _db_manager
-
-    if _db_manager is None or (database_url and _db_manager.database_url != database_url):
-        _db_manager = DatabaseManager(database_url, is_async)
-
-    return _db_manager
+    return _DatabaseManagerHolder.get_instance(database_url, is_async)
 
 
 def set_db_manager(manager: DatabaseManager):
     """Set the global DatabaseManager instance."""
-    global _db_manager
-    _db_manager = manager
+    _DatabaseManagerHolder.set_instance(manager)
 
 
 async def init_db(database_url: Optional[str] = None) -> DatabaseManager:

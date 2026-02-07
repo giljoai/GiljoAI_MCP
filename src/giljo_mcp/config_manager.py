@@ -850,25 +850,32 @@ class ConfigManager:
             return default
 
 
-# Global configuration instance
-_config_manager: Optional[ConfigManager] = None
+# Module-level configuration holder
+class _ConfigManagerHolder:
+    """Lazy singleton holder to avoid global statement."""
+
+    _instance: Optional[ConfigManager] = None
+
+    @classmethod
+    def get_instance(cls) -> ConfigManager:
+        if cls._instance is None:
+            cls._instance = ConfigManager(auto_reload=True)
+            cls._instance.logging.setup_logging()
+        return cls._instance
+
+    @classmethod
+    def set_instance(cls, config: ConfigManager):
+        cls._instance = config
 
 
 def get_config() -> ConfigManager:
     """Get the global configuration manager instance."""
-    global _config_manager
-
-    if _config_manager is None:
-        _config_manager = ConfigManager(auto_reload=True)
-        _config_manager.logging.setup_logging()
-
-    return _config_manager
+    return _ConfigManagerHolder.get_instance()
 
 
 def set_config(config: ConfigManager):
     """Set the global configuration manager instance."""
-    global _config_manager
-    _config_manager = config
+    _ConfigManagerHolder.set_instance(config)
 
 
 def generate_sample_config(path: Optional[Path] = None) -> Path:
