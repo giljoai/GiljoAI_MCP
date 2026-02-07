@@ -17,7 +17,7 @@ Provides:
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -236,7 +236,7 @@ class SetupStateManager:
             self.db_session,
             tenant_key=self.tenant_key,
             database_initialized=True,
-            database_initialized_at=datetime.utcnow(),
+            database_initialized_at=datetime.now(timezone.utc),
             setup_version=setup_version,
             config_snapshot=config_snapshot,
         )
@@ -259,7 +259,7 @@ class SetupStateManager:
 
         # Update state
         state["database_initialized"] = True
-        state["database_initialized_at"] = datetime.utcnow().isoformat()
+        state["database_initialized_at"] = datetime.now(timezone.utc).isoformat()
         if setup_version:
             state["setup_version"] = setup_version
         if config_snapshot:
@@ -487,10 +487,10 @@ class SetupStateManager:
         # Fall back to file
         current_state = self.get_state()
         failures = list(current_state.get("validation_failures", []))
-        failures.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
+        failures.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
 
         self.update_state(
-            validation_failures=failures, validation_passed=False, last_validation_at=datetime.utcnow().isoformat()
+            validation_failures=failures, validation_passed=False, last_validation_at=datetime.now(timezone.utc).isoformat()
         )
 
     def add_validation_warning(self, message: str) -> None:
@@ -515,9 +515,9 @@ class SetupStateManager:
         # Fall back to file
         current_state = self.get_state()
         warnings = list(current_state.get("validation_warnings", []))
-        warnings.append({"message": message, "timestamp": datetime.utcnow().isoformat()})
+        warnings.append({"message": message, "timestamp": datetime.now(timezone.utc).isoformat()})
 
-        self.update_state(validation_warnings=warnings, last_validation_at=datetime.utcnow().isoformat())
+        self.update_state(validation_warnings=warnings, last_validation_at=datetime.now(timezone.utc).isoformat())
 
     def reset_state(self) -> None:
         """

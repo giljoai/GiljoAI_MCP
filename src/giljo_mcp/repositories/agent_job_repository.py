@@ -5,7 +5,7 @@ Handover 0017: Provides agent job coordination and lifecycle management.
 Separate from user tasks - handles agent-to-agent job coordination for agentic orchestration.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select, update
@@ -116,12 +116,12 @@ class AgentJobRepository:
             if started_at:
                 job.started_at = started_at
             elif status == "active" and not job.started_at:
-                job.started_at = datetime.utcnow()
+                job.started_at = datetime.now(timezone.utc)
 
             if completed_at:
                 job.completed_at = completed_at
             elif status in ["completed", "failed"] and not job.completed_at:
-                job.completed_at = datetime.utcnow()
+                job.completed_at = datetime.now(timezone.utc)
 
             await session.flush()
             return True
@@ -212,7 +212,7 @@ class AgentJobRepository:
 
             # Add timestamp if not present
             if "timestamp" not in message:
-                message["timestamp"] = datetime.utcnow().isoformat()
+                message["timestamp"] = datetime.now(timezone.utc).isoformat()
 
             messages.append(message)
             job.messages = messages
@@ -242,7 +242,7 @@ class AgentJobRepository:
             if job.status == "pending":
                 job.status = "active"
                 if not job.started_at:
-                    job.started_at = datetime.utcnow()
+                    job.started_at = datetime.now(timezone.utc)
             await session.flush()
             return True
         return False
