@@ -13,11 +13,10 @@ Multi-tenant isolation: All operations scoped by tenant_key.
 
 import asyncio
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any
 from uuid import uuid4
 
 from .repositories.agent_job_repository import AgentJobRepository
-
 
 class JobCoordinator:
     """

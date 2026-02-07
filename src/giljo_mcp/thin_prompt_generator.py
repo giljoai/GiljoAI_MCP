@@ -42,7 +42,7 @@ Priority: CRITICAL - Enables Commercial Product
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import and_, select
@@ -53,9 +53,7 @@ from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import Product, Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
-
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class ThinPromptResponse:
@@ -68,7 +66,6 @@ class ThinPromptResponse:
     estimated_prompt_tokens: int
     mcp_tool_name: str
     instructions_stored: bool
-
 
 class ThinClientPromptGenerator:
     """
@@ -114,10 +111,10 @@ class ThinClientPromptGenerator:
     async def generate(
         self,
         project_id: str,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
         tool: str = "universal",
-        field_priorities: Optional[dict[str, int]] = None,
-        depth_config: Optional[dict[str, Any]] = None,  # NEW PARAMETER (Handover 0315)
+        field_priorities: dict[str, int | None] = None,
+        depth_config: dict[str, Any | None] = None,  # NEW PARAMETER (Handover 0315)
         continuation_mode: bool = False,  # NEW PARAMETER (Handover 0461c)
     ) -> dict[str, Any]:
         """
@@ -370,7 +367,7 @@ class ThinClientPromptGenerator:
         }
 
     async def _regenerate_mission(
-        self, product: Product, project: Project, field_priorities: dict[str, int], user_id: Optional[str]
+        self, product: Product, project: Project, field_priorities: dict[str, int], user_id: str | None
     ) -> str:
         """
         Regenerate orchestrator mission with current field priorities.
@@ -546,7 +543,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         tool: str,
         field_priorities: dict[str, int],
         depth_config: dict[str, Any],
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
     ) -> str:
         """
         Generate thin prompt listing available MCP tools by priority (Handover 0315).
@@ -661,7 +658,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
 
         return prompt
 
-    async def _inject_360_memory(self, session, product_id: str, tenant_key: str, product: Optional[Any] = None) -> str:
+    async def _inject_360_memory(self, session, product_id: str, tenant_key: str, product: Any | None = None) -> str:
         """
         Inject 360 Memory System context into prompt.
 
@@ -777,7 +774,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
 
         return "\n".join(git_lines)
 
-    async def _fetch_product(self, project_id: str) -> Optional[Any]:
+    async def _fetch_product(self, project_id: str) -> Any | None:
         """
         Fetch product for a given project.
 
@@ -809,7 +806,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
 
         return product
 
-    async def _fetch_project(self, project_id: str) -> Optional[Any]:
+    async def _fetch_project(self, project_id: str) -> Any | None:
         """
         Fetch project by ID.
 
@@ -837,7 +834,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         project_name: str,
         tool: str,
         product,
-        field_priorities: Optional[dict[str, int]] = None,
+        field_priorities: dict[str, int | None] = None,
     ) -> str:
         """
         Build thin client prompt WITH 360 Memory, Git integration, and Agent templates.
@@ -1033,7 +1030,7 @@ START NOW:
         agent_id: str,
         orchestrator_id: str,
         project_id: str,
-        product_id: Optional[str],
+        product_id: str | None,
         mcp_url: str,
     ) -> str:
         """
@@ -1355,7 +1352,7 @@ When ready, coordinate agents based on current status.
 
         return "\n".join(all_sections)
 
-    def _get_field_priority(self, field_name: str, user_priorities: Optional[dict]) -> Optional[int]:
+    def _get_field_priority(self, field_name: str, user_priorities: dict | None) -> int | None:
         """
         Get priority for a specific field from user config or defaults.
 

@@ -22,7 +22,7 @@ Design Principles:
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import and_, func, or_, select, update
@@ -38,9 +38,7 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.models import Product, Project, Task, VisionDocument
 
-
 logger = logging.getLogger(__name__)
-
 
 class ProductService:
     """
@@ -62,7 +60,7 @@ class ProductService:
         db_manager: DatabaseManager,
         tenant_key: str,
         websocket_manager=None,
-        test_session: Optional[AsyncSession] = None,
+        test_session: AsyncSession | None = None,
     ):
         """
         Initialize ProductService with database and tenant isolation.
@@ -98,7 +96,7 @@ class ProductService:
         # Return the context manager directly (no double-wrapping)
         return self.db_manager.get_session_async()
 
-    def _validate_target_platforms(self, target_platforms: list[str]) -> tuple[bool, Optional[str]]:
+    def _validate_target_platforms(self, target_platforms: list[str]) -> tuple[bool, str | None]:
         """
         Validate target_platforms field (Handover 0425).
 
@@ -133,11 +131,11 @@ class ProductService:
     async def create_product(
         self,
         name: str,
-        description: Optional[str] = None,
-        project_path: Optional[str] = None,
-        config_data: Optional[dict[str, Any]] = None,
-        product_memory: Optional[dict[str, Any]] = None,  # Handover 0135
-        target_platforms: Optional[list[str]] = None,  # Handover 0425
+        description: str | None = None,
+        project_path: str | None = None,
+        config_data: dict[str, Any | None] = None,
+        product_memory: dict[str, Any | None] = None,  # Handover 0135
+        target_platforms: list[str | None] = None,  # Handover 0425
     ) -> dict[str, Any]:
         """
         Create a new product.

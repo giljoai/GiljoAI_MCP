@@ -6,7 +6,7 @@ CRUD operations for 360 memory entries with tenant isolation.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select, update
@@ -14,9 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 
-
 logger = logging.getLogger(__name__)
-
 
 class ProductMemoryRepository:
     """Repository for ProductMemoryEntry CRUD operations."""
@@ -30,21 +28,21 @@ class ProductMemoryRepository:
         entry_type: str,
         source: str,
         timestamp: datetime,
-        project_id: Optional[UUID] = None,
-        project_name: Optional[str] = None,
-        summary: Optional[str] = None,
-        key_outcomes: Optional[list[str]] = None,
-        decisions_made: Optional[list[str]] = None,
-        git_commits: Optional[list[dict[str, Any]]] = None,
-        deliverables: Optional[list[str]] = None,
-        metrics: Optional[dict[str, Any]] = None,
+        project_id: UUID | None = None,
+        project_name: str | None = None,
+        summary: str | None = None,
+        key_outcomes: list[str | None] = None,
+        decisions_made: list[str | None] = None,
+        git_commits: list[dict[str, Any | None]] = None,
+        deliverables: list[str | None] = None,
+        metrics: dict[str, Any | None] = None,
         priority: int = 3,
         significance_score: float = 0.5,
-        token_estimate: Optional[int] = None,
-        tags: Optional[list[str]] = None,
-        author_job_id: Optional[UUID] = None,
-        author_name: Optional[str] = None,
-        author_type: Optional[str] = None,
+        token_estimate: int | None = None,
+        tags: list[str | None] = None,
+        author_job_id: UUID | None = None,
+        author_name: str | None = None,
+        author_type: str | None = None,
     ) -> ProductMemoryEntry:
         """
         Create a new 360 memory entry.
@@ -104,7 +102,7 @@ class ProductMemoryRepository:
         session: AsyncSession,
         product_id: UUID,
         tenant_key: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0,
         include_deleted: bool = False,
     ) -> list[ProductMemoryEntry]:
@@ -146,7 +144,7 @@ class ProductMemoryRepository:
         session: AsyncSession,
         entry_id: UUID,
         tenant_key: str,
-    ) -> Optional[ProductMemoryEntry]:
+    ) -> ProductMemoryEntry | None:
         """
         Get a single entry by ID with tenant isolation.
 
@@ -238,7 +236,7 @@ class ProductMemoryRepository:
         entry_id: UUID,
         tenant_key: str,
         **kwargs,
-    ) -> Optional[ProductMemoryEntry]:
+    ) -> ProductMemoryEntry | None:
         """
         Update an existing entry.
 

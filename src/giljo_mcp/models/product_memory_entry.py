@@ -9,7 +9,7 @@ This table is the SINGLE SOURCE OF TRUTH for 360 memory entries as of v3.3.
 """
 
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -28,7 +28,6 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from .base import Base
-
 
 class ProductMemoryEntry(Base):
     """

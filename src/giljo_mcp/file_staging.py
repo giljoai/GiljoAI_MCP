@@ -32,7 +32,6 @@ import re
 import shutil
 import zipfile
 from pathlib import Path
-from typing import Optional, Tuple
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -41,9 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .models import AgentTemplate
 from .tools.slash_command_templates import get_all_templates
 
-
 logger = logging.getLogger(__name__)
-
 
 class FileStaging:
     """
@@ -53,7 +50,7 @@ class FileStaging:
     with multi-tenant isolation and directory traversal protection.
     """
 
-    def __init__(self, base_path: Optional[Path] = None, db_session: Optional[AsyncSession] = None):
+    def __init__(self, base_path: Path | None = None, db_session: AsyncSession | None = None):
         """
         Initialize FileStaging.
 
@@ -100,7 +97,7 @@ class FileStaging:
     async def stage_slash_commands(
         self,
         staging_path: Path,
-    ) -> tuple[Optional[Path], str]:
+    ) -> tuple[Path | None, str]:
         """
         Stage slash commands as a ZIP file.
 
@@ -158,8 +155,8 @@ class FileStaging:
         self,
         staging_path: Path,
         tenant_key: str,
-        db_session: Optional[AsyncSession] = None,
-    ) -> tuple[Optional[Path], str]:
+        db_session: AsyncSession | None = None,
+    ) -> tuple[Path | None, str]:
         """
         Stage agent templates as a ZIP file.
 

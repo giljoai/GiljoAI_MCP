@@ -12,14 +12,12 @@ Features:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.giljo_mcp.models import MCPContextIndex
 from src.giljo_mcp.repositories.context_repository import ContextRepository
 
-
 logger = logging.getLogger(__name__)
-
 
 class ContextIndexer:
     """
@@ -151,7 +149,7 @@ class ContextIndexer:
 
             return chunks
 
-    def get_chunk_by_id(self, tenant_key: str, chunk_id: str) -> Optional[MCPContextIndex]:
+    def get_chunk_by_id(self, tenant_key: str, chunk_id: str) -> MCPContextIndex | None:
         """
         Get a specific chunk by chunk_id.
 
