@@ -132,21 +132,20 @@ class UserService:
         result = await session.execute(stmt)
         users = result.scalars().all()
 
-        user_list = []
-        for user in users:
-            user_list.append(
-                {
-                    "id": str(user.id),
-                    "username": user.username,
-                    "email": user.email,
-                    "full_name": user.full_name,
-                    "role": user.role,
-                    "tenant_key": user.tenant_key,
-                    "is_active": user.is_active,
-                    "created_at": user.created_at.isoformat() if user.created_at else None,
-                    "last_login": user.last_login.isoformat() if user.last_login else None,
-                }
-            )
+        user_list = [
+            {
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "tenant_key": user.tenant_key,
+                "is_active": user.is_active,
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+                "last_login": user.last_login.isoformat() if user.last_login else None,
+            }
+            for user in users
+        ]
 
         log_msg = f"Found {len(user_list)} users" + (
             " (all tenants)" if include_all_tenants else f" for tenant {self.tenant_key}"

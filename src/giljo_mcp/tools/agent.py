@@ -119,8 +119,8 @@ async def _ensure_agent(
 
     if session is None:
         db_manager = DatabaseManager()
-        async with db_manager.get_session_async() as session:
-            return await _ensure_agent_with_session(session, project_id, agent_name, mission)
+        async with db_manager.get_session_async() as db_session:
+            return await _ensure_agent_with_session(db_session, project_id, agent_name, mission)
     else:
         return await _ensure_agent_with_session(session, project_id, agent_name, mission)
 
@@ -225,8 +225,8 @@ async def _decommission_agent(
 
     if session is None:
         db_manager = DatabaseManager()
-        async with db_manager.get_session_async() as session:
-            return await _decommission_agent_with_session(session, agent_name, project_id, reason)
+        async with db_manager.get_session_async() as db_session:
+            return await _decommission_agent_with_session(db_session, agent_name, project_id, reason)
     else:
         return await _decommission_agent_with_session(session, agent_name, project_id, reason)
 
@@ -300,8 +300,8 @@ async def _get_agent_health(agent_name: Optional[str] = None, session=None) -> d
 
     if session is None:
         db_manager = DatabaseManager()
-        async with db_manager.get_session_async() as session:
-            return await _get_agent_health_with_session(session, agent_name)
+        async with db_manager.get_session_async() as db_session:
+            return await _get_agent_health_with_session(db_session, agent_name)
     else:
         return await _get_agent_health_with_session(session, agent_name)
 
@@ -362,8 +362,8 @@ async def _handoff_agent_work(
 
     if session is None:
         db_manager = DatabaseManager()
-        async with db_manager.get_session_async() as session:
-            return await _handoff_agent_work_with_session(session, from_agent, to_agent, project_id, context)
+        async with db_manager.get_session_async() as db_session:
+            return await _handoff_agent_work_with_session(db_session, from_agent, to_agent, project_id, context)
     else:
         return await _handoff_agent_work_with_session(session, from_agent, to_agent, project_id, context)
 

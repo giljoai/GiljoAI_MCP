@@ -276,9 +276,9 @@ class SetupStateManager:
             import platform
 
             if platform.system() != "Windows":
-                import os
+                from pathlib import Path
 
-                os.chmod(self.state_file, 0o600)
+                Path(self.state_file).chmod(0o600)
 
     def update_state(self, **kwargs) -> None:
         """
@@ -332,9 +332,9 @@ class SetupStateManager:
             import platform
 
             if platform.system() != "Windows":
-                import os
+                from pathlib import Path
 
-                os.chmod(self.state_file, 0o600)
+                Path(self.state_file).chmod(0o600)
 
     def migrate_file_to_database(self) -> bool:
         """
@@ -421,19 +421,18 @@ class SetupStateManager:
         state = self.get_state()
 
         # Check version compatibility
-        if self.current_version and state.get("setup_version"):
-            if state["setup_version"] != self.current_version:
-                errors.append(
-                    f"Setup version mismatch: stored={state['setup_version']}, current={self.current_version}"
-                )
+        if self.current_version and state.get("setup_version") and state["setup_version"] != self.current_version:
+            errors.append(f"Setup version mismatch: stored={state['setup_version']}, current={self.current_version}")
 
         # Check database version
-        if self.required_db_version and state.get("database_version"):
-            if state["database_version"] != self.required_db_version:
-                errors.append(
-                    f"Database version mismatch: stored={state['database_version']}, "
-                    f"required={self.required_db_version}"
-                )
+        if (
+            self.required_db_version
+            and state.get("database_version")
+            and state["database_version"] != self.required_db_version
+        ):
+            errors.append(
+                f"Database version mismatch: stored={state['database_version']}, required={self.required_db_version}"
+            )
 
         # Check validation failures
         validation_failures = state.get("validation_failures", [])

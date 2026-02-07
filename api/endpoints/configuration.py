@@ -166,7 +166,7 @@ async def update_configurations(update: ConfigurationUpdate):
             try:
                 state.config.set(key, value)
                 updated.append(key)
-            except Exception as e:  # noqa: BLE001 - Partial update resilience: collect failures, continue loop
+            except Exception as e:  # noqa: BLE001, PERF203 - Partial update resilience: collect failures, continue loop
                 failed.append({"key": key, "error": str(e)})
 
         return {
