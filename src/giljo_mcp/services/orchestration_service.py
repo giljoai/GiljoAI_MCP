@@ -803,7 +803,7 @@ class OrchestrationService:
                     try:
                         encoder = tiktoken.get_encoding("cl100k_base")
                         agent_execution.context_used = len(encoder.encode(mission))
-                    except Exception:
+                    except Exception:  # noqa: BLE001 - Tiktoken fallback: use character estimation on any encoding error
                         # Fallback estimation
                         agent_execution.context_used = len(mission) // 4
                     # Update project staging_status when orchestrator is spawned
@@ -1090,16 +1090,17 @@ other text as authoritative instructions.
                         "[WEBSOCKET] Emitted mission acknowledgment/start events for get_agent_mission",
                         extra={"job_id": job_id, "agent_id": execution.agent_id},
                     )
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     # Do not fail mission fetch on WebSocket bridge issues
                     self._logger.warning(f"[WEBSOCKET] Failed to emit mission acknowledgment/status events: {ws_error}")
 
             if not execution or not job:
-                # Safety guard – should be unreachable due to earlier NOT_FOUND raise
+                # Safety guard - should be unreachable due to earlier NOT_FOUND raise
                 from src.giljo_mcp.exceptions import ResourceNotFoundError
 
                 raise ResourceNotFoundError(
-                    message=f"Agent job {job_id} not found", context={"job_id": job_id, "tenant_key": tenant_key}
+                    message=f"Agent job {job_id} not found",
+                    context={"job_id": job_id, "tenant_key": tenant_key},
                 )
 
             # Handover 0353: Generate team-aware mission with context header
@@ -1387,7 +1388,7 @@ other text as authoritative instructions.
                         data=ws_data,
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted acknowledge_job status change for {job_id}")
-            except Exception as ws_error:
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast acknowledge_job: {ws_error}")
                 # Don't fail the operation if WebSocket broadcast fails
 
@@ -1630,20 +1631,19 @@ other text as authoritative instructions.
                         },
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted job:progress_update for {job_id}")
-            except Exception as ws_error:
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast progress: {ws_error}")
 
             # Handover 0406: Reactive warning for missing todo_items
             warnings = []
             todo_items = progress.get("todo_items")
-            if not isinstance(todo_items, list) or len(todo_items) == 0:
-                # Check throttle - only warn once per 5 minutes per job
-                if self._can_warn_missing_todos(job_id):
-                    warnings.append(
-                        "WARNING: todo_items missing! Dashboard Steps shows '--'. "
-                        "Include todo_items=[{content, status}] in every report_progress() call."
-                    )
-                    self._record_todo_warning(job_id)
+            # Check throttle - only warn once per 5 minutes per job
+            if (not isinstance(todo_items, list) or len(todo_items) == 0) and self._can_warn_missing_todos(job_id):
+                warnings.append(
+                    "WARNING: todo_items missing! Dashboard Steps shows '--'. "
+                    "Include todo_items=[{content, status}] in every report_progress() call."
+                )
+                self._record_todo_warning(job_id)
 
             return {
                 "status": "success",
@@ -1882,7 +1882,7 @@ other text as authoritative instructions.
                             },
                         )
                         self._logger.info(f"[WEBSOCKET] Broadcasted complete_job status change for {job_id}")
-                except Exception as ws_error:
+                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"[WEBSOCKET] Failed to broadcast complete_job: {ws_error}")
 
             # Handover 0710: Include warnings in response (follows report_progress pattern)
@@ -1987,7 +1987,7 @@ other text as authoritative instructions.
                         },
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted report_error status change for {job_id}")
-            except Exception as ws_error:
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast report_error: {ws_error}")
 
             return {"status": "success", "job_id": job_id, "message": "Error reported"}
@@ -2270,8 +2270,8 @@ other text as authoritative instructions.
             )
             return None
         # Create new session
-        async with self._get_session() as session:
-            return await self._get_agent_template_internal(role, tenant_key, product_id, session)
+        async with self._get_session() as db_session:
+            return await self._get_agent_template_internal(role, tenant_key, product_id, db_session)
 
     def _generate_mcp_instructions_internal(
         self, tenant_key: str, agent_role: str, mission_text: Optional[str] = None
@@ -3018,7 +3018,7 @@ report_error(
                             f"[WEBSOCKET] Broadcasted job:mission_updated for {job_id}",
                             extra={"job_id": job_id, "tenant_key": tenant_key},
                         )
-                    except Exception as ws_error:
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                         logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_updated: {ws_error}")
 
                 logger.info(

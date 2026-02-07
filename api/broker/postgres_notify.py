@@ -93,7 +93,8 @@ class PostgresNotifyWebSocketEventBroker(WebSocketEventBroker):
         )
 
     def _on_notification(self, _connection: asyncpg.Connection, _pid: int, _channel: str, payload: str) -> None:
-        asyncio.create_task(self._handle_payload(payload))
+        # Fire and forget - task will run in background
+        _ = asyncio.create_task(self._handle_payload(payload))
 
     async def _handle_payload(self, payload: str) -> None:
         try:
@@ -108,5 +109,5 @@ class PostgresNotifyWebSocketEventBroker(WebSocketEventBroker):
         for handler in handlers_snapshot:
             try:
                 await handler(message)
-            except Exception as e:  # noqa: BLE001 - Handler resilience: continue loop on any error
+            except Exception as e:  # noqa: BLE001, PERF203 - Handler resilience: continue loop on any error
                 logger.warning(f"Broker handler failed: {e}", exc_info=True)

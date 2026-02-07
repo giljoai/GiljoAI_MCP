@@ -713,8 +713,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         # Add objectives if available
         if objectives:
             memory_lines.append("\nProduct Objectives:")
-            for obj in objectives[:3]:  # Limit to top 3 objectives
-                memory_lines.append(f"- {obj}")
+            memory_lines.extend([f"- {obj}" for obj in objectives[:3]])  # Limit to top 3 objectives
 
         memory_lines.append("\nAccess via: fetch_context(categories=['memory_360']) MCP tool")
 
