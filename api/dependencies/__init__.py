@@ -12,11 +12,12 @@ Created: 2025-11-02
 # Use importlib to load the .py file directly (avoiding package/module conflict)
 import importlib.util
 import os
+from pathlib import Path
 
 from .websocket import WebSocketDependency, get_websocket_dependency, get_websocket_manager
 
 
-_deps_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dependencies.py")
+_deps_file = str(Path(__file__).parent.parent / "dependencies.py")
 _spec = importlib.util.spec_from_file_location("_legacy_dependencies", _deps_file)
 _legacy_module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_legacy_module)

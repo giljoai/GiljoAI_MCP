@@ -618,16 +618,16 @@ class ConfigManager:
         if self.database.type != "postgresql":
             errors.append(f"Only PostgreSQL is supported. Got: {self.database.type}")
 
-        if self.database.type == "postgresql":
-            # Only require password if no database URL is provided
-            # Check if we're in setup mode (allows placeholder password during initial setup)
-            if (
-                not self.database.database_url
-                and not self.database.password
-                and not os.getenv("DB_PASSWORD")
-                and not getattr(self, "setup_mode", False)
-            ):
-                errors.append("PostgreSQL password is required")
+        # Only require password if no database URL is provided (for PostgreSQL)
+        # Check if we're in setup mode (allows placeholder password during initial setup)
+        if (
+            self.database.type == "postgresql"
+            and not self.database.database_url
+            and not self.database.password
+            and not os.getenv("DB_PASSWORD")
+            and not getattr(self, "setup_mode", False)
+        ):
+            errors.append("PostgreSQL password is required")
 
         # Agent configuration validation
         if self.agent.context_warning_threshold >= self.agent.default_context_budget:

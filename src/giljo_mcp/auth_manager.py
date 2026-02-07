@@ -402,10 +402,10 @@ class AuthManager:
         if cookie_header:
             # Parse cookies from Cookie header
             cookies = {}
-            for cookie in cookie_header.split(";"):
-                cookie = cookie.strip()
-                if "=" in cookie:
-                    key, value = cookie.split("=", 1)
+            for cookie_str in cookie_header.split(";"):
+                cookie_clean = cookie_str.strip()
+                if "=" in cookie_clean:
+                    key, value = cookie_clean.split("=", 1)
                     cookies[key.strip()] = value.strip()
 
             # Get access_token from cookies
