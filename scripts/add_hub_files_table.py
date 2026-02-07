@@ -25,7 +25,7 @@ def build_hub_table_html(hub_files):
         ratio_bar = f'<div class="ratio-bar"><div class="ratio-prod" style="width:{prod_pct}%"></div></div>'
 
         rows.append(f"""
-    <tr data-prod="{prod}" data-test="{test}" data-total="{total}">
+    <tr data-prod="{prod}" data-test="{test}" data-total="{total}" data-layer="{f["layer"]}" data-risk="{f["risk"]}">
       <td>{f["path"]}</td>
       <td><span class="layer-badge" style="background:{get_layer_color(f["layer"])}">{f["layer"]}</span></td>
       <td class="number dep-total">{total}</td>
@@ -293,56 +293,81 @@ def build_hub_table_html(hub_files):
 
 <script>
 let sortDirection = {{}};
-let testFilterEnabled = true;
 
 function toggleHubTable() {{
   const section = document.getElementById('hub-files-section');
   section.classList.toggle('collapsed');
 }}
 
-// Listen for test filter changes
-function setupFilterListener() {{
-  const testCheckbox = document.querySelector('#risk-filters input[data-risk="test"]');
-  if (!testCheckbox) {{
-    // Try layer filters
-    const layerCheckbox = document.querySelector('#layer-filters input[data-layer="test"]');
-    if (layerCheckbox) {{
-      layerCheckbox.addEventListener('change', function() {{
-        updateHubTableForTestFilter(this.checked);
-      }});
-    }}
-  }}
+// ========== TABLE FILTER SYNC ==========
+// Sync layer/risk checkboxes with table visibility
+
+function setupTableFilterSync() {{
+  const layerFilters = document.querySelectorAll('#layer-filters input[type="checkbox"]');
+  const riskFilters = document.querySelectorAll('#risk-filters input[type="checkbox"]');
+
+  // Add listeners to all filter checkboxes
+  layerFilters.forEach(cb => {{
+    cb.addEventListener('change', applyTableFilters);
+  }});
+
+  riskFilters.forEach(cb => {{
+    cb.addEventListener('change', applyTableFilters);
+  }});
+
+  // Initial filter application
+  applyTableFilters();
 }}
 
-function updateHubTableForTestFilter(includeTests) {{
-  testFilterEnabled = includeTests;
+function applyTableFilters() {{
+  // Get selected layers
+  const selectedLayers = [];
+  document.querySelectorAll('#layer-filters input[type="checkbox"]:checked').forEach(cb => {{
+    selectedLayers.push(cb.getAttribute('data-layer'));
+  }});
+
+  // Get selected risks
+  const selectedRisks = [];
+  document.querySelectorAll('#risk-filters input[type="checkbox"]:checked').forEach(cb => {{
+    selectedRisks.push(cb.getAttribute('data-risk'));
+  }});
+
+  // Filter table rows
   const table = document.getElementById('hub-table');
+  if (!table) return;
+
   const rows = table.querySelectorAll('tbody tr');
+  let visibleCount = 0;
 
   rows.forEach(row => {{
-    const prod = parseInt(row.dataset.prod);
-    const test = parseInt(row.dataset.test);
-    const total = parseInt(row.dataset.total);
+    const rowLayer = row.getAttribute('data-layer');
+    const rowRisk = row.getAttribute('data-risk');
 
-    if (includeTests) {{
-      // Show total counts
-      row.querySelector('.dep-total').textContent = total;
+    const layerMatch = selectedLayers.length === 0 || selectedLayers.includes(rowLayer);
+    const riskMatch = selectedRisks.length === 0 || selectedRisks.includes(rowRisk);
+
+    if (layerMatch && riskMatch) {{
+      row.style.display = '';
+      visibleCount++;
     }} else {{
-      // Show only production counts
-      row.querySelector('.dep-total').textContent = prod;
+      row.style.display = 'none';
     }}
   }});
 
-  // Toggle visual indicator
-  if (includeTests) {{
-    table.classList.remove('hide-tests');
-  }} else {{
-    table.classList.add('hide-tests');
+  // Update header with count
+  const header = document.querySelector('#hub-files-section h2');
+  if (header) {{
+    const totalRows = rows.length;
+    if (visibleCount < totalRows) {{
+      header.innerHTML = `All Files Analysis <span style="font-size:14px;color:#94a3b8;">(${{visibleCount}} / ${{totalRows}} shown)</span> <span id="hub-toggle">▼</span>`;
+    }} else {{
+      header.innerHTML = `All Files Analysis <span id="hub-toggle">▼</span>`;
+    }}
   }}
 }}
 
 // Initialize on load
-setTimeout(setupFilterListener, 500);
+setTimeout(setupTableFilterSync, 500);
 
 function sortTable(columnIndex) {{
   const table = document.getElementById('hub-table');
