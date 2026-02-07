@@ -31,11 +31,10 @@ from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
+    BaseGiljoException,
+    DatabaseError,
     ResourceNotFoundError,
     ValidationError,
-    AuthorizationError,
-    DatabaseError,
-    BaseGiljoException,
 )
 from src.giljo_mcp.models import Product, Project, Task, VisionDocument
 
@@ -93,6 +92,7 @@ class ProductService:
             @asynccontextmanager
             async def _test_session_wrapper():
                 yield self._test_session
+
             return _test_session_wrapper()
 
         # Return the context manager directly (no double-wrapping)
@@ -115,13 +115,13 @@ class ProductService:
         if not target_platforms:
             return False, "target_platforms cannot be empty"
 
-        valid_platforms = {'windows', 'linux', 'macos', 'all'}
+        valid_platforms = {"windows", "linux", "macos", "all"}
         invalid_platforms = set(target_platforms) - valid_platforms
 
         if invalid_platforms:
             return False, f"Invalid platform values: {', '.join(invalid_platforms)}"
 
-        if 'all' in target_platforms and len(target_platforms) > 1:
+        if "all" in target_platforms and len(target_platforms) > 1:
             return False, "'all' platform cannot be combined with specific platforms"
 
         return True, None
@@ -171,10 +171,7 @@ class ProductService:
             if target_platforms is not None:
                 is_valid, error_msg = self._validate_target_platforms(target_platforms)
                 if not is_valid:
-                    raise ValidationError(
-                        message=error_msg,
-                        context={"target_platforms": target_platforms}
-                    )
+                    raise ValidationError(message=error_msg, context={"target_platforms": target_platforms})
 
             async with self._get_session() as session:
                 # Check for duplicate name (excluding soft-deleted)
@@ -185,7 +182,7 @@ class ProductService:
                 if result.scalar_one_or_none():
                     raise ValidationError(
                         message=f"Product '{name}' already exists",
-                        context={"product_name": name, "tenant_key": self.tenant_key}
+                        context={"product_name": name, "tenant_key": self.tenant_key},
                     )
 
                 # Create product
@@ -233,8 +230,8 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to create product: {e}")
             raise BaseGiljoException(
-                message=f"Failed to create product: {str(e)}",
-                context={"product_name": name, "tenant_key": self.tenant_key}
+                message=f"Failed to create product: {e!s}",
+                context={"product_name": name, "tenant_key": self.tenant_key},
             )
 
     async def get_product(self, product_id: str, include_metrics: bool = True) -> Dict[str, Any]:
@@ -275,8 +272,7 @@ class ProductService:
 
                 if not product:
                     raise ResourceNotFoundError(
-                        message="Product not found",
-                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                        message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
                 # Handover 0136: Ensure product_memory is initialized (backward compatibility)
@@ -287,7 +283,9 @@ class ProductService:
 
                 # Handover 0390b: Build product_memory from table
                 product_memory = await self._build_product_memory_response(session, product)
-                self._logger.info(f"Product {product_id}: product_memory with {len(product_memory.get('sequential_history', []))} entries")
+                self._logger.info(
+                    f"Product {product_id}: product_memory with {len(product_memory.get('sequential_history', []))} entries"
+                )
 
                 # Normalize config_data so that an empty dict is treated as "no config"
                 # for API consumers, while preserving the raw structure for internal use.
@@ -319,8 +317,8 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to get product: {e}")
             raise BaseGiljoException(
-                message=f"Failed to get product: {str(e)}",
-                context={"product_id": product_id, "tenant_key": self.tenant_key}
+                message=f"Failed to get product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
             )
 
     async def list_products(self, include_inactive: bool = False, include_metrics: bool = True) -> Dict[str, Any]:
@@ -396,10 +394,7 @@ class ProductService:
 
         except Exception as e:
             self._logger.exception(f"Failed to list products: {e}")
-            raise BaseGiljoException(
-                message=f"Failed to list products: {str(e)}",
-                context={"tenant_key": self.tenant_key}
-            )
+            raise BaseGiljoException(message=f"Failed to list products: {e!s}", context={"tenant_key": self.tenant_key})
 
     async def update_product(self, product_id: str, **updates) -> Dict[str, Any]:
         """
@@ -431,10 +426,7 @@ class ProductService:
             if "target_platforms" in updates:
                 is_valid, error_msg = self._validate_target_platforms(updates["target_platforms"])
                 if not is_valid:
-                    raise ValidationError(
-                        message=error_msg,
-                        context={"target_platforms": updates["target_platforms"]}
-                    )
+                    raise ValidationError(message=error_msg, context={"target_platforms": updates["target_platforms"]})
 
             async with self._get_session() as session:
                 stmt = select(Product).where(
@@ -445,8 +437,7 @@ class ProductService:
 
                 if not product:
                     raise ResourceNotFoundError(
-                        message="Product not found",
-                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                        message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
                 # Apply updates
@@ -486,8 +477,8 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to update product: {e}")
             raise BaseGiljoException(
-                message=f"Failed to update product: {str(e)}",
-                context={"product_id": product_id, "tenant_key": self.tenant_key}
+                message=f"Failed to update product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
             )
 
     async def update_quality_standards(
@@ -609,8 +600,7 @@ class ProductService:
 
                 if not product:
                     raise ResourceNotFoundError(
-                        message="Product not found",
-                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                        message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
                 # Deactivate all other products for tenant FIRST
@@ -649,7 +639,7 @@ class ProductService:
                         data={
                             "product_ids": [str(pid) for pid in deactivated_product_ids],
                             "timestamp": datetime.now(timezone.utc).isoformat(),
-                        }
+                        },
                     )
 
                 # NOW activate target product (after others are deactivated)
@@ -677,8 +667,8 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to activate product: {e}")
             raise BaseGiljoException(
-                message=f"Failed to activate product: {str(e)}",
-                context={"product_id": product_id, "tenant_key": self.tenant_key}
+                message=f"Failed to activate product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
             )
 
     async def deactivate_product(self, product_id: str) -> Dict[str, Any]:
@@ -708,8 +698,7 @@ class ProductService:
 
                 if not product:
                     raise ResourceNotFoundError(
-                        message="Product not found",
-                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                        message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
                 product.is_active = False
@@ -735,8 +724,8 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to deactivate product: {e}")
             raise BaseGiljoException(
-                message=f"Failed to deactivate product: {str(e)}",
-                context={"product_id": product_id, "tenant_key": self.tenant_key}
+                message=f"Failed to deactivate product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
             )
 
     async def delete_product(self, product_id: str) -> Dict[str, Any]:
@@ -766,8 +755,7 @@ class ProductService:
 
                 if not product:
                     raise ResourceNotFoundError(
-                        message="Product not found",
-                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                        message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
                 # Soft delete
@@ -791,8 +779,8 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to delete product: {e}")
             raise BaseGiljoException(
-                message=f"Failed to delete product: {str(e)}",
-                context={"product_id": product_id, "tenant_key": self.tenant_key}
+                message=f"Failed to delete product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
             )
 
     async def restore_product(self, product_id: str) -> Dict[str, Any]:
@@ -825,7 +813,7 @@ class ProductService:
                 if not product:
                     raise ResourceNotFoundError(
                         message="Deleted product not found",
-                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                        context={"product_id": product_id, "tenant_key": self.tenant_key},
                     )
 
                 # Restore
@@ -853,8 +841,8 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to restore product: {e}")
             raise BaseGiljoException(
-                message=f"Failed to restore product: {str(e)}",
-                context={"product_id": product_id, "tenant_key": self.tenant_key}
+                message=f"Failed to restore product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
             )
 
     async def list_deleted_products(self) -> Dict[str, Any]:
@@ -917,8 +905,7 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to list deleted products: {e}")
             raise BaseGiljoException(
-                message=f"Failed to list deleted products: {str(e)}",
-                context={"tenant_key": self.tenant_key}
+                message=f"Failed to list deleted products: {e!s}", context={"tenant_key": self.tenant_key}
             )
 
     # ============================================================================
@@ -982,8 +969,7 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to get active product: {e}")
             raise BaseGiljoException(
-                message=f"Failed to get active product: {str(e)}",
-                context={"tenant_key": self.tenant_key}
+                message=f"Failed to get active product: {e!s}", context={"tenant_key": self.tenant_key}
             )
 
     # ============================================================================
@@ -1019,8 +1005,7 @@ class ProductService:
 
                 if not product:
                     raise ResourceNotFoundError(
-                        message="Product not found",
-                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                        message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
                 metrics = await self._get_product_metrics(session, product_id)
@@ -1043,8 +1028,8 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to get product statistics: {e}")
             raise BaseGiljoException(
-                message=f"Failed to get product statistics: {str(e)}",
-                context={"product_id": product_id, "tenant_key": self.tenant_key}
+                message=f"Failed to get product statistics: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
             )
 
     async def get_cascade_impact(self, product_id: str) -> Dict[str, Any]:
@@ -1078,8 +1063,7 @@ class ProductService:
 
                 if not product:
                     raise ResourceNotFoundError(
-                        message="Product not found",
-                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                        message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
                 # Count related entities
@@ -1115,10 +1099,9 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to get cascade impact: {e}")
             raise BaseGiljoException(
-                message=f"Failed to get cascade impact: {str(e)}",
-                context={"product_id": product_id, "tenant_key": self.tenant_key}
+                message=f"Failed to get cascade impact: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
             )
-
 
     async def update_git_integration(
         self,
@@ -1172,8 +1155,7 @@ class ProductService:
 
                 if not product:
                     raise ResourceNotFoundError(
-                        message="Product not found",
-                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                        message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
                 # Ensure product_memory exists (history is in table, not JSONB)
@@ -1223,8 +1205,8 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to update git integration: {e}")
             raise BaseGiljoException(
-                message=f"Failed to update git integration: {str(e)}",
-                context={"product_id": product_id, "tenant_key": self.tenant_key}
+                message=f"Failed to update git integration: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
             )
 
     async def upload_vision_document(
@@ -1285,7 +1267,7 @@ class ProductService:
                 if not product:
                     raise ResourceNotFoundError(
                         message=f"Product {product_id} not found or access denied",
-                        context={"product_id": product_id, "tenant_key": self.tenant_key}
+                        context={"product_id": product_id, "tenant_key": self.tenant_key},
                     )
 
                 # Create vision document via repository
@@ -1323,9 +1305,7 @@ class ProductService:
                     try:
                         from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
-                        self._logger.info(
-                            f"Generating multi-level summaries for doc {doc.id}: {total_tokens} tokens"
-                        )
+                        self._logger.info(f"Generating multi-level summaries for doc {doc.id}: {total_tokens} tokens")
 
                         summarizer = VisionDocumentSummarizer()
                         summaries = summarizer.summarize_multi_level(content)
@@ -1346,7 +1326,8 @@ class ProductService:
                         doc.compression_ratio = (
                             (summaries["original_tokens"] - summaries["medium"]["tokens"])
                             / summaries["original_tokens"]
-                            if summaries["original_tokens"] > 0 else 0.0
+                            if summaries["original_tokens"] > 0
+                            else 0.0
                         )
 
                         await session.commit()
@@ -1360,9 +1341,7 @@ class ProductService:
                         )
                     except Exception as e:
                         # Summarization failed but document created - log warning and continue
-                        self._logger.warning(
-                            f"Document {doc.id} created but summarization failed: {e}"
-                        )
+                        self._logger.warning(f"Document {doc.id} created but summarization failed: {e}")
 
                 # Auto-chunk if enabled
                 chunks_created = 0
@@ -1384,9 +1363,7 @@ class ProductService:
                         # Update total_tokens for return value (use chunker's accurate count)
                         total_tokens = chunk_total_tokens
 
-                        self._logger.info(
-                            f"Chunked document {doc.id}: {chunks_created} chunks, " f"{total_tokens} tokens"
-                        )
+                        self._logger.info(f"Chunked document {doc.id}: {chunks_created} chunks, {total_tokens} tokens")
                     else:
                         # Chunking failed but document created
                         self._logger.warning(
@@ -1405,8 +1382,8 @@ class ProductService:
         except ValueError as e:
             self._logger.error(f"Validation error uploading vision document: {e}")
             raise ValidationError(
-                message=f"Validation error uploading vision document: {str(e)}",
-                context={"product_id": product_id, "filename": filename}
+                message=f"Validation error uploading vision document: {e!s}",
+                context={"product_id": product_id, "filename": filename},
             )
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
@@ -1414,8 +1391,8 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"Failed to upload vision document: {e}")
             raise BaseGiljoException(
-                message=f"Failed to upload vision document: {str(e)}",
-                context={"product_id": product_id, "filename": filename, "tenant_key": self.tenant_key}
+                message=f"Failed to upload vision document: {e!s}",
+                context={"product_id": product_id, "filename": filename, "tenant_key": self.tenant_key},
             )
 
     # ============================================================================
@@ -1738,7 +1715,7 @@ class ProductService:
             self._logger.error("[Product Purge] Cannot purge - database manager not available")
             raise DatabaseError(
                 message="Database not available",
-                context={"operation": "purge_expired_deleted_products", "tenant_key": self.tenant_key}
+                context={"operation": "purge_expired_deleted_products", "tenant_key": self.tenant_key},
             )
 
         try:
@@ -1775,8 +1752,7 @@ class ProductService:
                     purged_products.append(purged_info)
 
                     self._logger.info(
-                        f"[Product Purge] Auto-purged expired product {product.id} "
-                        f"(deleted {days_ago} days ago)"
+                        f"[Product Purge] Auto-purged expired product {product.id} (deleted {days_ago} days ago)"
                     )
 
                 await session.commit()
@@ -1793,6 +1769,10 @@ class ProductService:
         except Exception as e:
             self._logger.exception(f"[Product Purge] Failed to purge expired deleted products: {e}")
             raise BaseGiljoException(
-                message=f"Failed to purge expired deleted products: {str(e)}",
-                context={"operation": "purge_expired_deleted_products", "tenant_key": self.tenant_key, "days_before_purge": days_before_purge}
+                message=f"Failed to purge expired deleted products: {e!s}",
+                context={
+                    "operation": "purge_expired_deleted_products",
+                    "tenant_key": self.tenant_key,
+                    "days_before_purge": days_before_purge,
+                },
             )

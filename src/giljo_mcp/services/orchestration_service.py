@@ -23,42 +23,41 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+
+# Import MessageService for WebSocket-enabled messaging (Handover fix: message counter WebSocket)
+# Using TYPE_CHECKING to document the type without circular import risk
+from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
 import tiktoken
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# WorkflowEngine import moved to coordinate_agent_workflow() to avoid circular import
+from src.giljo_mcp.agent_selector import AgentSelector
+from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.enums import AgentRole, ProjectType
+from src.giljo_mcp.exceptions import (
+    OrchestrationError,
+    ResourceNotFoundError,
+    ValidationError,
+)
+from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import (
-    Project,
-    AgentJob,
     AgentExecution,
-    AgentTodoItem,
+    AgentJob,
     AgentTemplate,
+    AgentTodoItem,
     Message,
     Product,
     ProductMemoryEntry,
+    Project,
 )
-from src.giljo_mcp.tenant import TenantManager
-# WorkflowEngine import moved to coordinate_agent_workflow() to avoid circular import
-from src.giljo_mcp.agent_selector import AgentSelector
-from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.optimization import MissionOptimizationInjector, SerenaOptimizer
 from src.giljo_mcp.template_adapter import MissionTemplateGeneratorV2
-from src.giljo_mcp.enums import AgentRole, ProjectType
-from src.giljo_mcp.exceptions import (
-    ResourceNotFoundError,
-    ValidationError,
-    OrchestrationError,
-    BaseGiljoException,
-)
+from src.giljo_mcp.tenant import TenantManager
 
-# Import MessageService for WebSocket-enabled messaging (Handover fix: message counter WebSocket)
-# Using TYPE_CHECKING to document the type without circular import risk
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from giljo_mcp.services.message_service import MessageService
@@ -125,8 +124,10 @@ Role: {agent_display_name}
         deliverable_preview = (mission_text or "")[:80].replace("\n", " ")
         if len(mission_text or "") > 80:
             deliverable_preview += "..."
-        job_agent_id = getattr(job, 'agent_id', 'unknown')
-        team_rows.append(f"| {role_name} | `{job_agent_id}` | {getattr(job, 'agent_display_name', 'unknown')} | {deliverable_preview} |")
+        job_agent_id = getattr(job, "agent_id", "unknown")
+        team_rows.append(
+            f"| {role_name} | `{job_agent_id}` | {getattr(job, 'agent_display_name', 'unknown')} | {deliverable_preview} |"
+        )
 
     team_table = "\n".join(team_rows)
     team_section = f"""## YOUR TEAM
@@ -558,7 +559,7 @@ class OrchestrationService:
             ... )
             >>> print(f"Progress: {result['progress_percent']}%")
         """
-        from src.giljo_mcp.exceptions import ResourceNotFoundError, DatabaseError
+        from src.giljo_mcp.exceptions import DatabaseError, ResourceNotFoundError
 
         try:
             async with self._get_session() as session:
@@ -571,7 +572,7 @@ class OrchestrationService:
                 if not project:
                     raise ResourceNotFoundError(
                         message=f"Project '{project_id}' not found",
-                        context={"project_id": project_id, "tenant_key": tenant_key}
+                        context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
                 # Get all AgentExecutions for this project/tenant (join with AgentJob)
@@ -627,7 +628,7 @@ class OrchestrationService:
             self._logger.exception(f"Failed to get workflow status: {e}")
             raise DatabaseError(
                 message=f"Failed to get workflow status: {e!s}",
-                context={"project_id": project_id, "tenant_key": tenant_key}
+                context={"project_id": project_id, "tenant_key": tenant_key},
             )
 
     # ============================================================================
@@ -685,9 +686,9 @@ class OrchestrationService:
 
                 if not project:
                     from src.giljo_mcp.exceptions import ResourceNotFoundError
+
                     raise ResourceNotFoundError(
-                        message="Project not found",
-                        context={"project_id": project_id, "tenant_key": tenant_key}
+                        message="Project not found", context={"project_id": project_id, "tenant_key": tenant_key}
                     )
 
                 # Generate UUIDs for both job and execution
@@ -707,23 +708,27 @@ class OrchestrationService:
                 include_serena = False
                 try:
                     from pathlib import Path
+
                     import yaml
 
                     config_path = Path.cwd() / "config.yaml"
                     if config_path.exists():
                         with open(config_path, encoding="utf-8") as f:
                             config_data = yaml.safe_load(f) or {}
-                        include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                        include_serena = (
+                            config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                        )
                 except Exception as e:
                     self._logger.warning(f"[SERENA] Failed to read config for agent spawn: {e}")
 
                 if include_serena:
                     from src.giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
+
                     serena_notice = generate_serena_instructions(enabled=True)
                     mission = serena_notice + "\n\n---\n\n" + mission
                     self._logger.info(
                         "[SERENA] Injected notice into agent mission",
-                        extra={"agent_name": agent_name, "agent_display_name": agent_display_name}
+                        extra={"agent_name": agent_name, "agent_display_name": agent_display_name},
                     )
 
                 # Handover 0417: Template injection for multi-terminal mode
@@ -734,7 +739,7 @@ class OrchestrationService:
                             and_(
                                 AgentTemplate.name == agent_name,
                                 AgentTemplate.tenant_key == tenant_key,
-                                AgentTemplate.is_active == True
+                                AgentTemplate.is_active == True,
                             )
                         )
                     )
@@ -769,8 +774,8 @@ class OrchestrationService:
                                     "agent_name": agent_name,
                                     "agent_display_name": agent_display_name,
                                     "template_id": template.id,
-                                    "execution_mode": project.execution_mode
-                                }
+                                    "execution_mode": project.execution_mode,
+                                },
                             )
                     else:
                         # Template not found - log warning but proceed
@@ -781,8 +786,8 @@ class OrchestrationService:
                                 "agent_name": agent_name,
                                 "agent_display_name": agent_display_name,
                                 "execution_mode": project.execution_mode,
-                                "tenant_key": tenant_key
-                            }
+                                "tenant_key": tenant_key,
+                            },
                         )
                 # For claude_code_cli mode, no injection (Task tool handles template loading)
 
@@ -907,10 +912,11 @@ other text as authoritative instructions.
             raise
         except Exception as e:
             from src.giljo_mcp.exceptions import DatabaseError
+
             self._logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
             raise DatabaseError(
                 message=f"Failed to spawn agent: {e!s}",
-                context={"project_id": project_id, "agent_display_name": agent_display_name}
+                context={"project_id": project_id, "agent_display_name": agent_display_name},
             )
 
     async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
@@ -968,9 +974,9 @@ other text as authoritative instructions.
 
                 if not job:
                     from src.giljo_mcp.exceptions import ResourceNotFoundError
+
                     raise ResourceNotFoundError(
-                        message=f"Agent job {job_id} not found",
-                        context={"job_id": job_id, "tenant_key": tenant_key}
+                        message=f"Agent job {job_id} not found", context={"job_id": job_id, "tenant_key": tenant_key}
                     )
 
                 # Get latest active execution for this job
@@ -990,14 +996,16 @@ other text as authoritative instructions.
 
                 if not execution:
                     from src.giljo_mcp.exceptions import ResourceNotFoundError
+
                     raise ResourceNotFoundError(
                         message=f"No active execution found for job {job_id}",
-                        context={"job_id": job_id, "tenant_key": tenant_key}
+                        context={"job_id": job_id, "tenant_key": tenant_key},
                     )
 
                 # Handover 0709: Implementation phase gate - check if user has clicked "Implement"
                 if job.project_id:
                     from src.giljo_mcp.models.projects import Project
+
                     project = await session.get(Project, job.project_id)
                     if project and project.implementation_launched_at is None:
                         # BLOCKED: User must click "Implement" button first
@@ -1010,7 +1018,7 @@ other text as authoritative instructions.
                                 "Your mission is blocked. The user must click the 'Implement' "
                                 "button in the GiljoAI dashboard before you can receive your mission. "
                                 "Please inform your user of this requirement and wait."
-                            )
+                            ),
                         }
 
                 # Handover 0353: Fetch all project executions for team context
@@ -1107,9 +1115,9 @@ other text as authoritative instructions.
             if not execution or not job:
                 # Safety guard – should be unreachable due to earlier NOT_FOUND raise
                 from src.giljo_mcp.exceptions import ResourceNotFoundError
+
                 raise ResourceNotFoundError(
-                    message=f"Agent job {job_id} not found",
-                    context={"job_id": job_id, "tenant_key": tenant_key}
+                    message=f"Agent job {job_id} not found", context={"job_id": job_id, "tenant_key": tenant_key}
                 )
 
             # Handover 0353: Generate team-aware mission with context header
@@ -1122,6 +1130,7 @@ other text as authoritative instructions.
             # Inject Serena MCP notice if enabled (User Settings -> Integrations)
             try:
                 from pathlib import Path
+
                 import yaml
 
                 config_path = Path.cwd() / "config.yaml"
@@ -1164,7 +1173,9 @@ other text as authoritative instructions.
                 "estimated_tokens": estimated_tokens,
                 "status": execution.status,  # Execution status
                 "created_at": job.created_at.isoformat() if job.created_at else None,  # Job creation time
-                "started_at": execution.started_at.isoformat() if execution.started_at else None,  # Execution start time
+                "started_at": execution.started_at.isoformat()
+                if execution.started_at
+                else None,  # Execution start time
                 "thin_client": True,
                 "full_protocol": full_protocol,  # Handover 0334: 6-phase agent lifecycle
             }
@@ -1173,10 +1184,10 @@ other text as authoritative instructions.
             raise
         except Exception as e:
             from src.giljo_mcp.exceptions import DatabaseError
+
             self._logger.exception(f"Failed to get agent mission: {e}")
             raise DatabaseError(
-                message=f"Unexpected error: {e!s}",
-                context={"job_id": job_id, "tenant_key": tenant_key}
+                message=f"Unexpected error: {e!s}", context={"job_id": job_id, "tenant_key": tenant_key}
             )
 
     async def get_pending_jobs(self, tenant_key: str, agent_display_name: Optional[str] = None) -> dict[str, Any]:
@@ -1201,7 +1212,7 @@ other text as authoritative instructions.
             ...     agent_display_name="Code Implementer"  # Optional filter
             ... )
         """
-        from src.giljo_mcp.exceptions import ValidationError, DatabaseError
+        from src.giljo_mcp.exceptions import DatabaseError, ValidationError
 
         try:
             # Validate inputs
@@ -1209,7 +1220,7 @@ other text as authoritative instructions.
             if not tenant_key or not tenant_key.strip():
                 raise ValidationError(
                     message="tenant_key cannot be empty",
-                    context={"agent_display_name": agent_display_name, "tenant_key": tenant_key}
+                    context={"agent_display_name": agent_display_name, "tenant_key": tenant_key},
                 )
 
             # Get pending executions with their jobs (dual-model)
@@ -1237,14 +1248,14 @@ other text as authoritative instructions.
                         {
                             "job_id": job.job_id,  # Work order ID
                             "agent_id": execution.agent_id,  # Executor ID
-                            "execution_id": str(execution.id) if hasattr(execution, 'id') else None,  # Unique row ID
+                            "execution_id": str(execution.id) if hasattr(execution, "id") else None,  # Unique row ID
                             "tenant_key": execution.tenant_key,  # For job_to_response
                             "project_id": job.project_id,  # From AgentJob
                             "agent_display_name": execution.agent_display_name,
                             "agent_name": execution.agent_name,
                             "mission": job.mission,  # Mission from AgentJob
                             "status": execution.status,  # Execution status
-                            "progress": execution.progress if hasattr(execution, 'progress') else 0,
+                            "progress": execution.progress if hasattr(execution, "progress") else 0,
                             "context_chunks": [],  # Context chunks removed in 0366a (stored in job_metadata)
                             "created_at": job.created_at.isoformat() if job.created_at else None,
                             "started_at": execution.started_at.isoformat() if execution.started_at else None,
@@ -1259,11 +1270,13 @@ other text as authoritative instructions.
         except Exception as e:
             self._logger.exception(f"Failed to get pending jobs: {e}")
             raise DatabaseError(
-                message=f"Failed to get pending jobs: {str(e)}",
-                context={"agent_display_name": agent_display_name, "tenant_key": tenant_key}
+                message=f"Failed to get pending jobs: {e!s}",
+                context={"agent_display_name": agent_display_name, "tenant_key": tenant_key},
             )
 
-    async def acknowledge_job(self, job_id: str, agent_id: Optional[str] = None, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def acknowledge_job(
+        self, job_id: str, agent_id: Optional[str] = None, tenant_key: Optional[str] = None
+    ) -> dict[str, Any]:
         """
         Acknowledge job assignment (AgentExecution, async safe).
 
@@ -1281,7 +1294,7 @@ other text as authoritative instructions.
             ...     tenant_key="tenant_key"
             ... )
         """
-        from src.giljo_mcp.exceptions import ValidationError, ResourceNotFoundError, DatabaseError
+        from src.giljo_mcp.exceptions import DatabaseError, ResourceNotFoundError, ValidationError
 
         try:
             # Use provided tenant_key or get from context
@@ -1290,15 +1303,11 @@ other text as authoritative instructions.
 
             if not tenant_key:
                 raise ValidationError(
-                    message="No tenant context available",
-                    context={"job_id": job_id, "agent_id": agent_id}
+                    message="No tenant context available", context={"job_id": job_id, "agent_id": agent_id}
                 )
 
             if not job_id or not job_id.strip():
-                raise ValidationError(
-                    message="job_id cannot be empty",
-                    context={"tenant_key": tenant_key}
-                )
+                raise ValidationError(message="job_id cannot be empty", context={"tenant_key": tenant_key})
             # Note: agent_id not used in query - parameter kept for API compatibility
 
             async with self._get_session() as session:
@@ -1319,7 +1328,7 @@ other text as authoritative instructions.
                 if not execution:
                     raise ResourceNotFoundError(
                         message=f"No active execution found for job {job_id}",
-                        context={"job_id": job_id, "tenant_key": tenant_key}
+                        context={"job_id": job_id, "tenant_key": tenant_key},
                     )
 
                 # Get job for mission details
@@ -1327,20 +1336,20 @@ other text as authoritative instructions.
                 job = job_result.scalar_one_or_none()
                 if not job:
                     raise ResourceNotFoundError(
-                        message=f"Job {job_id} not found",
-                        context={"job_id": job_id, "tenant_key": tenant_key}
+                        message=f"Job {job_id} not found", context={"job_id": job_id, "tenant_key": tenant_key}
                     )
 
                 # Handover 0709: Implementation phase gate - check if user has clicked "Implement"
                 if job.project_id:
                     from src.giljo_mcp.models.projects import Project
+
                     project = await session.get(Project, job.project_id)
                     if project and project.implementation_launched_at is None:
                         # BLOCKED: User must click "Implement" button first
                         return {
                             "success": False,
                             "error": "BLOCKED: Implementation not launched by user",
-                            "action_required": "User must click 'Implement' button in dashboard"
+                            "action_required": "User must click 'Implement' button in dashboard",
                         }
 
                 # Idempotent - if already in working status, return current state
@@ -1406,8 +1415,7 @@ other text as authoritative instructions.
         except Exception as e:
             self._logger.exception(f"Failed to acknowledge job: {e}")
             raise DatabaseError(
-                message=f"Failed to acknowledge job: {str(e)}",
-                context={"job_id": job_id, "tenant_key": tenant_key}
+                message=f"Failed to acknowledge job: {e!s}", context={"job_id": job_id, "tenant_key": tenant_key}
             )
 
     async def report_progress(
@@ -1453,16 +1461,10 @@ other text as authoritative instructions.
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                raise ValidationError(
-                    message="No tenant context available",
-                    context={"method": "report_progress"}
-                )
+                raise ValidationError(message="No tenant context available", context={"method": "report_progress"})
 
             if not job_id or not job_id.strip():
-                raise ValidationError(
-                    message="job_id cannot be empty",
-                    context={"method": "report_progress"}
-                )
+                raise ValidationError(message="job_id cannot be empty", context={"method": "report_progress"})
 
             # Handover 0392: Support top-level todo_items parameter (simplified format)
             # If todo_items provided at top level, derive progress metrics from it
@@ -1470,7 +1472,7 @@ other text as authoritative instructions.
                 if not isinstance(todo_items, list):
                     raise ValidationError(
                         message="todo_items must be a list",
-                        context={"method": "report_progress", "todo_items_type": type(todo_items).__name__}
+                        context={"method": "report_progress", "todo_items_type": type(todo_items).__name__},
                     )
 
                 # Calculate progress metrics from todo_items
@@ -1491,13 +1493,12 @@ other text as authoritative instructions.
                 }
             elif progress is None:
                 raise ValidationError(
-                    message="Either progress or todo_items must be provided",
-                    context={"method": "report_progress"}
+                    message="Either progress or todo_items must be provided", context={"method": "report_progress"}
                 )
             elif not isinstance(progress, dict):
                 raise ValidationError(
                     message="progress must be a dict",
-                    context={"method": "report_progress", "progress_type": type(progress).__name__}
+                    context={"method": "report_progress", "progress_type": type(progress).__name__},
                 )
 
             # Extract todo_items from progress dict if not already set (backwards compatibility)
@@ -1525,7 +1526,7 @@ other text as authoritative instructions.
                 if not execution:
                     raise ResourceNotFoundError(
                         message=f"No active execution found for job {job_id}",
-                        context={"job_id": job_id, "method": "report_progress"}
+                        context={"job_id": job_id, "method": "report_progress"},
                     )
 
                 # Get job for metadata and project_id
@@ -1534,8 +1535,7 @@ other text as authoritative instructions.
 
                 if not job:
                     raise ResourceNotFoundError(
-                        message=f"Job {job_id} not found",
-                        context={"job_id": job_id, "method": "report_progress"}
+                        message=f"Job {job_id} not found", context={"job_id": job_id, "method": "report_progress"}
                     )
 
                 # Update execution progress fields
@@ -1583,9 +1583,7 @@ other text as authoritative instructions.
                     from sqlalchemy import delete as sql_delete
 
                     # Delete existing items for this job (replace strategy)
-                    await session.execute(
-                        sql_delete(AgentTodoItem).where(AgentTodoItem.job_id == job_id)
-                    )
+                    await session.execute(sql_delete(AgentTodoItem).where(AgentTodoItem.job_id == job_id))
 
                     # Insert new items with sequence
                     for seq, item in enumerate(todo_items):
@@ -1611,23 +1609,18 @@ other text as authoritative instructions.
             if not job:
                 raise ResourceNotFoundError(
                     message=f"Job {job_id} not found after commit",
-                    context={"job_id": job_id, "method": "report_progress"}
+                    context={"job_id": job_id, "method": "report_progress"},
                 )
 
             # Handover 0402: Query todo_items for WebSocket payload
             todo_items_payload = None
             async with self._get_session() as session:
                 result = await session.execute(
-                    select(AgentTodoItem)
-                    .where(AgentTodoItem.job_id == job_id)
-                    .order_by(AgentTodoItem.sequence)
+                    select(AgentTodoItem).where(AgentTodoItem.job_id == job_id).order_by(AgentTodoItem.sequence)
                 )
                 items = result.scalars().all()
                 if items:
-                    todo_items_payload = [
-                        {"content": item.content, "status": item.status}
-                        for item in items
-                    ]
+                    todo_items_payload = [{"content": item.content, "status": item.status} for item in items]
 
             # Handover 0386: Direct WebSocket emission for progress updates
             # DO NOT use MessageService.send_message() - that creates erroneous message records
@@ -1649,7 +1642,9 @@ other text as authoritative instructions.
                             "current_task": execution.current_task,
                             "todo_steps": job.job_metadata.get("todo_steps") if job.job_metadata else None,
                             "todo_items": todo_items_payload,  # Handover 0402: Include for Plan/TODOs tab
-                            "last_progress_at": execution.last_progress_at.isoformat() if execution.last_progress_at else None,
+                            "last_progress_at": execution.last_progress_at.isoformat()
+                            if execution.last_progress_at
+                            else None,
                         },
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted job:progress_update for {job_id}")
@@ -1678,8 +1673,7 @@ other text as authoritative instructions.
         except Exception as e:
             self._logger.exception(f"Failed to report progress: {e}")
             raise OrchestrationError(
-                message="Failed to report progress",
-                context={"job_id": job_id, "error": str(e)}
+                message="Failed to report progress", context={"job_id": job_id, "error": str(e)}
             ) from e
 
     async def complete_job(
@@ -1708,20 +1702,14 @@ other text as authoritative instructions.
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                raise ValidationError(
-                    message="No tenant context available",
-                    context={"method": "complete_job"}
-                )
+                raise ValidationError(message="No tenant context available", context={"method": "complete_job"})
 
             if not job_id or not job_id.strip():
-                raise ValidationError(
-                    message="job_id cannot be empty",
-                    context={"method": "complete_job"}
-                )
+                raise ValidationError(message="job_id cannot be empty", context={"method": "complete_job"})
             if not result or not isinstance(result, dict):
                 raise ValidationError(
                     message="result must be a non-empty dict",
-                    context={"method": "complete_job", "result_type": type(result).__name__}
+                    context={"method": "complete_job", "result_type": type(result).__name__},
                 )
 
             completion_attempt_time = datetime.now(timezone.utc)
@@ -1759,8 +1747,7 @@ other text as authoritative instructions.
                     job = job_res.scalar_one_or_none()
                     if not job:
                         raise ResourceNotFoundError(
-                            message=f"Job {job_id} not found",
-                            context={"job_id": job_id, "method": "complete_job"}
+                            message=f"Job {job_id} not found", context={"job_id": job_id, "method": "complete_job"}
                         )
 
                     # Validate completion requirements (unread messages and incomplete TODOs)
@@ -1783,9 +1770,7 @@ other text as authoritative instructions.
                             created_at = created_at.replace(tzinfo=timezone.utc)
                         return created_at <= completion_attempt_time
 
-                    unread_messages = [
-                        message for message in unread_messages if _is_before_attempt(message)
-                    ]
+                    unread_messages = [message for message in unread_messages if _is_before_attempt(message)]
 
                     todo_query = select(AgentTodoItem).where(
                         and_(
@@ -1801,14 +1786,10 @@ other text as authoritative instructions.
                         reasons = []
                         if unread_messages:
                             unread_ids = [str(msg.id) for msg in unread_messages[:5]]
-                            reasons.append(
-                                f"{len(unread_messages)} unread messages waiting: {unread_ids}"
-                            )
+                            reasons.append(f"{len(unread_messages)} unread messages waiting: {unread_ids}")
                         if incomplete_todos:
                             todo_names = [todo.content for todo in incomplete_todos[:5]]
-                            reasons.append(
-                                f"{len(incomplete_todos)} TODO items not completed: {todo_names}"
-                            )
+                            reasons.append(f"{len(incomplete_todos)} TODO items not completed: {todo_names}")
 
                         self._logger.info(
                             "Completion blocked by protocol validation",
@@ -1828,7 +1809,7 @@ other text as authoritative instructions.
                                 "reasons": reasons,
                                 "unread_messages": len(unread_messages),
                                 "incomplete_todos": len(incomplete_todos),
-                            }
+                            },
                         )
 
                     # Capture old status before updating
@@ -1869,19 +1850,19 @@ other text as authoritative instructions.
                         project = project_res.scalar_one_or_none()
 
                         # Only warn for non-staging orchestrators with a product
-                        skip_staging = (
-                            project
-                            and project.staging_status
-                            in ("staging", "staged", "launching")
-                        )
+                        skip_staging = project and project.staging_status in ("staging", "staged", "launching")
                         has_product = project and project.product_id
 
                         if not skip_staging and has_product:
                             # Check if any 360 memory entry exists for this project
-                            memory_stmt = select(ProductMemoryEntry).where(
-                                ProductMemoryEntry.project_id == str(job.project_id),
-                                ProductMemoryEntry.tenant_key == tenant_key,
-                            ).limit(1)
+                            memory_stmt = (
+                                select(ProductMemoryEntry)
+                                .where(
+                                    ProductMemoryEntry.project_id == str(job.project_id),
+                                    ProductMemoryEntry.tenant_key == tenant_key,
+                                )
+                                .limit(1)
+                            )
                             memory_res = await session.execute(memory_stmt)
                             has_memory = memory_res.scalar_one_or_none() is not None
 
@@ -1897,7 +1878,7 @@ other text as authoritative instructions.
                     # No active execution found
                     raise ResourceNotFoundError(
                         message=f"No active execution found for job {job_id}",
-                        context={"job_id": job_id, "method": "complete_job"}
+                        context={"job_id": job_id, "method": "complete_job"},
                     )
 
             # WebSocket emission for real-time UI updates (after session closed)
@@ -1935,8 +1916,7 @@ other text as authoritative instructions.
         except Exception as e:
             self._logger.exception(f"Failed to complete job: {e}")
             raise OrchestrationError(
-                message="Failed to complete job",
-                context={"job_id": job_id, "error": str(e)}
+                message="Failed to complete job", context={"job_id": job_id, "error": str(e)}
             ) from e
 
     async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
@@ -1963,20 +1943,13 @@ other text as authoritative instructions.
                 tenant_key = self.tenant_manager.get_current_tenant()
 
             if not tenant_key:
-                raise ValidationError(
-                    message="No tenant context available",
-                    context={"method": "report_error"}
-                )
+                raise ValidationError(message="No tenant context available", context={"method": "report_error"})
 
             if not job_id or not job_id.strip():
-                raise ValidationError(
-                    message="job_id cannot be empty",
-                    context={"method": "report_error"}
-                )
+                raise ValidationError(message="job_id cannot be empty", context={"method": "report_error"})
             if not error or not error.strip():
                 raise ValidationError(
-                    message="error message cannot be empty",
-                    context={"method": "report_error", "job_id": job_id}
+                    message="error message cannot be empty", context={"method": "report_error", "job_id": job_id}
                 )
 
             job = None
@@ -1998,7 +1971,7 @@ other text as authoritative instructions.
                 if not execution:
                     raise ResourceNotFoundError(
                         message=f"No active execution found for job {job_id}",
-                        context={"job_id": job_id, "method": "report_error"}
+                        context={"job_id": job_id, "method": "report_error"},
                     )
 
                 # Get job for project_id (needed for WebSocket event filtering)
@@ -2031,9 +2004,7 @@ other text as authoritative instructions.
                             "block_reason": error,
                         },
                     )
-                    self._logger.info(
-                        f"[WEBSOCKET] Broadcasted report_error status change for {job_id}"
-                    )
+                    self._logger.info(f"[WEBSOCKET] Broadcasted report_error status change for {job_id}")
             except Exception as ws_error:
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast report_error: {ws_error}")
 
@@ -2043,8 +2014,7 @@ other text as authoritative instructions.
         except Exception as e:
             self._logger.exception(f"Failed to report error: {e}")
             raise OrchestrationError(
-                message="Failed to report error",
-                context={"job_id": job_id, "error": str(e)}
+                message="Failed to report error", context={"job_id": job_id, "error": str(e)}
             ) from e
 
     async def list_jobs(
@@ -2190,7 +2160,9 @@ other text as authoritative instructions.
                             "started_at": execution.started_at.isoformat() if execution.started_at else None,
                             "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
                             "created_at": job.created_at.isoformat() if job.created_at else None,
-                            "mission_acknowledged_at": execution.mission_acknowledged_at.isoformat() if execution.mission_acknowledged_at else None,
+                            "mission_acknowledged_at": execution.mission_acknowledged_at.isoformat()
+                            if execution.mission_acknowledged_at
+                            else None,
                             "steps": steps_summary,
                             # Handover 0423: Include todo_items for Plan tab display
                             "todo_items": [
@@ -2202,7 +2174,7 @@ other text as authoritative instructions.
                     )
 
                 self._logger.info(
-                    f"Listed {len(job_dicts)} jobs (total={total}, " f"project={project_id}, status={status_filter})"
+                    f"Listed {len(job_dicts)} jobs (total={total}, project={project_id}, status={status_filter})"
                 )
 
                 return {
@@ -2215,8 +2187,7 @@ other text as authoritative instructions.
         except Exception as e:
             self._logger.exception(f"Failed to list jobs: {e}")
             raise OrchestrationError(
-                message="Failed to list jobs",
-                context={"tenant_key": tenant_key, "error": str(e)}
+                message="Failed to list jobs", context={"tenant_key": tenant_key, "error": str(e)}
             ) from e
 
     # NOTE: update_context_usage(), estimate_message_tokens(), and _trigger_auto_succession()
@@ -2233,8 +2204,7 @@ other text as authoritative instructions.
         This method stub remains for backward compatibility.
         """
         raise NotImplementedError(
-            "trigger_succession() removed in Handover 0700d. "
-            "Use POST /api/agent-jobs/{job_id}/simple-handover instead."
+            "trigger_succession() removed in Handover 0700d. Use POST /api/agent-jobs/{job_id}/simple-handover instead."
         )
 
     # ========================================================================
@@ -2317,10 +2287,9 @@ other text as authoritative instructions.
                 f"[_get_agent_template_internal] No template found for role={role}, tenant={tenant_key}, product={product_id}"
             )
             return None
-        else:
-            # Create new session
-            async with self._get_session() as session:
-                return await self._get_agent_template_internal(role, tenant_key, product_id, session)
+        # Create new session
+        async with self._get_session() as session:
+            return await self._get_agent_template_internal(role, tenant_key, product_id, session)
 
     async def _spawn_claude_code_agent_internal(
         self,
@@ -2385,7 +2354,9 @@ other text as authoritative instructions.
                     agent_role=role.value, mission=mission, context_data=context_data
                 )
 
-                self._logger.info(f"[_spawn_claude_code_agent_internal] Enhanced {role.value} agent mission with Serena optimization")
+                self._logger.info(
+                    f"[_spawn_claude_code_agent_internal] Enhanced {role.value} agent mission with Serena optimization"
+                )
                 mission = optimized_mission
 
             except Exception as e:
@@ -2535,7 +2506,9 @@ other text as authoritative instructions.
 
         return agent_execution
 
-    def _generate_mcp_instructions_internal(self, tenant_key: str, agent_role: str, mission_text: Optional[str] = None) -> str:
+    def _generate_mcp_instructions_internal(
+        self, tenant_key: str, agent_role: str, mission_text: Optional[str] = None
+    ) -> str:
         """
         Generate MCP coordination protocol instructions.
 
@@ -2711,7 +2684,9 @@ report_error(
                         additional_instructions=additional_instructions,
                     )
                 else:
-                    self._logger.warning(f"[spawn_agent_legacy] Unknown tool type: {template.tool}, falling back to default")
+                    self._logger.warning(
+                        f"[spawn_agent_legacy] Unknown tool type: {template.tool}, falling back to default"
+                    )
                     template = None  # Force fallback
 
                 # If routing succeeded, return agent
@@ -2906,7 +2881,7 @@ report_error(
         product_id: str,
         project_requirements: str,
         user_id: Optional[str] = None,
-        project_id: Optional[str] = None
+        project_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         MAIN ORCHESTRATION WORKFLOW.
@@ -2993,10 +2968,7 @@ report_error(
             # Use existing project
             async with self._get_session() as session:
                 result = await session.execute(
-                    select(Project).where(
-                        Project.id == project_id,
-                        Project.tenant_key == tenant_key
-                    )
+                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
                 )
                 project = result.scalar_one_or_none()
                 if not project:
@@ -3005,6 +2977,7 @@ report_error(
         else:
             # Create new project
             from src.giljo_mcp.services.project_service import ProjectService
+
             project_service = ProjectService(self.db_manager, self.tenant_manager)
             project = await project_service.create_project(
                 name=f"Vision Project: {product.name}",
@@ -3090,7 +3063,7 @@ report_error(
         try:
             async with self._get_session() as session:
                 from sqlalchemy import and_
-                from sqlalchemy.orm import selectinload, joinedload
+                from sqlalchemy.orm import joinedload, selectinload
 
                 from src.giljo_mcp.mission_planner import MissionPlanner
                 from src.giljo_mcp.models import AgentTemplate, Product, Project
@@ -3100,14 +3073,14 @@ report_error(
                     raise ValidationError(
                         message="Job ID is required",
                         error_code="VALIDATION_ERROR",
-                        context={"method": "get_orchestrator_instructions"}
+                        context={"method": "get_orchestrator_instructions"},
                     )
 
                 if not tenant_key or not tenant_key.strip():
                     raise ValidationError(
                         message="Tenant key is required",
                         error_code="VALIDATION_ERROR",
-                        context={"method": "get_orchestrator_instructions"}
+                        context={"method": "get_orchestrator_instructions"},
                     )
 
                 # Phase C: Query AgentExecution and join to AgentJob
@@ -3129,7 +3102,7 @@ report_error(
                     raise ResourceNotFoundError(
                         message=f"Orchestrator execution for job {job_id} not found",
                         error_code="NOT_FOUND",
-                        context={"job_id": job_id, "method": "get_orchestrator_instructions"}
+                        context={"job_id": job_id, "method": "get_orchestrator_instructions"},
                     )
 
                 # Get the associated AgentJob
@@ -3138,7 +3111,7 @@ report_error(
                     raise ResourceNotFoundError(
                         message=f"Agent job {job_id} not found",
                         error_code="NOT_FOUND",
-                        context={"job_id": job_id, "method": "get_orchestrator_instructions"}
+                        context={"job_id": job_id, "method": "get_orchestrator_instructions"},
                     )
 
                 # Verify it's an orchestrator
@@ -3146,7 +3119,11 @@ report_error(
                     raise ValidationError(
                         message=f"Job {job_id} is not an orchestrator",
                         error_code="VALIDATION_ERROR",
-                        context={"job_id": job_id, "job_type": agent_job.job_type, "method": "get_orchestrator_instructions"}
+                        context={
+                            "job_id": job_id,
+                            "job_type": agent_job.job_type,
+                            "method": "get_orchestrator_instructions",
+                        },
                     )
 
                 # Get project and product
@@ -3159,7 +3136,7 @@ report_error(
                     raise ResourceNotFoundError(
                         message="Project not found",
                         error_code="NOT_FOUND",
-                        context={"project_id": str(agent_job.project_id), "method": "get_orchestrator_instructions"}
+                        context={"project_id": str(agent_job.project_id), "method": "get_orchestrator_instructions"},
                     )
 
                 product = None
@@ -3179,20 +3156,18 @@ report_error(
                 # Handover 0346: Fetch FRESH user config if user_id available
                 if user_id:
                     from src.giljo_mcp.tools.orchestration import _get_user_config
+
                     user_config = await _get_user_config(user_id, tenant_key, session)
                     field_priorities = user_config["field_priorities"]
                     depth_config = user_config["depth_config"]
                     logger.info(
                         "[USER_CONFIG] Fetched fresh user config for OrchestrationService",
-                        extra={"job_id": job_id, "user_id": user_id}
+                        extra={"job_id": job_id, "user_id": user_id},
                     )
                 else:
                     field_priorities = metadata.get("field_priorities", {})
                     depth_config = metadata.get("depth_config", {})
-                    logger.debug(
-                        "[USER_CONFIG] No user_id, using frozen job_metadata config",
-                        extra={"job_id": job_id}
-                    )
+                    logger.debug("[USER_CONFIG] No user_id, using frozen job_metadata config", extra={"job_id": job_id})
 
                 # Handover 0350b: Generate framing instructions (replaces inline context)
                 # This returns ~500 tokens instead of 4-8K (up to 50K with vision)
@@ -3229,6 +3204,7 @@ report_error(
                 git_integration_enabled = False
                 try:
                     from pathlib import Path
+
                     import yaml
 
                     config_path = Path.cwd() / "config.yaml"
@@ -3286,7 +3262,9 @@ report_error(
 
                 # Handover 0351: Add CLI mode rules when execution_mode == 'claude_code_cli'
                 # agent_name is SINGLE SOURCE OF TRUTH for template matching
-                execution_mode = getattr(project, 'execution_mode', None) or metadata.get("execution_mode", "multi_terminal")
+                execution_mode = getattr(project, "execution_mode", None) or metadata.get(
+                    "execution_mode", "multi_terminal"
+                )
                 if execution_mode == "claude_code_cli":
                     allowed_agent_names = [t.name for t in templates]
 
@@ -3332,7 +3310,7 @@ report_error(
                             "job_id": job_id,
                             "execution_mode": execution_mode,
                             "allowed_names": allowed_agent_names,
-                        }
+                        },
                     )
 
                 # Handover 0415: Add chapter-based orchestrator protocol
@@ -3348,7 +3326,7 @@ report_error(
                     project_id=str(project.id),
                     orchestrator_id=job_id,
                     tenant_key=tenant_key,
-                    include_implementation_reference=not is_staging  # False for staging, True for implementation
+                    include_implementation_reference=not is_staging,  # False for staging, True for implementation
                 )
                 response["orchestrator_protocol"] = orchestrator_protocol
 
@@ -3366,7 +3344,7 @@ report_error(
                         "critical_count": len(fetch_instructions.get("critical", [])),
                         "important_count": len(fetch_instructions.get("important", [])),
                         "reference_count": len(fetch_instructions.get("reference", [])),
-                    }
+                    },
                 )
 
                 return response
@@ -3378,12 +3356,10 @@ report_error(
             raise OrchestrationError(
                 message="Failed to get orchestrator instructions",
                 error_code="INTERNAL_ERROR",
-                context={"job_id": job_id, "error": str(e)}
+                context={"job_id": job_id, "error": str(e)},
             ) from e
 
-    async def update_agent_mission(
-        self, job_id: str, tenant_key: str, mission: str
-    ) -> dict[str, Any]:
+    async def update_agent_mission(self, job_id: str, tenant_key: str, mission: str) -> dict[str, Any]:
         """
         Update the mission field of an AgentJob.
 
@@ -3475,7 +3451,7 @@ report_error(
             raise OrchestrationError(
                 message="Failed to update agent mission",
                 error_code="INTERNAL_ERROR",
-                context={"job_id": job_id, "error": str(e)}
+                context={"job_id": job_id, "error": str(e)},
             ) from e
 
     async def create_successor_orchestrator(
@@ -3494,7 +3470,7 @@ report_error(
 
         Returns:
             Dict with success status, continuation instructions, and memory entry info
-            
+
         Raises:
             ResourceNotFoundError: When execution or project not found
             ValidationError: When non-orchestrator attempts succession
@@ -3520,8 +3496,7 @@ report_error(
                 # Fallback: try agent_id if job_id didn't match
                 if not execution:
                     result = await session.execute(
-                        select(AgentExecution)
-                        .where(
+                        select(AgentExecution).where(
                             and_(
                                 AgentExecution.agent_id == current_job_id,
                                 AgentExecution.tenant_key == tenant_key,
@@ -3533,7 +3508,7 @@ report_error(
                 if not execution:
                     raise ResourceNotFoundError(
                         message=f"Execution not found for {current_job_id}",
-                        context={"job_id": current_job_id, "tenant_key": tenant_key}
+                        context={"job_id": current_job_id, "tenant_key": tenant_key},
                     )
 
                 # Verify it's an orchestrator
@@ -3543,19 +3518,16 @@ report_error(
                         context={
                             "job_id": current_job_id,
                             "agent_display_name": execution.agent_display_name,
-                        }
+                        },
                     )
 
                 # Get project_id from associated job
-                job_result = await session.execute(
-                    select(AgentJob).where(AgentJob.job_id == execution.job_id)
-                )
+                job_result = await session.execute(select(AgentJob).where(AgentJob.job_id == execution.job_id))
                 job = job_result.scalars().first()
 
                 if not job or not job.project_id:
                     raise ResourceNotFoundError(
-                        message="Associated project not found",
-                        context={"job_id": execution.job_id}
+                        message="Associated project not found", context={"job_id": execution.job_id}
                     )
 
                 # Build session context for 360 Memory
@@ -3616,8 +3588,8 @@ report_error(
         except Exception as e:
             logger.exception(f"Failed to create successor orchestrator: {e}")
             raise OrchestrationError(
-                message=f"Failed to create successor orchestrator: {str(e)}",
-                context={"job_id": current_job_id, "reason": reason}
+                message=f"Failed to create successor orchestrator: {e!s}",
+                context={"job_id": current_job_id, "reason": reason},
             ) from e
 
     async def check_succession_status(self, job_id: str, tenant_key: str) -> dict[str, Any]:
@@ -3640,7 +3612,7 @@ report_error(
                 if not execution:
                     raise ResourceNotFoundError(
                         message=f"Job {job_id} not found",
-                        context={"job_id": job_id, "method": "check_succession_status"}
+                        context={"job_id": job_id, "method": "check_succession_status"},
                     )
 
                 # Calculate context usage percentage (from execution)
@@ -3675,6 +3647,5 @@ report_error(
         except Exception as e:
             logger.exception(f"Failed to check succession status: {e}")
             raise OrchestrationError(
-                message="Failed to check succession status",
-                context={"job_id": job_id, "error": str(e)}
+                message="Failed to check succession status", context={"job_id": job_id, "error": str(e)}
             ) from e

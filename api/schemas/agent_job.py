@@ -22,9 +22,7 @@ class JobCreateRequest(BaseModel):
     Schema for creating a new agent job (POST /api/agent-jobs).
     """
 
-    agent_display_name: str = Field(
-        ..., min_length=1, max_length=100, description="Human-readable display name for UI"
-    )
+    agent_display_name: str = Field(..., min_length=1, max_length=100, description="Human-readable display name for UI")
     mission: str = Field(..., min_length=1, description="Mission/instructions for the agent")
     spawned_by: Optional[str] = Field(None, description="Job ID of parent job that spawned this job")
     context_chunks: Optional[list[str]] = Field(None, description="Array of chunk_ids for context loading")

@@ -79,7 +79,9 @@ class AgentJobRepository:
         Returns:
             AgentJob instance or None if not found
         """
-        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
+        result = await session.execute(
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
+        )
         return result.scalar_one_or_none()
 
     async def update_status(
@@ -105,7 +107,9 @@ class AgentJobRepository:
         Returns:
             True if job was updated, False if not found
         """
-        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
+        result = await session.execute(
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
+        )
         job = result.scalar_one_or_none()
 
         if job:
@@ -124,7 +128,9 @@ class AgentJobRepository:
             return True
         return False
 
-    async def get_active_jobs(self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None) -> List[AgentJob]:
+    async def get_active_jobs(
+        self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None
+    ) -> List[AgentJob]:
         """
         Get all active jobs (pending or active status).
 
@@ -158,7 +164,9 @@ class AgentJobRepository:
             List of AgentJob instances with the specified status
         """
         result = await session.execute(
-            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.status == status).order_by(AgentJob.created_at.desc())
+            select(AgentJob)
+            .where(AgentJob.tenant_key == tenant_key, AgentJob.status == status)
+            .order_by(AgentJob.created_at.desc())
         )
         return list(result.scalars().all())
 
@@ -175,7 +183,9 @@ class AgentJobRepository:
             List of AgentJob instances spawned by the agent
         """
         result = await session.execute(
-            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.spawned_by == spawned_by).order_by(AgentJob.created_at.desc())
+            select(AgentJob)
+            .where(AgentJob.tenant_key == tenant_key, AgentJob.spawned_by == spawned_by)
+            .order_by(AgentJob.created_at.desc())
         )
         return list(result.scalars().all())
 
@@ -192,7 +202,9 @@ class AgentJobRepository:
         Returns:
             True if message was added, False if job not found
         """
-        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
+        result = await session.execute(
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
+        )
         job = result.scalar_one_or_none()
 
         if job:
@@ -221,7 +233,9 @@ class AgentJobRepository:
         Returns:
             True if job was acknowledged, False if not found
         """
-        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
+        result = await session.execute(
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
+        )
         job = result.scalar_one_or_none()
 
         if job:
@@ -247,7 +261,9 @@ class AgentJobRepository:
         Returns:
             True if chunk was added, False if job not found
         """
-        result = await session.execute(select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id))
+        result = await session.execute(
+            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
+        )
         job = result.scalar_one_or_none()
 
         if job:
@@ -259,7 +275,9 @@ class AgentJobRepository:
             return True
         return False
 
-    async def get_job_statistics(self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None) -> Dict[str, Any]:
+    async def get_job_statistics(
+        self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Get job statistics for a tenant.
 
@@ -287,7 +305,11 @@ class AgentJobRepository:
         status_counts = result.all()
 
         # Count by agent display name
-        type_stmt = select(AgentJob.agent_display_name, func.count(AgentJob.id)).where(AgentJob.tenant_key == tenant_key).group_by(AgentJob.agent_display_name)
+        type_stmt = (
+            select(AgentJob.agent_display_name, func.count(AgentJob.id))
+            .where(AgentJob.tenant_key == tenant_key)
+            .group_by(AgentJob.agent_display_name)
+        )
         result = await session.execute(type_stmt)
         type_counts = result.all()
 
@@ -299,7 +321,6 @@ class AgentJobRepository:
             "completed_jobs": len([s for s, c in status_counts if s == "completed"]),
             "failed_jobs": len([s for s, c in status_counts if s == "failed"]),
         }
-
 
     # ============================================================================
     # Agent Execution & AgentJob Methods (Handover 1011 - Phase 4)

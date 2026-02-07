@@ -19,9 +19,9 @@ from fastapi import APIRouter, Body, Cookie, Depends, Header, HTTPException, Que
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from src.giljo_mcp.auth.dependencies import get_db_session
 from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import AgentTemplate, User
+from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.tools.slash_command_templates import get_all_templates
 
 
@@ -387,9 +387,7 @@ async def download_agent_templates(
         logger.info(f"Updated last_exported_at for {len(selected)} templates (tenant: {current_user.tenant_key})")
 
     user_info = f"user: {current_user.username}" if current_user else "public/unauthenticated"
-    logger.info(
-        f"Agent templates ZIP generated ({user_info}): {len(files)} files (max 8), {len(zip_bytes)} bytes"
-    )
+    logger.info(f"Agent templates ZIP generated ({user_info}): {len(files)} files (max 8), {len(zip_bytes)} bytes")
 
     return Response(
         content=zip_bytes,
@@ -684,7 +682,9 @@ async def download_temp_file(
 
         # Check if staging is ready
         if token_info.get("staging_status") != "ready":
-            logger.warning(f"Token validation failed: token={token}, reason=not_ready, status={token_info.get('staging_status')}")
+            logger.warning(
+                f"Token validation failed: token={token}, reason=not_ready, status={token_info.get('staging_status')}"
+            )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token invalid or not ready")
 
         # Check if filename matches metadata

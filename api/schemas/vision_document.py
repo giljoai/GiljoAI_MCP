@@ -98,8 +98,8 @@ class VisionDocumentResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    @model_validator(mode='after')
-    def compute_has_summaries(self) -> 'VisionDocumentResponse':
+    @model_validator(mode="after")
+    def compute_has_summaries(self) -> "VisionDocumentResponse":
         """Compute has_summaries based on presence of summary fields (Handover 0246b)."""
         self.has_summaries = bool(self.summary_light or self.summary_medium)
         return self

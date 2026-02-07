@@ -71,14 +71,11 @@ async def generate_orchestrator_prompt(
         )
 
     # Count agents in project (via AgentExecution)
-    agent_count_stmt = select(func.count(AgentExecution.agent_id)).where(
-        AgentExecution.tenant_key == current_user.tenant_key
-    ).join(
-        AgentJob,
-        (AgentJob.job_id == AgentExecution.job_id) &
-        (AgentJob.tenant_key == AgentExecution.tenant_key)
-    ).where(
-        AgentJob.project_id == project_id
+    agent_count_stmt = (
+        select(func.count(AgentExecution.agent_id))
+        .where(AgentExecution.tenant_key == current_user.tenant_key)
+        .join(AgentJob, (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key))
+        .where(AgentJob.project_id == project_id)
     )
     agent_count_result = await db.execute(agent_count_stmt)
     agent_count = agent_count_result.scalar() or 0
@@ -137,7 +134,7 @@ async def generate_orchestrator_prompt_thin(
     request: OrchestratorPromptRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
-    ws_dep: WebSocketDependency = Depends(get_websocket_dependency)
+    ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
 ) -> OrchestratorPromptResponse:
     """
     Generate a thin orchestrator prompt for GiljoMCP Agent Orchestration.
@@ -182,7 +179,7 @@ async def generate_orchestrator_prompt_thin(
             project_id=project_id,
             user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
             tool=tool,
-            field_priorities=field_priorities  # FIX: Pass user's configured field priorities
+            field_priorities=field_priorities,  # FIX: Pass user's configured field priorities
         )
 
         # Broadcast WebSocket event for real-time UI update
@@ -196,8 +193,8 @@ async def generate_orchestrator_prompt_thin(
                     "execution_id": result.get("execution_id"),  # UNIQUE row ID for frontend Map key
                     "estimated_tokens": result["estimated_prompt_tokens"],
                     "thin_client": True,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
             )
 
         return OrchestratorPromptResponse(
@@ -208,20 +205,16 @@ async def generate_orchestrator_prompt_thin(
             context_used=0,  # New orchestrator starts with 0 context used
             estimated_prompt_tokens=result["estimated_prompt_tokens"],
             thin_client=True,
-            status="ready"
+            status="ready",
         )
 
     except ValueError as e:
         logger.error(f"Validation error generating thin orchestrator prompt: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         logger.error(f"Error generating thin orchestrator prompt: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate orchestrator prompt: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate orchestrator prompt: {e!s}"
         )
 
 
@@ -253,10 +246,7 @@ async def generate_agent_prompt(
     stmt = (
         select(AgentExecution)
         .options(joinedload(AgentExecution.job))
-        .where(
-            AgentExecution.agent_id == agent_id,
-            AgentExecution.tenant_key == current_user.tenant_key
-        )
+        .where(AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == current_user.tenant_key)
     )
     result = await db.execute(stmt)
     agent = result.scalar_one_or_none()
@@ -346,7 +336,7 @@ async def generate_staging_prompt(
     execution_mode: str = Query(
         "multi_terminal",
         pattern="^(multi_terminal|claude_code_cli)$",
-        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)"
+        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
@@ -415,7 +405,7 @@ async def generate_staging_prompt(
             project_id=project_id,
             user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
             tool=tool,
-            field_priorities=field_priorities  # FIX: Pass user's configured field priorities
+            field_priorities=field_priorities,  # FIX: Pass user's configured field priorities
         )
 
         # Use generate_staging_prompt for mode-specific content
@@ -476,8 +466,6 @@ async def generate_staging_prompt(
         )
 
 
-
-
 @router.get("/implementation/{project_id}")
 async def get_implementation_prompt(
     project_id: str,
@@ -526,24 +514,20 @@ async def get_implementation_prompt(
 
     try:
         # 1. Fetch project with multi-tenant filtering
-        project_stmt = select(Project).where(
-            Project.id == project_id,
-            Project.tenant_key == current_user.tenant_key
-        )
+        project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
         project_result = await db.execute(project_stmt)
         project = project_result.scalar_one_or_none()
 
         if not project:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Project {project_id} not found or not accessible"
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found or not accessible"
             )
 
         # 2. Validate CLI mode
-        if project.execution_mode != 'claude_code_cli':
+        if project.execution_mode != "claude_code_cli":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Project is not in CLI mode. Implementation prompts are only for claude_code_cli execution mode."
+                detail="Project is not in CLI mode. Implementation prompts are only for claude_code_cli execution mode.",
             )
 
         # 3. Fetch orchestrator execution (waiting after staging, or working during execution)
@@ -552,17 +536,14 @@ async def get_implementation_prompt(
             .options(joinedload(AgentExecution.job))
             .where(
                 AgentExecution.tenant_key == current_user.tenant_key,
-                AgentExecution.agent_display_name == 'orchestrator',
-                AgentExecution.status.in_(['waiting', 'working'])
+                AgentExecution.agent_display_name == "orchestrator",
+                AgentExecution.status.in_(["waiting", "working"]),
             )
             .join(
                 AgentJob,
-                (AgentJob.job_id == AgentExecution.job_id) &
-                (AgentJob.tenant_key == AgentExecution.tenant_key)
+                (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key),
             )
-            .where(
-                AgentJob.project_id == project_id
-            )
+            .where(AgentJob.project_id == project_id)
             .order_by(AgentExecution.started_at.desc().nullslast())
         )
 
@@ -572,7 +553,7 @@ async def get_implementation_prompt(
         if not orchestrator_execution:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No orchestrator found for this project. Please ensure staging has been completed."
+                detail="No orchestrator found for this project. Please ensure staging has been completed.",
             )
 
         # 4. Fetch spawned agent executions (waiting or working status)
@@ -583,7 +564,7 @@ async def get_implementation_prompt(
             .where(
                 AgentExecution.spawned_by == orchestrator_execution.agent_id,
                 AgentExecution.tenant_key == current_user.tenant_key,
-                AgentExecution.status.in_(['waiting', 'working'])
+                AgentExecution.status.in_(["waiting", "working"]),
             )
             .order_by(AgentExecution.started_at.asc().nullsfirst())
         )
@@ -598,17 +579,14 @@ async def get_implementation_prompt(
                 .options(joinedload(AgentExecution.job))
                 .where(
                     AgentExecution.tenant_key == current_user.tenant_key,
-                    AgentExecution.agent_display_name != 'orchestrator',  # Exclude orchestrator itself
-                    AgentExecution.status.in_(['waiting', 'working'])
+                    AgentExecution.agent_display_name != "orchestrator",  # Exclude orchestrator itself
+                    AgentExecution.status.in_(["waiting", "working"]),
                 )
                 .join(
                     AgentJob,
-                    (AgentJob.job_id == AgentExecution.job_id) &
-                    (AgentJob.tenant_key == AgentExecution.tenant_key)
+                    (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key),
                 )
-                .where(
-                    AgentJob.project_id == project_id
-                )
+                .where(AgentJob.project_id == project_id)
                 .order_by(AgentExecution.started_at.asc().nullsfirst())
             )
 
@@ -618,7 +596,7 @@ async def get_implementation_prompt(
         if not agent_executions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No agent jobs spawned yet. Please run staging first to create agent jobs."
+                detail="No agent jobs spawned yet. Please run staging first to create agent jobs.",
             )
 
         # 5. Generate implementation prompt using existing generator method
@@ -627,11 +605,11 @@ async def get_implementation_prompt(
         # Build agent jobs list for prompt generator (using executions + jobs)
         agent_jobs_list = [
             {
-                'job_id': agent_exec.job_id,
-                'agent_display_name': agent_exec.agent_display_name,
-                'agent_name': agent_exec.agent_name or agent_exec.agent_display_name,
-                'status': agent_exec.status,
-                'mission': agent_exec.job.mission if agent_exec.job else '(No mission assigned)'
+                "job_id": agent_exec.job_id,
+                "agent_display_name": agent_exec.agent_display_name,
+                "agent_name": agent_exec.agent_name or agent_exec.agent_display_name,
+                "status": agent_exec.status,
+                "mission": agent_exec.job.mission if agent_exec.job else "(No mission assigned)",
             }
             for agent_exec in agent_executions
         ]
@@ -639,9 +617,7 @@ async def get_implementation_prompt(
         # Call the existing implementation prompt generator
         # Handover 0385: Use job_id (not agent_id) for mission retrieval
         prompt = generator._build_claude_code_execution_prompt(
-            orchestrator_id=orchestrator_execution.job_id,
-            project=project,
-            agent_jobs=agent_executions
+            orchestrator_id=orchestrator_execution.job_id, project=project, agent_jobs=agent_executions
         )
 
         logger.info(
@@ -654,13 +630,12 @@ async def get_implementation_prompt(
         return {
             "prompt": prompt,
             "orchestrator_job_id": orchestrator_execution.agent_id,
-            "agent_count": len(agent_executions)
+            "agent_count": len(agent_executions),
         }
 
     except Exception as e:
         # Unexpected error during generation
         logger.exception(f"[IMPLEMENTATION PROMPT] Generation failed for project={project_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate implementation prompt: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate implementation prompt: {e!s}"
         )

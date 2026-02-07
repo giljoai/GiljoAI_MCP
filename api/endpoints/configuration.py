@@ -621,8 +621,7 @@ async def test_database_connection():
 
             if is_healthy:
                 return {"success": True, "message": "Database connection successful"}
-            else:
-                return {"success": False, "error": "Database health check returned False"}
+            return {"success": False, "error": "Database health check returned False"}
 
         # ORIGINAL QUERY (for rollback):
         # from sqlalchemy import text

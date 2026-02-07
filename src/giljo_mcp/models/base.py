@@ -7,6 +7,7 @@ This module provides the foundational elements used by all other model modules:
 """
 
 from uuid import uuid4
+
 from sqlalchemy.orm import declarative_base
 
 

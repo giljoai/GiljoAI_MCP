@@ -2,7 +2,7 @@
 
 import hashlib
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
+
 
 logger = structlog.get_logger(__name__)
 
@@ -22,11 +23,7 @@ class ConsolidatedVisionService:
         self.summarizer = VisionDocumentSummarizer()
 
     async def consolidate_vision_documents(
-        self,
-        product_id: str,
-        session: AsyncSession,
-        tenant_key: str,
-        force: bool = False
+        self, product_id: str, session: AsyncSession, tenant_key: str, force: bool = False
     ) -> dict[str, Any]:
         """
         Consolidate all active vision documents into light/medium summaries.
@@ -49,18 +46,13 @@ class ConsolidatedVisionService:
         """
         # Fetch product with vision documents (eagerly load relationship to avoid lazy loading issues)
         result = await session.execute(
-            select(Product)
-            .options(selectinload(Product.vision_documents))
-            .where(Product.id == product_id)
+            select(Product).options(selectinload(Product.vision_documents)).where(Product.id == product_id)
         )
         product = result.scalar_one_or_none()
 
         if not product:
             logger.warning("consolidate_vision_documents.product_not_found", product_id=product_id)
-            return {
-                "success": False,
-                "error": "product_not_found"
-            }
+            return {"success": False, "error": "product_not_found"}
 
         # Multi-tenant isolation check
         if product.tenant_key != tenant_key:
@@ -68,11 +60,11 @@ class ConsolidatedVisionService:
                 "consolidate_vision_documents.tenant_mismatch",
                 product_id=product_id,
                 expected_tenant=tenant_key,
-                actual_tenant=product.tenant_key
+                actual_tenant=product.tenant_key,
             )
             return {
                 "success": False,
-                "error": "product_not_found"  # Don't leak tenant info
+                "error": "product_not_found",  # Don't leak tenant info
             }
 
         # Build aggregate from all active vision documents
@@ -80,22 +72,15 @@ class ConsolidatedVisionService:
 
         # Check if content has changed (unless force=True)
         if not force and product.consolidated_vision_hash == aggregate_hash:
-            logger.info(
-                "consolidate_vision_documents.no_changes",
-                product_id=product_id,
-                hash=aggregate_hash
-            )
-            return {
-                "success": False,
-                "error": "no_changes"
-            }
+            logger.info("consolidate_vision_documents.no_changes", product_id=product_id, hash=aggregate_hash)
+            return {"success": False, "error": "no_changes"}
 
         # Generate summaries
         logger.info(
             "consolidate_vision_documents.generating_summaries",
             product_id=product_id,
             aggregate_tokens=self.summarizer.estimate_tokens(aggregate_text),
-            source_docs=len(source_doc_ids)
+            source_docs=len(source_doc_ids),
         )
 
         summary_result = self.summarizer.summarize_multi_level(aggregate_text)
@@ -116,21 +101,15 @@ class ConsolidatedVisionService:
             product_id=product_id,
             light_tokens=summary_result["light"]["tokens"],
             medium_tokens=summary_result["medium"]["tokens"],
-            processing_time_ms=summary_result["processing_time_ms"]
+            processing_time_ms=summary_result["processing_time_ms"],
         )
 
         return {
             "success": True,
-            "light": {
-                "summary": summary_result["light"]["summary"],
-                "tokens": summary_result["light"]["tokens"]
-            },
-            "medium": {
-                "summary": summary_result["medium"]["summary"],
-                "tokens": summary_result["medium"]["tokens"]
-            },
+            "light": {"summary": summary_result["light"]["summary"], "tokens": summary_result["light"]["tokens"]},
+            "medium": {"summary": summary_result["medium"]["summary"], "tokens": summary_result["medium"]["tokens"]},
             "hash": aggregate_hash,
-            "source_docs": source_doc_ids
+            "source_docs": source_doc_ids,
         }
 
     def _build_aggregate(self, product: Product) -> tuple[str, list[str], str]:
@@ -153,11 +132,11 @@ class ConsolidatedVisionService:
         for doc in sorted_docs:
             # Add header and content
             parts.append(f"# {doc.document_name}\n\n{doc.vision_document}")
-            source_doc_ids.append(doc.id if hasattr(doc, 'id') else doc.document_name)
+            source_doc_ids.append(doc.id if hasattr(doc, "id") else doc.document_name)
 
         aggregate_text = "\n\n".join(parts)
 
         # Calculate SHA-256 hash
-        aggregate_hash = hashlib.sha256(aggregate_text.encode('utf-8')).hexdigest()
+        aggregate_hash = hashlib.sha256(aggregate_text.encode("utf-8")).hexdigest()
 
         return aggregate_text, source_doc_ids, aggregate_hash

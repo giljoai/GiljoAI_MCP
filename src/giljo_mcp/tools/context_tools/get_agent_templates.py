@@ -11,13 +11,14 @@ Token Budget by Depth:
 - "full": Complete template JSON (~2400 tokens)
 """
 
-import structlog
 from typing import Any, Dict, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
+
+import structlog
 from sqlalchemy import select
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate
+
 
 logger = structlog.get_logger(__name__)
 
@@ -25,6 +26,7 @@ logger = structlog.get_logger(__name__)
 def estimate_tokens(data: Any) -> int:
     """Rough token estimation (1 token ≈ 4 chars)."""
     import json
+
     text = json.dumps(data) if not isinstance(data, str) else data
     return len(text) // 4
 
@@ -35,7 +37,7 @@ async def get_agent_templates(
     detail: str = "type_only",
     offset: int = 0,
     limit: int = None,
-    db_manager: Optional[DatabaseManager] = None
+    db_manager: Optional[DatabaseManager] = None,
 ) -> Dict[str, Any]:
     """
     Fetch agent templates for given tenant with depth control.
@@ -85,12 +87,7 @@ async def get_agent_templates(
             detail="type_only"
         )
     """
-    logger.info(
-        "fetching_agent_templates_context",
-        product_id=product_id,
-        tenant_key=tenant_key,
-        depth=detail
-    )
+    logger.info("fetching_agent_templates_context", product_id=product_id, tenant_key=tenant_key, depth=detail)
 
     if db_manager is None:
         logger.error("db_manager is required", operation="get_agent_templates")
@@ -98,29 +95,22 @@ async def get_agent_templates(
 
     async with db_manager.get_session_async() as session:
         # Query agent templates for this tenant (reuse pattern from thin_prompt_generator)
-        stmt = select(AgentTemplate).where(
-            AgentTemplate.tenant_key == tenant_key,
-            AgentTemplate.is_active == True
-        ).order_by(AgentTemplate.name)
+        stmt = (
+            select(AgentTemplate)
+            .where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True)
+            .order_by(AgentTemplate.name)
+        )
 
         result = await session.execute(stmt)
         templates = result.scalars().all()
 
         if not templates:
-            logger.debug(
-                "no_agent_templates",
-                tenant_key=tenant_key,
-                operation="get_agent_templates"
-            )
+            logger.debug("no_agent_templates", tenant_key=tenant_key, operation="get_agent_templates")
             return {
                 "source": "agent_templates",
                 "depth": detail,
                 "data": [],
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "num_templates": 0
-                }
+                "metadata": {"product_id": product_id, "tenant_key": tenant_key, "num_templates": 0},
             }
 
         # Convert to dict format based on detail level
@@ -133,7 +123,7 @@ async def get_agent_templates(
                 template_dict = {
                     "name": template.name,
                     "role": template.role or "Specialized agent",
-                    "description": template.description or ""
+                    "description": template.description or "",
                 }
 
             else:  # "full"
@@ -149,7 +139,7 @@ async def get_agent_templates(
                     "tools": template.meta_data.get("tools", []) if template.meta_data else [],
                     "is_active": template.is_active,
                     "created_at": str(template.created_at) if template.created_at else None,
-                    "updated_at": str(template.updated_at) if template.updated_at else None
+                    "updated_at": str(template.updated_at) if template.updated_at else None,
                 }
 
             template_list.append(template_dict)
@@ -163,7 +153,7 @@ async def get_agent_templates(
             tenant_key=tenant_key,
             depth=detail,
             num_templates=len(template_list),
-            estimated_tokens=total_tokens
+            estimated_tokens=total_tokens,
         )
 
         return {
@@ -174,6 +164,6 @@ async def get_agent_templates(
                 "product_id": product_id,
                 "tenant_key": tenant_key,
                 "num_templates": len(template_list),
-                "pagination_supported": False  # Reserved for future implementation
-            }
+                "pagination_supported": False,  # Reserved for future implementation
+            },
         }

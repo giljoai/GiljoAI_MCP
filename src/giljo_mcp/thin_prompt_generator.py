@@ -45,13 +45,13 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 logger = logging.getLogger(__name__)
@@ -297,8 +297,7 @@ class ThinClientPromptGenerator:
             execution_id = agent_execution.id  # UNIQUE row ID - for frontend Map key
 
             logger.info(
-                f"[ThinPromptGenerator] Created orchestrator {orchestrator_id}, "
-                f"project staging_status='staged'"
+                f"[ThinPromptGenerator] Created orchestrator {orchestrator_id}, project staging_status='staged'"
             )
 
         # Handover 0461c: Generate continuation prompt if continuation_mode enabled
@@ -451,9 +450,7 @@ class ThinClientPromptGenerator:
             # Return project mission as fallback
             return project.mission or f"Mission for project: {project.name}"
 
-    def _build_thin_prompt(
-        self, orchestrator_id: str, project_id: str, project_name: str, tool: str
-    ) -> str:
+    def _build_thin_prompt(self, orchestrator_id: str, project_id: str, project_name: str, tool: str) -> str:
         """
         Build thin client prompt (~10 lines).
 
@@ -621,8 +618,8 @@ Your job is to: 1) Analyze requirements, 2) Create mission plan, 3) Assign work 
 
 PROJECT CONTEXT (Inline - ~200 tokens):
 - Name: {project.name}
-- Description: {project.description or '(No description provided)'}
-- Mission: {project.mission or '(Mission will be created by you)'}
+- Description: {project.description or "(No description provided)"}
+- Mission: {project.mission or "(Mission will be created by you)"}
 
 WORKFLOW:
 1. Verify MCP connection: mcp__giljo-mcp__health_check()
@@ -664,13 +661,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
 
         return prompt
 
-    async def _inject_360_memory(
-        self,
-        session,
-        product_id: str,
-        tenant_key: str,
-        product: Optional[Any] = None
-    ) -> str:
+    async def _inject_360_memory(self, session, product_id: str, tenant_key: str, product: Optional[Any] = None) -> str:
         """
         Inject 360 Memory System context into prompt.
 
@@ -929,7 +920,6 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
 
         return user.field_priority_config
 
-
     def _get_external_host(self) -> str:
         """
         Get external MCP server host from config.
@@ -956,9 +946,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         config = get_config()
         return config.server.api_host
 
-    async def generate_staging_prompt(
-        self, orchestrator_id: str, project_id: str, agent_id: str = None
-    ) -> str:
+    async def generate_staging_prompt(self, orchestrator_id: str, project_id: str, agent_id: str = None) -> str:
         """
         Generate thin-client orchestrator staging prompt (Handover 0415).
 
@@ -1004,12 +992,9 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
                 agent_id = orchestrator_id
         else:
             # If agent_id provided, fetch execution (for potential future use)
-            exec_stmt = (
-                select(AgentExecution)
-                .where(
-                    AgentExecution.agent_id == agent_id,
-                    AgentExecution.tenant_key == self.tenant_key,
-                )
+            exec_stmt = select(AgentExecution).where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == self.tenant_key,
             )
             exec_result = await self.db.execute(exec_stmt)
             execution = exec_result.scalars().first()
@@ -1071,8 +1056,8 @@ START NOW:
         # Validate product_id is available
         if not product_id:
             logger.warning(
-                f"[ThinPromptGenerator] product_id not provided for continuation prompt. "
-                f"Orchestrator may not be able to fetch 360 Memory context."
+                "[ThinPromptGenerator] product_id not provided for continuation prompt. "
+                "Orchestrator may not be able to fetch 360 Memory context."
             )
             product_id = "(fetch from project data)"
 
@@ -1137,7 +1122,7 @@ When ready, coordinate agents based on current status.
             "```python",
             "mcp__giljo-mcp__health_check()",
             "```",
-            "Expected: `{\"status\": \"healthy\"}` - If failed, STOP and report error",
+            'Expected: `{"status": "healthy"}` - If failed, STOP and report error',
             "",
             "## Who You Are",
             f"You are Orchestrator (job_id: {orchestrator_id}) for project '{project.name}'",
@@ -1177,7 +1162,7 @@ When ready, coordinate agents based on current status.
         agent_spawn_lines = []
         if agent_jobs:
             for idx, agent in enumerate(agent_jobs, 1):
-                mission = getattr(agent.job, 'mission', None) or "(No mission assigned)"
+                mission = getattr(agent.job, "mission", None) or "(No mission assigned)"
                 mission_summary = mission[:100] + "..." if len(mission) > 100 else mission
 
                 agent_spawn_lines.extend(
@@ -1323,7 +1308,7 @@ When ready, coordinate agents based on current status.
             "",
             "**WARNING: Exact Naming Required**",
             "- Task tool parameter `subagent_type` expects `agent_name`, NOT `agent_display_name`",
-            '- agent_name: Template filename (see allowed_agent_names in instructions)',
+            "- agent_name: Template filename (see allowed_agent_names in instructions)",
             '- agent_display_name: Display category (e.g., "implementer")',
             '- Using agent_display_name will fail with "Subagent type not found"',
             "",

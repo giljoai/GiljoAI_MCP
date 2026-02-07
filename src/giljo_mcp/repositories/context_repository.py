@@ -7,10 +7,9 @@ All operations enforce tenant isolation for security.
 
 from typing import List, Optional
 
-from sqlalchemy import func, select
-from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from ..models import MCPContextIndex, MCPContextSummary
 from .base import BaseRepository
@@ -134,7 +133,9 @@ class ContextRepository:
 
         return chunks
 
-    async def get_chunks_by_product(self, session: AsyncSession, tenant_key: str, product_id: str) -> List[MCPContextIndex]:
+    async def get_chunks_by_product(
+        self, session: AsyncSession, tenant_key: str, product_id: str
+    ) -> List[MCPContextIndex]:
         """
         Get all chunks for a product ordered by chunk_order.
 
@@ -166,7 +167,9 @@ class ContextRepository:
             MCPContextIndex instance or None if not found
         """
         result = await session.execute(
-            select(MCPContextIndex).where(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.chunk_id == chunk_id)
+            select(MCPContextIndex).where(
+                MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.chunk_id == chunk_id
+            )
         )
         return result.scalar_one_or_none()
 
@@ -278,7 +281,9 @@ class ContextRepository:
             reduction_percent=reduction_percent,
         )
 
-    async def get_summaries_by_product(self, session: AsyncSession, tenant_key: str, product_id: str) -> List[MCPContextSummary]:
+    async def get_summaries_by_product(
+        self, session: AsyncSession, tenant_key: str, product_id: str
+    ) -> List[MCPContextSummary]:
         """
         Get all summaries for a product.
 
@@ -297,7 +302,9 @@ class ContextRepository:
         )
         return list(result.scalars().all())
 
-    async def get_summary_by_id(self, session: AsyncSession, tenant_key: str, context_id: str) -> Optional[MCPContextSummary]:
+    async def get_summary_by_id(
+        self, session: AsyncSession, tenant_key: str, context_id: str
+    ) -> Optional[MCPContextSummary]:
         """
         Get a specific summary by context_id.
 
@@ -316,7 +323,9 @@ class ContextRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_token_reduction_stats(self, session: AsyncSession, tenant_key: str, product_id: Optional[str] = None) -> dict:
+    async def get_token_reduction_stats(
+        self, session: AsyncSession, tenant_key: str, product_id: Optional[str] = None
+    ) -> dict:
         """
         Get context prioritization statistics for a tenant or specific product.
 

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import yaml
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 
@@ -20,6 +20,7 @@ router = APIRouter()
 
 class SerenaToggleRequest(BaseModel):
     """Request model for Serena toggle"""
+
     use_in_prompts: bool
 
 
@@ -64,9 +65,7 @@ async def get_serena_settings():
         config = read_config()
         serena = config.get("features", {}).get("serena_mcp", {})
 
-        return {
-            "use_in_prompts": bool(serena.get("use_in_prompts", False))
-        }
+        return {"use_in_prompts": bool(serena.get("use_in_prompts", False))}
     except Exception as e:
         logger.exception("Failed to get Serena settings")
         raise HTTPException(status_code=500, detail=str(e))
@@ -100,7 +99,7 @@ async def toggle_serena(request: SerenaToggleRequest):
             "success": True,
             "enabled": request.use_in_prompts,
             "use_in_prompts": request.use_in_prompts,  # Keep for backwards compatibility
-            "message": f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}"
+            "message": f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}",
         }
 
     except Exception as e:

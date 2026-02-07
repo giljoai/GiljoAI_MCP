@@ -67,9 +67,7 @@ async def init_health_monitor(state: APIState) -> None:
 
             # Start monitoring service
             await state.health_monitor.start()
-            logger.info(
-                f"Agent health monitoring started (scan interval: {health_config.scan_interval_seconds}s)"
-            )
+            logger.info(f"Agent health monitoring started (scan interval: {health_config.scan_interval_seconds}s)")
         else:
             logger.info("Agent health monitoring disabled in configuration")
     except Exception as e:
