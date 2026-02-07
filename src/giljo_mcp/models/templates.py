@@ -7,6 +7,7 @@ and version control for agent missions.
 """
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     DateTime,
@@ -14,7 +15,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -70,11 +70,6 @@ class AgentTemplate(Base):
         nullable=True,
         comment="User-customizable role-specific guidance (editable)",
     )
-    template_content = Column(
-        Text,
-        nullable=False,
-        comment="DEPRECATED (v3.1): Use system_instructions + user_instructions. Kept for backward compatibility.",
-    )  # Template with {variable} placeholders
     variables = Column(JSON, default=list)  # List of required variables
     behavioral_rules = Column(JSON, default=list)  # Role-specific rules
     success_criteria = Column(JSON, default=list)  # Success metrics
@@ -130,7 +125,7 @@ class AgentTemplate(Base):
         """Get list of variables in template"""
         import re
 
-        return re.findall(r"\{(\w+)\}", self.template_content)
+        return re.findall(r"\{(\w+)\}", self.system_instructions or "")
 
     @property
     def may_be_stale(self) -> bool:
@@ -147,6 +142,9 @@ class AgentTemplate(Base):
             return False
 
         return self.updated_at > self.last_exported_at
+
+    def __repr__(self) -> str:
+        return f"<AgentTemplate(id={self.id}, name='{self.name}', category='{self.category}')>"
 
 
 class TemplateArchive(Base):
@@ -169,7 +167,6 @@ class TemplateArchive(Base):
     # Full system+user instructions snapshot for v3.1 dual-field support
     system_instructions = Column(Text, nullable=True)
     user_instructions = Column(Text, nullable=True)
-    template_content = Column(Text, nullable=False)
     variables = Column(JSON, default=list)
     behavioral_rules = Column(JSON, default=list)
     success_criteria = Column(JSON, default=list)
@@ -202,6 +199,9 @@ class TemplateArchive(Base):
         Index("idx_archive_version", "version"),
         Index("idx_archive_date", "archived_at"),
     )
+
+    def __repr__(self) -> str:
+        return f"<TemplateArchive(id={self.id}, template_id='{self.template_id}', version={self.version})>"
 
 
 class TemplateUsageStats(Base):
@@ -239,3 +239,6 @@ class TemplateUsageStats(Base):
         Index("idx_usage_project", "project_id"),
         Index("idx_usage_date", "used_at"),
     )
+
+    def __repr__(self) -> str:
+        return f"<TemplateUsageStats(id={self.id}, template_id='{self.template_id}')>"

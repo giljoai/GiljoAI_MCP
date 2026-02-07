@@ -5,15 +5,16 @@ Tests verify that depth settings control HOW MUCH detail is included
 for 360 Memory, Git History, and Agent Templates.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from src.giljo_mcp.mission_planner import MissionPlanner
-from src.giljo_mcp.tools.agent_discovery import _format_agent_info, get_available_agents
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.templates import AgentTemplate
+from src.giljo_mcp.tools.agent_discovery import _format_agent_info, get_available_agents
 
 
 @pytest.fixture
@@ -30,7 +31,7 @@ def mock_product():
         "tech_stack": {
             "languages": ["Python", "JavaScript"],
             "frameworks": ["FastAPI", "Vue"],
-            "database": "PostgreSQL"
+            "database": "PostgreSQL",
         }
     }
     product.product_memory = {
@@ -48,8 +49,8 @@ def mock_product():
         ],
         "git_integration": {
             "enabled": True,
-            "commit_limit": 20  # Will be overridden by depth config
-        }
+            "commit_limit": 20,  # Will be overridden by depth config
+        },
     }
     return product
 
@@ -75,6 +76,7 @@ def mock_db_manager():
 # 360 Memory Depth Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_360_memory_depth_1_project(mock_product, mock_project, mock_db_manager):
     """Test 360 Memory with depth=1 returns 1 project."""
@@ -83,7 +85,7 @@ async def test_360_memory_depth_1_project(mock_product, mock_project, mock_db_ma
     result = await planner._extract_product_history(
         product=mock_product,
         priority=2,  # IMPORTANT
-        max_entries=1  # Depth configuration
+        max_entries=1,  # Depth configuration
     )
 
     # Should contain exactly 1 project (most recent)
@@ -100,7 +102,7 @@ async def test_360_memory_depth_3_projects(mock_product, mock_project, mock_db_m
     result = await planner._extract_product_history(
         product=mock_product,
         priority=2,
-        max_entries=3  # Depth configuration
+        max_entries=3,  # Depth configuration
     )
 
     # Should contain exactly 3 most recent projects
@@ -118,7 +120,7 @@ async def test_360_memory_depth_5_projects(mock_product, mock_project, mock_db_m
     result = await planner._extract_product_history(
         product=mock_product,
         priority=2,
-        max_entries=5  # Default depth
+        max_entries=5,  # Default depth
     )
 
     # Should contain exactly 5 most recent projects
@@ -138,7 +140,7 @@ async def test_360_memory_depth_10_projects(mock_product, mock_project, mock_db_
     result = await planner._extract_product_history(
         product=mock_product,
         priority=2,
-        max_entries=10  # Maximum depth
+        max_entries=10,  # Maximum depth
     )
 
     # Should contain all 10 projects
@@ -151,13 +153,14 @@ async def test_360_memory_depth_10_projects(mock_product, mock_project, mock_db_
 # Git History Depth Tests
 # ==============================================================================
 
+
 def test_git_history_depth_5_commits(mock_db_manager):
     """Test Git History with depth=5 shows 5 commits in examples."""
     planner = MissionPlanner(mock_db_manager)
 
     git_config = {
         "enabled": True,
-        "commit_limit": 5  # Depth configuration
+        "commit_limit": 5,  # Depth configuration
     }
 
     result = planner._inject_git_instructions(git_config)
@@ -171,10 +174,7 @@ def test_git_history_depth_10_commits(mock_db_manager):
     """Test Git History with depth=10 shows 10 commits in examples."""
     planner = MissionPlanner(mock_db_manager)
 
-    git_config = {
-        "enabled": True,
-        "commit_limit": 10
-    }
+    git_config = {"enabled": True, "commit_limit": 10}
 
     result = planner._inject_git_instructions(git_config)
 
@@ -187,7 +187,7 @@ def test_git_history_depth_20_commits_default(mock_db_manager):
 
     git_config = {
         "enabled": True,
-        "commit_limit": 20  # Default depth
+        "commit_limit": 20,  # Default depth
     }
 
     result = planner._inject_git_instructions(git_config)
@@ -199,10 +199,7 @@ def test_git_history_depth_100_commits_maximum(mock_db_manager):
     """Test Git History with depth=100 (maximum) shows 100 commits."""
     planner = MissionPlanner(mock_db_manager)
 
-    git_config = {
-        "enabled": True,
-        "commit_limit": 100
-    }
+    git_config = {"enabled": True, "commit_limit": 100}
 
     result = planner._inject_git_instructions(git_config)
 
@@ -212,6 +209,7 @@ def test_git_history_depth_100_commits_maximum(mock_db_manager):
 # ==============================================================================
 # Agent Templates Depth Tests
 # ==============================================================================
+
 
 def test_agent_template_depth_type_only():
     """Test agent template with depth='type_only' returns minimal info."""
@@ -291,11 +289,7 @@ async def test_get_available_agents_depth_type_only():
     mock_result.scalars().all.return_value = [template]
     mock_session.execute.return_value = mock_result
 
-    result = await get_available_agents(
-        session=mock_session,
-        tenant_key="tk_test",
-        depth="type_only"
-    )
+    result = await get_available_agents(session=mock_session, tenant_key="tk_test", depth="type_only")
 
     # Should succeed
     assert result["success"] is True
@@ -328,11 +322,7 @@ async def test_get_available_agents_depth_full():
     mock_result.scalars().all.return_value = [template]
     mock_session.execute.return_value = mock_result
 
-    result = await get_available_agents(
-        session=mock_session,
-        tenant_key="tk_test",
-        depth="full"
-    )
+    result = await get_available_agents(session=mock_session, tenant_key="tk_test", depth="full")
 
     assert result["success"] is True
     agent = result["data"]["agents"][0]
@@ -350,6 +340,7 @@ async def test_get_available_agents_depth_full():
 # Integration Tests
 # ==============================================================================
 
+
 @pytest.mark.asyncio
 async def test_build_context_with_mixed_depths(mock_product, mock_project, mock_db_manager):
     """Test _build_context_with_priorities with mixed depth configuration."""
@@ -357,25 +348,25 @@ async def test_build_context_with_mixed_depths(mock_product, mock_project, mock_
 
     field_priorities = {
         "product_core": 1,  # CRITICAL
-        "memory_360": 2,    # IMPORTANT
-        "git_history": 0,   # Excluded (but git toggle enabled)
+        "memory_360": 2,  # IMPORTANT
+        "git_history": 0,  # Excluded (but git toggle enabled)
     }
 
     depth_config = {
-        "memory_360": 3,         # Show 3 projects
-        "git_history": 10,       # Show 10 commits
-        "agent_templates": "type_only"  # Minimal
+        "memory_360": 3,  # Show 3 projects
+        "git_history": 10,  # Show 10 commits
+        "agent_templates": "type_only",  # Minimal
     }
 
     # Mock the async context manager for serena (if needed)
-    with patch.object(planner, '_fetch_serena_codebase_context', return_value=None):
+    with patch.object(planner, "_fetch_serena_codebase_context", return_value=None):
         result = await planner._build_context_with_priorities(
             product=mock_product,
             project=mock_project,
             field_priorities=field_priorities,
             depth_config=depth_config,
             user_id="user-123",
-            include_serena=False
+            include_serena=False,
         )
 
     # Should contain memory with 3 projects
@@ -399,14 +390,14 @@ async def test_build_context_without_depth_config_uses_defaults(mock_product, mo
     }
 
     # Don't pass depth_config (should use defaults)
-    with patch.object(planner, '_fetch_serena_codebase_context', return_value=None):
+    with patch.object(planner, "_fetch_serena_codebase_context", return_value=None):
         result = await planner._build_context_with_priorities(
             product=mock_product,
             project=mock_project,
             field_priorities=field_priorities,
             # depth_config=None,  # Defaults applied in method
             user_id="user-123",
-            include_serena=False
+            include_serena=False,
         )
 
     # Should use default depth (5 projects for 360 memory)

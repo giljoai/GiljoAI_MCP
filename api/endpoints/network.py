@@ -101,7 +101,7 @@ async def detect_ip():
 
     except Exception as e:
         logger.error(f"Network detection failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to detect network configuration: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to detect network configuration: {e}") from e
 
 
 @router.get("/adapters", response_model=NetworkAdaptersResponse)
@@ -129,8 +129,6 @@ async def get_network_adapters():
         HTTPException: If adapter detection fails
     """
     try:
-        import platform
-
         import psutil
 
         adapters = []
@@ -205,15 +203,15 @@ async def get_network_adapters():
 
         return NetworkAdaptersResponse(adapters=adapters, recommended=recommended)
 
-    except ImportError:
-        logger.error("psutil library not available")
+    except ImportError as e:
+        logger.exception("psutil library not available")
         raise HTTPException(
             status_code=500,
             detail="Network adapter detection requires psutil library. Install with: pip install psutil",
-        )
+        ) from e
     except Exception as e:
         logger.error(f"Network adapter detection failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to detect network adapters: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to detect network adapters: {e}") from e
 
 
 def _select_recommended_adapter(adapters: list[NetworkAdapter]) -> Optional[NetworkAdapter]:

@@ -8,7 +8,7 @@ across the entire GiljoAI MCP system.
 from typing import Optional
 
 
-class BaseGiljoException(Exception):
+class BaseGiljoError(Exception):
     """
     Base exception for all GiljoAI MCP errors.
 
@@ -28,7 +28,7 @@ class BaseGiljoException(Exception):
             context: Optional dictionary with additional error context
         """
         from datetime import datetime, timezone
-        
+
         super().__init__(message)
         self.message = message
         self.error_code = error_code or self.__class__.__name__.upper()
@@ -52,13 +52,14 @@ class BaseGiljoException(Exception):
             "message": self.message,
             "context": self.context,
             "timestamp": self.timestamp.isoformat(),
-            "status_code": self.default_status_code
+            "status_code": self.default_status_code,
         }
 
 
 # Configuration related exceptions
-class ConfigurationError(BaseGiljoException):
+class ConfigurationError(BaseGiljoError):
     """Raised when there are configuration issues."""
+
     default_status_code: int = 500
 
 
@@ -67,26 +68,20 @@ class ConfigValidationError(ConfigurationError):
 
 
 # Template related exceptions
-class TemplateError(BaseGiljoException):
+class TemplateError(BaseGiljoError):
     """Base class for template-related errors."""
 
 
 class TemplateNotFoundError(TemplateError):
     """Raised when a requested template cannot be found."""
+
     default_status_code: int = 404
 
 
-class TemplateValidationError(TemplateError):
-    """Raised when template validation fails."""
-
-
-class TemplateRenderError(TemplateError):
-    """Raised when template rendering fails."""
-
-
 # Orchestration related exceptions
-class OrchestrationError(BaseGiljoException):
+class OrchestrationError(BaseGiljoError):
     """Base class for orchestration-related errors."""
+
     default_status_code: int = 500
 
 
@@ -107,8 +102,9 @@ class HandoffError(OrchestrationError):
 
 
 # Database related exceptions
-class DatabaseError(BaseGiljoException):
+class DatabaseError(BaseGiljoError):
     """Base class for database-related errors."""
+
     default_status_code: int = 500
 
 
@@ -125,8 +121,9 @@ class DatabaseIntegrityError(DatabaseError):
 
 
 # Validation related exceptions
-class ValidationError(BaseGiljoException):
+class ValidationError(BaseGiljoError):
     """Base class for validation errors."""
+
     default_status_code: int = 400
 
 
@@ -138,59 +135,50 @@ class DataValidationError(ValidationError):
     """Raised when data validation fails."""
 
 
-# Git operations exceptions
-class GitOperationError(BaseGiljoException):
-    """Base class for Git operation errors."""
-
-
-class GitAuthenticationError(GitOperationError):
-    """Raised when Git authentication fails."""
-
-
-class GitRepositoryError(GitOperationError):
-    """Raised when Git repository operations fail."""
-
-
 # Queue related exceptions
-class QueueException(BaseGiljoException):
+class QueueError(BaseGiljoError):
     """Base class for queue-related errors."""
 
 
-class ConsistencyError(QueueException):
+class ConsistencyError(QueueError):
     """Raised when queue consistency checks fail."""
 
 
-class MessageDeliveryError(QueueException):
+class MessageDeliveryError(QueueError):
     """Raised when message delivery fails."""
 
 
 # API related exceptions
-class APIError(BaseGiljoException):
+class APIError(BaseGiljoError):
     """Base class for API-related errors."""
 
 
 class AuthenticationError(APIError):
     """Raised when API authentication fails."""
+
     default_status_code: int = 401
 
 
 class AuthorizationError(APIError):
     """Raised when API authorization fails."""
+
     default_status_code: int = 403
 
 
 class RateLimitError(APIError):
     """Raised when API rate limits are exceeded."""
+
     default_status_code: int = 429
 
 
 # Resource related exceptions
-class ResourceError(BaseGiljoException):
+class ResourceError(BaseGiljoError):
     """Base class for resource-related errors."""
 
 
 class ResourceNotFoundError(ResourceError):
     """Raised when a requested resource cannot be found."""
+
     default_status_code: int = 404
 
 
@@ -203,7 +191,7 @@ class RetryExhaustedError(ResourceError):
 
 
 # Context and session exceptions
-class ContextError(BaseGiljoException):
+class ContextError(BaseGiljoError):
     """Base class for context-related errors."""
 
 
@@ -211,7 +199,7 @@ class ContextLimitError(ContextError):
     """Raised when context limits are exceeded."""
 
 
-class SessionError(BaseGiljoException):
+class SessionError(BaseGiljoError):
     """Base class for session-related errors."""
 
 
@@ -220,20 +208,20 @@ class SessionExpiredError(SessionError):
 
 
 # File and path exceptions
-class FileSystemError(BaseGiljoException):
+class FileSystemError(BaseGiljoError):
     """Base class for file system errors."""
 
 
-class FileNotFoundError(FileSystemError):
+class GiljoFileNotFoundError(FileSystemError):
     """Raised when a required file is not found."""
 
 
-class PermissionError(FileSystemError):
+class GiljoPermissionError(FileSystemError):
     """Raised when file system permissions are insufficient."""
 
 
 # Tool and MCP related exceptions
-class MCPError(BaseGiljoException):
+class MCPError(BaseGiljoError):
     """Base class for MCP protocol errors."""
 
 
@@ -246,7 +234,7 @@ class ProtocolError(MCPError):
 
 
 # Vision document exceptions
-class VisionError(BaseGiljoException):
+class VisionError(BaseGiljoError):
     """Base class for vision document errors."""
 
 
@@ -258,7 +246,7 @@ class VisionParsingError(VisionError):
     """Raised when vision document parsing fails."""
 
 
-def create_error_from_exception(exc: Exception, context: Optional[dict] = None) -> BaseGiljoException:
+def create_error_from_exception(exc: Exception, context: Optional[dict] = None) -> BaseGiljoError:
     """
     Convert a standard Python exception to a GiljoAI exception.
 
@@ -267,23 +255,25 @@ def create_error_from_exception(exc: Exception, context: Optional[dict] = None) 
         context: Optional context to add to the error
 
     Returns:
-        A BaseGiljoException or appropriate subclass
+        A BaseGiljoError or appropriate subclass
     """
-    if isinstance(exc, BaseGiljoException):
+    if isinstance(exc, BaseGiljoError):
         # Already a GiljoAI exception, just update context if needed
         if context:
             exc.context.update(context)
         return exc
 
     # Map common Python exceptions to appropriate GiljoAI exceptions
+    import builtins
+
     mapping = {
-        FileNotFoundError: FileNotFoundError,
-        PermissionError: PermissionError,
+        builtins.FileNotFoundError: GiljoFileNotFoundError,
+        builtins.PermissionError: GiljoPermissionError,
         ConnectionError: DatabaseConnectionError,
         TimeoutError: ResourceExhaustedError,
         ValueError: ValidationError,
         KeyError: DataValidationError,
     }
 
-    exception_class = mapping.get(type(exc), BaseGiljoException)
+    exception_class = mapping.get(type(exc), BaseGiljoError)
     return exception_class(message=str(exc), context=context or {"original_type": type(exc).__name__})

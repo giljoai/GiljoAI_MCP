@@ -8,18 +8,13 @@ Tests validation integration with:
 - Template fallback mechanisms
 """
 
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import Mock, AsyncMock, patch
-import fakeredis
+from unittest.mock import AsyncMock, Mock
 
-from src.giljo_mcp.validation.template_validator import (
-    TemplateValidator,
-    ValidationError,
-    TemplateValidationResult
-)
-from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
+import fakeredis
+import pytest
+
 from api.websocket import WebSocketManager
+from src.giljo_mcp.validation.template_validator import TemplateValidator
 
 
 class TestValidationIntegrationWithThinPrompt:
@@ -44,12 +39,12 @@ class TestValidationIntegrationWithThinPrompt:
         return manager
 
     @pytest.mark.asyncio
-    async def test_validation_can_be_used_with_template_content(self, mock_db, mock_redis):
-        """Test validation can validate template content independently."""
+    async def test_validation_can_be_used_with_template_instructions(self, mock_db, mock_redis):
+        """Test validation can validate template instructions independently."""
         validator = TemplateValidator(redis_client=mock_redis)
 
-        # Simulate fetching template content
-        template_content = """
+        # Simulate fetching template instructions
+        content = """
             You are an implementer agent.
 
             Agent ID: {agent_id}
@@ -65,8 +60,8 @@ class TestValidationIntegrationWithThinPrompt:
             - receive_messages(agent_id, tenant_key)
         """
 
-        # Validate template content
-        result = validator.validate(template_content, "template-123", "implementer")
+        # Validate template instructions
+        result = validator.validate(content, "template-123", "implementer")
 
         assert result is not None
         assert result.is_valid
@@ -77,10 +72,10 @@ class TestValidationIntegrationWithThinPrompt:
         validator = TemplateValidator(redis_client=mock_redis)
 
         # Invalid template (missing MCP tools)
-        invalid_template_content = "You are an agent. Do tasks."
+        invalid_content = "You are an agent. Do tasks."
 
         # Validate
-        result = validator.validate(invalid_template_content, "invalid-template", "implementer")
+        result = validator.validate(invalid_content, "invalid-template", "implementer")
 
         # Should be invalid
         assert not result.is_valid
@@ -109,9 +104,7 @@ class TestValidationIntegrationWithThinPrompt:
         # Simulate WebSocket broadcast
         if not result.is_valid:
             await mock_ws_manager.broadcast_validation_failure(
-                tenant_key="test-tenant",
-                template_id="invalid-template",
-                validation_errors=result.errors
+                tenant_key="test-tenant", template_id="invalid-template", validation_errors=result.errors
             )
 
         # Verify broadcast was called
@@ -134,9 +127,7 @@ class TestValidationIntegrationWithThinPrompt:
 
         # Simulate WebSocket broadcast
         await ws_manager.broadcast_validation_failure(
-            tenant_key="test-tenant",
-            template_id="template-123",
-            validation_errors=result.errors
+            tenant_key="test-tenant", template_id="template-123", validation_errors=result.errors
         )
 
         # Verify broadcast was called
@@ -179,9 +170,7 @@ class TestValidationCachingPerformance:
 
         # Simulate 100 requests
         for _ in range(total_requests):
-            result = validator_with_real_redis.validate(
-                template, "template-123", "implementer", use_cache=True
-            )
+            result = validator_with_real_redis.validate(template, "template-123", "implementer", use_cache=True)
             if result.cached:
                 cache_hits += 1
 
@@ -210,9 +199,7 @@ class TestValidationCachingPerformance:
         cache_hits = []
 
         def validate():
-            result = validator_with_real_redis.validate(
-                template, "template-123", "implementer", use_cache=True
-            )
+            result = validator_with_real_redis.validate(template, "template-123", "implementer", use_cache=True)
             results.append(result)
             if result.cached:
                 cache_hits.append(1)
@@ -289,7 +276,7 @@ class TestValidationSecurityFocus:
             "1' OR '1'='1",
             "admin'--",
             "' UNION SELECT * FROM passwords--",
-            "; DELETE FROM sessions WHERE 1=1; --"
+            "; DELETE FROM sessions WHERE 1=1; --",
         ]
 
         for pattern in injection_patterns:
@@ -308,13 +295,7 @@ class TestValidationSecurityFocus:
 
     def test_command_injection_detection(self, validator):
         """Test command injection patterns are detected."""
-        injection_patterns = [
-            "&& rm -rf /",
-            "| cat /etc/passwd",
-            "; whoami",
-            "`malicious_command`",
-            "$(evil_code)"
-        ]
+        injection_patterns = ["&& rm -rf /", "| cat /etc/passwd", "; whoami", "`malicious_command`", "$(evil_code)"]
 
         for pattern in injection_patterns:
             template = f"""

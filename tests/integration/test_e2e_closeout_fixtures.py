@@ -72,9 +72,7 @@ async def test_e2e_closeout_fixtures_creates_all_data(e2e_closeout_fixtures):
 
 
 @pytest.mark.asyncio
-async def test_e2e_closeout_fixtures_multi_tenant_isolation(
-    e2e_closeout_fixtures, db_session
-):
+async def test_e2e_closeout_fixtures_multi_tenant_isolation(e2e_closeout_fixtures, db_session):
     """
     Test that e2e_closeout_fixtures data is properly tenant-isolated.
 
@@ -83,8 +81,9 @@ async def test_e2e_closeout_fixtures_multi_tenant_isolation(
     - No data leaks to other tenants
     """
     from sqlalchemy import select
+
     from src.giljo_mcp.models import Product, Project, User
-    from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+    from src.giljo_mcp.models.agent_identity import AgentExecution
 
     fixtures = e2e_closeout_fixtures
     tenant_key = fixtures["tenant_key"]

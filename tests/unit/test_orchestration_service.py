@@ -12,13 +12,13 @@ Tests cover:
 Target: >80% line coverage
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
-from uuid import uuid4
 
+import pytest
+
+from src.giljo_mcp.models import AgentExecution, AgentJob, ProductMemoryEntry, Project
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models import AgentExecution, AgentJob, Project
 
 
 @pytest.fixture
@@ -58,17 +58,13 @@ class TestOrchestrationServiceJobManagement:
         mock_project.name = "Test Project"
         mock_project.tenant_key = "test-tenant"
 
-        session.execute.return_value = Mock(
-            scalar_one_or_none=Mock(return_value=mock_project)
-        )
+        session.execute.return_value = Mock(scalar_one_or_none=Mock(return_value=mock_project))
 
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Mock httpx for WebSocket broadcast
-        with patch('httpx.AsyncClient') as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=Mock(status_code=200)
-            )
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_client.return_value.__aenter__.return_value.post = AsyncMock(return_value=Mock(status_code=200))
 
             # Act
             result = await service.spawn_agent_job(
@@ -76,7 +72,7 @@ class TestOrchestrationServiceJobManagement:
                 agent_name="impl-1",
                 mission="Implement feature X",
                 project_id="project-id",
-                tenant_key="test-tenant"
+                tenant_key="test-tenant",
             )
 
         # Assert
@@ -94,9 +90,7 @@ class TestOrchestrationServiceJobManagement:
         db_manager, session = mock_db_manager
         tenant_manager = Mock()
 
-        session.execute.return_value = Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        )
+        session.execute.return_value = Mock(scalar_one_or_none=Mock(return_value=None))
 
         service = OrchestrationService(db_manager, tenant_manager)
 
@@ -106,7 +100,7 @@ class TestOrchestrationServiceJobManagement:
             agent_name="impl-1",
             mission="test",
             project_id="nonexistent",
-            tenant_key="test-tenant"
+            tenant_key="test-tenant",
         )
 
         # Assert
@@ -142,22 +136,17 @@ class TestOrchestrationServiceJobManagement:
         session.execute.side_effect = [
             Mock(scalar_one_or_none=Mock(return_value=mock_job)),
             Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
-            Mock(all=Mock(return_value=[(mock_execution, mock_job)]))
+            Mock(all=Mock(return_value=[(mock_execution, mock_job)])),
         ]
 
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Mock httpx for WebSocket broadcast (first acknowledgement triggers events)
-        with patch('httpx.AsyncClient') as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=Mock(status_code=200)
-            )
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_client.return_value.__aenter__.return_value.post = AsyncMock(return_value=Mock(status_code=200))
 
             # Act
-            result = await service.get_agent_mission(
-                job_id="job-123",
-                tenant_key="test-tenant"
-            )
+            result = await service.get_agent_mission(job_id="job-123", tenant_key="test-tenant")
 
         # Assert
         assert result["success"] is True
@@ -192,16 +181,13 @@ class TestOrchestrationServiceJobManagement:
         # Two queries: 1) fetch AgentExecution, 2) fetch AgentJob
         session.execute.side_effect = [
             Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
-            Mock(scalar_one_or_none=Mock(return_value=mock_job))
+            Mock(scalar_one_or_none=Mock(return_value=mock_job)),
         ]
 
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Act
-        result = await service.acknowledge_job(
-            job_id="job-123",
-            agent_id="agent-456"
-        )
+        result = await service.acknowledge_job(job_id="job-123", agent_id="agent-456")
 
         # Assert
         assert result["status"] == "success"
@@ -229,17 +215,12 @@ class TestOrchestrationServiceJobManagement:
         mock_job.status = "working"
         mock_job.started_at = datetime.now()
 
-        session.execute.return_value = Mock(
-            scalar_one_or_none=Mock(return_value=mock_job)
-        )
+        session.execute.return_value = Mock(scalar_one_or_none=Mock(return_value=mock_job))
 
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Act
-        result = await service.acknowledge_job(
-            job_id="job-123",
-            agent_id="agent-456"
-        )
+        result = await service.acknowledge_job(job_id="job-123", agent_id="agent-456")
 
         # Assert
         assert result["status"] == "success"
@@ -281,10 +262,7 @@ class TestOrchestrationServiceJobManagement:
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Act
-        result = await service.complete_job(
-            job_id="job-123",
-            result={"output": "Successfully completed"}
-        )
+        result = await service.complete_job(job_id="job-123", result={"output": "Successfully completed"})
 
         # Assert
         assert result["status"] == "success"
@@ -308,17 +286,12 @@ class TestOrchestrationServiceJobManagement:
         mock_job.failure_reason = None
         mock_job.block_reason = None
 
-        session.execute.return_value = Mock(
-            scalar_one_or_none=Mock(return_value=mock_job)
-        )
+        session.execute.return_value = Mock(scalar_one_or_none=Mock(return_value=mock_job))
 
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Act
-        result = await service.report_error(
-            job_id="job-123",
-            error="Failed to compile code"
-        )
+        result = await service.report_error(job_id="job-123", error="Failed to compile code")
 
         # Assert
         assert result["status"] == "success"
@@ -357,25 +330,17 @@ class TestOrchestrationServiceWorkflow:
 
         # Create mock result that returns rows (tuples of execution, job)
         mock_result = Mock()
-        mock_result.all = Mock(return_value=[
-            (mock_execution1, mock_job),
-            (mock_execution2, mock_job),
-            (mock_execution3, mock_job)
-        ])
+        mock_result.all = Mock(
+            return_value=[(mock_execution1, mock_job), (mock_execution2, mock_job), (mock_execution3, mock_job)]
+        )
 
         # Multiple queries: project lookup, then jobs lookup (joined)
-        session.execute.side_effect = [
-            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
-            mock_result
-        ]
+        session.execute.side_effect = [Mock(scalar_one_or_none=Mock(return_value=mock_project)), mock_result]
 
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Act
-        result = await service.get_workflow_status(
-            project_id="project-id",
-            tenant_key="test-tenant"
-        )
+        result = await service.get_workflow_status(project_id="project-id", tenant_key="test-tenant")
 
         # Assert
         assert "active_agents" in result
@@ -396,17 +361,12 @@ class TestOrchestrationServiceWorkflow:
         db_manager, session = mock_db_manager
         tenant_manager = Mock()
 
-        session.execute.return_value = Mock(
-            scalar_one_or_none=Mock(return_value=None)
-        )
+        session.execute.return_value = Mock(scalar_one_or_none=Mock(return_value=None))
 
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Act
-        result = await service.get_workflow_status(
-            project_id="nonexistent",
-            tenant_key="test-tenant"
-        )
+        result = await service.get_workflow_status(project_id="nonexistent", tenant_key="test-tenant")
 
         # Assert
         assert "error" in result
@@ -442,20 +402,14 @@ class TestOrchestrationServiceWorkflow:
 
         # Create mock result that returns rows (tuples of execution, job)
         mock_result = Mock()
-        mock_result.all = Mock(return_value=[
-            (mock_execution1, mock_job1),
-            (mock_execution2, mock_job2)
-        ])
+        mock_result.all = Mock(return_value=[(mock_execution1, mock_job1), (mock_execution2, mock_job2)])
 
         session.execute.return_value = mock_result
 
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Act
-        result = await service.get_pending_jobs(
-            agent_display_name="implementer",
-            tenant_key="test-tenant"
-        )
+        result = await service.get_pending_jobs(agent_display_name="implementer", tenant_key="test-tenant")
 
         # Assert
         assert result["status"] == "success"
@@ -473,10 +427,7 @@ class TestOrchestrationServiceWorkflow:
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Act
-        result = await service.get_pending_jobs(
-            agent_display_name="",
-            tenant_key="test-tenant"
-        )
+        result = await service.get_pending_jobs(agent_display_name="", tenant_key="test-tenant")
 
         # Assert
         assert result["status"] == "error"
@@ -493,9 +444,7 @@ class TestOrchestrationServiceErrorHandling:
         db_manager = Mock()
         tenant_manager = Mock()
 
-        db_manager.get_session_async = AsyncMock(
-            side_effect=Exception("Connection lost")
-        )
+        db_manager.get_session_async = AsyncMock(side_effect=Exception("Connection lost"))
 
         service = OrchestrationService(db_manager, tenant_manager)
 
@@ -505,7 +454,7 @@ class TestOrchestrationServiceErrorHandling:
             agent_name="impl-1",
             mission="test",
             project_id="project-id",
-            tenant_key="test-tenant"
+            tenant_key="test-tenant",
         )
 
         # Assert
@@ -524,10 +473,7 @@ class TestOrchestrationServiceErrorHandling:
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Act
-        result = await service.acknowledge_job(
-            job_id="job-123",
-            agent_id="agent-456"
-        )
+        result = await service.acknowledge_job(job_id="job-123", agent_id="agent-456")
 
         # Assert
         assert result["status"] == "error"
@@ -536,6 +482,8 @@ class TestOrchestrationServiceErrorHandling:
     @pytest.mark.asyncio
     async def test_complete_job_invalid_result(self):
         """Test complete_job validation for invalid result"""
+        from src.giljo_mcp.exceptions import ValidationError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
@@ -544,15 +492,14 @@ class TestOrchestrationServiceErrorHandling:
 
         service = OrchestrationService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.complete_job(
-            job_id="job-123",
-            result="not-a-dict"  # Should be a dict
-        )
+        # Act & Assert - ValidationError raised for invalid result
+        with pytest.raises(ValidationError) as exc_info:
+            await service.complete_job(
+                job_id="job-123",
+                result="not-a-dict",  # Should be a dict
+            )
 
-        # Assert
-        assert result["status"] == "error"
-        assert "must be a non-empty dict" in result["error"]
+        assert "must be a non-empty dict" in str(exc_info.value)
 
 
 class TestOrchestrationServiceTodoWarnings:
@@ -587,7 +534,7 @@ class TestOrchestrationServiceTodoWarnings:
         session.execute.side_effect = [
             Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
             Mock(scalar_one_or_none=Mock(return_value=mock_job)),
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[]))))  # No todo items
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),  # No todo items
         ]
 
         service = OrchestrationService(db_manager, tenant_manager)
@@ -596,7 +543,7 @@ class TestOrchestrationServiceTodoWarnings:
         result = await service.report_progress(
             job_id="job-123",
             progress={"percent": 50, "message": "Half done"},  # No todo_items!
-            tenant_key="test-tenant"
+            tenant_key="test-tenant",
         )
 
         # Assert
@@ -641,7 +588,7 @@ class TestOrchestrationServiceTodoWarnings:
             Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
             Mock(scalar_one_or_none=Mock(return_value=mock_job)),
             AsyncMock(),  # Delete todo_items
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_todo_item]))))
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_todo_item])))),
         ]
 
         service = OrchestrationService(db_manager, tenant_manager)
@@ -649,11 +596,8 @@ class TestOrchestrationServiceTodoWarnings:
         # Act
         result = await service.report_progress(
             job_id="job-123",
-            progress={
-                "mode": "todo",
-                "todo_items": [{"content": "Task 1", "status": "completed"}]
-            },
-            tenant_key="test-tenant"
+            progress={"mode": "todo", "todo_items": [{"content": "Task 1", "status": "completed"}]},
+            tenant_key="test-tenant",
         )
 
         # Assert
@@ -688,16 +632,17 @@ class TestOrchestrationServiceTodoWarnings:
 
         # Setup execute mock to return appropriate values based on call count
         call_count = 0
+
         def execute_side_effect(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             # Pattern: execution, job, todo_items query (repeats for each report_progress call)
             if call_count % 3 == 1:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_execution))
-            elif call_count % 3 == 2:
+            if call_count % 3 == 2:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_job))
-            else:  # call_count % 3 == 0
-                return Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[]))))
+            # call_count % 3 == 0
+            return Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[]))))
 
         session.execute.side_effect = execute_side_effect
 
@@ -705,7 +650,7 @@ class TestOrchestrationServiceTodoWarnings:
         result1 = await service.report_progress(
             job_id="job-123",
             progress={"percent": 25},  # Non-empty dict, but no todo_items
-            tenant_key="test-tenant"
+            tenant_key="test-tenant",
         )
 
         # Assert - First call has warning
@@ -716,7 +661,7 @@ class TestOrchestrationServiceTodoWarnings:
         result2 = await service.report_progress(
             job_id="job-123",
             progress={"percent": 50},  # Non-empty dict, but no todo_items
-            tenant_key="test-tenant"
+            tenant_key="test-tenant",
         )
 
         # Assert - Second call has no warning (throttled)
@@ -752,7 +697,7 @@ class TestOrchestrationServiceTodoWarnings:
         session.execute.side_effect = [
             Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
             Mock(scalar_one_or_none=Mock(return_value=mock_job)),
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[]))))  # No todo items
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),  # No todo items
         ]
 
         service = OrchestrationService(db_manager, tenant_manager)
@@ -761,7 +706,7 @@ class TestOrchestrationServiceTodoWarnings:
         result = await service.report_progress(
             job_id="job-123",
             progress={"todo_items": []},  # Empty list!
-            tenant_key="test-tenant"
+            tenant_key="test-tenant",
         )
 
         # Assert
@@ -815,7 +760,11 @@ class TestOrchestrationServiceTodoWarnings:
             Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
             Mock(scalar_one_or_none=Mock(return_value=mock_job)),
             AsyncMock(),  # Delete todo_items
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_todo_item1, mock_todo_item2, mock_todo_item3]))))
+            Mock(
+                scalars=Mock(
+                    return_value=Mock(all=Mock(return_value=[mock_todo_item1, mock_todo_item2, mock_todo_item3]))
+                )
+            ),
         ]
 
         service = OrchestrationService(db_manager, tenant_manager)
@@ -827,8 +776,8 @@ class TestOrchestrationServiceTodoWarnings:
             todo_items=[
                 {"content": "Task A", "status": "completed"},
                 {"content": "Task B", "status": "in_progress"},
-                {"content": "Task C", "status": "pending"}
-            ]
+                {"content": "Task C", "status": "pending"},
+            ],
         )
 
         # Assert
@@ -854,27 +803,18 @@ class TestCancelJob:
         websocket_manager = Mock()
         websocket_manager.broadcast_to_tenant = AsyncMock()
 
-        service = OrchestrationService(
-            db_manager,
-            tenant_manager,
-            websocket_manager=websocket_manager
-        )
+        service = OrchestrationService(db_manager, tenant_manager, websocket_manager=websocket_manager)
 
         # Mock AgentJobManager.cancel_job to return success
-        with patch('src.giljo_mcp.services.orchestration_service.AgentJobManager') as mock_manager_class:
+        with patch("src.giljo_mcp.services.orchestration_service.AgentJobManager") as mock_manager_class:
             mock_manager_instance = Mock()
-            mock_manager_instance.cancel_job = AsyncMock(return_value={
-                "success": True,
-                "job_id": "job-123",
-                "executions_decommissioned": 2
-            })
+            mock_manager_instance.cancel_job = AsyncMock(
+                return_value={"success": True, "job_id": "job-123", "executions_decommissioned": 2}
+            )
             mock_manager_class.return_value = mock_manager_instance
 
             # Act
-            result = await service.cancel_job(
-                job_id="job-123",
-                tenant_key="test-tenant"
-            )
+            result = await service.cancel_job(job_id="job-123", tenant_key="test-tenant")
 
         # Assert
         assert result["success"] is True
@@ -882,10 +822,7 @@ class TestCancelJob:
         assert result["executions_decommissioned"] == 2
 
         # Verify AgentJobManager was called correctly
-        mock_manager_instance.cancel_job.assert_awaited_once_with(
-            job_id="job-123",
-            tenant_key="test-tenant"
-        )
+        mock_manager_instance.cancel_job.assert_awaited_once_with(job_id="job-123", tenant_key="test-tenant")
 
         # Verify WebSocket event was emitted
         websocket_manager.broadcast_to_tenant.assert_awaited_once()
@@ -905,20 +842,15 @@ class TestCancelJob:
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Mock AgentJobManager.cancel_job to return executions_decommissioned
-        with patch('src.giljo_mcp.services.orchestration_service.AgentJobManager') as mock_manager_class:
+        with patch("src.giljo_mcp.services.orchestration_service.AgentJobManager") as mock_manager_class:
             mock_manager_instance = Mock()
-            mock_manager_instance.cancel_job = AsyncMock(return_value={
-                "success": True,
-                "job_id": "job-456",
-                "executions_decommissioned": 5
-            })
+            mock_manager_instance.cancel_job = AsyncMock(
+                return_value={"success": True, "job_id": "job-456", "executions_decommissioned": 5}
+            )
             mock_manager_class.return_value = mock_manager_instance
 
             # Act
-            result = await service.cancel_job(
-                job_id="job-456",
-                tenant_key="test-tenant"
-            )
+            result = await service.cancel_job(job_id="job-456", tenant_key="test-tenant")
 
         # Assert
         assert result["success"] is True
@@ -934,19 +866,15 @@ class TestCancelJob:
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Mock AgentJobManager.cancel_job to return error
-        with patch('src.giljo_mcp.services.orchestration_service.AgentJobManager') as mock_manager_class:
+        with patch("src.giljo_mcp.services.orchestration_service.AgentJobManager") as mock_manager_class:
             mock_manager_instance = Mock()
-            mock_manager_instance.cancel_job = AsyncMock(return_value={
-                "success": False,
-                "error": "Job job-999 not found"
-            })
+            mock_manager_instance.cancel_job = AsyncMock(
+                return_value={"success": False, "error": "Job job-999 not found"}
+            )
             mock_manager_class.return_value = mock_manager_instance
 
             # Act
-            result = await service.cancel_job(
-                job_id="job-999",
-                tenant_key="test-tenant"
-            )
+            result = await service.cancel_job(job_id="job-999", tenant_key="test-tenant")
 
         # Assert
         assert result["success"] is False
@@ -963,20 +891,19 @@ class TestCancelJob:
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Mock AgentJobManager.cancel_job to return success (idempotent)
-        with patch('src.giljo_mcp.services.orchestration_service.AgentJobManager') as mock_manager_class:
+        with patch("src.giljo_mcp.services.orchestration_service.AgentJobManager") as mock_manager_class:
             mock_manager_instance = Mock()
-            mock_manager_instance.cancel_job = AsyncMock(return_value={
-                "success": True,
-                "job_id": "job-already-cancelled",
-                "executions_decommissioned": 0  # Already decommissioned
-            })
+            mock_manager_instance.cancel_job = AsyncMock(
+                return_value={
+                    "success": True,
+                    "job_id": "job-already-cancelled",
+                    "executions_decommissioned": 0,  # Already decommissioned
+                }
+            )
             mock_manager_class.return_value = mock_manager_instance
 
             # Act
-            result = await service.cancel_job(
-                job_id="job-already-cancelled",
-                tenant_key="test-tenant"
-            )
+            result = await service.cancel_job(job_id="job-already-cancelled", tenant_key="test-tenant")
 
         # Assert
         assert result["success"] is True
@@ -991,28 +918,231 @@ class TestCancelJob:
         websocket_manager = Mock()
         websocket_manager.broadcast_to_tenant = AsyncMock(side_effect=Exception("WebSocket down"))
 
-        service = OrchestrationService(
-            db_manager,
-            tenant_manager,
-            websocket_manager=websocket_manager
-        )
+        service = OrchestrationService(db_manager, tenant_manager, websocket_manager=websocket_manager)
 
         # Mock AgentJobManager.cancel_job to return success
-        with patch('src.giljo_mcp.services.orchestration_service.AgentJobManager') as mock_manager_class:
+        with patch("src.giljo_mcp.services.orchestration_service.AgentJobManager") as mock_manager_class:
             mock_manager_instance = Mock()
-            mock_manager_instance.cancel_job = AsyncMock(return_value={
-                "success": True,
-                "job_id": "job-123",
-                "executions_decommissioned": 1
-            })
+            mock_manager_instance.cancel_job = AsyncMock(
+                return_value={"success": True, "job_id": "job-123", "executions_decommissioned": 1}
+            )
             mock_manager_class.return_value = mock_manager_instance
 
             # Act
-            result = await service.cancel_job(
-                job_id="job-123",
-                tenant_key="test-tenant"
-            )
+            result = await service.cancel_job(job_id="job-123", tenant_key="test-tenant")
 
         # Assert - operation should still succeed
         assert result["success"] is True
         assert result["job_id"] == "job-123"
+
+
+class TestOrchestrationService360MemoryWarnings:
+    """Test complete_job() 360 memory warning system (Handover 0710)"""
+
+    @pytest.mark.asyncio
+    async def test_complete_job_warns_orchestrator_missing_360_memory(self, mock_db_manager):
+        """complete_job() returns warning when orchestrator hasn't written 360 memory."""
+        # Arrange
+        db_manager, session = mock_db_manager
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
+
+        # Mock execution (orchestrator)
+        mock_execution = Mock(spec=AgentExecution)
+        mock_execution.job_id = "job-123"
+        mock_execution.status = "working"
+        mock_execution.completed_at = None
+        mock_execution.started_at = None
+        mock_execution.agent_id = "agent-456"
+        mock_execution.agent_display_name = "orchestrator"  # Orchestrator!
+        mock_execution.agent_name = "orchestrator-coordinator"
+
+        # Mock job
+        mock_job = Mock(spec=AgentJob)
+        mock_job.job_id = "job-123"
+        mock_job.project_id = "project-1"
+        mock_job.status = "active"
+        mock_job.completed_at = None
+
+        # Mock project (non-staging, with product)
+        mock_project = Mock(spec=Project)
+        mock_project.project_id = "project-1"
+        mock_project.product_id = "product-1"
+        mock_project.staging_status = None  # Not staging
+
+        # Execute call sequence:
+        # 1. Get execution
+        # 2. Get job
+        # 3. Get unread messages (empty)
+        # 4. Get incomplete todos (empty)
+        # 5. Check other active executions (none)
+        # 6. Get project (for staging check)
+        # 7. Get 360 memory (none exists)
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
+            Mock(scalar_one_or_none=Mock(return_value=mock_job)),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),  # unread messages
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),  # incomplete todos
+            Mock(scalar_one_or_none=Mock(return_value=None)),  # other active executions
+            Mock(scalar_one_or_none=Mock(return_value=mock_project)),  # project
+            Mock(scalar_one_or_none=Mock(return_value=None)),  # No 360 memory!
+        ]
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.complete_job(job_id="job-123", result={"output": "Successfully completed"})
+
+        # Assert
+        assert result["status"] == "success"
+        assert result["job_id"] == "job-123"
+        assert "warnings" in result
+        assert len(result["warnings"]) == 1
+        assert "360 Memory" in result["warnings"][0]
+        assert "write_360_memory()" in result["warnings"][0]
+
+    @pytest.mark.asyncio
+    async def test_complete_job_no_warning_with_360_memory(self, mock_db_manager):
+        """complete_job() has no warning when 360 memory entry exists."""
+        # Arrange
+        db_manager, session = mock_db_manager
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
+
+        # Mock execution (orchestrator)
+        mock_execution = Mock(spec=AgentExecution)
+        mock_execution.job_id = "job-123"
+        mock_execution.status = "working"
+        mock_execution.completed_at = None
+        mock_execution.started_at = None
+        mock_execution.agent_id = "agent-456"
+        mock_execution.agent_display_name = "orchestrator"
+        mock_execution.agent_name = "orchestrator-coordinator"
+
+        # Mock job
+        mock_job = Mock(spec=AgentJob)
+        mock_job.job_id = "job-123"
+        mock_job.project_id = "project-1"
+        mock_job.status = "active"
+        mock_job.completed_at = None
+
+        # Mock project
+        mock_project = Mock(spec=Project)
+        mock_project.project_id = "project-1"
+        mock_project.product_id = "product-1"
+        mock_project.staging_status = None
+
+        # Mock 360 memory entry (exists!)
+        mock_memory = Mock(spec=ProductMemoryEntry)
+        mock_memory.id = "memory-1"
+
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
+            Mock(scalar_one_or_none=Mock(return_value=mock_job)),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+            Mock(scalar_one_or_none=Mock(return_value=None)),
+            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+            Mock(scalar_one_or_none=Mock(return_value=mock_memory)),  # 360 memory exists!
+        ]
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.complete_job(job_id="job-123", result={"output": "Successfully completed"})
+
+        # Assert
+        assert result["status"] == "success"
+        assert result["warnings"] == []  # No warnings
+
+    @pytest.mark.asyncio
+    async def test_complete_job_no_warning_non_orchestrator(self, mock_db_manager):
+        """complete_job() doesn't warn non-orchestrator agents about 360 memory."""
+        # Arrange
+        db_manager, session = mock_db_manager
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
+
+        # Mock execution (NOT orchestrator)
+        mock_execution = Mock(spec=AgentExecution)
+        mock_execution.job_id = "job-123"
+        mock_execution.status = "working"
+        mock_execution.completed_at = None
+        mock_execution.started_at = None
+        mock_execution.agent_id = "agent-456"
+        mock_execution.agent_display_name = "implementer"  # Not orchestrator!
+        mock_execution.agent_name = "implementer"
+
+        # Mock job
+        mock_job = Mock(spec=AgentJob)
+        mock_job.job_id = "job-123"
+        mock_job.project_id = "project-1"
+        mock_job.status = "active"
+        mock_job.completed_at = None
+
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
+            Mock(scalar_one_or_none=Mock(return_value=mock_job)),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+            Mock(scalar_one_or_none=Mock(return_value=None)),
+        ]
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.complete_job(job_id="job-123", result={"output": "Successfully completed"})
+
+        # Assert
+        assert result["status"] == "success"
+        assert result["warnings"] == []  # No warnings for non-orchestrator
+
+    @pytest.mark.asyncio
+    async def test_complete_job_no_warning_staging_orchestrator(self, mock_db_manager):
+        """complete_job() doesn't warn staging orchestrators about 360 memory."""
+        # Arrange
+        db_manager, session = mock_db_manager
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
+
+        # Mock execution (orchestrator)
+        mock_execution = Mock(spec=AgentExecution)
+        mock_execution.job_id = "job-123"
+        mock_execution.status = "working"
+        mock_execution.completed_at = None
+        mock_execution.started_at = None
+        mock_execution.agent_id = "agent-456"
+        mock_execution.agent_display_name = "orchestrator"
+        mock_execution.agent_name = "orchestrator-coordinator"
+
+        # Mock job
+        mock_job = Mock(spec=AgentJob)
+        mock_job.job_id = "job-123"
+        mock_job.project_id = "project-1"
+        mock_job.status = "active"
+        mock_job.completed_at = None
+
+        # Mock project (STAGING - should skip warning)
+        mock_project = Mock(spec=Project)
+        mock_project.project_id = "project-1"
+        mock_project.product_id = "product-1"
+        mock_project.staging_status = "staging"  # Staging orchestrator!
+
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
+            Mock(scalar_one_or_none=Mock(return_value=mock_job)),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
+            Mock(scalar_one_or_none=Mock(return_value=None)),
+            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+            # Note: No 360 memory query because staging is skipped
+        ]
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.complete_job(job_id="job-123", result={"output": "Successfully completed"})
+
+        # Assert
+        assert result["status"] == "success"
+        assert result["warnings"] == []  # No warnings for staging orchestrator

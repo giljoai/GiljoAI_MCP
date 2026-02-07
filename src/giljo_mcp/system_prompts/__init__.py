@@ -2,5 +2,5 @@
 
 from .service import SystemPromptService
 
-__all__ = ["SystemPromptService"]
 
+__all__ = ["SystemPromptService"]

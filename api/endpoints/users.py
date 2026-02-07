@@ -18,7 +18,7 @@ All endpoints enforce role-based access control and multi-tenant isolation.
 """
 
 import logging
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -45,8 +45,8 @@ class UserCreate(BaseModel):
     """Request model for creating a new user"""
 
     username: str = Field(..., min_length=3, max_length=64, description="Unique username")
-    email: Optional[EmailStr] = Field(None, description="User email address")
-    full_name: Optional[str] = Field(None, max_length=255, description="Full name")
+    email: EmailStr | None = Field(None, description="User email address")
+    full_name: str | None = Field(None, max_length=255, description="Full name")
     password: str = Field(..., min_length=8, description="User password (min 8 characters)")
     role: str = Field("developer", description="User role: admin, developer, viewer")
     is_active: bool = Field(default=True, description="Whether user account is active")
@@ -64,10 +64,10 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     """Request model for updating user profile"""
 
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = Field(None, max_length=255)
-    is_active: Optional[bool] = None
-    password: Optional[str] = Field(None, min_length=8, description="New password (min 8 chars)")
+    email: EmailStr | None = None
+    full_name: str | None = Field(None, max_length=255)
+    is_active: bool | None = None
+    password: str | None = Field(None, min_length=8, description="New password (min 8 chars)")
 
 
 class UserResponse(BaseModel):
@@ -75,19 +75,19 @@ class UserResponse(BaseModel):
 
     id: str
     username: str
-    email: Optional[str]
-    full_name: Optional[str]
+    email: str | None
+    full_name: str | None
     role: str
     tenant_key: str
     is_active: bool
     created_at: str
-    last_login: Optional[str]
+    last_login: str | None
 
 
 class PasswordChange(BaseModel):
     """Request model for password change"""
 
-    old_password: Optional[str] = Field(None, min_length=8, description="Current password (required for non-admin)")
+    old_password: str | None = Field(None, min_length=8, description="Current password (required for non-admin)")
     new_password: str = Field(..., min_length=8, description="New password (min 8 characters)")
 
 
@@ -190,7 +190,7 @@ class FieldPriorityConfig(BaseModel):
         # Validate category names
         invalid_categories = set(v.keys()) - valid_categories
         if invalid_categories:
-            raise ValueError(f"Invalid category names: {invalid_categories}. " f"Valid categories: {valid_categories}")
+            raise ValueError(f"Invalid category names: {invalid_categories}. Valid categories: {valid_categories}")
 
         # Ensure at least one CRITICAL category
         critical_categories = [cat for cat, pri in v.items() if pri == 1]
@@ -282,7 +282,7 @@ def user_to_response(user: User) -> UserResponse:
     )
 
 
-def migrate_project_context_to_description(user_config: Dict[str, Any]) -> Dict[str, Any]:
+def migrate_project_context_to_description(user_config: dict[str, Any]) -> dict[str, Any]:
     """
     Migrate old 'project_context' field name to 'project_description'.
 
@@ -437,7 +437,8 @@ async def get_user(
     result = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
 
     if not result["success"]:
-        logger.warning(f"User {user_id} not found" + ("" if is_admin else f" in tenant {current_user.tenant_key}"))
+        tenant_info = "" if is_admin else f" in tenant {current_user.tenant_key}"
+        logger.warning("User %s not found%s", user_id, tenant_info)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
 
     user = result["user"]
@@ -494,7 +495,8 @@ async def update_user(
     # Authorization: admin can update any user, non-admin can only update self
     get_result = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
     if not get_result["success"]:
-        logger.warning(f"User {user_id} not found" + ("" if is_admin else f" in tenant {current_user.tenant_key}"))
+        tenant_info = "" if is_admin else f" in tenant {current_user.tenant_key}"
+        logger.warning("User %s not found%s", user_id, tenant_info)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=get_result["error"])
 
     user = get_result["user"]
@@ -878,11 +880,11 @@ async def reset_field_priority_config(
 # Depth Configuration Endpoints (Handover 0314)
 
 
-@router.get("/me/context/depth", response_model=Dict[str, Any])
+@router.get("/me/context/depth", response_model=dict[str, Any])
 async def get_depth_config(
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get user's depth configuration.
 
@@ -923,12 +925,12 @@ async def get_depth_config(
     return {"depth_config": result["config"]}
 
 
-@router.put("/me/context/depth", response_model=Dict[str, Any])
+@router.put("/me/context/depth", response_model=dict[str, Any])
 async def update_depth_config(
     depth_request: UpdateDepthConfigRequest,
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Update user's depth configuration.
 
@@ -982,6 +984,7 @@ async def update_depth_config(
 
     return {"depth_config": get_result["config"]}
 
+
 # ---------------------------------------------------------------------------
 # Execution mode settings (0248c)
 # ---------------------------------------------------------------------------
@@ -991,7 +994,7 @@ async def update_depth_config(
 async def get_execution_mode(
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Get the current user's execution mode."""
     result = await user_service.get_execution_mode(str(current_user.id))
     if not result["success"]:
@@ -1004,7 +1007,7 @@ async def update_execution_mode(
     payload: ExecutionModeUpdate,
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Update the current user's execution mode."""
     result = await user_service.update_execution_mode(
         user_id=str(current_user.id),
@@ -1013,32 +1016,3 @@ async def update_execution_mode(
     if not result["success"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
     return {"execution_mode": result["execution_mode"]}
-
-
-# AI Tools Configurator Endpoint (relocated from /setup/ai-tools)
-
-
-# REMOVED: ai_tools_configurator endpoint
-# This backend approach has been deprecated in favor of Project 0031's
-# frontend-only dynamic mini-wizard that eliminates backend complexity.
-
-
-# REMOVED: detect_ai_tool_from_user_agent function (deprecated)
-
-
-# REMOVED: generate_claude_code_instructions function (deprecated)
-
-
-# REMOVED: generate_codex_instructions function (deprecated)
-
-
-# REMOVED: generate_gemini_instructions function (deprecated)
-
-
-# REMOVED: generate_cursor_instructions function (deprecated)
-
-
-# REMOVED: generate_continue_instructions function (deprecated)
-
-
-# REMOVED: generate_universal_instructions function (deprecated)

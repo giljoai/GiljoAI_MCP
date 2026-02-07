@@ -3,15 +3,17 @@ Git integration endpoints for system-level configuration.
 Similar to Serena integration, operates at config.yaml level.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Dict, Any, Optional
 import logging
 from pathlib import Path
-import yaml
+from typing import Any
 
-from src.giljo_mcp.auth.dependencies import get_current_user
+import yaml
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
+from src.giljo_mcp.auth.dependencies import get_current_user
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -22,7 +24,7 @@ def get_config_path() -> Path:
     return Path.cwd() / "config.yaml"
 
 
-def read_config() -> Dict[str, Any]:
+def read_config() -> dict[str, Any]:
     """Read config.yaml."""
     config_path = get_config_path()
     if not config_path.exists():
@@ -31,48 +33,51 @@ def read_config() -> Dict[str, Any]:
     try:
         with open(config_path, encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
-    except Exception as e:
-        logger.error(f"Failed to read config: {e}")
+    except (OSError, ValueError):
+        logger.exception("Failed to read config")
         return {}
 
 
-def write_config(config: Dict[str, Any]) -> None:
+def write_config(config: dict[str, Any]) -> None:
     """Write config.yaml."""
     config_path = get_config_path()
     try:
         with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
-    except Exception as e:
-        logger.error(f"Failed to write config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except (OSError, ValueError) as e:
+        logger.exception("Failed to write config")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 class GitToggleRequest(BaseModel):
     """Request to toggle Git integration."""
+
     enabled: bool
 
 
 class GitSettingsRequest(BaseModel):
     """Request to update Git advanced settings."""
+
     use_in_prompts: bool
-    include_commit_history: Optional[bool] = True
-    max_commits: Optional[int] = 50
-    branch_strategy: Optional[str] = "main"
+    include_commit_history: bool | None = True
+    max_commits: int | None = 50
+    branch_strategy: str | None = "main"
 
 
 class GitToggleResponse(BaseModel):
     """Response from toggling Git integration."""
+
     success: bool
     enabled: bool
     message: str
-    settings: Dict[str, Any]
+    settings: dict[str, Any]
 
 
 @router.post("/toggle", response_model=GitToggleResponse)
 async def toggle_git_integration(
     request: GitToggleRequest,
-    current_user = Depends(get_current_user),
-    ws_dep: WebSocketDependency = Depends(get_websocket_dependency)
+    current_user=Depends(get_current_user),
+    ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
 ) -> GitToggleResponse:
     """
     Toggle Git integration at the system level.
@@ -92,7 +97,7 @@ async def toggle_git_integration(
                 "use_in_prompts": False,
                 "include_commit_history": True,
                 "max_commits": 50,
-                "branch_strategy": "main"
+                "branch_strategy": "main",
             }
 
         # Update enabled status
@@ -106,35 +111,31 @@ async def toggle_git_integration(
 
         # Emit WebSocket event for real-time UI updates
         try:
-            tenant_key = current_user.get('tenant_key') if isinstance(current_user, dict) else current_user.tenant_key
+            tenant_key = current_user.get("tenant_key") if isinstance(current_user, dict) else current_user.tenant_key
             await ws_dep.broadcast_to_tenant(
                 tenant_key=tenant_key,
                 event_type="product:git:settings:changed",
-                data={
-                    "enabled": request.enabled,
-                    "settings": config["features"]["git_integration"]
-                }
+                data={"enabled": request.enabled, "settings": config["features"]["git_integration"]},
             )
             logger.info(f"[WEBSOCKET] Broadcasted git integration change to tenant {tenant_key}")
-        except Exception as ws_error:
+        except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
             logger.warning(f"[WEBSOCKET] Failed to broadcast git integration update: {ws_error}")
 
         return GitToggleResponse(
             success=True,
             enabled=request.enabled,
             message=f"Git integration {'enabled' if request.enabled else 'disabled'} successfully",
-            settings=config["features"]["git_integration"]
+            settings=config["features"]["git_integration"],
         )
 
-    except Exception as e:
-        logger.error(f"Failed to toggle Git integration: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except (OSError, ValueError) as e:
+        logger.exception("Failed to toggle Git integration")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/settings", response_model=GitToggleResponse)
 async def update_git_settings(
-    request: GitSettingsRequest,
-    current_user: dict = Depends(get_current_user)
+    request: GitSettingsRequest, current_user: dict = Depends(get_current_user)
 ) -> GitToggleResponse:
     """
     Update Git advanced settings at the system level.
@@ -164,18 +165,16 @@ async def update_git_settings(
             success=True,
             enabled=git_settings.get("enabled", False),
             message="Git settings updated successfully",
-            settings=git_settings
+            settings=git_settings,
         )
 
-    except Exception as e:
-        logger.error(f"Failed to update Git settings: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except (OSError, ValueError) as e:
+        logger.exception("Failed to update Git settings")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/settings")
-async def get_git_settings(
-    current_user: dict = Depends(get_current_user)
-) -> Dict[str, Any]:
+async def get_git_settings(current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
     """
     Get current Git integration settings from config.
     """
@@ -185,15 +184,14 @@ async def get_git_settings(
         # Return settings or defaults
         if "features" in config and "git_integration" in config["features"]:
             return config["features"]["git_integration"]
-        else:
-            return {
-                "enabled": False,
-                "use_in_prompts": False,
-                "include_commit_history": True,
-                "max_commits": 50,
-                "branch_strategy": "main"
-            }
+        return {
+            "enabled": False,
+            "use_in_prompts": False,
+            "include_commit_history": True,
+            "max_commits": 50,
+            "branch_strategy": "main",
+        }
 
-    except Exception as e:
-        logger.error(f"Failed to get Git settings: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except (OSError, ValueError) as e:
+        logger.exception("Failed to get Git settings")
+        raise HTTPException(status_code=500, detail=str(e)) from e

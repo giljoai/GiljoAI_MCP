@@ -27,10 +27,10 @@
                 variant="outlined"
                 :color="deletedProductsCount > 0 ? 'warning' : 'grey'"
                 prepend-icon="mdi-delete-restore"
-                @click="showDeletedProductsDialog = true"
                 :disabled="deletedProductsCount === 0"
                 class="mr-3"
                 style="height: 40px"
+                @click="showDeletedProductsDialog = true"
               >
                 Deleted ({{ deletedProductsCount }})
               </v-btn>
@@ -177,10 +177,10 @@
                             size="small"
                             variant="text"
                             v-bind="props"
-                            @click="showProductDetails(product)"
                             :style="
                               product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''
                             "
+                            @click="showProductDetails(product)"
                           >
                             <v-icon>mdi-information-outline</v-icon>
                           </v-btn>
@@ -194,8 +194,8 @@
                             size="small"
                             variant="text"
                             v-bind="props"
-                            @click="toggleProductActivation(product)"
                             :style="isProductActive(product) ? 'color: #ffc300' : ''"
+                            @click="toggleProductActivation(product)"
                           >
                             <v-icon>{{
                               isProductActive(product) ? 'mdi-stop' : 'mdi-play'
@@ -213,10 +213,10 @@
                             size="small"
                             variant="text"
                             v-bind="props"
-                            @click="editProduct(product)"
                             :style="
                               product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''
                             "
+                            @click="editProduct(product)"
                           >
                             <v-icon>mdi-pencil</v-icon>
                           </v-btn>
@@ -803,9 +803,9 @@ function validateVisionFiles() {
 }
 
 function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  if (bytes < 1024) return `${bytes  } B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)  } KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)  } MB`
 }
 
 async function showProductDetails(product) {
@@ -999,12 +999,12 @@ async function saveProduct(payload) {
           // Handover 0347: Show chunk count and summarization status
           const isSummarized = response.data?.is_summarized || false
           const isChunked = response.data?.chunked || chunkCount > 0
-          let statusParts = []
+          const statusParts = []
           if (isSummarized) statusParts.push('summarized')
           if (isChunked) statusParts.push(`${chunkCount} chunks`)
 
           showToast({
-            message: `${file.name} uploaded${statusParts.length ? ' (' + statusParts.join(', ') + ')' : ''}`,
+            message: `${file.name} uploaded${statusParts.length ? ` (${  statusParts.join(', ')  })` : ''}`,
             type: 'success',
             duration: 3000,
           })

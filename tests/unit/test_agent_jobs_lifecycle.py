@@ -5,21 +5,16 @@ Tests spawn, acknowledge, complete, and error endpoints using OrchestrationServi
 """
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
 
 from api.endpoints.agent_jobs import lifecycle
 from api.endpoints.agent_jobs.models import (
-    JobAcknowledgeResponse,
     JobCompleteRequest,
-    JobCompleteResponse,
     JobErrorRequest,
-    JobErrorResponse,
     SpawnAgentRequest,
-    SpawnAgentResponse,
 )
 
 
@@ -40,23 +35,16 @@ class TestSpawnAgentJob:
             "job_id": "job-123",
             "agent_prompt": "Test prompt",
             "mission_stored": True,
-            "thin_client": True
+            "thin_client": True,
         }
 
         mock_ws_dep = AsyncMock()
 
-        request = SpawnAgentRequest(
-            agent_display_name="implementer",
-            mission="Test mission",
-            project_id="proj-123"
-        )
+        request = SpawnAgentRequest(agent_display_name="implementer", mission="Test mission", project_id="proj-123")
 
         # Call endpoint
         response = await lifecycle.spawn_agent_job(
-            request=request,
-            current_user=mock_user,
-            orchestration_service=mock_service,
-            ws_dep=mock_ws_dep
+            request=request, current_user=mock_user, orchestration_service=mock_service, ws_dep=mock_ws_dep
         )
 
         # Assertions
@@ -73,19 +61,12 @@ class TestSpawnAgentJob:
         mock_user.role = "user"
         mock_user.tenant_key = "test_tenant"
 
-        request = SpawnAgentRequest(
-            agent_display_name="implementer",
-            mission="Test mission",
-            project_id="proj-123"
-        )
+        request = SpawnAgentRequest(agent_display_name="implementer", mission="Test mission", project_id="proj-123")
 
         # Should raise 403
         with pytest.raises(HTTPException) as exc_info:
             await lifecycle.spawn_agent_job(
-                request=request,
-                current_user=mock_user,
-                orchestration_service=AsyncMock(),
-                ws_dep=AsyncMock()
+                request=request, current_user=mock_user, orchestration_service=AsyncMock(), ws_dep=AsyncMock()
             )
 
         assert exc_info.value.status_code == 403
@@ -101,19 +82,12 @@ class TestSpawnAgentJob:
         mock_service = AsyncMock()
         mock_service.spawn_agent_job.return_value = {"error": "Failed to spawn"}
 
-        request = SpawnAgentRequest(
-            agent_display_name="implementer",
-            mission="Test mission",
-            project_id="proj-123"
-        )
+        request = SpawnAgentRequest(agent_display_name="implementer", mission="Test mission", project_id="proj-123")
 
         # Should raise 400
         with pytest.raises(HTTPException) as exc_info:
             await lifecycle.spawn_agent_job(
-                request=request,
-                current_user=mock_user,
-                orchestration_service=mock_service,
-                ws_dep=AsyncMock()
+                request=request, current_user=mock_user, orchestration_service=mock_service, ws_dep=AsyncMock()
             )
 
         assert exc_info.value.status_code == 400
@@ -133,21 +107,16 @@ class TestAcknowledgeJob:
         mock_service.acknowledge_job.return_value = {
             "status": "active",
             "started_at": datetime.now(timezone.utc),
-            "message": "Job acknowledged successfully"
+            "message": "Job acknowledged successfully",
         }
 
         response = await lifecycle.acknowledge_job(
-            job_id="job-123",
-            current_user=mock_user,
-            orchestration_service=mock_service
+            job_id="job-123", current_user=mock_user, orchestration_service=mock_service
         )
 
         assert response.job_id == "job-123"
         assert response.status == "active"
-        mock_service.acknowledge_job.assert_called_once_with(
-            job_id="job-123",
-            tenant_key="test_tenant"
-        )
+        mock_service.acknowledge_job.assert_called_once_with(job_id="job-123", tenant_key="test_tenant")
 
     @pytest.mark.asyncio
     async def test_acknowledge_job_not_found(self):
@@ -160,9 +129,7 @@ class TestAcknowledgeJob:
 
         with pytest.raises(HTTPException) as exc_info:
             await lifecycle.acknowledge_job(
-                job_id="job-123",
-                current_user=mock_user,
-                orchestration_service=mock_service
+                job_id="job-123", current_user=mock_user, orchestration_service=mock_service
             )
 
         assert exc_info.value.status_code == 404
@@ -182,16 +149,13 @@ class TestCompleteJob:
         mock_service.complete_job.return_value = {
             "status": "completed",
             "completed_at": datetime.now(timezone.utc),
-            "message": "Job completed successfully"
+            "message": "Job completed successfully",
         }
 
         request = JobCompleteRequest(result="Task completed successfully")
 
         response = await lifecycle.complete_job(
-            job_id="job-123",
-            complete_request=request,
-            current_user=mock_user,
-            orchestration_service=mock_service
+            job_id="job-123", complete_request=request, current_user=mock_user, orchestration_service=mock_service
         )
 
         assert response.job_id == "job-123"
@@ -213,16 +177,13 @@ class TestReportJobError:
         mock_service.report_error.return_value = {
             "status": "failed",
             "completed_at": datetime.now(timezone.utc),
-            "message": "Job error reported"
+            "message": "Job error reported",
         }
 
         request = JobErrorRequest(error="Test error message")
 
         response = await lifecycle.report_job_error(
-            job_id="job-123",
-            error_request=request,
-            current_user=mock_user,
-            orchestration_service=mock_service
+            job_id="job-123", error_request=request, current_user=mock_user, orchestration_service=mock_service
         )
 
         assert response.job_id == "job-123"

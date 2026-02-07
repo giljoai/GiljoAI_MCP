@@ -10,27 +10,29 @@ This test verifies:
 4. Message counters are updated correctly (sender +1 sent, recipients +1 waiting each)
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import models using modular imports
-from src.giljo_mcp.models.tasks import Message
-from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
+
+# Import models using modular imports
+from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.services.message_service import MessageService
-from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
 
 
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_websocket_manager():
@@ -112,7 +114,6 @@ async def test_project_with_three_agents(
             tenant_key=test_tenant_key,
             agent_display_name=agent_display_name,
             status="waiting",
-            instance_number=1,
             messages_sent_count=0,
             messages_waiting_count=0,
             messages_read_count=0,
@@ -159,6 +160,7 @@ async def message_service(
 # Broadcast Self-Exclusion Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_broadcast_excludes_sender(
     message_service: MessageService,
@@ -199,38 +201,34 @@ async def test_broadcast_excludes_sender(
     await db_session.refresh(agent_c)
 
     # CRITICAL ASSERTION 1: Agent A's sent_count incremented by 1
-    assert agent_a.messages_sent_count == 1, \
-        f"Expected sender's sent_count to be 1, got {agent_a.messages_sent_count}"
+    assert agent_a.messages_sent_count == 1, f"Expected sender's sent_count to be 1, got {agent_a.messages_sent_count}"
 
     # CRITICAL ASSERTION 2: Agent A did NOT receive the message (waiting_count = 0)
-    assert agent_a.messages_waiting_count == 0, \
+    assert agent_a.messages_waiting_count == 0, (
         f"Expected sender's waiting_count to be 0 (self-exclusion), got {agent_a.messages_waiting_count}"
+    )
 
     # CRITICAL ASSERTION 3: Agent B received the message (waiting_count = 1)
-    assert agent_b.messages_waiting_count == 1, \
+    assert agent_b.messages_waiting_count == 1, (
         f"Expected Agent B's waiting_count to be 1, got {agent_b.messages_waiting_count}"
+    )
 
     # CRITICAL ASSERTION 4: Agent C received the message (waiting_count = 1)
-    assert agent_c.messages_waiting_count == 1, \
+    assert agent_c.messages_waiting_count == 1, (
         f"Expected Agent C's waiting_count to be 1, got {agent_c.messages_waiting_count}"
+    )
 
     # Verify message records in database (should be 2 messages, not 3)
-    result = await db_session.execute(
-        select(Message).where(Message.project_id == project.id)
-    )
+    result = await db_session.execute(select(Message).where(Message.project_id == project.id))
     messages = result.scalars().all()
 
-    assert len(messages) == 2, \
-        f"Expected 2 messages (Agent A excluded), got {len(messages)}"
+    assert len(messages) == 2, f"Expected 2 messages (Agent A excluded), got {len(messages)}"
 
     # Verify message recipients are Agent B and Agent C (not Agent A)
     recipient_ids = {msg.to_agents[0] for msg in messages if msg.to_agents}
-    assert agent_a.agent_id not in recipient_ids, \
-        f"Agent A should not be in recipient list"
-    assert agent_b.agent_id in recipient_ids, \
-        f"Agent B should be in recipient list"
-    assert agent_c.agent_id in recipient_ids, \
-        f"Agent C should be in recipient list"
+    assert agent_a.agent_id not in recipient_ids, "Agent A should not be in recipient list"
+    assert agent_b.agent_id in recipient_ids, "Agent B should be in recipient list"
+    assert agent_c.agent_id in recipient_ids, "Agent C should be in recipient list"
 
 
 @pytest.mark.asyncio
@@ -265,8 +263,9 @@ async def test_broadcast_excludes_sender_by_agent_id(
     await db_session.refresh(agent_c)
 
     # Verify Agent A excluded (waiting_count = 0)
-    assert agent_a.messages_waiting_count == 0, \
+    assert agent_a.messages_waiting_count == 0, (
         f"Expected sender (by agent_id) to be excluded, got waiting_count={agent_a.messages_waiting_count}"
+    )
 
     # Verify Agents B and C received the message
     assert agent_b.messages_waiting_count == 1
@@ -295,7 +294,7 @@ async def test_broadcast_with_multiple_messages_accumulates_correctly(
     for i in range(3):
         result = await message_service.send_message(
             to_agents=["all"],
-            content=f"Broadcast message {i+1}",
+            content=f"Broadcast message {i + 1}",
             project_id=project.id,
             from_agent=agent_a.agent_display_name,
             tenant_key=test_tenant_key,
@@ -308,16 +307,18 @@ async def test_broadcast_with_multiple_messages_accumulates_correctly(
     await db_session.refresh(agent_c)
 
     # Verify Agent A's counters
-    assert agent_a.messages_sent_count == 3, \
-        f"Expected sender's sent_count to be 3, got {agent_a.messages_sent_count}"
-    assert agent_a.messages_waiting_count == 0, \
+    assert agent_a.messages_sent_count == 3, f"Expected sender's sent_count to be 3, got {agent_a.messages_sent_count}"
+    assert agent_a.messages_waiting_count == 0, (
         f"Expected sender's waiting_count to remain 0, got {agent_a.messages_waiting_count}"
+    )
 
     # Verify Agents B and C accumulated messages
-    assert agent_b.messages_waiting_count == 3, \
+    assert agent_b.messages_waiting_count == 3, (
         f"Expected Agent B's waiting_count to be 3, got {agent_b.messages_waiting_count}"
-    assert agent_c.messages_waiting_count == 3, \
+    )
+    assert agent_c.messages_waiting_count == 3, (
         f"Expected Agent C's waiting_count to be 3, got {agent_c.messages_waiting_count}"
+    )
 
 
 @pytest.mark.asyncio
@@ -378,12 +379,15 @@ async def test_broadcast_from_different_agents(
     assert agent_c.messages_sent_count == 1
 
     # Verify each agent received 2 messages (from the other two agents)
-    assert agent_a.messages_waiting_count == 2, \
+    assert agent_a.messages_waiting_count == 2, (
         f"Agent A should receive 2 messages (from B and C), got {agent_a.messages_waiting_count}"
-    assert agent_b.messages_waiting_count == 2, \
+    )
+    assert agent_b.messages_waiting_count == 2, (
         f"Agent B should receive 2 messages (from A and C), got {agent_b.messages_waiting_count}"
-    assert agent_c.messages_waiting_count == 2, \
+    )
+    assert agent_c.messages_waiting_count == 2, (
         f"Agent C should receive 2 messages (from A and B), got {agent_c.messages_waiting_count}"
+    )
 
 
 @pytest.mark.asyncio
@@ -427,8 +431,6 @@ async def test_broadcast_to_empty_project_no_crash(
     assert result["data"]["message_id"] is None  # No messages created
 
     # Verify no messages were created
-    result = await db_session.execute(
-        select(Message).where(Message.project_id == project.id)
-    )
+    result = await db_session.execute(select(Message).where(Message.project_id == project.id))
     messages = result.scalars().all()
     assert len(messages) == 0

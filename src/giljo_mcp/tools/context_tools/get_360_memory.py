@@ -11,14 +11,16 @@ Token Budget by Depth:
 - 10: Last 10 projects (~5000 tokens)
 """
 
+from typing import Any
+
 import structlog
-from typing import Any, Dict, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+
 
 logger = structlog.get_logger(__name__)
 
@@ -26,6 +28,7 @@ logger = structlog.get_logger(__name__)
 def estimate_tokens(data: Any) -> int:
     """Rough token estimation (1 token ≈ 4 chars)."""
     import json
+
     text = json.dumps(data) if not isinstance(data, str) else data
     return len(text) // 4
 
@@ -36,9 +39,9 @@ async def get_360_memory(
     last_n_projects: int = 3,
     offset: int = 0,
     limit: int = None,
-    db_manager: Optional[DatabaseManager] = None,
-    session: Optional[AsyncSession] = None  # For testing only
-) -> Dict[str, Any]:
+    db_manager: DatabaseManager | None = None,
+    session: AsyncSession | None = None,  # For testing only
+) -> dict[str, Any]:
     """
     Fetch 360 memory (sequential project history) for given product with depth control and pagination.
 
@@ -109,7 +112,7 @@ async def get_360_memory(
         tenant_key=tenant_key,
         depth=last_n_projects,
         offset=offset,
-        limit=limit
+        limit=limit,
     )
 
     if db_manager is None and session is None:
@@ -128,19 +131,13 @@ async def get_360_memory(
 
     try:
         # Verify product exists for tenant isolation
-        stmt = select(Product).where(
-            Product.id == product_id,
-            Product.tenant_key == tenant_key
-        )
+        stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
         result = await session_to_use.execute(stmt)
         product = result.scalar_one_or_none()
 
         if not product:
             logger.warning(
-                "product_not_found",
-                product_id=product_id,
-                tenant_key=tenant_key,
-                operation="get_360_memory"
+                "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_360_memory"
             )
             return {
                 "source": "360_memory",
@@ -156,8 +153,8 @@ async def get_360_memory(
                     "returned_projects": 0,
                     "has_more": False,
                     "next_offset": None,
-                    "error": "product_not_found"
-                }
+                    "error": "product_not_found",
+                },
             }
 
         # Use repository to fetch memory entries from table
@@ -173,11 +170,7 @@ async def get_360_memory(
         total_projects = len(all_entries)
 
         if total_projects == 0:
-            logger.debug(
-                "no_memory_entries",
-                product_id=product_id,
-                operation="get_360_memory"
-            )
+            logger.debug("no_memory_entries", product_id=product_id, operation="get_360_memory")
             return {
                 "source": "360_memory",
                 "depth": last_n_projects,
@@ -191,8 +184,8 @@ async def get_360_memory(
                     "limit": limit or 0,
                     "returned_projects": 0,
                     "has_more": False,
-                    "next_offset": None
-                }
+                    "next_offset": None,
+                },
             }
 
         # Fetch entries with pagination (repository already sorts by sequence DESC)
@@ -210,7 +203,7 @@ async def get_360_memory(
 
         # Apply pagination within the filtered results
         effective_limit = limit if limit is not None else last_n_projects
-        paginated_history = filtered_history[offset:offset + effective_limit]
+        paginated_history = filtered_history[offset : offset + effective_limit]
 
         # Calculate pagination metadata
         has_more = (offset + len(paginated_history)) < len(filtered_history)
@@ -229,7 +222,7 @@ async def get_360_memory(
             total_projects=total_projects,
             returned_projects=len(paginated_history),
             has_more=has_more,
-            estimated_tokens=total_tokens
+            estimated_tokens=total_tokens,
         )
 
         return {
@@ -245,8 +238,8 @@ async def get_360_memory(
                 "limit": effective_limit,
                 "returned_projects": len(paginated_history),
                 "has_more": has_more,
-                "next_offset": next_offset
-            }
+                "next_offset": next_offset,
+            },
         }
     finally:
         if should_close and session_to_use:

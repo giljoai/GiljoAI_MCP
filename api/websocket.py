@@ -10,10 +10,10 @@ from uuid import uuid4
 
 from fastapi import HTTPException, WebSocket
 
-from api.broker.base import WebSocketBrokerMessage, WebSocketEventBroker
 from api.auth_utils import check_subscription_permission
+from api.broker.base import WebSocketBrokerMessage, WebSocketEventBroker
 from api.events.schemas import EventFactory
-from src.giljo_mcp.logging import get_logger, ErrorCode
+from src.giljo_mcp.logging import ErrorCode, get_logger
 
 
 logger = get_logger(__name__)
@@ -36,9 +36,9 @@ class WebSocketManager:
         self.active_connections: dict[str, WebSocket] = {}
         self.auth_contexts: dict[str, dict[str, Any]] = {}  # NEW: Store auth context
         self.subscriptions: dict[str, set[str]] = {}  # client_id -> set of subscriptions
-        self.entity_subscribers: dict[str, set[str]] = (
-            {}
-        )  # entity_key -> set of client_ids  # entity_key -> set of client_ids
+        self.entity_subscribers: dict[
+            str, set[str]
+        ] = {}  # entity_key -> set of client_ids  # entity_key -> set of client_ids
         self._event_broker: Optional[WebSocketEventBroker] = None
         self._broker_unsubscribe = None
         self._broker_origin = uuid4().hex
@@ -47,7 +47,7 @@ class WebSocketManager:
         if self._broker_unsubscribe:
             try:
                 self._broker_unsubscribe()
-            except Exception:
+            except (RuntimeError, OSError):
                 logger.debug("Failed unsubscribing broker handler", exc_info=True)
             self._broker_unsubscribe = None
 
@@ -101,7 +101,7 @@ class WebSocketManager:
             raise ValueError("tenant_key cannot be empty")
 
         if not isinstance(event, dict):
-            raise ValueError("event must be a dictionary")
+            raise TypeError("event must be a dictionary")
 
         event_type = event.get("type")
         if not event_type:
@@ -109,7 +109,7 @@ class WebSocketManager:
 
         data = event.get("data") or {}
         if not isinstance(data, dict):
-            raise ValueError("event.data must be a dictionary")
+            raise TypeError("event.data must be a dictionary")
 
         if "tenant_key" not in data:
             data = {**data, "tenant_key": tenant_key}
@@ -160,7 +160,7 @@ class WebSocketManager:
                 for t in event_types:
                     await websocket.send_json({**message, "type": t})
                     client_sent_any = True
-            except Exception as e:
+            except (RuntimeError, ValueError, KeyError) as e:
                 failed_count += 1
                 logger.warning(
                     "websocket_send_failed",
@@ -188,7 +188,7 @@ class WebSocketManager:
                         origin=self._broker_origin,
                     )
                 )
-            except Exception as e:
+            except (RuntimeError, ValueError, KeyError) as e:
                 logger.warning(
                     "websocket_broker_publish_failed",
                     error_code=ErrorCode.WS_BROADCAST_FAILED.value,
@@ -295,7 +295,7 @@ class WebSocketManager:
             websocket = self.active_connections[client_id]
             try:
                 await websocket.send_text(message)
-            except Exception as e:
+            except (RuntimeError, ValueError, KeyError) as e:
                 logger.exception(
                     "websocket_send_message_error",
                     error_code=ErrorCode.WS_MESSAGE_SEND_FAILED.value,
@@ -325,7 +325,7 @@ class WebSocketManager:
         for client_id, websocket in self.active_connections.items():
             try:
                 await websocket.send_text(message)
-            except Exception as e:
+            except Exception as e:  # noqa: PERF203 - Broadcast resilience: continue sending to other clients on error
                 logger.exception(
                     "websocket_broadcast_error",
                     error_code=ErrorCode.WS_BROADCAST_FAILED.value,
@@ -545,7 +545,7 @@ class WebSocketManager:
         for client_id, websocket in self.active_connections.items():
             try:
                 await websocket.send_json(heartbeat)
-            except Exception as e:
+            except (RuntimeError, OSError) as e:  # noqa: PERF203 - Heartbeat resilience: continue pinging other clients
                 logger.debug(f"Heartbeat failed for {client_id}: {e}")
                 disconnected.append(client_id)
 
@@ -650,7 +650,6 @@ class WebSocketManager:
         progress_percentage: Optional[int] = None,
         meta_data: Optional[dict] = None,
         failure_reason: Optional[str] = None,  # Handover 0113
-        decommissioned_at: Optional[str] = None,  # Handover 0113
     ):
         """Broadcast real-time status updates during agent execution."""
         data: dict[str, Any] = {
@@ -669,9 +668,6 @@ class WebSocketManager:
 
         if status == "failed" and failure_reason:
             data["failure_reason"] = failure_reason
-
-        if status == "decommissioned" and decommissioned_at:
-            data["decommissioned_at"] = decommissioned_at
 
         event = EventFactory.tenant_envelope(
             event_type="agent:update",
@@ -771,7 +767,6 @@ class WebSocketManager:
         status: str = "waiting",
         execution_id: Optional[str] = None,  # Handover 0457: Unique row ID for frontend Map key
         agent_id: Optional[str] = None,  # Handover 0457: Executor UUID
-        instance_number: int = 1,  # Handover 0457: Instance number for succession
     ):
         """Broadcast agent job creation events."""
         created_ts = (created_at or datetime.now(timezone.utc)).isoformat()
@@ -791,7 +786,6 @@ class WebSocketManager:
                 "status": status,
                 "execution_id": execution_id,  # Handover 0457
                 "agent_id": agent_id,  # Handover 0457
-                "instance_number": instance_number,  # Handover 0457
             },
             schema_version="1.0",
         )
@@ -811,7 +805,6 @@ class WebSocketManager:
                     "agent_display_name": agent_display_name,
                     "agent_name": agent_name,
                     "status": status,
-                    "instance_number": instance_number,  # Handover 0457
                 },
                 schema_version="1.0",
             )

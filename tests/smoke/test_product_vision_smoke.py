@@ -1,4 +1,5 @@
 """Smoke test: Product creation + vision upload + chunking."""
+
 from __future__ import annotations
 
 import pytest
@@ -37,4 +38,3 @@ async def test_product_vision_workflow_smoke(authenticated_client) -> None:
     assert len(chunks) >= 1, f"Expected at least 1 chunk, got {len(chunks)}"
 
     print(f"✓ Product + Vision workflow: PASS ({len(chunks)} chunks created)")
-

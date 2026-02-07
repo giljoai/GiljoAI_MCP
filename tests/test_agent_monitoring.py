@@ -19,11 +19,12 @@ import pytest_asyncio
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from sqlalchemy import select
+
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.tools.agent_status import report_progress
 from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from sqlalchemy import select
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
 
@@ -42,7 +43,7 @@ async def get_stale_jobs(tenant_key: str, threshold_minutes: int = 10):
         stmt = select(AgentExecution).where(
             AgentExecution.tenant_key == tenant_key,
             AgentExecution.status.in_(["active", "working"]),
-            AgentExecution.last_progress_at <= threshold_time
+            AgentExecution.last_progress_at <= threshold_time,
         )
 
         result = await session.execute(stmt)
@@ -115,10 +116,7 @@ class TestProgressTracking:
         await report_progress(
             job_id=test_job.job_id,
             tenant_key=test_job.tenant_key,
-            progress={
-                "task": "Implementing feature X",
-                "percent": 50
-            }
+            progress={"task": "Implementing feature X", "percent": 50},
         )
 
         # Refresh and verify timestamp updated
@@ -134,22 +132,19 @@ class TestProgressTracking:
         """Test that report_progress updates timestamp on subsequent calls."""
         # First call
         await report_progress(
-            job_id=test_job.job_id,
-            tenant_key=test_job.tenant_key,
-            progress={"task": "Task 1", "percent": 25}
+            job_id=test_job.job_id, tenant_key=test_job.tenant_key, progress={"task": "Task 1", "percent": 25}
         )
         await db_session.refresh(test_job)
         first_timestamp = test_job.last_progress_at
 
         # Wait a moment
         import asyncio
+
         await asyncio.sleep(0.1)
 
         # Second call
         await report_progress(
-            job_id=test_job.job_id,
-            tenant_key=test_job.tenant_key,
-            progress={"task": "Task 2", "percent": 75}
+            job_id=test_job.job_id, tenant_key=test_job.tenant_key, progress={"task": "Task 2", "percent": 75}
         )
         await db_session.refresh(test_job)
         second_timestamp = test_job.last_progress_at
@@ -173,7 +168,7 @@ class TestMessageChecking:
         # Receive messages (empty array is fine for this test)
         await tool_accessor.receive_messages(
             agent_id=test_job.job_id,  # Use job_id as agent_id for this test
-            tenant_key=test_job.tenant_key
+            tenant_key=test_job.tenant_key,
         )
 
         # Refresh and verify timestamp updated
@@ -187,19 +182,20 @@ class TestMessageChecking:
         # First call
         await tool_accessor.receive_messages(
             agent_id=test_job.job_id,  # Use job_id as agent_id for this test
-            tenant_key=test_job.tenant_key
+            tenant_key=test_job.tenant_key,
         )
         await db_session.refresh(test_job)
         first_timestamp = test_job.last_message_check_at
 
         # Wait a moment
         import asyncio
+
         await asyncio.sleep(0.1)
 
         # Second call
         await tool_accessor.receive_messages(
             agent_id=test_job.job_id,  # Use job_id as agent_id for this test
-            tenant_key=test_job.tenant_key
+            tenant_key=test_job.tenant_key,
         )
         await db_session.refresh(test_job)
         second_timestamp = test_job.last_message_check_at

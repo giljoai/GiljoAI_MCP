@@ -6,7 +6,7 @@ Provides request/response models for:
 - Agent prompt generation (universal terminal prompts)
 """
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -157,9 +157,6 @@ class ProjectCompleteResponse(BaseModel):
     memory_updated: bool = Field(..., description="Whether 360 Memory was updated")
     sequence_number: int = Field(..., description="Sequential history entry number")
     git_commits_count: int = Field(..., description="Number of commits captured (if GitHub enabled)")
-    retired_agents: int | None = Field(
-        default=None, description="Number of agents retired (deprecated field for legacy callers)"
-    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -195,7 +192,6 @@ class OrchestratorPromptRequest(BaseModel):
 
     project_id: str = Field(..., min_length=1, description="Project UUID")
     tool: Literal["claude-code", "codex", "gemini"] = Field("claude-code", description="Target AI tool")
-    instance_number: Optional[int] = Field(1, ge=1, description="Orchestrator instance number (for succession)")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -221,6 +217,6 @@ class ThinPromptResponse(BaseModel):
     estimated_prompt_tokens: int = Field(..., description="Token estimate for prompt (~50)")
     mcp_tool_name: str = Field(..., description="MCP tool to fetch mission")
     instructions_stored: bool = Field(..., description="Whether instructions are stored in database")
-    thin_client: bool = Field(True, description="Always True for thin client architecture")
+    thin_client: bool = Field(default=True, description="Always True for thin client architecture")
 
     model_config = ConfigDict(from_attributes=True)

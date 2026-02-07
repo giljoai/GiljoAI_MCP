@@ -7,15 +7,15 @@ with priority-based detail levels.
 Following TDD principles: Tests written BEFORE implementation.
 """
 
+from unittest.mock import PropertyMock
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from uuid import uuid4
-from unittest.mock import Mock, PropertyMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.database import DatabaseManager
 
 
 @pytest_asyncio.fixture
@@ -204,9 +204,9 @@ class TestTechStackContextExtraction:
         assert frontend_present, "First frontend value should be present"
 
         # Database, deployment, testing should be excluded
-        assert (
-            "**Database**:" not in context or "PostgreSQL 18" not in context
-        ), "Database should be excluded or minimal"
+        assert "**Database**:" not in context or "PostgreSQL 18" not in context, (
+            "Database should be excluded or minimal"
+        )
         assert "**Deployment**:" not in context, "Deployment should be excluded in minimal detail"
         assert "**Testing**:" not in context, "Testing should be excluded in minimal detail"
 
@@ -222,9 +222,9 @@ class TestTechStackContextExtraction:
         # Verify section does NOT exist
         assert "## Tech Stack" not in context, "Tech stack section should not be present with priority 0"
         assert "**Languages**:" not in context, "No tech stack content should be present"
-        assert (
-            "Python" not in context or "## Codebase" in context
-        ), "Python might appear in other sections but not tech stack"
+        assert "Python" not in context or "## Codebase" in context, (
+            "Python might appear in other sections but not tech stack"
+        )
 
     @pytest.mark.asyncio
     async def test_tech_stack_token_counting(self, mission_planner, sample_product_with_tech_stack, sample_project):
@@ -391,7 +391,7 @@ class TestTargetPlatformsContextExtraction:
             "databases": tech_stack.get("database", []),
             "infrastructure": tech_stack.get("infrastructure", []),
             "dev_tools": tech_stack.get("dev_tools", []),
-            "target_platforms": product.target_platforms or ["all"]
+            "target_platforms": product.target_platforms or ["all"],
         }
 
         # Verify target_platforms in data structure
@@ -426,7 +426,7 @@ class TestTargetPlatformsContextExtraction:
         tech_stack = product.config_data.get("tech_stack", {})
         data = {
             "programming_languages": tech_stack.get("languages", []),
-            "target_platforms": product.target_platforms or ["all"]
+            "target_platforms": product.target_platforms or ["all"],
         }
 
         # Verify target_platforms in data structure
@@ -461,7 +461,7 @@ class TestTargetPlatformsContextExtraction:
         tech_stack = product.config_data.get("tech_stack", {})
         data = {
             "programming_languages": tech_stack.get("languages", []),
-            "target_platforms": product.target_platforms or ["all"]
+            "target_platforms": product.target_platforms or ["all"],
         }
 
         # Verify target_platforms in data structure

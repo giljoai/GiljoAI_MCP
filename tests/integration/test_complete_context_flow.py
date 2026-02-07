@@ -38,6 +38,7 @@ from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 # TEST DATA FIXTURES
 # ============================================================================
 
+
 @pytest_asyncio.fixture
 async def integration_tenant_key():
     """Generate unique tenant key for test isolation"""
@@ -124,6 +125,7 @@ async def project_ready_to_stage(db_session, product_with_all_features, integrat
 # ============================================================================
 # TEST SUITE 1: Complete Settings Persistence Flow
 # ============================================================================
+
 
 class TestCompleteSettingsPersistence:
     """
@@ -236,6 +238,7 @@ class TestCompleteSettingsPersistence:
 # TEST SUITE 2: Context Generation with All Features
 # ============================================================================
 
+
 class TestContextGenerationWithAllFeatures:
     """
     Validate that context generation includes all features based on priorities.
@@ -327,6 +330,7 @@ class TestContextGenerationWithAllFeatures:
 # TEST SUITE 3: Orchestrator Receives Complete Context
 # ============================================================================
 
+
 class TestOrchestratorContextDelivery:
     """
     Validate that orchestrator receives all context through get_orchestrator_instructions
@@ -411,6 +415,7 @@ class TestOrchestratorContextDelivery:
 # TEST SUITE 4: Multi-Tenant Isolation in Context Flow
 # ============================================================================
 
+
 class TestMultiTenantContextIsolation:
     """
     Validate that context flow maintains complete tenant isolation.
@@ -443,7 +448,7 @@ class TestMultiTenantContextIsolation:
                 "priorities": {
                     "product_core": 1,
                     "git_history": 4,  # EXCLUDED in tenant_a
-                }
+                },
             },
         )
 
@@ -459,7 +464,7 @@ class TestMultiTenantContextIsolation:
                 "priorities": {
                     "product_core": 1,
                     "git_history": 2,  # INCLUDED in tenant_b
-                }
+                },
             },
         )
 
@@ -487,18 +492,14 @@ class TestMultiTenantContextIsolation:
             id=str(uuid4()),
             name=f"ProdA_{uuid4().hex[:6]}",
             tenant_key=tenant_a,
-            product_memory={
-                "git_integration": {"enabled": True}
-            }
+            product_memory={"git_integration": {"enabled": True}},
         )
 
         product_b = Product(
             id=str(uuid4()),
             name=f"ProdB_{uuid4().hex[:6]}",
             tenant_key=tenant_b,
-            product_memory={
-                "git_integration": {"enabled": False}
-            }
+            product_memory={"git_integration": {"enabled": False}},
         )
 
         db_session.add_all([product_a, product_b])
@@ -515,6 +516,7 @@ class TestMultiTenantContextIsolation:
 # ============================================================================
 # TEST SUITE 5: Edge Cases and State Transitions
 # ============================================================================
+
 
 class TestContextFlowEdgeCases:
     """
@@ -624,6 +626,7 @@ class TestContextFlowEdgeCases:
 # TEST SUITE 6: Context Completeness
 # ============================================================================
 
+
 class TestContextCompleteness:
     """
     Validate that complete context includes all required sections.
@@ -686,6 +689,7 @@ class TestContextCompleteness:
 # ============================================================================
 # TEST SUITE 7: Backward Compatibility
 # ============================================================================
+
 
 class TestBackwardCompatibility:
     """

@@ -210,7 +210,7 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
       const mockTemplate = {
         id: 'template-123',
         role: 'documenter',
-        template_content: 'Legacy template content format'
+        system_instructions: 'Legacy template content format'
       }
 
       mockTemplateGet.mockResolvedValue({ data: mockTemplate })

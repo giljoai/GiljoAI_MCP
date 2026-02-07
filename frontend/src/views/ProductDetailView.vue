@@ -2,7 +2,7 @@
   <v-container fluid>
     <v-row>
       <v-col cols="12">
-        <v-btn icon variant="text" @click="$router.back()" class="mb-4">
+        <v-btn icon variant="text" class="mb-4" @click="$router.back()">
           <v-icon>mdi-arrow-left</v-icon>
         </v-btn>
 
@@ -29,7 +29,7 @@
                 <div class="text-subtitle-2 text-medium-emphasis">Description</div>
                 <div class="text-body-1">{{ product.description || 'No description' }}</div>
               </v-col>
-              <v-col cols="12" v-if="product.vision_path">
+              <v-col v-if="product.vision_path" cols="12">
                 <div class="text-subtitle-2 text-medium-emphasis">Vision Path</div>
                 <div class="text-body-1">{{ product.vision_path }}</div>
               </v-col>

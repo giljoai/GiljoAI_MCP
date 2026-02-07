@@ -5,14 +5,17 @@ import asyncio
 import sys
 from pathlib import Path
 
+
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from passlib.context import CryptContext
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
 from src.giljo_mcp.config_manager import ConfigManager
 from src.giljo_mcp.models.auth import User
-from passlib.context import CryptContext
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -26,9 +29,7 @@ async def reset_password():
 
     async with async_session() as session:
         # Get patrik user
-        result = await session.execute(
-            select(User).where(User.username == 'patrik')
-        )
+        result = await session.execute(select(User).where(User.username == "patrik"))
         user = result.scalar_one_or_none()
 
         if not user:
@@ -39,11 +40,7 @@ async def reset_password():
         new_password_hash = pwd_context.hash("TestPass123")
 
         # Update password
-        await session.execute(
-            update(User)
-            .where(User.username == 'patrik')
-            .values(password_hash=new_password_hash)
-        )
+        await session.execute(update(User).where(User.username == "patrik").values(password_hash=new_password_hash))
         await session.commit()
 
         print("SUCCESS: Password reset to 'TestPass123' for user 'patrik'")

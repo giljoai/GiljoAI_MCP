@@ -14,7 +14,8 @@ Created: 2025-11-06
 
 import asyncio
 import logging
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
+
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +47,12 @@ class EventBus:
 
     def __init__(self):
         """Initialize event bus with empty listener registry."""
-        self._listeners: Dict[str, List[Callable]] = {}
+        self._listeners: dict[str, list[Callable]] = {}
         self._lock = asyncio.Lock()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        self._event_counts: Dict[str, int] = {}
+        self._event_counts: dict[str, int] = {}
 
-    async def publish(self, event_type: str, data: Dict[str, Any]) -> int:
+    async def publish(self, event_type: str, data: dict[str, Any]) -> int:
         """
         Publish event to all registered listeners.
 
@@ -66,7 +67,7 @@ class EventBus:
             raise ValueError("event_type cannot be empty")
 
         if not isinstance(data, dict):
-            raise ValueError("data must be a dictionary")
+            raise TypeError("data must be a dictionary")
 
         async with self._lock:
             listeners = self._listeners.get(event_type, []).copy()
@@ -102,7 +103,7 @@ class EventBus:
 
                 success_count += 1
 
-            except Exception as e:
+            except Exception as e:  # noqa: PERF203 - Resilient dispatch: continue calling handlers on error
                 failed_count += 1
                 self.logger.error(
                     f"Event handler failed for {event_type}: {e}",
@@ -137,7 +138,7 @@ class EventBus:
             raise ValueError("event_type cannot be empty")
 
         if not callable(handler):
-            raise ValueError("handler must be callable")
+            raise TypeError("handler must be callable")
 
         async with self._lock:
             if event_type not in self._listeners:
@@ -177,8 +178,7 @@ class EventBus:
         """Get count of registered listeners."""
         if event_type:
             return len(self._listeners.get(event_type, []))
-        else:
-            return sum(len(handlers) for handlers in self._listeners.values())
+        return sum(len(handlers) for handlers in self._listeners.values())
 
     def clear(self) -> None:
         """Clear all listeners (for testing)."""

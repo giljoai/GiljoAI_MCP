@@ -3,16 +3,16 @@ End-to-end integration tests for Agent Health Monitoring System.
 Tests full monitoring lifecycle with real database and WebSocket integration.
 """
 
-import pytest
 import asyncio
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import select
 
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+import pytest
+
+from api.websocket import WebSocketManager
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
 from src.giljo_mcp.monitoring.health_config import HealthCheckConfig
-from src.giljo_mcp.database import DatabaseManager
-from api.websocket import WebSocketManager
 
 
 @pytest.mark.asyncio
@@ -27,13 +27,12 @@ class TestHealthMonitoringE2E:
             active_no_progress_minutes=2,
             heartbeat_timeout_minutes=5,
             scan_interval_seconds=2,  # 2 seconds for fast testing
-            auto_fail_on_timeout=False
+            auto_fail_on_timeout=False,
         )
 
     @pytest.fixture
     async def db_manager(self):
         """Real database manager for integration testing."""
-        from src.giljo_mcp.database import DatabaseManager
 
         db = DatabaseManager()
         await db.initialize()
@@ -43,7 +42,6 @@ class TestHealthMonitoringE2E:
     @pytest.fixture
     async def ws_manager(self):
         """Real WebSocket manager for integration testing."""
-        from api.websocket import WebSocketManager
 
         ws = WebSocketManager()
         return ws
@@ -89,7 +87,7 @@ class TestHealthMonitoringE2E:
                 created_at=datetime.now(timezone.utc) - timedelta(minutes=2),
                 updated_at=datetime.now(timezone.utc) - timedelta(minutes=2),
                 health_status="unknown",
-                health_failure_count=0
+                health_failure_count=0,
             )
             session.add(job)
             await session.commit()
@@ -127,7 +125,7 @@ class TestHealthMonitoringE2E:
                 updated_at=stale_time,
                 job_metadata={"last_progress_update": stale_time.isoformat()},
                 health_status="unknown",
-                health_failure_count=0
+                health_failure_count=0,
             )
             session.add(job)
             await session.commit()
@@ -167,7 +165,7 @@ class TestHealthMonitoringE2E:
                 updated_at=timeout_time,
                 job_metadata={},
                 health_status="unknown",
-                health_failure_count=0
+                health_failure_count=0,
             )
             session.add(job)
             await session.commit()
@@ -207,7 +205,7 @@ class TestHealthMonitoringE2E:
                     updated_at=stale_time,
                     job_metadata={"last_progress_update": stale_time.isoformat()},
                     health_status="unknown",
-                    health_failure_count=0
+                    health_failure_count=0,
                 )
                 for i in range(3)
             ]
@@ -247,7 +245,7 @@ class TestHealthMonitoringE2E:
                 updated_at=recent_time,
                 job_metadata={"last_progress_update": recent_time.isoformat()},
                 health_status="healthy",
-                health_failure_count=0
+                health_failure_count=0,
             )
             session.add(job)
             await session.commit()
@@ -284,7 +282,7 @@ class TestHealthMonitoringE2E:
                 updated_at=initial_time,
                 job_metadata={"last_progress_update": initial_time.isoformat()},
                 health_status="unknown",
-                health_failure_count=0
+                health_failure_count=0,
             )
             session.add(job)
             await session.commit()
@@ -332,7 +330,7 @@ class TestHealthMonitoringE2E:
                     updated_at=stale_time,
                     job_metadata={"last_progress_update": stale_time.isoformat()},
                     health_status="unknown",
-                    health_failure_count=0
+                    health_failure_count=0,
                 )
                 for i in range(10)
             ]
@@ -390,7 +388,7 @@ class TestHealthMonitoringE2E:
                 updated_at=datetime.now(timezone.utc),
                 job_metadata={"last_progress_update": datetime.now(timezone.utc).isoformat()},
                 health_status="healthy",
-                health_failure_count=0
+                health_failure_count=0,
             )
             session.add(job)
             await session.commit()
@@ -404,9 +402,7 @@ class TestHealthMonitoringE2E:
             assert job.health_status == "healthy"
 
             # Make job stale (3 minutes)
-            job.job_metadata = {
-                "last_progress_update": (datetime.now(timezone.utc) - timedelta(minutes=3)).isoformat()
-            }
+            job.job_metadata = {"last_progress_update": (datetime.now(timezone.utc) - timedelta(minutes=3)).isoformat()}
             await session.commit()
 
             # Next cycle should detect warning/critical

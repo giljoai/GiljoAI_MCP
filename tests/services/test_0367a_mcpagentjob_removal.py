@@ -18,12 +18,9 @@ Test Categories:
 """
 
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.projects import Project
@@ -75,9 +72,7 @@ async def test_agent_job_0367a(db_session, test_project_0367a, test_tenant_0367a
 
 
 @pytest_asyncio.fixture
-async def test_agent_execution_0367a(
-    db_session, test_agent_job_0367a, test_tenant_0367a
-) -> AgentExecution:
+async def test_agent_execution_0367a(db_session, test_agent_job_0367a, test_tenant_0367a) -> AgentExecution:
     """Create test AgentExecution (executor)."""
     execution = AgentExecution(
         agent_id=str(uuid.uuid4()),
@@ -85,7 +80,6 @@ async def test_agent_execution_0367a(
         tenant_key=test_tenant_0367a,
         agent_display_name="orchestrator",
         agent_name="Orchestrator #1",
-        instance_number=1,
         status="working",
         progress=50,
         messages_sent_count=0,
@@ -115,24 +109,18 @@ class TestOrchestrationServiceNoFallback:
     - trigger_succession() does NOT create MCPAgentJob successor
     """
 
-    async def test_complete_job_returns_error_when_execution_not_found(
-        self, db_session, db_manager, test_tenant_0367a
-    ):
+    async def test_complete_job_returns_error_when_execution_not_found(self, db_session, db_manager, test_tenant_0367a):
         """
         complete_job() should raise exception when AgentExecution not found.
 
         It should NOT fallback to MCPAgentJob table.
         """
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager,
-            tenant_manager=tenant_manager,
-            test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Try to complete a non-existent job - should raise exception
         fake_job_id = str(uuid.uuid4())
@@ -158,11 +146,7 @@ class TestOrchestrationServiceNoFallback:
         from src.giljo_mcp.tenant import TenantManager
 
         tenant_manager = TenantManager()
-        service = OrchestrationService(
-            db_manager=db_manager,
-            tenant_manager=tenant_manager,
-            test_session=db_session
-        )
+        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
         # Complete the job
         result = await service.complete_job(
@@ -210,7 +194,6 @@ class TestNoMCPAgentJobImport:
         """
         OrchestrationService should not import MCPAgentJob.
         """
-        import importlib.util
         import ast
         from pathlib import Path
 
@@ -219,7 +202,7 @@ class TestNoMCPAgentJobImport:
         if not file_path.exists():
             pytest.skip("File not found - likely in different working directory")
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             source = f.read()
 
         # Parse the source code
@@ -247,7 +230,6 @@ class TestNoMCPAgentJobImport:
         """
         AgentJobManager should not import MCPAgentJob.
         """
-        import importlib.util
         import ast
         from pathlib import Path
 
@@ -256,7 +238,7 @@ class TestNoMCPAgentJobImport:
         if not file_path.exists():
             pytest.skip("File not found - likely in different working directory")
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             source = f.read()
 
         # Parse the source code
@@ -272,9 +254,7 @@ class TestNoMCPAgentJobImport:
                             mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
 
         # Should have no MCPAgentJob imports
-        assert len(mcp_agent_job_imports) == 0, (
-            f"AgentJobManager still imports MCPAgentJob: {mcp_agent_job_imports}"
-        )
+        assert len(mcp_agent_job_imports) == 0, f"AgentJobManager still imports MCPAgentJob: {mcp_agent_job_imports}"
 
     def test_project_service_no_mcpagentjob_import(self):
         """
@@ -288,7 +268,7 @@ class TestNoMCPAgentJobImport:
         if not file_path.exists():
             pytest.skip("File not found - likely in different working directory")
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             source = f.read()
 
         # Parse the source code
@@ -304,9 +284,7 @@ class TestNoMCPAgentJobImport:
                             mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
 
         # Should have no MCPAgentJob imports
-        assert len(mcp_agent_job_imports) == 0, (
-            f"ProjectService still imports MCPAgentJob: {mcp_agent_job_imports}"
-        )
+        assert len(mcp_agent_job_imports) == 0, f"ProjectService still imports MCPAgentJob: {mcp_agent_job_imports}"
 
     def test_message_service_no_mcpagentjob_import(self):
         """
@@ -320,7 +298,7 @@ class TestNoMCPAgentJobImport:
         if not file_path.exists():
             pytest.skip("File not found - likely in different working directory")
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             source = f.read()
 
         # Parse the source code
@@ -336,9 +314,7 @@ class TestNoMCPAgentJobImport:
                             mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
 
         # Should have no MCPAgentJob imports
-        assert len(mcp_agent_job_imports) == 0, (
-            f"MessageService still imports MCPAgentJob: {mcp_agent_job_imports}"
-        )
+        assert len(mcp_agent_job_imports) == 0, f"MessageService still imports MCPAgentJob: {mcp_agent_job_imports}"
 
     def test_agent_message_queue_no_mcpagentjob_import(self):
         """
@@ -352,7 +328,7 @@ class TestNoMCPAgentJobImport:
         if not file_path.exists():
             pytest.skip("File not found - likely in different working directory")
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             source = f.read()
 
         # Parse the source code
@@ -368,9 +344,7 @@ class TestNoMCPAgentJobImport:
                             mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
 
         # Should have no MCPAgentJob imports
-        assert len(mcp_agent_job_imports) == 0, (
-            f"AgentMessageQueue still imports MCPAgentJob: {mcp_agent_job_imports}"
-        )
+        assert len(mcp_agent_job_imports) == 0, f"AgentMessageQueue still imports MCPAgentJob: {mcp_agent_job_imports}"
 
     def test_job_monitoring_no_mcpagentjob_import(self):
         """
@@ -384,7 +358,7 @@ class TestNoMCPAgentJobImport:
         if not file_path.exists():
             pytest.skip("File not found - likely in different working directory")
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             source = f.read()
 
         # Parse the source code
@@ -400,6 +374,4 @@ class TestNoMCPAgentJobImport:
                             mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
 
         # Should have no MCPAgentJob imports
-        assert len(mcp_agent_job_imports) == 0, (
-            f"JobMonitoring still imports MCPAgentJob: {mcp_agent_job_imports}"
-        )
+        assert len(mcp_agent_job_imports) == 0, f"JobMonitoring still imports MCPAgentJob: {mcp_agent_job_imports}"

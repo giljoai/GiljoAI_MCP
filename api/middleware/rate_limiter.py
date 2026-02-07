@@ -5,12 +5,15 @@ Implements per-IP rate limiting to prevent abuse and DoS attacks.
 
 Created in Handover 0129c - Security Hardening & OWASP Compliance
 """
+
+import logging
 import time
 from collections import defaultdict, deque
-from fastapi import Request, HTTPException
+from typing import Callable
+
+from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Callable, Dict, Deque
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +35,7 @@ class RateLimiter:
         """
         self.requests_per_minute = requests_per_minute
         self.window_size = 60  # 1 minute in seconds
-        self.requests: Dict[str, Deque[float]] = defaultdict(deque)
+        self.requests: dict[str, deque[float]] = defaultdict(deque)
         logger.debug(f"RateLimiter initialized: {requests_per_minute} req/min")
 
     def is_allowed(self, key: str) -> bool:
@@ -107,12 +110,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     - Respects X-Forwarded-For for proxied requests
     """
 
-    def __init__(
-        self,
-        app,
-        requests_per_minute: int = 100,
-        exempt_paths: list = None
-    ):
+    def __init__(self, app, requests_per_minute: int = 100, exempt_paths: list = None):
         """
         Initialize rate limit middleware.
 
@@ -125,8 +123,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.rate_limiter = RateLimiter(requests_per_minute)
         self.exempt_paths = exempt_paths or ["/api/health", "/api/metrics"]
         logger.info(
-            f"RateLimitMiddleware initialized: {requests_per_minute} req/min, "
-            f"exempt paths: {self.exempt_paths}"
+            f"RateLimitMiddleware initialized: {requests_per_minute} req/min, exempt paths: {self.exempt_paths}"
         )
 
     def _get_client_ip(self, request: Request) -> str:
@@ -180,8 +177,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Check rate limit
         if not self.rate_limiter.is_allowed(client_ip):
             logger.warning(
-                f"Rate limit exceeded for IP: {client_ip}, "
-                f"path: {request.url.path}, method: {request.method}"
+                f"Rate limit exceeded for IP: {client_ip}, path: {request.url.path}, method: {request.method}"
             )
 
             # Calculate retry-after
@@ -195,8 +191,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "Retry-After": str(max(1, retry_after)),  # At least 1 second
                     "X-RateLimit-Limit": str(self.rate_limiter.requests_per_minute),
                     "X-RateLimit-Remaining": "0",
-                    "X-RateLimit-Reset": str(int(reset_time))
-                }
+                    "X-RateLimit-Reset": str(int(reset_time)),
+                },
             )
 
         # Add rate limit headers to response
@@ -250,6 +246,7 @@ class EndpointRateLimiter:
         Returns:
             Wrapped function with rate limiting
         """
+
         async def wrapper(*args, **kwargs):
             # Extract request from args or kwargs
             request = kwargs.get("request") or (args[0] if args else None)
@@ -278,8 +275,8 @@ class EndpointRateLimiter:
                         "Retry-After": str(max(1, retry_after)),
                         "X-RateLimit-Limit": str(self.requests_per_minute),
                         "X-RateLimit-Remaining": "0",
-                        "X-RateLimit-Reset": str(int(reset_time))
-                    }
+                        "X-RateLimit-Reset": str(int(reset_time)),
+                    },
                 )
 
             return await func(*args, **kwargs)

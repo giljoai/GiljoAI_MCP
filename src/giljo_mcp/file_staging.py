@@ -32,7 +32,6 @@ import re
 import shutil
 import zipfile
 from pathlib import Path
-from typing import Optional, Tuple
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -53,7 +52,7 @@ class FileStaging:
     with multi-tenant isolation and directory traversal protection.
     """
 
-    def __init__(self, base_path: Optional[Path] = None, db_session: Optional[AsyncSession] = None):
+    def __init__(self, base_path: Path | None = None, db_session: AsyncSession | None = None):
         """
         Initialize FileStaging.
 
@@ -100,7 +99,7 @@ class FileStaging:
     async def stage_slash_commands(
         self,
         staging_path: Path,
-    ) -> Tuple[Optional[Path], str]:
+    ) -> tuple[Path | None, str]:
         """
         Stage slash commands as a ZIP file.
 
@@ -145,21 +144,20 @@ class FileStaging:
 
             logger.info(f"Staged slash commands ZIP: {zip_path} ({len(templates)} files)")
             return (zip_path, f"Successfully staged {len(templates)} slash commands")
-        except OSError as e:
-            msg = f"Disk error creating slash commands ZIP: {e}"
-            logger.error(msg)
-            return (None, msg)
-        except Exception as e:
-            msg = f"Unexpected error creating slash commands ZIP: {e}"
-            logger.error(msg)
+        except (OSError, ValueError, RuntimeError) as e:
+            if isinstance(e, OSError):
+                msg = f"Disk error creating slash commands ZIP: {e}"
+            else:
+                msg = f"Unexpected error creating slash commands ZIP: {e}"
+            logger.exception(msg)
             return (None, msg)
 
     async def stage_agent_templates(
         self,
         staging_path: Path,
         tenant_key: str,
-        db_session: Optional[AsyncSession] = None,
-    ) -> Tuple[Optional[Path], str]:
+        db_session: AsyncSession | None = None,
+    ) -> tuple[Path | None, str]:
         """
         Stage agent templates as a ZIP file.
 
@@ -191,10 +189,7 @@ class FileStaging:
             zip_path = staging_path / "agent_templates.zip"
 
             # Query active templates for tenant
-            stmt = (
-                select(AgentTemplate)
-                .where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active == True)
-            )
+            stmt = select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.is_active)
 
             result = await session.execute(stmt)
             all_active = result.scalars().all()
@@ -226,22 +221,19 @@ class FileStaging:
 
             await session.commit()
 
-            logger.info(
-                f"Updated last_exported_at for {len(selected)} templates at {export_timestamp.isoformat()}"
-            )
+            logger.info(f"Updated last_exported_at for {len(selected)} templates at {export_timestamp.isoformat()}")
             # ═══════════════════════════════════════════════════════════════════════
 
             logger.info(
                 f"Staged agent templates ZIP: {zip_path} ({len(selected)} files from {len(all_active)} active templates)"
             )
             return (zip_path, f"Successfully staged {len(selected)} agent templates")
-        except OSError as e:
-            msg = f"Disk error staging agent templates: {e}"
-            logger.error(msg)
-            return (None, msg)
-        except Exception as e:
-            msg = f"Unexpected error staging agent templates: {e}"
-            logger.error(msg)
+        except (OSError, ValueError, RuntimeError) as e:
+            if isinstance(e, OSError):
+                msg = f"Disk error staging agent templates: {e}"
+            else:
+                msg = f"Unexpected error staging agent templates: {e}"
+            logger.exception(msg)
             # Rollback on error
             if session:
                 await session.rollback()
@@ -268,9 +260,11 @@ class FileStaging:
             logger.debug(f"Saved metadata to: {metadata_path}")
             return metadata_path
 
-        except Exception as e:
-            logger.error(f"Error saving metadata: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save metadata")
+        except (OSError, ValueError, RuntimeError) as e:
+            logger.exception("Error saving metadata")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save metadata"
+            ) from e
 
     async def cleanup(self, tenant_key: str, token: str) -> bool:
         """
@@ -299,7 +293,7 @@ class FileStaging:
             logger.debug(f"Cleaned up staging directory: {staging_dir}")
             return True
 
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             # Best-effort cleanup - log but don't raise
             logger.warning(f"Error cleaning up staging directory: {e}")
             return False

@@ -4,10 +4,11 @@ End-to-end integration tests for vision consolidation (Handover 0377).
 Tests verify that get_vision_document() correctly returns consolidated summaries
 from Product's consolidated columns rather than individual VisionDocument summaries.
 """
+
+from datetime import datetime, timezone
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone
-from sqlalchemy import select
 
 from src.giljo_mcp.models.products import Product, VisionDocument
 from src.giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
@@ -116,9 +117,7 @@ async def product_without_consolidation(db_manager, db_session, test_tenant):
 
 
 @pytest.mark.asyncio
-async def test_vision_fetch_light_returns_consolidated(
-    db_manager, test_tenant, product_with_consolidated_vision
-):
+async def test_vision_fetch_light_returns_consolidated(db_manager, test_tenant, product_with_consolidated_vision):
     """
     Test: get_vision_document(light) returns Product.consolidated_vision_light.
 
@@ -165,9 +164,7 @@ async def test_vision_fetch_light_returns_consolidated(
 
 
 @pytest.mark.asyncio
-async def test_vision_fetch_medium_returns_consolidated(
-    db_manager, test_tenant, product_with_consolidated_vision
-):
+async def test_vision_fetch_medium_returns_consolidated(db_manager, test_tenant, product_with_consolidated_vision):
     """
     Test: get_vision_document(medium) returns Product.consolidated_vision_medium.
 
@@ -262,9 +259,7 @@ async def test_vision_fetch_medium_without_consolidation_returns_error(
 
 
 @pytest.mark.asyncio
-async def test_multi_chapter_light_returns_unified_summary(
-    db_manager, test_tenant, product_with_consolidated_vision
-):
+async def test_multi_chapter_light_returns_unified_summary(db_manager, test_tenant, product_with_consolidated_vision):
     """
     PRIMARY BUG VERIFICATION TEST.
 
@@ -305,15 +300,11 @@ async def test_multi_chapter_light_returns_unified_summary(
     )
 
     # Verify it's the consolidated summary, not an individual chapter summary
-    assert "combining all 5 chapters" in summary, (
-        "Summary should explicitly mention it combines all chapters"
-    )
+    assert "combining all 5 chapters" in summary, "Summary should explicitly mention it combines all chapters"
 
 
 @pytest.mark.asyncio
-async def test_vision_fetch_full_unchanged(
-    db_manager, test_tenant, product_with_consolidated_vision
-):
+async def test_vision_fetch_full_unchanged(db_manager, test_tenant, product_with_consolidated_vision):
     """
     Test: get_vision_document(full) behavior unchanged by consolidation.
 

@@ -18,14 +18,16 @@ These tests should FAIL initially until:
 5. API endpoints handle execution_mode
 """
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
-from uuid import uuid4
 
 
 # ============================================================================
 # FIXTURES (reuse from test_projects_api.py)
 # ============================================================================
+
 
 @pytest.fixture
 async def api_client(db_manager):
@@ -34,13 +36,15 @@ async def api_client(db_manager):
 
     Sets up db_manager in app.state for endpoints that need it (like auth/login).
     """
-    from httpx import AsyncClient as HTTPXAsyncClient, ASGITransport
     from unittest.mock import MagicMock
+
+    from httpx import ASGITransport
+    from httpx import AsyncClient as HTTPXAsyncClient
 
     try:
         from api.app import app, state
-        from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
         from src.giljo_mcp.auth import AuthManager
+        from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
         from src.giljo_mcp.tenant import TenantManager
 
         async def mock_get_db_session():
@@ -58,6 +62,7 @@ async def api_client(db_manager):
 
         # Set up tool_accessor for endpoints that need it
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
+
         state.tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=state.tenant_manager)
         app.state.tool_accessor = state.tool_accessor
 
@@ -66,10 +71,12 @@ async def api_client(db_manager):
         mock_config.jwt.secret_key = "test_secret_key"
         mock_config.jwt.algorithm = "HS256"
         mock_config.jwt.expiration_minutes = 30
-        mock_config.get = MagicMock(side_effect=lambda key, default=None: {
-            "security.auth_enabled": True,
-            "security.api_keys_required": False,
-        }.get(key, default))
+        mock_config.get = MagicMock(
+            side_effect=lambda key, default=None: {
+                "security.auth_enabled": True,
+                "security.api_keys_required": False,
+            }.get(key, default)
+        )
 
         state.config = mock_config
         app.state.config = mock_config
@@ -77,10 +84,7 @@ async def api_client(db_manager):
         state.auth = app.state.auth
 
         async with HTTPXAsyncClient(
-            transport=ASGITransport(app=app),
-            base_url="http://test",
-            cookies=None,
-            follow_redirects=True
+            transport=ASGITransport(app=app), base_url="http://test", cookies=None, follow_redirects=True
         ) as client:
             client.cookies.clear()
             yield client
@@ -96,6 +100,7 @@ async def api_client(db_manager):
 async def tenant_a_user(db_manager):
     """Create Tenant A user for multi-tenant isolation testing."""
     from passlib.hash import bcrypt
+
     from src.giljo_mcp.models import User
     from src.giljo_mcp.tenant import TenantManager
 
@@ -125,8 +130,7 @@ async def tenant_a_user(db_manager):
 async def tenant_a_token(api_client: AsyncClient, tenant_a_user):
     """Get JWT token for Tenant A user."""
     response = await api_client.post(
-        "/api/auth/login",
-        json={"username": tenant_a_user._test_username, "password": tenant_a_user._test_password}
+        "/api/auth/login", json={"username": tenant_a_user._test_username, "password": tenant_a_user._test_password}
     )
     assert response.status_code == 200, f"Login failed: {response.json()}"
     access_token = response.cookies.get("access_token")
@@ -142,9 +146,9 @@ async def tenant_a_product(api_client: AsyncClient, tenant_a_token: str):
         json={
             "name": "Tenant A Exec Mode Product",
             "description": "Test product for execution mode tests",
-            "project_path": "/path/to/tenant_a/exec_product"
+            "project_path": "/path/to/tenant_a/exec_product",
         },
-        cookies={"access_token": tenant_a_token}
+        cookies={"access_token": tenant_a_token},
     )
     assert response.status_code == 200
     return response.json()
@@ -153,6 +157,7 @@ async def tenant_a_product(api_client: AsyncClient, tenant_a_token: str):
 # ============================================================================
 # CREATE PROJECT WITH EXECUTION_MODE TESTS
 # ============================================================================
+
 
 class TestProjectCreateWithExecutionMode:
     """Test POST /api/v1/projects/ with execution_mode field."""
@@ -167,19 +172,19 @@ class TestProjectCreateWithExecutionMode:
             json={
                 "name": "Default Execution Mode Project",
                 "description": "Test default execution mode",
-                "product_id": tenant_a_product["id"]
+                "product_id": tenant_a_product["id"],
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         # EXPECTED TO FAIL: execution_mode not in response schema yet
         assert response.status_code == 201, f"Unexpected status: {response.status_code}"
         data = response.json()
 
-        assert "execution_mode" in data, \
-            "Response missing execution_mode field (schema not updated yet)"
-        assert data["execution_mode"] == "multi_terminal", \
+        assert "execution_mode" in data, "Response missing execution_mode field (schema not updated yet)"
+        assert data["execution_mode"] == "multi_terminal", (
             f"Expected default 'multi_terminal', got {data.get('execution_mode')}"
+        )
 
     @pytest.mark.asyncio
     async def test_create_project_with_claude_code_cli_mode(
@@ -192,19 +197,19 @@ class TestProjectCreateWithExecutionMode:
                 "name": "CLI Mode Project",
                 "description": "Test CLI execution mode",
                 "product_id": tenant_a_product["id"],
-                "execution_mode": "claude_code_cli"
+                "execution_mode": "claude_code_cli",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         # EXPECTED TO FAIL: execution_mode not in request/response schemas yet
         assert response.status_code == 201, f"Unexpected status: {response.status_code}"
         data = response.json()
 
-        assert "execution_mode" in data, \
-            "Response missing execution_mode field (schema not updated yet)"
-        assert data["execution_mode"] == "claude_code_cli", \
+        assert "execution_mode" in data, "Response missing execution_mode field (schema not updated yet)"
+        assert data["execution_mode"] == "claude_code_cli", (
             f"Expected 'claude_code_cli', got {data.get('execution_mode')}"
+        )
 
     @pytest.mark.asyncio
     async def test_create_project_with_multi_terminal_explicit(
@@ -217,19 +222,19 @@ class TestProjectCreateWithExecutionMode:
                 "name": "Explicit Multi-Terminal Project",
                 "description": "Test explicit multi-terminal mode",
                 "product_id": tenant_a_product["id"],
-                "execution_mode": "multi_terminal"
+                "execution_mode": "multi_terminal",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         # EXPECTED TO FAIL: execution_mode not in schemas yet
         assert response.status_code == 201, f"Unexpected status: {response.status_code}"
         data = response.json()
 
-        assert "execution_mode" in data, \
-            "Response missing execution_mode field (schema not updated yet)"
-        assert data["execution_mode"] == "multi_terminal", \
+        assert "execution_mode" in data, "Response missing execution_mode field (schema not updated yet)"
+        assert data["execution_mode"] == "multi_terminal", (
             f"Expected 'multi_terminal', got {data.get('execution_mode')}"
+        )
 
     @pytest.mark.asyncio
     async def test_create_project_with_invalid_execution_mode(
@@ -245,26 +250,29 @@ class TestProjectCreateWithExecutionMode:
                     "name": f"Invalid Mode Project {invalid_mode}",
                     "description": "Should fail validation",
                     "product_id": tenant_a_product["id"],
-                    "execution_mode": invalid_mode
+                    "execution_mode": invalid_mode,
                 },
-                cookies={"access_token": tenant_a_token}
+                cookies={"access_token": tenant_a_token},
             )
 
             # EXPECTED TO FAIL: validation not implemented yet
-            assert response.status_code == 400, \
-                f"Expected 400 for invalid mode '{invalid_mode}', got {response.status_code} " \
+            assert response.status_code == 400, (
+                f"Expected 400 for invalid mode '{invalid_mode}', got {response.status_code} "
                 f"(validation not implemented yet)"
+            )
 
             # When validation is implemented, error should mention execution_mode
             if response.status_code == 400:
                 error_detail = response.json().get("message", "")
-                assert "execution_mode" in str(error_detail).lower(), \
+                assert "execution_mode" in str(error_detail).lower(), (
                     f"Error should mention execution_mode field for mode '{invalid_mode}'"
+                )
 
 
 # ============================================================================
 # GET PROJECT WITH EXECUTION_MODE TESTS
 # ============================================================================
+
 
 class TestProjectGetWithExecutionMode:
     """Test GET /api/v1/projects/{id} includes execution_mode."""
@@ -281,27 +289,26 @@ class TestProjectGetWithExecutionMode:
                 "name": "Get Test Project",
                 "description": "Test GET includes execution_mode",
                 "product_id": tenant_a_product["id"],
-                "execution_mode": "claude_code_cli"
+                "execution_mode": "claude_code_cli",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert create_response.status_code == 201
         project = create_response.json()
 
         # Get project details
         get_response = await api_client.get(
-            f"/api/v1/projects/{project['id']}",
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{project['id']}", cookies={"access_token": tenant_a_token}
         )
 
         # EXPECTED TO FAIL: execution_mode not in response schema yet
         assert get_response.status_code == 200
         data = get_response.json()
 
-        assert "execution_mode" in data, \
-            "GET response missing execution_mode field (schema not updated yet)"
-        assert data["execution_mode"] == "claude_code_cli", \
+        assert "execution_mode" in data, "GET response missing execution_mode field (schema not updated yet)"
+        assert data["execution_mode"] == "claude_code_cli", (
             f"Expected 'claude_code_cli', got {data.get('execution_mode')}"
+        )
 
     @pytest.mark.asyncio
     async def test_list_projects_includes_execution_mode(
@@ -315,9 +322,9 @@ class TestProjectGetWithExecutionMode:
                 "name": "List Test CLI Project",
                 "description": "Test list includes execution_mode",
                 "product_id": tenant_a_product["id"],
-                "execution_mode": "claude_code_cli"
+                "execution_mode": "claude_code_cli",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         await api_client.post(
@@ -326,16 +333,13 @@ class TestProjectGetWithExecutionMode:
                 "name": "List Test Multi-Terminal Project",
                 "description": "Test list includes execution_mode",
                 "product_id": tenant_a_product["id"],
-                "execution_mode": "multi_terminal"
+                "execution_mode": "multi_terminal",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         # List all projects
-        list_response = await api_client.get(
-            "/api/v1/projects/",
-            cookies={"access_token": tenant_a_token}
-        )
+        list_response = await api_client.get("/api/v1/projects/", cookies={"access_token": tenant_a_token})
 
         # EXPECTED TO FAIL: execution_mode not in response schema yet
         assert list_response.status_code == 200
@@ -344,15 +348,16 @@ class TestProjectGetWithExecutionMode:
         assert len(projects) >= 2, "Should have at least 2 test projects"
 
         for project in projects:
-            assert "execution_mode" in project, \
-                f"Project {project.get('name')} missing execution_mode field"
-            assert project["execution_mode"] in ["claude_code_cli", "multi_terminal"], \
+            assert "execution_mode" in project, f"Project {project.get('name')} missing execution_mode field"
+            assert project["execution_mode"] in ["claude_code_cli", "multi_terminal"], (
                 f"Invalid execution_mode: {project.get('execution_mode')}"
+            )
 
 
 # ============================================================================
 # UPDATE PROJECT EXECUTION_MODE TESTS
 # ============================================================================
+
 
 class TestProjectUpdateExecutionMode:
     """Test PATCH /api/v1/projects/{id} updates execution_mode."""
@@ -368,9 +373,9 @@ class TestProjectUpdateExecutionMode:
             json={
                 "name": "Patch CLI Test Project",
                 "description": "Test updating to CLI mode",
-                "product_id": tenant_a_product["id"]
+                "product_id": tenant_a_product["id"],
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert create_response.status_code == 201
         project = create_response.json()
@@ -379,18 +384,17 @@ class TestProjectUpdateExecutionMode:
         patch_response = await api_client.patch(
             f"/api/v1/projects/{project['id']}",
             json={"execution_mode": "claude_code_cli"},
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         # EXPECTED TO FAIL: execution_mode not in update schema yet
-        assert patch_response.status_code == 200, \
-            f"PATCH failed with status {patch_response.status_code}"
+        assert patch_response.status_code == 200, f"PATCH failed with status {patch_response.status_code}"
         data = patch_response.json()
 
-        assert "execution_mode" in data, \
-            "PATCH response missing execution_mode field (schema not updated yet)"
-        assert data["execution_mode"] == "claude_code_cli", \
+        assert "execution_mode" in data, "PATCH response missing execution_mode field (schema not updated yet)"
+        assert data["execution_mode"] == "claude_code_cli", (
             f"Expected 'claude_code_cli' after PATCH, got {data.get('execution_mode')}"
+        )
 
     @pytest.mark.asyncio
     async def test_patch_project_updates_execution_mode_to_multi_terminal(
@@ -404,9 +408,9 @@ class TestProjectUpdateExecutionMode:
                 "name": "Patch Multi-Terminal Test Project",
                 "description": "Test updating to multi-terminal mode",
                 "product_id": tenant_a_product["id"],
-                "execution_mode": "claude_code_cli"
+                "execution_mode": "claude_code_cli",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert create_response.status_code == 201
         project = create_response.json()
@@ -415,18 +419,17 @@ class TestProjectUpdateExecutionMode:
         patch_response = await api_client.patch(
             f"/api/v1/projects/{project['id']}",
             json={"execution_mode": "multi_terminal"},
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         # EXPECTED TO FAIL: execution_mode not in update schema yet
-        assert patch_response.status_code == 200, \
-            f"PATCH failed with status {patch_response.status_code}"
+        assert patch_response.status_code == 200, f"PATCH failed with status {patch_response.status_code}"
         data = patch_response.json()
 
-        assert "execution_mode" in data, \
-            "PATCH response missing execution_mode field (schema not updated yet)"
-        assert data["execution_mode"] == "multi_terminal", \
+        assert "execution_mode" in data, "PATCH response missing execution_mode field (schema not updated yet)"
+        assert data["execution_mode"] == "multi_terminal", (
             f"Expected 'multi_terminal' after PATCH, got {data.get('execution_mode')}"
+        )
 
     @pytest.mark.asyncio
     async def test_patch_project_invalid_execution_mode_rejected(
@@ -439,9 +442,9 @@ class TestProjectUpdateExecutionMode:
             json={
                 "name": "Invalid Patch Test Project",
                 "description": "Test invalid PATCH rejection",
-                "product_id": tenant_a_product["id"]
+                "product_id": tenant_a_product["id"],
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert create_response.status_code == 201
         project = create_response.json()
@@ -453,19 +456,21 @@ class TestProjectUpdateExecutionMode:
             patch_response = await api_client.patch(
                 f"/api/v1/projects/{project['id']}",
                 json={"execution_mode": invalid_mode},
-                cookies={"access_token": tenant_a_token}
+                cookies={"access_token": tenant_a_token},
             )
 
             # EXPECTED TO FAIL: validation not implemented yet
-            assert patch_response.status_code == 400, \
-                f"Expected 400 for invalid mode '{invalid_mode}', got {patch_response.status_code} " \
+            assert patch_response.status_code == 400, (
+                f"Expected 400 for invalid mode '{invalid_mode}', got {patch_response.status_code} "
                 f"(validation not implemented yet)"
+            )
 
             # Error should mention execution_mode
             if patch_response.status_code == 400:
                 error_detail = patch_response.json().get("message", "")
-                assert "execution_mode" in str(error_detail).lower(), \
+                assert "execution_mode" in str(error_detail).lower(), (
                     f"Error should mention execution_mode field for mode '{invalid_mode}'"
+                )
 
     @pytest.mark.asyncio
     async def test_patch_project_partial_update_preserves_execution_mode(
@@ -479,18 +484,16 @@ class TestProjectUpdateExecutionMode:
                 "name": "Preserve Mode Test Project",
                 "description": "Test execution_mode preservation",
                 "product_id": tenant_a_product["id"],
-                "execution_mode": "claude_code_cli"
+                "execution_mode": "claude_code_cli",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
         assert create_response.status_code == 201
         project = create_response.json()
 
         # Update name only (not execution_mode)
         patch_response = await api_client.patch(
-            f"/api/v1/projects/{project['id']}",
-            json={"name": "Updated Name"},
-            cookies={"access_token": tenant_a_token}
+            f"/api/v1/projects/{project['id']}", json={"name": "Updated Name"}, cookies={"access_token": tenant_a_token}
         )
 
         # EXPECTED TO FAIL: execution_mode not in schemas yet
@@ -498,25 +501,25 @@ class TestProjectUpdateExecutionMode:
         data = patch_response.json()
 
         assert data["name"] == "Updated Name"
-        assert "execution_mode" in data, \
-            "PATCH response missing execution_mode field"
-        assert data["execution_mode"] == "claude_code_cli", \
+        assert "execution_mode" in data, "PATCH response missing execution_mode field"
+        assert data["execution_mode"] == "claude_code_cli", (
             f"execution_mode should remain 'claude_code_cli', got {data.get('execution_mode')}"
+        )
 
 
 # ============================================================================
 # MULTI-TENANT ISOLATION TESTS
 # ============================================================================
 
+
 class TestExecutionModeMultiTenantIsolation:
     """Test multi-tenant isolation for execution_mode."""
 
     @pytest.mark.asyncio
-    async def test_different_tenants_different_execution_modes(
-        self, api_client: AsyncClient, db_manager
-    ):
+    async def test_different_tenants_different_execution_modes(self, api_client: AsyncClient, db_manager):
         """Different tenants can have projects with different execution modes."""
         from passlib.hash import bcrypt
+
         from src.giljo_mcp.models import User
         from src.giljo_mcp.tenant import TenantManager
 
@@ -546,38 +549,24 @@ class TestExecutionModeMultiTenantIsolation:
             await session.commit()
 
         # Login both users
-        login_a = await api_client.post(
-            "/api/auth/login",
-            json={"username": user_a.username, "password": "password_a"}
-        )
+        login_a = await api_client.post("/api/auth/login", json={"username": user_a.username, "password": "password_a"})
         token_a = login_a.cookies.get("access_token")
 
-        login_b = await api_client.post(
-            "/api/auth/login",
-            json={"username": user_b.username, "password": "password_b"}
-        )
+        login_b = await api_client.post("/api/auth/login", json={"username": user_b.username, "password": "password_b"})
         token_b = login_b.cookies.get("access_token")
 
         # Create products for both tenants
         product_a = await api_client.post(
             "/api/v1/products/",
-            json={
-                "name": "Exec Tenant A Product",
-                "description": "Tenant A product",
-                "project_path": "/path/a"
-            },
-            cookies={"access_token": token_a}
+            json={"name": "Exec Tenant A Product", "description": "Tenant A product", "project_path": "/path/a"},
+            cookies={"access_token": token_a},
         )
         product_a_id = product_a.json()["id"]
 
         product_b = await api_client.post(
             "/api/v1/products/",
-            json={
-                "name": "Exec Tenant B Product",
-                "description": "Tenant B product",
-                "project_path": "/path/b"
-            },
-            cookies={"access_token": token_b}
+            json={"name": "Exec Tenant B Product", "description": "Tenant B product", "project_path": "/path/b"},
+            cookies={"access_token": token_b},
         )
         product_b_id = product_b.json()["id"]
 
@@ -588,9 +577,9 @@ class TestExecutionModeMultiTenantIsolation:
                 "name": "Tenant A Exec Project",
                 "description": "Tenant A uses multi_terminal",
                 "product_id": product_a_id,
-                "execution_mode": "multi_terminal"
+                "execution_mode": "multi_terminal",
             },
-            cookies={"access_token": token_a}
+            cookies={"access_token": token_a},
         )
         assert project_a.status_code == 201
 
@@ -601,9 +590,9 @@ class TestExecutionModeMultiTenantIsolation:
                 "name": "Tenant B Exec Project",
                 "description": "Tenant B uses CLI",
                 "product_id": product_b_id,
-                "execution_mode": "claude_code_cli"
+                "execution_mode": "claude_code_cli",
             },
-            cookies={"access_token": token_b}
+            cookies={"access_token": token_b},
         )
         assert project_b.status_code == 201
 
@@ -618,18 +607,14 @@ class TestExecutionModeMultiTenantIsolation:
         assert project_b_data["execution_mode"] == "claude_code_cli"
 
         # Verify isolation - Tenant A cannot see Tenant B's project
-        get_b_as_a = await api_client.get(
-            f"/api/v1/projects/{project_b_data['id']}",
-            cookies={"access_token": token_a}
-        )
+        get_b_as_a = await api_client.get(f"/api/v1/projects/{project_b_data['id']}", cookies={"access_token": token_a})
         assert get_b_as_a.status_code == 404, "Tenant isolation violated"
 
     @pytest.mark.asyncio
-    async def test_cross_tenant_execution_mode_update_blocked(
-        self, api_client: AsyncClient, db_manager
-    ):
+    async def test_cross_tenant_execution_mode_update_blocked(self, api_client: AsyncClient, db_manager):
         """Tenant A cannot update Tenant B's project execution_mode."""
         from passlib.hash import bcrypt
+
         from src.giljo_mcp.models import User
         from src.giljo_mcp.tenant import TenantManager
 
@@ -659,16 +644,10 @@ class TestExecutionModeMultiTenantIsolation:
             await session.commit()
 
         # Login both
-        login_a = await api_client.post(
-            "/api/auth/login",
-            json={"username": user_a.username, "password": "password_a"}
-        )
+        login_a = await api_client.post("/api/auth/login", json={"username": user_a.username, "password": "password_a"})
         token_a = login_a.cookies.get("access_token")
 
-        login_b = await api_client.post(
-            "/api/auth/login",
-            json={"username": user_b.username, "password": "password_b"}
-        )
+        login_b = await api_client.post("/api/auth/login", json={"username": user_b.username, "password": "password_b"})
         token_b = login_b.cookies.get("access_token")
 
         # Tenant B creates product and project
@@ -677,9 +656,9 @@ class TestExecutionModeMultiTenantIsolation:
             json={
                 "name": "Exec Cross Tenant B Product",
                 "description": "Tenant B product",
-                "project_path": "/path/cross_b"
+                "project_path": "/path/cross_b",
             },
-            cookies={"access_token": token_b}
+            cookies={"access_token": token_b},
         )
         product_b_id = product_b.json()["id"]
 
@@ -689,9 +668,9 @@ class TestExecutionModeMultiTenantIsolation:
                 "name": "Tenant B Cross Project",
                 "description": "Tenant B project",
                 "product_id": product_b_id,
-                "execution_mode": "multi_terminal"
+                "execution_mode": "multi_terminal",
             },
-            cookies={"access_token": token_b}
+            cookies={"access_token": token_b},
         )
         assert project_b.status_code == 201
         project_b_data = project_b.json()
@@ -700,30 +679,32 @@ class TestExecutionModeMultiTenantIsolation:
         patch_response = await api_client.patch(
             f"/api/v1/projects/{project_b_data['id']}",
             json={"execution_mode": "claude_code_cli"},
-            cookies={"access_token": token_a}
+            cookies={"access_token": token_a},
         )
 
         # Should be blocked (404 to prevent info leakage)
-        assert patch_response.status_code == 404, \
+        assert patch_response.status_code == 404, (
             f"Cross-tenant PATCH should be blocked, got {patch_response.status_code}"
+        )
 
         # Verify Tenant B's execution_mode is unchanged
         verify_response = await api_client.get(
-            f"/api/v1/projects/{project_b_data['id']}",
-            cookies={"access_token": token_b}
+            f"/api/v1/projects/{project_b_data['id']}", cookies={"access_token": token_b}
         )
         assert verify_response.status_code == 200
         verify_data = verify_response.json()
 
         # EXPECTED TO FAIL: execution_mode not in schemas yet
         if "execution_mode" in verify_data:
-            assert verify_data["execution_mode"] == "multi_terminal", \
+            assert verify_data["execution_mode"] == "multi_terminal", (
                 "Tenant B's execution_mode should remain unchanged"
+            )
 
 
 # ============================================================================
 # RESPONSE SCHEMA VALIDATION
 # ============================================================================
+
 
 class TestExecutionModeSchemaValidation:
     """Test response schema includes execution_mode correctly."""
@@ -739,9 +720,9 @@ class TestExecutionModeSchemaValidation:
                 "name": "Schema Test Project",
                 "description": "Test schema validation",
                 "product_id": tenant_a_product["id"],
-                "execution_mode": "claude_code_cli"
+                "execution_mode": "claude_code_cli",
             },
-            cookies={"access_token": tenant_a_token}
+            cookies={"access_token": tenant_a_token},
         )
 
         assert response.status_code == 201
@@ -749,16 +730,28 @@ class TestExecutionModeSchemaValidation:
 
         # EXPECTED TO FAIL: execution_mode not in ProjectResponse schema yet
         required_fields = [
-            "id", "alias", "name", "description", "mission", "status",
-            "created_at", "updated_at", "context_budget", "context_used",
-            "agent_count", "message_count", "execution_mode"  # NEW FIELD
+            "id",
+            "alias",
+            "name",
+            "description",
+            "mission",
+            "status",
+            "created_at",
+            "updated_at",
+            "context_budget",
+            "context_used",
+            "agent_count",
+            "message_count",
+            "execution_mode",  # NEW FIELD
         ]
 
         for field in required_fields:
             assert field in data, f"ProjectResponse missing required field: {field}"
 
         # Validate execution_mode type and value
-        assert isinstance(data["execution_mode"], str), \
+        assert isinstance(data["execution_mode"], str), (
             f"execution_mode should be string, got {type(data['execution_mode'])}"
-        assert data["execution_mode"] in ["claude_code_cli", "multi_terminal"], \
+        )
+        assert data["execution_mode"] in ["claude_code_cli", "multi_terminal"], (
             f"Invalid execution_mode value: {data['execution_mode']}"
+        )

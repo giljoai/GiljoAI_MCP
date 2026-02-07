@@ -14,7 +14,6 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi import status as http_status
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.exceptions import (
@@ -60,14 +59,12 @@ def job_to_response(job: dict) -> JobResponse:
         project_id=job.get("project_id"),
         agent_display_name=job["agent_display_name"],
         agent_name=job.get("agent_name"),
-        instance_number=job.get("instance_number", 1),  # Succession instance number
         mission=job["mission"],
         status=job["status"],
         progress=job.get("progress", 0),
         spawned_by=job.get("spawned_by"),
         tool_type=job.get("tool_type", "universal"),
         context_chunks=job.get("context_chunks", []),
-        messages=job.get("messages", []),
         # Handover 0407: Counter fields for message tracking (used by frontend store)
         messages_sent_count=job.get("messages_sent_count", 0),
         messages_waiting_count=job.get("messages_waiting_count", 0),
@@ -86,7 +83,9 @@ def job_to_response(job: dict) -> JobResponse:
 async def list_jobs(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
     status: Optional[str] = Query(None, description="Filter by status (waiting, active, completed, failed)"),
-    agent_display_name: Optional[str] = Query(None, description="Filter by agent display name (orchestrator, implementer, etc.)"),
+    agent_display_name: Optional[str] = Query(
+        None, description="Filter by agent display name (orchestrator, implementer, etc.)"
+    ),
     limit: int = Query(100, ge=1, le=500, description="Maximum results (default 100, max 500)"),
     offset: int = Query(0, ge=0, description="Pagination offset (default 0)"),
     current_user: User = Depends(get_current_active_user),
@@ -135,8 +134,7 @@ async def list_jobs(
     )
 
     logger.info(
-        f"Found {len(result['jobs'])} jobs for user {current_user.username} "
-        f"(total={result['total']}, offset={offset})"
+        f"Found {len(result['jobs'])} jobs for user {current_user.username} (total={result['total']}, offset={offset})"
     )
 
     # Convert job dicts to JobResponse models
@@ -170,17 +168,12 @@ async def list_pending_jobs(
     logger.debug(f"User {current_user.username} listing pending jobs")
 
     # Service raises exceptions on failure, caught by global exception handler
-    result = await orchestration_service.get_pending_jobs(
-        tenant_key=current_user.tenant_key
-    )
+    result = await orchestration_service.get_pending_jobs(tenant_key=current_user.tenant_key)
 
     jobs = result.get("jobs", [])
     logger.info(f"Found {len(jobs)} pending jobs for tenant {current_user.tenant_key}")
 
-    return PendingJobsResponse(
-        jobs=[job_to_response(job) for job in jobs],
-        count=len(jobs)
-    )
+    return PendingJobsResponse(jobs=[job_to_response(job) for job in jobs], count=len(jobs))
 
 
 @router.get("/{job_id}", response_model=JobResponse)
@@ -206,10 +199,7 @@ async def get_job(
     logger.debug(f"User {current_user.username} getting job {job_id}")
 
     try:
-        result = await orchestration_service.get_agent_mission(
-            job_id=job_id,
-            tenant_key=current_user.tenant_key
-        )
+        result = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=current_user.tenant_key)
 
         logger.info(f"Retrieved job {job_id} for tenant {current_user.tenant_key}")
 
@@ -217,32 +207,33 @@ async def get_job(
         # The get_agent_mission returns: job_id, mission, context_chunks, status
         # We need to expand this or call a different service method
         # For now, return what we have (this may need enhancement)
-        return job_to_response({
-            "agent_id": result.get("agent_id", ""),  # 0366: use agent_id
-            "job_id": result["job_id"],
-            "tenant_key": current_user.tenant_key,
-            "agent_display_name": result.get("agent_display_name", "unknown"),
-            "mission": result["mission"],
-            "status": result["status"],
-            "spawned_by": result.get("spawned_by"),
-            "context_chunks": result.get("context_chunks", []),
-            "messages": result.get("messages", []),
-            "acknowledged": result.get("acknowledged", False),
-            "started_at": result.get("started_at"),
-            "completed_at": result.get("completed_at"),
-            "created_at": result.get("created_at")
-        })
+        return job_to_response(
+            {
+                "agent_id": result.get("agent_id", ""),  # 0366: use agent_id
+                "job_id": result["job_id"],
+                "tenant_key": current_user.tenant_key,
+                "agent_display_name": result.get("agent_display_name", "unknown"),
+                "mission": result["mission"],
+                "status": result["status"],
+                "spawned_by": result.get("spawned_by"),
+                "context_chunks": result.get("context_chunks", []),
+                "acknowledged": result.get("acknowledged", False),
+                "started_at": result.get("started_at"),
+                "completed_at": result.get("completed_at"),
+                "created_at": result.get("created_at"),
+            }
+        )
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error getting job: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.exception("Unexpected error getting job")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.get("/{job_id}/mission", response_model=JobMissionResponse)
@@ -270,10 +261,7 @@ async def get_job_mission(
     logger.debug(f"User {current_user.username} getting mission for job {job_id}")
 
     try:
-        result = await orchestration_service.get_agent_mission(
-            job_id=job_id,
-            tenant_key=current_user.tenant_key
-        )
+        result = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=current_user.tenant_key)
 
         logger.info(f"Retrieved mission for job {job_id} for tenant {current_user.tenant_key}")
 
@@ -281,16 +269,16 @@ async def get_job_mission(
             job_id=result["job_id"],
             mission=result["mission"],
             context_chunks=result.get("context_chunks", []),
-            status=result["status"]
+            status=result["status"],
         )
     except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error getting job mission: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.exception("Unexpected error getting job mission")
+        raise HTTPException(status_code=500, detail="Internal server error") from e

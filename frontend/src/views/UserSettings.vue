@@ -23,8 +23,8 @@
           variant="text"
           class="ml-1"
           aria-label="What is GiljoAI MCP?"
-          @click.stop="openIntroTour"
           data-testid="startup-intro-help"
+          @click.stop="openIntroTour"
         >
           <v-icon size="18">mdi-help-circle-outline</v-icon>
           <v-tooltip activator="parent" location="bottom">What is this product?</v-tooltip>
@@ -40,11 +40,7 @@
       </v-btn>
       <v-btn value="agents" data-testid="agent-templates-settings-tab">
         <v-img
-          :src="
-            theme.global.current.value.dark
-              ? '/icons/Giljo_White_Face.svg'
-              : '/icons/Giljo_Dark_Face.svg'
-          "
+          src="/icons/Giljo_White_Face.svg"
           width="20"
           height="20"
           class="mr-1"
@@ -96,15 +92,6 @@
           <v-card-text>
             <v-row>
               <v-col cols="12" md="6">
-                <h3 class="text-h6 mb-4">Theme</h3>
-                <v-radio-group v-model="settings.appearance.theme" data-test="theme-selector">
-                  <v-radio label="Dark Theme" value="dark" />
-                  <v-radio label="Light Theme" value="light" />
-                  <v-radio label="System Default" value="system" />
-                </v-radio-group>
-              </v-col>
-
-              <v-col cols="12" md="6">
                 <h3 class="text-h6 mb-4">Mascot Preferences</h3>
                 <v-switch
                   v-model="settings.appearance.showMascot"
@@ -152,14 +139,14 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn variant="text" @click="resetAppearanceSettings" data-test="reset-appearance-btn"
+            <v-btn variant="text" data-test="reset-appearance-btn" @click="resetAppearanceSettings"
               >Reset</v-btn
             >
             <v-btn
               color="primary"
               variant="flat"
-              @click="saveAppearanceSettings"
               data-test="save-appearance-btn"
+              @click="saveAppearanceSettings"
               >Save Changes</v-btn
             >
           </v-card-actions>
@@ -320,15 +307,15 @@
             <v-spacer />
             <v-btn
               variant="text"
-              @click="resetNotificationSettings"
               data-test="reset-notification-btn"
+              @click="resetNotificationSettings"
               >Reset</v-btn
             >
             <v-btn
               color="primary"
               variant="flat"
-              @click="saveNotificationSettings"
               data-test="save-notification-btn"
+              @click="saveNotificationSettings"
               >Save Changes</v-btn
             >
           </v-card-actions>
@@ -787,10 +774,23 @@ function isIntroTourHidden() {
   }
 }
 
+function isChecklistComplete() {
+  try {
+    const raw = localStorage.getItem('giljo_startup_checklist_v1')
+    if (!raw) return false
+    const checklist = JSON.parse(raw)
+    const itemIds = ['tools', 'connect', 'slash', 'templates', 'context', 'integrations']
+    return itemIds.every(id => checklist[id] === true)
+  } catch {
+    return false
+  }
+}
+
 function maybeShowIntroTour() {
   if (introTourShownThisSession.value) return
   if (activeTab.value !== 'startup') return
   if (isIntroTourHidden()) return
+  if (isChecklistComplete()) return // Don't show if checklist is complete
   showIntroTour.value = true
   introTourShownThisSession.value = true
 }

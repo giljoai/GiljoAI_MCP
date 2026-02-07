@@ -14,22 +14,20 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timezone
-from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Body, Depends, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field, field_validator
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.endpoints.dependencies import get_auth_service
+from api.middleware.auth_rate_limiter import get_rate_limiter
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import AuthService
 from src.giljo_mcp.template_seeder import seed_tenant_templates
-from api.endpoints.dependencies import get_auth_service
-from api.middleware.rate_limit import get_rate_limiter
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +37,6 @@ router = APIRouter()
 # Protects against race condition where multiple requests check user count simultaneously
 # and both create admin accounts (Handover 0034 security fix)
 _first_admin_creation_lock = asyncio.Lock()
-
 
 # Pydantic Models for Request/Response
 
@@ -58,7 +55,7 @@ class LoginResponse(BaseModel):
     username: str
     role: str
     tenant_key: str
-    password_change_required: Optional[bool] = None  # v3.0 Unified: UX improvement
+    password_change_required: bool | None = None  # v3.0 Unified: UX improvement
 
 
 class LogoutResponse(BaseModel):
@@ -72,17 +69,17 @@ class UserProfileResponse(BaseModel):
 
     id: str
     username: str
-    email: Optional[str]
-    full_name: Optional[str]
+    email: str | None
+    full_name: str | None
     role: str
     tenant_key: str
     is_active: bool
     created_at: str
-    last_login: Optional[str]
-    password_change_required: Optional[bool] = None  # v3.0 Unified: Indicates default password must be changed
-    org_id: Optional[str] = None  # Handover 0424h: User's organization ID
-    org_name: Optional[str] = None  # Handover 0424h: User's organization name
-    org_role: Optional[str] = None  # Handover 0424h: User's role in organization
+    last_login: str | None
+    password_change_required: bool | None = None  # v3.0 Unified: Indicates default password must be changed
+    org_id: str | None = None  # Handover 0424h: User's organization ID
+    org_name: str | None = None  # Handover 0424h: User's organization name
+    org_role: str | None = None  # Handover 0424h: User's role in organization
 
 
 # 0371: Removed UserListResponse - was only used by duplicate /users endpoint
@@ -94,18 +91,18 @@ class APIKeyResponse(BaseModel):
     id: str
     name: str
     key_prefix: str
-    permissions: List[str]
+    permissions: list[str]
     is_active: bool
     created_at: str
-    last_used: Optional[str]
-    revoked_at: Optional[str]
+    last_used: str | None
+    revoked_at: str | None
 
 
 class APIKeyCreateRequest(BaseModel):
     """Request to create new API key"""
 
     name: str = Field(..., min_length=3, max_length=255, description="Description of API key purpose")
-    permissions: List[str] = Field(default=["*"], description="List of permissions (default: all)")
+    permissions: list[str] = Field(default=["*"], description="List of permissions (default: all)")
 
 
 class APIKeyCreateResponse(BaseModel):
@@ -131,16 +128,15 @@ class RegisterUserRequest(BaseModel):
 
     username: str = Field(..., min_length=3, max_length=64)
     password: str = Field(..., min_length=8)
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
+    email: EmailStr | None = None
+    full_name: str | None = None
     role: str = Field(default="developer", description="User role: admin, developer, viewer")
     tenant_key: str = Field(
         default="tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd",
         description="Tenant key for multi-tenant isolation (must start with 'tk_')",
     )
-    workspace_name: Optional[str] = Field(
-        default="My Organization",
-        description="Organization name for first admin user (Handover 0424h)"
+    workspace_name: str | None = Field(
+        default="My Organization", description="Organization name for first admin user (Handover 0424h)"
     )
 
     @field_validator("role")
@@ -156,7 +152,7 @@ class RegisterUserResponse(BaseModel):
 
     id: str
     username: str
-    email: Optional[str]
+    email: str | None
     role: str
     tenant_key: str
     message: str
@@ -193,82 +189,6 @@ class PasswordChangeResponse(BaseModel):
     message: str
     token: str
     user: dict
-
-
-class PinPasswordResetRequest(BaseModel):
-    """Request to reset password using recovery PIN"""
-
-    username: str = Field(..., min_length=3, max_length=64)
-    recovery_pin: str = Field(..., min_length=4, max_length=4, pattern="^[0-9]{4}$")
-    new_password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
-
-    @field_validator("new_password")
-    @classmethod
-    def validate_password_strength(cls, v):
-        """Validate password meets security requirements"""
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        if not any(c.isupper() for c in v):
-            raise ValueError("Password must contain at least 1 uppercase letter")
-        if not any(c.islower() for c in v):
-            raise ValueError("Password must contain at least 1 lowercase letter")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain at least 1 number")
-        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in v):
-            raise ValueError("Password must contain at least 1 special character")
-        return v
-
-
-class PinPasswordResetResponse(BaseModel):
-    """Response after successful password reset via PIN"""
-
-    message: str
-
-
-class CheckFirstLoginRequest(BaseModel):
-    """Request to check if first login is required"""
-
-    username: str = Field(..., min_length=3, max_length=64)
-
-
-class CheckFirstLoginResponse(BaseModel):
-    """Response indicating if first login actions required"""
-
-    must_change_password: bool
-    must_set_pin: bool
-
-
-class CompleteFirstLoginRequest(BaseModel):
-    """Request to complete first login setup"""
-
-    current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
-    recovery_pin: str = Field(..., min_length=4, max_length=4, pattern="^[0-9]{4}$")
-    confirm_pin: str = Field(..., min_length=4, max_length=4, pattern="^[0-9]{4}$")
-
-    @field_validator("new_password")
-    @classmethod
-    def validate_password_strength(cls, v):
-        """Validate password meets security requirements"""
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        if not any(c.isupper() for c in v):
-            raise ValueError("Password must contain at least 1 uppercase letter")
-        if not any(c.islower() for c in v):
-            raise ValueError("Password must contain at least 1 lowercase letter")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain at least 1 number")
-        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in v):
-            raise ValueError("Password must contain at least 1 special character")
-        return v
-
-
-class CompleteFirstLoginResponse(BaseModel):
-    """Response after completing first login"""
-
-    message: str
 
 
 # Auth Endpoints
@@ -350,9 +270,7 @@ async def login(
     #      - httpOnly=True (prevents XSS cookie theft)
     #      - secure=True in production (HTTPS only)
     #
-    # Configuration: config.yaml can define allowed domains:
-    #   security:
-    #     cookie_domains: ["example.com", "myapp.io"]
+    # Configuration: config.yaml can define allowed domains for cookie_domains setting
 
     # Load secure cookie config BEFORE cookie domain logic (always needed)
     config = get_config()
@@ -377,17 +295,16 @@ async def login(
 
             # SECURITY CHECK #2: Domain names MUST be whitelisted (prevent header injection)
             # Without whitelist, attacker could send "Host: evil.com" and steal cookies
+            elif host_only in allowed_domains:
+                cookie_domain = host_only
+                logger.info(f"Cookie domain set to whitelisted domain: {host_only}")
             else:
-                if host_only in allowed_domains:
-                    cookie_domain = host_only
-                    logger.info(f"Cookie domain set to whitelisted domain: {host_only}")
-                else:
-                    # FAIL SECURE: Unknown domain → domain=None (strictest)
-                    cookie_domain = None
-                    logger.warning(
-                        f"Cookie domain set to None for unknown host '{host_only}' "
-                        f"(not in whitelist: {allowed_domains}). Add to config.yaml security.cookie_domains if needed."
-                    )
+                # FAIL SECURE: Unknown domain → domain=None (strictest)
+                cookie_domain = None
+                logger.warning(
+                    f"Cookie domain set to None for unknown host '{host_only}' "
+                    f"(not in whitelist: {allowed_domains}). Add to config.yaml security.cookie_domains if needed."
+                )
 
     # Set httpOnly cookie (session cookie - expires on browser close)
     response.set_cookie(
@@ -460,8 +377,8 @@ async def get_me(
         User profile data if authenticated, 401 JSON response otherwise
     """
     # Try to get current user (optional - doesn't raise exceptions)
+
     from src.giljo_mcp.auth.dependencies import get_current_user_optional
-    from sqlalchemy.orm import selectinload
     from src.giljo_mcp.models.organizations import Organization, OrgMembership
 
     current_user = await get_current_user_optional(
@@ -485,6 +402,7 @@ async def get_me(
     if current_user.org_id:
         # Load organization
         from sqlalchemy import select
+
         org_stmt = select(Organization).where(Organization.id == current_user.org_id)
         org_result = await db.execute(org_stmt)
         org = org_result.scalar_one_or_none()
@@ -496,7 +414,7 @@ async def get_me(
             membership_stmt = select(OrgMembership).where(
                 OrgMembership.org_id == current_user.org_id,
                 OrgMembership.user_id == str(current_user.id),
-                OrgMembership.is_active == True
+                OrgMembership.is_active,
             )
             membership_result = await db.execute(membership_stmt)
             membership = membership_result.scalar_one_or_none()
@@ -529,9 +447,9 @@ async def get_me(
     )
 
 
-@router.get("/api-keys", response_model=List[APIKeyResponse], tags=["auth"])
+@router.get("/api-keys", response_model=list[APIKeyResponse], tags=["auth"])
 async def list_api_keys(
-    include_revoked: bool = Query(False, description="Include revoked keys in results"),
+    include_revoked: bool = Query(default=False, description="Include revoked keys in results"),
     current_user: User = Depends(get_current_active_user),
     auth_service: AuthService = Depends(get_auth_service),
 ):
@@ -591,10 +509,12 @@ async def create_api_key(
         user_id=str(current_user.id),
         tenant_key=current_user.tenant_key,
         name=request.name,
-        permissions=request.permissions
+        permissions=request.permissions,
     )
 
-    logger.info(f"API key created: {key_data['name']} (user: {current_user.username}, prefix: {key_data['key_prefix']})")
+    logger.info(
+        f"API key created: {key_data['name']} (user: {current_user.username}, prefix: {key_data['key_prefix']})"
+    )
 
     return APIKeyCreateResponse(
         id=key_data["id"],
@@ -688,7 +608,9 @@ async def register_user(
         requesting_admin_id=str(current_user.id),
     )
 
-    logger.info(f"User registered: {user_data['username']} (role: {user_data['role']}, by admin: {current_user.username})")
+    logger.info(
+        f"User registered: {user_data['username']} (role: {user_data['role']}, by admin: {current_user.username})"
+    )
 
     return RegisterUserResponse(
         id=user_data["id"],
@@ -762,15 +684,15 @@ async def create_first_admin_user(
         # This ensures templates appear in UI immediately after user creation
         try:
             # Need to get db session for template seeding
+
             from api.endpoints.dependencies import get_db_manager
-            from sqlalchemy.ext.asyncio import AsyncSession
 
             db_manager = await get_db_manager()
             async with db_manager.get_session_async() as db:
                 template_count = await seed_tenant_templates(db, tenant_key)
                 await db.commit()  # Ensure templates are persisted
             logger.info(f"[SETUP] Seeded {template_count} default agent templates for tenant {tenant_key[:12]}...")
-        except Exception as e:
+        except (ImportError, ValueError) as e:
             # Non-blocking - templates can be added later via UI
             logger.warning(f"[SETUP] Template seeding failed (non-critical): {e}")
             template_count = 0
@@ -801,10 +723,7 @@ async def create_first_admin_user(
         #      - httpOnly=True (prevents XSS cookie theft)
         #      - secure=True in production (HTTPS only)
         #
-        # Configuration: config.yaml can define allowed domains:
-        #   security:
-        #     cookie_domains: ["example.com", "myapp.io"]
-
+        # Configuration: config.yaml can define allowed domains for cookie_domains setting
         # Load secure cookie config BEFORE cookie domain logic (always needed)
         config = get_config()
         secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)
@@ -828,17 +747,16 @@ async def create_first_admin_user(
 
                 # SECURITY CHECK #2: Domain names MUST be whitelisted (prevent header injection)
                 # Without whitelist, attacker could send "Host: evil.com" and steal cookies
+                elif host_only in allowed_domains:
+                    cookie_domain = host_only
+                    logger.info(f"Cookie domain set to whitelisted domain: {host_only}")
                 else:
-                    if host_only in allowed_domains:
-                        cookie_domain = host_only
-                        logger.info(f"Cookie domain set to whitelisted domain: {host_only}")
-                    else:
-                        # FAIL SECURE: Unknown domain → domain=None (strictest)
-                        cookie_domain = None
-                        logger.warning(
-                            f"Cookie domain set to None for unknown host '{host_only}' "
-                            f"(not in whitelist: {allowed_domains}). Add to config.yaml security.cookie_domains if needed."
-                        )
+                    # FAIL SECURE: Unknown domain → domain=None (strictest)
+                    cookie_domain = None
+                    logger.warning(
+                        f"Cookie domain set to None for unknown host '{host_only}' "
+                        f"(not in whitelist: {allowed_domains}). Add to config.yaml security.cookie_domains if needed."
+                    )
 
         # Set httpOnly cookie for immediate login (same pattern as login endpoint)
         response.set_cookie(

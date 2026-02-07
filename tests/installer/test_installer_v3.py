@@ -16,10 +16,10 @@ from unittest.mock import Mock
 import pytest
 import yaml
 
+from installer.core.config import ConfigManager
+
 # Module imports - these will fail initially (TDD)
 from installer.core.installer import BaseInstaller, LocalhostInstaller, ServerInstaller
-
-from installer.core.config import ConfigManager
 
 
 class TestInstallerV3NoMode:

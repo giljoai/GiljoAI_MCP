@@ -5,12 +5,9 @@ Provides dependency injection for ProductService.
 """
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
-from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import User
 from src.giljo_mcp.services import ProductService
 
 
@@ -22,6 +19,7 @@ async def get_db_manager() -> DatabaseManager:
     """
     # Get db_manager from application state (set during startup)
     from api.app import state
+
     return state.db_manager
 
 

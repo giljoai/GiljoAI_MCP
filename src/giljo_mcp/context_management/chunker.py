@@ -14,7 +14,7 @@ Target chunk size: 5000 tokens with semantic boundaries.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 import tiktoken
 
@@ -45,8 +45,8 @@ class VisionDocumentChunker:
         # Initialize tiktoken encoder (cl100k_base for GPT-4/GPT-3.5)
         try:
             self.encoding = tiktoken.get_encoding("cl100k_base")
-        except Exception as e:
-            logger.error(f"Failed to initialize tiktoken encoding: {e}")
+        except (ValueError, KeyError, ImportError):
+            logger.exception("Failed to initialize tiktoken encoding")
             raise
 
         # Initialize EnhancedChunker for boundary detection
@@ -73,12 +73,12 @@ class VisionDocumentChunker:
         try:
             tokens = self.encoding.encode(text)
             return len(tokens)
-        except Exception as e:
-            logger.error(f"Error counting tokens: {e}")
+        except (ValueError, KeyError, ImportError):
+            logger.exception("Error counting tokens")
             # Fallback to character-based estimation
             return len(text) // 4
 
-    def extract_keywords(self, text: str, max_keywords: int = 10) -> List[str]:
+    def extract_keywords(self, text: str, max_keywords: int = 10) -> list[str]:
         """
         Extract keywords using simple term frequency approach.
 
@@ -168,7 +168,7 @@ class VisionDocumentChunker:
 
         return truncated.strip() + "..."
 
-    def chunk_document(self, content: str, product_id: str) -> List[Dict[str, Any]]:
+    def chunk_document(self, content: str, product_id: str) -> list[dict[str, Any]]:
         """
         Chunk document into semantic chunks with metadata.
 
@@ -197,7 +197,7 @@ class VisionDocumentChunker:
         # Process each chunk to add accurate token counts and metadata
         processed_chunks = []
 
-        for i, chunk in enumerate(enhanced_chunks):
+        for _, chunk in enumerate(enhanced_chunks):
             chunk_content = chunk["content"]
 
             # Skip empty chunks
@@ -239,7 +239,7 @@ class VisionDocumentChunker:
 
         return processed_chunks
 
-    async def chunk_vision_document(self, session, tenant_key: str, vision_document_id: str) -> Dict[str, Any]:
+    async def chunk_vision_document(self, session, tenant_key: str, vision_document_id: str) -> dict[str, Any]:
         """
         Chunk a specific vision document with selective re-chunking.
 
@@ -277,11 +277,11 @@ class VisionDocumentChunker:
 
         # Import repositories
         try:
-            from ..models import MCPContextIndex
-            from ..repositories.context_repository import ContextRepository
-            from ..repositories.vision_document_repository import VisionDocumentRepository
+            from giljo_mcp.models import MCPContextIndex
+            from giljo_mcp.repositories.context_repository import ContextRepository
+            from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
         except ImportError as e:
-            logger.error(f"Failed to import repositories: {e}")
+            logger.exception("Failed to import repositories")
             return {"success": False, "error": f"Import error: {e}"}
 
         vision_repo = VisionDocumentRepository(db_manager=None)
@@ -314,9 +314,9 @@ class VisionDocumentChunker:
             if doc.storage_type in ("inline", "hybrid") and doc.vision_document:
                 content += doc.vision_document
 
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             error_msg = f"Error reading content for document {vision_document_id}: {e}"
-            logger.error(error_msg)
+            logger.exception(error_msg)
             return {"success": False, "error": error_msg}
 
         if not content or not content.strip():

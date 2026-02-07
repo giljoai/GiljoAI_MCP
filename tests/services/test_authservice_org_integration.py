@@ -16,7 +16,6 @@ Test Coverage (Handover 0424g):
 """
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -24,10 +23,10 @@ from passlib.hash import bcrypt
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from src.giljo_mcp.exceptions import AuthorizationError
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.organizations import Organization, OrgMembership
 from src.giljo_mcp.services.auth_service import AuthService
-from src.giljo_mcp.exceptions import AuthorizationError, ValidationError
 
 
 # Fixtures
@@ -39,7 +38,7 @@ async def auth_service(db_manager, db_session):
     return AuthService(
         db_manager=db_manager,
         websocket_manager=None,  # No WebSocket in tests
-        session=db_session  # SHARED SESSION for test transaction isolation
+        session=db_session,  # SHARED SESSION for test transaction isolation
     )
 
 
@@ -52,7 +51,7 @@ async def test_org(db_session):
         slug="test-organization",
         tenant_key="test_tenant_001",  # 0424m: Required NOT NULL
         is_active=True,
-        settings={}
+        settings={},
     )
     db_session.add(org)
     await db_session.commit()
@@ -85,7 +84,7 @@ async def test_admin_user(db_session, test_org):
         user_id=admin.id,
         role="owner",
         tenant_key="test_tenant_001",  # 0424m: Required NOT NULL
-        is_active=True
+        is_active=True,
     )
     db_session.add(owner_membership)
     await db_session.commit()
@@ -118,7 +117,7 @@ async def test_member_user(db_session, test_org):
         user_id=member.id,
         role="member",
         tenant_key="test_tenant_001",  # 0424m: Required NOT NULL
-        is_active=True
+        is_active=True,
     )
     db_session.add(member_membership)
     await db_session.commit()
@@ -141,9 +140,7 @@ async def test_create_default_organization_returns_org_id(auth_service, db_sessi
     """
     # Call method with new signature
     org_id = await auth_service._create_default_organization(
-        session=db_session,
-        tenant_key="test_tenant_999",
-        org_name="Custom Workspace"
+        session=db_session, tenant_key="test_tenant_999", org_name="Custom Workspace"
     )
 
     # Verify returns UUID string
@@ -188,7 +185,7 @@ async def test_create_first_admin_sets_org_id(auth_service, db_session):
         username="firstadmin",
         email="first@example.com",
         password="FirstAdmin1234!@#$",
-        full_name="First Administrator"
+        full_name="First Administrator",
     )
 
     # Verify user created with org_id set
@@ -210,9 +207,7 @@ async def test_create_first_admin_sets_org_id(auth_service, db_session):
 
     # Verify owner membership created
     membership_stmt = (
-        select(OrgMembership)
-        .where(OrgMembership.org_id == user.org_id)
-        .where(OrgMembership.user_id == user.id)
+        select(OrgMembership).where(OrgMembership.org_id == user.org_id).where(OrgMembership.user_id == user.id)
     )
     membership_result = await db_session.execute(membership_stmt)
     membership = membership_result.scalar_one()
@@ -242,7 +237,7 @@ async def test_register_user_sets_org_id(auth_service, db_session, test_admin_us
         role="developer",
         requesting_admin_id=admin.id,
         org_id=test_org.id,
-        org_role="member"
+        org_role="member",
     )
 
     # Verify user created with org_id set
@@ -255,9 +250,7 @@ async def test_register_user_sets_org_id(auth_service, db_session, test_admin_us
 
     # Verify membership created with specified role
     membership_stmt = (
-        select(OrgMembership)
-        .where(OrgMembership.org_id == test_org.id)
-        .where(OrgMembership.user_id == user.id)
+        select(OrgMembership).where(OrgMembership.org_id == test_org.id).where(OrgMembership.user_id == user.id)
     )
     membership_result = await db_session.execute(membership_stmt)
     membership = membership_result.scalar_one()
@@ -285,7 +278,7 @@ async def test_create_user_in_org_by_admin(auth_service, db_session, test_admin_
         username="orguser",
         email="orguser@example.com",
         role="member",
-        initial_password="OrgUser1234!@#$"
+        initial_password="OrgUser1234!@#$",
     )
 
     # Verify user created with admin's org_id
@@ -301,9 +294,7 @@ async def test_create_user_in_org_by_admin(auth_service, db_session, test_admin_
 
     # Verify membership created
     membership_stmt = (
-        select(OrgMembership)
-        .where(OrgMembership.org_id == test_org.id)
-        .where(OrgMembership.user_id == user.id)
+        select(OrgMembership).where(OrgMembership.org_id == test_org.id).where(OrgMembership.user_id == user.id)
     )
     membership_result = await db_session.execute(membership_stmt)
     membership = membership_result.scalar_one()
@@ -331,7 +322,7 @@ async def test_create_user_in_org_requires_admin_role(auth_service, db_session, 
             username="unauthorizeduser",
             email="unauthorized@example.com",
             role="member",
-            initial_password="Unauthorized1234!@#$"
+            initial_password="Unauthorized1234!@#$",
         )
 
     # Verify error message mentions permission requirement

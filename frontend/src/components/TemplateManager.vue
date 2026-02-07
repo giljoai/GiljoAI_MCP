@@ -16,8 +16,8 @@
       <v-btn
         color="primary"
         prepend-icon="mdi-plus"
-        @click="openCreateDialog"
         aria-label="Create new template"
+        @click="openCreateDialog"
       >
         New Template
       </v-btn>
@@ -204,9 +204,9 @@
               color="primary"
               hide-details
               density="compact"
-              @update:model-value="handleToggleActive(item, $event)"
               :aria-label="item.is_active ? 'Deactivate agent' : 'Activate agent'"
               :data-testid="`template-toggle-${item.role}`"
+              @update:model-value="handleToggleActive(item, $event)"
             />
             <v-tooltip v-if="!item.is_active && remainingUserSlots === 0" location="top">
               <template v-slot:activator="{ props }">
@@ -227,58 +227,58 @@
             icon="mdi-eye"
             size="small"
             variant="text"
-            @click="previewTemplate(item)"
             title="Preview"
             aria-label="Preview template"
+            @click="previewTemplate(item)"
           />
           <v-btn
             icon="mdi-pencil"
             size="small"
             variant="text"
-            @click="editTemplate(item)"
             title="Edit"
             aria-label="Edit template"
+            @click="editTemplate(item)"
           />
           <v-btn
             icon="mdi-content-copy"
             size="small"
             variant="text"
-            @click="duplicateTemplate(item)"
             title="Duplicate"
             aria-label="Duplicate template"
+            @click="duplicateTemplate(item)"
           />
           <v-btn
             icon="mdi-history"
             size="small"
             variant="text"
-            @click="viewHistory(item)"
             title="Version History"
             aria-label="View template version history"
+            @click="viewHistory(item)"
           />
           <v-btn
             icon="mdi-compare"
             size="small"
             variant="text"
-            @click="viewDiff(item)"
             title="Compare with System Default"
             aria-label="Compare template with system default"
+            @click="viewDiff(item)"
           />
           <v-btn
             icon="mdi-refresh"
             size="small"
             variant="text"
-            @click="confirmReset(item)"
             title="Reset to Default"
             aria-label="Reset template to system default"
+            @click="confirmReset(item)"
           />
           <v-btn
             icon="mdi-delete"
             size="small"
             variant="text"
             color="error"
-            @click="confirmDelete(item)"
             title="Delete"
             aria-label="Delete template"
+            @click="confirmDelete(item)"
           />
         </template>
       </v-data-table>
@@ -290,7 +290,7 @@
         <v-card-title class="d-flex align-center">
           <span class="text-h5">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="closeEditDialog" aria-label="Close" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="closeEditDialog" />
         </v-card-title>
 
         <v-card-text>
@@ -313,8 +313,8 @@
                   v-model="editingTemplate.cli_tool"
                   inline
                   density="compact"
-                  @update:model-value="onCliToolChange"
                   aria-label="Select CLI tool"
+                  @update:model-value="onCliToolChange"
                 >
                   <v-radio
                     v-for="tool in cliToolOptions"
@@ -347,8 +347,8 @@
                   label="Role"
                   :rules="[(v) => !!v || 'Role is required']"
                   density="compact"
-                  @update:model-value="onRoleChange"
                   aria-label="Select agent role"
+                  @update:model-value="onRoleChange"
                 >
                   <template v-slot:append-inner>
                     <v-tooltip location="top">
@@ -498,9 +498,9 @@
                           size="small"
                           prepend-icon="mdi-content-copy"
                           variant="outlined"
-                          @click="copyPreview"
                           class="mb-2"
                           aria-label="Copy preview to clipboard"
+                          @click="copyPreview"
                         >
                           Copy to Clipboard
                         </v-btn>
@@ -517,7 +517,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="closeEditDialog"> Cancel </v-btn>
-          <v-btn color="primary" variant="flat" @click="saveTemplateAndPreview" :loading="saving">
+          <v-btn color="primary" variant="flat" :loading="saving" @click="saveTemplateAndPreview">
             Save and Generate Preview
           </v-btn>
         </v-card-actions>
@@ -533,8 +533,8 @@
           <v-btn
             icon="mdi-close"
             variant="text"
-            @click="previewDialog = false"
             aria-label="Close"
+            @click="previewDialog = false"
           />
         </v-card-title>
 
@@ -563,11 +563,11 @@
                 />
               </v-col>
               <v-col cols="12">
-                <v-btn color="primary" @click="generatePreview" :loading="generating">
+                <v-btn color="primary" :loading="generating" @click="generatePreview">
                   Generate Preview
                 </v-btn>
               </v-col>
-              <v-col cols="12" v-if="generatedMission">
+              <v-col v-if="generatedMission" cols="12">
                 <div class="text-subtitle-2 mb-2">Generated Mission</div>
                 <v-card variant="outlined" class="pa-4 generated-mission">
                   <pre>{{ generatedMission }}</pre>
@@ -591,7 +591,7 @@
           <v-icon color="error" class="mr-2">mdi-alert</v-icon>
           <span class="text-h5">Permanently Delete Template</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="deleteDialog = false" aria-label="Close" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="deleteDialog = false" />
         </v-card-title>
         <v-card-text>
           <v-alert type="error" variant="tonal" class="mb-4">
@@ -608,7 +608,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn color="error" variant="flat" @click="deleteTemplate" :loading="deleting">
+          <v-btn color="error" variant="flat" :loading="deleting" @click="deleteTemplate">
             Delete Permanently
           </v-btn>
         </v-card-actions>
@@ -632,7 +632,7 @@
           <v-icon color="warning" class="mr-2">mdi-alert</v-icon>
           <span class="text-h5">Confirm Reset to Default</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="resetDialog = false" aria-label="Close" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="resetDialog = false" />
         </v-card-title>
         <v-card-text>
           <p class="mb-4">
@@ -650,7 +650,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="resetDialog = false">Cancel</v-btn>
-          <v-btn color="warning" variant="flat" @click="resetTemplate" :loading="resetting">
+          <v-btn color="warning" variant="flat" :loading="resetting" @click="resetTemplate">
             Reset to Default
           </v-btn>
         </v-card-actions>
@@ -664,7 +664,7 @@
           <v-icon color="primary" class="mr-2">mdi-compare</v-icon>
           <span class="text-h5">Template Comparison</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="diffDialog = false" aria-label="Close" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="diffDialog = false" />
         </v-card-title>
         <v-card-text>
           <v-container v-if="diffData">
@@ -724,7 +724,7 @@
                   </v-window-item>
                   <v-window-item value="side-by-side">
                     <v-card variant="outlined" class="diff-viewer">
-                      <div v-html="diffData.diff_html" class="pa-4 diff-html-container"></div>
+                      <div class="pa-4 diff-html-container" v-html="diffData.diff_html"></div>
                     </v-card>
                   </v-window-item>
                 </v-window>
@@ -759,7 +759,7 @@
         </div>
       </div>
       <template v-slot:actions>
-        <v-btn variant="text" @click="errorSnackbar = false" aria-label="Close error notification">
+        <v-btn variant="text" aria-label="Close error notification" @click="errorSnackbar = false">
           Close
         </v-btn>
       </template>
@@ -1058,7 +1058,7 @@ const loadTemplates = async () => {
       .filter((t) => !t.is_system_role)
       .map((t) => ({
         ...t,
-        template: t.template_content, // Map template_content to template for frontend
+        template: t.system_instructions, // Map system_instructions to template for frontend
       }))
   } catch (error) {
     console.error('Failed to load templates:', error)
@@ -1154,7 +1154,7 @@ const openCreateDialog = () => {
 const editTemplate = (template) => {
   editingTemplate.value = {
     ...template,
-    template: template.template_content || template.template, // Ensure template field is set
+    template: template.system_instructions || template.template, // Ensure template field is set
     cli_tool: template.cli_tool || 'claude',
     custom_suffix: '',
     background_color: template.background_color || '',
@@ -1170,7 +1170,7 @@ const duplicateTemplate = (template) => {
     ...template,
     id: null,
     name: `${template.name} (Copy)`,
-    template: template.template_content || template.template, // Ensure template field is set
+    template: template.system_instructions || template.template, // Ensure template field is set
     cli_tool: template.cli_tool || 'claude',
     custom_suffix: '-copy',
     background_color: template.background_color || '',
@@ -1227,7 +1227,7 @@ const saveTemplateAndPreview = async () => {
       custom_suffix: editingTemplate.value.custom_suffix || null,
       background_color: editingTemplate.value.background_color,
       description: editingTemplate.value.description,
-      template_content: editingTemplate.value.template,
+      system_instructions: editingTemplate.value.template,
       model: editingTemplate.value.cli_tool === 'claude' ? editingTemplate.value.model : null,
       tools: editingTemplate.value.tools,
       preferred_tool: editingTemplate.value.cli_tool, // Sync with cli_tool
@@ -1245,7 +1245,7 @@ const saveTemplateAndPreview = async () => {
         role: data.role,
         cli_tool: data.cli_tool,
         background_color: data.background_color,
-        template_content: data.template_content,
+        system_instructions: data.system_instructions,
         description: data.description,
         model: data.model,
         tools: data.tools,
@@ -1303,7 +1303,7 @@ const saveTemplate = async () => {
       category: 'role', // Automatically set to 'role' for all templates
       role: editingTemplate.value.role || null,
       description: editingTemplate.value.description,
-      template_content: editingTemplate.value.template,
+      system_instructions: editingTemplate.value.template,
       preferred_tool: editingTemplate.value.preferred_tool,
       behavioral_rules: editingTemplate.value.behavioral_rules || [],
       success_criteria: editingTemplate.value.success_criteria || [],
@@ -1314,7 +1314,7 @@ const saveTemplate = async () => {
     if (editingTemplate.value.id) {
       await api.templates.update(editingTemplate.value.id, {
         name: data.name,
-        template_content: data.template_content,
+        system_instructions: data.system_instructions,
         description: data.description,
         preferred_tool: data.preferred_tool,
         behavioral_rules: data.behavioral_rules,
@@ -1739,15 +1739,6 @@ watch(
 .codex-icon {
   :deep(img) {
     filter: brightness(0) invert(1); // White in dark mode
-  }
-}
-
-// Light theme override
-:deep(.v-theme--light) {
-  .codex-icon {
-    :deep(img) {
-      filter: brightness(0); // Black in light mode
-    }
   }
 }
 </style>

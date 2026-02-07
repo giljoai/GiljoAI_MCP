@@ -64,8 +64,7 @@ async def orchestrator_template(db_session: AsyncSession, test_user: User) -> Ag
         name="Orchestrator",
         role="orchestrator",
         category="role",
-        system_instructions="SYSTEM: You are the orchestrator for {project_name}.",
-        template_content="You are the orchestrator for {project_name}. Mission: {project_mission}",
+        system_instructions="You are the orchestrator for {project_name}. Mission: {project_mission}",
         variables=["project_name", "project_mission"],
         behavioral_rules=["Delegate work", "Monitor progress", "Report status"],
         success_criteria=["All tasks completed", "Quality maintained", "On schedule"],
@@ -95,7 +94,6 @@ async def system_orchestrator_template(db_session: AsyncSession) -> AgentTemplat
         role="orchestrator",
         category="role",
         system_instructions="SYSTEM: You are the orchestrator for {project_name}",
-        template_content="SYSTEM: You are the orchestrator for {project_name}",
         variables=["project_name"],
         behavioral_rules=["System rule 1", "System rule 2"],
         success_criteria=["System criteria 1"],
@@ -169,7 +167,7 @@ class TestTemplatesCRUD:
             "name": "Custom Analyzer",
             "category": "role",
             "role": "analyzer",
-            "template_content": "You are an analyzer for {project_name}",
+            "system_instructions": "You are an analyzer for {project_name}",
             "description": "Custom analyzer template",
             "behavioral_rules": ["Analyze requirements", "Identify patterns"],
             "success_criteria": ["Analysis complete", "Patterns documented"],
@@ -194,7 +192,7 @@ class TestTemplatesCRUD:
             "name": "Too Large",
             "category": "role",
             "role": "tester",
-            "template_content": large_content,
+            "system_instructions": large_content,
         }
 
         response = await async_client.post("/api/v1/templates/", json=template_data, headers=auth_headers)
@@ -261,7 +259,7 @@ class TestTemplatePhase3Endpoints:
     ):
         """Test POST /templates/{id}/reset - Reset to system default"""
         # Modify tenant template
-        orchestrator_template.template_content = "CUSTOM MODIFIED CONTENT"
+        orchestrator_template.system_instructions = "CUSTOM MODIFIED CONTENT"
         await db_session.commit()
 
         response = await async_client.post(
@@ -276,7 +274,7 @@ class TestTemplatePhase3Endpoints:
 
         # Verify template was reset
         await db_session.refresh(orchestrator_template)
-        assert "SYSTEM:" in orchestrator_template.template_content
+        assert "SYSTEM:" in orchestrator_template.system_instructions
 
     async def test_reset_template_without_system_default(
         self,
@@ -306,7 +304,7 @@ class TestTemplatePhase3Endpoints:
     ):
         """Test GET /templates/{id}/diff - Compare with system template"""
         # Modify tenant template to create difference
-        orchestrator_template.template_content = "MODIFIED: Custom orchestrator for {project_name}"
+        orchestrator_template.system_instructions = "MODIFIED: Custom orchestrator for {project_name}"
 
         response = await async_client.get(
             f"/api/v1/templates/{orchestrator_template.id}/diff",
@@ -410,7 +408,7 @@ class TestTemplatesSecurity:
             name="Other Tenant Template",
             role="orchestrator",
             category="role",
-            template_content="Other tenant content",
+            system_instructions="Other tenant content",
             variables=[],
             behavioral_rules=[],
             success_criteria=[],
@@ -449,7 +447,7 @@ class TestTemplatesSecurity:
             name="Other Template",
             role="analyzer",
             category="role",
-            template_content="Content",
+            system_instructions="Content",
             variables=[],
             behavioral_rules=[],
             success_criteria=[],
@@ -511,14 +509,14 @@ class TestTemplatesValidation:
 
     async def test_create_template_missing_required_fields(self, async_client: AsyncClient, auth_headers: dict):
         """Test creating template without required fields fails"""
-        invalid_data = {"name": "Test"}  # Missing category, template_content, etc.
+        invalid_data = {"name": "Test"}  # Missing category, system_instructions, etc.
 
         response = await async_client.post("/api/v1/templates/", json=invalid_data, headers=auth_headers)
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         errors = response.json()["detail"]
         assert any("category" in str(e).lower() for e in errors)
-        assert any("template_content" in str(e).lower() for e in errors)
+        assert any("system_instructions" in str(e).lower() for e in errors)
 
     async def test_update_template_not_found(self, async_client: AsyncClient, auth_headers: dict):
         """Test updating non-existent template returns 404"""
@@ -541,7 +539,7 @@ class TestTemplatesValidation:
         large_content = "x" * (101 * 1024)  # 101KB
         response = await async_client.put(
             f"/api/v1/templates/{orchestrator_template.id}",
-            json={"template_content": large_content},
+            json={"system_instructions": large_content},
             headers=auth_headers,
         )
 
@@ -663,7 +661,7 @@ class TestTemplatesIntegration:
             "name": "Workflow Test Template",
             "category": "role",
             "role": "tester",
-            "template_content": "Test template for {project_name}",
+            "system_instructions": "Test template for {project_name}",
             "description": "Integration test template",
             "behavioral_rules": ["Test thoroughly"],
             "success_criteria": ["All tests pass"],

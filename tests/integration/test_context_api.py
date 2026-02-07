@@ -514,7 +514,9 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_load_context_missing_fields(self, client, headers):
         """Test loading context with missing required fields"""
-        response = await client.post("/api/v1/context/load-for-agent", json={"agent_display_name": "backend"}, headers=headers)
+        response = await client.post(
+            "/api/v1/context/load-for-agent", json={"agent_display_name": "backend"}, headers=headers
+        )
 
         assert response.status_code == 422
 

@@ -44,7 +44,7 @@ class TestAgentSelector:
         impl_template.product_id = None
         impl_template.name = "implementer"
         impl_template.description = "System default implementer"
-        impl_template.template_content = "You are a professional implementer..."
+        impl_template.system_instructions = "You are a professional implementer..."
         impl_template.variables = []
         impl_template.is_active = True
         impl_template.is_default = True
@@ -57,7 +57,7 @@ class TestAgentSelector:
         tester_template.product_id = None
         tester_template.name = "tester"
         tester_template.description = "System default tester"
-        tester_template.template_content = "You are a professional tester..."
+        tester_template.system_instructions = "You are a professional tester..."
         tester_template.variables = []
         tester_template.is_active = True
         tester_template.is_default = True
@@ -70,7 +70,7 @@ class TestAgentSelector:
         reviewer_template.product_id = None
         reviewer_template.name = "code-reviewer"
         reviewer_template.description = "System default code reviewer"
-        reviewer_template.template_content = "You are a professional code reviewer..."
+        reviewer_template.system_instructions = "You are a professional code reviewer..."
         reviewer_template.variables = []
         reviewer_template.is_active = True
         reviewer_template.is_default = True
@@ -90,7 +90,7 @@ class TestAgentSelector:
         impl_template.product_id = None
         impl_template.name = "implementer"
         impl_template.description = "Tenant A implementer"
-        impl_template.template_content = "You are Tenant A's implementer..."
+        impl_template.system_instructions = "You are Tenant A's implementer..."
         impl_template.variables = []
         impl_template.is_active = True
         impl_template.is_default = False
@@ -110,7 +110,7 @@ class TestAgentSelector:
         impl_template.product_id = "product-1"
         impl_template.name = "implementer"
         impl_template.description = "Product 1 implementer"
-        impl_template.template_content = "You are Product 1's implementer..."
+        impl_template.system_instructions = "You are Product 1's implementer..."
         impl_template.variables = []
         impl_template.is_active = True
         impl_template.is_default = False
@@ -127,7 +127,7 @@ class TestAgentSelector:
         template.product_id = None
         template.name = "implementer"
         template.description = "Inactive implementer"
-        template.template_content = "You are an inactive implementer..."
+        template.system_instructions = "You are an inactive implementer..."
         template.variables = []
         template.is_active = False
         template.is_default = False
@@ -265,7 +265,7 @@ class TestAgentSelector:
         tenant_b_template.tenant_key = "tenant-b"
         tenant_b_template.product_id = None
         tenant_b_template.name = "implementer"
-        tenant_b_template.template_content = "Tenant B implementer..."
+        tenant_b_template.system_instructions = "Tenant B implementer..."
         tenant_b_template.is_active = True
         tenant_b_template.is_default = False
 

@@ -10,15 +10,13 @@ Tests for GitHub integration toggle persistence functionality:
 Handover 0269: Fix GitHub integration toggle persistence
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.giljo_mcp.models import Product, User
-from src.giljo_mcp.services.product_service import ProductService
+from src.giljo_mcp.models import Product
 from src.giljo_mcp.services.git_service import GitService
+from src.giljo_mcp.services.product_service import ProductService
 
 
 # ============================================================================

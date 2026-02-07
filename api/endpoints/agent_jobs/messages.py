@@ -6,13 +6,11 @@ Fetches messages where the agent is sender or recipient.
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import status as http_status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.dialects.postgresql import JSONB
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import Message, User
@@ -97,28 +95,22 @@ async def get_job_messages(
 
         if not execution:
             logger.warning(f"Job {job_id} not found for tenant {current_user.tenant_key}")
-            raise HTTPException(
-                status_code=http_status.HTTP_404_NOT_FOUND,
-                detail="Job not found"
-            )
+            raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Job not found")
 
         # Build agent_id -> display name lookup for sender resolution
         # Fetch all agents in this tenant for name resolution
-        agents_stmt = select(AgentExecution).where(
-            AgentExecution.tenant_key == current_user.tenant_key
-        )
+        agents_stmt = select(AgentExecution).where(AgentExecution.tenant_key == current_user.tenant_key)
         agents_result = await session.execute(agents_stmt)
         agents = agents_result.scalars().all()
 
-        # Build lookup: agent_id -> "DisplayName #instance" (e.g., "Orchestrator #1")
+        # Build lookup: agent_id -> "DisplayName" (e.g., "Orchestrator")
         agent_lookup = {}
         for agent in agents:
             display_name = agent.agent_display_name.capitalize() if agent.agent_display_name else "Agent"
-            instance_suffix = f" #{agent.instance_number}" if agent.instance_number > 1 else ""
-            agent_lookup[agent.agent_id] = f"{display_name}{instance_suffix}"
-            # Also add agent_name for resolution (e.g., "impl-alpha" -> "Implementer #1")
+            agent_lookup[agent.agent_id] = display_name
+            # Also add agent_name for resolution (e.g., "impl-alpha" -> "Implementer")
             if agent.agent_name:
-                agent_lookup[agent.agent_name] = f"{display_name}{instance_suffix}"
+                agent_lookup[agent.agent_name] = display_name
 
         # Query messages where agent is sender or recipient
         # Note: from_agent is stored in meta_data["_from_agent"], not as a column
@@ -128,9 +120,9 @@ async def get_job_messages(
             .where(
                 Message.tenant_key == current_user.tenant_key,
                 or_(
-                    Message.meta_data.op('->>')('_from_agent') == execution.agent_id,
-                    Message.to_agents.contains([execution.agent_id])  # PostgreSQL array containment
-                )
+                    Message.meta_data.op("->>")("_from_agent") == execution.agent_id,
+                    Message.to_agents.contains([execution.agent_id]),  # PostgreSQL array containment
+                ),
             )
             .order_by(Message.created_at.desc())
             .limit(limit)
@@ -149,18 +141,22 @@ async def get_job_messages(
             resolved_from = _resolve_sender_display_name(raw_from_agent, agent_lookup)
             is_outbound = raw_from_agent == execution.agent_id
 
-            message_list.append({
-                "id": str(m.id),
-                "from": resolved_from,  # Human-readable display name
-                "from_agent": raw_from_agent,  # Raw value for backward compat
-                "from_agent_id": raw_from_agent if raw_from_agent in agent_lookup else None,  # UUID if it's an agent
-                "to_agents": m.to_agents,
-                "content": m.content[:500] if m.content else "",  # Truncate for preview
-                "status": m.status,
-                "created_at": m.created_at.isoformat(),
-                "direction": "outbound" if is_outbound else "inbound",
-                "message_type": m.message_type,
-            })
+            message_list.append(
+                {
+                    "id": str(m.id),
+                    "from": resolved_from,  # Human-readable display name
+                    "from_agent": raw_from_agent,  # Raw value for backward compat
+                    "from_agent_id": raw_from_agent
+                    if raw_from_agent in agent_lookup
+                    else None,  # UUID if it's an agent
+                    "to_agents": m.to_agents,
+                    "content": m.content[:500] if m.content else "",  # Truncate for preview
+                    "status": m.status,
+                    "created_at": m.created_at.isoformat(),
+                    "direction": "outbound" if is_outbound else "inbound",
+                    "message_type": m.message_type,
+                }
+            )
 
         return {
             "job_id": job_id,
@@ -174,6 +170,5 @@ async def get_job_messages(
     except Exception as e:
         logger.error(f"Failed to retrieve messages for job {job_id}: {e}", exc_info=True)
         raise HTTPException(
-            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve messages: {str(e)}"
-        )
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve messages: {e!s}"
+        ) from e

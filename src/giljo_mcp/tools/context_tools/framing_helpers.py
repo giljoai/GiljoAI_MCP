@@ -10,13 +10,14 @@ Provides helper functions to:
 
 import json
 import logging
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 from sqlalchemy import select
 
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import User
+
 
 logger = logging.getLogger(__name__)
 
@@ -44,14 +45,14 @@ def format_list_safely(items: Any) -> str:
 
     try:
         return "\n".join(f"- {item}" for item in items if item)
-    except Exception as exc:  # pragma: no cover - defensive guard
-        logger.error("Failed to format list", extra={"error": str(exc)})
+    except (ValueError, TypeError, KeyError) as exc:  # pragma: no cover - defensive guard
+        logger.exception("Failed to format list", extra={"error": str(exc)})
         return "- (Error formatting data)"
 
 
-def apply_rich_entry_framing(entry: Dict[str, Any]) -> str:
+def apply_rich_entry_framing(entry: dict[str, Any]) -> str:
     """
-    Apply priority framing to a rich sequential_history entry.
+    Apply priority framing to a rich product_memory_entries entry.
 
     Raises:
         ValueError: if required fields are missing
@@ -59,7 +60,7 @@ def apply_rich_entry_framing(entry: Dict[str, Any]) -> str:
     required_fields = ["sequence", "project_name", "summary"]
     for field in required_fields:
         if field not in entry:
-            logger.error("Invalid sequential_history entry", extra={"missing_field": field, "entry_keys": list(entry)})
+            logger.error("Invalid memory entry", extra={"missing_field": field, "entry_keys": list(entry)})
             raise ValueError(f"Invalid entry: missing {field}")
 
     sequence = entry.get("sequence", 0)
@@ -93,7 +94,7 @@ def apply_rich_entry_framing(entry: Dict[str, Any]) -> str:
     return framing
 
 
-def _extract_priorities(config: Any) -> Dict[str, int]:
+def _extract_priorities(config: Any) -> dict[str, int]:
     """Extract priority mapping from user config supporting legacy and nested formats."""
     if not isinstance(config, dict):
         return {}
@@ -128,7 +129,7 @@ def _stringify_content(content: Any) -> str:
     else:
         try:
             text = json.dumps(content, indent=2, ensure_ascii=True)
-        except Exception as exc:  # pragma: no cover - defensive guard
+        except (ValueError, TypeError, KeyError) as exc:  # pragma: no cover - defensive guard
             logger.warning("Failed to serialize content for framing", extra={"error": str(exc)})
             text = str(content)
 
@@ -141,8 +142,8 @@ def _stringify_content(content: Any) -> str:
 async def get_user_priority(
     category: str,
     tenant_key: str,
-    user_id: Optional[str],
-    db_manager: Optional[DatabaseManager],
+    user_id: str | None,
+    db_manager: DatabaseManager | None,
 ) -> int:
     """
     Get priority for a category using user config or defaults.
@@ -150,10 +151,7 @@ async def get_user_priority(
     Returns default priority if user not provided, not found, or config invalid.
     """
     if category not in ALLOWED_PRIORITY_CATEGORIES:
-        raise ValueError(
-            f"Invalid category '{category}'. "
-            f"Valid categories: {sorted(ALLOWED_PRIORITY_CATEGORIES)}"
-        )
+        raise ValueError(f"Invalid category '{category}'. Valid categories: {sorted(ALLOWED_PRIORITY_CATEGORIES)}")
 
     # Handle nested format: {"category": {"toggle": True, "priority": X}}
     category_config = DEFAULT_FIELD_PRIORITY["priorities"].get(category, {})
@@ -168,9 +166,7 @@ async def get_user_priority(
 
     try:
         async with db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(User).where(User.id == user_id, User.tenant_key == tenant_key)
-            )
+            result = await session.execute(select(User).where(User.id == user_id, User.tenant_key == tenant_key))
             user = result.scalar_one_or_none()
 
             if not user or not user.field_priority_config:
@@ -186,7 +182,7 @@ async def get_user_priority(
                 return default_priority
 
             return int(user_priority)
-    except Exception as exc:  # pragma: no cover - defensive guard
+    except (ValueError, TypeError, KeyError) as exc:  # pragma: no cover - defensive guard
         logger.warning(
             "Failed to fetch user priority config, using defaults",
             extra={"error": str(exc), "user_id": user_id, "category": category},
@@ -198,7 +194,7 @@ def inject_priority_framing(
     content: Any,
     priority: int,
     category: str,
-    user_id: Optional[str] = None,
+    user_id: str | None = None,
 ) -> str:
     """
     Inject priority framing headers into content.
@@ -222,11 +218,7 @@ def inject_priority_framing(
 
     # CRITICAL items get primacy + recency via duplication
     if priority == 1:
-        framed_content = (
-            framed_content
-            + "\n\n"
-            + f"## {label} Recap: {field_label}\n\n{text}\n\n---"
-        )
+        framed_content = framed_content + "\n\n" + f"## {label} Recap: {field_label}\n\n{text}\n\n---"
 
     logger.info(
         "Applied priority framing",
@@ -235,7 +227,7 @@ def inject_priority_framing(
     return framed_content
 
 
-def build_priority_excluded_response(source: str, category: str, tenant_key: str, priority: int) -> Dict[str, Any]:
+def build_priority_excluded_response(source: str, category: str, tenant_key: str, priority: int) -> dict[str, Any]:
     """Return a standardized response when a category is excluded (priority=4)."""
     return {
         "source": source,
@@ -252,14 +244,14 @@ def build_priority_excluded_response(source: str, category: str, tenant_key: str
 
 
 async def build_framed_context_response(
-    raw_result: Dict[str, Any],
+    raw_result: dict[str, Any],
     category: str,
     tenant_key: str,
-    user_id: Optional[str],
-    db_manager: Optional[DatabaseManager],
-    content_formatter: Optional[Callable[[Dict[str, Any]], str]] = None,
-    priority_override: Optional[int] = None,
-) -> Dict[str, Any]:
+    user_id: str | None,
+    db_manager: DatabaseManager | None,
+    content_formatter: Callable[[dict[str, Any | None], str]] = None,
+    priority_override: int | None = None,
+) -> dict[str, Any]:
     """
     Apply priority framing to a context tool response.
 
@@ -279,12 +271,16 @@ async def build_framed_context_response(
     metadata.setdefault("tenant_key", tenant_key)
 
     try:
-        content_payload = content_formatter(raw_result) if content_formatter else {
-            "source": raw_result.get("source"),
-            "depth": raw_result.get("depth"),
-            "data": raw_result.get("data"),
-            "metadata": raw_result.get("metadata"),
-        }
+        content_payload = (
+            content_formatter(raw_result)
+            if content_formatter
+            else {
+                "source": raw_result.get("source"),
+                "depth": raw_result.get("depth"),
+                "data": raw_result.get("data"),
+                "metadata": raw_result.get("metadata"),
+            }
+        )
         framed_content = inject_priority_framing(content_payload, priority, category, user_id)
         metadata["framing_applied"] = bool(framed_content)
         response = dict(raw_result)

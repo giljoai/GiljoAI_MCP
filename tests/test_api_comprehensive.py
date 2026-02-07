@@ -25,10 +25,11 @@ class TestAPIComprehensive:
     def client(self):
         """Create test client with mocked authentication"""
         from unittest.mock import AsyncMock, MagicMock
-        from src.giljo_mcp.auth import AuthManager
 
         # Monkey-patch AuthMiddleware.dispatch to bypass authentication
         from api.middleware.auth import AuthMiddleware
+        from src.giljo_mcp.auth import AuthManager
+
         original_dispatch = AuthMiddleware.dispatch
 
         async def mock_dispatch(self, request, call_next):
@@ -51,13 +52,15 @@ class TestAPIComprehensive:
 
             # Create a mock auth manager for app state
             mock_auth = MagicMock(spec=AuthManager)
-            mock_auth.authenticate_request = AsyncMock(return_value={
-                "authenticated": True,
-                "user_id": "test_user",
-                "user_obj": None,
-                "is_auto_login": True,
-                "tenant_key": "test_tenant_key"
-            })
+            mock_auth.authenticate_request = AsyncMock(
+                return_value={
+                    "authenticated": True,
+                    "user_id": "test_user",
+                    "user_obj": None,
+                    "is_auto_login": True,
+                    "tenant_key": "test_tenant_key",
+                }
+            )
             app.state.auth = mock_auth
 
             yield TestClient(app)
@@ -463,7 +466,7 @@ class TestAPIComprehensive:
         template_data = {
             "name": "api_test_template",
             "category": "custom",
-            "template_content": "Test template for {project_name} with {agent_role}",
+            "system_instructions": "Test template for {project_name} with {agent_role}",
             "role": "tester",
             "description": "API testing template",
             "behavioral_rules": ["Always validate inputs", "Provide clear error messages", "Test edge cases"],
@@ -498,7 +501,7 @@ class TestAPIComprehensive:
         """Test updating a template"""
         if test_data["template_id"]:
             update_data = {
-                "template_content": "Updated template for {project_name} with enhanced {agent_role}",
+                "system_instructions": "Updated template for {project_name} with enhanced {agent_role}",
                 "description": "Updated API testing template",
                 "tags": ["testing", "api", "validation", "updated"],
                 "archive_reason": "API test update",
@@ -571,7 +574,7 @@ class TestAPIComprehensive:
             ("/api/v1/agents/", {"agent_name": "test"}),  # Missing project_id
             ("/api/v1/messages/send", {"content": "test"}),  # Missing to_agents and project_id
             ("/api/v1/tasks/", {"description": "test"}),  # Missing title
-            ("/api/v1/templates/", {"category": "test"}),  # Missing name and template_content
+            ("/api/v1/templates/", {"category": "test"}),  # Missing name and system_instructions
         ]
 
         for endpoint, data in test_cases:

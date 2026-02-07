@@ -10,13 +10,13 @@ Tests cover:
 Target: >80% line coverage
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+
+from src.giljo_mcp.models import AgentExecution, Project
 from src.giljo_mcp.services.project_service import ProjectService
-from src.giljo_mcp.models import Project, AgentExecution, Message
 
 
 @pytest.fixture
@@ -113,7 +113,6 @@ class TestProjectServiceCRUD:
         mock_project.staging_status = None
         mock_project.product_id = None
         mock_project.tenant_key = "test-tenant"
-        mock_project.context_budget = 150000
         mock_project.context_used = 0
         mock_project.created_at = datetime.now()
         mock_project.updated_at = None
@@ -179,7 +178,6 @@ class TestProjectServiceCRUD:
         mock_project1.staging_status = None
         mock_project1.tenant_key = "tenant1"
         mock_project1.product_id = None
-        mock_project1.context_budget = 150000
         mock_project1.context_used = 1000
         mock_project1.created_at = datetime.now()
         mock_project1.updated_at = None
@@ -553,7 +551,6 @@ class TestProjectServiceLifecycle:
         mock_project.name = "Test Project"
         mock_project.mission = "Test Mission"
         mock_project.config_data = {}
-        mock_project.context_budget = 150000
 
         # Track created jobs
         created_jobs = []
@@ -563,7 +560,7 @@ class TestProjectServiceLifecycle:
 
         session.add = Mock(side_effect=capture_job)
 
-        # Mock database queries: project fetch, instance_number query
+        # Mock database queries: project fetch
         call_count = [0]
 
         async def mock_execute_side_effect(*args, **kwargs):
@@ -572,7 +569,7 @@ class TestProjectServiceLifecycle:
             if call_count[0] == 1:
                 return Mock(scalar_one_or_none=Mock(return_value=mock_project))
             # Call 2: Get max instance number
-            elif call_count[0] == 2:
+            if call_count[0] == 2:
                 return Mock(scalar=Mock(return_value=0))
             # Default
             return Mock(scalar_one_or_none=Mock(return_value=None))
@@ -617,13 +614,10 @@ class TestProjectServiceSwitchProject:
         mock_project.mission = "Mission"
         mock_project.tenant_key = "tenant2"
         mock_project.context_used = 1000
-        mock_project.context_budget = 150000
 
         # NOTE: Session tracking removed (Handover 0423 - Session model deleted)
         # Mock only the project query
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=mock_project))
-        )
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=mock_project)))
 
         service = ProjectService(db_manager, tenant_manager)
 

@@ -7,7 +7,7 @@
           <v-card-title class="text-center pa-6">
             <div class="d-flex flex-column align-center w-100">
               <v-img
-                :src="theme.global.current.value.dark ? '/Giljo_YW.svg' : '/Giljo_BY.svg'"
+                src="/Giljo_YW.svg"
                 alt="GiljoAI MCP"
                 height="50"
                 width="auto"
@@ -47,7 +47,7 @@
             </AppAlert>
 
             <!-- Login Form -->
-            <v-form @submit.prevent="handleLogin" ref="loginForm">
+            <v-form ref="loginForm" @submit.prevent="handleLogin">
               <v-text-field
                 v-model="username"
                 label="Username"
@@ -98,7 +98,7 @@
                 class="mt-4"
                 data-testid="login-button"
               >
-                <v-icon start v-if="!loading">mdi-login</v-icon>
+                <v-icon v-if="!loading" start>mdi-login</v-icon>
                 {{ loading ? 'Logging in...' : 'Sign In' }}
               </v-btn>
 
@@ -107,9 +107,9 @@
                 <v-btn
                   variant="text"
                   color="primary"
-                  @click="handleForgotPasswordClick"
                   :disabled="loading"
                   aria-label="Open forgot password dialog"
+                  @click="handleForgotPasswordClick"
                 >
                   <v-icon start>mdi-lock-question</v-icon>
                   Forgot Password?
@@ -343,11 +343,6 @@ onMounted(async () => {
 /* Dark theme adjustments */
 :deep(.v-theme--dark) .login-container {
   background: linear-gradient(135deg, rgb(18, 29, 42) 0%, rgb(10, 15, 22) 100%);
-}
-
-/* Light theme adjustments */
-:deep(.v-theme--light) .login-container {
-  background: linear-gradient(135deg, rgb(240, 244, 248) 0%, rgb(220, 230, 240) 100%);
 }
 
 /* Accessibility: Focus indicators */

@@ -5,11 +5,14 @@ Fetch general product information for context generation.
 Returns Product Core fields: name, description, features, path, status.
 """
 
+from typing import Any
+
 import structlog
-from typing import Any, Dict, Optional
 from sqlalchemy import select
-from src.giljo_mcp.models.products import Product
+
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.products import Product
+
 
 logger = structlog.get_logger(__name__)
 
@@ -17,16 +20,14 @@ logger = structlog.get_logger(__name__)
 def estimate_tokens(data: Any) -> int:
     """Estimate token count for data (simple heuristic: 1 token ≈ 4 chars)"""
     import json
+
     text = json.dumps(data)
     return len(text) // 4
 
 
 async def get_product_context(
-    product_id: str,
-    tenant_key: str,
-    include_metadata: bool = False,
-    db_manager: Optional[DatabaseManager] = None
-) -> Dict[str, Any]:
+    product_id: str, tenant_key: str, include_metadata: bool = False, db_manager: DatabaseManager | None = None
+) -> dict[str, Any]:
     """
     Fetch general product information (Product Core).
 
@@ -69,10 +70,7 @@ async def get_product_context(
         )
     """
     logger.info(
-        "fetching_product_context",
-        product_id=product_id,
-        tenant_key=tenant_key,
-        include_metadata=include_metadata
+        "fetching_product_context", product_id=product_id, tenant_key=tenant_key, include_metadata=include_metadata
     )
 
     if db_manager is None:
@@ -81,28 +79,18 @@ async def get_product_context(
 
     async with db_manager.get_session_async() as session:
         # Fetch product with multi-tenant isolation
-        stmt = select(Product).where(
-            Product.id == product_id,
-            Product.tenant_key == tenant_key
-        )
+        stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
         result = await session.execute(stmt)
         product = result.scalar_one_or_none()
 
         if not product:
             logger.warning(
-                "product_not_found",
-                product_id=product_id,
-                tenant_key=tenant_key,
-                operation="get_product_context"
+                "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_product_context"
             )
             return {
                 "source": "product_context",
                 "data": {},
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "error": "product_not_found"
-                }
+                "metadata": {"product_id": product_id, "tenant_key": tenant_key, "error": "product_not_found"},
             }
 
         # Extract config_data fields
@@ -117,7 +105,7 @@ async def get_product_context(
             "project_path": product.project_path or "",
             "core_features": core_features,
             "is_active": product.is_active,
-            "created_at": product.created_at.isoformat() if product.created_at else None
+            "created_at": product.created_at.isoformat() if product.created_at else None,
         }
 
         # Conditionally include metadata
@@ -133,14 +121,11 @@ async def get_product_context(
             tenant_key=tenant_key,
             has_core_features=len(core_features) > 0,
             metadata_included=include_metadata,
-            estimated_tokens=total_tokens
+            estimated_tokens=total_tokens,
         )
 
         return {
             "source": "product_context",
             "data": data,
-            "metadata": {
-                "product_id": product_id,
-                "tenant_key": tenant_key
-            }
+            "metadata": {"product_id": product_id, "tenant_key": tenant_key},
         }

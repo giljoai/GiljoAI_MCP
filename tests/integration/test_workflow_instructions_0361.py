@@ -4,21 +4,21 @@ Integration tests for Handover 0361 Issue 4: Agent Workflow Instructions.
 Validates that TodoWrite and progress reporting instructions are present
 in all three layers:
 1. Spawn prompt (orchestration.py)
-2. Agent protocol (orchestration_service.py)  
+2. Agent protocol (orchestration_service.py)
 3. Agent templates (.claude/agents/*.md)
 
 This ensures agents receive consistent, mandatory workflow guidance.
 """
 
 import uuid
-import pytest
-import pytest_asyncio
 from pathlib import Path
 
-from src.giljo_mcp.models import Product, Project, AgentTemplate
-from src.giljo_mcp.tools.orchestration import spawn_agent_job
+import pytest
+import pytest_asyncio
+
+from src.giljo_mcp.models import AgentTemplate, Product, Project
 from src.giljo_mcp.services.orchestration_service import _generate_agent_protocol
-from tests.fixtures.base_fixtures import db_session
+from src.giljo_mcp.tools.orchestration import spawn_agent_job
 
 
 @pytest_asyncio.fixture
@@ -66,7 +66,7 @@ async def workflow_template(db_session, workflow_product, workflow_tenant):
         product_id=workflow_product.id,
         is_active=True,
         version="1.0.0",
-        template_content="Test template",
+        system_instructions="Test template",
     )
     db_session.add(template)
     await db_session.flush()
@@ -113,9 +113,7 @@ class TestWorkflowInstructionsAllLayers:
 
         for template_file in templates:
             content = template_file.read_text(encoding="utf-8")
-            assert "Workflow Protocol (MANDATORY)" in content, (
-                f"{template_file.name} missing workflow protocol"
-            )
+            assert "Workflow Protocol (MANDATORY)" in content, f"{template_file.name} missing workflow protocol"
             assert "TodoWrite" in content
             assert "in_progress" in content
             assert "completed" in content

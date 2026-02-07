@@ -16,7 +16,8 @@ Related Handovers:
 """
 
 import logging
-from typing import Optional, Any, List, Dict
+from typing import Any
+
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,7 @@ class MemoryInstructionGenerator:
     """
 
     def generate_context(
-        self,
-        sequential_history: Optional[List[Dict[str, Any]]],
-        priority: int,
-        git_enabled: bool = False
+        self, sequential_history: list[dict[str, Any | None]], priority: int, git_enabled: bool = False
     ) -> str:
         """
         Generate memory instructions based on priority level.
@@ -68,12 +66,12 @@ class MemoryInstructionGenerator:
         # Build instructions based on detail level
         if detail_level == "minimal":
             return self._generate_minimal_instructions(sequential_history, git_enabled)
-        elif detail_level == "abbreviated":
+        if detail_level == "abbreviated":
             return self._generate_abbreviated_instructions(sequential_history, git_enabled)
-        elif detail_level == "moderate":
+        if detail_level == "moderate":
             return self._generate_moderate_instructions(sequential_history, git_enabled)
-        else:  # full
-            return self._generate_full_instructions(sequential_history, git_enabled)
+        # full
+        return self._generate_full_instructions(sequential_history, git_enabled)
 
     def _get_detail_level(self, priority: int) -> str:
         """
@@ -87,18 +85,13 @@ class MemoryInstructionGenerator:
         """
         if priority <= 3:
             return "minimal"
-        elif priority <= 6:
+        if priority <= 6:
             return "abbreviated"
-        elif priority <= 9:
+        if priority <= 9:
             return "moderate"
-        else:
-            return "full"
+        return "full"
 
-    def _generate_first_project_instructions(
-        self,
-        detail_level: str,
-        git_enabled: bool
-    ) -> str:
+    def _generate_first_project_instructions(self, detail_level: str, git_enabled: bool) -> str:
         """
         Generate instructions for first project (no history).
 
@@ -136,47 +129,49 @@ class MemoryInstructionGenerator:
             "close_project_and_update_memory(",
             '    project_id="<this_project_id>",',
             '    summary="Brief summary of what was accomplished",',
-            '    key_outcomes=[',
+            "    key_outcomes=[",
             '        "Outcome 1 that was achieved",',
             '        "Outcome 2 that was measurable",',
-            '    ],',
-            '    decisions_made=[',
+            "    ],",
+            "    decisions_made=[",
             '        "Technical decision 1 and why",',
             '        "Architecture choice and rationale",',
-            '    ]',
+            "    ]",
             ")",
             "```",
             "",
             "### Git Integration",
-            ""
+            "",
         ]
 
         if git_enabled:
-            sections.extend([
-                "GitHub integration is ENABLED. Git commits will be automatically",
-                "captured and attached to your closeout summary.",
-            ])
+            sections.extend(
+                [
+                    "GitHub integration is ENABLED. Git commits will be automatically",
+                    "captured and attached to your closeout summary.",
+                ]
+            )
         else:
-            sections.extend([
-                "GitHub integration is DISABLED. You'll need to manually include",
-                "important commit references in the summary.",
-            ])
+            sections.extend(
+                [
+                    "GitHub integration is DISABLED. You'll need to manually include",
+                    "important commit references in the summary.",
+                ]
+            )
 
-        sections.extend([
-            "",
-            "---",
-            "",
-            "After you complete this project, future projects in this product will",
-            "benefit from your work through the 360 Memory system.",
-        ])
+        sections.extend(
+            [
+                "",
+                "---",
+                "",
+                "After you complete this project, future projects in this product will",
+                "benefit from your work through the 360 Memory system.",
+            ]
+        )
 
         return "\n".join(sections)
 
-    def _generate_minimal_instructions(
-        self,
-        sequential_history: List[Dict[str, Any]],
-        git_enabled: bool
-    ) -> str:
+    def _generate_minimal_instructions(self, sequential_history: list[dict[str, Any]], git_enabled: bool) -> str:
         """
         Minimal instructions (priority 1-3): Brief overview.
         """
@@ -200,11 +195,7 @@ class MemoryInstructionGenerator:
 
         return "\n".join(sections)
 
-    def _generate_abbreviated_instructions(
-        self,
-        sequential_history: List[Dict[str, Any]],
-        git_enabled: bool
-    ) -> str:
+    def _generate_abbreviated_instructions(self, sequential_history: list[dict[str, Any]], git_enabled: bool) -> str:
         """
         Abbreviated instructions (priority 4-6): More detail than minimal.
         """
@@ -238,27 +229,23 @@ class MemoryInstructionGenerator:
             "close_project_and_update_memory(",
             '    project_id="proj-abc123",',
             '    summary="Implemented authentication system with JWT and refresh tokens",',
-            '    key_outcomes=[',
+            "    key_outcomes=[",
             '        "JWT authentication working in production",',
             '        "99.9% uptime in testing",',
             '        "Users can login within 500ms",',
-            '    ],',
-            '    decisions_made=[',
+            "    ],",
+            "    decisions_made=[",
             '        "Selected bcrypt for password hashing (industry standard)",',
             '        "Used Redis for token blacklist (performance critical)",',
             '        "Implemented refresh token rotation for security",',
-            '    ]',
+            "    ]",
             ")",
             "```",
         ]
 
         return "\n".join(sections)
 
-    def _generate_moderate_instructions(
-        self,
-        sequential_history: List[Dict[str, Any]],
-        git_enabled: bool
-    ) -> str:
+    def _generate_moderate_instructions(self, sequential_history: list[dict[str, Any]], git_enabled: bool) -> str:
         """
         Moderate instructions (priority 7-9): Comprehensive with examples.
         """
@@ -297,20 +284,20 @@ class MemoryInstructionGenerator:
             "    Integrated with existing JWT authentication. Added recovery codes for",
             "    account lockout scenarios. Achieved 99.5% uptime in staging.",
             '    """,',
-            '    key_outcomes=[',
+            "    key_outcomes=[",
             '        "MFA working with Google Authenticator and Authy",',
             '        "Recovery codes prevent account lockout",',
             '        "Setup time reduced to <2 minutes per user",',
             '        "99.5% uptime achieved in testing",',
             '        "Security audit passed with no critical findings",',
-            '    ],',
-            '    decisions_made=[',
+            "    ],",
+            "    decisions_made=[",
             '        "Selected TOTP over SMS (better security, no carrier costs)",',
             '        "Implemented recovery codes (prevents lockout)",',
             '        "Stored secret encrypted in database (zero knowledge)",',
             '        "Rate limited auth attempts to prevent brute force",',
             '        "Chose HMAC-SHA1 (industry standard for TOTP)",',
-            '    ]',
+            "    ]",
             ")",
             "```",
             "",
@@ -323,38 +310,40 @@ class MemoryInstructionGenerator:
             "4. Build on what succeeded",
             "",
             "### Git Integration",
-            ""
+            "",
         ]
 
         if git_enabled:
-            sections.extend([
-                "GitHub integration is ENABLED.",
-                "Git commits are automatically attached to your closeout.",
-                "Include commit references in your summary for clarity.",
-            ])
+            sections.extend(
+                [
+                    "GitHub integration is ENABLED.",
+                    "Git commits are automatically attached to your closeout.",
+                    "Include commit references in your summary for clarity.",
+                ]
+            )
         else:
-            sections.extend([
-                "GitHub integration is DISABLED.",
-                "Manually reference important commits in your summary.",
-            ])
+            sections.extend(
+                [
+                    "GitHub integration is DISABLED.",
+                    "Manually reference important commits in your summary.",
+                ]
+            )
 
-        sections.extend([
-            "",
-            "### Pro Tips",
-            "",
-            "- Be specific in decisions (explain the 'why', not just the 'what')",
-            "- Include measurable outcomes (numbers matter)",
-            "- Reference outcomes that impact future projects",
-            "- Preserve architectural patterns and choices",
-        ])
+        sections.extend(
+            [
+                "",
+                "### Pro Tips",
+                "",
+                "- Be specific in decisions (explain the 'why', not just the 'what')",
+                "- Include measurable outcomes (numbers matter)",
+                "- Reference outcomes that impact future projects",
+                "- Preserve architectural patterns and choices",
+            ]
+        )
 
         return "\n".join(sections)
 
-    def _generate_full_instructions(
-        self,
-        sequential_history: List[Dict[str, Any]],
-        git_enabled: bool
-    ) -> str:
+    def _generate_full_instructions(self, sequential_history: list[dict[str, Any]], git_enabled: bool) -> str:
         """
         Full instructions (priority 10): Most comprehensive guide.
         """
@@ -411,7 +400,7 @@ class MemoryInstructionGenerator:
             "    Final metrics: 99.99% uptime, <100ms gateway response time,",
             "    zero data loss in 3 months of production.",
             '    """,',
-            '    key_outcomes=[',
+            "    key_outcomes=[",
             '        "Stripe integration 100% working with all payment methods",',
             '        "Subscription management with automated billing cycles",',
             '        "Webhook handling with 99.99% uptime",',
@@ -420,8 +409,8 @@ class MemoryInstructionGenerator:
             '        "Customer refunds processed within 30 seconds",',
             '        "Reduced payment failures from 0.5% to 0.02%",',
             '        "Admin dashboard processes 500+ reconciliations/day",',
-            '    ],',
-            '    decisions_made=[',
+            "    ],",
+            "    decisions_made=[",
             '        "Selected Stripe over alternatives: best API, 24/7 support",',
             '        "Used idempotency keys for webhook safety (prevents duplicates)",',
             '        "Implemented cache for exchange rates (reduced API calls 80%)",',
@@ -430,7 +419,7 @@ class MemoryInstructionGenerator:
             '        "Implemented batch refunds (process at 2 AM during low traffic)",',
             '        "Rate limited refund API (prevent abuse, customer feedback)",',
             '        "Encrypted sensitive payment data at rest (PCI requirement)",',
-            '    ]',
+            "    ]",
             ")",
             "```",
             "",
@@ -463,7 +452,7 @@ class MemoryInstructionGenerator:
             "- Trade-offs that matter to future projects",
             "",
             "Example of excellent decision documentation:",
-            '```',
+            "```",
             "Used Redis for session storage because: (1) Sub-millisecond response",
             "times needed for auth on every request, (2) Memcached considered but",
             "no persistence, (3) Postgres too slow at scale, (4) TTL feature built",
@@ -471,63 +460,69 @@ class MemoryInstructionGenerator:
             "```",
             "",
             "### Git Integration",
-            ""
+            "",
         ]
 
         if git_enabled:
-            sections.extend([
-                "GitHub integration is FULLY ENABLED.",
-                "Git commits are automatically captured and linked to your closeout.",
-                "",
-                "The system will:",
-                "- Fetch commits from your configured branch",
-                "- Attach them to the project memory entry",
-                "- Make them searchable alongside your decisions",
-                "- Include them in future project context",
-            ])
+            sections.extend(
+                [
+                    "GitHub integration is FULLY ENABLED.",
+                    "Git commits are automatically captured and linked to your closeout.",
+                    "",
+                    "The system will:",
+                    "- Fetch commits from your configured branch",
+                    "- Attach them to the project memory entry",
+                    "- Make them searchable alongside your decisions",
+                    "- Include them in future project context",
+                ]
+            )
         else:
-            sections.extend([
-                "GitHub integration is currently DISABLED.",
-                "You can enable it in settings to auto-capture commits.",
-                "",
-                "To maximize value without GitHub:",
-                "- Reference commit SHAs in your summary",
-                "- Link to important pull requests",
-                "- Document major code changes",
-            ])
+            sections.extend(
+                [
+                    "GitHub integration is currently DISABLED.",
+                    "You can enable it in settings to auto-capture commits.",
+                    "",
+                    "To maximize value without GitHub:",
+                    "- Reference commit SHAs in your summary",
+                    "- Link to important pull requests",
+                    "- Document major code changes",
+                ]
+            )
 
-        sections.extend([
-            "",
-            "### Best Practices",
-            "",
-            "**On Summaries:**",
-            "- 2-3 paragraphs is ideal",
-            "- Include metrics and numbers",
-            "- Highlight unexpected challenges",
-            "- Reference architecture or patterns used",
-            "",
-            "**On Outcomes:**",
-            "- Be specific and measurable",
-            "- Include both technical and business metrics",
-            "- List problems solved",
-            "- Include adoption/usage statistics if relevant",
-            "",
-            "**On Decisions:**",
-            "- Include the 'why' not just the 'what'",
-            "- Reference alternatives considered",
-            "- Note trade-offs (performance vs maintainability, etc.)",
-            "- Link to standards or patterns followed",
-            "",
-            "### Retrieving Memory",
-            "",
-            "Future projects will automatically see your entries when they run.",
-            "Your decisions, outcomes, and patterns become context for them.",
-            "Orchestrators will cite specific learnings when making recommendations.",
-            "",
-            "### Memory Retention",
-            "",
-            f"This product will preserve all {len(sequential_history)} project memories indefinitely.",
-            "They form the institutional knowledge of the product.",
-        ])
+        sections.extend(
+            [
+                "",
+                "### Best Practices",
+                "",
+                "**On Summaries:**",
+                "- 2-3 paragraphs is ideal",
+                "- Include metrics and numbers",
+                "- Highlight unexpected challenges",
+                "- Reference architecture or patterns used",
+                "",
+                "**On Outcomes:**",
+                "- Be specific and measurable",
+                "- Include both technical and business metrics",
+                "- List problems solved",
+                "- Include adoption/usage statistics if relevant",
+                "",
+                "**On Decisions:**",
+                "- Include the 'why' not just the 'what'",
+                "- Reference alternatives considered",
+                "- Note trade-offs (performance vs maintainability, etc.)",
+                "- Link to standards or patterns followed",
+                "",
+                "### Retrieving Memory",
+                "",
+                "Future projects will automatically see your entries when they run.",
+                "Your decisions, outcomes, and patterns become context for them.",
+                "Orchestrators will cite specific learnings when making recommendations.",
+                "",
+                "### Memory Retention",
+                "",
+                f"This product will preserve all {len(sequential_history)} project memories indefinitely.",
+                "They form the institutional knowledge of the product.",
+            ]
+        )
 
         return "\n".join(sections)

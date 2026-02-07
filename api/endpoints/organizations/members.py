@@ -12,7 +12,6 @@ Features:
 """
 
 import logging
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +20,8 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.services.org_service import OrgService
 
-from .models import MemberInvite, MemberRoleUpdate, MemberResponse, OwnershipTransfer
+from .models import MemberInvite, MemberResponse, MemberRoleUpdate, OwnershipTransfer
+
 
 logger = logging.getLogger(__name__)
 
@@ -29,18 +29,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def get_org_service(
-    db: AsyncSession = Depends(get_db_session)
-) -> OrgService:
+def get_org_service(db: AsyncSession = Depends(get_db_session)) -> OrgService:
     """Dependency for OrgService injection."""
     return OrgService(db)
 
 
-@router.get("/{org_id}/members", response_model=List[MemberResponse])
+@router.get("/{org_id}/members", response_model=list[MemberResponse])
 async def list_members(
     org_id: str,
     current_user: User = Depends(get_current_active_user),
-    org_service: OrgService = Depends(get_org_service)
+    org_service: OrgService = Depends(get_org_service),
 ):
     """
     List all members of organization.
@@ -61,18 +59,12 @@ async def list_members(
     """
     try:
         if not await org_service.can_view_org(org_id, current_user.id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not a member of this organization"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization")
 
         result = await org_service.list_members(org_id)
 
         if not result["success"]:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=result["error"]
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result["error"])
 
         return result["data"]
 
@@ -80,10 +72,7 @@ async def list_members(
         raise
     except Exception as e:
         logger.error(f"Error listing members: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 @router.post("/{org_id}/members", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)
@@ -91,7 +80,7 @@ async def invite_member(
     org_id: str,
     invite_data: MemberInvite,
     current_user: User = Depends(get_current_active_user),
-    org_service: OrgService = Depends(get_org_service)
+    org_service: OrgService = Depends(get_org_service),
 ):
     """
     Invite user to organization (owner or admin only).
@@ -115,29 +104,20 @@ async def invite_member(
     """
     try:
         if not await org_service.can_manage_members(org_id, current_user.id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owner or admin can invite members"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner or admin can invite members")
 
         result = await org_service.invite_member(
             org_id=org_id,
             user_id=invite_data.user_id,
             role=invite_data.role,
             invited_by=current_user.id,
-            tenant_key=current_user.tenant_key
+            tenant_key=current_user.tenant_key,
         )
 
         if not result["success"]:
             if "already" in result["error"].lower():
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=result["error"]
-                )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result["error"]
-            )
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=result["error"])
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
         logger.info(
             "Member invited via API",
@@ -145,8 +125,8 @@ async def invite_member(
                 "org_id": org_id,
                 "invited_user_id": invite_data.user_id,
                 "role": invite_data.role,
-                "invited_by": current_user.id
-            }
+                "invited_by": current_user.id,
+            },
         )
 
         return result["data"]
@@ -155,10 +135,7 @@ async def invite_member(
         raise
     except Exception as e:
         logger.error(f"Error inviting member: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 @router.put("/{org_id}/members/{user_id}", response_model=MemberResponse)
@@ -167,7 +144,7 @@ async def change_member_role(
     user_id: str,
     role_data: MemberRoleUpdate,
     current_user: User = Depends(get_current_active_user),
-    org_service: OrgService = Depends(get_org_service)
+    org_service: OrgService = Depends(get_org_service),
 ):
     """
     Change member's role (owner or admin only).
@@ -193,35 +170,19 @@ async def change_member_role(
     try:
         if not await org_service.can_manage_members(org_id, current_user.id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owner or admin can change member roles"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Only owner or admin can change member roles"
             )
 
-        result = await org_service.change_member_role(
-            org_id=org_id,
-            user_id=user_id,
-            new_role=role_data.role
-        )
+        result = await org_service.change_member_role(org_id=org_id, user_id=user_id, new_role=role_data.role)
 
         if not result["success"]:
             if "owner" in result["error"].lower():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=result["error"]
-                )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result["error"]
-            )
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
         logger.info(
             "Member role changed via API",
-            extra={
-                "org_id": org_id,
-                "user_id": user_id,
-                "new_role": role_data.role,
-                "changed_by": current_user.id
-            }
+            extra={"org_id": org_id, "user_id": user_id, "new_role": role_data.role, "changed_by": current_user.id},
         )
 
         return result["data"]
@@ -230,10 +191,7 @@ async def change_member_role(
         raise
     except Exception as e:
         logger.error(f"Error changing member role: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 @router.delete("/{org_id}/members/{user_id}")
@@ -241,7 +199,7 @@ async def remove_member(
     org_id: str,
     user_id: str,
     current_user: User = Depends(get_current_active_user),
-    org_service: OrgService = Depends(get_org_service)
+    org_service: OrgService = Depends(get_org_service),
 ):
     """
     Remove member from organization (owner or admin only).
@@ -265,31 +223,18 @@ async def remove_member(
     """
     try:
         if not await org_service.can_manage_members(org_id, current_user.id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owner or admin can remove members"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner or admin can remove members")
 
         result = await org_service.remove_member(org_id=org_id, user_id=user_id)
 
         if not result["success"]:
             if "owner" in result["error"].lower():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=result["error"]
-                )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result["error"]
-            )
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
         logger.info(
             "Member removed via API",
-            extra={
-                "org_id": org_id,
-                "removed_user_id": user_id,
-                "removed_by": current_user.id
-            }
+            extra={"org_id": org_id, "removed_user_id": user_id, "removed_by": current_user.id},
         )
 
         return {"message": "Member removed"}
@@ -298,10 +243,7 @@ async def remove_member(
         raise
     except Exception as e:
         logger.error(f"Error removing member: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
 # Separate router for transfer endpoint (different path pattern)
@@ -313,7 +255,7 @@ async def transfer_ownership(
     org_id: str,
     transfer_data: OwnershipTransfer,
     current_user: User = Depends(get_current_active_user),
-    org_service: OrgService = Depends(get_org_service)
+    org_service: OrgService = Depends(get_org_service),
 ):
     """
     Transfer organization ownership (owner only).
@@ -337,30 +279,18 @@ async def transfer_ownership(
     """
     try:
         if not await org_service.can_delete_org(org_id, current_user.id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owner can transfer ownership"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner can transfer ownership")
 
         result = await org_service.transfer_ownership(
-            org_id=org_id,
-            current_owner_id=current_user.id,
-            new_owner_id=transfer_data.new_owner_id
+            org_id=org_id, current_owner_id=current_user.id, new_owner_id=transfer_data.new_owner_id
         )
 
         if not result["success"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result["error"]
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
         logger.info(
             "Ownership transferred via API",
-            extra={
-                "org_id": org_id,
-                "previous_owner_id": current_user.id,
-                "new_owner_id": transfer_data.new_owner_id
-            }
+            extra={"org_id": org_id, "previous_owner_id": current_user.id, "new_owner_id": transfer_data.new_owner_id},
         )
 
         return {"message": "Ownership transferred"}
@@ -369,7 +299,4 @@ async def transfer_ownership(
         raise
     except Exception as e:
         logger.error(f"Error transferring ownership: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e

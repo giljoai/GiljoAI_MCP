@@ -3,14 +3,16 @@ Test mission tracking fields in table-view API endpoint - Updated for simplified
 
 Note: mission_read_at has been removed; only mission_acknowledged_at remains.
 """
-import pytest
-from httpx import AsyncClient
+
 from datetime import datetime, timezone
 from uuid import uuid4
 
+import pytest
+from httpx import AsyncClient
+
 from src.giljo_mcp.models.agent_identity import AgentExecution
-from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
 
 
 @pytest.fixture
@@ -55,7 +57,6 @@ async def test_project_with_jobs(db_manager, admin_user):
             mission="Test mission 1",
             status="working",
             mission_acknowledged_at=ack_time,
-            instance_number=1,
         )
 
         # Job 2: With mission_acknowledged_at set
@@ -71,7 +72,6 @@ async def test_project_with_jobs(db_manager, admin_user):
             mission="Test mission 2",
             status="working",
             mission_acknowledged_at=ack_time2,
-            instance_number=1,
         )
 
         # Job 3: With mission_acknowledged_at null
@@ -86,7 +86,6 @@ async def test_project_with_jobs(db_manager, admin_user):
             mission="Test mission 3",
             status="waiting",
             mission_acknowledged_at=None,
-            instance_number=1,
         )
 
         session.add(job1)

@@ -6,26 +6,23 @@ These methods are being moved from orchestrator.py to OrchestrationService:
 - generate_mission_plan() - Generate missions from vision
 - select_agents_for_mission() - Smart agent selection
 - coordinate_agent_workflow() - Workflow coordination
-- spawn_agent_legacy() - Agent spawning with routing
 - _get_agent_template_internal() - Template resolution with cascade
+
+NOTE: spawn_agent_legacy() removed in 0700 cleanup - use spawn_agent_job() instead.
 
 All tests should FAIL initially (RED phase) since the methods don't exist yet.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
-from datetime import datetime, timezone
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+
+from src.giljo_mcp.models import AgentTemplate, Product
 
 # These imports should work after implementation
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.models import Product, Project, AgentTemplate
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.models.products import VisionDocument
-from src.giljo_mcp.enums import AgentRole
 
 
 # ============================================================================
@@ -81,9 +78,17 @@ class TestProcessProductVision:
     """Tests for process_product_vision() method."""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Complex integration test - requires full database setup with eager loading of relationships")
+    @pytest.mark.skip(
+        reason="Complex integration test - requires full database setup with eager loading of relationships"
+    )
     async def test_creates_project_from_vision(
-        self, db_session: AsyncSession, test_tenant_key, test_product, mock_mission_planner, mock_agent_selector, mock_workflow_engine
+        self,
+        db_session: AsyncSession,
+        test_tenant_key,
+        test_product,
+        mock_mission_planner,
+        mock_agent_selector,
+        mock_workflow_engine,
     ):
         """Test process_product_vision creates project and returns workflow result."""
         # Create mock product with vision properties already set (avoid lazy loading)
@@ -118,13 +123,15 @@ class TestProcessProductVision:
 
         # Use context manager that yields our mock session
         from contextlib import asynccontextmanager
+
         @asynccontextmanager
         async def mock_get_session():
             yield mock_session
+
         service._get_session = mock_get_session
 
         # Mock ProjectService.create_project
-        with patch('src.giljo_mcp.services.orchestration_service.ProjectService') as MockProjectService:
+        with patch("src.giljo_mcp.services.orchestration_service.ProjectService") as MockProjectService:
             mock_project_service = MagicMock()
             mock_project_service.create_project = AsyncMock(return_value=created_project)
             MockProjectService.return_value = mock_project_service
@@ -147,7 +154,9 @@ class TestProcessProductVision:
         assert len(result["selected_agents"]) == 2
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Complex integration test - requires full database setup with eager loading of relationships")
+    @pytest.mark.skip(
+        reason="Complex integration test - requires full database setup with eager loading of relationships"
+    )
     async def test_uses_existing_project_when_provided(
         self, db_session: AsyncSession, test_tenant_key, test_product, test_project
     ):
@@ -189,17 +198,20 @@ class TestProcessProductVision:
         async def mock_get(model, id):
             if model.__name__ == "Product":
                 return mock_product
-            elif model.__name__ == "Project":
+            if model.__name__ == "Project":
                 return mock_existing_project
             return None
+
         mock_session.get = mock_get
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
         from contextlib import asynccontextmanager
+
         @asynccontextmanager
         async def mock_get_session():
             yield mock_session
+
         service._get_session = mock_get_session
 
         # Act: Call with existing project_id
@@ -297,7 +309,9 @@ class TestGenerateMissionPlan:
         mock_mission_planner.generate_mission.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_passes_user_id_for_field_priorities(self, db_session: AsyncSession, test_product, mock_mission_planner):
+    async def test_passes_user_id_for_field_priorities(
+        self, db_session: AsyncSession, test_product, mock_mission_planner
+    ):
         """Test user_id is propagated for field priority configuration."""
         # Create service with mocked planner
         service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock())
@@ -325,7 +339,9 @@ class TestSelectAgentsForMission:
     """Tests for select_agents_for_mission() method."""
 
     @pytest.mark.asyncio
-    async def test_selects_agents_from_requirements(self, db_session: AsyncSession, test_tenant_key, mock_agent_selector):
+    async def test_selects_agents_from_requirements(
+        self, db_session: AsyncSession, test_tenant_key, mock_agent_selector
+    ):
         """Test select_agents_for_mission returns agent configs."""
         # Create service with mocked selector
         service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock())
@@ -354,9 +370,7 @@ class TestSelectAgentsForMission:
         requirements = {"required_agents": ["implementer"]}
 
         # Act: Select agents
-        await service.select_agents_for_mission(
-            requirements=requirements, tenant_key=test_tenant_key, product_id=None
-        )
+        await service.select_agents_for_mission(requirements=requirements, tenant_key=test_tenant_key, product_id=None)
 
         # Assert: Tenant key passed to selector
         mock_agent_selector.select_agents.assert_called_once()
@@ -388,127 +402,16 @@ class TestCoordinateAgentWorkflow:
 
         # Act: Coordinate workflow
         workflow_result = await service.coordinate_agent_workflow(
-            agent_configs=agent_configs, workflow_type="waterfall", tenant_key=test_tenant_key, project_id=test_project.id
+            agent_configs=agent_configs,
+            workflow_type="waterfall",
+            tenant_key=test_tenant_key,
+            project_id=test_project.id,
         )
 
         # Assert: Workflow executed
         assert workflow_result.status == "completed"
         assert len(workflow_result.completed) == 1
         mock_workflow_engine.execute_workflow.assert_called_once()
-
-
-# ============================================================================
-# TestSpawnAgentLegacy
-# ============================================================================
-
-
-class TestSpawnAgentLegacy:
-    """Tests for spawn_agent_legacy() method."""
-
-    @pytest.mark.asyncio
-    async def test_routes_claude_agent(self, db_session: AsyncSession, test_tenant_key, test_project):
-        """Test spawn_agent routes to Claude Code for tool='claude'."""
-        # Setup: Create template with tool='claude'
-        template = AgentTemplate(
-            id=str(uuid4()),
-            name="Claude Implementer",
-            category="role",
-            role="implementer",
-            tool="claude",
-            tenant_key=test_tenant_key,
-            is_default=False,
-            template_content="Test template content",
-        )
-        db_session.add(template)
-        await db_session.commit()
-
-        # Create service with mocked internal methods and inject test session
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock())
-        service._test_session = db_session  # Inject test session for project lookup
-        service._get_agent_template_internal = AsyncMock(return_value=template)
-        service._spawn_claude_code_agent_internal = AsyncMock(
-            return_value=MagicMock(tool_type="claude", agent_id="agent-123")
-        )
-
-        # Act: Spawn agent (template is looked up internally, not passed)
-        agent = await service.spawn_agent_legacy(
-            project_id=test_project.id,
-            role=AgentRole.IMPLEMENTER,
-        )
-
-        # Assert: Routed to Claude Code
-        assert agent.tool_type == "claude"
-        service._spawn_claude_code_agent_internal.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_routes_codex_agent(self, db_session: AsyncSession, test_tenant_key, test_project):
-        """Test spawn_agent routes to generic agent for tool='codex'."""
-        # Setup: Create template with tool='codex'
-        template = AgentTemplate(
-            id=str(uuid4()),
-            name="Codex Implementer",
-            category="role",
-            role="implementer",
-            tool="codex",
-            tenant_key=test_tenant_key,
-            is_default=False,
-            template_content="Test template content",
-        )
-        db_session.add(template)
-        await db_session.commit()
-
-        # Create service with mocked internal methods and inject test session
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock())
-        service._test_session = db_session  # Inject test session for project lookup
-        service._get_agent_template_internal = AsyncMock(return_value=template)
-        service._spawn_generic_agent_internal = AsyncMock(
-            return_value=MagicMock(tool_type="codex", agent_id="agent-456")
-        )
-
-        # Act: Spawn agent (template is looked up internally, not passed)
-        agent = await service.spawn_agent_legacy(
-            project_id=test_project.id,
-            role=AgentRole.IMPLEMENTER,
-        )
-
-        # Assert: Routed to generic agent
-        assert agent.tool_type == "codex"
-        service._spawn_generic_agent_internal.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_routes_gemini_agent(self, db_session: AsyncSession, test_tenant_key, test_project):
-        """Test spawn_agent routes to generic agent for tool='gemini'."""
-        # Setup: Create template with tool='gemini'
-        template = AgentTemplate(
-            id=str(uuid4()),
-            name="Gemini Implementer",
-            category="role",
-            role="implementer",
-            tool="gemini",
-            tenant_key=test_tenant_key,
-            is_default=False,
-            template_content="Test template content",
-        )
-        db_session.add(template)
-        await db_session.commit()
-
-        # Create service with mocked internal methods and inject test session
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock())
-        service._test_session = db_session  # Inject test session for project lookup
-        service._get_agent_template_internal = AsyncMock(return_value=template)
-        service._spawn_generic_agent_internal = AsyncMock(
-            return_value=MagicMock(tool_type="gemini", agent_id="agent-789")
-        )
-
-        # Act: Spawn agent (template is looked up internally, not passed)
-        agent = await service.spawn_agent_legacy(
-            project_id=test_project.id,
-            role=AgentRole.IMPLEMENTER,
-        )
-
-        # Assert: Routed to generic agent
-        assert agent.tool_type == "gemini"
-        service._spawn_generic_agent_internal.assert_called_once()
 
 
 # ============================================================================
@@ -532,7 +435,7 @@ class TestGetAgentTemplateInternal:
             tool="claude",
             tenant_key="system",  # System templates use "system" tenant_key
             is_default=True,
-            template_content="System template",
+            system_instructions="System template",
         )
         # 2. Tenant-specific
         tenant_template = AgentTemplate(
@@ -543,7 +446,7 @@ class TestGetAgentTemplateInternal:
             tool="claude",
             tenant_key=test_tenant_key,
             is_default=False,
-            template_content="Tenant template",
+            system_instructions="Tenant template",
         )
         # 3. Product-specific
         product_template = AgentTemplate(
@@ -555,7 +458,7 @@ class TestGetAgentTemplateInternal:
             tenant_key=test_tenant_key,
             product_id=test_product.id,
             is_default=False,
-            template_content="Product template",
+            system_instructions="Product template",
         )
         db_session.add_all([system_template, tenant_template, product_template])
         await db_session.commit()
@@ -570,7 +473,7 @@ class TestGetAgentTemplateInternal:
 
         # Assert: Should return product-specific template
         assert template is not None
-        assert template.template_content == "Product template"
+        assert template.system_instructions == "Product template"
         assert template.product_id == test_product.id
 
     @pytest.mark.asyncio
@@ -586,7 +489,7 @@ class TestGetAgentTemplateInternal:
             tool="claude",
             tenant_key="system",  # System templates use "system" tenant_key
             is_default=True,
-            template_content="System template",
+            system_instructions="System template",
         )
         # 2. Tenant-specific
         tenant_template = AgentTemplate(
@@ -597,7 +500,7 @@ class TestGetAgentTemplateInternal:
             tool="claude",
             tenant_key=test_tenant_key,
             is_default=False,
-            template_content="Tenant template",
+            system_instructions="Tenant template",
         )
         db_session.add_all([system_template, tenant_template])
         await db_session.commit()
@@ -612,7 +515,7 @@ class TestGetAgentTemplateInternal:
 
         # Assert: Should fall back to tenant template
         assert template is not None
-        assert template.template_content == "Tenant template"
+        assert template.system_instructions == "Tenant template"
         assert template.product_id is None
         assert template.tenant_key == test_tenant_key
 
@@ -628,7 +531,7 @@ class TestGetAgentTemplateInternal:
             tool="claude",
             tenant_key="system",  # System templates use "system" tenant_key
             is_default=True,
-            template_content="System template",
+            system_instructions="System template",
         )
         db_session.add(system_template)
         await db_session.commit()
@@ -643,7 +546,7 @@ class TestGetAgentTemplateInternal:
 
         # Assert: Should fall back to system default
         assert template is not None
-        assert template.template_content == "System template"
+        assert template.system_instructions == "System template"
         assert template.is_default is True
         assert template.tenant_key == "system"
 
@@ -684,61 +587,3 @@ class TestMultiTenantIsolation:
                 product_id=product_a.id,
                 project_requirements="Build something",
             )
-
-    @pytest.mark.asyncio
-    async def test_spawn_agent_tenant_isolated(self, db_session: AsyncSession, test_tenant_key):
-        """Test spawn_agent passes correct tenant_key to template lookup (tenant isolation)."""
-        # Setup: Mock project with specific tenant
-        tenant_a = "tenant-a"
-
-        mock_project = MagicMock()
-        mock_project.id = str(uuid4())
-        mock_project.name = "Project A"
-        mock_project.tenant_key = tenant_a
-        mock_project.product_id = None  # No product to avoid product validation
-
-        # Create mock template that will be returned
-        mock_template = MagicMock()
-        mock_template.tool = "claude"
-        mock_template.name = "Test Template"
-        mock_template.id = str(uuid4())
-
-        # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock())
-
-        # Mock _get_agent_template_internal to capture the tenant_key that's passed
-        service._get_agent_template_internal = AsyncMock(return_value=mock_template)
-
-        # Mock _spawn_claude_code_agent_internal to return a mock agent
-        mock_agent = MagicMock()
-        mock_agent.tool_type = "claude"
-        mock_agent.agent_id = str(uuid4())
-        service._spawn_claude_code_agent_internal = AsyncMock(return_value=mock_agent)
-
-        # Mock session that returns our mock project
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none = MagicMock(return_value=mock_project)
-        mock_session.execute = AsyncMock(return_value=mock_result)
-        mock_session.get = AsyncMock(return_value=None)  # No product
-
-        from contextlib import asynccontextmanager
-        @asynccontextmanager
-        async def mock_get_session():
-            yield mock_session
-        service._get_session = mock_get_session
-
-        # Act: Spawn agent
-        agent = await service.spawn_agent_legacy(
-            project_id=mock_project.id,
-            role=AgentRole.IMPLEMENTER,
-        )
-
-        # Assert: Agent was created and tenant_key was correctly passed
-        assert agent is not None
-
-        # CRITICAL: Verify _get_agent_template_internal was called with project's tenant_key
-        # This proves tenant isolation - the template lookup uses the project's tenant, not any other
-        service._get_agent_template_internal.assert_called_once()
-        call_kwargs = service._get_agent_template_internal.call_args.kwargs
-        assert call_kwargs["tenant_key"] == tenant_a, f"Expected tenant_key {tenant_a}, got {call_kwargs.get('tenant_key')}"

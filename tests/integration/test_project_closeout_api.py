@@ -16,7 +16,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import Project, User
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 def _completion_payload(confirm_closeout: bool = True) -> dict:
@@ -317,7 +317,9 @@ async def test_complete_project_without_confirmation(
 
     # Try completing without confirmation
     response = await async_client.post(
-        f"/api/v1/projects/{project.id}/complete", json=_completion_payload(confirm_closeout=False), headers=auth_headers
+        f"/api/v1/projects/{project.id}/complete",
+        json=_completion_payload(confirm_closeout=False),
+        headers=auth_headers,
     )
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST

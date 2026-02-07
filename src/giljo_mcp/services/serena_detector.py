@@ -78,7 +78,7 @@ class SerenaDetector:
             Tuple of (is_available, error_message)
         """
         try:
-            result = subprocess.run(  # nosec B603 B607
+            result = subprocess.run(
                 ["uvx", "--version"],
                 check=False,
                 capture_output=True,
@@ -97,8 +97,8 @@ class SerenaDetector:
             return False, "uvx check timeout"
         except subprocess.CalledProcessError as e:
             return False, f"uvx check failed: {e.stderr}"
-        except Exception as e:
-            logger.error(f"Unexpected error checking uvx: {e}")
+        except (OSError, RuntimeError) as e:
+            logger.exception("Unexpected error checking uvx")
             return False, f"Unexpected error: {e!s}"
 
     def _check_serena(self) -> tuple[bool, Optional[str], Optional[str]]:
@@ -109,7 +109,7 @@ class SerenaDetector:
             Tuple of (is_installed, version, error_message)
         """
         try:
-            result = subprocess.run(  # nosec B603 B607
+            result = subprocess.run(
                 ["uvx", "serena", "--version"],
                 check=False,
                 capture_output=True,
@@ -128,8 +128,8 @@ class SerenaDetector:
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr if hasattr(e, "stderr") else str(e)
             return False, None, f"Serena not found: {error_msg}"
-        except Exception as e:
-            logger.error(f"Unexpected error checking Serena: {e}")
+        except (OSError, RuntimeError) as e:
+            logger.exception("Unexpected error checking Serena")
             return False, None, f"Unexpected error: {e!s}"
 
     def _parse_version(self, version_output: str) -> Optional[str]:

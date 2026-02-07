@@ -143,7 +143,8 @@ class TestOrchestratorTemplateSeeding:
 
         # Verify template content
         assert (
-            "30-80-10" in added_template.template_content or "principle" in added_template.template_content.lower()
+            "30-80-10" in added_template.system_instructions
+            or "principle" in added_template.system_instructions.lower()
         ), "Should contain principle reference"
 
 

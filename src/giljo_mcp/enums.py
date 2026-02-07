@@ -80,15 +80,6 @@ class MessageStatus(Enum):
     EXPIRED = "expired"
 
 
-class AugmentationType(Enum):
-    """Template augmentation types."""
-
-    APPEND = "append"
-    PREPEND = "prepend"
-    REPLACE = "replace"
-    INJECT = "inject"
-
-
 class TemplateCategory(Enum):
     """Template categories."""
 
@@ -99,15 +90,6 @@ class TemplateCategory(Enum):
     CORE = "core"
 
 
-class ArchiveType(Enum):
-    """Template archive types."""
-
-    MANUAL = "manual"
-    AUTO = "auto"
-    SCHEDULED = "scheduled"
-    ROLLBACK = "rollback"
-
-
 class JobStatus(Enum):
     """Job execution status."""
 
@@ -116,15 +98,6 @@ class JobStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
-
-
-class InteractionType(Enum):
-    """Agent interaction types for sub-agent tracking."""
-
-    SPAWN = "spawn"
-    COMPLETE = "complete"
-    ERROR = "error"
-    HANDOFF = "handoff"
 
 
 class ContextStatus(Enum):

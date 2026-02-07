@@ -24,11 +24,11 @@ from api.schemas.prompt import (
     AgentPromptResponse,
     OrchestratorPromptRequest,
     OrchestratorPromptResponse,
-    ThinPromptResponse,
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
 logger = logging.getLogger(__name__)
@@ -72,14 +72,11 @@ async def generate_orchestrator_prompt(
         )
 
     # Count agents in project (via AgentExecution)
-    agent_count_stmt = select(func.count(AgentExecution.agent_id)).where(
-        AgentExecution.tenant_key == current_user.tenant_key
-    ).join(
-        AgentJob,
-        (AgentJob.job_id == AgentExecution.job_id) &
-        (AgentJob.tenant_key == AgentExecution.tenant_key)
-    ).where(
-        AgentJob.project_id == project_id
+    agent_count_stmt = (
+        select(func.count(AgentExecution.agent_id))
+        .where(AgentExecution.tenant_key == current_user.tenant_key)
+        .join(AgentJob, (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key))
+        .where(AgentJob.project_id == project_id)
     )
     agent_count_result = await db.execute(agent_count_stmt)
     agent_count = agent_count_result.scalar() or 0
@@ -138,7 +135,7 @@ async def generate_orchestrator_prompt_thin(
     request: OrchestratorPromptRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
-    ws_dep: WebSocketDependency = Depends(get_websocket_dependency)
+    ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
 ) -> OrchestratorPromptResponse:
     """
     Generate a thin orchestrator prompt for GiljoMCP Agent Orchestration.
@@ -155,7 +152,7 @@ async def generate_orchestrator_prompt_thin(
     - Clean separation between staging/execution
 
     Args:
-        request: Request containing project_id, tool, and instance_number
+        request: Request containing project_id and tool
         current_user: Currently authenticated user
         db: Database session
 
@@ -168,7 +165,6 @@ async def generate_orchestrator_prompt_thin(
     try:
         project_id = request.project_id
         tool = request.tool or "universal"
-        instance_number = request.instance_number or 1
 
         # Create thin prompt generator
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
@@ -184,8 +180,7 @@ async def generate_orchestrator_prompt_thin(
             project_id=project_id,
             user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
             tool=tool,
-            instance_number=instance_number,
-            field_priorities=field_priorities  # FIX: Pass user's configured field priorities
+            field_priorities=field_priorities,  # FIX: Pass user's configured field priorities
         )
 
         # Broadcast WebSocket event for real-time UI update
@@ -197,37 +192,31 @@ async def generate_orchestrator_prompt_thin(
                     "project_id": project_id,
                     "orchestrator_id": result["orchestrator_id"],
                     "execution_id": result.get("execution_id"),  # UNIQUE row ID for frontend Map key
-                    "instance_number": result["instance_number"],
                     "estimated_tokens": result["estimated_prompt_tokens"],
                     "thin_client": True,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
             )
 
         return OrchestratorPromptResponse(
             success=True,
             orchestrator_id=result["orchestrator_id"],
             prompt=result["thin_prompt"],
-            instance_number=result["instance_number"],
             context_budget=result["context_budget"],
             context_used=0,  # New orchestrator starts with 0 context used
             estimated_prompt_tokens=result["estimated_prompt_tokens"],
             thin_client=True,
-            status="ready"
+            status="ready",
         )
 
     except ValueError as e:
-        logger.error(f"Validation error generating thin orchestrator prompt: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        logger.exception("Validation error generating thin orchestrator prompt")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Error generating thin orchestrator prompt: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate orchestrator prompt: {str(e)}"
-        )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate orchestrator prompt: {e!s}"
+        ) from e
 
 
 @router.get("/agent/{agent_id}", response_model=AgentPromptResponse)
@@ -258,10 +247,7 @@ async def generate_agent_prompt(
     stmt = (
         select(AgentExecution)
         .options(joinedload(AgentExecution.job))
-        .where(
-            AgentExecution.agent_id == agent_id,
-            AgentExecution.tenant_key == current_user.tenant_key
-        )
+        .where(AgentExecution.agent_id == agent_id, AgentExecution.tenant_key == current_user.tenant_key)
     )
     result = await db.execute(stmt)
     agent = result.scalar_one_or_none()
@@ -290,7 +276,7 @@ async def generate_agent_prompt(
     mission_preview = mission[:200] + "..." if len(mission) > 200 else mission
 
     # Create missions directory if needed
-    missions_dir = Path(project_path) / ".missions"
+    Path(project_path) / ".missions"
 
     # Get tool type from agent execution metadata (default to "claude-code")
     tool_type = agent.metadata.get("tool_type", "claude-code") if agent.metadata else "claude-code"
@@ -348,11 +334,10 @@ Prerequisites:
 async def generate_staging_prompt(
     project_id: str,
     tool: str = Query("claude-code", pattern="^(claude-code|codex|gemini)$"),
-    instance_number: int = Query(1, ge=1, description="Orchestrator instance number"),
     execution_mode: str = Query(
         "multi_terminal",
         pattern="^(multi_terminal|claude_code_cli)$",
-        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)"
+        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
@@ -382,12 +367,10 @@ async def generate_staging_prompt(
     - Dynamic field priority integration (user-configured)
     - Professional UX (copy 10 lines, not 3000)
     - Multi-tool support (Claude Code, Codex, Gemini)
-    - Orchestrator succession support (instance_number)
 
     Args:
         project_id: Project UUID to generate prompt for
         tool: Target AI tool (claude-code, codex, or gemini)
-        instance_number: Orchestrator instance number (for succession)
         current_user: Authenticated user (ensures tenant isolation)
         db: Database session
 
@@ -423,8 +406,7 @@ async def generate_staging_prompt(
             project_id=project_id,
             user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
             tool=tool,
-            instance_number=instance_number,
-            field_priorities=field_priorities  # FIX: Pass user's configured field priorities
+            field_priorities=field_priorities,  # FIX: Pass user's configured field priorities
         )
 
         # Use generate_staging_prompt for mode-specific content
@@ -450,7 +432,6 @@ async def generate_staging_prompt(
                     "project_id": project_id,
                     "thin_client": True,
                     "tool": tool,
-                    "instance_number": result["instance_number"],
                 },
             )
             logger.info(f"[STAGING PROMPT THIN] WebSocket broadcast sent for orchestrator {result['orchestrator_id']}")
@@ -459,7 +440,6 @@ async def generate_staging_prompt(
         logger.info(
             f"[STAGING PROMPT THIN] Generated for project={project_id}, "
             f"tool={tool}, tokens={result['estimated_prompt_tokens']}, "
-            f"instance={result['instance_number']}, "
             f"user={current_user.username}"
         )
 
@@ -470,7 +450,6 @@ async def generate_staging_prompt(
             "orchestrator_id": result["orchestrator_id"],
             "agent_id": result.get("agent_id"),  # WHO - executor ID for MCP tool calls
             "prompt": staging_prompt,  # Mode-specific staging prompt
-            "instance_number": result["instance_number"],
             "context_budget": result["context_budget"],
             "estimated_prompt_tokens": staging_tokens,  # Updated token count for staging prompt
         }
@@ -478,201 +457,14 @@ async def generate_staging_prompt(
     except ValueError as e:
         # Project not found or invalid tool
         logger.warning(f"[STAGING PROMPT THIN] Validation error for project={project_id}: {e}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
     except Exception as e:
         # Unexpected error during generation
-        logger.exception(f"[STAGING PROMPT THIN] Generation failed for project={project_id}: {e}")
+        logger.exception("[STAGING PROMPT THIN] Generation failed for project={project_id}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate thin staging prompt: {e!s}"
-        )
-
-
-
-@router.get("/execution/{orchestrator_job_id}")
-async def get_execution_prompt(
-    orchestrator_job_id: str,
-    claude_code_mode: bool = Query(False, description="True for Claude Code subagent mode, False for multi-terminal"),
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
-):
-    """
-    Generate execution phase prompt for orchestrator (Handover 0109).
-
-    DEPRECATED (Handover 0253): Use /api/prompts/staging/{project_id} instead.
-
-    This endpoint returns scenario-specific prompts (Scenario A).
-    The new universal prompt (/staging) works in ALL scenarios using fetch-first pattern.
-
-    This endpoint will be removed in v4.0.
-
-    This endpoint generates ready-to-paste prompts for the execution phase,
-    AFTER the orchestrator has completed staging and created the mission plan.
-
-    Two modes are supported:
-    - Multi-Terminal Mode (default): User launches specialist agents in separate terminals
-    - Claude Code Mode: Orchestrator spawns agents as Claude Code subagents using @ mentions
-
-    Process:
-    1. Fetch orchestrator job and validate (must be orchestrator type)
-    2. Fetch project and count specialist agents
-    3. Generate execution prompt based on mode
-    4. Return prompt with metadata for UI display
-
-    Args:
-        orchestrator_job_id: Orchestrator job UUID
-        claude_code_mode: True for Claude Code subagent mode, False for multi-terminal
-        current_user: Authenticated user (for multi-tenant isolation)
-        db: Database session
-
-    Returns:
-        JSON response with:
-            - success: True if generation succeeded
-            - orchestrator_job_id: Orchestrator UUID
-            - project_id: Project UUID
-            - project_name: Project name
-            - claude_code_mode: Mode used
-            - prompt: Ready-to-paste execution prompt
-            - agent_count: Number of specialist agents
-            - estimated_tokens: Token estimate for prompt
-            - deprecated: True (Handover 0253)
-            - migration_note: Migration guidance
-
-    Raises:
-        HTTPException 404: Orchestrator job not found or not accessible
-        HTTPException 400: Job is not an orchestrator type
-        HTTPException 403: Multi-tenant isolation violation
-        HTTPException 500: Prompt generation error
-    """
-    from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
-
-    # Log deprecation warning (Handover 0253 Phase 3)
-    logger.warning(
-        f"[DEPRECATED] /api/prompts/execution called for orchestrator {orchestrator_job_id}. "
-        "Use /api/prompts/staging for universal prompt generation."
-    )
-
-    try:
-        # Initialize thin client generator
-        generator = ThinClientPromptGenerator(db, current_user.tenant_key)
-
-        # Fetch orchestrator execution to determine project_id and validate type/tenant
-        exec_stmt = (
-            select(AgentExecution)
-            .options(joinedload(AgentExecution.job))
-            .where(
-                AgentExecution.agent_id == orchestrator_job_id,
-                AgentExecution.tenant_key == current_user.tenant_key,
-            )
-        )
-        exec_result = await db.execute(exec_stmt)
-        execution = exec_result.scalar_one_or_none()
-
-        if not execution:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Orchestrator job {orchestrator_job_id} not found or not accessible",
-            )
-
-        if (execution.agent_display_name or '').lower() != 'orchestrator':
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Execution prompt is only available for orchestrator jobs",
-            )
-
-        # Get project_id from job relationship
-        if not execution.job:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Orchestrator job not linked to a work order",
-            )
-
-        # Fetch project for metadata
-        proj_stmt = select(Project).where(
-            Project.id == execution.job.project_id,
-            Project.tenant_key == current_user.tenant_key,
-        )
-        proj_result = await db.execute(proj_stmt)
-        project = proj_result.scalar_one_or_none()
-
-        if not project:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Project {execution.job.project_id} not found",
-            )
-
-        # Count specialist agents (exclude orchestrator)
-        agent_count_stmt = (
-            select(func.count(AgentExecution.agent_id))
-            .where(
-                AgentExecution.tenant_key == current_user.tenant_key,
-                AgentExecution.agent_display_name != 'orchestrator',
-            )
-            .join(
-                AgentJob,
-                (AgentJob.job_id == AgentExecution.job_id) &
-                (AgentJob.tenant_key == AgentExecution.tenant_key)
-            )
-            .where(
-                AgentJob.project_id == execution.job.project_id
-            )
-        )
-        agent_count_result = await db.execute(agent_count_stmt)
-        agent_count = int(agent_count_result.scalar() or 0)
-
-        # Use universal prompt generator (Handover 0253)
-        prompt_text = await generator.generate_staging_prompt(
-            orchestrator_id=orchestrator_job_id,
-            project_id=execution.job.project_id
-        )
-
-        # Build frontend-compatible response with deprecation markers
-        response = {
-            "success": True,
-            "orchestrator_job_id": orchestrator_job_id,
-            "project_id": str(execution.job.project_id),
-            "project_name": project.name if hasattr(project, 'name') else None,
-            "claude_code_mode": bool(claude_code_mode),
-            "prompt": prompt_text,
-            "agent_count": agent_count,
-            "estimated_tokens": len(prompt_text) // 4,
-            "deprecated": True,
-            "migration_note": "Use /api/prompts/staging/{project_id} for universal prompts"
-        }
-
-        logger.info(
-            f"[EXECUTION PROMPT] Generated for orchestrator={orchestrator_job_id}, "
-            f"mode={'claude-code' if claude_code_mode else 'multi-terminal'}, "
-            f"user={current_user.username}, agents={agent_count}"
-        )
-
-        return response
-
-    except ValueError as e:
-        # Orchestrator not found or validation error
-        error_msg = str(e)
-
-        # Check if it's a wrong agent type error
-        if "not found" in error_msg.lower():
-            logger.warning(f"[EXECUTION PROMPT] Orchestrator not found: {orchestrator_job_id}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Orchestrator job {orchestrator_job_id} not found or not accessible"
-            )
-        else:
-            logger.warning(f"[EXECUTION PROMPT] Validation error: {error_msg}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_msg
-            )
-
-    except Exception as e:
-        # Unexpected error during generation
-        logger.exception(f"[EXECUTION PROMPT] Generation failed for orchestrator={orchestrator_job_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate execution prompt: {e!s}"
-        )
+        ) from e
 
 
 @router.get("/implementation/{project_id}")
@@ -723,24 +515,20 @@ async def get_implementation_prompt(
 
     try:
         # 1. Fetch project with multi-tenant filtering
-        project_stmt = select(Project).where(
-            Project.id == project_id,
-            Project.tenant_key == current_user.tenant_key
-        )
+        project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
         project_result = await db.execute(project_stmt)
         project = project_result.scalar_one_or_none()
 
         if not project:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Project {project_id} not found or not accessible"
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found or not accessible"
             )
 
         # 2. Validate CLI mode
-        if project.execution_mode != 'claude_code_cli':
+        if project.execution_mode != "claude_code_cli":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Project is not in CLI mode. Implementation prompts are only for claude_code_cli execution mode."
+                detail="Project is not in CLI mode. Implementation prompts are only for claude_code_cli execution mode.",
             )
 
         # 3. Fetch orchestrator execution (waiting after staging, or working during execution)
@@ -749,17 +537,14 @@ async def get_implementation_prompt(
             .options(joinedload(AgentExecution.job))
             .where(
                 AgentExecution.tenant_key == current_user.tenant_key,
-                AgentExecution.agent_display_name == 'orchestrator',
-                AgentExecution.status.in_(['waiting', 'working'])
+                AgentExecution.agent_display_name == "orchestrator",
+                AgentExecution.status.in_(["waiting", "working"]),
             )
             .join(
                 AgentJob,
-                (AgentJob.job_id == AgentExecution.job_id) &
-                (AgentJob.tenant_key == AgentExecution.tenant_key)
+                (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key),
             )
-            .where(
-                AgentJob.project_id == project_id
-            )
+            .where(AgentJob.project_id == project_id)
             .order_by(AgentExecution.started_at.desc().nullslast())
         )
 
@@ -769,7 +554,7 @@ async def get_implementation_prompt(
         if not orchestrator_execution:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No orchestrator found for this project. Please ensure staging has been completed."
+                detail="No orchestrator found for this project. Please ensure staging has been completed.",
             )
 
         # 4. Fetch spawned agent executions (waiting or working status)
@@ -780,7 +565,7 @@ async def get_implementation_prompt(
             .where(
                 AgentExecution.spawned_by == orchestrator_execution.agent_id,
                 AgentExecution.tenant_key == current_user.tenant_key,
-                AgentExecution.status.in_(['waiting', 'working'])
+                AgentExecution.status.in_(["waiting", "working"]),
             )
             .order_by(AgentExecution.started_at.asc().nullsfirst())
         )
@@ -795,17 +580,14 @@ async def get_implementation_prompt(
                 .options(joinedload(AgentExecution.job))
                 .where(
                     AgentExecution.tenant_key == current_user.tenant_key,
-                    AgentExecution.agent_display_name != 'orchestrator',  # Exclude orchestrator itself
-                    AgentExecution.status.in_(['waiting', 'working'])
+                    AgentExecution.agent_display_name != "orchestrator",  # Exclude orchestrator itself
+                    AgentExecution.status.in_(["waiting", "working"]),
                 )
                 .join(
                     AgentJob,
-                    (AgentJob.job_id == AgentExecution.job_id) &
-                    (AgentJob.tenant_key == AgentExecution.tenant_key)
+                    (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key),
                 )
-                .where(
-                    AgentJob.project_id == project_id
-                )
+                .where(AgentJob.project_id == project_id)
                 .order_by(AgentExecution.started_at.asc().nullsfirst())
             )
 
@@ -815,20 +597,20 @@ async def get_implementation_prompt(
         if not agent_executions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No agent jobs spawned yet. Please run staging first to create agent jobs."
+                detail="No agent jobs spawned yet. Please run staging first to create agent jobs.",
             )
 
         # 5. Generate implementation prompt using existing generator method
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
         # Build agent jobs list for prompt generator (using executions + jobs)
-        agent_jobs_list = [
+        [
             {
-                'job_id': agent_exec.job_id,
-                'agent_display_name': agent_exec.agent_display_name,
-                'agent_name': agent_exec.agent_name or agent_exec.agent_display_name,
-                'status': agent_exec.status,
-                'mission': agent_exec.job.mission if agent_exec.job else '(No mission assigned)'
+                "job_id": agent_exec.job_id,
+                "agent_display_name": agent_exec.agent_display_name,
+                "agent_name": agent_exec.agent_name or agent_exec.agent_display_name,
+                "status": agent_exec.status,
+                "mission": agent_exec.job.mission if agent_exec.job else "(No mission assigned)",
             }
             for agent_exec in agent_executions
         ]
@@ -836,9 +618,7 @@ async def get_implementation_prompt(
         # Call the existing implementation prompt generator
         # Handover 0385: Use job_id (not agent_id) for mission retrieval
         prompt = generator._build_claude_code_execution_prompt(
-            orchestrator_id=orchestrator_execution.job_id,
-            project=project,
-            agent_jobs=agent_executions
+            orchestrator_id=orchestrator_execution.job_id, project=project, agent_jobs=agent_executions
         )
 
         logger.info(
@@ -851,13 +631,12 @@ async def get_implementation_prompt(
         return {
             "prompt": prompt,
             "orchestrator_job_id": orchestrator_execution.agent_id,
-            "agent_count": len(agent_executions)
+            "agent_count": len(agent_executions),
         }
 
     except Exception as e:
         # Unexpected error during generation
-        logger.exception(f"[IMPLEMENTATION PROMPT] Generation failed for project={project_id}: {e}")
+        logger.exception("[IMPLEMENTATION PROMPT] Generation failed for project={project_id}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate implementation prompt: {e!s}"
-        )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate implementation prompt: {e!s}"
+        ) from e
