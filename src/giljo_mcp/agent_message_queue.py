@@ -30,7 +30,7 @@ from sqlalchemy import and_, func, literal, or_, select, update
 from .database import DatabaseManager
 
 # Import from centralized exceptions
-from .exceptions import ConsistencyError, QueueException
+from .exceptions import ConsistencyError, QueueError
 from .models import Message
 from .models.agent_identity import AgentExecution, AgentJob
 from .tenant import TenantManager
@@ -103,7 +103,7 @@ class AgentMessageQueue:
 
         except Exception as e:
             logger.exception("Failed to enqueue message")
-            raise QueueException(f"Enqueue failed: {e}") from e
+            raise QueueError(f"Enqueue failed: {e}") from e
 
     async def dequeue(self, agent_name: str, batch_size: Optional[int] = None) -> list[Message]:
         """
@@ -161,7 +161,7 @@ class AgentMessageQueue:
             except Exception as e:
                 await session.rollback()
                 logger.exception("Failed to dequeue messages")
-                raise QueueException(f"Dequeue failed: {e}") from e
+                raise QueueError(f"Dequeue failed: {e}") from e
 
     async def process_message(self, message_id: str, agent_name: str) -> bool:
         """
@@ -184,7 +184,7 @@ class AgentMessageQueue:
                 message = result.scalar_one_or_none()
 
                 if not message:
-                    raise QueueException(f"Message {message_id} not found")
+                    raise QueueError(f"Message {message_id} not found")
 
                 # Validate state transition
                 if message.status not in ["pending", "acknowledged"]:
@@ -310,7 +310,7 @@ class AgentMessageQueue:
                     .where(Message.status == "processing")
                     .values(
                         status="pending",
-                        meta_data=func.json_set(Message.meta_data, "$.recovered_from_crash", literal(True)),
+                        meta_data=func.json_set(Message.meta_data, "$.recovered_from_crash", literal(value=True)),
                     )
                 )
                 result = await session.execute(stmt)
@@ -331,7 +331,7 @@ class AgentMessageQueue:
             except Exception as e:
                 await session.rollback()
                 logger.exception("Crash recovery failed")
-                raise QueueException(f"Recovery failed: {e}") from e
+                raise QueueError(f"Recovery failed: {e}") from e
 
     async def checkpoint(self):
         """
