@@ -1090,7 +1090,7 @@ async def get_orchestrator_instructions(
                                 "mission_acknowledged_at": agent_execution.mission_acknowledged_at.isoformat(),
                             },
                         )
-                except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations  # noqa: BLE001 - WebSocket failures should not break core operations
+                except Exception as ws_error:
                     # Non-blocking - WebSocket failures shouldn't break MCP tool
                     logger.warning(
                         f"[WEBSOCKET] Failed to broadcast job:mission_acknowledged event: {ws_error}",
@@ -1229,7 +1229,7 @@ async def get_orchestrator_instructions(
                     select(AgentTemplate.name).where(
                         and_(
                             AgentTemplate.tenant_key == tenant_key,
-                            AgentTemplate.is_active == True,  # noqa: E712
+                            AgentTemplate.is_active == True,
                         )
                     )
                 )
@@ -1510,7 +1510,7 @@ async def _spawn_agent_job_impl(
                 select(AgentTemplate.name).where(
                     and_(
                         AgentTemplate.tenant_key == tenant_key,
-                        AgentTemplate.is_active == True,  # noqa: E712
+                        AgentTemplate.is_active == True,
                     )
                 )
             )
@@ -1713,7 +1713,7 @@ Your full mission is in the database. Call get_agent_mission to retrieve it."""
                         "mission": mission,  # Handover 0464: Include mission for UI display
                     },
                 )
-        except Exception as ws_error:  # noqa: BLE001 - WebSocket failures should not break core operations
+        except Exception as ws_error:
             logger.warning(f"[WEBSOCKET] Failed to broadcast agent:created: {ws_error}")
 
         # Build base response

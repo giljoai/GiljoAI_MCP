@@ -89,7 +89,7 @@ async def _get_summary_response(
     product: Product,
     depth: str,
     product_id: str,
-    tenant_key: str,  # noqa: ARG001
+    tenant_key: str,
 ) -> dict[str, Any]:
     """
     Helper function to retrieve CONSOLIDATED summary response (Handover 0377).

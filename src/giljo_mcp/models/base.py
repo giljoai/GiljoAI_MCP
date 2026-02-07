@@ -35,4 +35,4 @@ def generate_project_alias() -> str:
     import string
 
     chars = string.ascii_uppercase + string.digits
-    return "".join(random.choices(chars, k=6))  # noqa: S311 - Project alias generation (non-security-critical display ID)
+    return "".join(random.choices(chars, k=6))
