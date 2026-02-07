@@ -60,7 +60,7 @@ async def get_memory_entries(
             detail=f"Invalid UUID format: {e!s}",
         ) from e
 
-    async with db_manager.get_tenant_session(tenant_key) as session:
+    async with db_manager.get_tenant_session_async(tenant_key) as session:
         # Verify product exists and belongs to tenant
         stmt = select(Product).where(
             Product.id == product_id,
