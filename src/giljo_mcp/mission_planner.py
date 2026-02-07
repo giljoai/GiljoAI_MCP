@@ -1403,7 +1403,7 @@ Partial reading defeats the purpose of this configuration."""
             >>> "MUST" in frame["instruction"]
             True
         """
-        PRIORITY_FRAMES = {
+        priority_frames = {
             1: {
                 "level": 1,
                 "tier": "critical",
@@ -1430,7 +1430,7 @@ Partial reading defeats the purpose of this configuration."""
             },
         }
 
-        return PRIORITY_FRAMES.get(priority, PRIORITY_FRAMES[3])
+        return priority_frames.get(priority, priority_frames[3])
 
     def _add_to_tier_by_priority(
         self, builder: "JSONContextBuilder", field_name: str, priority: int, content: dict

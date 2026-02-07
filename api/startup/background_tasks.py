@@ -40,7 +40,7 @@ async def cleanup_expired_download_tokens(state: APIState):
                         logger.info(f"Download token cleanup: {deleted_total} tokens removed")
                     else:
                         logger.debug("Download token cleanup: no tokens removed")
-        except Exception as e:
+        except Exception as e:  # noqa: PERF203 - Background task resilience: catch errors, continue loop
             logger.error(f"Error during download token cleanup: {e}", exc_info=True)
 
 
