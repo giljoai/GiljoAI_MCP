@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, Project
@@ -204,32 +204,6 @@ class ToolAccessor:
     async def update_agent_mission(self, job_id: str, tenant_key: str, mission: str) -> dict[str, Any]:
         """Delegate to OrchestrationService (Handover 0451)"""
         return await self._orchestration_service.update_agent_mission(job_id, tenant_key, mission)
-
-    # Agent Tools
-
-    async def decommission_agent(self, agent_name: str, project_id: str, reason: str = "completed") -> dict[str, Any]:
-        """Gracefully end an agent's work"""
-        try:
-            async with self.db_manager.get_session_async() as session:
-                result = await session.execute(
-                    update(Agent)
-                    .where(Agent.name == agent_name, Agent.project_id == project_id)
-                    .values(status="decommissioned", meta_data={"reason": reason})
-                )
-
-                if result.rowcount == 0:
-                    return {"success": False, "error": "Agent not found"}
-
-                await session.commit()
-
-                return {
-                    "success": True,
-                    "message": f"Agent {agent_name} decommissioned",
-                }
-
-        except Exception as e:
-            logger.exception(f"Failed to decommission agent: {e}")
-            return {"success": False, "error": str(e)}
 
     # Message Tools (delegates to MessageService)
 
