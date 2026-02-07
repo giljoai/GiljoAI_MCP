@@ -5,8 +5,7 @@ Provides direct access to MCP tool functions for API endpoints
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional
-
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,14 +22,11 @@ from src.giljo_mcp.services.task_service import TaskService
 from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.tenant import TenantManager
 
-
 logger = logging.getLogger(__name__)
-
 
 # ============================================================================
 # STANDALONE HELPER FUNCTIONS (For Testing and Tenant Isolation)
 # ============================================================================
-
 
 async def activate_project(project_id: str, tenant_key: str, session) -> dict[str, Any]:
     """
@@ -87,7 +83,6 @@ async def activate_project(project_id: str, tenant_key: str, session) -> dict[st
         logger.exception(f"Failed to activate project: {e}")
         return {"success": False, "error": str(e)}
 
-
 class ToolAccessor:
     """Provides direct access to MCP tool functionality for API"""
 
@@ -95,8 +90,8 @@ class ToolAccessor:
         self,
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
-        websocket_manager: Optional[Any] = None,
-        test_session: Optional["AsyncSession"] = None,
+        websocket_manager: Any | None = None,
+        test_session: "AsyncSession" | None = None,
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
@@ -148,8 +143,8 @@ class ToolAccessor:
         name: str,
         mission: str,
         description: str = "",
-        product_id: Optional[str] = None,
-        tenant_key: Optional[str] = None,
+        product_id: str | None = None,
+        tenant_key: str | None = None,
         status: str = "inactive",
         context_budget: int = 150000,
     ) -> dict[str, Any]:
@@ -165,7 +160,7 @@ class ToolAccessor:
         )
 
     async def list_projects(
-        self, status: Optional[str] = None, tenant_key: Optional[str] = None
+        self, status: str | None = None, tenant_key: str | None = None
     ) -> list[dict[str, Any]]:
         """List all projects with optional status filter (delegates to ProjectService)"""
         return await self._project_service.list_projects(status=status, tenant_key=tenant_key)
@@ -182,13 +177,13 @@ class ToolAccessor:
         tenant_key = self.tenant_manager.get_current_tenant()
         return await self._project_service.switch_project(project_id, tenant_key=tenant_key)
 
-    async def complete_project(self, project_id: str, summary: Optional[str] = None) -> dict[str, Any]:
+    async def complete_project(self, project_id: str, summary: str | None = None) -> dict[str, Any]:
         """Mark a project as completed (delegates to ProjectService)"""
         # SECURITY FIX (Handover 0424): Always pass tenant_key for isolation
         tenant_key = self.tenant_manager.get_current_tenant()
         return await self._project_service.complete_project(project_id, summary, tenant_key=tenant_key)
 
-    async def cancel_project(self, project_id: str, reason: Optional[str] = None) -> dict[str, Any]:
+    async def cancel_project(self, project_id: str, reason: str | None = None) -> dict[str, Any]:
         """Cancel a project (delegates to ProjectService)"""
         # NOTE: cancel_project needs service-level fix to accept tenant_key
         return await self._project_service.cancel_project(project_id, reason)
@@ -243,8 +238,8 @@ class ToolAccessor:
         project_id: str,
         message_type: str = "direct",
         priority: str = "normal",
-        from_agent: Optional[str] = None,
-        tenant_key: Optional[str] = None,
+        from_agent: str | None = None,
+        tenant_key: str | None = None,
     ) -> dict[str, Any]:
         """Send message to one or more agents (delegates to MessageService)"""
         return await self._message_service.send_message(
@@ -257,7 +252,7 @@ class ToolAccessor:
             tenant_key=tenant_key,
         )
 
-    async def get_messages(self, agent_name: str, project_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_messages(self, agent_name: str, project_id: str | None = None) -> dict[str, Any]:
         """Retrieve pending messages for an agent (delegates to MessageService)"""
         return await self._message_service.get_messages(agent_name=agent_name, project_id=project_id)
 
@@ -273,10 +268,10 @@ class ToolAccessor:
         self,
         agent_id: str,
         limit: int = 10,
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
         exclude_self: bool = True,
         exclude_progress: bool = True,
-        message_types: Optional[list[str]] = None,
+        message_types: list[str | None] = None,
     ) -> dict[str, Any]:
         """
         Receive pending messages for an agent with optional filtering (delegates to MessageService).
@@ -306,11 +301,11 @@ class ToolAccessor:
 
     async def list_messages(
         self,
-        project_id: Optional[str] = None,
-        status: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        tenant_key: Optional[str] = None,
-        limit: Optional[int] = None,
+        project_id: str | None = None,
+        status: str | None = None,
+        agent_id: str | None = None,
+        tenant_key: str | None = None,
+        limit: int | None = None,
     ) -> dict[str, Any]:
         """
         List messages in a project or for a specific agent (delegates to MessageService).
@@ -323,7 +318,7 @@ class ToolAccessor:
 
     # Task Tools
 
-    async def log_task(self, content: str, category: Optional[str] = None, priority: str = "medium") -> dict[str, Any]:
+    async def log_task(self, content: str, category: str | None = None, priority: str = "medium") -> dict[str, Any]:
         """Quick task capture (delegates to TaskService)"""
         return await self._task_service.log_task(content=content, category=category, priority=priority)
 
@@ -332,8 +327,8 @@ class ToolAccessor:
         title: str,
         description: str,
         priority: str = "medium",
-        category: Optional[str] = None,
-        assigned_to: Optional[str] = None,
+        category: str | None = None,
+        assigned_to: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a new task with optional category support.
@@ -361,7 +356,7 @@ class ToolAccessor:
 
     # Context Tools (delegates to ContextService)
 
-    async def get_context_index(self, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_context_index(self, product_id: str | None = None) -> dict[str, Any]:
         """Get the context index for intelligent querying (delegates to ContextService)"""
         return await self._context_service.get_context_index(product_id=product_id)
 
@@ -373,7 +368,7 @@ class ToolAccessor:
         """Get the vision document index (delegates to ContextService)"""
         return await self._context_service.get_vision_index()
 
-    async def get_product_settings(self, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_product_settings(self, product_id: str | None = None) -> dict[str, Any]:
         """Get all product settings for analysis (delegates to ContextService)"""
         return await self._context_service.get_product_settings(product_id=product_id)
 
@@ -395,9 +390,9 @@ class ToolAccessor:
 
     async def export_agents(
         self,
-        product_path: Optional[str] = None,
+        product_path: str | None = None,
         personal: bool = False,
-        product_id: Optional[str] = None,
+        product_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Export agent templates to Claude Code format via MCP command.
@@ -445,7 +440,7 @@ class ToolAccessor:
     async def set_product_path(
         self,
         project_path: str,
-        product_id: Optional[str] = None,
+        product_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Set or update product's project path for agent export.
@@ -485,7 +480,7 @@ class ToolAccessor:
 
     async def get_product_path(
         self,
-        product_id: Optional[str] = None,
+        product_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Get product's current project path.
@@ -612,7 +607,7 @@ class ToolAccessor:
         mission: str,
         project_id: str,
         tenant_key: str,
-        parent_job_id: Optional[str] = None,
+        parent_job_id: str | None = None,
     ) -> dict[str, Any]:
         """Create an agent job (delegates to OrchestrationService)"""
         return await self._orchestration_service.spawn_agent_job(
@@ -640,14 +635,14 @@ class ToolAccessor:
             agent_display_name=agent_display_name, tenant_key=tenant_key
         )
 
-    async def acknowledge_job(self, job_id: str, agent_id: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def acknowledge_job(self, job_id: str, agent_id: str, tenant_key: str | None = None) -> dict[str, Any]:
         """Acknowledge job assignment (delegates to OrchestrationService)"""
         return await self._orchestration_service.acknowledge_job(job_id=job_id, agent_id=agent_id)
 
     async def report_progress(
         self,
         job_id: str,
-        tenant_key: Optional[str] = None,
+        tenant_key: str | None = None,
         progress: dict[str, Any] | None = None,
         todo_items: list[dict] | None = None,
     ) -> dict[str, Any]:
@@ -664,12 +659,12 @@ class ToolAccessor:
         )
 
     async def complete_job(
-        self, job_id: str, result: dict[str, Any], tenant_key: Optional[str] = None
+        self, job_id: str, result: dict[str, Any], tenant_key: str | None = None
     ) -> dict[str, Any]:
         """Mark job as complete (delegates to OrchestrationService)"""
         return await self._orchestration_service.complete_job(job_id=job_id, result=result)
 
-    async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def report_error(self, job_id: str, error: str, tenant_key: str | None = None) -> dict[str, Any]:
         """Report job error (delegates to OrchestrationService)"""
         return await self._orchestration_service.report_error(job_id=job_id, error=error)
 

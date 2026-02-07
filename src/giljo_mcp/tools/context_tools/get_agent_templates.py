@@ -11,7 +11,7 @@ Token Budget by Depth:
 - "full": Complete template JSON (~2400 tokens)
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -19,9 +19,7 @@ from sqlalchemy import select
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate
 
-
 logger = structlog.get_logger(__name__)
-
 
 def estimate_tokens(data: Any) -> int:
     """Rough token estimation (1 token ≈ 4 chars)."""
@@ -30,14 +28,13 @@ def estimate_tokens(data: Any) -> int:
     text = json.dumps(data) if not isinstance(data, str) else data
     return len(text) // 4
 
-
 async def get_agent_templates(
     product_id: str,
     tenant_key: str,
     detail: str = "type_only",
     offset: int = 0,
     limit: int = None,
-    db_manager: Optional[DatabaseManager] = None,
+    db_manager: DatabaseManager | None = None,
 ) -> dict[str, Any]:
     """
     Fetch agent templates for given tenant with depth control.

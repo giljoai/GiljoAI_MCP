@@ -6,7 +6,7 @@ Separate from user tasks - handles agent-to-agent job coordination for agentic o
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 
 from ..models.agent_identity import AgentJob
 from .base import BaseRepository
-
 
 class AgentJobRepository:
     """
@@ -40,8 +39,8 @@ class AgentJobRepository:
         tenant_key: str,
         agent_display_name: str,
         mission: str,
-        spawned_by: Optional[str] = None,
-        context_chunks: Optional[list[str]] = None,
+        spawned_by: str | None = None,
+        context_chunks: list[str | None] = None,
     ) -> AgentJob:
         """
         Create a new agent job.
@@ -67,7 +66,7 @@ class AgentJobRepository:
             context_chunks=context_chunks or [],
         )
 
-    async def get_job_by_job_id(self, session: AsyncSession, tenant_key: str, job_id: str) -> Optional[AgentJob]:
+    async def get_job_by_job_id(self, session: AsyncSession, tenant_key: str, job_id: str) -> AgentJob | None:
         """
         Get a job by its job_id.
 
@@ -90,8 +89,8 @@ class AgentJobRepository:
         tenant_key: str,
         job_id: str,
         status: str,
-        started_at: Optional[datetime] = None,
-        completed_at: Optional[datetime] = None,
+        started_at: datetime | None = None,
+        completed_at: datetime | None = None,
     ) -> bool:
         """
         Update job status with optional timestamps.
@@ -129,7 +128,7 @@ class AgentJobRepository:
         return False
 
     async def get_active_jobs(
-        self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None
+        self, session: AsyncSession, tenant_key: str, agent_display_name: str | None = None
     ) -> list[AgentJob]:
         """
         Get all active jobs (pending or active status).
@@ -276,7 +275,7 @@ class AgentJobRepository:
         return False
 
     async def get_job_statistics(
-        self, session: AsyncSession, tenant_key: str, agent_display_name: Optional[str] = None
+        self, session: AsyncSession, tenant_key: str, agent_display_name: str | None = None
     ) -> dict[str, Any]:
         """
         Get job statistics for a tenant.
@@ -331,7 +330,7 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         agent_id: str,
-    ) -> Optional["AgentExecution"]:
+    ) -> "AgentExecution" | None:
         """
         Get agent execution by agent_id with tenant isolation.
 
@@ -363,7 +362,7 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> Optional["AgentExecution"]:
+    ) -> "AgentExecution" | None:
         """
         Get agent execution by job_id with tenant isolation (fallback lookup).
 
@@ -393,7 +392,7 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> Optional["AgentJob"]:
+    ) -> "AgentJob" | None:
         """
         Get agent job by job_id with tenant isolation.
 
@@ -425,7 +424,7 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> Optional["AgentExecution"]:
+    ) -> "AgentExecution" | None:
         """
         Get the latest execution instance for a job (by started_at desc).
 

@@ -10,14 +10,13 @@ Provides helper functions to:
 
 import json
 import logging
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 from sqlalchemy import select
 
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import User
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,6 @@ ALLOWED_PRIORITY_CATEGORIES = {
     "git_history",
 }
 
-
 def format_list_safely(items: Any) -> str:
     """Format list with graceful handling of empty or invalid data."""
     if not items:
@@ -48,7 +46,6 @@ def format_list_safely(items: Any) -> str:
     except (ValueError, TypeError, KeyError) as exc:  # pragma: no cover - defensive guard
         logger.error("Failed to format list", extra={"error": str(exc)})
         return "- (Error formatting data)"
-
 
 def apply_rich_entry_framing(entry: dict[str, Any]) -> str:
     """
@@ -93,7 +90,6 @@ def apply_rich_entry_framing(entry: dict[str, Any]) -> str:
     logger.debug("Applied rich entry framing", extra={"sequence": sequence, "priority": priority_label})
     return framing
 
-
 def _extract_priorities(config: Any) -> dict[str, int]:
     """Extract priority mapping from user config supporting legacy and nested formats."""
     if not isinstance(config, dict):
@@ -121,7 +117,6 @@ def _extract_priorities(config: Any) -> dict[str, int]:
     # Fallback: direct mapping at top-level
     return {k: v for k, v in config.items() if isinstance(v, int)}
 
-
 def _stringify_content(content: Any) -> str:
     """Convert content to a printable string with safe fallback."""
     if isinstance(content, str):
@@ -138,12 +133,11 @@ def _stringify_content(content: Any) -> str:
 
     return text
 
-
 async def get_user_priority(
     category: str,
     tenant_key: str,
-    user_id: Optional[str],
-    db_manager: Optional[DatabaseManager],
+    user_id: str | None,
+    db_manager: DatabaseManager | None,
 ) -> int:
     """
     Get priority for a category using user config or defaults.
@@ -189,12 +183,11 @@ async def get_user_priority(
         )
         return default_priority
 
-
 def inject_priority_framing(
     content: Any,
     priority: int,
     category: str,
-    user_id: Optional[str] = None,
+    user_id: str | None = None,
 ) -> str:
     """
     Inject priority framing headers into content.
@@ -226,7 +219,6 @@ def inject_priority_framing(
     )
     return framed_content
 
-
 def build_priority_excluded_response(source: str, category: str, tenant_key: str, priority: int) -> dict[str, Any]:
     """Return a standardized response when a category is excluded (priority=4)."""
     return {
@@ -242,15 +234,14 @@ def build_priority_excluded_response(source: str, category: str, tenant_key: str
         "priority": priority,
     }
 
-
 async def build_framed_context_response(
     raw_result: dict[str, Any],
     category: str,
     tenant_key: str,
-    user_id: Optional[str],
-    db_manager: Optional[DatabaseManager],
-    content_formatter: Optional[Callable[[dict[str, Any]], str]] = None,
-    priority_override: Optional[int] = None,
+    user_id: str | None,
+    db_manager: DatabaseManager | None,
+    content_formatter: Callable[[dict[str, Any | None], str]] = None,
+    priority_override: int | None = None,
 ) -> dict[str, Any]:
     """
     Apply priority framing to a context tool response.

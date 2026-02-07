@@ -20,7 +20,7 @@ Usage:
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,9 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.api_key_utils import verify_api_key
 from src.giljo_mcp.models import APIKey, MCPSession, User
 
-
 logger = logging.getLogger(__name__)
-
 
 class MCPSessionManager:
     """Manages MCP HTTP sessions with PostgreSQL persistence"""
@@ -70,7 +68,7 @@ class MCPSessionManager:
             logger.error(f"API key authentication error: {e}", exc_info=True)
             return None
 
-    async def get_or_create_session(self, api_key_value: str, project_id: Optional[str] = None) -> Optional[MCPSession]:
+    async def get_or_create_session(self, api_key_value: str, project_id: str | None = None) -> MCPSession | None:
         auth_result = await self.authenticate_api_key(api_key_value)
         if not auth_result:
             return None
@@ -134,7 +132,7 @@ class MCPSessionManager:
         logger.info(f"Created new MCP session: {new_session.session_id} (tenant: {user.tenant_key})")
         return new_session
 
-    async def get_session(self, session_id: str) -> Optional[MCPSession]:
+    async def get_session(self, session_id: str) -> MCPSession | None:
         stmt = select(MCPSession).where(MCPSession.session_id == session_id)
         result = await self.db.execute(stmt)
         session = result.scalar_one_or_none()

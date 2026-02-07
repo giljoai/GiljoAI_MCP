@@ -14,13 +14,10 @@ import os
 import socket
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
 import yaml
 
-
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class PortConfiguration:
@@ -46,7 +43,6 @@ class PortConfiguration:
         if self.frontend_alternatives is None:
             self.frontend_alternatives = [6001, 6002, 6003, 5173, 5174]
 
-
 class PortManager:
     """
     Centralized port management system.
@@ -60,7 +56,7 @@ class PortManager:
     Also provides port availability checking and conflict resolution.
     """
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """
         Initialize PortManager.
 
@@ -92,7 +88,7 @@ class PortManager:
             return False
 
     @staticmethod
-    def find_available_port(preferred: int, alternatives: Optional[list[int]] = None) -> int:
+    def find_available_port(preferred: int, alternatives: list[int | None] = None) -> int:
         """
         Find an available port, starting with preferred.
 
@@ -385,9 +381,8 @@ class PortManager:
             "VITE_API_PORT": str(self.config.api_port),  # For frontend build
         }
 
-
 # Convenience functions
-def get_port_manager(config_path: Optional[Path] = None) -> PortManager:
+def get_port_manager(config_path: Path | None = None) -> PortManager:
     """
     Get a PortManager instance with configuration loaded.
 
@@ -401,8 +396,7 @@ def get_port_manager(config_path: Optional[Path] = None) -> PortManager:
     manager.load_configuration()
     return manager
 
-
-def get_api_port(config_path: Optional[Path] = None, check_availability: bool = False) -> int:
+def get_api_port(config_path: Path | None = None, check_availability: bool = False) -> int:
     """
     Convenience function to get API port.
 
@@ -416,8 +410,7 @@ def get_api_port(config_path: Optional[Path] = None, check_availability: bool = 
     manager = get_port_manager(config_path)
     return manager.get_api_port(check_availability)
 
-
-def get_frontend_port(config_path: Optional[Path] = None, check_availability: bool = False) -> int:
+def get_frontend_port(config_path: Path | None = None, check_availability: bool = False) -> int:
     """
     Convenience function to get frontend port.
 

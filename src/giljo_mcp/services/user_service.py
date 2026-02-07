@@ -21,7 +21,7 @@ Design Principles:
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import uuid4
 
 from passlib.hash import bcrypt
@@ -38,9 +38,7 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.models.auth import User
 
-
 logger = logging.getLogger(__name__)
-
 
 class UserService:
     """
@@ -222,9 +220,9 @@ class UserService:
     async def create_user(
         self,
         username: str,
-        email: Optional[str] = None,
-        full_name: Optional[str] = None,
-        password: Optional[str] = None,
+        email: str | None = None,
+        full_name: str | None = None,
+        password: str | None = None,
         role: str = "developer",
         is_active: bool = True,
     ) -> dict[str, Any]:
@@ -270,9 +268,9 @@ class UserService:
         self,
         session: AsyncSession,
         username: str,
-        email: Optional[str],
-        full_name: Optional[str],
-        password: Optional[str],
+        email: str | None,
+        full_name: str | None,
+        password: str | None,
         role: str,
         is_active: bool,
     ) -> dict[str, Any]:
@@ -555,7 +553,7 @@ class UserService:
     # ============================================================================
 
     async def change_password(
-        self, user_id: str, old_password: Optional[str], new_password: str, is_admin: bool = False
+        self, user_id: str, old_password: str | None, new_password: str, is_admin: bool = False
     ) -> dict[str, Any]:
         """
         Change user password with verification.
@@ -594,7 +592,7 @@ class UserService:
             ) from e
 
     async def _change_password_impl(
-        self, session: AsyncSession, user_id: str, old_password: Optional[str], new_password: str, is_admin: bool
+        self, session: AsyncSession, user_id: str, old_password: str | None, new_password: str, is_admin: bool
     ) -> dict[str, Any]:
         """Implementation that uses provided session"""
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))

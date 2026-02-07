@@ -16,11 +16,9 @@ Related Handovers:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 logger = logging.getLogger(__name__)
-
 
 class MemoryInstructionGenerator:
     """
@@ -39,7 +37,7 @@ class MemoryInstructionGenerator:
     """
 
     def generate_context(
-        self, sequential_history: Optional[list[dict[str, Any]]], priority: int, git_enabled: bool = False
+        self, sequential_history: list[dict[str, Any | None]], priority: int, git_enabled: bool = False
     ) -> str:
         """
         Generate memory instructions based on priority level.

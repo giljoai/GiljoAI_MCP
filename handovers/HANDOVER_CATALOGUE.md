@@ -129,6 +129,18 @@
 > **Origin**: TinyContacts project trial (2026-02-05/06) identified gaps in continuation workflow
 > **Phases**: 5 implementation phases (P0: Job Reactivation, P1: Mission Versioning, P2: Todo/Duration, P5: Integration)
 
+### Implementation Phase Gates Series (0487-0489) - NEW
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0487** | **Implementation Phase Gate** | **COMPLETE** | **HIGH** | 4-6h |
+| **0488** | **Staging Broadcast Response Enforcement** | **Ready** | **HIGH** | 3-4h |
+| **0489** | **Cleanup API MCP (CRITICAL)** | **Ready** | **CRITICAL** | 4-6h |
+
+> **Purpose**: Server-side enforcement to prevent orchestrators from bypassing staging phase
+> **0487**: Database schema + backend gates (implementation_launched_at) - COMPLETE
+> **0488**: Enriched broadcast response with STOP directive for staging completion
+> **0489**: Critical cleanup of mcp_http.py (MCP-over-HTTP JSON-RPC endpoint)
+
 ### Superseded/Moved to Completed (Cleanup)
 | ID | Title | Status | Notes |
 |----|-------|--------|-------|
@@ -191,9 +203,6 @@
 | **0706** | **Models Agents Cleanup (CRITICAL)** | **Ready** | **CRITICAL** | 4-6h |
 | **0707** | **Services Leaf Cleanup** | **Ready** | **MEDIUM** | 3-4h |
 | **0708** | **Services Core Cleanup** | **Ready** | **HIGH** | 4-6h |
-| **0709** | **Implementation Phase Gate** | **COMPLETE** | **HIGH** | 4-6h |
-| **0709b** | **Staging Broadcast Response Enforcement** | **Ready** | **HIGH** | 3-4h |
-| **0711** | **API MCP Cleanup (CRITICAL)** | **Ready** | **CRITICAL** | 4-6h |
 
 > **Purpose**: Systematic cleanup of ~560 source files and ~665 test files
 > **Strategy**: Database-indexed, dependency-aware approach with incremental validation
@@ -619,11 +628,11 @@ completed/reference/
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0396 (includes Alpha Trial 0356-0362, 0364-0365)
-**0401-0500** (Agent Monitoring): 0400-0432 (mostly complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0485 (0480 REVISED complete, 0481-0485 in progress), **0486 (ready - continuation workflow)**
+**0401-0500** (Agent Monitoring): 0400-0432 (mostly complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0485 (0480 REVISED complete, 0481-0485 in progress), 0486-0489 (continuation workflow + implementation gates)
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
-**0700-0750** (Code Cleanup): 0700-0708, 0711
+**0700-0750** (Code Cleanup): 0700-0708
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers in Root Folder (Needs Cleanup)

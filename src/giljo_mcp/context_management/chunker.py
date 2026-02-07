@@ -14,15 +14,13 @@ Target chunk size: 5000 tokens with semantic boundaries.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 import tiktoken
 
 from src.giljo_mcp.tools.chunking import EnhancedChunker
 
-
 logger = logging.getLogger(__name__)
-
 
 class VisionDocumentChunker:
     """
