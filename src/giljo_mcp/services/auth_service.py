@@ -35,7 +35,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
     AuthenticationError,
     AuthorizationError,
-    BaseGiljoException,
+    BaseGiljoError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -99,7 +99,7 @@ class AuthService:
         Raises:
             AuthenticationError: If credentials are invalid
             AuthorizationError: If user account is inactive
-            BaseGiljoException: For other errors
+            BaseGiljoError: For other errors
 
         Example:
             >>> result = await service.authenticate_user("admin", "Password123!")
@@ -119,7 +119,7 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception("Failed to authenticate user")
-            raise BaseGiljoException(message=f"Authentication failed: {e!s}", context={"username": username}) from e
+            raise BaseGiljoError(message=f"Authentication failed: {e!s}", context={"username": username}) from e
 
     async def _authenticate_user_impl(self, session: AsyncSession, username: str, password: str) -> dict[str, Any]:
         """Implementation that uses provided session"""
@@ -181,7 +181,7 @@ class AuthService:
 
         Raises:
             ResourceNotFoundError: If user not found
-            BaseGiljoException: For other errors
+            BaseGiljoError: For other errors
 
         Example:
             >>> await service.update_last_login(user_id, datetime.now(timezone.utc))
@@ -199,7 +199,7 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception("Failed to update last login")
-            raise BaseGiljoException(message=f"Failed to update last login: {e!s}", context={"user_id": user_id}) from e
+            raise BaseGiljoError(message=f"Failed to update last login: {e!s}", context={"user_id": user_id}) from e
 
     async def _update_last_login_impl(self, session: AsyncSession, user_id: str, timestamp: datetime) -> None:
         """Implementation that uses provided session"""
@@ -237,7 +237,7 @@ class AuthService:
             }
 
         Raises:
-            BaseGiljoException: For errors
+            BaseGiljoError: For errors
 
         Example:
             >>> state = await service.check_setup_state("test_tenant")
@@ -253,7 +253,7 @@ class AuthService:
 
         except Exception as e:
             self._logger.exception("Failed to check setup state")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to check setup state: {e!s}", context={"tenant_key": tenant_key}
             ) from e
 
@@ -292,7 +292,7 @@ class AuthService:
             ]
 
         Raises:
-            BaseGiljoException: For errors
+            BaseGiljoError: For errors
 
         Example:
             >>> keys = await service.list_api_keys(user_id, include_revoked=True)
@@ -308,7 +308,7 @@ class AuthService:
 
         except Exception as e:
             self._logger.exception("Failed to list API keys")
-            raise BaseGiljoException(message=f"Failed to list API keys: {e!s}", context={"user_id": user_id}) from e
+            raise BaseGiljoError(message=f"Failed to list API keys: {e!s}", context={"user_id": user_id}) from e
 
     async def _list_api_keys_impl(
         self, session: AsyncSession, user_id: str, include_revoked: bool
@@ -359,7 +359,7 @@ class AuthService:
             }
 
         Raises:
-            BaseGiljoException: For errors
+            BaseGiljoError: For errors
 
         Example:
             >>> result = await service.create_api_key(user_id, tenant_key, "My Key", ["*"])
@@ -376,7 +376,7 @@ class AuthService:
 
         except Exception as e:
             self._logger.exception("Failed to create API key")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to create API key: {e!s}", context={"user_id": user_id, "name": name}
             ) from e
 
@@ -430,7 +430,7 @@ class AuthService:
 
         Raises:
             ResourceNotFoundError: If API key not found or access denied
-            BaseGiljoException: For other errors
+            BaseGiljoError: For other errors
 
         Example:
             >>> await service.revoke_api_key(key_id, user_id)
@@ -448,7 +448,7 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception("Failed to revoke API key")
-            raise BaseGiljoException(
+            raise BaseGiljoError(
                 message=f"Failed to revoke API key: {e!s}", context={"key_id": key_id, "user_id": user_id}
             ) from e
 
@@ -507,7 +507,7 @@ class AuthService:
 
         Raises:
             ValidationError: If username/email already exists
-            BaseGiljoException: For other errors
+            BaseGiljoError: For other errors
 
         Example:
             >>> user = await service.register_user(
@@ -529,7 +529,7 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception("Failed to register user")
-            raise BaseGiljoException(message=f"Failed to register user: {e!s}", context={"username": username}) from e
+            raise BaseGiljoError(message=f"Failed to register user: {e!s}", context={"username": username}) from e
 
     async def _register_user_impl(
         self,
@@ -727,7 +727,7 @@ class AuthService:
 
         Raises:
             ValidationError: If admin already exists or password too weak
-            BaseGiljoException: For other errors
+            BaseGiljoError: For other errors
 
         Example:
             >>> admin = await service.create_first_admin(
@@ -750,9 +750,7 @@ class AuthService:
             raise
         except Exception as e:
             self._logger.exception("Failed to create first admin")
-            raise BaseGiljoException(
-                message=f"Failed to create first admin: {e!s}", context={"username": username}
-            ) from e
+            raise BaseGiljoError(message=f"Failed to create first admin: {e!s}", context={"username": username}) from e
 
     async def _create_first_admin_impl(
         self,
