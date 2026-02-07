@@ -302,7 +302,7 @@ class WorkflowEngine:
 
                 return await self._execute_stage(stage, tenant_key, project_id)
 
-            except (RuntimeError, ValueError, KeyError) as e:
+            except (RuntimeError, ValueError, KeyError) as e:  # noqa: PERF203 - Retry loop: continue attempts on failure
                 last_error = e
                 if attempt < stage.max_retries:
                     # Exponential backoff
