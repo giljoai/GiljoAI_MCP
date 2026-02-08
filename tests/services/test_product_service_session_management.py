@@ -144,6 +144,7 @@ async def test_multiple_operations_do_not_recurse():
     # Mock session operations
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
+    mock_result.scalar_one_or_none.return_value = None  # No active product
     mock_session.execute = AsyncMock(return_value=mock_result)
     mock_session.commit = AsyncMock()
 

@@ -133,7 +133,7 @@ class ProductMemoryRepository:
         )
 
         if not include_deleted:
-            stmt = stmt.where(not ProductMemoryEntry.deleted_by_user)
+            stmt = stmt.where(ProductMemoryEntry.deleted_by_user == False)  # noqa: E712
 
         if limit:
             stmt = stmt.limit(limit)
