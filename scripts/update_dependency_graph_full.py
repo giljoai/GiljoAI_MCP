@@ -95,11 +95,15 @@ class DependencyGraphBuilder:
             if keyword in path_str:
                 return True
 
-        # Exclude entire folders (dev tools, handovers, docs)
+        # Exclude entire folders (dev tools, handovers, docs, user data)
         exclusion_folders = [
             "dev_tools/",
             "handovers/",
             "docs/",  # Documentation only, not runtime code
+            "products/",  # User data folders (vision documents per product)
+            "data/",  # Runtime data folder
+            "logs/",  # Log files
+            "temp/",  # Temporary files
         ]
 
         for folder in exclusion_folders:
@@ -110,7 +114,6 @@ class DependencyGraphBuilder:
         if path.suffix == ".md":
             # Keep these .md files (runtime data):
             runtime_md_patterns = [
-                "products/",  # Product vision documents
                 ".serena/memories/",  # Serena MCP memories
                 ".claude/agents/",  # Custom Claude agents
             ]
@@ -259,11 +262,45 @@ class DependencyGraphBuilder:
         return None
 
     def count_code_markers(self, file_path: Path) -> Tuple[int, int, int]:
-        """Count TODOs, deprecations, dead code markers."""
+        """Count TODOs, deprecations, dead code markers.
+
+        Deprecation detection is strict - only counts:
+        - @deprecated decorators
+        - warnings.warn with deprecation
+        - DeprecationWarning references
+        - Actual deprecated class/function definitions (not comments)
+        """
         try:
-            content = file_path.read_text(encoding="utf-8").lower()
-            todos = content.count("todo") + content.count("fixme")
-            deprecations = content.count("deprecated") + content.count("deprecation")
+            content = file_path.read_text(encoding="utf-8")
+            content_lower = content.lower()
+
+            # Count TODOs/FIXMEs (case-insensitive, simple count)
+            todos = content_lower.count("todo") + content_lower.count("fixme")
+
+            # Count REAL deprecations only (not comments or docs)
+            deprecations = 0
+            for line in content.split('\n'):
+                line_stripped = line.strip()
+                line_lower = line_stripped.lower()
+
+                # Skip comments and docstrings mentioning deprecation
+                if line_stripped.startswith('#') or line_stripped.startswith('//'):
+                    continue
+                if line_stripped.startswith('"""') or line_stripped.startswith("'''"):
+                    continue
+                if line_stripped.startswith('*') or line_stripped.startswith('/*'):
+                    continue
+
+                # Count actual deprecation patterns
+                if any([
+                    '@deprecated' in line_lower,  # Python/JS decorators
+                    'warnings.warn' in line_lower and 'deprecat' in line_lower,  # Python warnings
+                    'deprecationwarning' in line_lower,  # Python warning type
+                    'console.warn' in line_lower and 'deprecat' in line_lower,  # JS console warnings
+                ]):
+                    deprecations += 1
+
+            # Dead code markers
             dead_code = content.count("# unused") + content.count("// unused")
             return todos, deprecations, dead_code
         except:
