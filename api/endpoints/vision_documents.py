@@ -29,6 +29,7 @@ from api.schemas.vision_document import (
     RechunkResponse,
     VisionDocumentResponse,
 )
+from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
@@ -60,15 +61,15 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
             product_id=product_id, session=db_session, tenant_key=tenant_key, force=False
         )
 
-        if result["success"]:
-            logger.info(
-                f"vision_documents_consolidated: product_id={product_id}, "
-                f"light_tokens={result['light']['tokens']}, medium_tokens={result['medium']['tokens']}"
-            )
-        else:
-            # Not an error - could be "no_changes" which is expected
-            logger.debug(f"consolidation_skipped: product_id={product_id}, reason={result.get('error')}")
-    except (SQLAlchemyError, ValueError, KeyError):
+        # Exception-based: Success returns data directly
+        logger.info(
+            f"vision_documents_consolidated: product_id={product_id}, "
+            f"light_tokens={result['light']['tokens']}, medium_tokens={result['medium']['tokens']}"
+        )
+    except ValidationError as e:
+        # Not an error - "no_changes" is expected behavior
+        logger.debug(f"consolidation_skipped: product_id={product_id}, reason={e.error_code}")
+    except (SQLAlchemyError, ValueError, KeyError, ResourceNotFoundError):
         # Don't fail the main operation if consolidation fails
         logger.exception(f"consolidation_failed: product_id={product_id}")
 
@@ -597,19 +598,13 @@ async def regenerate_consolidated_vision(
         if not product:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product {product_id} not found")
 
-        # Run consolidation service
+        # Run consolidation service (exception-based error handling)
         consolidation_service = ConsolidatedVisionService()
         consolidation_result = await consolidation_service.consolidate_vision_documents(
             product_id=product_id, session=db, tenant_key=tenant_key, force=force
         )
 
-        if not consolidation_result["success"]:
-            # Return error details for debugging
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=consolidation_result.get("error", "Consolidation failed"),
-            )
-
+        # Exception-based: Success returns data directly
         return {
             "success": True,
             "light_tokens": consolidation_result["light"]["tokens"],
@@ -620,6 +615,18 @@ async def regenerate_consolidated_vision(
 
     except HTTPException:
         raise  # Re-raise HTTP exceptions
+    except ValidationError as e:
+        # No changes detected - return 400 with error code
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message,
+        ) from e
+    except ResourceNotFoundError as e:
+        # Product not found - return 404
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        ) from e
     except (SQLAlchemyError, ValueError, KeyError) as e:
         logger.error(f"Failed to regenerate consolidated vision: {e}", exc_info=True)
         raise HTTPException(
