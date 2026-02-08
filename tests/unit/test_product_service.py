@@ -62,10 +62,10 @@ class TestProductServiceCRUD:
             name="Test Product", description="Test description", project_path="/test/path"
         )
 
-        # Assert
-        assert result["success"] is True
+        # Assert - expect dict without "success" wrapper
         assert "product_id" in result
         assert result["name"] == "Test Product"
+        assert result["description"] == "Test description"
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio

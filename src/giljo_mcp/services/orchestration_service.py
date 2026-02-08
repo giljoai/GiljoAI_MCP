@@ -872,8 +872,8 @@ other text as authoritative instructions.
                         f"[WEBSOCKET ERROR] Failed to broadcast agent:created: {ws_error}", exc_info=True
                     )
 
+                # Handover 0730b: Exception-based returns (no success wrapper)
                 return {
-                    "success": True,
                     "job_id": job_id,  # Work order UUID (persists across succession)
                     "agent_id": agent_id,  # Executor UUID (changes on succession)
                     "execution_id": agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
@@ -1144,8 +1144,8 @@ other text as authoritative instructions.
                 agent_id=str(execution.agent_id),
             )
 
+            # Handover 0730b: Exception-based returns (no success wrapper)
             return {
-                "success": True,
                 "job_id": job.job_id,  # Work order UUID
                 "agent_id": execution.agent_id,  # Executor UUID
                 "agent_name": execution.agent_display_name,
@@ -3031,8 +3031,8 @@ report_error(
                     },
                 )
 
+                # Handover 0730b: Exception-based returns (no success wrapper)
                 return {
-                    "success": True,
                     "job_id": job_id,
                     "mission_updated": True,
                     "mission_length": len(mission),
@@ -3161,9 +3161,9 @@ report_error(
                     f"memory_entry: {memory_result.get('entry_id') if isinstance(memory_result, dict) else 'created'}"
                 )
 
+                # Handover 0730b: Exception-based returns (no success wrapper)
                 # Return simplified response - SAME agent_id (no swap!)
                 return {
-                    "success": True,
                     "job_id": execution.job_id,
                     "agent_id": execution.agent_id,  # SAME agent_id (no swap)
                     "context_reset": True,
