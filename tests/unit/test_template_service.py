@@ -18,26 +18,40 @@ from src.giljo_mcp.models import AgentTemplate
 from src.giljo_mcp.services.template_service import TemplateService
 
 
+@pytest.fixture
+def mock_db_manager():
+    """Create properly configured mock database manager."""
+    db_manager = Mock()
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.add = Mock()
+    session.delete = Mock()
+    db_manager.get_session_async = Mock(return_value=session)
+    return db_manager, session
+
+
+@pytest.fixture
+def mock_tenant_manager():
+    """Create mock tenant manager."""
+    tenant_manager = Mock()
+    tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
+    return tenant_manager
+
+
 class TestTemplateServiceCRUD:
     """Test CRUD operations"""
 
     @pytest.mark.asyncio
-    async def test_create_template_success(self):
+    async def test_create_template_success(self, mock_db_manager, mock_tenant_manager):
         """Test successful template creation"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
+        db_manager, session = mock_db_manager
 
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
-        )
-
-        session.add = Mock()
-        session.commit = AsyncMock()
-
-        service = TemplateService(db_manager, tenant_manager)
+        service = TemplateService(db_manager, mock_tenant_manager)
 
         # Act
         result = await service.create_template(
@@ -45,7 +59,7 @@ class TestTemplateServiceCRUD:
         )
 
         # Assert
-        assert result["success"] is True
+        # Handover 0730: Service returns dict directly (no success wrapper)
         assert "template_id" in result
         assert result["name"] == "custom-analyzer"
         assert result["tenant_key"] == "test-tenant"
