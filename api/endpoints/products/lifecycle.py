@@ -53,22 +53,14 @@ async def activate_product(
         # Get currently active product (if any) before activation
         active_result = await service.get_active_product()
         previous_active_id = None
-        if active_result["success"] and active_result.get("product"):
+        if active_result.get("product"):
             previous_active_id = active_result["product"]["id"]
 
         # Activate new product
         result = await service.activate_product(product_id)
 
-        if not result["success"]:
-            if "not found" in result["error"].lower():
-                raise HTTPException(status_code=404, detail=result["error"])
-            raise HTTPException(status_code=400, detail=result["error"])
-
         # Get full product details with metrics
         product_result = await service.get_product(product_id, include_metrics=True)
-
-        if not product_result["success"]:
-            raise HTTPException(status_code=500, detail="Failed to retrieve activated product")
 
         product_data = product_result["product"]
 
@@ -149,16 +141,8 @@ async def deactivate_product(
     try:
         result = await service.deactivate_product(product_id)
 
-        if not result["success"]:
-            if "not found" in result["error"].lower():
-                raise HTTPException(status_code=404, detail=result["error"])
-            raise HTTPException(status_code=400, detail=result["error"])
-
         # Get full product details
         product_result = await service.get_product(product_id, include_metrics=True)
-
-        if not product_result["success"]:
-            raise HTTPException(status_code=500, detail="Failed to retrieve product")
 
         product_data = product_result["product"]
 
@@ -228,18 +212,13 @@ async def delete_product(
     try:
         # Get product state before deletion for response
         product_result = await service.get_product(product_id)
-        was_active = product_result.get("data", {}).get("is_active", False) if product_result["success"] else False
+        was_active = product_result.get("product", {}).get("is_active", False)
 
         result = await service.delete_product(product_id)
 
-        if not result["success"]:
-            if "not found" in result["error"].lower():
-                raise HTTPException(status_code=404, detail=result["error"])
-            raise HTTPException(status_code=400, detail=result["error"])
-
         # Get remaining products count
         products_result = await service.list_products()
-        remaining_count = len(products_result.get("data", [])) if products_result["success"] else 0
+        remaining_count = len(products_result.get("products", []))
 
         return ProductDeleteResponse(
             message=result["message"],
@@ -278,16 +257,8 @@ async def restore_product(
     try:
         result = await service.restore_product(product_id)
 
-        if not result["success"]:
-            if "not found" in result["error"].lower():
-                raise HTTPException(status_code=404, detail=result["error"])
-            raise HTTPException(status_code=400, detail=result["error"])
-
         # Get full product details
         product_result = await service.get_product(product_id, include_metrics=True)
-
-        if not product_result["success"]:
-            raise HTTPException(status_code=500, detail="Failed to retrieve restored product")
 
         product_data = product_result["product"]
 
@@ -340,11 +311,6 @@ async def get_cascade_impact(
     try:
         result = await service.get_cascade_impact(product_id)
 
-        if not result["success"]:
-            if "not found" in result["error"].lower():
-                raise HTTPException(status_code=404, detail=result["error"])
-            raise HTTPException(status_code=400, detail=result["error"])
-
         impact_data = result["impact"]
 
         return CascadeImpact(
@@ -383,9 +349,6 @@ async def refresh_active_product(
 
     try:
         result = await service.get_active_product()
-
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
 
         product_data = result.get("product")
 
@@ -447,9 +410,6 @@ async def get_vision_document_stats(
     try:
         # Get active product
         result = await service.get_active_product()
-
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
 
         product_data = result.get("product")
 
