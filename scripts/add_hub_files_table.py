@@ -553,6 +553,36 @@ function sortTable(columnIndex) {{
     console.log("[Dependency Graph] Persistent tooltip enhancement loaded");
   }}, 100);
 }})();
+
+// ========== UPDATE GRAPH BUTTON ==========
+document.getElementById('update-graph').addEventListener('click', function() {{
+  alert(
+    'To update the dependency graph, run this command in your terminal:\\n\\n' +
+    'python scripts/update_dependency_graph_full.py\\n' +
+    'python scripts/add_hub_files_table.py\\n\\n' +
+    'This will regenerate the graph from the current codebase.'
+  );
+}});
+
+// ========== TIMESTAMP DISPLAY ==========
+function updateTimestamp() {{
+  const timestampEl = document.getElementById('last-updated');
+  if (typeof graphData !== 'undefined' && graphData.metadata && graphData.metadata.generated_at) {{
+    const timestamp = new Date(graphData.metadata.generated_at);
+    const formatted = timestamp.toLocaleString('en-US', {{
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }});
+    timestampEl.textContent = 'Last updated: ' + formatted;
+  }} else {{
+    timestampEl.textContent = 'Last updated: Unknown';
+  }}
+}}
+updateTimestamp();
 </script>
 """
 
