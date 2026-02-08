@@ -3,10 +3,13 @@ Simple integration test for consolidated vision trigger functionality (Handover 
 
 Tests that the consolidation service can be called successfully without errors.
 Full E2E endpoint testing deferred to Phase 5.
+
+Updated Handover 0730b: Exception-based error handling.
 """
 
 import pytest
 
+from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models import Product, VisionDocument
 from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 from tests.fixtures.vision_document_fixtures import VisionDocumentTestData
@@ -53,8 +56,7 @@ async def test_consolidation_service_with_vision_docs(db_session, tenant_manager
         product_id=product.id, session=db_session, tenant_key=tenant_key, force=True
     )
 
-    # THEN: Consolidation succeeds
-    assert result["success"] is True
+    # THEN: Consolidation succeeds (exception-based - no "success" key)
     assert "light" in result
     assert "medium" in result
     # Token counts may be 0 if content is too simple for summarization
@@ -100,19 +102,21 @@ async def test_consolidation_skip_no_changes(db_session, tenant_manager):
     first_result = await consolidation_service.consolidate_vision_documents(
         product_id=product.id, session=db_session, tenant_key=tenant_key, force=True
     )
-    assert first_result["success"] is True
+    # Exception-based: Success returns data directly (no "success" key)
+    assert "light" in first_result
+    assert "medium" in first_result
 
     # WHEN: Run consolidation again without changes
-    second_result = await consolidation_service.consolidate_vision_documents(
-        product_id=product.id,
-        session=db_session,
-        tenant_key=tenant_key,
-        force=False,  # Don't force
-    )
+    # THEN: Second consolidation raises ValidationError
+    with pytest.raises(ValidationError) as exc_info:
+        await consolidation_service.consolidate_vision_documents(
+            product_id=product.id,
+            session=db_session,
+            tenant_key=tenant_key,
+            force=False,  # Don't force
+        )
 
-    # THEN: Second consolidation skipped
-    assert second_result["success"] is False
-    assert second_result["error"] == "no_changes"
+    assert exc_info.value.error_code == "NO_CHANGES"
 
 
 @pytest.mark.asyncio
@@ -131,14 +135,14 @@ async def test_consolidation_multi_tenant_isolation(db_session, tenant_manager):
     await db_session.flush()
 
     # WHEN: Try to consolidate with wrong tenant key
+    # THEN: Consolidation raises ResourceNotFoundError (tenant isolation)
     consolidation_service = ConsolidatedVisionService()
-    result = await consolidation_service.consolidate_vision_documents(
-        product_id=product_a.id,
-        session=db_session,
-        tenant_key=tenant_b,  # Wrong tenant!
-        force=False,
-    )
+    with pytest.raises(ResourceNotFoundError) as exc_info:
+        await consolidation_service.consolidate_vision_documents(
+            product_id=product_a.id,
+            session=db_session,
+            tenant_key=tenant_b,  # Wrong tenant!
+            force=False,
+        )
 
-    # THEN: Consolidation fails (tenant isolation)
-    assert result["success"] is False
-    assert result["error"] == "product_not_found"
+    assert exc_info.value.error_code == "PRODUCT_NOT_FOUND"
