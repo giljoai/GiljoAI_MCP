@@ -770,7 +770,58 @@
         "estimated_effort": "24-38 hours",
         "efficiency_gain": "50% time savings via TDD and focused phases"
       }
+    },
+    {
+      "id": "0740-handover-created",
+    "timestamp": "2026-02-08T19:30:00.000000+00:00",
+    "from_handover": "documentation-manager",
+    "to_handovers": [
+      "orchestrator",
+      "user",
+      "0740"
+    ],
+    "type": "info",
+    "subject": "Handover 0740 Created: Comprehensive Post-Cleanup Audit",
+    "message": "Created comprehensive audit handover to validate 0700 series cleanup work (~200 hours, 0700a-0730d). Handover specifies 7 parallel specialized audits: (1) Backend code health (backend-integration-tester), (2) Frontend code health (frontend-tester), (3) Database schema audit (database-expert), (4) Dependency audit (version-manager), (5) TODO aggregation with interactive dashboard (documentation-manager), (6) Architecture consistency (system-architect), (7) Documentation debt (documentation-manager). Deliverables: 7 audit reports, TODO dashboard integrated into dependency_graph.html, comparison metrics vs 0725b baseline, follow-up handover recommendations. Estimated effort: 8-12 hours. Goal: Measure cleanup ROI, establish new technical debt baseline, identify any remaining issues. CRITICAL: This is read-only audit - no code changes. Hard stop after completion for user review.",
+    "files_affected": [
+      "handovers/0740_COMPREHENSIVE_POST_CLEANUP_AUDIT.md",
+      "handovers/0700_series/orchestrator_state.json",
+      "handovers/0700_series/comms_log.json"
+    ],
+    "action_required": true,
+    "context": {
+      "audit_scope": {
+        "backend": "Deprecated markers, dead code, orphans, half measures, code quality, exception patterns",
+        "frontend": "Unused components, dead code, console.log, deprecated patterns, unused CSS, prop validation",
+        "database": "Unused columns, deprecated columns, missing indexes, orphaned tables, migration issues",
+        "dependencies": "Unused Python/npm packages, outdated packages, security vulnerabilities, duplicates",
+        "todos": "All TODO comments cataloged, categorized (DONE/ACTIVE/OBSOLETE), mapped, prioritized",
+        "architecture": "Service layer patterns, API patterns, test patterns, naming conventions, import patterns",
+        "documentation": "Outdated docs, missing docs, incorrect examples, broken links, CLAUDE.md accuracy"
+      },
+      "methodology": {
+        "approach": "AST-based analysis with FastAPI awareness (not naive grep like 0725)",
+        "tools": ["Serena MCP", "ast module", "radon", "ESLint", "Vue SFC parser"],
+        "validation": "Sample 20+ findings per category, target <5% false positive rate",
+        "comparison_baseline": "0725b audit results (post-0720 delinting)"
+      },
+      "deliverables": {
+        "reports": 7,
+        "todo_dashboard": "Interactive HTML tab in dependency_graph.html with filters",
+        "comparison_metrics": "Before (0725b) vs After (0740) comparison table",
+        "follow_up_handovers": "Prioritized list (P0-P3) based on findings"
+      },
+      "expected_improvements": {
+        "dict_wrappers": "122 → 0 (DONE in 0730b)",
+        "lint_issues": "0 → 0 (MAINTAINED from 0720)",
+        "test_pass_rate": "100% → 100% (MAINTAINED)",
+        "deprecated_markers": "46 → 46-50 (stable)",
+        "todo_markers": "43 → 35-45 (recount excludes field names)",
+        "skipped_tests": "168 → 165-168 (3 bugs fixed in 0727)"
+      },
+      "next_action": "User approval required before spawning deep-researcher orchestrator"
     }
+  }
   ],
   "schema": {
     "entry_format": {
