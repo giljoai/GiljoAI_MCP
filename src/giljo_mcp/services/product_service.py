@@ -309,7 +309,7 @@ class ProductService:
                     metrics = await self._get_product_metrics(session, product_id)
                     product_data.update(metrics)
 
-                return {"success": True, "product": product_data}
+                return {"product": product_data}
 
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
@@ -390,7 +390,7 @@ class ProductService:
 
                 self._logger.debug(f"Found {len(product_list)} products for tenant {self.tenant_key}")
 
-                return {"success": True, "products": product_list}
+                return {"products": product_list}
 
         except Exception as e:
             self._logger.exception("Failed to list products")
@@ -464,7 +464,6 @@ class ProductService:
                     )
 
                 return {
-                    "success": True,
                     "product": {
                         "id": str(product.id),
                         "name": product.name,
