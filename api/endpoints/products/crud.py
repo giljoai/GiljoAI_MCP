@@ -51,14 +51,8 @@ async def create_product(
             target_platforms=request.target_platforms,  # Handover 0425 Phase 2
         )
 
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result["error"])
-
         # Get full product details with metrics
         product_result = await service.get_product(product_id=result["product_id"], include_metrics=True)
-
-        if not product_result["success"]:
-            raise HTTPException(status_code=500, detail="Failed to retrieve created product")
 
         product_data = product_result["product"]
 
@@ -119,9 +113,6 @@ async def list_products(
     try:
         result = await service.list_products(include_inactive=include_inactive, include_metrics=True)
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
-
         logger.debug(f"Found {len(result['products'])} products")
 
         # Handover 0412: Helper to ensure product_memory is never None
@@ -180,9 +171,6 @@ async def list_deleted_products(
     try:
         result = await service.list_deleted_products()
 
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error"])
-
         return [
             DeletedProductResponse(
                 id=p["id"],
@@ -223,9 +211,6 @@ async def get_product(
     """
     try:
         result = await service.get_product(product_id=product_id, include_metrics=True)
-
-        if not result["success"]:
-            raise HTTPException(status_code=404, detail=result["error"])
 
         product_data = result["product"]
 
@@ -289,16 +274,8 @@ async def update_product(
 
         result = await service.update_product(product_id, **update_data)
 
-        if not result["success"]:
-            if "not found" in result["error"].lower():
-                raise HTTPException(status_code=404, detail=result["error"])
-            raise HTTPException(status_code=400, detail=result["error"])
-
         # Get full updated product with metrics
         product_result = await service.get_product(product_id=product_id, include_metrics=True)
-
-        if not product_result["success"]:
-            raise HTTPException(status_code=500, detail="Failed to retrieve updated product")
 
         product_data = product_result["product"]
 
