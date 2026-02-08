@@ -1,4 +1,7 @@
-"""Service for consolidating vision documents into unified summaries (Handover 0377)."""
+"""Service for consolidating vision documents into unified summaries (Handover 0377).
+
+Updated Handover 0730b: Migrated from dict wrappers to exception-based error handling.
+"""
 
 import hashlib
 from datetime import datetime, timezone
@@ -9,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
@@ -36,13 +40,15 @@ class ConsolidatedVisionService:
 
         Returns:
             {
-                "success": bool,
                 "light": {"summary": "...", "tokens": int},
                 "medium": {"summary": "...", "tokens": int},
                 "hash": "...",
-                "source_docs": ["doc_id1", "doc_id2", ...],
-                "error": Optional[str]
+                "source_docs": ["doc_id1", "doc_id2", ...]
             }
+
+        Raises:
+            ResourceNotFoundError: Product not found or tenant mismatch
+            ValidationError: No changes detected (unless force=True)
         """
         # Fetch product with vision documents (eagerly load relationship to avoid lazy loading issues)
         result = await session.execute(
@@ -52,7 +58,9 @@ class ConsolidatedVisionService:
 
         if not product:
             logger.warning("consolidate_vision_documents.product_not_found", product_id=product_id)
-            return {"success": False, "error": "product_not_found"}
+            raise ResourceNotFoundError(
+                message="Product not found", error_code="PRODUCT_NOT_FOUND", context={"product_id": product_id}
+            )
 
         # Multi-tenant isolation check
         if product.tenant_key != tenant_key:
@@ -62,10 +70,10 @@ class ConsolidatedVisionService:
                 expected_tenant=tenant_key,
                 actual_tenant=product.tenant_key,
             )
-            return {
-                "success": False,
-                "error": "product_not_found",  # Don't leak tenant info
-            }
+            # Don't leak tenant info - raise same error as not found
+            raise ResourceNotFoundError(
+                message="Product not found", error_code="PRODUCT_NOT_FOUND", context={"product_id": product_id}
+            )
 
         # Build aggregate from all active vision documents
         aggregate_text, source_doc_ids, aggregate_hash = self._build_aggregate(product)
@@ -73,7 +81,11 @@ class ConsolidatedVisionService:
         # Check if content has changed (unless force=True)
         if not force and product.consolidated_vision_hash == aggregate_hash:
             logger.info("consolidate_vision_documents.no_changes", product_id=product_id, hash=aggregate_hash)
-            return {"success": False, "error": "no_changes"}
+            raise ValidationError(
+                message="No changes detected in vision documents",
+                error_code="NO_CHANGES",
+                context={"product_id": product_id, "hash": aggregate_hash},
+            )
 
         # Generate summaries
         logger.info(
@@ -104,8 +116,8 @@ class ConsolidatedVisionService:
             processing_time_ms=summary_result["processing_time_ms"],
         )
 
+        # Return ConsolidationResult (exception-based - no "success" wrapper)
         return {
-            "success": True,
             "light": {"summary": summary_result["light"]["summary"], "tokens": summary_result["light"]["tokens"]},
             "medium": {"summary": summary_result["medium"]["summary"], "tokens": summary_result["medium"]["tokens"]},
             "hash": aggregate_hash,
