@@ -70,11 +70,6 @@ async def update_git_integration(
             default_branch=settings.default_branch,
         )
 
-        if not result["success"]:
-            if "not found" in result["error"].lower():
-                raise HTTPException(status_code=404, detail=result["error"])
-            raise HTTPException(status_code=400, detail=result["error"])
-
         # Build response from returned settings
         git_settings = result["settings"]
         return GitIntegrationResponse(
@@ -113,11 +108,6 @@ async def get_git_integration(
 
     try:
         result = await service.get_product(product_id, include_metrics=False)
-
-        if not result["success"]:
-            if "not found" in result["error"].lower():
-                raise HTTPException(status_code=404, detail=result["error"])
-            raise HTTPException(status_code=400, detail=result["error"])
 
         # Extract git integration settings from product_memory
         product_data = result["product"]
