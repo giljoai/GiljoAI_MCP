@@ -21,13 +21,13 @@ class TestMigration0433:
     """Test suite for Task.product_id NOT NULL migration."""
 
     async def test_product_id_not_null_constraint_enforced(
-        self, db_session_async, test_tenant, test_product
+        self, db_session, test_tenant, test_product
     ):
         """Verify that product_id cannot be NULL after migration."""
 
         # Attempt to insert task with NULL product_id
         with pytest.raises(IntegrityError) as exc_info:
-            await db_session_async.execute(
+            await db_session.execute(
                 text(
                     """
                     INSERT INTO tasks (id, tenant_key, product_id, title, status, priority)
@@ -42,7 +42,7 @@ class TestMigration0433:
                     "priority": "medium",
                 },
             )
-            await db_session_async.commit()
+            await db_session.commit()
 
         # Verify error message contains NOT NULL constraint violation
         assert "null value in column" in str(exc_info.value).lower() or "not-null" in str(
@@ -50,13 +50,13 @@ class TestMigration0433:
         ).lower()
 
     async def test_uuid_format_check_constraint_enforced(
-        self, db_session_async, test_tenant, test_product
+        self, db_session, test_tenant, test_product
     ):
         """Verify that product_id must be valid UUID format."""
 
         # Attempt to insert task with invalid UUID format
         with pytest.raises(IntegrityError) as exc_info:
-            await db_session_async.execute(
+            await db_session.execute(
                 text(
                     """
                     INSERT INTO tasks (id, tenant_key, product_id, title, status, priority)
@@ -72,7 +72,7 @@ class TestMigration0433:
                     "priority": "medium",
                 },
             )
-            await db_session_async.commit()
+            await db_session.commit()
 
         # Verify error message contains CHECK constraint violation
         assert "ck_task_product_id_uuid_format" in str(
@@ -80,12 +80,12 @@ class TestMigration0433:
         ) or "check constraint" in str(exc_info.value).lower()
 
     async def test_valid_task_creation_with_product_id(
-        self, db_session_async, test_tenant, test_product
+        self, db_session, test_tenant, test_product
     ):
         """Verify that tasks can be created with valid product_id."""
 
         # Insert task with valid product_id
-        await db_session_async.execute(
+        await db_session.execute(
             text(
                 """
                 INSERT INTO tasks (id, tenant_key, product_id, title, status, priority)
@@ -101,10 +101,10 @@ class TestMigration0433:
                 "priority": "medium",
             },
         )
-        await db_session_async.commit()
+        await db_session.commit()
 
         # Verify task was created
-        result = await db_session_async.execute(
+        result = await db_session.execute(
             text("SELECT id, product_id FROM tasks WHERE id = :id"),
             {"id": "test-task-valid"},
         )
@@ -113,13 +113,13 @@ class TestMigration0433:
         assert row[1] == test_product["id"]
 
     async def test_foreign_key_integrity_maintained(
-        self, db_session_async, test_tenant, test_product
+        self, db_session, test_tenant, test_product
     ):
         """Verify that foreign key to products table is enforced."""
 
         # Attempt to insert task with non-existent product_id
         with pytest.raises(IntegrityError) as exc_info:
-            await db_session_async.execute(
+            await db_session.execute(
                 text(
                     """
                     INSERT INTO tasks (id, tenant_key, product_id, title, status, priority)
@@ -135,7 +135,7 @@ class TestMigration0433:
                     "priority": "medium",
                 },
             )
-            await db_session_async.commit()
+            await db_session.commit()
 
         # Verify error message contains foreign key constraint violation
         assert "foreign key" in str(exc_info.value).lower() or "tasks_product_id_fkey" in str(
@@ -143,7 +143,7 @@ class TestMigration0433:
         )
 
     async def test_cascade_delete_on_product_deletion(
-        self, db_session_async, test_tenant
+        self, db_session, test_tenant
     ):
         """Verify that tasks are deleted when product is deleted (CASCADE)."""
 
@@ -151,7 +151,7 @@ class TestMigration0433:
         product_id = "cascade-test-product"
         task_id = "cascade-test-task"
 
-        await db_session_async.execute(
+        await db_session.execute(
             text(
                 """
                 INSERT INTO products (id, tenant_key, name, is_active)
@@ -166,7 +166,7 @@ class TestMigration0433:
             },
         )
 
-        await db_session_async.execute(
+        await db_session.execute(
             text(
                 """
                 INSERT INTO tasks (id, tenant_key, product_id, title, status, priority)
@@ -182,33 +182,33 @@ class TestMigration0433:
                 "priority": "medium",
             },
         )
-        await db_session_async.commit()
+        await db_session.commit()
 
         # Delete product
-        await db_session_async.execute(
+        await db_session.execute(
             text("DELETE FROM products WHERE id = :id"), {"id": product_id}
         )
-        await db_session_async.commit()
+        await db_session.commit()
 
         # Verify task was also deleted
-        result = await db_session_async.execute(
+        result = await db_session.execute(
             text("SELECT id FROM tasks WHERE id = :id"), {"id": task_id}
         )
         row = result.fetchone()
         assert row is None
 
-    async def test_no_orphaned_tasks_exist(self, db_session_async):
+    async def test_no_orphaned_tasks_exist(self, db_session):
         """Verify that migration left no orphaned tasks."""
 
         # Check for tasks with NULL product_id
-        result = await db_session_async.execute(
+        result = await db_session.execute(
             text("SELECT COUNT(*) FROM tasks WHERE product_id IS NULL")
         )
         null_count = result.scalar()
         assert null_count == 0, "Found tasks with NULL product_id after migration"
 
         # Check for tasks referencing non-existent products
-        result = await db_session_async.execute(
+        result = await db_session.execute(
             text(
                 """
                 SELECT COUNT(*) FROM tasks t
@@ -221,7 +221,7 @@ class TestMigration0433:
         assert orphaned_count == 0, "Found tasks referencing non-existent products"
 
     async def test_tenant_isolation_maintained(
-        self, db_session_async, test_tenant
+        self, db_session, test_tenant
     ):
         """Verify that tenant isolation is maintained after migration."""
 
@@ -231,7 +231,7 @@ class TestMigration0433:
 
         # Setup tenant A
         product_a_id = "product-a-0433"
-        await db_session_async.execute(
+        await db_session.execute(
             text(
                 """
                 INSERT INTO products (id, tenant_key, name, is_active)
@@ -247,7 +247,7 @@ class TestMigration0433:
         )
 
         task_a_id = "task-a-0433"
-        await db_session_async.execute(
+        await db_session.execute(
             text(
                 """
                 INSERT INTO tasks (id, tenant_key, product_id, title, status, priority)
@@ -266,7 +266,7 @@ class TestMigration0433:
 
         # Setup tenant B
         product_b_id = "product-b-0433"
-        await db_session_async.execute(
+        await db_session.execute(
             text(
                 """
                 INSERT INTO products (id, tenant_key, name, is_active)
@@ -282,7 +282,7 @@ class TestMigration0433:
         )
 
         task_b_id = "task-b-0433"
-        await db_session_async.execute(
+        await db_session.execute(
             text(
                 """
                 INSERT INTO tasks (id, tenant_key, product_id, title, status, priority)
@@ -298,10 +298,10 @@ class TestMigration0433:
                 "priority": "medium",
             },
         )
-        await db_session_async.commit()
+        await db_session.commit()
 
         # Verify tenant A can only see their tasks
-        result_a = await db_session_async.execute(
+        result_a = await db_session.execute(
             text(
                 """
                 SELECT COUNT(*) FROM tasks t
@@ -316,7 +316,7 @@ class TestMigration0433:
         assert count_a == 1
 
         # Verify tenant B can only see their tasks
-        result_b = await db_session_async.execute(
+        result_b = await db_session.execute(
             text(
                 """
                 SELECT COUNT(*) FROM tasks t
@@ -331,7 +331,7 @@ class TestMigration0433:
         assert count_b == 1
 
         # Verify no cross-tenant task-product references
-        result_cross = await db_session_async.execute(
+        result_cross = await db_session.execute(
             text(
                 """
                 SELECT COUNT(*) FROM tasks t
@@ -354,11 +354,11 @@ async def test_tenant():
 
 
 @pytest.fixture
-async def test_product(db_session_async, test_tenant):
+async def test_product(db_session, test_tenant):
     """Create a test product for the test tenant."""
     product_id = "test-product-0433"
 
-    await db_session_async.execute(
+    await db_session.execute(
         text(
             """
             INSERT INTO products (id, tenant_key, name, is_active)
@@ -373,6 +373,6 @@ async def test_product(db_session_async, test_tenant):
             "is_active": True,
         },
     )
-    await db_session_async.commit()
+    await db_session.commit()
 
     return {"id": product_id, "tenant_key": test_tenant}
