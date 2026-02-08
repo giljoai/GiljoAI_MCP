@@ -68,6 +68,7 @@ async def send_message(
         message_type=message.message_type,
         priority=message.priority,
         from_agent=message.from_agent,
+        tenant_key=current_user.tenant_key,  # Handover 0733: Enforce tenant isolation
     )
 
     # Extract from nested data structure (Handover 0405 consistency)
