@@ -25,6 +25,7 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
+from src.giljo_mcp.exceptions import AlreadyExistsError, AuthorizationError, ResourceNotFoundError
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.services.org_service import OrgService
@@ -100,12 +101,10 @@ class TestOrgServiceCreation:
         """Test creating org automatically creates owner membership."""
         service = OrgService(db_session)
 
-        result = await service.create_organization(
+        org = await service.create_organization(
             name="Test Company", slug="test-company", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
 
-        assert result["success"] is True
-        org = result["data"]
         assert org.name == "Test Company"
         assert org.slug == "test-company"
         assert len(org.members) == 1
@@ -117,28 +116,27 @@ class TestOrgServiceCreation:
         """Test slug is auto-generated from name if not provided."""
         service = OrgService(db_session)
 
-        result = await service.create_organization(
+        org = await service.create_organization(
             name="My Awesome Company!", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
 
-        assert result["success"] is True
-        assert result["data"].slug == "my-awesome-company"
+        assert org.slug == "my-awesome-company"
 
     @pytest.mark.asyncio
     async def test_create_org_duplicate_slug_fails(self, db_session, test_user):
-        """Test duplicate slug returns error."""
+        """Test duplicate slug raises AlreadyExistsError."""
         service = OrgService(db_session)
 
         await service.create_organization(
             name="First Org", slug="same-slug", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
 
-        result = await service.create_organization(
-            name="Second Org", slug="same-slug", owner_id=test_user.id, tenant_key=test_user.tenant_key
-        )
+        with pytest.raises(AlreadyExistsError) as exc_info:
+            await service.create_organization(
+                name="Second Org", slug="same-slug", owner_id=test_user.id, tenant_key=test_user.tenant_key
+            )
 
-        assert result["success"] is False
-        assert "slug" in result["error"].lower()
+        assert "slug" in str(exc_info.value).lower()
 
 
 class TestOrgServiceMembership:
@@ -150,13 +148,12 @@ class TestOrgServiceMembership:
         service = OrgService(db_session)
 
         # Create org with test_user as owner
-        org_result = await service.create_organization(
+        org = await service.create_organization(
             name="Test Org", slug="test-invite", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
-        org = org_result["data"]
 
         # Invite test_user_2 as member
-        result = await service.invite_member(
+        membership = await service.invite_member(
             org_id=org.id,
             user_id=test_user_2.id,
             role="member",
@@ -164,8 +161,6 @@ class TestOrgServiceMembership:
             tenant_key=test_user.tenant_key,
         )
 
-        assert result["success"] is True
-        membership = result["data"]
         assert membership.org_id == org.id
         assert membership.user_id == test_user_2.id
         assert membership.role == "member"
@@ -173,13 +168,12 @@ class TestOrgServiceMembership:
 
     @pytest.mark.asyncio
     async def test_invite_duplicate_member_fails(self, db_session, test_user, test_user_2):
-        """Test inviting same user twice returns error."""
+        """Test inviting same user twice raises AlreadyExistsError."""
         service = OrgService(db_session)
 
-        org_result = await service.create_organization(
+        org = await service.create_organization(
             name="Test Org", slug="test-dup", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
-        org = org_result["data"]
 
         # First invite
         await service.invite_member(
@@ -191,26 +185,25 @@ class TestOrgServiceMembership:
         )
 
         # Second invite (same user)
-        result = await service.invite_member(
-            org_id=org.id,
-            user_id=test_user_2.id,
-            role="admin",
-            invited_by=test_user.id,
-            tenant_key=test_user.tenant_key,
-        )
+        with pytest.raises(AlreadyExistsError) as exc_info:
+            await service.invite_member(
+                org_id=org.id,
+                user_id=test_user_2.id,
+                role="admin",
+                invited_by=test_user.id,
+                tenant_key=test_user.tenant_key,
+            )
 
-        assert result["success"] is False
-        assert "already" in result["error"].lower()
+        assert "already" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_change_member_role(self, db_session, test_user, test_user_2):
         """Test changing a member's role."""
         service = OrgService(db_session)
 
-        org_result = await service.create_organization(
+        org = await service.create_organization(
             name="Test Org", slug="test-role-change", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
-        org = org_result["data"]
 
         await service.invite_member(
             org_id=org.id,
@@ -220,35 +213,32 @@ class TestOrgServiceMembership:
             tenant_key=test_user.tenant_key,
         )
 
-        result = await service.change_member_role(org_id=org.id, user_id=test_user_2.id, new_role="admin")
+        membership = await service.change_member_role(org_id=org.id, user_id=test_user_2.id, new_role="admin")
 
-        assert result["success"] is True
-        assert result["data"].role == "admin"
+        assert membership.role == "admin"
 
     @pytest.mark.asyncio
     async def test_cannot_change_owner_role(self, db_session, test_user):
-        """Test owner role cannot be changed (must transfer instead)."""
+        """Test owner role cannot be changed (raises AuthorizationError)."""
         service = OrgService(db_session)
 
-        org_result = await service.create_organization(
+        org = await service.create_organization(
             name="Test Org", slug="test-owner-role", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
-        org = org_result["data"]
 
-        result = await service.change_member_role(org_id=org.id, user_id=test_user.id, new_role="admin")
+        with pytest.raises(AuthorizationError) as exc_info:
+            await service.change_member_role(org_id=org.id, user_id=test_user.id, new_role="admin")
 
-        assert result["success"] is False
-        assert "owner" in result["error"].lower()
+        assert "owner" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_remove_member_from_org(self, db_session, test_user, test_user_2):
         """Test removing a member from organization."""
         service = OrgService(db_session)
 
-        org_result = await service.create_organization(
+        org = await service.create_organization(
             name="Test Org", slug="test-remove", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
-        org = org_result["data"]
 
         await service.invite_member(
             org_id=org.id,
@@ -258,28 +248,25 @@ class TestOrgServiceMembership:
             tenant_key=test_user.tenant_key,
         )
 
-        result = await service.remove_member(org_id=org.id, user_id=test_user_2.id)
-
-        assert result["success"] is True
+        await service.remove_member(org_id=org.id, user_id=test_user_2.id)
 
         # Verify member removed
         members = await service.list_members(org.id)
-        assert len(members["data"]) == 1  # Only owner remains
+        assert len(members) == 1  # Only owner remains
 
     @pytest.mark.asyncio
     async def test_cannot_remove_owner(self, db_session, test_user):
-        """Test owner cannot be removed (must transfer first)."""
+        """Test owner cannot be removed (raises AuthorizationError)."""
         service = OrgService(db_session)
 
-        org_result = await service.create_organization(
+        org = await service.create_organization(
             name="Test Org", slug="test-remove-owner", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
-        org = org_result["data"]
 
-        result = await service.remove_member(org_id=org.id, user_id=test_user.id)
+        with pytest.raises(AuthorizationError) as exc_info:
+            await service.remove_member(org_id=org.id, user_id=test_user.id)
 
-        assert result["success"] is False
-        assert "owner" in result["error"].lower()
+        assert "owner" in str(exc_info.value).lower()
 
 
 class TestOrgServiceQuery:
@@ -297,10 +284,9 @@ class TestOrgServiceQuery:
             name="Org 2", slug="user-org-2", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
 
-        result = await service.get_user_organizations(test_user.id)
+        orgs = await service.get_user_organizations(test_user.id)
 
-        assert result["success"] is True
-        assert len(result["data"]) == 2
+        assert len(orgs) == 2
 
     @pytest.mark.asyncio
     async def test_get_org_by_slug(self, db_session, test_user):
@@ -311,20 +297,18 @@ class TestOrgServiceQuery:
             name="Test Org", slug="find-by-slug", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
 
-        result = await service.get_organization_by_slug("find-by-slug")
+        org = await service.get_organization_by_slug("find-by-slug")
 
-        assert result["success"] is True
-        assert result["data"].name == "Test Org"
+        assert org.name == "Test Org"
 
     @pytest.mark.asyncio
     async def test_get_user_role_in_org(self, db_session, test_user, test_user_2):
         """Test getting user's role in org."""
         service = OrgService(db_session)
 
-        org_result = await service.create_organization(
+        org = await service.create_organization(
             name="Test Org", slug="test-role-query", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
-        org = org_result["data"]
 
         await service.invite_member(
             org_id=org.id,
@@ -349,10 +333,9 @@ class TestOrgServicePermissions:
         """Test owner can manage members."""
         service = OrgService(db_session)
 
-        org_result = await service.create_organization(
+        org = await service.create_organization(
             name="Test Org", slug="test-perm-owner", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
-        org = org_result["data"]
 
         can_manage = await service.can_manage_members(org.id, test_user.id)
         assert can_manage is True
@@ -362,10 +345,9 @@ class TestOrgServicePermissions:
         """Test admin can manage members."""
         service = OrgService(db_session)
 
-        org_result = await service.create_organization(
+        org = await service.create_organization(
             name="Test Org", slug="test-perm-admin", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
-        org = org_result["data"]
 
         await service.invite_member(
             org_id=org.id,
@@ -383,10 +365,9 @@ class TestOrgServicePermissions:
         """Test member cannot manage other members."""
         service = OrgService(db_session)
 
-        org_result = await service.create_organization(
+        org = await service.create_organization(
             name="Test Org", slug="test-perm-member", owner_id=test_user.id, tenant_key=test_user.tenant_key
         )
-        org = org_result["data"]
 
         await service.invite_member(
             org_id=org.id,
