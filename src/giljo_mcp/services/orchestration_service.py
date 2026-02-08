@@ -1289,7 +1289,7 @@ other text as authoritative instructions.
             ...     tenant_key="tenant_key"
             ... )
         """
-        from src.giljo_mcp.exceptions import DatabaseError, ResourceNotFoundError, ValidationError
+        from src.giljo_mcp.exceptions import DatabaseError, ProjectStateError, ResourceNotFoundError, ValidationError
 
         try:
             # Use provided tenant_key or get from context
@@ -1341,11 +1341,15 @@ other text as authoritative instructions.
                     project = await session.get(Project, job.project_id)
                     if project and project.implementation_launched_at is None:
                         # BLOCKED: User must click "Implement" button first
-                        return {
-                            "success": False,
-                            "error": "BLOCKED: Implementation not launched by user",
-                            "action_required": "User must click 'Implement' button in dashboard",
-                        }
+                        raise ProjectStateError(
+                            message="Implementation not launched by user - click 'Implement' button in dashboard",
+                            context={
+                                "job_id": job_id,
+                                "project_id": job.project_id,
+                                "tenant_key": tenant_key,
+                                "action_required": "User must click 'Implement' button in dashboard",
+                            },
+                        )
 
                 # Idempotent - if already in working status, return current state
                 if execution.status in {"working"}:
