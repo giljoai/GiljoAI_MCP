@@ -33,12 +33,13 @@ class TestMultiTenantIsolation:
         service1 = ProductService(db_manager, tenant1_key)
         service2 = ProductService(db_manager, tenant2_key)
 
-        # Create products in different tenants
+        # Create products in different tenants (exception-based: success is implicit)
         result1 = await service1.create_product(name="Tenant1 Product", description="Product for tenant 1")
         result2 = await service2.create_product(name="Tenant2 Product", description="Product for tenant 2")
 
-        assert result1["success"] is True
-        assert result2["success"] is True
+        # Verify creation returned expected data
+        assert "product_id" in result1
+        assert "product_id" in result2
 
         # Verify tenant1 can only see their product
         list1 = await service1.list_products(include_inactive=True)
@@ -52,6 +53,8 @@ class TestMultiTenantIsolation:
 
     async def test_get_product_cross_tenant_forbidden(self, db_manager):
         """Test that tenant cannot access another tenant's product"""
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         tenant1_key = str(uuid4())
         tenant2_key = str(uuid4())
 
@@ -62,13 +65,15 @@ class TestMultiTenantIsolation:
         create_result = await service1.create_product(name="Tenant1 Secret Product")
         product_id = create_result["product_id"]
 
-        # Try to access from tenant2 - should fail
-        get_result = await service2.get_product(product_id)
-        assert get_result["success"] is False
-        assert "not found" in get_result["error"]
+        # Try to access from tenant2 - should raise exception
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await service2.get_product(product_id)
+        assert "not found" in str(exc_info.value).lower()
 
     async def test_update_product_cross_tenant_forbidden(self, db_manager):
         """Test that tenant cannot update another tenant's product"""
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         tenant1_key = str(uuid4())
         tenant2_key = str(uuid4())
 
@@ -78,10 +83,10 @@ class TestMultiTenantIsolation:
         create_result = await service1.create_product(name="Protected Product")
         product_id = create_result["product_id"]
 
-        # Try to update from tenant2 - should fail
-        update_result = await service2.update_product(product_id=product_id, name="Hacked Name")
-        assert update_result["success"] is False
-        assert "not found" in update_result["error"]
+        # Try to update from tenant2 - should raise exception
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await service2.update_product(product_id=product_id, name="Hacked Name")
+        assert "not found" in str(exc_info.value).lower()
 
         # Verify name unchanged
         get_result = await service1.get_product(product_id)
@@ -89,6 +94,8 @@ class TestMultiTenantIsolation:
 
     async def test_delete_product_cross_tenant_forbidden(self, db_manager):
         """Test that tenant cannot delete another tenant's product"""
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         tenant1_key = str(uuid4())
         tenant2_key = str(uuid4())
 
@@ -98,13 +105,12 @@ class TestMultiTenantIsolation:
         create_result = await service1.create_product(name="Protected Product")
         product_id = create_result["product_id"]
 
-        # Try to delete from tenant2 - should fail
-        delete_result = await service2.delete_product(product_id)
-        assert delete_result["success"] is False
+        # Try to delete from tenant2 - should raise exception
+        with pytest.raises(ResourceNotFoundError):
+            await service2.delete_product(product_id)
 
-        # Verify product still exists in tenant1
+        # Verify product still exists in tenant1 (exception-based: success is implicit)
         get_result = await service1.get_product(product_id)
-        assert get_result["success"] is True
         assert get_result["product"]["name"] == "Protected Product"
 
     async def test_activate_product_tenant_isolation(self, db_manager):
@@ -155,9 +161,9 @@ class TestSingleActiveProductConstraint:
         create2 = await service.create_product(name="Product B")
         create3 = await service.create_product(name="Product C")
 
-        # Activate first product
+        # Activate first product (exception-based: success is implicit)
         activate1 = await service.activate_product(create1["product_id"])
-        assert activate1["success"] is True
+        assert activate1["product"]["is_active"] is True
 
         # Verify only one active
         active = await service.get_active_product()
@@ -165,7 +171,7 @@ class TestSingleActiveProductConstraint:
 
         # Activate second product
         activate2 = await service.activate_product(create2["product_id"])
-        assert activate2["success"] is True
+        assert activate2["product"]["is_active"] is True
         assert activate2["deactivated_count"] == 1
 
         # Verify only Product B is active
@@ -178,7 +184,7 @@ class TestSingleActiveProductConstraint:
 
         # Activate third product
         activate3 = await service.activate_product(create3["product_id"])
-        assert activate3["success"] is True
+        assert activate3["product"]["is_active"] is True
         assert activate3["deactivated_count"] == 1
 
         # Verify only Product C is active
@@ -193,13 +199,13 @@ class TestSingleActiveProductConstraint:
         create_result = await service.create_product(name="Single Product")
         product_id = create_result["product_id"]
 
-        # Activate once
+        # Activate once (exception-based: success is implicit)
         activate1 = await service.activate_product(product_id)
-        assert activate1["success"] is True
+        assert activate1["product"]["is_active"] is True
 
         # Activate again
         activate2 = await service.activate_product(product_id)
-        assert activate2["success"] is True
+        assert activate2["product"]["is_active"] is True
         assert activate2["deactivated_count"] == 0
 
     async def test_deactivate_product_no_active_product(self, db_manager):
@@ -210,10 +216,10 @@ class TestSingleActiveProductConstraint:
         create_result = await service.create_product(name="Temporary Active")
         product_id = create_result["product_id"]
 
-        # Activate then deactivate
+        # Activate then deactivate (exception-based: success is implicit)
         await service.activate_product(product_id)
         deactivate_result = await service.deactivate_product(product_id)
-        assert deactivate_result["success"] is True
+        assert deactivate_result["product"]["is_active"] is False
 
         # Verify no active product
         active = await service.get_active_product()
@@ -229,14 +235,14 @@ class TestProductCRUDWorkflows:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # 1. Create product
+        # 1. Create product (exception-based: success is implicit)
         create_result = await service.create_product(
             name="Lifecycle Product",
             description="Testing full lifecycle",
             project_path="/projects/lifecycle",
             config_data={"version": "1.0"},
         )
-        assert create_result["success"] is True
+        assert "product_id" in create_result
         product_id = create_result["product_id"]
 
         # 2. Update product
@@ -245,22 +251,19 @@ class TestProductCRUDWorkflows:
             description="Updated description",
             config_data={"version": "2.0", "feature": "enabled"},
         )
-        assert update_result["success"] is True
-        assert update_result["data"]["description"] == "Updated description"
+        assert update_result["product"]["description"] == "Updated description"
 
         # 3. Activate product
         activate_result = await service.activate_product(product_id)
-        assert activate_result["success"] is True
         assert activate_result["product"]["is_active"] is True
 
         # 4. Deactivate product
         deactivate_result = await service.deactivate_product(product_id)
-        assert deactivate_result["success"] is True
         assert deactivate_result["product"]["is_active"] is False
 
         # 5. Soft delete product
         delete_result = await service.delete_product(product_id)
-        assert delete_result["success"] is True
+        assert "deleted_at" in delete_result
 
         # Verify not in regular list (even with include_inactive)
         list_result = await service.list_products(include_inactive=True)
@@ -271,9 +274,9 @@ class TestProductCRUDWorkflows:
         assert len(deleted_list["products"]) >= 1
         assert any(p["id"] == product_id for p in deleted_list["products"])
 
-        # 6. Restore product
+        # 6. Restore product (exception-based: success is implicit)
         restore_result = await service.restore_product(product_id)
-        assert restore_result["success"] is True
+        assert "product" in restore_result
 
         # Verify back in regular list
         list_result = await service.list_products(include_inactive=True)
@@ -285,16 +288,16 @@ class TestProductCRUDWorkflows:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create five products
+        # Create five products (exception-based: success is implicit)
         products = []
         for i in range(5):
             result = await service.create_product(name=f"Product {i + 1}", description=f"Description {i + 1}")
-            assert result["success"] is True
+            assert "product_id" in result
             products.append(result["product_id"])
 
         # List all products (including inactive since new products start inactive)
         list_result = await service.list_products(include_inactive=True)
-        assert list_result["success"] is True
+        assert "products" in list_result
         assert len(list_result["products"]) == 5
 
         # Verify all names present
@@ -304,17 +307,19 @@ class TestProductCRUDWorkflows:
 
     async def test_duplicate_name_prevention(self, db_manager):
         """Test that duplicate product names are prevented"""
+        from src.giljo_mcp.exceptions import ValidationError
+
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create first product
+        # Create first product (exception-based: success is implicit)
         create1 = await service.create_product(name="Unique Product")
-        assert create1["success"] is True
+        assert "product_id" in create1
 
-        # Try to create second with same name
-        create2 = await service.create_product(name="Unique Product")
-        assert create2["success"] is False
-        assert "already exists" in create2["error"]
+        # Try to create second with same name - should raise ValidationError
+        with pytest.raises(ValidationError) as exc_info:
+            await service.create_product(name="Unique Product")
+        assert "already exists" in str(exc_info.value)
 
         # Verify only one product exists
         list_result = await service.list_products(include_inactive=True)
@@ -325,9 +330,9 @@ class TestProductCRUDWorkflows:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create product
+        # Create product (exception-based: success is implicit)
         create1 = await service.create_product(name="Reusable Name")
-        assert create1["success"] is True
+        assert "product_id" in create1
         product1_id = create1["product_id"]
 
         # Soft delete
@@ -335,7 +340,7 @@ class TestProductCRUDWorkflows:
 
         # Create new product with same name - should succeed
         create2 = await service.create_product(name="Reusable Name")
-        assert create2["success"] is True
+        assert "product_id" in create2
         assert create2["product_id"] != product1_id
 
 
@@ -367,9 +372,9 @@ class TestProductProjectCascade:
                 session.add(project)
             await session.commit()
 
-        # Get cascade impact
+        # Get cascade impact (exception-based: success is implicit)
         impact_result = await service.get_cascade_impact(product_id)
-        assert impact_result["success"] is True
+        assert "impact" in impact_result
         assert impact_result["impact"]["total_projects"] == 3
 
     async def test_delete_product_with_projects(self, db_manager):
@@ -395,13 +400,15 @@ class TestProductProjectCascade:
             session.add(project)
             await session.commit()
 
-        # Delete product (soft delete)
+        # Delete product (soft delete) - exception-based: success is implicit
         delete_result = await service.delete_product(product_id)
-        assert delete_result["success"] is True
+        assert "deleted_at" in delete_result
 
-        # Verify product is soft-deleted
-        get_result = await service.get_product(product_id)
-        assert get_result["success"] is False
+        # Verify product is soft-deleted (should raise ResourceNotFoundError)
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
+
+        with pytest.raises(ResourceNotFoundError):
+            await service.get_product(product_id)
 
         # Note: Actual cascade behavior depends on database constraints
         # This test verifies the delete succeeds
@@ -420,9 +427,8 @@ class TestProductStatisticsIntegration:
         product_result = await service.create_product(name="Stats Product")
         product_id = product_result["product_id"]
 
-        # Get statistics
+        # Get statistics (exception-based: success is implicit)
         stats_result = await service.get_product_statistics(product_id)
-        assert stats_result["success"] is True
         assert "statistics" in stats_result
         assert "project_count" in stats_result["statistics"]
         assert "vision_documents_count" in stats_result["statistics"]  # Plural form
@@ -436,11 +442,10 @@ class TestProductStatisticsIntegration:
         product_result = await service.create_product(name="Metrics Product")
         product_id = product_result["product_id"]
 
-        # Get with statistics
-        get_result = await service.get_product(product_id, include_statistics=True)
-        assert get_result["success"] is True
-        # Should include metric fields
-        assert "statistics" in get_result or "metrics" in get_result
+        # Get with metrics (exception-based: success is implicit)
+        get_result = await service.get_product(product_id, include_metrics=True)
+        # Should include product and potentially metric fields
+        assert "product" in get_result
 
     async def test_list_products_with_metrics(self, db_manager):
         """Test list_products with metrics included"""
@@ -451,9 +456,9 @@ class TestProductStatisticsIntegration:
         await service.create_product(name="Product A")
         await service.create_product(name="Product B")
 
-        # List with metrics
-        list_result = await service.list_products(include_metrics=True)
-        assert list_result["success"] is True
+        # List with metrics and include inactive (new products start inactive)
+        list_result = await service.list_products(include_inactive=True, include_metrics=True)
+        assert "products" in list_result
         assert len(list_result["products"]) == 2
 
         # Products should include metric information
@@ -495,10 +500,10 @@ class TestConfigDataPersistence:
         )
         product_id = create_result["product_id"]
 
-        # Update with new config_data
+        # Update with new config_data (exception-based: success is implicit)
         new_config = {"field2": "updated", "field3": "new"}
         update_result = await service.update_product(product_id=product_id, config_data=new_config)
-        assert update_result["success"] is True
+        assert "product" in update_result
 
         # Verify config updated
         get_result = await service.get_product(product_id)
@@ -527,8 +532,8 @@ class TestVisionDocumentIntegration:
             filename="product_vision.md",
         )
 
-        assert upload_result["success"] is True
-        assert "document_id" in upload_result  # Changed from vision_id to document_id
+        # Exception-based: success is implicit
+        assert "document_id" in upload_result
 
         # Verify vision document created
         async with db_manager.get_session_async() as session:
@@ -541,15 +546,17 @@ class TestVisionDocumentIntegration:
 
     async def test_upload_vision_to_nonexistent_product(self, db_manager):
         """Test vision upload fails for non-existent product"""
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        upload_result = await service.upload_vision_document(
-            product_id=str(uuid4()), content="# Vision", filename="vision.md"
-        )
-
-        assert upload_result["success"] is False
-        assert "not found" in upload_result["error"]
+        # Should raise ResourceNotFoundError for non-existent product
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await service.upload_vision_document(
+                product_id=str(uuid4()), content="# Vision", filename="vision.md"
+            )
+        assert "not found" in str(exc_info.value).lower()
 
 
 @pytest.mark.asyncio

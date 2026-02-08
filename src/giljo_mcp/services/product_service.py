@@ -227,7 +227,7 @@ class ProductService:
         except ValidationError:
             # Re-raise validation errors as-is
             raise
-        except (ImportError, ValueError, KeyError) as e:
+        except Exception as e:
             self._logger.exception("Failed to create product")
             raise BaseGiljoError(
                 message=f"Failed to create product: {e!s}",
@@ -314,7 +314,7 @@ class ProductService:
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
-        except (ImportError, ValueError, KeyError) as e:
+        except Exception as e:
             self._logger.exception("Failed to get product")
             raise BaseGiljoError(
                 message=f"Failed to get product: {e!s}",
