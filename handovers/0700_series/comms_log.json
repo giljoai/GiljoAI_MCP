@@ -636,6 +636,42 @@
         ],
         "execution_plan": "handovers/0730_SERIES_EXECUTION_PLAN.md"
       }
+    },
+    {
+      "id": "0730b-001",
+      "timestamp": "2026-02-08T08:30:00Z",
+      "from_handover": "0730b",
+      "to_handovers": [
+        "0730c"
+      ],
+      "type": "warning",
+      "subject": "Phase 2 Complete: Service Layer Refactored (API Endpoints Broken)",
+      "message": "Handover 0730b complete. All 122 service methods refactored to raise exceptions instead of returning dict wrappers. AlreadyExistsError (409) added to exception hierarchy. All service tests passing. WARNING: API endpoints are temporarily broken - services now raise exceptions but endpoints still check result['success']. This will be fixed in Handover 0730c.",
+      "files_affected": [
+        "src/giljo_mcp/exceptions.py",
+        "src/giljo_mcp/services/org_service.py",
+        "src/giljo_mcp/services/user_service.py",
+        "src/giljo_mcp/services/product_service.py",
+        "src/giljo_mcp/services/task_service.py",
+        "src/giljo_mcp/services/project_service.py",
+        "src/giljo_mcp/services/message_service.py",
+        "src/giljo_mcp/services/orchestration_service.py",
+        "src/giljo_mcp/services/context_service.py",
+        "src/giljo_mcp/services/consolidation_service.py",
+        "src/giljo_mcp/services/agent_job_manager.py",
+        "src/giljo_mcp/services/vision_summarizer.py",
+        "src/giljo_mcp/services/template_service.py"
+      ],
+      "action_required": true,
+      "context": {
+        "services_refactored": 12,
+        "methods_refactored": 122,
+        "exception_added": "AlreadyExistsError (409)",
+        "tests_passing": "all service tests",
+        "api_status": "broken (expected)",
+        "tdd_workflow": "followed",
+        "next_phase": "0730c (API endpoint updates)"
+      }
     }
   ],
   "schema": {
