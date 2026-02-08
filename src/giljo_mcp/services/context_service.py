@@ -22,10 +22,50 @@ The thin client architecture (Handover 0088) provides context via MCP tools.
 """
 
 import logging
+from dataclasses import dataclass
 from typing import Any, Optional
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
+
+
+# ============================================================================
+# Response Models (Handover 0730b - Exception-based error handling)
+# ============================================================================
+
+
+@dataclass
+class ContextIndex:
+    """Context index response model."""
+
+    documents: list[dict[str, Any]]
+    sections: list[dict[str, Any]]
+
+
+@dataclass
+class VisionDocument:
+    """Vision document response model."""
+
+    part: int
+    total_parts: int
+    content: str
+    tokens: int
+
+
+@dataclass
+class VisionIndex:
+    """Vision index response model."""
+
+    files: list[dict[str, Any]]
+    chunks: list[dict[str, Any]]
+
+
+@dataclass
+class ProductSettings:
+    """Product settings response model."""
+
+    product_id: str
+    config: dict[str, Any]
 
 
 logger = logging.getLogger(__name__)
@@ -58,7 +98,7 @@ class ContextService:
     # Context Index (Stub)
     # ============================================================================
 
-    async def get_context_index(self, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_context_index(self, product_id: Optional[str] = None) -> ContextIndex:
         """
         Get the context index for intelligent querying.
 
@@ -69,21 +109,21 @@ class ContextService:
             product_id: Optional product ID to get context for
 
         Returns:
-            Dict with success status and empty index
+            ContextIndex with empty documents and sections
 
         Example:
             >>> result = await service.get_context_index(product_id="prod-123")
-            >>> print(result["index"])
+            >>> print(result["documents"])
         """
         self._logger.debug(f"get_context_index called for product_id={product_id} (stub)")
 
-        return {"success": True, "index": {"documents": [], "sections": []}}
+        return ContextIndex(documents=[], sections=[])
 
     # ============================================================================
     # Vision Document (Stub)
     # ============================================================================
 
-    async def get_vision(self, part: int = 1, max_tokens: int = 20000) -> dict[str, Any]:
+    async def get_vision(self, part: int = 1, max_tokens: int = 20000) -> VisionDocument:
         """
         Get a vision document part.
 
@@ -95,7 +135,7 @@ class ContextService:
             max_tokens: Maximum tokens to return (default: 20000)
 
         Returns:
-            Dict with success status and placeholder content
+            VisionDocument with placeholder content
 
         Example:
             >>> result = await service.get_vision(part=1, max_tokens=10000)
@@ -103,15 +143,14 @@ class ContextService:
         """
         self._logger.debug(f"get_vision called for part={part}, max_tokens={max_tokens} (stub)")
 
-        return {
-            "success": True,
-            "part": part,
-            "total_parts": 1,
-            "content": "Vision document placeholder",
-            "tokens": 100,
-        }
+        return VisionDocument(
+            part=part,
+            total_parts=1,
+            content="Vision document placeholder",
+            tokens=100,
+        )
 
-    async def get_vision_index(self) -> dict[str, Any]:
+    async def get_vision_index(self) -> VisionIndex:
         """
         Get the vision document index.
 
@@ -119,21 +158,21 @@ class ContextService:
         Future implementation will provide actual vision document indexing.
 
         Returns:
-            Dict with success status and empty index
+            VisionIndex with empty files and chunks
 
         Example:
             >>> result = await service.get_vision_index()
-            >>> print(result["index"])
+            >>> print(result["files"])
         """
         self._logger.debug("get_vision_index called (stub)")
 
-        return {"success": True, "index": {"files": [], "chunks": []}}
+        return VisionIndex(files=[], chunks=[])
 
     # ============================================================================
     # Product Settings (Stub)
     # ============================================================================
 
-    async def get_product_settings(self, product_id: Optional[str] = None) -> dict[str, Any]:
+    async def get_product_settings(self, product_id: Optional[str] = None) -> ProductSettings:
         """
         Get all product settings for analysis.
 
@@ -144,15 +183,15 @@ class ContextService:
             product_id: Optional product ID
 
         Returns:
-            Dict with success status and placeholder settings
+            ProductSettings with placeholder data
 
         Example:
             >>> result = await service.get_product_settings(product_id="prod-123")
-            >>> print(result["settings"])
+            >>> print(result["config"])
         """
         self._logger.debug(f"get_product_settings called for product_id={product_id} (stub)")
 
-        return {
-            "success": True,
-            "settings": {"product_id": product_id or "default", "config": {}},
-        }
+        return ProductSettings(
+            product_id=product_id or "default",
+            config={},
+        )

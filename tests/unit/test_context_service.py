@@ -1,23 +1,28 @@
 """
-Unit tests for ContextService (Handover 0123 - Phase 2)
+Unit tests for ContextService (Handover 0730b - Exception-based error handling)
 
 Tests cover:
 - Context index stub functionality
 - Vision document stub functionality
 - Product settings stub functionality
-- Deprecated method responses
-- Error handling
+- Exception-based error handling (no dict wrappers)
 
 Target: >80% line coverage
 
-Note: Most methods are stubs or deprecated, so tests verify correct stub/error responses.
+Note: Most methods are stubs that return data directly (no success wrappers).
 """
 
 from unittest.mock import Mock
 
 import pytest
 
-from src.giljo_mcp.services.context_service import ContextService
+from src.giljo_mcp.services.context_service import (
+    ContextService,
+    ContextIndex,
+    VisionDocument,
+    VisionIndex,
+    ProductSettings,
+)
 
 
 class TestContextServiceStubs:
@@ -35,10 +40,9 @@ class TestContextServiceStubs:
         result = await service.get_context_index(product_id="prod-123")
 
         # Assert
-        assert result["success"] is True
-        assert "index" in result
-        assert result["index"]["documents"] == []
-        assert result["index"]["sections"] == []
+        assert isinstance(result, ContextIndex)
+        assert result.documents == []
+        assert result.sections == []
 
     @pytest.mark.asyncio
     async def test_get_context_index_without_product_id(self):
@@ -52,8 +56,9 @@ class TestContextServiceStubs:
         result = await service.get_context_index()
 
         # Assert
-        assert result["success"] is True
-        assert "index" in result
+        assert isinstance(result, ContextIndex)
+        assert result.documents == []
+        assert result.sections == []
 
     @pytest.mark.asyncio
     async def test_get_vision_returns_placeholder(self):
@@ -67,11 +72,11 @@ class TestContextServiceStubs:
         result = await service.get_vision(part=1, max_tokens=10000)
 
         # Assert
-        assert result["success"] is True
-        assert result["part"] == 1
-        assert result["total_parts"] == 1
-        assert result["content"] == "Vision document placeholder"
-        assert "tokens" in result
+        assert isinstance(result, VisionDocument)
+        assert result.part == 1
+        assert result.total_parts == 1
+        assert result.content == "Vision document placeholder"
+        assert result.tokens == 100
 
     @pytest.mark.asyncio
     async def test_get_vision_with_different_part(self):
@@ -85,8 +90,8 @@ class TestContextServiceStubs:
         result = await service.get_vision(part=3, max_tokens=5000)
 
         # Assert
-        assert result["success"] is True
-        assert result["part"] == 3
+        assert isinstance(result, VisionDocument)
+        assert result.part == 3
 
     @pytest.mark.asyncio
     async def test_get_vision_index_returns_empty_stub(self):
@@ -100,10 +105,9 @@ class TestContextServiceStubs:
         result = await service.get_vision_index()
 
         # Assert
-        assert result["success"] is True
-        assert "index" in result
-        assert result["index"]["files"] == []
-        assert result["index"]["chunks"] == []
+        assert isinstance(result, VisionIndex)
+        assert result.files == []
+        assert result.chunks == []
 
     @pytest.mark.asyncio
     async def test_get_product_settings_returns_placeholder(self):
@@ -117,10 +121,9 @@ class TestContextServiceStubs:
         result = await service.get_product_settings(product_id="prod-123")
 
         # Assert
-        assert result["success"] is True
-        assert "settings" in result
-        assert result["settings"]["product_id"] == "prod-123"
-        assert "config" in result["settings"]
+        assert isinstance(result, ProductSettings)
+        assert result.product_id == "prod-123"
+        assert result.config == {}
 
     @pytest.mark.asyncio
     async def test_get_product_settings_without_product_id(self):
@@ -134,8 +137,8 @@ class TestContextServiceStubs:
         result = await service.get_product_settings()
 
         # Assert
-        assert result["success"] is True
-        assert result["settings"]["product_id"] == "default"
+        assert isinstance(result, ProductSettings)
+        assert result.product_id == "default"
 
 
 class TestContextServiceBehavior:
@@ -170,10 +173,10 @@ class TestContextServiceBehavior:
         result4 = await service.get_product_settings()
 
         # Assert - All should succeed without database calls
-        assert result1["success"] is True
-        assert result2["success"] is True
-        assert result3["success"] is True
-        assert result4["success"] is True
+        assert isinstance(result1, ContextIndex)
+        assert isinstance(result2, VisionDocument)
+        assert isinstance(result3, VisionIndex)
+        assert isinstance(result4, ProductSettings)
 
         # Verify no database calls were made
         db_manager.get_session_async.assert_not_called()
@@ -183,21 +186,22 @@ class TestContextServiceConsistency:
     """Test consistency of responses"""
 
     @pytest.mark.asyncio
-    async def test_all_stub_methods_return_success_true(self):
-        """Test that all stub methods return success: true"""
+    async def test_all_stub_methods_return_typed_objects(self):
+        """Test that all stub methods return typed objects"""
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
         service = ContextService(db_manager, tenant_manager)
 
-        # Act
-        results = [
-            await service.get_context_index(),
-            await service.get_vision(),
-            await service.get_vision_index(),
-            await service.get_product_settings(),
-        ]
+        # Act & Assert - Each method returns appropriate type
+        context_index = await service.get_context_index()
+        assert isinstance(context_index, ContextIndex)
 
-        # Assert
-        for result in results:
-            assert result["success"] is True
+        vision = await service.get_vision()
+        assert isinstance(vision, VisionDocument)
+
+        vision_index = await service.get_vision_index()
+        assert isinstance(vision_index, VisionIndex)
+
+        settings = await service.get_product_settings()
+        assert isinstance(settings, ProductSettings)
