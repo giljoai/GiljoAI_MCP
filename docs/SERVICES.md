@@ -1,7 +1,7 @@
 # Service Layer Architecture
 
-**Version**: v3.1+ (Post-Remediation)
-**Last Updated**: 2025-11-20
+**Version**: v3.3+ (Exception-Based Error Handling)
+**Last Updated**: 2026-02-08
 
 ## Overview
 
@@ -391,17 +391,15 @@ async def list_users(
     current_user: User = Depends(require_admin),
     user_service: UserService = Depends(get_user_service)
 ):
-    result = await user_service.list_users()
-    if not result["success"]:
-        raise HTTPException(status_code=400, detail=result["error"])
-    return [user_to_response(user) for user in result["data"]]
+    users = await user_service.list_users()
+    return [user_to_response(user) for user in users]
 ```
 
 ### Key Migration Changes
 1. **Dependency Change**: Replace `AsyncSession` with service dependency
 2. **Service Call**: Use service method instead of direct query
-3. **Error Handling**: Check `result["success"]` and raise HTTPException
-4. **Response Conversion**: Convert service dict response to Pydantic model
+3. **Error Handling**: Services raise domain exceptions, endpoints catch and convert to HTTPException
+4. **Response Conversion**: Convert service return value to Pydantic model
 
 ### Dependency Injection Pattern
 
@@ -434,40 +432,101 @@ def get_task_service(
 
 ### Service Response Pattern
 
-All services return `dict[str, Any]` with standardized structure:
+Services return data directly and raise exceptions on errors:
 
 ```python
-# Success response
-{
-    "success": True,
-    "data": {...}  # Entity data or list
-}
+# Success - return data directly
+async def get_user(self, user_id: str) -> User:
+    user = await self.user_repo.get(user_id)
+    if not user:
+        raise ResourceNotFoundError(f"User {user_id} not found")
+    return user
 
-# Error response
-{
-    "success": False,
-    "error": "Error message string"
-}
+# Success - return list
+async def list_users(self) -> list[User]:
+    return await self.user_repo.get_all(tenant_key=self.tenant_key)
 ```
 
-### Error Handling in Endpoints
+### Error Handling in Services
 
-Standard error handling pattern:
+Services raise domain-specific exceptions from `src.giljo_mcp.exceptions`:
 
 ```python
-result = await service.method()
+from src.giljo_mcp.exceptions import (
+    ResourceNotFoundError,
+    ValidationError,
+    AlreadyExistsError,
+    AuthorizationError,
+    AuthenticationError
+)
 
-if not result["success"]:
-    # Determine appropriate HTTP status code
-    error_msg = result["error"].lower()
-    if "not found" in error_msg:
-        raise HTTPException(status_code=404, detail=result["error"])
-    elif "permission" in error_msg or "unauthorized" in error_msg:
-        raise HTTPException(status_code=403, detail=result["error"])
-    else:
-        raise HTTPException(status_code=400, detail=result["error"])
+async def update_user(self, user_id: str, updates: dict) -> User:
+    """Update user.
 
-return result["data"]
+    Raises:
+        ResourceNotFoundError: User not found (404)
+        ValidationError: Invalid update data (422)
+        AuthorizationError: User lacks permission (403)
+    """
+    user = await self.user_repo.get(user_id)
+    if not user:
+        raise ResourceNotFoundError(f"User {user_id} not found")
+
+    if not self._validate_updates(updates):
+        raise ValidationError("Invalid update data")
+
+    if not self._has_permission(user):
+        raise AuthorizationError("User lacks permission")
+
+    return await self.user_repo.update(user_id, updates)
+```
+
+### Exception-to-HTTP Status Code Mapping
+
+API endpoints catch domain exceptions and convert to appropriate HTTP status codes:
+
+| Exception | HTTP Status | Use Case |
+|-----------|-------------|----------|
+| `ResourceNotFoundError` | 404 Not Found | Entity doesn't exist |
+| `ValidationError` | 422 Unprocessable Entity | Invalid input data |
+| `AlreadyExistsError` | 409 Conflict | Duplicate resource |
+| `AuthorizationError` | 403 Forbidden | Missing permissions |
+| `AuthenticationError` | 401 Unauthorized | Authentication failed |
+| `BaseGiljoError` (catch-all) | 500 Internal Server Error | Unexpected errors |
+
+**Endpoint Error Handling Pattern**:
+
+```python
+from fastapi import HTTPException
+from src.giljo_mcp.exceptions import (
+    ResourceNotFoundError,
+    ValidationError,
+    AlreadyExistsError,
+    AuthorizationError,
+    AuthenticationError,
+    BaseGiljoError
+)
+
+@router.get("/users/{user_id}")
+async def get_user(
+    user_id: str,
+    user_service: UserService = Depends(get_user_service)
+):
+    try:
+        user = await user_service.get_user(user_id)
+        return user_to_response(user)
+    except ResourceNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AlreadyExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except AuthenticationError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    except BaseGiljoError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 ```
 
 ---
@@ -549,19 +608,33 @@ async def activate_product(self, product_id: int):
 ```
 
 ### **5. Comprehensive Error Handling**
-Domain-specific exceptions:
+Domain-specific exceptions (no dict wrappers):
 ```python
-from src.giljo_mcp.exceptions import ProductNotFoundError, InvalidStateError
+from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 
-async def activate_product(self, product_id: int):
+async def activate_product(self, product_id: int) -> Product:
+    """Activate product.
+
+    Args:
+        product_id: Product ID
+
+    Returns:
+        Activated product model
+
+    Raises:
+        ResourceNotFoundError: Product not found (404)
+        ValidationError: Product in invalid state (422)
+    """
     product = await self.session.get(Product, product_id)
     if not product:
-        raise ProductNotFoundError(f"Product {product_id} not found")
+        raise ResourceNotFoundError(f"Product {product_id} not found")
 
     if product.status == "deleted":
-        raise InvalidStateError("Cannot activate deleted product")
+        raise ValidationError("Cannot activate deleted product")
 
-    # ... activate logic ...
+    product.status = "active"
+    await self.session.commit()
+    return product
 ```
 
 ---
@@ -572,9 +645,10 @@ async def activate_product(self, product_id: int):
 ```python
 # api/endpoints/products.py
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.services.product_service import ProductService
+from src.giljo_mcp.exceptions import ValidationError, AlreadyExistsError
 from api.dependencies import get_db, get_current_user
 
 router = APIRouter()
@@ -585,9 +659,14 @@ async def create_product(
     session: AsyncSession = Depends(get_db),
     user = Depends(get_current_user)
 ):
-    service = ProductService(session, tenant_key=user.tenant_key)
-    product = await service.create_product(product_data)
-    return product
+    try:
+        service = ProductService(session, tenant_key=user.tenant_key)
+        product = await service.create_product(product_data)
+        return product
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AlreadyExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 ```
 
 ### **Pattern 2: Service → MCP Tool**
@@ -595,12 +674,20 @@ async def create_product(
 # src/giljo_mcp/tools/product_tools.py
 
 from src.giljo_mcp.services.product_service import ProductService
+from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 
 async def upload_vision_document(product_id: int, content: str):
+    """Upload vision document.
+
+    Raises:
+        ResourceNotFoundError: Product not found
+        ValidationError: Invalid content or product state
+    """
     async with get_session() as session:
         service = ProductService(session, tenant_key=get_tenant_key())
-        result = await service.upload_vision_document(product_id, content)
-        return result
+        # Service raises exceptions on error
+        vision_doc = await service.upload_vision_document(product_id, content)
+        return vision_doc
 ```
 
 ### **Pattern 3: Service → Service Composition**
@@ -696,14 +783,22 @@ async def get_products(
 ### **2. Multi-Tenant Isolation is Mandatory**
 Every service method MUST filter by tenant_key:
 ```python
-async def get_product(self, product_id: int):
+async def get_product(self, product_id: int) -> Product:
+    """Get product by ID.
+
+    Raises:
+        ResourceNotFoundError: Product not found
+    """
     result = await self.session.execute(
         select(Product).where(
             Product.id == product_id,
             Product.tenant_key == self.tenant_key  # CRITICAL
         )
     )
-    return result.scalar_one_or_none()
+    product = result.scalar_one_or_none()
+    if not product:
+        raise ResourceNotFoundError(f"Product {product_id} not found")
+    return product
 ```
 
 ### **3. Emit WebSocket Events for Real-Time UI**
@@ -718,16 +813,22 @@ await websocket_manager.broadcast_to_tenant(
 
 ### **4. Use Transactions for Multi-Step Operations**
 ```python
-async def activate_project(self, project_id: int):
+async def activate_project(self, project_id: int) -> Project:
+    """Activate project (deactivates others).
+
+    Raises:
+        ResourceNotFoundError: Project not found
+    """
     # Deactivate all other projects
     await self.deactivate_all_projects_except(project_id)
 
     # Activate target project
-    project = await self.get_project(project_id)
+    project = await self.get_project(project_id)  # Raises if not found
     project.status = "active"
 
     # Commit transaction (handled by endpoint or context manager)
     await self.session.commit()
+    return project
 ```
 
 ---
@@ -786,7 +887,7 @@ async def activate_project(self, project_id: int):
 1. **Service-First Architecture**: All new business logic goes in services, not endpoints
 2. **Dependency Injection**: Services injected via FastAPI dependencies
 3. **Tenant Isolation**: Multi-tenant filtering enforced at service layer
-4. **Standardized Responses**: All services return `dict[str, Any]` with success/data/error
+4. **Exception-Based Error Handling**: Services raise domain exceptions, endpoints convert to HTTP status codes
 5. **Comprehensive Testing**: Service unit tests + API integration tests
 6. **WebSocket Integration**: Services emit real-time events for UI updates
 
@@ -800,4 +901,4 @@ async def activate_project(self, project_id: int):
 
 ---
 
-**Last Updated**: 2025-11-20 (Post-Remediation v3.1.1 + Handover 0322)
+**Last Updated**: 2026-02-08 (v3.3+ with Exception-Based Error Handling from 0730 series)
