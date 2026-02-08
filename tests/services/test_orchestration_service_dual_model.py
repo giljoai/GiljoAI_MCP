@@ -47,6 +47,8 @@ async def test_tenant_key() -> str:
 @pytest_asyncio.fixture
 async def test_project(db_session, test_tenant_key) -> Project:
     """Create test project for agent jobs."""
+    from datetime import datetime, timezone
+
     project = Project(
         id=str(uuid.uuid4()),
         name="Dual Model Test Project",
@@ -54,6 +56,8 @@ async def test_project(db_session, test_tenant_key) -> Project:
         mission="Test mission for dual-model migration",
         status="active",
         tenant_key=test_tenant_key,
+        # Handover 0709: Set implementation_launched_at to bypass phase gate
+        implementation_launched_at=datetime.now(timezone.utc),
     )
     db_session.add(project)
     await db_session.commit()
@@ -192,23 +196,21 @@ class TestSpawnAgentJobDualModel:
 @pytest.mark.asyncio
 class TestSuccessionDualModel:
     """
-    Tests that succession creates new AgentExecution, NOT new AgentJob.
+    Test succession behavior with dual-model architecture.
 
-    Expected Behavior (Agent ID Swap):
-    - trigger_succession creates new AgentExecution that TAKES OVER the original agent_id
-    - Old execution gets a decommissioned agent_id (decomm-xxx)
-    - trigger_succession uses SAME job_id (work order persists)
-    - Predecessor's succeeded_by points to the original agent_id (now owned by successor)
-    - New execution's spawned_by points to predecessor's decommissioned agent_id
+    Updated for Handovers 0461f + 0700d:
+    - trigger_succession() REMOVED - use create_successor_orchestrator()
+    - No new execution created - same execution continues with context reset
+    - No agent ID swap - same agent_id persists
+    - 360 Memory entry created for handover context
     """
 
-    async def test_succession_creates_new_execution_same_job(
+    async def test_succession_resets_context_same_execution(
         self, db_session, db_manager, test_project, test_tenant_key
     ):
-        """Verify succession creates new execution but reuses same job.
+        """Verify succession resets context_used on same execution (Handover 0461f).
 
-        Agent ID Swap: Successor TAKES OVER the original agent_id.
-        Old execution gets decommissioned ID (decomm-xxx).
+        Simplified behavior: No new execution created, just context reset.
         """
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
@@ -227,52 +229,37 @@ class TestSuccessionDualModel:
         initial_job_id = initial["job_id"]
         initial_agent_id = initial["agent_id"]
 
-        # Trigger succession (job_id treated as agent_id for backwards compat)
-        succession_result = await service.trigger_succession(
-            job_id=initial_agent_id,
+        # Set context_used to simulate near-limit
+        exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == initial_agent_id)
+        exec_result = await db_session.execute(exec_stmt)
+        execution = exec_result.scalar_one()
+        execution.context_used = 140000
+        await db_session.commit()
+
+        # Use create_successor_orchestrator (0461f simplified succession)
+        succession_result = await service.create_successor_orchestrator(
+            current_job_id=initial_job_id,
             reason="context_limit",
             tenant_key=test_tenant_key,
         )
 
-        # Verify succession succeeded (no success wrapper after 0730b refactor)
-        assert "successor_agent_id" in succession_result
-        new_agent_id = succession_result["successor_agent_id"]
-        decommissioned_agent_id = succession_result.get("decommissioned_agent_id")
-
-        # Agent ID Swap: successor TAKES OVER the original agent_id
-        assert new_agent_id == initial_agent_id
-
-        # Verify decommissioned_agent_id returned
-        assert decommissioned_agent_id is not None
-        assert decommissioned_agent_id.startswith("decomm-")
-
-        # Verify job_id is SAME
+        # Handover 0730b: No success wrapper
+        # Handover 0461f: Same agent_id, context reset
         assert succession_result["job_id"] == initial_job_id
+        assert succession_result["agent_id"] == initial_agent_id  # SAME agent_id
+        assert succession_result["context_reset"] is True
+        assert succession_result["new_context_used"] == 0
 
-        # Verify only ONE AgentJob exists (not duplicated)
-        job_count_stmt = select(AgentJob).where(AgentJob.job_id == initial_job_id)
-        job_count_result = await db_session.execute(job_count_stmt)
-        jobs = job_count_result.scalars().all()
-        assert len(jobs) == 1  # Only ONE job
-
-        # Verify TWO AgentExecution records exist for this job
+        # Verify only ONE AgentExecution exists (not duplicated)
         exec_count_stmt = select(AgentExecution).where(AgentExecution.job_id == initial_job_id)
         exec_count_result = await db_session.execute(exec_count_stmt)
         executions = exec_count_result.scalars().all()
-        assert len(executions) == 2  # Two instances (one decommissioned, one active)
+        assert len(executions) == 1  # Only ONE execution (same agent continues)
 
-        # Verify one execution has the original agent_id, one has decommissioned
-        agent_ids = {e.agent_id for e in executions}
-        assert initial_agent_id in agent_ids  # Successor has original ID
-        assert decommissioned_agent_id in agent_ids  # Predecessor has decomm ID
-
-    async def test_succession_sets_succeeded_by_on_predecessor(
+    async def test_succession_writes_360_memory(
         self, db_session, db_manager, test_project, test_tenant_key
     ):
-        """Verify predecessor's succeeded_by points to original agent_id (now owned by successor).
-
-        Agent ID Swap: Old execution gets decommissioned ID, succeeded_by points to original.
-        """
+        """Verify succession writes 360 Memory entry for handover context (Handover 0461f)."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
@@ -287,32 +274,21 @@ class TestSuccessionDualModel:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
         )
-        initial_agent_id = initial["agent_id"]
+        initial_job_id = initial["job_id"]
 
-        # Trigger succession (job_id treated as agent_id for backwards compat)
-        succession_result = await service.trigger_succession(
-            job_id=initial_agent_id,
+        # Use create_successor_orchestrator
+        succession_result = await service.create_successor_orchestrator(
+            current_job_id=initial_job_id,
             reason="manual",
             tenant_key=test_tenant_key,
         )
-        new_agent_id = succession_result["successor_agent_id"]
-        decommissioned_agent_id = succession_result.get("decommissioned_agent_id")
 
-        # Agent ID Swap: successor takes over original agent_id
-        assert new_agent_id == initial_agent_id
+        # Verify 360 Memory entry created
+        assert succession_result["memory_entry_created"] is True
+        assert succession_result["reason"] == "manual"
 
-        # Verify predecessor has decommissioned ID and succeeded_by points to original
-        predecessor_stmt = select(AgentExecution).where(AgentExecution.agent_id == decommissioned_agent_id)
-        predecessor_result = await db_session.execute(predecessor_stmt)
-        predecessor = predecessor_result.scalar_one()
-        assert predecessor.succeeded_by == initial_agent_id  # Points to original (successor's ID)
-        assert predecessor.status == "decommissioned"
-
-    async def test_succession_sets_spawned_by_on_successor(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify new execution's spawned_by points to predecessor's decommissioned agent_id.
-
-        Agent ID Swap: spawned_by points to the decommissioned ID.
-        """
+    async def test_succession_preserves_job_and_agent_id(self, db_session, db_manager, test_project, test_tenant_key):
+        """Verify same job_id AND same agent_id after succession (Handover 0461f)."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
         from src.giljo_mcp.tenant import TenantManager
 
@@ -327,25 +303,19 @@ class TestSuccessionDualModel:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
         )
+        initial_job_id = initial["job_id"]
         initial_agent_id = initial["agent_id"]
 
-        # Trigger succession (job_id treated as agent_id for backwards compat)
-        succession_result = await service.trigger_succession(
-            job_id=initial_agent_id,
+        # Use create_successor_orchestrator
+        succession_result = await service.create_successor_orchestrator(
+            current_job_id=initial_job_id,
             reason="context_limit",
             tenant_key=test_tenant_key,
         )
-        new_agent_id = succession_result["successor_agent_id"]
-        decommissioned_agent_id = succession_result.get("decommissioned_agent_id")
 
-        # Agent ID Swap: successor takes over original agent_id
-        assert new_agent_id == initial_agent_id
-
-        # Verify new execution's spawned_by points to decommissioned agent_id
-        new_exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == new_agent_id)
-        new_exec_result = await db_session.execute(new_exec_stmt)
-        new_execution = new_exec_result.scalar_one()
-        assert new_execution.spawned_by == decommissioned_agent_id  # Points to decomm ID
+        # Handover 0461f: SAME job_id AND SAME agent_id (no ID swap)
+        assert succession_result["job_id"] == initial_job_id
+        assert succession_result["agent_id"] == initial_agent_id
 
 
 # ============================================================================
@@ -539,7 +509,9 @@ class TestUpdateMethodsDualModel:
         # Acknowledge job (requires job_id and agent_id)
         ack_result = await service.acknowledge_job(job_id=job_id, agent_id=agent_id, tenant_key=test_tenant_key)
 
-        assert ack_result.get("status") == "success"
+        # Handover 0730b: No success wrapper - returns dict with job and next_instructions
+        assert "job" in ack_result
+        assert "next_instructions" in ack_result
 
         # Verify AgentExecution.mission_acknowledged_at is set
         exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == agent_id)
