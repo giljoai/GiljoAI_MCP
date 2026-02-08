@@ -95,8 +95,7 @@ class TestSpawnAgentJobDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Verify return structure
-        assert result["success"] is True
+        # Verify return structure (no success wrapper after 0730b refactor)
         assert "job_id" in result
         assert "agent_id" in result
 
@@ -173,11 +172,9 @@ class TestSpawnAgentJobDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Verify return structure
-        assert "success" in result
+        # Verify return structure (no success wrapper after 0730b refactor)
         assert "job_id" in result
         assert "agent_id" in result
-        assert result["success"] is True
 
         # Verify both IDs are valid UUIDs
         try:
@@ -237,8 +234,7 @@ class TestSuccessionDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Verify succession succeeded
-        assert succession_result["success"] is True
+        # Verify succession succeeded (no success wrapper after 0730b refactor)
         assert "successor_agent_id" in succession_result
         new_agent_id = succession_result["successor_agent_id"]
         decommissioned_agent_id = succession_result.get("decommissioned_agent_id")
@@ -464,7 +460,7 @@ class TestQueryMethodsDualModel:
         # Get mission via job_id (job_id parameter is actually job_id)
         fetched_mission = await service.get_agent_mission(job_id=result["job_id"], tenant_key=test_tenant_key)
 
-        assert fetched_mission.get("success") is True
+        # No success wrapper after 0730b refactor
         # Mission includes team context header prefix, so check it ends with the original mission
         assert mission in fetched_mission["mission"]
 

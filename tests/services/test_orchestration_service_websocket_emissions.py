@@ -100,7 +100,7 @@ async def test_get_agent_mission_emits_ack_and_status_changed(
 
     response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
 
-    assert response["success"] is True
+    # No success wrapper after 0730b refactor
     assert execution.mission_acknowledged_at is not None
     assert execution.status == "working"
     assert execution.started_at is not None
@@ -142,7 +142,7 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
 
     response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
 
-    assert response["success"] is True
+    # No success wrapper after 0730b refactor
     mock_websocket_manager.broadcast_to_tenant.assert_not_awaited()
 
 

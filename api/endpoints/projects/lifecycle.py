@@ -67,12 +67,14 @@ async def activate_project(
     """
     logger.info(f"User {current_user.username} activating project {project_id} (force={force})")
 
-    # Activate via ProjectService (raises exceptions on error)
-    await project_service.activate_project(project_id=project_id, force=force)
+    # Activate via ProjectService (raises exceptions on error - Handover 0730b)
+    activated_project = await project_service.activate_project(
+        project_id=project_id, force=force, tenant_key=current_user.tenant_key
+    )
 
     logger.info(f"Activated project {project_id}")
 
-    # Get updated project (raises exceptions on error)
+    # Get full project details with agents (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
@@ -121,12 +123,14 @@ async def deactivate_project(
     """
     logger.info(f"User {current_user.username} deactivating project {project_id}")
 
-    # Deactivate via ProjectService (raises exceptions on error)
-    await project_service.deactivate_project(project_id=project_id, reason=reason)
+    # Deactivate via ProjectService (raises exceptions on error - Handover 0730b)
+    deactivated_project = await project_service.deactivate_project(
+        project_id=project_id, tenant_key=current_user.tenant_key, reason=reason
+    )
 
     logger.info(f"Deactivated project {project_id}")
 
-    # Get updated project (raises exceptions on error)
+    # Get updated project with agents (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
@@ -174,7 +178,7 @@ async def cancel_project(
     logger.info(f"User {current_user.username} cancelling project {project_id}")
 
     # Cancel via ProjectService (raises exceptions on error)
-    await project_service.cancel_project(project_id=project_id, reason=reason)
+    await project_service.cancel_project(project_id=project_id, tenant_key=current_user.tenant_key, reason=reason)
 
     logger.info(f"Cancelled project {project_id}")
 
