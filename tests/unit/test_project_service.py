@@ -245,30 +245,46 @@ class TestProjectServiceLifecycle:
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.complete_project("test-id", summary="Completed successfully")
+        result = await service.complete_project(
+            "test-id",
+            summary="Completed successfully",
+            key_outcomes=["Outcome 1", "Outcome 2"],
+            decisions_made=["Decision 1", "Decision 2"],
+            tenant_key="test-tenant"
+        )
 
         # Assert
-        assert result["success"] is True
         assert "completed successfully" in result["message"]
+        assert "memory_updated" in result
+        assert "sequence_number" in result
+        assert "git_commits_count" in result
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_complete_project_not_found(self, mock_db_manager):
-        """Test completing non-existent project"""
+        """Test completing non-existent project - raises exception (Handover 0480)"""
         # Arrange
         db_manager, session = mock_db_manager
         tenant_manager = Mock()
 
-        session.execute = AsyncMock(return_value=Mock(rowcount=0))
+        # Mock scalar_one_or_none to return None (project not found)
+        mock_result = Mock()
+        mock_result.scalar_one_or_none = Mock(return_value=None)
+        session.execute = AsyncMock(return_value=mock_result)
 
         service = ProjectService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.complete_project("nonexistent-id")
+        # Act & Assert - Raises ResourceNotFoundError
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await service.complete_project(
+                "nonexistent-id",
+                summary="Test",
+                key_outcomes=["Outcome"],
+                decisions_made=["Decision"],
+                tenant_key="test-tenant"
+            )
 
-        # Assert
-        assert result["success"] is False
-        assert "not found" in result["error"]
+        assert "not found" in exc_info.value.message.lower()
 
     @pytest.mark.asyncio
     async def test_cancel_project_with_reason(self, mock_db_manager):

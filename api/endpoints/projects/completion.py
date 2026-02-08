@@ -172,7 +172,7 @@ async def close_out_project(
     logger.info(f"Closed out project {project_id}")
 
     return ProjectCloseOutResponse(
-        success=result["success"],
+        success=True,
         message=result["message"],
         agents_decommissioned=result["agents_decommissioned"],
         decommissioned_agent_ids=result["decommissioned_agent_ids"],
@@ -209,7 +209,7 @@ async def continue_working(
     logger.info(f"Resumed work on project {project_id}")
 
     return ContinueWorkingResponse(
-        success=result["success"],
+        success=True,
         message=result["message"],
         agents_resumed=result["agents_resumed"],
         resumed_agent_ids=result["resumed_agent_ids"],
