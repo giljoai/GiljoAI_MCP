@@ -182,6 +182,12 @@ class ResourceNotFoundError(ResourceError):
     default_status_code: int = 404
 
 
+class AlreadyExistsError(ResourceError):
+    """Raised when attempting to create a resource that already exists."""
+
+    default_status_code: int = 409
+
+
 class ResourceExhaustedError(ResourceError):
     """Raised when resources are exhausted."""
 
