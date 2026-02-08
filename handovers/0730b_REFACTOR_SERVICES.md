@@ -1,93 +1,89 @@
 # Handover 0730b: Refactor Service Layer Methods
 
-**Series:** 0700 Code Cleanup → 0730 Service Response Models (Phase 2 of 4)
+**Handover ID:** 0730b
+**Series:** 0700 Code Cleanup → 0730 Service Response Models
+**Phase:** 2 of 4 (Implementation)
 **Priority:** P2 - MEDIUM
 **Estimated Effort:** 16-24 hours
-**Prerequisites:** 0730a COMPLETE (design documents)
 **Status:** BLOCKED (waiting for 0730a)
-**Depends On:** 0730a (response models and exception mapping)
+**Dependencies:** 0730a COMPLETE (design documents must exist)
 **Blocks:** 0730c, 0730d
 
-MISSION: Refactor 122 service methods using TDD to replace dict wrappers with Pydantic models and exception-based error handling
+---
 
-WHY THIS MATTERS:
-- Core architectural improvement - eliminates dict wrapper anti-pattern
-- Enables type safety and IDE autocompletion
-- Simplifies error handling across entire application
-- Required before API layer can be updated (0730c)
+## 1. Summary
 
-CRITICAL: Test-Driven Development (TDD) approach is MANDATORY - update tests FIRST, then implementation
+Refactor 122 service methods across 12 services using **Test-Driven Development (TDD)** to replace dict wrappers with Pydantic models and exception-based error handling. This is the core implementation phase of the 0730 series—all service layer code changes happen here.
+
+The migration transforms services from returning `{"success": bool, "data": ...}` dicts to returning domain models directly and raising exceptions for error cases. TDD workflow is MANDATORY: tests are updated FIRST, then implementation code is updated to make tests pass.
+
+**CRITICAL:** API endpoints are NOT updated in this phase—that happens in 0730c. Services will be fully refactored while endpoints temporarily remain unchanged.
 
 ---
 
-## Scope: 122 Service Methods Across 3 Tiers
+## 2. Context
+
+### Why This Matters
+
+**Business Value:**
+- Eliminates dict wrapper anti-pattern across entire service layer
+- Enables type safety and IDE autocompletion for all service consumers
+- Simplifies error handling—no more `if result["success"]` checks
+- Provides foundation for API simplification in 0730c
+
+**Technical Context:**
+- Design blueprints created in 0730a (response models, exception mapping)
+- Exception hierarchy exists from Handover 0480 series
+- Service layer has 122 dict wrapper instances across 12 services
+- TDD approach ensures zero regressions during migration
+
+**Project Impact:**
+- Core architectural improvement affecting all API endpoints
+- Required before 0730c can simplify endpoint error handling
+- Test suite ensures backward compatibility during transition
+- ~16-24 hours of focused implementation work
+
+---
+
+## 3. Technical Details
+
+### Scope: 122 Service Methods Across 3 Tiers
 
 **TIER 1 (57%)** - 69 instances (8-12 hours):
-- OrgService: 33 instances
-- UserService: 19 instances
-- ProductService: 17 instances
+- **OrgService:** 33 instances (largest, establishes pattern)
+- **UserService:** 19 instances
+- **ProductService:** 17 instances
 
 **TIER 2 (26%)** - 31 instances (4-6 hours):
-- TaskService: 14 instances
-- ProjectService: 9 instances
-- MessageService: 8 instances
+- **TaskService:** 14 instances
+- **ProjectService:** 9 instances
+- **MessageService:** 8 instances
 
 **TIER 3 (18%)** - 22 instances (4-6 hours):
-- OrchestrationService: 6 instances
-- ContextService: 4 instances
-- ConsolidationService: 4 instances
-- AgentJobManager: 4 instances
-- VisionSummarizer: 4 instances
-- TemplateService: 4 instances
+- **OrchestrationService:** 6 instances
+- **ContextService:** 4 instances
+- **ConsolidationService:** 4 instances
+- **AgentJobManager:** 4 instances
+- **VisionSummarizer:** 4 instances
+- **TemplateService:** 4 instances
 
----
+### Migration Pattern
 
-## TDD Workflow (MANDATORY)
-
-For each service:
-
-### Step 1: Update Tests FIRST (30-40% of time)
-
+**BEFORE (Current Anti-Pattern):**
 ```python
-# BEFORE (test expects dict wrapper):
-def test_get_org_not_found(self, org_service):
-    result = await org_service.get_org("nonexistent")
-    assert result["success"] is False
-    assert "not found" in result["error"]
-
-# AFTER (test expects exception):
-def test_get_org_not_found(self, org_service):
-    with pytest.raises(OrgNotFoundError) as exc_info:
-        await org_service.get_org("nonexistent")
-    assert "nonexistent" in str(exc_info.value)
+async def get_organization(self, org_id: str) -> dict[str, Any]:
+    try:
+        org = await self.session.get(Organization, org_id)
+        if not org:
+            return {"success": False, "error": "Organization not found"}
+        return {"success": True, "data": org}
+    except SQLAlchemyError as e:
+        return {"success": False, "error": str(e)}
 ```
 
-**For each method:**
-1. Read existing test in tests/services/test_{service}_*.py
-2. Update assertions to expect:
-   - Success case: Direct return value (model or list)
-   - Error cases: Raised exceptions (pytest.raises)
-3. Add new exception import: `from src.giljo_mcp.exceptions import NotFoundError, AlreadyExistsError, ...`
-
-### Step 2: Run Tests to Confirm Failures
-
-```bash
-pytest tests/services/test_org_service.py -v
-# Should show failures - tests now expect exceptions, code still returns dicts
-```
-
-### Step 3: Update Service Implementation (60-70% of time)
-
+**AFTER (Target Exception-Based Pattern):**
 ```python
-# BEFORE:
-async def get_org(self, org_id: str):
-    org = await self.org_repo.get(org_id)
-    if not org:
-        return {"success": False, "error": "Organization not found"}
-    return {"success": True, "data": org}
-
-# AFTER:
-async def get_org(self, org_id: str) -> Organization:
+async def get_organization(self, org_id: str) -> Organization:
     """Get organization by ID.
 
     Args:
@@ -97,381 +93,611 @@ async def get_org(self, org_id: str) -> Organization:
         Organization model
 
     Raises:
-        OrgNotFoundError: Organization not found
+        ResourceNotFoundError: Organization not found
+        DatabaseError: Database operation failed
     """
-    org = await self.org_repo.get(org_id)
-    if not org:
-        raise OrgNotFoundError(f"Organization {org_id} not found")
-    return org
+    try:
+        org = await self.session.get(Organization, org_id)
+        if not org:
+            raise ResourceNotFoundError(
+                message="Organization not found",
+                context={"org_id": org_id}
+            )
+        return org
+    except SQLAlchemyError as e:
+        raise DatabaseError(
+            message=f"Failed to get organization: {e}",
+            context={"org_id": org_id}
+        ) from e
 ```
 
-**For each method:**
-1. Add type hints (return type annotation)
-2. Update docstring with Raises section
-3. Replace dict returns with direct model returns
-4. Replace error dict returns with raise statements
-5. Use exception mapping from 0730a
+### Exception Usage (from 0730a docs)
 
-### Step 4: Run Tests to Confirm Fixes
+- `ResourceNotFoundError` → 404 (entity not found)
+- `AlreadyExistsError` → 409 (duplicate resource - ADD TO exceptions.py if missing)
+- `ValidationError` → 400 (invalid input)
+- `AuthenticationError` → 401 (wrong credentials)
+- `AuthorizationError` → 403 (insufficient permissions)
+- `DatabaseError` → 500 (database operation failed)
+- `ProjectStateError` → 400 (invalid project state transition)
 
+---
+
+## 4. Implementation Plan
+
+### Pre-Work: Add Missing Exception (30 minutes)
+
+**Check if `AlreadyExistsError` exists in `src/giljo_mcp/exceptions.py`:**
+
+```python
+# If missing, add to exceptions.py:
+class AlreadyExistsError(BaseGiljoError):
+    """Raised when attempting to create a resource that already exists."""
+    default_status_code: int = 409
+```
+
+**Use Cases:**
+- OrgService: `create_organization` (slug exists)
+- OrgService: `invite_member` (user already member)
+- UserService: `create_user` (username/email exists)
+- ProductService: `create_product` (name exists)
+
+**Commit immediately if added:**
 ```bash
-pytest tests/services/test_org_service.py -v --cov=src/giljo_mcp/services/org_service.py
-# Should pass with maintained/improved coverage
+git add src/giljo_mcp/exceptions.py
+git commit -m "feat(0730b): Add AlreadyExistsError for 409 Conflict responses
+
+Supports duplicate resource detection in service layer refactoring.
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
-### Step 5: Commit Per Service
+### Tier 1 Execution (8-12 hours)
 
-```bash
-git add tests/services/test_org_service.py src/giljo_mcp/services/org_service.py
-git commit -m "refactor(0730b): OrgService dict wrappers to exceptions (33 methods)
+#### Service 1: OrgService (3-4 hours) - START HERE
 
-- Update 33 methods to return models and raise exceptions
-- Update all tests to expect exceptions instead of dict wrappers
-- Coverage maintained at >80%
+**Files:**
+- Service: `src/giljo_mcp/services/org_service.py`
+- Tests: `tests/services/test_org_service.py`
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
-```
+**TDD Workflow:**
 
----
+1. **Use Serena MCP to explore code structure:**
+   ```python
+   # Get overview of OrgService methods
+   mcp__serena__get_symbols_overview(
+       relative_path="src/giljo_mcp/services/org_service.py"
+   )
 
-## Tier 1: High-Impact Services (8-12 hours)
-
-### OrgService (33 instances) - Start Here
-
-**File:** src/giljo_mcp/services/org_service.py
-**Tests:** tests/services/test_org_service.py
-
-**Methods to refactor (example subset):**
-- get_org() - Return Organization, raise OrgNotFoundError
-- list_orgs() - Return list[Organization]
-- create_org() - Return Organization, raise OrgAlreadyExistsError
-- update_org() - Return Organization, raise OrgNotFoundError
-- delete_org() - Return bool or None, raise OrgNotFoundError
-- get_org_by_name() - Return Organization | None (None is valid)
-- update_org_settings() - Return Organization, raise OrgNotFoundError
-- [... 26 more methods - see 0730a docs for complete list]
-
-**Exceptions needed (from 0730a):**
-- OrgNotFoundError (404)
-- OrgAlreadyExistsError (409)
-- OrgValidationError (422)
-
-**Estimated:** 3-4 hours (largest service, establishes pattern for others)
-
-### UserService (19 instances)
-
-**File:** src/giljo_mcp/services/user_service.py
-**Tests:** tests/services/test_user_service.py
-
-**Methods to refactor (example subset):**
-- get_user() - Return User, raise UserNotFoundError
-- create_user() - Return User, raise UserAlreadyExistsError
-- update_user() - Return User, raise UserNotFoundError
-- delete_user() - Return bool, raise UserNotFoundError
-- authenticate_user() - Return User, raise AuthenticationError
-- [... 14 more methods]
-
-**Exceptions needed:**
-- UserNotFoundError (404)
-- UserAlreadyExistsError (409)
-- AuthenticationError (401)
-- UserValidationError (422)
-
-**Estimated:** 2-3 hours
-
-### ProductService (17 instances)
-
-**File:** src/giljo_mcp/services/product_service.py
-**Tests:** tests/services/test_product_service.py
-
-**Methods to refactor (example subset):**
-- get_product() - Return Product, raise ProductNotFoundError
-- create_product() - Return Product, raise ProductAlreadyExistsError
-- update_product() - Return Product, raise ProductNotFoundError
-- delete_product() - Return bool, raise ProductNotFoundError
-- activate_product() - Return Product, raise ProductNotFoundError
-- [... 12 more methods]
-
-**Exceptions needed:**
-- ProductNotFoundError (404)
-- ProductAlreadyExistsError (409)
-- ProductValidationError (422)
-
-**Estimated:** 2-3 hours
-
----
-
-## Tier 2: Medium-Impact Services (4-6 hours)
-
-### TaskService (14 instances)
-
-**File:** src/giljo_mcp/services/task_service.py
-**Tests:** tests/services/test_task_service.py
-
-**Estimated:** 1.5-2 hours
-
-### ProjectService (9 instances)
-
-**File:** src/giljo_mcp/services/project_service.py
-**Tests:** tests/services/test_project_service.py
-
-**Estimated:** 1-1.5 hours
-
-### MessageService (8 instances)
-
-**File:** src/giljo_mcp/services/message_service.py
-**Tests:** tests/services/test_message_service.py
-
-**Estimated:** 1-1.5 hours
-
----
-
-## Tier 3: Low-Impact Services (4-6 hours)
-
-Each service has 4-6 instances:
-- OrchestrationService (6 instances) - 1 hour
-- ContextService (4 instances) - 45 min
-- ConsolidationService (4 instances) - 45 min
-- AgentJobManager (4 instances) - 45 min
-- VisionSummarizer (4 instances) - 45 min
-- TemplateService (4 instances) - 45 min
-
-**Strategy:** Process in batch, commit together if patterns are identical
-
----
-
-## Implementation Instructions
-
-### Before Starting
-
-1. **Read 0730a deliverables:**
-   - docs/architecture/service_response_models.md (return type reference)
-   - docs/architecture/exception_mapping.md (exception reference)
-
-2. **Verify exception hierarchy:**
-   - Read src/giljo_mcp/exceptions.py
-   - Ensure all needed exceptions exist
-   - If gaps found, add exceptions first
-
-3. **Set up test environment:**
-   ```bash
-   cd F:/GiljoAI_MCP
-   source venv/Scripts/activate
-   pytest tests/ --collect-only  # Verify tests can be collected
+   # Find specific method to analyze
+   mcp__serena__find_symbol(
+       name_path_pattern="OrgService/create_organization",
+       include_body=True
+   )
    ```
 
-### Tier 1 Execution (Start Here)
+2. **Update tests FIRST (write failing tests):**
+   ```python
+   # BEFORE (test expects dict wrapper):
+   def test_get_org_not_found(self, org_service):
+       result = await org_service.get_organization("nonexistent")
+       assert result["success"] is False
+       assert "not found" in result["error"]
 
-**Day 1: OrgService (3-4 hours)**
-1. Read test file: tests/services/test_org_service.py
-2. Update all tests to expect exceptions
-3. Run tests to confirm failures: `pytest tests/services/test_org_service.py -v`
-4. Read service file: src/giljo_mcp/services/org_service.py
-5. Refactor all 33 methods following pattern
-6. Run tests to confirm fixes with coverage
-7. Commit with descriptive message
+   # AFTER (test expects exception):
+   def test_get_org_not_found(self, org_service):
+       with pytest.raises(ResourceNotFoundError) as exc_info:
+           await org_service.get_organization("nonexistent")
+       assert "nonexistent" in str(exc_info.value)
+   ```
 
-**Day 2: UserService + ProductService (4-6 hours)**
-1. Follow same TDD workflow for UserService (19 instances)
-2. Commit UserService changes
-3. Follow same TDD workflow for ProductService (17 instances)
-4. Commit ProductService changes
-5. Run full test suite to check for regressions: `pytest tests/services/ -v`
+   **Update ALL 33 test methods in `test_org_service.py`**
 
-### Tier 2 Execution
+3. **Run tests to confirm failures:**
+   ```bash
+   pytest tests/services/test_org_service.py -v
+   # Should show failures - tests expect exceptions, code returns dicts
+   ```
 
-**Day 3: TaskService, ProjectService, MessageService (4-6 hours)**
-1. Process each service following same TDD workflow
-2. Commit after each service
-3. Run full test suite after tier complete
+4. **Update service implementation (make tests pass):**
+   - Add type hints to all 33 methods
+   - Update docstrings with `Raises` sections
+   - Replace `return {"success": True, "data": ...}` with `return value`
+   - Replace `return {"success": False, "error": ...}` with `raise Exception(...)`
+   - Use exception mapping from `docs/architecture/exception_mapping.md`
 
-### Tier 3 Execution
+5. **Run tests to confirm fixes:**
+   ```bash
+   pytest tests/services/test_org_service.py -v --cov=src/giljo_mcp/services/org_service.py
+   # Should pass with >80% coverage
+   ```
 
-**Day 4: Remaining 6 Services (4-6 hours)**
-1. Process each service following same TDD workflow
-2. Can batch similar services (e.g., ContextService + ConsolidationService)
-3. Run full test suite after all complete
+6. **Commit:**
+   ```bash
+   git add tests/services/test_org_service.py \
+           src/giljo_mcp/services/org_service.py
+   git commit -m "refactor(0730b): OrgService dict wrappers to exceptions (33 methods)
+
+   - Replace all dict wrapper returns with direct model returns
+   - Add AlreadyExistsError for duplicate slug/member scenarios
+   - Update all tests to expect exceptions via pytest.raises
+   - Coverage maintained at >80%
+
+   Refactored methods:
+   - create_organization, get_organization, update_organization
+   - invite_member, remove_member, change_member_role
+   - transfer_ownership, list_members, get_user_organizations
+   - [... 24 more methods - see 0730a docs]
+
+   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+   ```
+
+**Repeat for UserService (2-3 hours) and ProductService (2-3 hours) using same TDD workflow.**
+
+### Tier 2 Execution (4-6 hours)
+
+Process TaskService (1.5-2h), ProjectService (1-1.5h), MessageService (1-1.5h) using same TDD workflow. Commit after each service.
+
+### Tier 3 Execution (4-6 hours)
+
+Process remaining 6 services (6 instances × 45-60 min each). Can batch similar services if patterns identical.
+
+**TOTAL ESTIMATED TIME:** 16-24 hours across 3-4 days
 
 ---
 
-## Success Criteria
+## 5. Coding Principles (from handover_instructions.md)
 
-**CODE QUALITY:**
-- ✅ All 122 methods refactored to return models and raise exceptions
-- ✅ Zero dict wrapper patterns remaining in service methods
-- ✅ Type hints added to all method signatures
-- ✅ Docstrings updated with Raises sections
-- ✅ Consistent exception usage across similar operations
+**You MUST follow these principles:**
 
-**TESTING:**
-- ✅ All service tests updated to expect exceptions
-- ✅ All tests passing: `pytest tests/services/ -v`
-- ✅ Coverage maintained >80%: `pytest tests/services/ --cov=src/giljo_mcp/services/`
-- ✅ No regressions in other test suites
+### Code Quality Standards
 
-**PROCESS:**
-- ✅ TDD workflow followed for every service (tests first, then code)
-- ✅ One commit per service for easy rollback
-- ✅ Commit messages follow conventional format
-- ✅ Pre-commit hooks passing (no --no-verify)
+1. ✅ **Chef's Kiss Production Grade:** No shortcuts, no bandaids, no "good enough"
+2. ✅ **TDD Workflow (MANDATORY):**
+   - Write tests FIRST (they should fail initially - red phase)
+   - Write minimal code to make tests pass (green phase)
+   - Refactor for quality (refactor phase)
+   - Commit test + implementation together
+3. ✅ **Use Serena MCP Tools:** Do NOT read entire files—use symbolic navigation:
+   - `mcp__serena__get_symbols_overview` for file structure
+   - `mcp__serena__find_symbol` for specific methods
+   - `mcp__serena__search_for_pattern` for finding dict wrappers
+   - `mcp__serena__find_referencing_symbols` for finding usages
+4. ✅ **Cross-Platform Paths:** Use `pathlib.Path()` (NEVER hardcoded `F:\`)
+5. ✅ **Multi-Tenant Isolation:** All database queries filtered by `tenant_key`
+6. ✅ **Type Hints:** Add return type annotations to ALL method signatures
+7. ✅ **Docstrings:** Update with `Raises` section for all error cases
+8. ✅ **Exception Context:** Always include entity IDs in exception context dict
 
-**HANDOFF READINESS:**
-- ✅ All services refactored and tested
-- ✅ Documentation updated in comms_log.json
-- ✅ Ready for 0730c (API endpoint updates)
+### Code Standards
 
----
+**Type Hints (Required):**
+```python
+async def get_organization(self, org_id: str) -> Organization:
+    # Return type MUST match target from 0730a design docs
+```
 
-## Validation Commands
+**Docstrings (Required):**
+```python
+"""Get organization by ID.
 
-```bash
-# Run all service tests
-pytest tests/services/ -v
+Args:
+    org_id: Organization ID
 
-# Check coverage
-pytest tests/services/ --cov=src/giljo_mcp/services/ --cov-report=term-missing
+Returns:
+    Organization model
 
-# Verify no dict wrappers remain in services
-grep -r "\"success\":" src/giljo_mcp/services/ --include="*.py" | grep -v "#" | wc -l
-# Should return 0
+Raises:
+    ResourceNotFoundError: Organization not found
+    DatabaseError: Database operation failed
+"""
+```
 
-# Run full test suite (check for regressions)
-pytest tests/ -v
-
-# Verify pre-commit hooks pass
-git add -A
-pre-commit run --all-files
+**Exception Context (Required):**
+```python
+raise ResourceNotFoundError(
+    message="Organization not found",
+    context={"org_id": org_id}  # Always include entity identifiers
+)
 ```
 
 ---
 
-## Risks and Considerations
+## 6. Testing Requirements
 
-**BREAKING CHANGES:**
-Risk: API endpoints still expect dict wrappers
-Mitigation: This is expected - 0730c will update endpoints. DO NOT update endpoints in this phase.
+### TDD Workflow (MANDATORY)
 
-**TEST ISOLATION:**
-Risk: Existing tests may have transaction isolation issues (known issue from Handover 0322)
-Mitigation: If isolation issues found, fix in separate commit and document
+**For each service:**
 
-**EXCEPTION HIERARCHY GAPS:**
-Risk: May discover needed exceptions not in hierarchy
-Mitigation: Add exceptions to src/giljo_mcp/exceptions.py before using
+1. **Red Phase:** Update ALL test methods to expect exceptions
+   - Replace assertions on `result["success"]`
+   - Add `pytest.raises(ExceptionType)` context managers
+   - Verify exception messages contain relevant context
+   - Run tests to confirm failures
 
-**REGRESSION RISK:**
-Risk: Changes to services may break dependent code
-Mitigation: Comprehensive test coverage and careful review before each commit
+2. **Green Phase:** Update service implementation
+   - Add type hints to method signatures
+   - Replace dict returns with direct model returns
+   - Replace error dicts with raise statements
+   - Run tests to confirm all pass
+
+3. **Refactor Phase:** Improve code quality
+   - Extract common exception handling patterns
+   - Ensure consistent error messages
+   - Verify docstrings are complete
+
+4. **Commit:** Test + implementation together with descriptive message
+
+### Test Pattern Examples
+
+**Success Case Test:**
+```python
+# BEFORE
+async def test_create_org_success(self, org_service):
+    result = await org_service.create_organization("Test Org", "user-123", "tenant-abc")
+    assert result["success"] is True
+    assert result["data"].name == "Test Org"
+
+# AFTER
+async def test_create_org_success(self, org_service):
+    org = await org_service.create_organization("Test Org", "user-123", "tenant-abc")
+    assert org.name == "Test Org"
+    assert org.slug == "test-org"
+```
+
+**Error Case Test:**
+```python
+# BEFORE
+async def test_create_org_duplicate_slug(self, org_service):
+    result = await org_service.create_organization("Duplicate", "user-123", "tenant-abc")
+    assert result["success"] is False
+    assert "already exists" in result["error"]
+
+# AFTER
+async def test_create_org_duplicate_slug(self, org_service):
+    with pytest.raises(AlreadyExistsError) as exc_info:
+        await org_service.create_organization("Duplicate", "user-123", "tenant-abc")
+    assert "slug" in str(exc_info.value).lower()
+    assert exc_info.value.default_status_code == 409
+```
+
+### Coverage Requirements
+
+- [ ] All service tests passing: `pytest tests/services/ -v`
+- [ ] Coverage >80%: `pytest tests/services/ --cov=src/giljo_mcp/services/`
+- [ ] No regressions in other test suites: `pytest tests/ -v`
 
 ---
 
-## Reference Materials
+## 7. Dependencies & Integration
 
-**REQUIRED READING (from 0730a):**
-- docs/architecture/service_response_models.md
-- docs/architecture/exception_mapping.md
+### Dependencies (Upstream)
 
-**CODE REFERENCES:**
-- src/giljo_mcp/exceptions.py: Exception hierarchy
-- tests/services/: All service test files
-- src/giljo_mcp/services/: All service implementations
+**MUST BE COMPLETE BEFORE STARTING:**
+- ✅ Handover 0730a (design documents exist):
+  - `docs/architecture/service_response_models.md`
+  - `docs/architecture/exception_mapping.md`
+  - `docs/architecture/api_exception_handling.md`
+- ✅ Exception hierarchy in `src/giljo_mcp/exceptions.py`
+- ✅ Exception handlers in `api/exception_handlers.py`
 
-**DOCUMENTATION:**
-- SERVICES.md: Service layer patterns
-- TESTING.md: Testing patterns and coverage
-- CLAUDE.md: Pre-commit hook policy
+### Blocks (Downstream)
+
+**This handover blocks:**
+- 0730c (API Endpoint Updates) - Endpoints will break until updated to use new service signatures
+- 0730d (Testing Validation) - Cannot validate until all phases complete
+
+### Integration Impact
+
+**CRITICAL UNDERSTANDING:**
+- **API endpoints will temporarily fail** after service refactoring completes
+- This is expected behavior—endpoints still check `result["success"]` but services now raise exceptions
+- 0730c will fix endpoints to let exceptions propagate
+- **DO NOT attempt to fix endpoints in this phase**—that violates phase isolation
+
+**WebSocket Considerations:**
+- WebSocket event emission in services unaffected (separate concern)
+- Services can still emit events: `await emit_event("org.created", {...})`
 
 ---
 
-## Recommended Sub-Agent
+## 8. Success Criteria
 
-**Agent:** tdd-implementor
+### Code Quality
 
-**Why this agent:**
-- Test-Driven Development expertise
-- Systematic refactoring experience
-- Regression prevention through testing
-- High code quality standards
+- [ ] All 122 service methods refactored to return models and raise exceptions
+- [ ] Zero dict wrapper patterns remaining: `grep -r '"success":' src/giljo_mcp/services/ | wc -l` returns 0
+- [ ] Type hints added to all method signatures
+- [ ] Docstrings updated with `Raises` sections
+- [ ] Consistent exception usage across similar operations
+- [ ] Exception context includes entity IDs in all cases
+
+### Testing
+
+- [ ] All service tests updated to expect exceptions (pytest.raises pattern)
+- [ ] All tests passing: `pytest tests/services/ -v`
+- [ ] Coverage maintained >80%: `pytest tests/services/ --cov=src/giljo_mcp/services/`
+- [ ] No regressions in other test suites: `pytest tests/ -v`
+
+### Process
+
+- [ ] TDD workflow followed for every service (tests first, then code)
+- [ ] One commit per service for easy rollback
+- [ ] Commit messages follow conventional format (see Implementation Plan examples)
+- [ ] Pre-commit hooks passing (no `--no-verify` used)
+- [ ] Serena MCP tools used for code navigation (not `Read` tool for entire files)
+
+### Integration
+
+- [ ] AlreadyExistsError added to exceptions.py if missing (committed separately)
+- [ ] All 12 services refactored and committed
+- [ ] comms_log.json updated with completion status
+- [ ] orchestrator_state.json marks 0730b as COMPLETE
+- [ ] User notified of completion—STOPPED at phase boundary
+
+---
+
+## 9. Rollback Plan
+
+### Scenario 1: Test Failures During Green Phase
+
+**Problem:** Updated service code breaks tests unexpectedly.
+
+**Rollback:**
+1. Discard uncommitted service changes: `git checkout -- src/giljo_mcp/services/{service}.py`
+2. Review test expectations—may need adjustment
+3. Re-attempt implementation with corrected understanding
+
+**Prevention:** Run tests frequently during implementation (after each method update)
+
+### Scenario 2: Regression in Other Test Suites
+
+**Problem:** Service changes break integration tests or endpoint tests.
+
+**Rollback:**
+1. Identify which service commit introduced regression
+2. Revert specific commit: `git revert <commit-hash>`
+3. Document regression in GitHub issue
+4. Fix underlying issue before re-applying changes
+
+**Prevention:** Run full test suite before final commit: `pytest tests/ -v`
+
+### Scenario 3: Critical Exception Missing from Hierarchy
+
+**Problem:** Design docs reference exception not in `exceptions.py`.
+
+**Rollback:**
+1. Pause service refactoring
+2. Add missing exception to `exceptions.py`
+3. Commit exception addition separately
+4. Resume service refactoring
+5. Update 0730a design docs if gap was missed
+
+**Prevention:** Verify exception hierarchy completeness in Pre-Work step
+
+---
+
+## 10. Resources
+
+### Required Reading (from 0730a)
+
+**MUST READ BEFORE STARTING:**
+- `docs/architecture/service_response_models.md` - Return type reference for all 122 methods
+- `docs/architecture/exception_mapping.md` - Exception-to-HTTP-status mapping
+
+### Code References
+
+- `src/giljo_mcp/exceptions.py` - Exception hierarchy (BaseGiljoError and subclasses)
+- `tests/services/` - All service test files (TDD reference)
+- `src/giljo_mcp/services/` - All 12 service implementations
+- `api/exception_handlers.py` - Exception-to-HTTP mapping handlers
+
+### Documentation
+
+- `docs/SERVICES.md` - Service layer patterns (will be updated in 0730d)
+- `docs/TESTING.md` - Testing patterns and coverage requirements
+- `docs/HANDOVERS.md` - Handover format and execution workflow
+- `handovers/handover_instructions.md` - Authoritative handover structure and coding principles
+- `CLAUDE.md` - Project coding standards, pre-commit hook policy, cross-platform requirements
+
+### Related Handovers
+
+- **0730a:** Design Response Models (PREREQUISITE - must be complete)
+- **0480 Series:** Exception handling remediation (established exception hierarchy)
+- **0725b:** Code health re-audit (validated 122 instances via AST)
+- **0322:** Service layer architecture patterns (background context)
+- **0730c:** API Endpoint Updates (NEXT PHASE - depends on this)
+- **0730d:** Testing Validation (depends on all phases complete)
+
+---
+
+## 🛑 CRITICAL: STOP AFTER COMPLETION
+
+**DO NOT PROCEED TO HANDOVER 0730c WITHOUT EXPLICIT USER APPROVAL**
+
+After completing this handover:
+
+1. ✅ **Verify all deliverables complete:**
+   - [ ] All 122 service methods refactored
+   - [ ] All service tests updated and passing
+   - [ ] Coverage >80% maintained
+   - [ ] Pre-commit hooks passing
+   - [ ] All commits follow conventional format
+
+2. ✅ **Run final validation commands:**
+   ```bash
+   # Verify no dict wrappers remain
+   grep -r '"success":' src/giljo_mcp/services/ --include="*.py" | grep -v "#" | wc -l
+   # Should return 0
+
+   # All service tests pass
+   pytest tests/services/ -v
+
+   # Coverage check
+   pytest tests/services/ --cov=src/giljo_mcp/services/ --cov-report=term-missing
+
+   # Full test suite (check for regressions)
+   pytest tests/ -v
+   ```
+
+3. ✅ **Update comms_log.json:**
+   ```json
+   {
+     "from": "0730b",
+     "to": "orchestrator",
+     "status": "complete",
+     "summary": {
+       "methods_refactored": 122,
+       "services_updated": 12,
+       "tests_passing": "100%",
+       "coverage": ">80%",
+       "commits": 12
+     },
+     "key_outcomes": [
+       "All services return Pydantic models or domain objects",
+       "Exception-based error handling implemented throughout",
+       "TDD workflow followed - zero regressions detected",
+       "All tests passing with maintained coverage"
+     ],
+     "integration_notes": [
+       "API endpoints temporarily broken - 0730c will fix",
+       "AlreadyExistsError added to exception hierarchy",
+       "Service signatures changed - endpoints must be updated"
+     ]
+   }
+   ```
+
+4. ✅ **Update orchestrator_state.json:**
+   - Mark 0730b as COMPLETE
+   - Update progress tracking
+
+5. 🛑 **STOP IMMEDIATELY AND REPORT TO USER:**
+   - "Handover 0730b COMPLETE. All 122 service methods refactored."
+   - "Service layer now uses exception-based error handling."
+   - "All tests passing with >80% coverage maintained."
+   - "⚠️ WARNING: API endpoints temporarily broken—0730c will fix."
+   - "Ready for user review before proceeding to 0730c."
+
+6. ❌ **DO NOT start Handover 0730c** (API Endpoint Updates)
+7. ❌ **DO NOT read** `handovers/0730c_UPDATE_API_ENDPOINTS.md`
+8. ❌ **DO NOT read** `handovers/0700_series/kickoff_prompts/0730c_ENDPOINTS_kickoff.md`
+9. ❌ **DO NOT attempt to fix API endpoints** (that's 0730c's responsibility)
+10. ❌ **DO NOT modify exception handlers** (they're already correct from 0480 series)
+
+**This is a hard phase boundary. Proceeding without user approval violates project workflow.**
+
+User will review refactored services, test results, and coverage reports before approving 0730c.
+
+**EXPECTED STATE AFTER THIS PHASE:**
+- ✅ Services refactored and tested
+- ⚠️ API endpoints broken (expected—fixed in 0730c)
+- ⚠️ Integration tests may fail (expected—fixed in 0730c)
+- ✅ Service layer tests all passing
 
 ---
 
 ## Definition of Done
 
-1. ✅ All 122 service methods refactored
-2. ✅ All service tests updated and passing
-3. ✅ Coverage >80% maintained
-4. ✅ No dict wrapper patterns remaining in services
-5. ✅ All commits successful with pre-commit hooks passing
-6. ✅ Validation commands all pass
-7. ✅ Comms log updated with completion status
-8. ✅ Ready for 0730c (API updates)
+**Code Quality:**
+- [ ] All code follows TDD (tests written first, then implementation)
+- [ ] >80% test coverage verified: `pytest --cov`
+- [ ] No hardcoded paths (all use `pathlib.Path`)
+- [ ] All methods have type hints with correct return types
+- [ ] Docstrings for all methods with `Raises` sections
+- [ ] Exception context includes entity IDs
+
+**Functionality:**
+- [ ] All 122 service methods refactored to return models
+- [ ] All error cases raise appropriate exceptions
+- [ ] Zero dict wrapper patterns remain in service layer
+- [ ] AlreadyExistsError added to exceptions.py (if missing)
+- [ ] Consistent exception usage across similar operations
+
+**Documentation:**
+- [ ] Code comments for complex logic only (not obvious code)
+- [ ] comms_log.json updated with completion message
+- [ ] orchestrator_state.json marks 0730b as COMPLETE
+
+**Integration:**
+- [ ] All service tests pass: `pytest tests/services/`
+- [ ] Coverage maintained: `pytest tests/services/ --cov`
+- [ ] No lint errors: `ruff src/; black src/`
+- [ ] Pre-commit hooks pass (no `--no-verify` used)
+- [ ] All commits follow conventional format
+
+**CRITICAL:**
+- [ ] Stopped at phase boundary - did NOT proceed to 0730c
+- [ ] Reported completion to user with summary
+- [ ] User acknowledges API endpoints temporarily broken
+- [ ] Awaiting user approval before 0730c
 
 ---
 
-## Timeline Estimate
+## Git Commit Standards
 
-- Tier 1 Services: 8-12 hours (OrgService, UserService, ProductService)
-- Tier 2 Services: 4-6 hours (TaskService, ProjectService, MessageService)
-- Tier 3 Services: 4-6 hours (6 remaining services)
+**Commit message format:**
+```
+<type>(<scope>): <subject>
 
-**TOTAL:** 16-24 hours (tdd-implementor agent)
+<body - optional>
 
-**Recommended:** 3-4 days with regular commits
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+```
 
----
+**Types:** feat, refactor, test, docs, chore
+**Scope:** Handover ID (0730b) or service name
+**Subject:** Imperative mood, <50 chars
 
-## Next Steps After Completion
+**Example for service refactoring:**
+```bash
+git commit -m "refactor(0730b): OrgService dict wrappers to exceptions (33 methods)
 
-**Handoff to 0730c (API Updates):**
-- All services now return models and raise exceptions
-- API endpoints can be simplified (remove dict checking logic)
-- Update comms_log.json with completion status
-- Mark 0730b as COMPLETE in orchestrator_state.json
-- Unblock 0730c for execution
+- Replace all dict wrapper returns with direct model returns
+- Add AlreadyExistsError for duplicate slug/member scenarios
+- Update all tests to expect exceptions via pytest.raises
+- Coverage maintained at >80%
 
-**Communication to Orchestrator:**
-```json
-{
-  "from": "0730b",
-  "to": "orchestrator",
-  "status": "complete",
-  "summary": {
-    "methods_refactored": 122,
-    "services_updated": 12,
-    "tests_passing": "100%",
-    "coverage": ">80%",
-    "commits": 12
-  },
-  "key_outcomes": [
-    "All services return Pydantic models or domain objects",
-    "Exception-based error handling implemented throughout",
-    "TDD workflow followed - zero regressions",
-    "All tests passing with maintained coverage"
-  ],
-  "ready_for": ["0730c"]
-}
+Refactored methods:
+- create_organization, get_organization, update_organization
+- invite_member, remove_member, change_member_role
+- transfer_ownership, list_members, get_user_organizations
+- [... 24 more methods]
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-**Created:** 2026-02-07
-**Status:** BLOCKED (waiting for 0730a)
-**Priority:** P2 - MEDIUM
-**Blocks:** 0730c, 0730d
+## Executor Notes
+
+**Agent Profile:** tdd-implementor (Test-Driven Development expertise, systematic refactoring)
+
+**Time Estimates:**
+- Pre-Work (AlreadyExistsError): 30 minutes
+- Tier 1 Services: 8-12 hours (OrgService 3-4h, UserService 2-3h, ProductService 2-3h)
+- Tier 2 Services: 4-6 hours (TaskService 1.5-2h, ProjectService 1-1.5h, MessageService 1-1.5h)
+- Tier 3 Services: 4-6 hours (6 services × 45-60 min each)
+- **TOTAL:** 16-24 hours across 3-4 days
+
+**Critical Reminders:**
+1. **TDD is Non-Negotiable:** Always update tests FIRST, then implementation
+2. **Use Serena MCP:** Avoid reading entire files—use symbolic navigation
+3. **Start with OrgService:** Largest service establishes pattern for others
+4. **Commit Frequently:** One commit per service for easier rollback
+5. **Run Tests Often:** After each method update, run affected tests
+6. **Check Coverage:** Maintain >80% throughout refactoring
+7. **Don't Touch Endpoints:** API updates happen in 0730c, not this phase
+8. **Follow Design Docs:** Refer to 0730a docs for return types and exception mapping
+9. **Exception Context:** Always include entity IDs in exception context
+10. **STOP at Boundary:** Do NOT proceed to 0730c without user approval
+
+**Quality Over Speed:** Better to take 24 hours and get it right than rush in 16 hours with bugs.
+
+This is core architectural work. TDD ensures zero regressions. Follow the workflow religiously.
 
 ---
 
-## Notes for Executor
-
-1. **TDD is Non-Negotiable** - Always update tests first, then implementation
-2. **Start with OrgService** - Largest service, establishes pattern for others
-3. **Commit Frequently** - One commit per service for easier rollback
-4. **Run Tests Often** - After each method update, run affected tests
-5. **Check Coverage** - Maintain >80% throughout
-6. **Don't Touch Endpoints** - API updates happen in 0730c, not this phase
-7. **Use Serena MCP** - Avoid reading entire files; use symbolic navigation
-8. **Follow Patterns** - Refer to 0730a docs for consistent exception usage
-9. **Ask Questions** - If unclear on exception type, consult 0730a documentation
-10. **Quality Over Speed** - Better to take extra time and get it right
-
-This is the core refactoring work - invest the time to do it properly.
+**Created:** 2026-02-08
+**Version:** 2.0 (Complete Rewrite)
+**Status:** BLOCKED (waiting for 0730a)
+**Blocks:** 0730c, 0730d
