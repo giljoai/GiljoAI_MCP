@@ -625,4 +625,3 @@ async def test_tenant_isolation_get_template_history(template_service, tenant_ke
 
         assert len(history) == 1
         assert history[0].tenant_key == tenant_key
-
