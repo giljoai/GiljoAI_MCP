@@ -19,6 +19,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.giljo_mcp.exceptions import (
+    AlreadyExistsError,
+    AuthorizationError,
+    DatabaseError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from src.giljo_mcp.models.organizations import Organization, OrgMembership
 
 
@@ -38,7 +45,7 @@ class OrgService:
 
     async def create_organization(
         self, name: str, owner_id: str, tenant_key: str, slug: Optional[str] = None, settings: Optional[dict] = None
-    ) -> dict[str, Any]:
+    ) -> Organization:
         """
         Create organization with owner.
 
@@ -50,7 +57,11 @@ class OrgService:
             settings: Optional org-level settings
 
         Returns:
-            dict with 'success' bool and 'data' or 'error'
+            Organization: Created organization with owner membership
+
+        Raises:
+            AlreadyExistsError: Organization with slug already exists
+            DatabaseError: Database operation failed
         """
         try:
             # Generate slug from name if not provided
@@ -58,9 +69,15 @@ class OrgService:
                 slug = self._generate_slug(name)
 
             # Check slug uniqueness
-            existing = await self.get_organization_by_slug(slug)
-            if existing["success"]:
-                return {"success": False, "error": f"Organization with slug '{slug}' already exists"}
+            try:
+                existing = await self.get_organization_by_slug(slug)
+                if existing:
+                    raise AlreadyExistsError(
+                        message=f"Organization with slug '{slug}' already exists", context={"slug": slug}
+                    )
+            except ResourceNotFoundError:
+                # Slug is available
+                pass
 
             # Create organization
             org = Organization(name=name, tenant_key=tenant_key, slug=slug, settings=settings or {})
@@ -82,15 +99,32 @@ class OrgService:
                     user_id=owner_id, event="org:created", data={"org_id": org.id, "name": name, "slug": slug}
                 )
 
-            return {"success": True, "data": org}
+            return org
 
+        except AlreadyExistsError:
+            await self.session.rollback()
+            raise
         except SQLAlchemyError as e:
             logger.exception("Failed to create organization")
             await self.session.rollback()
-            return {"success": False, "error": str(e)}
+            raise DatabaseError(
+                message="Failed to create organization", context={"name": name, "slug": slug, "error": str(e)}
+            ) from e
 
-    async def get_organization(self, org_id: str) -> dict[str, Any]:
-        """Get organization by ID (only active orgs)."""
+    async def get_organization(self, org_id: str) -> Organization:
+        """
+        Get organization by ID (only active orgs).
+
+        Args:
+            org_id: Organization ID
+
+        Returns:
+            Organization: Found organization with members
+
+        Raises:
+            ResourceNotFoundError: Organization not found or inactive
+            DatabaseError: Database operation failed
+        """
         try:
             stmt = (
                 select(Organization)
@@ -105,16 +139,32 @@ class OrgService:
             org = result.scalar_one_or_none()
 
             if not org:
-                return {"success": False, "error": "Organization not found"}
+                raise ResourceNotFoundError(message="Organization not found", context={"org_id": org_id})
 
-            return {"success": True, "data": org}
+            return org
 
+        except ResourceNotFoundError:
+            raise
         except SQLAlchemyError as e:
             logger.exception("Failed to get organization")
-            return {"success": False, "error": str(e)}
+            raise DatabaseError(
+                message="Failed to get organization", context={"org_id": org_id, "error": str(e)}
+            ) from e
 
-    async def get_organization_by_slug(self, slug: str) -> dict[str, Any]:
-        """Get organization by slug."""
+    async def get_organization_by_slug(self, slug: str) -> Organization:
+        """
+        Get organization by slug.
+
+        Args:
+            slug: Organization slug
+
+        Returns:
+            Organization: Found organization with members
+
+        Raises:
+            ResourceNotFoundError: Organization with slug not found
+            DatabaseError: Database operation failed
+        """
         try:
             stmt = select(Organization).where(Organization.slug == slug).options(selectinload(Organization.members))
 
@@ -122,24 +172,38 @@ class OrgService:
             org = result.scalar_one_or_none()
 
             if not org:
-                return {"success": False, "error": "Organization not found"}
+                raise ResourceNotFoundError(message="Organization not found", context={"slug": slug})
 
-            return {"success": True, "data": org}
+            return org
 
+        except ResourceNotFoundError:
+            raise
         except SQLAlchemyError as e:
             logger.exception("Failed to get organization by slug")
-            return {"success": False, "error": str(e)}
+            raise DatabaseError(
+                message="Failed to get organization by slug", context={"slug": slug, "error": str(e)}
+            ) from e
 
     async def update_organization(
         self, org_id: str, name: Optional[str] = None, settings: Optional[dict] = None
-    ) -> dict[str, Any]:
-        """Update organization details."""
-        try:
-            org_result = await self.get_organization(org_id)
-            if not org_result["success"]:
-                return org_result
+    ) -> Organization:
+        """
+        Update organization details.
 
-            org = org_result["data"]
+        Args:
+            org_id: Organization ID
+            name: New organization name
+            settings: New organization settings
+
+        Returns:
+            Organization: Updated organization
+
+        Raises:
+            ResourceNotFoundError: Organization not found
+            DatabaseError: Database operation failed
+        """
+        try:
+            org = await self.get_organization(org_id)
 
             if name:
                 org.name = name
@@ -153,31 +217,42 @@ class OrgService:
             # Re-query with members to ensure relationships are loaded
             return await self.get_organization(org_id)
 
+        except ResourceNotFoundError:
+            raise
         except SQLAlchemyError as e:
             logger.exception("Failed to update organization")
             await self.session.rollback()
-            return {"success": False, "error": str(e)}
+            raise DatabaseError(
+                message="Failed to update organization", context={"org_id": org_id, "error": str(e)}
+            ) from e
 
-    async def delete_organization(self, org_id: str) -> dict[str, Any]:
-        """Delete organization (soft delete by setting is_active=False)."""
+    async def delete_organization(self, org_id: str) -> None:
+        """
+        Delete organization (soft delete by setting is_active=False).
+
+        Args:
+            org_id: Organization ID
+
+        Raises:
+            ResourceNotFoundError: Organization not found
+            DatabaseError: Database operation failed
+        """
         try:
-            org_result = await self.get_organization(org_id)
-            if not org_result["success"]:
-                return org_result
-
-            org = org_result["data"]
+            org = await self.get_organization(org_id)
             org.is_active = False
 
             await self.session.commit()
 
             logger.info("Organization deleted (soft)", extra={"org_id": org_id})
 
-            return {"success": True, "data": {"deleted": True}}
-
+        except ResourceNotFoundError:
+            raise
         except SQLAlchemyError as e:
             logger.exception("Failed to delete organization")
             await self.session.rollback()
-            return {"success": False, "error": str(e)}
+            raise DatabaseError(
+                message="Failed to delete organization", context={"org_id": org_id, "error": str(e)}
+            ) from e
 
     # =========================================================================
     # Membership Management
@@ -185,7 +260,7 @@ class OrgService:
 
     async def invite_member(
         self, org_id: str, user_id: str, role: str, invited_by: str, tenant_key: str
-    ) -> dict[str, Any]:
+    ) -> OrgMembership:
         """
         Invite user to organization.
 
@@ -197,17 +272,28 @@ class OrgService:
             tenant_key: Tenant isolation key
 
         Returns:
-            dict with 'success' bool and 'data' or 'error'
+            OrgMembership: Created membership
+
+        Raises:
+            AlreadyExistsError: User is already a member
+            ValidationError: Invalid role specified
+            DatabaseError: Database operation failed
         """
         try:
             # Check if already a member
             existing = await self._get_membership(org_id, user_id)
             if existing:
-                return {"success": False, "error": "User is already a member of this organization"}
+                raise AlreadyExistsError(
+                    message="User is already a member of this organization",
+                    context={"org_id": org_id, "user_id": user_id},
+                )
 
             # Validate role
             if role not in ("admin", "member", "viewer"):
-                return {"success": False, "error": f"Invalid role: {role}. Must be admin, member, or viewer"}
+                raise ValidationError(
+                    message=f"Invalid role: {role}. Must be admin, member, or viewer",
+                    context={"role": role, "valid_roles": ["admin", "member", "viewer"]},
+                )
 
             membership = OrgMembership(
                 org_id=org_id, user_id=user_id, role=role, invited_by=invited_by, tenant_key=tenant_key
@@ -226,74 +312,143 @@ class OrgService:
                     user_id=user_id, event="org:invited", data={"org_id": org_id, "role": role}
                 )
 
-            return {"success": True, "data": membership}
+            return membership
 
+        except (AlreadyExistsError, ValidationError):
+            await self.session.rollback()
+            raise
         except SQLAlchemyError as e:
             logger.exception("Failed to invite member")
             await self.session.rollback()
-            return {"success": False, "error": str(e)}
+            raise DatabaseError(
+                message="Failed to invite member", context={"org_id": org_id, "user_id": user_id, "error": str(e)}
+            ) from e
 
-    async def remove_member(self, org_id: str, user_id: str) -> dict[str, Any]:
-        """Remove member from organization."""
+    async def remove_member(self, org_id: str, user_id: str) -> None:
+        """
+        Remove member from organization.
+
+        Args:
+            org_id: Organization ID
+            user_id: User ID to remove
+
+        Raises:
+            ResourceNotFoundError: User is not a member
+            AuthorizationError: Cannot remove owner (must transfer first)
+            DatabaseError: Database operation failed
+        """
         try:
             membership = await self._get_membership(org_id, user_id)
 
             if not membership:
-                return {"success": False, "error": "User is not a member"}
+                raise ResourceNotFoundError(
+                    message="User is not a member", context={"org_id": org_id, "user_id": user_id}
+                )
 
             if membership.role == "owner":
-                return {"success": False, "error": "Cannot remove owner. Transfer ownership first."}
+                raise AuthorizationError(
+                    message="Cannot remove owner. Transfer ownership first.",
+                    context={"org_id": org_id, "user_id": user_id, "role": "owner"},
+                )
 
             await self.session.delete(membership)
             await self.session.commit()
 
             logger.info("Member removed from organization", extra={"org_id": org_id, "user_id": user_id})
 
-            return {"success": True, "data": {"removed": True}}
-
+        except (ResourceNotFoundError, AuthorizationError):
+            await self.session.rollback()
+            raise
         except SQLAlchemyError as e:
             logger.exception("Failed to remove member")
             await self.session.rollback()
-            return {"success": False, "error": str(e)}
+            raise DatabaseError(
+                message="Failed to remove member", context={"org_id": org_id, "user_id": user_id, "error": str(e)}
+            ) from e
 
-    async def change_member_role(self, org_id: str, user_id: str, new_role: str) -> dict[str, Any]:
-        """Change member's role in organization."""
+    async def change_member_role(self, org_id: str, user_id: str, new_role: str) -> OrgMembership:
+        """
+        Change member's role in organization.
+
+        Args:
+            org_id: Organization ID
+            user_id: User ID whose role to change
+            new_role: New role to assign
+
+        Returns:
+            OrgMembership: Updated membership
+
+        Raises:
+            ResourceNotFoundError: User is not a member
+            AuthorizationError: Cannot change owner role (must use transfer_ownership)
+            ValidationError: Invalid role specified
+            DatabaseError: Database operation failed
+        """
         try:
             membership = await self._get_membership(org_id, user_id)
 
             if not membership:
-                return {"success": False, "error": "User is not a member"}
+                raise ResourceNotFoundError(
+                    message="User is not a member", context={"org_id": org_id, "user_id": user_id}
+                )
 
             if membership.role == "owner":
-                return {"success": False, "error": "Cannot change owner role. Use transfer_ownership instead."}
+                raise AuthorizationError(
+                    message="Cannot change owner role. Use transfer_ownership instead.",
+                    context={"org_id": org_id, "user_id": user_id, "role": "owner"},
+                )
 
             if new_role not in ("admin", "member", "viewer"):
-                return {"success": False, "error": f"Invalid role: {new_role}"}
+                raise ValidationError(
+                    message=f"Invalid role: {new_role}",
+                    context={"new_role": new_role, "valid_roles": ["admin", "member", "viewer"]},
+                )
 
             membership.role = new_role
             await self.session.commit()
 
             logger.info("Member role changed", extra={"org_id": org_id, "user_id": user_id, "new_role": new_role})
 
-            return {"success": True, "data": membership}
+            return membership
 
+        except (ResourceNotFoundError, AuthorizationError, ValidationError):
+            await self.session.rollback()
+            raise
         except SQLAlchemyError as e:
             logger.exception("Failed to change member role")
             await self.session.rollback()
-            return {"success": False, "error": str(e)}
+            raise DatabaseError(
+                message="Failed to change member role", context={"org_id": org_id, "user_id": user_id, "error": str(e)}
+            ) from e
 
-    async def transfer_ownership(self, org_id: str, current_owner_id: str, new_owner_id: str) -> dict[str, Any]:
-        """Transfer organization ownership to another member."""
+    async def transfer_ownership(self, org_id: str, current_owner_id: str, new_owner_id: str) -> None:
+        """
+        Transfer organization ownership to another member.
+
+        Args:
+            org_id: Organization ID
+            current_owner_id: Current owner's user ID
+            new_owner_id: New owner's user ID
+
+        Raises:
+            AuthorizationError: Current user is not owner
+            ResourceNotFoundError: New owner is not a member
+            DatabaseError: Database operation failed
+        """
         try:
             # Verify current owner
             current = await self._get_membership(org_id, current_owner_id)
             if not current or current.role != "owner":
-                return {"success": False, "error": "Only owner can transfer ownership"}
+                raise AuthorizationError(
+                    message="Only owner can transfer ownership", context={"org_id": org_id, "user_id": current_owner_id}
+                )
 
             # Verify new owner is a member
             new_owner = await self._get_membership(org_id, new_owner_id)
             if not new_owner:
-                return {"success": False, "error": "New owner must be a member"}
+                raise ResourceNotFoundError(
+                    message="New owner must be a member", context={"org_id": org_id, "user_id": new_owner_id}
+                )
 
             # Transfer
             current.role = "admin"  # Demote to admin
@@ -303,15 +458,30 @@ class OrgService:
 
             logger.info("Ownership transferred", extra={"org_id": org_id, "from": current_owner_id, "to": new_owner_id})
 
-            return {"success": True, "data": {"transferred": True}}
-
+        except (AuthorizationError, ResourceNotFoundError):
+            await self.session.rollback()
+            raise
         except SQLAlchemyError as e:
             logger.exception("Failed to transfer ownership")
             await self.session.rollback()
-            return {"success": False, "error": str(e)}
+            raise DatabaseError(
+                message="Failed to transfer ownership",
+                context={"org_id": org_id, "from": current_owner_id, "to": new_owner_id, "error": str(e)},
+            ) from e
 
-    async def list_members(self, org_id: str) -> dict[str, Any]:
-        """List all members of organization."""
+    async def list_members(self, org_id: str) -> list[OrgMembership]:
+        """
+        List all members of organization.
+
+        Args:
+            org_id: Organization ID
+
+        Returns:
+            list[OrgMembership]: List of active memberships
+
+        Raises:
+            DatabaseError: Database operation failed
+        """
         try:
             stmt = (
                 select(OrgMembership)
@@ -322,18 +492,29 @@ class OrgService:
             result = await self.session.execute(stmt)
             members = result.scalars().all()
 
-            return {"success": True, "data": list(members)}
+            return list(members)
 
         except SQLAlchemyError as e:
             logger.exception("Failed to list members")
-            return {"success": False, "error": str(e)}
+            raise DatabaseError(message="Failed to list members", context={"org_id": org_id, "error": str(e)}) from e
 
     # =========================================================================
     # User Queries
     # =========================================================================
 
-    async def get_user_organizations(self, user_id: str) -> dict[str, Any]:
-        """Get all organizations for a user."""
+    async def get_user_organizations(self, user_id: str) -> list[Organization]:
+        """
+        Get all organizations for a user.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            list[Organization]: List of organizations user is a member of
+
+        Raises:
+            DatabaseError: Database operation failed
+        """
         try:
             stmt = (
                 select(Organization)
@@ -345,11 +526,13 @@ class OrgService:
             result = await self.session.execute(stmt)
             orgs = result.scalars().all()
 
-            return {"success": True, "data": list(orgs)}
+            return list(orgs)
 
         except SQLAlchemyError as e:
             logger.exception("Failed to get user organizations")
-            return {"success": False, "error": str(e)}
+            raise DatabaseError(
+                message="Failed to get user organizations", context={"user_id": user_id, "error": str(e)}
+            ) from e
 
     async def get_user_role(self, org_id: str, user_id: str) -> Optional[str]:
         """Get user's role in organization."""
