@@ -825,7 +825,6 @@ class ProductService:
                 self._logger.info(f"Restored product {product_id}")
 
                 return {
-                    "success": True,
                     "product": {
                         "id": str(product.id),
                         "name": product.name,
@@ -1226,18 +1225,18 @@ class ProductService:
             max_tokens: Max tokens per chunk (default: 25000 for 32K models)
 
         Returns:
-            Dict with success status and document/chunk details
+            Dict with document/chunk details:
             {
-                "success": bool,
                 "document_id": str,
                 "document_name": str,
                 "chunks_created": int,
                 "total_tokens": int,
-                "error": str (if failed)
             }
 
         Raises:
-            ValueError: If product not found or user lacks access
+            ValidationError: If product not found or validation fails
+            ResourceNotFoundError: If product not found
+            BaseGiljoError: If upload fails
 
         Example:
             >>> result = await service.upload_vision_document(
@@ -1367,7 +1366,6 @@ class ProductService:
                         )
 
                 return {
-                    "success": True,
                     "document_id": str(doc.id),
                     "document_name": doc.document_name,
                     "chunks_created": chunks_created,
@@ -1696,10 +1694,12 @@ class ProductService:
 
         Returns:
             dict: Purge results with count and details
-                - success: bool - Operation success status
                 - purged_count: int - Number of products purged
                 - products: list - Details of purged products
-                - error: str - Error message if failed
+
+        Raises:
+            DatabaseError: If database not available
+            BaseGiljoError: If purge operation fails
 
         Example:
             >>> result = await service.purge_expired_deleted_products()
@@ -1730,7 +1730,7 @@ class ProductService:
                     self._logger.info(
                         f"[Product Purge] No expired deleted products to purge (cutoff: {days_before_purge} days)"
                     )
-                    return {"success": True, "purged_count": 0, "products": []}
+                    return {"purged_count": 0, "products": []}
 
                 # Hard delete each expired product (cascade handles children)
                 purged_products = []
@@ -1756,7 +1756,7 @@ class ProductService:
                     f"[Product Purge] Successfully purged {len(purged_products)} expired deleted products"
                 )
 
-                return {"success": True, "purged_count": len(purged_products), "products": purged_products}
+                return {"purged_count": len(purged_products), "products": purged_products}
 
         except DatabaseError:
             # Re-raise database errors as-is
