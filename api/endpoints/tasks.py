@@ -146,6 +146,10 @@ async def list_tasks(
 
     Returns:
         List of TaskResponse objects
+
+    Raises:
+        ValidationError: No tenant context
+        DatabaseError: Database operation failed
     """
     logger.debug(f"User {current_user.username} listing tasks (filter_type: {filter_type})")
 
@@ -162,9 +166,6 @@ async def list_tasks(
         created_by_user_id=created_by_user_id,
         tenant_key=None,  # Will use current tenant from context
     )
-
-    if not result["success"]:
-        raise HTTPException(status_code=400, detail=result["error"])
 
     tasks_data = result["tasks"]
     logger.info(f"Found {len(tasks_data)} tasks for user {current_user.username}")
@@ -224,13 +225,13 @@ async def get_task_summary(
 
     NOTE: Route must be defined BEFORE /{task_id}/ to avoid FastAPI matching
     "summary" as a task_id parameter (route ordering matters in FastAPI).
+
+    Raises:
+        ValidationError: No tenant context
+        DatabaseError: Database operation failed
     """
-    result = await task_service.get_summary(product_id=product_id)
+    data = await task_service.get_summary(product_id=product_id)
 
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
-
-    data = result["data"]
     return {
         "success": True,
         "summary": data["summary"],
@@ -247,14 +248,13 @@ async def get_task(
 ) -> TaskResponse:
     """
     Get a single task by ID within the current tenant.
+
+    Raises:
+        ValidationError: No tenant context
+        ResourceNotFoundError: Task not found
+        DatabaseError: Database operation failed
     """
-    result = await task_service.get_task(task_id)
-
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
-
-    # Convert service response to TaskResponse
-    task_data = result["data"]
+    task_data = await task_service.get_task(task_id)
     return TaskResponse(**task_data)
 
 
@@ -291,13 +291,7 @@ async def update_task(
     logger.debug(f"User {current_user.username} updating task {task_id}")
 
     # First verify task exists and user has permission via get_task
-    get_result = await task_service.get_task(task_id)
-    if not get_result["success"]:
-        logger.warning(f"Task {task_id} not found in tenant")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=get_result["error"])
-
-    # Permission check - reconstruct minimal task object for permission check
-    task_data = get_result["data"]
+    task_data = await task_service.get_task(task_id)
 
     # Simple permission check: admin or creator
     if current_user.role != "admin" and task_data["created_by_user_id"] != str(current_user.id):
@@ -306,20 +300,13 @@ async def update_task(
 
     # Use TaskService.update_task() to perform the update
     update_data = task_update.dict(exclude_unset=True)
-    result = await task_service.update_task(task_id, **update_data)
-
-    if not result["success"]:
-        status_code = 404 if "not found" in result["error"].lower() else 400
-        raise HTTPException(status_code=status_code, detail=result["error"])
+    await task_service.update_task(task_id, **update_data)
 
     logger.info(f"Updated task {task_id} by user {current_user.username}")
 
     # Fetch updated task data for response
-    get_updated = await task_service.get_task(task_id)
-    if not get_updated["success"]:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Task updated but fetch failed")
-
-    return TaskResponse(**get_updated["data"])
+    task_data = await task_service.get_task(task_id)
+    return TaskResponse(**task_data)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -340,22 +327,14 @@ async def delete_task(
         task_service: Task service instance
 
     Raises:
-        HTTPException: 403 if user lacks permission
-        HTTPException: 404 if task not found
+        ValidationError: No tenant context
+        ResourceNotFoundError: Task not found
+        AuthorizationError: User not authorized to delete task
+        DatabaseError: Database operation failed
     """
     logger.debug(f"User {current_user.username} deleting task {task_id}")
 
-    result = await task_service.delete_task(task_id, str(current_user.id))
-
-    if not result["success"]:
-        error_msg = result["error"]
-        if "not found" in error_msg.lower():
-            logger.warning(f"Task {task_id} not found")
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        if "not authorized" in error_msg.lower():
-            logger.warning(f"User {current_user.username} not authorized to delete task {task_id}")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error_msg)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+    await task_service.delete_task(task_id, str(current_user.id))
 
     logger.info(f"Deleted task {task_id} by user {current_user.username}")
 
@@ -384,13 +363,14 @@ async def convert_task_to_project(
         Conversion result with new project details
 
     Raises:
-        HTTPException: 400 if task already converted or no active product
-        HTTPException: 403 if user lacks permission
-        HTTPException: 404 if task not found
+        ValidationError: Task already converted or no active product
+        ResourceNotFoundError: Task or user not found
+        AuthorizationError: User not authorized
+        DatabaseError: Database operation failed
     """
     logger.debug(f"User {current_user.username} converting task {task_id} to project")
 
-    result = await task_service.convert_to_project(
+    data = await task_service.convert_to_project(
         task_id=task_id,
         project_name=conversion_request.project_name,
         strategy=conversion_request.strategy,
@@ -398,18 +378,6 @@ async def convert_task_to_project(
         user_id=str(current_user.id),
     )
 
-    if not result["success"]:
-        error_msg = result["error"]
-        if "not found" in error_msg.lower():
-            logger.warning(f"Task {task_id} not found")
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        if "not authorized" in error_msg.lower():
-            logger.warning(f"User {current_user.username} not authorized to convert task {task_id}")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error_msg)
-        logger.warning(f"Failed to convert task {task_id}: {error_msg}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
-    data = result["data"]
     logger.info(f"Converted task {task_id} to project {data['project_id']} (strategy: {conversion_request.strategy})")
 
     return ProjectConversionResponse(
@@ -430,18 +398,11 @@ async def change_task_status(
 ) -> TaskResponse:
     """
     Change only the status field of a task. Convenience endpoint for UI.
+
+    Raises:
+        ValidationError: No tenant context
+        ResourceNotFoundError: Task not found
+        DatabaseError: Database operation failed
     """
-    result = await task_service.change_status(task_id, status_update.status)
-
-    if not result["success"]:
-        error_msg = result["error"]
-        if "not found" in error_msg.lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error_msg)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
-
-    # Fetch full task data to return complete TaskResponse
-    get_result = await task_service.get_task(task_id)
-    if not get_result["success"]:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Task updated but fetch failed")
-
-    return TaskResponse(**get_result["data"])
+    task_data = await task_service.change_status(task_id, status_update.status)
+    return TaskResponse(**task_data)

@@ -325,16 +325,15 @@ async def list_users(
         List of UserResponse objects (passwords excluded)
 
     Raises:
-        HTTPException: 403 if user is not admin
+        AuthorizationError: User is not admin (403)
+        BaseGiljoError: Database operation failed (500)
     """
     logger.debug(f"Admin {current_user.username} listing all users (cross-tenant admin view)")
 
     # Admin sees all users across all tenants for user management
-    result = await user_service.list_users(include_all_tenants=True)
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+    users = await user_service.list_users(include_all_tenants=True)
 
-    logger.info(f"Found {len(result['data'])} users (all tenants)")
+    logger.info(f"Found {len(users)} users (all tenants)")
 
     # Convert service response to UserResponse objects
     return [
@@ -349,7 +348,7 @@ async def list_users(
             created_at=user["created_at"],
             last_login=user["last_login"],
         )
-        for user in result["data"]
+        for user in users
     ]
 
 
@@ -373,12 +372,13 @@ async def create_user(
         Created user data (password excluded)
 
     Raises:
-        HTTPException: 400 if username or email already exists
-        HTTPException: 403 if user is not admin
+        ValidationError: Username or email already exists (400)
+        AuthorizationError: User is not admin (403)
+        BaseGiljoError: Database operation failed (500)
     """
     logger.debug(f"Admin {current_user.username} creating user: {user_data.username}")
 
-    result = await user_service.create_user(
+    user = await user_service.create_user(
         username=user_data.username,
         email=user_data.email,
         full_name=user_data.full_name,
@@ -387,12 +387,8 @@ async def create_user(
         is_active=user_data.is_active,
     )
 
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
-
     logger.info(f"Created user: {user_data.username} (role: {user_data.role}) in tenant {current_user.tenant_key}")
 
-    user = result["user"]
     return UserResponse(
         id=user["id"],
         username=user["username"],
@@ -427,21 +423,15 @@ async def get_user(
         User data (password excluded)
 
     Raises:
-        HTTPException: 403 if non-admin tries to view other users
-        HTTPException: 404 if user not found
+        AuthorizationError: Non-admin tries to view other users (403)
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
     """
     logger.debug(f"User {current_user.username} retrieving user {user_id}")
 
     # Admin can access users across all tenants for user management
     is_admin = current_user.role == "admin"
-    result = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
-
-    if not result["success"]:
-        tenant_info = "" if is_admin else f" in tenant {current_user.tenant_key}"
-        logger.warning("User %s not found%s", user_id, tenant_info)
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
-
-    user = result["user"]
+    user = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
 
     # Authorization: admin can view any user, non-admin can only view self
     if not is_admin and user["id"] != str(current_user.id):
@@ -483,9 +473,10 @@ async def update_user(
         Updated user data (password excluded)
 
     Raises:
-        HTTPException: 400 if email already exists
-        HTTPException: 403 if non-admin tries to update other users
-        HTTPException: 404 if user not found or in different tenant
+        ValidationError: Email already exists (400)
+        AuthorizationError: Non-admin tries to update other users (403)
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
     """
     logger.debug(f"User {current_user.username} updating user {user_id}")
 
@@ -493,13 +484,8 @@ async def update_user(
     is_admin = current_user.role == "admin"
 
     # Authorization: admin can update any user, non-admin can only update self
-    get_result = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
-    if not get_result["success"]:
-        tenant_info = "" if is_admin else f" in tenant {current_user.tenant_key}"
-        logger.warning("User %s not found%s", user_id, tenant_info)
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=get_result["error"])
+    user = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
 
-    user = get_result["user"]
     if not is_admin and user["id"] != str(current_user.id):
         logger.warning(f"Non-admin {current_user.username} tried to update user {user['username']}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot update other users' profiles")
@@ -515,14 +501,10 @@ async def update_user(
     if user_data.password is not None:
         updates["password"] = user_data.password
 
-    result = await user_service.update_user(str(user_id), include_all_tenants=is_admin, **updates)
-
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+    updated_user = await user_service.update_user(str(user_id), include_all_tenants=is_admin, **updates)
 
     logger.info(f"Updated user: {user['username']}")
 
-    updated_user = result["user"]
     return UserResponse(
         id=updated_user["id"],
         username=updated_user["username"],
@@ -536,12 +518,12 @@ async def update_user(
     )
 
 
-@router.delete("/{user_id}", response_model=UserDeleteResponse)
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: UUID,
     current_user: User = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
-) -> UserDeleteResponse:
+) -> None:
     """
     Soft-delete user by deactivating account.
 
@@ -552,23 +534,16 @@ async def delete_user(
         current_user: Current authenticated admin user
         user_service: User service for database operations
 
-    Returns:
-        Deletion confirmation message
-
     Raises:
-        HTTPException: 403 if user is not admin
-        HTTPException: 404 if user not found or in different tenant
+        AuthorizationError: User is not admin (403)
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
     """
     logger.debug(f"Admin {current_user.username} deactivating user {user_id}")
 
-    result = await user_service.delete_user(str(user_id))
+    await user_service.delete_user(str(user_id))
 
-    if not result["success"]:
-        logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
-
-    logger.info(f"Deactivated user: {result['username']}")
-    return UserDeleteResponse(message=result["message"], user_id=result["user_id"], username=result["username"])
+    logger.info(f"Deactivated user: {user_id}")
 
 
 @router.put("/{user_id}/role", response_model=RoleChangeResponse)
@@ -593,9 +568,10 @@ async def change_user_role(
         Role change confirmation with new role
 
     Raises:
-        HTTPException: 400 if admin tries to change their own role
-        HTTPException: 403 if user is not admin
-        HTTPException: 404 if user not found or in different tenant
+        ValidationError: Admin tries to change their own role or invalid role (400)
+        AuthorizationError: User is not admin or cannot demote last admin (403)
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
     """
     logger.debug(f"Admin {current_user.username} changing role for user {user_id} to {role_data.role}")
 
@@ -607,15 +583,8 @@ async def change_user_role(
             detail="You cannot change your own role (prevents lockout)",
         )
 
-    result = await user_service.change_role(str(user_id), role_data.role)
+    user = await user_service.change_role(str(user_id), role_data.role)
 
-    if not result["success"]:
-        logger.warning(f"Failed to change role for user {user_id}: {result['error']}")
-        if "not found" in result["error"].lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
-
-    user = result["user"]
     logger.info(f"Changed role for user {user['username']} to {user['role']}")
 
     return RoleChangeResponse(
@@ -649,9 +618,11 @@ async def change_password(
         Password change confirmation
 
     Raises:
-        HTTPException: 400 if old password is incorrect
-        HTTPException: 403 if non-admin tries to change other users' passwords
-        HTTPException: 404 if user not found or in different tenant
+        ValidationError: Old password not provided (400)
+        AuthenticationError: Old password incorrect (401)
+        AuthorizationError: Non-admin tries to change other users' passwords (403)
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
     """
     logger.debug(f"User {current_user.username} changing password for user {user_id}")
 
@@ -663,21 +634,15 @@ async def change_password(
     # Determine if admin is bypassing old password check
     is_admin = current_user.role == "admin" and str(user_id) != str(current_user.id)
 
-    result = await user_service.change_password(
+    await user_service.change_password(
         str(user_id),
         old_password=password_data.old_password,
         new_password=password_data.new_password,
         is_admin=is_admin,
     )
 
-    if not result["success"]:
-        logger.warning(f"Failed to change password for user {user_id}: {result['error']}")
-        if "not found" in result["error"].lower():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
-
     logger.info(f"Password changed for user: {user_id}")
-    return PasswordChangeResponse(message=result["message"])
+    return PasswordChangeResponse(message="Password changed successfully")
 
 
 @router.post("/{user_id}/reset-password", response_model=PasswordChangeResponse)
@@ -702,19 +667,16 @@ async def reset_password(
         Password reset confirmation
 
     Raises:
-        HTTPException: 403 if user is not admin
-        HTTPException: 404 if user not found or in different tenant
+        AuthorizationError: User is not admin (403)
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
     """
     logger.debug(f"Admin {current_user.username} resetting password for user {user_id}")
 
-    result = await user_service.reset_password(str(user_id))
-
-    if not result["success"]:
-        logger.warning(f"User {user_id} not found in tenant {current_user.tenant_key}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["error"])
+    await user_service.reset_password(str(user_id))
 
     logger.info(f"Admin {current_user.username} reset password for user: {user_id}")
-    return PasswordChangeResponse(message=result["message"])
+    return PasswordChangeResponse(message="Password reset to default. User must change on next login.")
 
 
 # Field Priority Configuration Endpoints (Handover 0048)
@@ -742,6 +704,10 @@ async def get_field_priority_config(
     Returns:
         FieldPriorityConfig: User's custom config or system defaults (v2.0)
 
+    Raises:
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
+
     Example Response (v2.0):
         {
             "version": "2.0",
@@ -757,13 +723,10 @@ async def get_field_priority_config(
     """
     logger.debug(f"User {current_user.username} retrieving field priority config")
 
-    result = await user_service.get_field_priority_config(str(current_user.id))
-
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+    config = await user_service.get_field_priority_config(str(current_user.id))
 
     logger.debug(f"Returning field priority config for user {current_user.username}")
-    return FieldPriorityConfig(**result["config"])
+    return FieldPriorityConfig(**config)
 
 
 @router.put("/me/field-priority", response_model=FieldPriorityConfig)
@@ -791,7 +754,9 @@ async def update_field_priority_config(
         FieldPriorityConfig: Updated configuration
 
     Raises:
-        HTTPException: 422 if Pydantic validation fails (invalid priority, no CRITICAL, etc.)
+        ValidationError: Invalid priority or category (400/422)
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
 
     Example Request (v2.0):
         {
@@ -817,10 +782,7 @@ async def update_field_priority_config(
 
     # Pydantic validation already enforced (1-4 range, CRITICAL requirement, valid categories)
     # Update via service (service handles WebSocket emission)
-    result = await user_service.update_field_priority_config(str(current_user.id), config.model_dump())
-
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=result["error"])
+    await user_service.update_field_priority_config(str(current_user.id), config.model_dump())
 
     logger.info(
         f"Updated field priority config for user: {current_user.username}",
@@ -852,6 +814,10 @@ async def reset_field_priority_config(
     Returns:
         FieldPriorityConfig: System default configuration
 
+    Raises:
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
+
     Example Response:
         {
             "version": "2.0",
@@ -864,10 +830,7 @@ async def reset_field_priority_config(
     """
     logger.debug(f"User {current_user.username} resetting field priority config to defaults")
 
-    result = await user_service.reset_field_priority_config(str(current_user.id))
-
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+    await user_service.reset_field_priority_config(str(current_user.id))
 
     logger.info(f"Reset field priority config to defaults for user: {current_user.username}")
 
@@ -901,6 +864,10 @@ async def get_depth_config(
     Returns:
         Dict with depth_config field
 
+    Raises:
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
+
     Example Response:
         {
             "depth_config": {
@@ -915,14 +882,11 @@ async def get_depth_config(
     """
     logger.debug(f"User {current_user.username} retrieving depth config")
 
-    result = await user_service.get_depth_config(str(current_user.id))
-
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+    config = await user_service.get_depth_config(str(current_user.id))
 
     logger.debug(f"Returning depth config for user {current_user.username}")
 
-    return {"depth_config": result["config"]}
+    return {"depth_config": config}
 
 
 @router.put("/me/context/depth", response_model=dict[str, Any])
@@ -948,7 +912,9 @@ async def update_depth_config(
         Dict with updated depth_config
 
     Raises:
-        HTTPException: 422 if Pydantic validation fails (invalid depth values)
+        ValidationError: Invalid depth values (400/422)
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
 
     Example Request:
         {
@@ -967,22 +933,17 @@ async def update_depth_config(
         extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key},
     )
 
-    result = await user_service.update_depth_config(str(current_user.id), depth_request.depth_config.model_dump())
-
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=result["error"])
+    await user_service.update_depth_config(str(current_user.id), depth_request.depth_config.model_dump())
 
     logger.info(
         f"Updated depth config for user: {current_user.username}",
         extra={"user_id": str(current_user.id), "tenant_key": current_user.tenant_key},
     )
 
-    # Get updated config from service result
-    get_result = await user_service.get_depth_config(str(current_user.id))
-    if not get_result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=get_result["error"])
+    # Get updated config from service
+    config = await user_service.get_depth_config(str(current_user.id))
 
-    return {"depth_config": get_result["config"]}
+    return {"depth_config": config}
 
 
 # ---------------------------------------------------------------------------
@@ -995,11 +956,15 @@ async def get_execution_mode(
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
 ) -> dict[str, str]:
-    """Get the current user's execution mode."""
-    result = await user_service.get_execution_mode(str(current_user.id))
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
-    return {"execution_mode": result["execution_mode"]}
+    """
+    Get the current user's execution mode.
+
+    Raises:
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
+    """
+    execution_mode = await user_service.get_execution_mode(str(current_user.id))
+    return {"execution_mode": execution_mode}
 
 
 @router.put("/me/settings/execution_mode")
@@ -1008,11 +973,16 @@ async def update_execution_mode(
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
 ) -> dict[str, str]:
-    """Update the current user's execution mode."""
-    result = await user_service.update_execution_mode(
+    """
+    Update the current user's execution mode.
+
+    Raises:
+        ValidationError: Invalid execution mode (400)
+        ResourceNotFoundError: User not found (404)
+        BaseGiljoError: Database operation failed (500)
+    """
+    await user_service.update_execution_mode(
         user_id=str(current_user.id),
         execution_mode=payload.execution_mode,
     )
-    if not result["success"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
-    return {"execution_mode": result["execution_mode"]}
+    return {"execution_mode": payload.execution_mode}
