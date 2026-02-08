@@ -7,11 +7,9 @@ Module Structure:
 - lifecycle.py: Spawn, acknowledge, complete, error
 - status.py: Get status, list pending, get mission
 - progress.py: Progress reporting
-- orchestration.py: Orchestrate project, workflow status, regenerate mission, launch project
+- orchestration.py: Workflow status, launch project, launch implementation
 - simple_handover.py: Simple 360 Memory-based handover (Handover 0461c)
 - operations.py: Cancel, force-fail, health endpoints (Handover 0107)
-- table_view.py: Optimized table view for status board (Handover 0226)
-- filters.py: Quick filter options for status board (Handover 0226)
 - executions.py: Agent execution instances for job (Handover 0366d-1)
 - messages.py: Message content for MessageAuditModal (Handover 0387g)
 
@@ -19,13 +17,14 @@ All routers are exported with /api/agent-jobs prefix and agent-jobs tag.
 Operations router also exported separately with /api/jobs prefix for compatibility.
 
 Note: succession.py removed in Handover 0700d - use simple_handover.py instead.
+Note: table_view.py, filters.py removed in Handover 0729 (unused endpoints).
+Note: regenerate-mission endpoint removed in Handover 0729 (never integrated).
 """
 
 from fastapi import APIRouter
 
 from . import (
     executions,
-    filters,
     lifecycle,
     messages,
     operations,
@@ -33,7 +32,6 @@ from . import (
     progress,
     simple_handover,
     status,
-    table_view,
 )
 
 
@@ -46,8 +44,6 @@ router.include_router(status.router)
 router.include_router(progress.router)
 router.include_router(orchestration.router)
 router.include_router(simple_handover.router)  # Handover 0461c (authoritative handover mechanism)
-router.include_router(table_view.router)  # Handover 0226
-router.include_router(filters.router)  # Handover 0226
 router.include_router(executions.router)  # Handover 0366d-1
 router.include_router(messages.router)  # Handover 0387g
 
