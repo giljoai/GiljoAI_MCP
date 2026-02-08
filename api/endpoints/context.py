@@ -224,29 +224,27 @@ async def chunk_vision_document(
             cms = ContextManagementSystem(state.db_manager)
             result = cms.process_vision_document(tenant_key, product_id, content)
 
-            if result["success"]:
-                # Mark vision document as chunked
-                if vision_doc_id:
-                    from src.giljo_mcp.models.products import VisionDocument
+            # Mark vision document as chunked
+            if vision_doc_id:
+                from src.giljo_mcp.models.products import VisionDocument
 
-                    stmt = select(VisionDocument).where(VisionDocument.id == vision_doc_id)
-                    vision_result = await db.execute(stmt)
-                    vision_doc = vision_result.scalar_one_or_none()
-                    if vision_doc:
-                        vision_doc.chunked = True
-                        vision_doc.chunk_count = result["chunks_created"]
-                await db.commit()
+                stmt = select(VisionDocument).where(VisionDocument.id == vision_doc_id)
+                vision_result = await db.execute(stmt)
+                vision_doc = vision_result.scalar_one_or_none()
+                if vision_doc:
+                    vision_doc.chunked = True
+                    vision_doc.chunk_count = result["chunks_created"]
+            await db.commit()
 
-                return ChunkVisionResponse(
-                    success=True,
-                    product_id=product_id,
-                    chunks_created=result["chunks_created"],
-                    total_tokens=result["total_tokens"],
-                    original_size=original_size,
-                    reduction_percentage=None,
-                    message="Vision document chunked and indexed successfully",
-                )
-            raise HTTPException(status_code=500, detail=result.get("message", "Failed to chunk vision document"))
+            return ChunkVisionResponse(
+                success=True,
+                product_id=product_id,
+                chunks_created=result["chunks_created"],
+                total_tokens=result["total_tokens"],
+                original_size=original_size,
+                reduction_percentage=None,
+                message="Vision document chunked and indexed successfully",
+            )
 
     except (ValueError, KeyError, RuntimeError) as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
