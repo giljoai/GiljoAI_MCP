@@ -4,6 +4,8 @@ Unit tests for ConsolidatedVisionService - Handover 0377 Phase 2
 Tests written FIRST following strict TDD discipline (RED → GREEN → REFACTOR).
 
 Purpose: Test consolidation of multiple vision documents into unified light/medium summaries.
+
+Updated Handover 0730b: Migrated from dict wrappers to exception-based error handling.
 """
 
 import hashlib
@@ -11,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models.products import Product, VisionDocument
 
 
@@ -71,8 +74,7 @@ async def test_consolidate_single_document_returns_unified_summary(mock_db_manag
         product_id="test-product-id", session=session, tenant_key="test-tenant", force=False
     )
 
-    # Verify result structure
-    assert result["success"] is True
+    # Verify result structure (exception-based - returns ConsolidationResult dict)
     assert "light" in result
     assert result["light"]["summary"] == "Light summary of vision"
     assert result["light"]["tokens"] == 50
@@ -137,7 +139,7 @@ async def test_consolidate_five_documents_returns_unified_summary(mock_db_manage
         product_id="test-product-id", session=session, tenant_key="test-tenant", force=False
     )
 
-    assert result["success"] is True
+    # Exception-based - no "success" key, returns data directly
     assert len(result["source_docs"]) == 5
     assert result["light"]["tokens"] == 200
     assert result["medium"]["tokens"] == 400
@@ -247,7 +249,7 @@ async def test_consolidate_skips_inactive_docs(mock_db_manager):
 
 @pytest.mark.asyncio
 async def test_consolidate_detects_no_changes(mock_db_manager):
-    """Hash unchanged → returns no_changes error, skips re-summarization"""
+    """Hash unchanged → raises ValidationError with no_changes, skips re-summarization"""
     from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     db_manager, session = mock_db_manager
@@ -274,16 +276,17 @@ async def test_consolidate_detects_no_changes(mock_db_manager):
 
     service = ConsolidatedVisionService()
 
-    result = await service.consolidate_vision_documents(
-        product_id="test-product-id",
-        session=session,
-        tenant_key="test-tenant",
-        force=False,  # Don't force
-    )
+    # Verify ValidationError raised with no_changes error code
+    with pytest.raises(ValidationError) as exc_info:
+        await service.consolidate_vision_documents(
+            product_id="test-product-id",
+            session=session,
+            tenant_key="test-tenant",
+            force=False,  # Don't force
+        )
 
-    # Verify no changes detected
-    assert result["success"] is False
-    assert result["error"] == "no_changes"
+    assert exc_info.value.error_code == "NO_CHANGES"
+    assert "no changes" in exc_info.value.message.lower()
 
     # Verify commit NOT called (no changes made)
     assert not session.commit.called
@@ -335,15 +338,14 @@ async def test_consolidate_force_regenerates(mock_db_manager):
         force=True,  # FORCE regeneration
     )
 
-    # Verify regeneration happened despite matching hash
-    assert result["success"] is True
+    # Verify regeneration happened despite matching hash (exception-based - no "success" key)
     assert result["light"]["summary"] == "Forced light"
     assert session.commit.called
 
 
 @pytest.mark.asyncio
 async def test_consolidate_handles_product_not_found(mock_db_manager):
-    """Non-existent product_id → returns product_not_found error"""
+    """Non-existent product_id → raises ResourceNotFoundError"""
     from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     db_manager, session = mock_db_manager
@@ -354,13 +356,14 @@ async def test_consolidate_handles_product_not_found(mock_db_manager):
 
     service = ConsolidatedVisionService()
 
-    result = await service.consolidate_vision_documents(
-        product_id="nonexistent-id", session=session, tenant_key="test-tenant", force=False
-    )
+    # Verify ResourceNotFoundError raised
+    with pytest.raises(ResourceNotFoundError) as exc_info:
+        await service.consolidate_vision_documents(
+            product_id="nonexistent-id", session=session, tenant_key="test-tenant", force=False
+        )
 
-    # Verify error response
-    assert result["success"] is False
-    assert result["error"] == "product_not_found"
+    assert exc_info.value.error_code == "PRODUCT_NOT_FOUND"
+    assert "product_id" in exc_info.value.context
 
     # Verify commit NOT called
     assert not session.commit.called
@@ -368,7 +371,7 @@ async def test_consolidate_handles_product_not_found(mock_db_manager):
 
 @pytest.mark.asyncio
 async def test_consolidate_enforces_tenant_isolation(mock_db_manager):
-    """Product exists but belongs to different tenant → returns product_not_found"""
+    """Product exists but belongs to different tenant → raises ResourceNotFoundError (no tenant leak)"""
     from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
     db_manager, session = mock_db_manager
@@ -385,16 +388,19 @@ async def test_consolidate_enforces_tenant_isolation(mock_db_manager):
 
     service = ConsolidatedVisionService()
 
-    result = await service.consolidate_vision_documents(
-        product_id="test-product-id",
-        session=session,
-        tenant_key="test-tenant",  # Request from different tenant
-        force=False,
-    )
+    # Verify ResourceNotFoundError raised (don't leak tenant info)
+    with pytest.raises(ResourceNotFoundError) as exc_info:
+        await service.consolidate_vision_documents(
+            product_id="test-product-id",
+            session=session,
+            tenant_key="test-tenant",  # Request from different tenant
+            force=False,
+        )
 
-    # Verify tenant isolation enforced
-    assert result["success"] is False
-    assert result["error"] == "product_not_found"  # Don't leak tenant info
+    assert exc_info.value.error_code == "PRODUCT_NOT_FOUND"
+    # Context should have product_id but NOT reveal tenant mismatch
+    assert "product_id" in exc_info.value.context
+    assert "other-tenant" not in str(exc_info.value.context)  # Don't leak actual tenant
 
     # Verify commit NOT called
     assert not session.commit.called
