@@ -17,6 +17,7 @@ import pytest
 
 from src.giljo_mcp.exceptions import BaseGiljoError, ProjectStateError, ResourceNotFoundError
 from src.giljo_mcp.models import AgentExecution, Project
+from src.giljo_mcp.models.agent_identity import AgentJob
 from src.giljo_mcp.services.project_service import ProjectService
 
 
@@ -106,6 +107,7 @@ class TestProjectServiceCRUD:
         # Mock project
         mock_project = Mock(spec=Project)
         mock_project.id = "test-id"
+        mock_project.alias = "test-alias"
         mock_project.name = "Test Project"
         mock_project.mission = "Test Mission"
         mock_project.description = "Test Description"
@@ -114,22 +116,30 @@ class TestProjectServiceCRUD:
         mock_project.product_id = None
         mock_project.tenant_key = "test-tenant"
         mock_project.context_used = 0
+        mock_project.execution_mode = "sequential"
         mock_project.created_at = datetime.now()
         mock_project.updated_at = None
         mock_project.completed_at = None
 
-        # Mock agent
-        mock_agent = Mock(spec=AgentExecution)
-        mock_agent.job_id = "agent-1"
-        mock_agent.agent_display_name = "implementer"
-        mock_agent.agent_name = "Test Agent"
-        mock_agent.status = "active"
+        # Mock agent job and execution (query returns tuples)
+        mock_job = Mock(spec=AgentJob)
+        mock_job.job_id = "agent-1"
+        mock_job.job_type = "implementer"
+        mock_job.created_at = datetime.now()
 
-        # Mock two queries: get project, get agents
+        mock_execution = Mock(spec=AgentExecution)
+        mock_execution.job_id = "agent-1"
+        mock_execution.agent_name = "Test Agent"
+        mock_execution.status = "active"
+        mock_execution.messages_sent_count = 0
+        mock_execution.messages_waiting_count = 0
+        mock_execution.messages_read_count = 0
+
+        # Mock two queries: get project, get agents (returns list of tuples)
         session.execute = AsyncMock(
             side_effect=[
                 Mock(scalar_one_or_none=Mock(return_value=mock_project)),  # Get project
-                Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_agent])))),  # Get agents
+                Mock(all=Mock(return_value=[(mock_job, mock_execution)])),  # Get agents (tuples)
             ]
         )
 
