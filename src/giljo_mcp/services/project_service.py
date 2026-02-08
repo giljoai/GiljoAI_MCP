@@ -666,7 +666,6 @@ class ProjectService:
         )
 
         return {
-            "success": True,
             "message": f"Project {project_id} completed successfully",
             "memory_updated": memory_updated,
             "sequence_number": sequence_number,
@@ -756,7 +755,6 @@ class ProjectService:
             ...     "tenant-key-456"
             ... )
             >>> # Returns: {
-            ...     "success": True,
             ...     "message": "Project closed out successfully",
             ...     "agents_decommissioned": 5,
             ...     "decommissioned_agent_ids": ["job-1", "job-2", ...]
@@ -810,7 +808,6 @@ class ProjectService:
                 )
 
                 return {
-                    "success": True,
                     "message": "Project closed out successfully",
                     "agents_decommissioned": len(decommissioned_ids),
                     "decommissioned_agent_ids": decommissioned_ids,
@@ -852,7 +849,6 @@ class ProjectService:
             ...     "tenant-key-456"
             ... )
             >>> # Returns: {
-            ...     "success": True,
             ...     "message": "Project resumed successfully",
             ...     "agents_resumed": 3,
             ...     "resumed_agent_ids": ["job-1", "job-2", "job-3"]
@@ -910,7 +906,6 @@ class ProjectService:
                 self._logger.info(f"Resumed project {project_id} with {len(resumed_ids)} agents resumed")
 
                 return {
-                    "success": True,
                     "message": "Project resumed successfully",
                     "agents_resumed": len(resumed_ids),
                     "resumed_agent_ids": resumed_ids,
