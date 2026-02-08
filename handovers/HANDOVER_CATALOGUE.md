@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-01-29 (Reconciled with completed/ folder and git commits)
+**Last Updated:** 2026-02-07 (Added 0730 Security Patch - Tenant Isolation)
 
 ---
 
@@ -220,6 +220,17 @@
 > **Metrics**: 45 DEPRECATED markers, 43 TODO markers, 168 skip/xfail test markers
 > **Docs**: [docs/cleanup/CLEANUP_STRATEGY.md](../docs/cleanup/CLEANUP_STRATEGY.md)
 > **Estimated Total**: 45-65h across 15-20 handovers
+
+### Security Patches (0720-0730) - NEW
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0730** | **Tenant Isolation API Security Patch** | **Ready** | **P1-CRITICAL** | 0.25-0.5h |
+
+> **Purpose**: Quick security fix for API endpoints missing tenant_key parameter
+> **Vulnerability**: Same class as 0433 - API layer doesn't pass tenant_key to services, allowing cross-tenant access
+> **Impact**: User A can access User B's projects/tasks/jobs by knowing resource IDs
+> **Scope**: API layer only (pass current_user.tenant_key to service calls)
+> **Follow-up**: 0731 will do comprehensive service layer cleanup (remove fallbacks, make tenant_key required)
 
 ### Test Suite & Remediation (0481-0484) - In Progress
 | ID | Title | Status | Priority | Notes |
