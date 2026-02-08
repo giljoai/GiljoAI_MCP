@@ -653,7 +653,6 @@ class ProductService:
                 self._logger.info(f"Activated product {product_id} (deactivated {len(products_to_deactivate)} others)")
 
                 return {
-                    "success": True,
                     "product": {
                         "id": str(product.id),
                         "name": product.name,
@@ -711,7 +710,6 @@ class ProductService:
                 self._logger.info(f"Deactivated product {product_id}")
 
                 return {
-                    "success": True,
                     "product": {
                         "id": str(product.id),
                         "name": product.name,
@@ -769,7 +767,6 @@ class ProductService:
                 self._logger.info(f"Soft deleted product {product_id}")
 
                 return {
-                    "success": True,
                     "message": "Product deleted successfully",
                     "deleted_at": product.deleted_at.isoformat() if product.deleted_at else None,
                 }
@@ -901,7 +898,7 @@ class ProductService:
                         }
                     )
 
-                return {"success": True, "products": product_list}
+                return {"products": product_list}
 
         except Exception as e:
             self._logger.exception("Failed to list deleted products")
@@ -945,13 +942,12 @@ class ProductService:
                 product = result.scalar_one_or_none()
 
                 if not product:
-                    return {"success": True, "product": None, "message": "No active product"}
+                    return {"product": None, "message": "No active product"}
 
                 # Get metrics for active product
                 metrics = await self._get_product_metrics(session, product.id)
 
                 return {
-                    "success": True,
                     "product": {
                         "id": str(product.id),
                         "name": product.name,
@@ -1012,7 +1008,6 @@ class ProductService:
                 metrics = await self._get_product_metrics(session, product_id)
 
                 return {
-                    "success": True,
                     "statistics": {
                         "product_id": product_id,
                         "name": product.name,
@@ -1083,7 +1078,6 @@ class ProductService:
                 )
 
                 return {
-                    "success": True,
                     "impact": {
                         "product_id": product_id,
                         "product_name": product.name,
@@ -1198,7 +1192,7 @@ class ProductService:
                     data={"product_id": product_id, "settings": product.product_memory["git_integration"]},
                 )
 
-                return {"success": True, "settings": product.product_memory["git_integration"]}
+                return {"settings": product.product_memory["git_integration"]}
 
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
