@@ -104,11 +104,12 @@ class AgentJobManager:
         context_budget: int = 150000,
         spawned_by: Optional[str] = None,
         job_metadata: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
+    ) -> tuple[str, str, str, str]:
         """
         Spawn a new agent (creates BOTH job and execution).
 
         Handover 0366b: This is the fundamental coordinated CRUD operation.
+        Handover 0730b: Converted to exception-based error handling.
 
         Creates:
         1. AgentJob - Persistent work order (mission, scope)
@@ -126,16 +127,19 @@ class AgentJobManager:
             job_metadata: Optional metadata dict
 
         Returns:
-            Dict with success status, job_id, and agent_id
+            Tuple of (job_id, agent_id, agent_display_name, status)
+
+        Raises:
+            BaseGiljoError: Database operation failed
 
         Example:
-            >>> result = await manager.spawn_agent(
+            >>> job_id, agent_id, display_name, status = await manager.spawn_agent(
             ...     project_id="project-123",
             ...     agent_display_name="Code Analyzer",
             ...     mission="Analyze codebase for security vulnerabilities",
             ...     tenant_key="tenant-abc"
             ... )
-            >>> print(f"Job ID: {result['job_id']}, Agent ID: {result['agent_id']}")
+            >>> print(f"Job ID: {job_id}, Agent ID: {agent_id}")
         """
         try:
             async with self._get_session() as session:
@@ -174,13 +178,7 @@ class AgentJobManager:
                     f"agent_display_name={agent_display_name}, project_id={project_id}"
                 )
 
-                return {
-                    "success": True,
-                    "job_id": job.job_id,
-                    "agent_id": execution.agent_id,
-                    "agent_display_name": agent_display_name,
-                    "status": execution.status,
-                }
+                return (job.job_id, execution.agent_id, agent_display_name, execution.status)
 
         except BaseGiljoError:
             # Re-raise our custom exceptions without wrapping
@@ -201,11 +199,12 @@ class AgentJobManager:
         progress: Optional[int] = None,
         current_task: Optional[str] = None,
         block_reason: Optional[str] = None,
-    ) -> dict[str, Any]:
+    ) -> str:
         """
         Update agent execution status.
 
         Handover 0366b: Updates AgentExecution, NOT AgentJob.
+        Handover 0730b: Converted to exception-based error handling.
 
         Args:
             agent_id: Agent execution ID (executor UUID)
@@ -216,10 +215,14 @@ class AgentJobManager:
             block_reason: Optional reason for blocked status
 
         Returns:
-            Dict with success status
+            Updated status string
+
+        Raises:
+            ResourceNotFoundError: Execution not found
+            BaseGiljoError: Database operation failed
 
         Example:
-            >>> await manager.update_agent_status(
+            >>> new_status = await manager.update_agent_status(
             ...     agent_id="agent-uuid-123",
             ...     status="working",
             ...     progress=50,
@@ -262,7 +265,7 @@ class AgentJobManager:
 
                 self._logger.info(f"Updated execution {agent_id} status to {status}")
 
-                return {"success": True, "status": status}
+                return status
 
         except (ResourceNotFoundError, BaseGiljoError):
             # Re-raise our custom exceptions without wrapping
@@ -277,11 +280,12 @@ class AgentJobManager:
         progress: int,
         current_task: Optional[str] = None,
         tenant_key: Optional[str] = None,
-    ) -> dict[str, Any]:
+    ) -> int:
         """
         Update agent execution progress.
 
         Handover 0366b: Updates AgentExecution progress (executor-specific).
+        Handover 0730b: Converted to exception-based error handling.
 
         Args:
             agent_id: Agent execution ID
@@ -290,7 +294,11 @@ class AgentJobManager:
             tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
-            Dict with success status
+            Updated progress value (0-100)
+
+        Raises:
+            ResourceNotFoundError: Execution not found
+            BaseGiljoError: Database operation failed
         """
         try:
             if not tenant_key:
@@ -319,7 +327,7 @@ class AgentJobManager:
                 await session.commit()
                 await session.refresh(execution)
 
-                return {"success": True, "progress": progress}
+                return progress
 
         except (ResourceNotFoundError, BaseGiljoError):
             # Re-raise our custom exceptions without wrapping
@@ -336,24 +344,30 @@ class AgentJobManager:
         self,
         job_id: str,
         tenant_key: str,
-    ) -> dict[str, Any]:
+    ) -> int:
         """
         Complete a job (marks job complete and decommissions all executions).
 
         Handover 0366b: Updates BOTH AgentJob and ALL AgentExecutions.
+        Handover 0730b: Converted to exception-based error handling.
 
         Args:
             job_id: Job ID to complete
             tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
-            Dict with success status
+            Number of executions decommissioned
+
+        Raises:
+            ResourceNotFoundError: Job not found
+            BaseGiljoError: Database operation failed
 
         Example:
-            >>> await manager.complete_job(
+            >>> count = await manager.complete_job(
             ...     job_id="job-uuid-123",
             ...     tenant_key="tenant-abc"
             ... )
+            >>> print(f"Decommissioned {count} execution(s)")
         """
         try:
             async with self._get_session() as session:
@@ -384,7 +398,7 @@ class AgentJobManager:
 
                 self._logger.info(f"Completed job {job_id} and marked {len(executions)} execution(s) as complete")
 
-                return {"success": True, "job_id": job_id, "executions_decommissioned": len(executions)}
+                return len(executions)
 
         except (ResourceNotFoundError, BaseGiljoError):
             # Re-raise our custom exceptions without wrapping

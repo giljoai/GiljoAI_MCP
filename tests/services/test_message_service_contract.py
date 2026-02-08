@@ -187,6 +187,7 @@ class TestMessageCreationAndJSONBMirroring:
 
         # Act: Send message from orchestrator to analyzer
         # Handover 0372: Must pass tenant_key for agent-ID resolution
+        # Handover 0730b: Returns dict directly (no success wrapper)
         result = await message_service.send_message(
             to_agents=[recipient.agent_display_name],
             content="Analyze the codebase for patterns",
@@ -198,13 +199,9 @@ class TestMessageCreationAndJSONBMirroring:
         )
 
         # Assert: Message sending succeeded
-        if not result["success"]:
-            pytest.fail(f"Message sending failed: {result.get('error', 'Unknown error')}")
-        assert result["success"] is True
-        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
-        assert "data" in result
-        assert "message_id" in result["data"]
-        message_id = result["data"]["message_id"]
+        # Handover 0730b: Result is dict with message_id (no success wrapper)
+        assert "message_id" in result
+        message_id = result["message_id"]
 
         # Assert: Message row exists in database
         msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
@@ -285,6 +282,7 @@ class TestMessageCompletion:
 
         # Arrange: Send a message
         # Handover 0372: Must pass tenant_key for agent-ID resolution
+        # Handover 0730b: Returns dict directly (no success wrapper)
         send_result = await message_service.send_message(
             to_agents=[recipient.agent_display_name],
             content="Implement feature X",
@@ -292,24 +290,22 @@ class TestMessageCompletion:
             from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
-        assert send_result["success"] is True
-        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
-        message_id = send_result["data"]["message_id"]
+        message_id = send_result["message_id"]
 
         # Auto-acknowledge via receive_messages (Handover 0326)
         # Handover 0372: Now uses agent_id (executor), not job_id (work order)
+        # Handover 0730b: Returns dict directly (no success wrapper)
         receive_result = await message_service.receive_messages(
             agent_id=recipient.agent_id,
             limit=10,
             tenant_key=project.tenant_key,
         )
-        assert receive_result["success"] is True, f"receive_messages failed: {receive_result.get('error', 'unknown')}"
-        # Handover 0480: Result structure is {"success": True, "data": {"messages": [...], "count": N}}
-        assert len(receive_result["data"]["messages"]) >= 1, (
-            f"Expected messages but got {receive_result['data']['count']}"
+        assert len(receive_result["messages"]) >= 1, (
+            f"Expected messages but got {receive_result['count']}"
         )
 
         # Act: Complete the message
+        # Handover 0730b: Returns dict directly (no success wrapper)
         complete_result = await message_service.complete_message(
             message_id=message_id,
             agent_name=recipient.agent_display_name,
@@ -317,7 +313,7 @@ class TestMessageCompletion:
         )
 
         # Assert: Completion succeeded
-        assert complete_result["success"] is True
+        # Handover 0730b: Returns dict with message_id and completed_by (no success wrapper)
         assert complete_result["message_id"] == message_id
         assert complete_result["completed_by"] == recipient.agent_display_name
 
@@ -359,6 +355,7 @@ class TestBroadcastMessaging:
         other_agents = agents[1:]  # All non-orchestrator agents
 
         # Act: Broadcast message to all agents
+        # Handover 0730b: Returns dict directly (no success wrapper)
         result = await message_service.send_message(
             to_agents=["all"],
             content="Project status: All systems operational",
@@ -370,9 +367,8 @@ class TestBroadcastMessaging:
         )
 
         # Assert: Broadcast succeeded
-        assert result["success"] is True
-        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
-        message_id = result["data"]["message_id"]
+        # Handover 0730b: Returns dict with message_id (no success wrapper)
+        message_id = result["message_id"]
 
         # Assert: Message row exists
         msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
@@ -496,26 +492,24 @@ class TestMultiTenantIsolation:
         service_b = MessageService(db_manager, tenant_b_manager, mock_websocket_manager)
 
         # Act: Tenant A sends a message
+        # Handover 0730b: Returns dict directly (no success wrapper)
         result_a = await service_a.send_message(
             to_agents=[agent_a.agent_display_name],
             content="Tenant A confidential data",
             project_id=project_a.id,
             from_agent="orchestrator",
         )
-        assert result_a["success"] is True
-        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
-        message_a_id = result_a["data"]["message_id"]
+        message_a_id = result_a["message_id"]
 
         # Act: Tenant B sends a message
+        # Handover 0730b: Returns dict directly (no success wrapper)
         result_b = await service_b.send_message(
             to_agents=[agent_b.agent_display_name],
             content="Tenant B confidential data",
             project_id=project_b.id,
             from_agent="orchestrator",
         )
-        assert result_b["success"] is True
-        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
-        message_b_id = result_b["data"]["message_id"]
+        message_b_id = result_b["message_id"]
 
         # Assert: Tenant A's message is NOT visible to Tenant B's agent
         await db_session.refresh(agent_b)
@@ -565,15 +559,14 @@ class TestMessagePersistenceContract:
         recipient = agents[1]
 
         # Act: Send message
+        # Handover 0730b: Returns dict directly (no success wrapper)
         result = await message_service.send_message(
             to_agents=[recipient.agent_display_name],
             content="Message that should persist",
             project_id=project.id,
             from_agent=orchestrator.agent_display_name,
         )
-        assert result["success"] is True
-        # Handover 0480: Result structure is {"success": True, "data": {"message_id": ...}}
-        message_id = result["data"]["message_id"]
+        message_id = result["message_id"]
 
         # Commit and detach (simulate session close)
         await db_session.commit()

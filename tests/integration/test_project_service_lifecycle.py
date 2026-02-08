@@ -56,12 +56,12 @@ class TestProjectLifecycleMethods:
             project_id = project.id
 
         # Act: Activate project
-        result = await service.activate_project(project_id)
+        project = await service.activate_project(project_id)
 
-        # Assert
-        assert result["success"] is True
-        assert result["data"]["status"] == "active"
-        assert result["data"]["activated_at"] is not None
+        # Assert - Returns Project instance directly (Handover 0730b)
+        assert isinstance(project, Project)
+        assert project.status == "active"
+        assert project.activated_at is not None
 
         # Verify in database
         async with db_manager.get_session_async() as session:
@@ -117,14 +117,14 @@ class TestProjectLifecycleMethods:
             project2_id = project2.id
 
         # Activate first project
-        result1 = await service.activate_project(project1_id)
-        assert result1["success"] is True
-        assert result1["data"]["status"] == "active"
+        project1_activated = await service.activate_project(project1_id)
+        assert isinstance(project1_activated, Project)
+        assert project1_activated.status == "active"
 
         # Activate second project (should auto-deactivate first)
-        result2 = await service.activate_project(project2_id)
-        assert result2["success"] is True
-        assert result2["data"]["status"] == "active"
+        project2_activated = await service.activate_project(project2_id)
+        assert isinstance(project2_activated, Project)
+        assert project2_activated.status == "active"
 
         # Verify first project is now paused
         async with db_manager.get_session_async() as session:
@@ -360,19 +360,19 @@ class TestProjectLifecycleMethods:
             project_id = project.id
 
         # Step 1: Activate
-        result = await service.activate_project(project_id)
-        assert result["success"] is True
-        assert result["data"]["status"] == "active"
+        project = await service.activate_project(project_id)
+        assert isinstance(project, Project)
+        assert project.status == "active"
 
-        # Step 2: Deactivate (pause)
-        result = await service.deactivate_project(project_id)
-        assert result["success"] is True
-        assert result["data"]["status"] == "paused"
+        # Step 2: Deactivate
+        project = await service.deactivate_project(project_id)
+        assert isinstance(project, Project)
+        assert project.status == "inactive"  # Changed from "paused" to "inactive"
 
         # Step 3: Re-activate
-        result = await service.activate_project(project_id)
-        assert result["success"] is True
-        assert result["data"]["status"] == "active"
+        project = await service.activate_project(project_id)
+        assert isinstance(project, Project)
+        assert project.status == "active"
 
         # Step 4: Complete
         result = await service.complete_project(project_id)

@@ -113,14 +113,13 @@ async def admin_user(db_session, test_tenant_key):
 @pytest.mark.asyncio
 async def test_list_users_returns_users_for_tenant(user_service, db_session, test_user, test_tenant_key):
     """Test that list_users returns all users in tenant"""
-    result = await user_service.list_users()
+    users = await user_service.list_users()
 
-    assert result["success"] is True
-    assert "data" in result
-    assert len(result["data"]) >= 1  # At least test_user
+    assert isinstance(users, list)
+    assert len(users) >= 1  # At least test_user
 
     # Verify user in list
-    usernames = [u["username"] for u in result["data"]]
+    usernames = [u["username"] for u in users]
     assert test_user.username in usernames
 
 
@@ -142,10 +141,10 @@ async def test_list_users_tenant_isolation(user_service, db_session, test_tenant
     await db_session.commit()
 
     # List users in test tenant
-    result = await user_service.list_users()
+    users = await user_service.list_users()
 
-    assert result["success"] is True
-    usernames = [u["username"] for u in result["data"]]
+    assert isinstance(users, list)
+    usernames = [u["username"] for u in users]
     assert other_user.username not in usernames
 
 
@@ -165,10 +164,10 @@ async def test_list_users_includes_inactive(user_service, db_session, test_tenan
     db_session.add(inactive_user)
     await db_session.commit()
 
-    result = await user_service.list_users()
+    users = await user_service.list_users()
 
-    assert result["success"] is True
-    usernames = [u["username"] for u in result["data"]]
+    assert isinstance(users, list)
+    usernames = [u["username"] for u in users]
     assert inactive_user.username in usernames
 
 
@@ -180,13 +179,13 @@ async def test_list_users_includes_inactive(user_service, db_session, test_tenan
 @pytest.mark.asyncio
 async def test_get_user_returns_user_by_id(user_service, test_user):
     """Test that get_user retrieves user by ID"""
-    result = await user_service.get_user(test_user.id)
+    user_dict = await user_service.get_user(test_user.id)
 
-    assert result["success"] is True
-    assert result["user"]["id"] == test_user.id
-    assert result["user"]["username"] == test_user.username
-    assert result["user"]["email"] == test_user.email
-    assert "password_hash" not in result["user"]  # Password excluded
+    assert isinstance(user_dict, dict)
+    assert user_dict["id"] == test_user.id
+    assert user_dict["username"] == test_user.username
+    assert user_dict["email"] == test_user.email
+    assert "password_hash" not in user_dict  # Password excluded  # Password excluded
 
 
 @pytest.mark.asyncio
@@ -235,16 +234,16 @@ async def test_create_user_success(user_service, test_tenant_key):
     username = f"newuser_{uuid4().hex[:6]}"
     email = f"new_{uuid4().hex[:6]}@example.com"
 
-    result = await user_service.create_user(
+    user_dict = await user_service.create_user(
         username=username, email=email, full_name="New User", password="NewPassword123", role="developer"
     )
 
-    assert result["success"] is True
-    assert result["user"]["username"] == username
-    assert result["user"]["email"] == email
-    assert result["user"]["role"] == "developer"
-    assert result["user"]["is_active"] is True
-    assert result["user"]["tenant_key"] == test_tenant_key
+    assert isinstance(user_dict, dict)
+    assert user_dict["username"] == username
+    assert user_dict["email"] == email
+    assert user_dict["role"] == "developer"
+    assert user_dict["is_active"] is True
+    assert user_dict["tenant_key"] == test_tenant_key
 
 
 @pytest.mark.asyncio
@@ -284,15 +283,15 @@ async def test_create_user_default_password(user_service):
     """Test that create_user sets default password 'GiljoMCP'"""
     username = f"newuser_{uuid4().hex[:6]}"
 
-    result = await user_service.create_user(
+    user_dict = await user_service.create_user(
         username=username,
         email=f"new_{uuid4().hex[:6]}@example.com",
         role="developer",
         # No password provided - should default to "GiljoMCP"
     )
 
-    assert result["success"] is True
-    assert result["user"]["must_change_password"] is True
+    assert isinstance(user_dict, dict)
+    assert user_dict["must_change_password"] is True
 
 
 # ============================================================================
@@ -305,11 +304,11 @@ async def test_update_user_success(user_service, test_user):
     """Test successful user update"""
     new_email = f"updated_{uuid4().hex[:6]}@example.com"
 
-    result = await user_service.update_user(user_id=test_user.id, email=new_email, full_name="Updated Name")
+    user_dict = await user_service.update_user(user_id=test_user.id, email=new_email, full_name="Updated Name")
 
-    assert result["success"] is True
-    assert result["user"]["email"] == new_email
-    assert result["user"]["full_name"] == "Updated Name"
+    assert isinstance(user_dict, dict)
+    assert user_dict["email"] == new_email
+    assert user_dict["full_name"] == "Updated Name"
 
 
 @pytest.mark.asyncio
@@ -345,7 +344,8 @@ async def test_delete_user_soft_delete(user_service, test_user, db_session):
     """Test that delete_user performs soft delete (is_active=False)"""
     result = await user_service.delete_user(test_user.id)
 
-    assert result["success"] is True
+    # Verify method completes without error (void return)
+    assert result is None
 
     # Verify user is deactivated, not deleted
     await db_session.refresh(test_user)
@@ -371,10 +371,10 @@ async def test_delete_user_not_found(user_service):
 @pytest.mark.asyncio
 async def test_change_role_success(user_service, test_user, db_session):
     """Test successful role change"""
-    result = await user_service.change_role(user_id=test_user.id, new_role="viewer")
+    user_dict = await user_service.change_role(user_id=test_user.id, new_role="viewer")
 
-    assert result["success"] is True
-    assert result["user"]["role"] == "viewer"
+    assert isinstance(user_dict, dict)
+    assert user_dict["role"] == "viewer"
 
     await db_session.refresh(test_user)
     assert test_user.role == "viewer"
@@ -415,7 +415,8 @@ async def test_change_password_success(user_service, test_user, db_session):
         user_id=test_user.id, old_password="TestPassword123", new_password=new_password
     )
 
-    assert result["success"] is True
+    # Verify method completes without error (void return)
+    assert result is None
 
     # Verify new password works
     await db_session.refresh(test_user)
@@ -445,7 +446,8 @@ async def test_change_password_admin_bypass(user_service, test_user, db_session)
         is_admin=True,
     )
 
-    assert result["success"] is True
+    # Verify method completes without error (void return)
+    assert result is None
 
     await db_session.refresh(test_user)
     assert bcrypt.verify(new_password, test_user.password_hash)
@@ -461,7 +463,8 @@ async def test_reset_password_sets_default(user_service, test_user, db_session):
     """Test that reset_password sets password to 'GiljoMCP'"""
     result = await user_service.reset_password(test_user.id)
 
-    assert result["success"] is True
+    # Verify method completes without error (void return)
+    assert result is None
 
     await db_session.refresh(test_user)
     assert bcrypt.verify("GiljoMCP", test_user.password_hash)
@@ -476,19 +479,17 @@ async def test_reset_password_sets_default(user_service, test_user, db_session):
 @pytest.mark.asyncio
 async def test_check_username_exists_true(user_service, test_user):
     """Test that check_username_exists detects existing username"""
-    result = await user_service.check_username_exists(test_user.username)
+    exists = await user_service.check_username_exists(test_user.username)
 
-    assert result["success"] is True
-    assert result["exists"] is True
+    assert exists is True
 
 
 @pytest.mark.asyncio
 async def test_check_username_exists_false(user_service):
     """Test that check_username_exists returns false for non-existent username"""
-    result = await user_service.check_username_exists(f"nonexistent_{uuid4().hex}")
+    exists = await user_service.check_username_exists(f"nonexistent_{uuid4().hex}")
 
-    assert result["success"] is True
-    assert result["exists"] is False
+    assert exists is False
 
 
 # ============================================================================
@@ -499,19 +500,17 @@ async def test_check_username_exists_false(user_service):
 @pytest.mark.asyncio
 async def test_check_email_exists_true(user_service, test_user):
     """Test that check_email_exists detects existing email"""
-    result = await user_service.check_email_exists(test_user.email)
+    exists = await user_service.check_email_exists(test_user.email)
 
-    assert result["success"] is True
-    assert result["exists"] is True
+    assert exists is True
 
 
 @pytest.mark.asyncio
 async def test_check_email_exists_false(user_service):
     """Test that check_email_exists returns false for non-existent email"""
-    result = await user_service.check_email_exists(f"nonexistent_{uuid4().hex}@example.com")
+    exists = await user_service.check_email_exists(f"nonexistent_{uuid4().hex}@example.com")
 
-    assert result["success"] is True
-    assert result["exists"] is False
+    assert exists is False
 
 
 # ============================================================================
@@ -522,19 +521,17 @@ async def test_check_email_exists_false(user_service):
 @pytest.mark.asyncio
 async def test_verify_password_correct(user_service, test_user):
     """Test that verify_password returns true for correct password"""
-    result = await user_service.verify_password(user_id=test_user.id, password="TestPassword123")
+    verified = await user_service.verify_password(user_id=test_user.id, password="TestPassword123")
 
-    assert result["success"] is True
-    assert result["verified"] is True
+    assert verified is True
 
 
 @pytest.mark.asyncio
 async def test_verify_password_incorrect(user_service, test_user):
     """Test that verify_password returns false for incorrect password"""
-    result = await user_service.verify_password(user_id=test_user.id, password="WrongPassword")
+    verified = await user_service.verify_password(user_id=test_user.id, password="WrongPassword")
 
-    assert result["success"] is True
-    assert result["verified"] is False
+    assert verified is False
 
 
 # ============================================================================
@@ -552,21 +549,20 @@ async def test_get_field_priority_config_custom(user_service, test_user, db_sess
     test_user.field_priority_config = custom_config
     await db_session.commit()
 
-    result = await user_service.get_field_priority_config(test_user.id)
+    config = await user_service.get_field_priority_config(test_user.id)
 
-    assert result["success"] is True
-    assert result["config"] == custom_config
+    assert isinstance(config, dict)
+    assert config == custom_config
 
 
 @pytest.mark.asyncio
 async def test_get_field_priority_config_defaults(user_service, test_user):
     """Test that get_field_priority_config returns defaults when no custom config"""
-    result = await user_service.get_field_priority_config(test_user.id)
+    config = await user_service.get_field_priority_config(test_user.id)
 
-    assert result["success"] is True
-    assert "config" in result
-    assert result["config"]["version"] in ["2.0", "2.1"]  # Version may vary
-    assert "priorities" in result["config"]
+    assert isinstance(config, dict)
+    assert config["version"] in ["2.0", "2.1"]  # Version may vary
+    assert "priorities" in config
 
 
 # ============================================================================
@@ -584,7 +580,8 @@ async def test_update_field_priority_config_success(user_service, test_user, db_
 
     result = await user_service.update_field_priority_config(user_id=test_user.id, config=new_config)
 
-    assert result["success"] is True
+    # Verify method completes without error (void return)
+    assert result is None
 
     await db_session.refresh(test_user)
     assert test_user.field_priority_config == new_config
@@ -620,7 +617,8 @@ async def test_reset_field_priority_config_clears_custom(user_service, test_user
 
     result = await user_service.reset_field_priority_config(test_user.id)
 
-    assert result["success"] is True
+    # Verify method completes without error (void return)
+    assert result is None
 
     await db_session.refresh(test_user)
     assert test_user.field_priority_config is None
@@ -638,20 +636,19 @@ async def test_get_depth_config_custom(user_service, test_user, db_session):
     test_user.depth_config = custom_depth
     await db_session.commit()
 
-    result = await user_service.get_depth_config(test_user.id)
+    config = await user_service.get_depth_config(test_user.id)
 
-    assert result["success"] is True
-    assert result["config"] == custom_depth
+    assert isinstance(config, dict)
+    assert config == custom_depth
 
 
 @pytest.mark.asyncio
 async def test_get_depth_config_defaults(user_service, test_user):
     """Test that get_depth_config returns defaults when no custom config"""
-    result = await user_service.get_depth_config(test_user.id)
+    config = await user_service.get_depth_config(test_user.id)
 
-    assert result["success"] is True
-    assert "config" in result
-    assert "vision_documents" in result["config"]
+    assert isinstance(config, dict)
+    assert "vision_documents" in config
 
 
 # ============================================================================
@@ -666,7 +663,8 @@ async def test_update_depth_config_success(user_service, test_user, db_session):
 
     result = await user_service.update_depth_config(user_id=test_user.id, config=new_depth)
 
-    assert result["success"] is True
+    # Verify method completes without error (void return)
+    assert result is None
 
     await db_session.refresh(test_user)
     assert test_user.depth_config == new_depth
@@ -693,10 +691,9 @@ async def test_update_depth_config_validation(user_service, test_user):
 @pytest.mark.asyncio
 async def test_get_execution_mode_default(user_service, test_user):
     """Execution mode defaults to claude_code when not set."""
-    result = await user_service.get_execution_mode(test_user.id)
+    execution_mode = await user_service.get_execution_mode(test_user.id)
 
-    assert result["success"] is True
-    assert result["execution_mode"] == "claude_code"
+    assert execution_mode == "claude_code"
 
 
 @pytest.mark.asyncio
@@ -707,10 +704,11 @@ async def test_update_execution_mode_persists(user_service, test_user, db_sessio
         execution_mode="multi_terminal",
     )
 
-    assert result["success"] is True
+    # Verify method completes without error (void return)
+    assert result is None
 
     read_back = await user_service.get_execution_mode(test_user.id)
-    assert read_back["execution_mode"] == "multi_terminal"
+    assert read_back == "multi_terminal"
 
 
 @pytest.mark.asyncio

@@ -214,8 +214,8 @@ class ProductService:
                 # Handover 0390b: Build product_memory from table (will be empty for new product)
                 product_memory = await self._build_product_memory_response(session, product)
 
+                # Handover 0730b: Return dict without "success" wrapper
                 return {
-                    "success": True,
                     "product_id": str(product.id),
                     "name": product.name,
                     "description": product.description,

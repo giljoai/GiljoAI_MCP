@@ -42,7 +42,7 @@ class TestCancelJobIntegration:
         )
 
         # 1. Create a test job using spawn_agent
-        spawn_result = await manager.spawn_agent(
+        job_id, agent_id, display_name, status = await manager.spawn_agent(
             project_id=test_project_id,
             agent_display_name="Code Reviewer",
             mission="Review code for quality and best practices",
@@ -50,9 +50,8 @@ class TestCancelJobIntegration:
             agent_name="code-reviewer",
         )
 
-        assert spawn_result["success"] is True
-        job_id = spawn_result["job_id"]
-        agent_id = spawn_result["agent_id"]
+        assert display_name == "Code Reviewer"
+        assert status == "waiting"
 
         # Verify job and execution were created
         from sqlalchemy import select
@@ -142,7 +141,7 @@ class TestCancelJobIntegration:
 
         # 1. Create job in tenant_a
         tenant_a = "tenant_a_unique_key"
-        spawn_result = await manager.spawn_agent(
+        job_id, agent_id, display_name, status = await manager.spawn_agent(
             project_id=test_project_id,
             agent_display_name="Database Expert",
             mission="Optimize database queries",
@@ -150,8 +149,8 @@ class TestCancelJobIntegration:
             agent_name="database-expert",
         )
 
-        assert spawn_result["success"] is True
-        job_id = spawn_result["job_id"]
+        assert display_name == "Database Expert"
+        assert status == "waiting"
 
         # Verify job exists in tenant_a
         from sqlalchemy import select
@@ -240,15 +239,13 @@ class TestCancelJobIntegration:
         )
 
         # 1. Create and cancel a job
-        spawn_result = await manager.spawn_agent(
+        job_id, agent_id, display_name, status = await manager.spawn_agent(
             project_id=test_project_id,
             agent_display_name="Frontend Tester",
             mission="Test frontend components",
             tenant_key=test_tenant_key,
             agent_name="frontend-tester",
         )
-
-        job_id = spawn_result["job_id"]
 
         first_cancel = await manager.cancel_job(
             job_id=job_id,
@@ -306,15 +303,13 @@ class TestCancelJobIntegration:
         )
 
         # 1. Create job
-        spawn_result = await manager.spawn_agent(
+        job_id, agent_id, display_name, status = await manager.spawn_agent(
             project_id=test_project_id,
             agent_display_name="System Architect",
             mission="Design system architecture",
             tenant_key=test_tenant_key,
             agent_name="system-architect",
         )
-
-        job_id = spawn_result["job_id"]
 
         # 2. Create multiple executions with different statuses
         from uuid import uuid4
