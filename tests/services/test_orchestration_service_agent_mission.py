@@ -237,7 +237,7 @@ class TestGetAgentMissionFullProtocol:
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         # Verify all existing fields are still present
-        assert response.get("success") is True
+        # Handover 0730b: No success wrapper - service returns dict directly
         assert "job_id" in response
         assert "agent_name" in response
         assert "agent_display_name" in response
@@ -272,7 +272,8 @@ class TestGetAgentMissionFullProtocol:
 
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
-        assert response.get("success") is True
+        # Handover 0730b: No success wrapper - service returns dict directly
+        assert "full_protocol" in response
         protocol = response.get("full_protocol", "")
 
         # Verify message handling instructions present (Issue 0361-5)
