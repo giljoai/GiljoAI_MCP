@@ -279,6 +279,8 @@ class TestCreateSuccessorOrchestrator:
         test_product_and_project,
     ):
         """Verify only orchestrators can use succession."""
+        from src.giljo_mcp.services.exceptions import ValidationError
+
         service = orchestration_service_with_session
         product, project = test_product_and_project
 
@@ -293,17 +295,16 @@ class TestCreateSuccessorOrchestrator:
 
         job_id = spawn_result["job_id"]
 
-        # Try to create successor for non-orchestrator
-        result = await service.create_successor_orchestrator(
-            current_job_id=job_id,
-            tenant_key=test_tenant_key,
-            reason="manual",
-        )
+        # Try to create successor for non-orchestrator - should raise ValidationError
+        with pytest.raises(ValidationError) as exc_info:
+            await service.create_successor_orchestrator(
+                current_job_id=job_id,
+                tenant_key=test_tenant_key,
+                reason="manual",
+            )
 
-        # Should fail with error
-        assert result["success"] is False
-        assert "error" in result
-        assert "orchestrator" in result["error"].lower()
+        # Verify error message mentions orchestrator requirement
+        assert "orchestrator" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_return_format(
@@ -416,21 +417,22 @@ class TestCreateSuccessorOrchestrator:
         test_tenant_key: str,
     ):
         """Verify error when job doesn't exist."""
+        from src.giljo_mcp.services.exceptions import ResourceNotFoundError
+
         service = orchestration_service_with_session
 
         fake_job_id = str(uuid4())
 
-        # Try to create successor for nonexistent job
-        result = await service.create_successor_orchestrator(
-            current_job_id=fake_job_id,
-            tenant_key=test_tenant_key,
-            reason="manual",
-        )
+        # Try to create successor for nonexistent job - should raise ResourceNotFoundError
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await service.create_successor_orchestrator(
+                current_job_id=fake_job_id,
+                tenant_key=test_tenant_key,
+                reason="manual",
+            )
 
-        # Should fail with error
-        assert result["success"] is False
-        assert "error" in result
-        assert "not found" in result["error"].lower()
+        # Verify error message mentions not found
+        assert "not found" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_tenant_isolation(
@@ -441,6 +443,8 @@ class TestCreateSuccessorOrchestrator:
         test_product_and_project,
     ):
         """Verify tenant isolation - can't access other tenant's jobs."""
+        from src.giljo_mcp.services.exceptions import ResourceNotFoundError
+
         service = orchestration_service_with_session
         product, project = test_product_and_project
 
@@ -455,18 +459,15 @@ class TestCreateSuccessorOrchestrator:
 
         job_id = spawn_result["job_id"]
 
-        # Try to access with different tenant_key
+        # Try to access with different tenant_key - should raise ResourceNotFoundError
         different_tenant = "different-tenant-key"
 
-        result = await service.create_successor_orchestrator(
-            current_job_id=job_id,
-            tenant_key=different_tenant,  # Wrong tenant
-            reason="manual",
-        )
-
-        # Should fail - can't find job for this tenant
-        assert result["success"] is False
-        assert "error" in result
+        with pytest.raises(ResourceNotFoundError):
+            await service.create_successor_orchestrator(
+                current_job_id=job_id,
+                tenant_key=different_tenant,  # Wrong tenant
+                reason="manual",
+            )
 
     @pytest.mark.asyncio
     async def test_preserves_job_relationship(
