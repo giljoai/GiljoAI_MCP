@@ -255,8 +255,12 @@ class AgentJobManager:
                     execution.block_reason = block_reason
 
                 # Update timestamps
-                if status == "working" and not execution.started_at:
-                    execution.started_at = datetime.now(timezone.utc)
+                if status == "working":
+                    if not execution.started_at:
+                        execution.started_at = datetime.now(timezone.utc)
+                    # Handover 0233: Track mission_acknowledged_at timestamp (idempotent)
+                    if execution.mission_acknowledged_at is None:
+                        execution.mission_acknowledged_at = datetime.now(timezone.utc)
                 elif status in ["complete", "failed", "cancelled"]:
                     execution.completed_at = datetime.now(timezone.utc)
 
