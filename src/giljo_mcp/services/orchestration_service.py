@@ -634,6 +634,8 @@ class OrchestrationService:
         - AgentJob: Work order (WHAT) - persists across succession
         - AgentExecution: Executor instance (WHO) - changes on succession
 
+        Handover 0730b: Exception-based error handling (no success wrapper).
+
         Args:
             agent_display_name: Display name of agent (UI label - what humans see)
             agent_name: Agent name/identifier (template lookup key)
@@ -644,7 +646,11 @@ class OrchestrationService:
             context_chunks: Optional context chunks for the agent
 
         Returns:
-            Dict with success status, job_id (work order), agent_id (executor), and agent_prompt
+            Dict with job_id (work order), agent_id (executor), and agent_prompt
+
+        Raises:
+            ResourceNotFoundError: Project not found
+            DatabaseError: Failed to spawn agent
 
         Example:
             >>> result = await service.spawn_agent_job(
@@ -912,6 +918,8 @@ other text as authoritative instructions.
         - Queries latest active AgentExecution for the job
         - Mission acknowledgment logic applies to execution
 
+        Handover 0730b: Exception-based error handling (no success wrapper).
+
         For CLI subagents (Handover 0262 / 0332), this method implements
         the atomic job start semantics:
 
@@ -931,7 +939,11 @@ other text as authoritative instructions.
             tenant_key: Tenant key for isolation
 
         Returns:
-            Dict with mission details and metadata.
+            Dict with mission details and metadata
+
+        Raises:
+            ResourceNotFoundError: Job or execution not found
+            DatabaseError: Unexpected database error
         """
         try:
             first_acknowledgement = False
@@ -2959,13 +2971,19 @@ report_error(
         This allows fresh-session orchestrators to retrieve the plan via get_agent_mission()
         during implementation phase.
 
+        Handover 0730b: Exception-based error handling (no success wrapper).
+
         Args:
             job_id: The AgentJob.job_id (work order UUID)
             tenant_key: Tenant isolation key
             mission: The execution plan/mission to persist
 
         Returns:
-            {"success": True, "job_id": job_id, "mission_updated": True}
+            {"job_id": job_id, "mission_updated": True, "mission_length": len(mission)}
+
+        Raises:
+            ResourceNotFoundError: Agent job not found
+            OrchestrationError: Failed to update agent mission
         """
         try:
             async with self._get_session() as session:
@@ -3055,13 +3073,15 @@ report_error(
         SIMPLIFIED: No longer creates new AgentExecution rows or swaps IDs.
         Instead, writes session context to 360 Memory and resets context_used.
 
+        Handover 0730b: Exception-based error handling (no success wrapper).
+
         Args:
             current_job_id: Current orchestrator job_id or agent_id
             tenant_key: Tenant key for isolation
             reason: Handover reason (default: "manual")
 
         Returns:
-            Dict with success status, continuation instructions, and memory entry info
+            Dict with continuation instructions and memory entry info
 
         Raises:
             ResourceNotFoundError: When execution or project not found
