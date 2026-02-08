@@ -2,102 +2,180 @@
 Test mission_acknowledged_at tracking in AgentJobManager (Handover 0233)
 """
 
-import sys
-from datetime import datetime
-from pathlib import Path
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
-
-
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.services.agent_job_manager import AgentJobManager
-from tests.helpers.test_db_helper import PostgreSQLTestHelper
+from src.giljo_mcp.tenant import TenantManager
 
 
 @pytest.fixture
-def db_manager():
-    """Create a synchronous database manager for testing."""
-    manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(async_driver=False))
-    manager.create_tables()
-    yield manager
-    manager.close()
+def tenant_manager():
+    """Create a TenantManager for testing."""
+    return TenantManager()
 
 
-@pytest.fixture
-def db_session(db_manager):
-    """Get a database session for testing."""
-    with db_manager.get_session() as session:
-        yield session
-
-
-def test_status_transition_to_working_sets_mission_acknowledged_at(db_session, db_manager):
+@pytest.mark.asyncio
+async def test_status_transition_to_working_sets_mission_acknowledged_at(
+    db_manager: DatabaseManager, db_session: AsyncSession, tenant_manager: TenantManager
+):
     """Test that transitioning to 'working' status sets mission_acknowledged_at"""
-    tenant_key = str(uuid4())
-    manager = AgentJobManager(db_manager)
+    tenant_key = TenantManager.generate_tenant_key()
+    manager = AgentJobManager(db_manager, tenant_manager)
 
-    # Create job in 'waiting' status
-    job = manager.create_job(
+    # Create product and project for testing
+    product = Product(
+        id=str(uuid4()),
         tenant_key=tenant_key,
+        name="Test Product",
+        description="Test product for mission ack tests",
+        product_memory={},
+    )
+    db_session.add(product)
+    await db_session.commit()
+
+    project = Project(
+        id=str(uuid4()),
+        tenant_key=tenant_key,
+        product_id=product.id,
+        name="Test Project",
+        description="Test project",
+        mission="Test mission",
+        status="active",
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(project)
+    await db_session.commit()
+
+    # Spawn agent (creates job in 'waiting' status)
+    job_id, agent_id, display_name, status = await manager.spawn_agent(
+        project_id=project.id,
         agent_display_name="implementer",
         mission="Test mission",
+        tenant_key=tenant_key,
     )
 
-    assert job.mission_acknowledged_at is None
-    assert job.status == "waiting"
+    # Get execution to check mission_acknowledged_at
+    execution = await manager.get_execution_by_agent_id(agent_id, tenant_key)
+    assert execution.mission_acknowledged_at is None
+    assert execution.status == "waiting"
 
     # Transition to 'working' status
-    updated_job = manager.update_job_status(tenant_key=tenant_key, job_id=job.job_id, status="working")
+    await manager.update_agent_status(agent_id=agent_id, status="working", tenant_key=tenant_key)
 
     # Verify mission_acknowledged_at is set
-    assert updated_job.mission_acknowledged_at is not None
-    assert isinstance(updated_job.mission_acknowledged_at, datetime)
+    execution = await manager.get_execution_by_agent_id(agent_id, tenant_key)
+    assert execution.mission_acknowledged_at is not None
+    assert isinstance(execution.mission_acknowledged_at, datetime)
 
 
-def test_mission_acknowledged_at_only_set_once(db_session, db_manager):
+@pytest.mark.asyncio
+async def test_mission_acknowledged_at_only_set_once(
+    db_manager: DatabaseManager, db_session: AsyncSession, tenant_manager: TenantManager
+):
     """Test that mission_acknowledged_at is only set on FIRST transition to working"""
-    tenant_key = str(uuid4())
-    manager = AgentJobManager(db_manager)
+    tenant_key = TenantManager.generate_tenant_key()
+    manager = AgentJobManager(db_manager, tenant_manager)
 
-    # Create and transition to working
-    job = manager.create_job(
+    # Create product and project
+    product = Product(
+        id=str(uuid4()),
         tenant_key=tenant_key,
+        name="Test Product",
+        description="Test product for mission ack tests",
+        product_memory={},
+    )
+    db_session.add(product)
+    await db_session.commit()
+
+    project = Project(
+        id=str(uuid4()),
+        tenant_key=tenant_key,
+        product_id=product.id,
+        name="Test Project",
+        description="Test project",
+        mission="Test mission",
+        status="active",
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(project)
+    await db_session.commit()
+
+    # Spawn agent and transition to working
+    job_id, agent_id, display_name, status = await manager.spawn_agent(
+        project_id=project.id,
         agent_display_name="implementer",
         mission="Test mission",
+        tenant_key=tenant_key,
     )
 
-    job = manager.update_job_status(tenant_key=tenant_key, job_id=job.job_id, status="working")
+    await manager.update_agent_status(agent_id=agent_id, status="working", tenant_key=tenant_key)
 
-    first_ack_time = job.mission_acknowledged_at
+    execution = await manager.get_execution_by_agent_id(agent_id, tenant_key)
+    first_ack_time = execution.mission_acknowledged_at
     assert first_ack_time is not None
 
     # Transition to 'blocked' then back to 'working'
-    manager.update_job_status(tenant_key=tenant_key, job_id=job.job_id, status="blocked")
-
-    job = manager.update_job_status(tenant_key=tenant_key, job_id=job.job_id, status="working")
+    await manager.update_agent_status(agent_id=agent_id, status="blocked", tenant_key=tenant_key)
+    await manager.update_agent_status(agent_id=agent_id, status="working", tenant_key=tenant_key)
 
     # Verify timestamp UNCHANGED (idempotent)
-    assert job.mission_acknowledged_at == first_ack_time
+    execution = await manager.get_execution_by_agent_id(agent_id, tenant_key)
+    assert execution.mission_acknowledged_at == first_ack_time
 
 
-def test_other_status_transitions_dont_set_mission_acknowledged_at(db_session, db_manager):
+@pytest.mark.asyncio
+async def test_other_status_transitions_dont_set_mission_acknowledged_at(
+    db_manager: DatabaseManager, db_session: AsyncSession, tenant_manager: TenantManager
+):
     """Test that non-'working' status transitions don't set mission_acknowledged_at"""
-    tenant_key = str(uuid4())
-    manager = AgentJobManager(db_manager)
+    tenant_key = TenantManager.generate_tenant_key()
+    manager = AgentJobManager(db_manager, tenant_manager)
 
-    job = manager.create_job(
+    # Create product and project
+    product = Product(
+        id=str(uuid4()),
         tenant_key=tenant_key,
+        name="Test Product",
+        description="Test product for mission ack tests",
+        product_memory={},
+    )
+    db_session.add(product)
+    await db_session.commit()
+
+    project = Project(
+        id=str(uuid4()),
+        tenant_key=tenant_key,
+        product_id=product.id,
+        name="Test Project",
+        description="Test project",
+        mission="Test mission",
+        status="active",
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(project)
+    await db_session.commit()
+
+    # Spawn agent
+    job_id, agent_id, display_name, status = await manager.spawn_agent(
+        project_id=project.id,
         agent_display_name="implementer",
         mission="Test mission",
+        tenant_key=tenant_key,
     )
 
-    assert job.mission_acknowledged_at is None
+    execution = await manager.get_execution_by_agent_id(agent_id, tenant_key)
+    assert execution.mission_acknowledged_at is None
 
     # Transition to 'failed' (not 'working')
-    updated_job = manager.update_job_status(tenant_key=tenant_key, job_id=job.job_id, status="failed")
+    await manager.update_agent_status(agent_id=agent_id, status="failed", tenant_key=tenant_key)
 
     # Verify mission_acknowledged_at is still None
-    assert updated_job.mission_acknowledged_at is None
+    execution = await manager.get_execution_by_agent_id(agent_id, tenant_key)
+    assert execution.mission_acknowledged_at is None
