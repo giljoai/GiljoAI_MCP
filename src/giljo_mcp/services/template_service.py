@@ -122,7 +122,7 @@ class TemplateService:
                     for t in templates
                 ]
 
-                return {"success": True, "templates": template_list, "count": len(template_list)}
+                return {"templates": template_list, "count": len(template_list)}
 
         except ValidationError:
             # Re-raise our custom exceptions
@@ -194,7 +194,6 @@ class TemplateService:
                     )
 
                 return {
-                    "success": True,
                     "template": {
                         "id": str(template.id),
                         "name": template.name,
@@ -205,7 +204,7 @@ class TemplateService:
                         "category": template.category,
                         "tenant_key": template.tenant_key,
                         "product_id": template.product_id,
-                    },
+                    }
                 }
 
         except (ValidationError, TemplateNotFoundError):
@@ -291,7 +290,6 @@ class TemplateService:
                 self._logger.info(f"Created template '{name}' (ID: {template_id}) for tenant {tenant_key}")
 
                 return {
-                    "success": True,
                     "template_id": template_id,
                     "name": name,
                     "tenant_key": tenant_key,
@@ -390,7 +388,6 @@ class TemplateService:
                 self._logger.info(f"Updated template {template_id}")
 
                 return {
-                    "success": True,
                     "template_id": template_id,
                     "updated": True,
                 }

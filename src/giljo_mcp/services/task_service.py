@@ -84,9 +84,8 @@ class TaskService:
         project_id: Optional[str] = None,
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
-    ) -> dict[str, Any]:
-        """
-        Quick task capture - logs a task with minimal information.
+    ) -> str:
+        """Quick task capture - logs a task with minimal information.
 
         Args:
             content: Task description (used as both title and description)
@@ -97,17 +96,22 @@ class TaskService:
             tenant_key: Required tenant key for multi-tenant isolation
 
         Returns:
-            Dict with success status and task_id or error
+            Task ID of created task
+
+        Raises:
+            ValidationError: Missing required parameters (product_id, tenant_key)
+            ResourceNotFoundError: Project not found
+            DatabaseError: Database operation failed
 
         Example:
-            >>> result = await service.log_task(
+            >>> task_id = await service.log_task(
             ...     content="Fix authentication bug",
             ...     category="bug",
             ...     priority="high",
             ...     product_id="prod-123",
             ...     tenant_key="tenant-abc"
             ... )
-            >>> print(result["task_id"])
+            >>> print(task_id)
         """
         try:
             if self._session:
@@ -134,8 +138,16 @@ class TaskService:
         project_id: Optional[str],
         product_id: Optional[str],
         tenant_key: Optional[str],
-    ) -> dict[str, Any]:
-        """Implementation of log_task with explicit session parameter."""
+    ) -> str:
+        """Implementation of log_task with explicit session parameter.
+
+        Returns:
+            Task ID of created task
+
+        Raises:
+            ValidationError: Missing tenant_key or product_id
+            ResourceNotFoundError: Project not found
+        """
         # Use provided tenant_key or get from context
         if not tenant_key:
             tenant_key = self.tenant_manager.get_current_tenant()
@@ -194,11 +206,7 @@ class TaskService:
         else:
             self._logger.info(f"Logged task {task_id} for product {product_id}")
 
-        return {
-            "success": True,
-            "task_id": task_id,
-            "message": "Task logged successfully",
-        }
+        return task_id
 
     async def create_task(
         self,
@@ -261,8 +269,7 @@ class TaskService:
         filter_type: Optional[str] = None,
         tenant_key: Optional[str] = None,
     ) -> dict[str, Any]:
-        """
-        List tasks with optional filters (enhanced for API endpoint support - Handover 0324).
+        """List tasks with optional filters (enhanced for API endpoint support - Handover 0324).
 
         Args:
             status: Filter by task status (optional)
@@ -275,7 +282,13 @@ class TaskService:
             tenant_key: Tenant key for filtering (uses current if not provided)
 
         Returns:
-            Dict with success status and list of tasks or error
+            Dictionary with:
+            - tasks: list of task dictionaries
+            - count: number of tasks
+
+        Raises:
+            ValidationError: No tenant context
+            DatabaseError: Database operation failed
 
         Example:
             >>> result = await service.list_tasks(status="pending", priority="high")
@@ -311,7 +324,7 @@ class TaskService:
                             query = query.where(Task.product_id == active_product.id)
                         else:
                             # No active product - return empty list
-                            return {"success": True, "tasks": [], "count": 0}
+                            return {"tasks": [], "count": 0}
 
                 # Apply other filters
                 if product_id and not filter_type:
@@ -362,7 +375,7 @@ class TaskService:
                     for task in tasks
                 ]
 
-                return {"success": True, "tasks": task_list, "count": len(task_list)}
+                return {"tasks": task_list, "count": len(task_list)}
 
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
@@ -376,8 +389,7 @@ class TaskService:
     # ============================================================================
 
     async def update_task(self, task_id: str, **kwargs) -> dict[str, Any]:
-        """
-        Update a task with arbitrary fields.
+        """Update a task with arbitrary fields.
 
         Automatically handles timestamp updates based on status changes:
         - status → "in_progress": Sets started_at if not already set
@@ -388,7 +400,13 @@ class TaskService:
             **kwargs: Field names and values to update
 
         Returns:
-            Dict with success status and updated fields or error
+            Dictionary with:
+            - task_id: the updated task ID
+            - updated_fields: list of field names that were updated
+
+        Raises:
+            ResourceNotFoundError: Task not found
+            DatabaseError: Database operation failed
 
         Example:
             >>> result = await service.update_task(
@@ -434,7 +452,7 @@ class TaskService:
 
                 self._logger.info(f"Updated task {task_id}: {updated_fields}")
 
-                return {"success": True, "task_id": task_id, "updated_fields": updated_fields}
+                return {"task_id": task_id, "updated_fields": updated_fields}
 
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
@@ -482,8 +500,7 @@ class TaskService:
     # ============================================================================
 
     async def get_task(self, task_id: str) -> dict[str, Any]:
-        """
-        Retrieve a single task by ID.
+        """Retrieve a single task by ID.
 
         This method retrieves a task with full tenant isolation.
         Only tasks within the current tenant can be accessed.
@@ -492,21 +509,17 @@ class TaskService:
             task_id: Task UUID
 
         Returns:
-            Dict with success status and task data:
-            {
-                "success": True,
-                "data": {
-                    "id": "...",
-                    "title": "...",
-                    "description": "...",
-                    ...
-                }
-            }
+            Task data dictionary with fields:
+            - id, title, description, status, priority, etc.
+
+        Raises:
+            ValidationError: No tenant context
+            ResourceNotFoundError: Task not found
+            DatabaseError: Database operation failed
 
         Example:
-            >>> result = await service.get_task("abc-123")
-            >>> if result["success"]:
-            ...     print(result["data"]["title"])
+            >>> task_data = await service.get_task("abc-123")
+            >>> print(task_data["title"])
         """
         try:
             if self._session:
@@ -521,7 +534,15 @@ class TaskService:
             raise BaseGiljoError(message=str(e), context={"operation": "get_task", "task_id": task_id}) from e
 
     async def _get_task_impl(self, session: AsyncSession, task_id: str) -> dict[str, Any]:
-        """Implementation of get_task with explicit session parameter."""
+        """Implementation of get_task with explicit session parameter.
+
+        Returns:
+            Task data dictionary
+
+        Raises:
+            ValidationError: No tenant context
+            ResourceNotFoundError: Task not found
+        """
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
             raise ValidationError(
@@ -561,11 +582,10 @@ class TaskService:
             "meta_data": task.meta_data,
         }
 
-        return {"success": True, "data": task_data}
+        return task_data
 
-    async def delete_task(self, task_id: str, user_id: str) -> dict[str, Any]:
-        """
-        Delete a task (with permission check).
+    async def delete_task(self, task_id: str, user_id: str) -> None:
+        """Delete a task (with permission check).
 
         Only the task creator or an admin can delete tasks.
         This performs a hard delete from the database.
@@ -575,14 +595,16 @@ class TaskService:
             user_id: User performing deletion
 
         Returns:
-            Dict with success status:
-            {
-                "success": True,
-                "message": "Task deleted successfully"
-            }
+            None on successful deletion
+
+        Raises:
+            ValidationError: No tenant context
+            ResourceNotFoundError: Task or user not found
+            AuthorizationError: User not authorized to delete task
+            DatabaseError: Database operation failed
 
         Example:
-            >>> result = await service.delete_task("abc-123", user.id)
+            >>> await service.delete_task("abc-123", user.id)
         """
         try:
             if self._session:
@@ -596,8 +618,17 @@ class TaskService:
             self._logger.exception("Failed to delete task {task_id}")
             raise BaseGiljoError(message=str(e), context={"operation": "delete_task", "task_id": task_id}) from e
 
-    async def _delete_task_impl(self, session: AsyncSession, task_id: str, user_id: str) -> dict[str, Any]:
-        """Implementation of delete_task with explicit session parameter."""
+    async def _delete_task_impl(self, session: AsyncSession, task_id: str, user_id: str) -> None:
+        """Implementation of delete_task with explicit session parameter.
+
+        Returns:
+            None on successful deletion
+
+        Raises:
+            ValidationError: No tenant context
+            ResourceNotFoundError: Task or user not found
+            AuthorizationError: User not authorized to delete task
+        """
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
             raise ValidationError(
@@ -637,13 +668,10 @@ class TaskService:
 
         self._logger.info(f"Deleted task {task_id} by user {user_id}")
 
-        return {"success": True, "message": "Task deleted successfully"}
-
     async def convert_to_project(
         self, task_id: str, project_name: Optional[str], strategy: str, include_subtasks: bool, user_id: str
     ) -> dict[str, Any]:
-        """
-        Convert task to project with optional subtask handling.
+        """Convert task to project with optional subtask handling.
 
         This is a complex multi-entity operation involving:
         - Task retrieval
@@ -660,16 +688,14 @@ class TaskService:
             user_id: User performing conversion
 
         Returns:
-            Dict with success status and new project data:
-            {
-                "success": True,
-                "data": {
-                    "project_id": "...",
-                    "project_name": "...",
-                    "original_task_id": "...",
-                    "conversion_strategy": "create_new"
-                }
-            }
+            Project data dictionary with:
+            - project_id, project_name, original_task_id, conversion_strategy, created_at
+
+        Raises:
+            ValidationError: No tenant context, already converted, no active product
+            ResourceNotFoundError: Task or user not found
+            AuthorizationError: User not authorized
+            DatabaseError: Database operation failed
 
         Example:
             >>> result = await service.convert_to_project(
@@ -705,7 +731,16 @@ class TaskService:
         include_subtasks: bool,
         user_id: str,
     ) -> dict[str, Any]:
-        """Implementation of convert_to_project with explicit session parameter."""
+        """Implementation of convert_to_project with explicit session parameter.
+
+        Returns:
+            Project data dictionary with project_id, project_name, original_task_id, etc.
+
+        Raises:
+            ValidationError: No tenant context, already converted, no active product
+            ResourceNotFoundError: Task or user not found
+            AuthorizationError: User not authorized
+        """
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
             raise ValidationError(
@@ -812,19 +847,15 @@ class TaskService:
         self._logger.info(f"Converted task {task_id} to project {new_project.id} (strategy: {strategy})")
 
         return {
-            "success": True,
-            "data": {
-                "project_id": str(new_project.id),
-                "project_name": new_project.name,
-                "original_task_id": str(task_id),
-                "conversion_strategy": strategy,
-                "created_at": new_project.created_at.isoformat() if new_project.created_at else None,
-            },
+            "project_id": str(new_project.id),
+            "project_name": new_project.name,
+            "original_task_id": str(task_id),
+            "conversion_strategy": strategy,
+            "created_at": new_project.created_at.isoformat() if new_project.created_at else None,
         }
 
     async def change_status(self, task_id: str, new_status: str) -> dict[str, Any]:
-        """
-        Change task status with automatic timestamp updates.
+        """Change task status with automatic timestamp updates.
 
         Status transitions:
         - "todo" → "in_progress": Set started_at
@@ -836,19 +867,17 @@ class TaskService:
             new_status: New status value
 
         Returns:
-            Dict with success status and updated task:
-            {
-                "success": True,
-                "data": {
-                    "id": "...",
-                    "status": "in_progress",
-                    "started_at": "2025-11-20T10:00:00Z",
-                    ...
-                }
-            }
+            Task data dictionary with updated status and timestamps:
+            - id, status, started_at, completed_at, title, description
+
+        Raises:
+            ValidationError: No tenant context
+            ResourceNotFoundError: Task not found
+            DatabaseError: Database operation failed
 
         Example:
-            >>> result = await service.change_status("abc-123", "in_progress")
+            >>> task_data = await service.change_status("abc-123", "in_progress")
+            >>> print(task_data["status"])
         """
         try:
             if self._session:
@@ -863,7 +892,15 @@ class TaskService:
             raise BaseGiljoError(message=str(e), context={"operation": "change_status", "task_id": task_id}) from e
 
     async def _change_status_impl(self, session: AsyncSession, task_id: str, new_status: str) -> dict[str, Any]:
-        """Implementation of change_status with explicit session parameter."""
+        """Implementation of change_status with explicit session parameter.
+
+        Returns:
+            Task data dictionary with updated status and timestamps
+
+        Raises:
+            ValidationError: No tenant context
+            ResourceNotFoundError: Task not found
+        """
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
             raise ValidationError(
@@ -904,11 +941,10 @@ class TaskService:
             "description": task.description,
         }
 
-        return {"success": True, "data": task_data}
+        return task_data
 
     async def get_summary(self, product_id: Optional[str] = None) -> dict[str, Any]:
-        """
-        Get task summary statistics.
+        """Get task summary statistics.
 
         Returns counts grouped by status, optionally filtered by product.
 
@@ -916,35 +952,18 @@ class TaskService:
             product_id: Optional product filter
 
         Returns:
-            Dict with success status and summary data:
-            {
-                "success": True,
-                "data": {
-                    "summary": {
-                        "product-id-1": {
-                            "total": 10,
-                            "pending": 3,
-                            "in_progress": 2,
-                            "completed": 5,
-                            "blocked": 0,
-                            "cancelled": 0,
-                            "by_priority": {
-                                "critical": 1,
-                                "high": 2,
-                                "medium": 5,
-                                "low": 2
-                            }
-                        },
-                        ...
-                    },
-                    "total_products": 2,
-                    "total_tasks": 25
-                }
-            }
+            Summary data dictionary with:
+            - summary: dict of product_id → stats (total, by status, by priority)
+            - total_products: count of products with tasks
+            - total_tasks: total number of tasks
+
+        Raises:
+            ValidationError: No tenant context
+            DatabaseError: Database operation failed
 
         Example:
-            >>> result = await service.get_summary()
-            >>> print(result["data"]["total_tasks"])
+            >>> summary = await service.get_summary()
+            >>> print(summary["total_tasks"])
         """
         try:
             if self._session:
@@ -959,7 +978,14 @@ class TaskService:
             raise BaseGiljoError(message=str(e), context={"operation": "get_summary"}) from e
 
     async def _get_summary_impl(self, session: AsyncSession, product_id: Optional[str] = None) -> dict[str, Any]:
-        """Implementation of get_summary with explicit session parameter."""
+        """Implementation of get_summary with explicit session parameter.
+
+        Returns:
+            Summary data dictionary with task statistics
+
+        Raises:
+            ValidationError: No tenant context
+        """
         tenant_key = self.tenant_manager.get_current_tenant()
         if not tenant_key:
             raise ValidationError(message="No tenant context available", context={"operation": "get_summary"})
@@ -1000,10 +1026,7 @@ class TaskService:
             if priority in s["by_priority"]:
                 s["by_priority"][priority] += 1
 
-        return {
-            "success": True,
-            "data": {"summary": summary, "total_products": len(summary), "total_tasks": len(tasks)},
-        }
+        return {"summary": summary, "total_products": len(summary), "total_tasks": len(tasks)}
 
     # ============================================================================
     # Permission Helpers (Handover 0322 Phase 3)

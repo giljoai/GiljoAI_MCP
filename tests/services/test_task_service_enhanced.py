@@ -216,13 +216,12 @@ async def test_get_task_success(task_service, test_task):
     print(f"DEBUG: test_task tenant_key = {test_task.tenant_key}")
     print(f"DEBUG: test_task.id = {test_task.id}")
 
-    result = await task_service.get_task(task_id=str(test_task.id))
+    # Service now returns task data dict directly (no success wrapper)
+    task_data = await task_service.get_task(task_id=str(test_task.id))
 
-    # Service still returns dict for success cases
-    assert result["success"] is True
-    assert result["data"]["id"] == str(test_task.id)
-    assert result["data"]["title"] == "Test Task"
-    assert result["data"]["status"] == "waiting"  # Initial status is 'waiting' as set in fixture
+    assert task_data["id"] == str(test_task.id)
+    assert task_data["title"] == "Test Task"
+    assert task_data["status"] == "waiting"  # Initial status is 'waiting' as set in fixture
 
 
 @pytest.mark.asyncio
@@ -254,10 +253,9 @@ async def test_get_task_tenant_isolation(task_service, other_tenant_task):
 @pytest.mark.asyncio
 async def test_delete_task_success_as_creator(task_service, test_task, test_user, db_session):
     """Test successful task deletion by creator"""
+    # Service now returns None on successful deletion
     result = await task_service.delete_task(task_id=str(test_task.id), user_id=str(test_user.id))
-
-    # Service still returns dict for success cases
-    assert result["success"] is True
+    assert result is None
 
     # Verify task is deleted from database
     stmt = select(Task).where(Task.id == test_task.id)
@@ -269,10 +267,9 @@ async def test_delete_task_success_as_creator(task_service, test_task, test_user
 @pytest.mark.asyncio
 async def test_delete_task_success_as_admin(task_service, test_task, admin_user, db_session):
     """Test successful task deletion by admin"""
+    # Service now returns None on successful deletion
     result = await task_service.delete_task(task_id=str(test_task.id), user_id=str(admin_user.id))
-
-    # Service still returns dict for success cases
-    assert result["success"] is True
+    assert result is None
 
     # Verify task is deleted from database
     stmt = select(Task).where(Task.id == test_task.id)
@@ -319,12 +316,11 @@ async def test_convert_to_project_basic(task_service, test_task, test_user, db_s
         user_id=str(test_user.id),
     )
 
-    # Service still returns dict for success cases
-    assert result["success"] is True
-    assert "project_id" in result["data"]
+    # Service now returns data dict directly
+    assert "project_id" in result
 
     # Verify project was created
-    project_id = result["data"]["project_id"]
+    project_id = result["project_id"]
     stmt = select(Project).where(Project.id == project_id)
     db_result = await db_session.execute(stmt)
     new_project = db_result.scalar_one_or_none()
@@ -375,8 +371,8 @@ async def test_convert_to_project_with_subtasks(
         user_id=str(test_user.id),
     )
 
-    # Service still returns dict for success cases
-    assert result["success"] is True
+    # Service now returns data dict directly
+    assert "project_id" in result
 
     # Verify subtasks were handled (implementation-dependent)
     # Could be: converted to tasks in new project, included in description, etc.
@@ -422,9 +418,8 @@ async def test_change_status_to_in_progress(task_service, test_task, db_session)
 
     result = await task_service.change_status(task_id=str(test_task.id), new_status="in_progress")
 
-    # Service still returns dict for success cases
-    assert result["success"] is True
-    assert result["data"]["status"] == "in_progress"
+    # Service now returns task data dict directly
+    assert result["status"] == "in_progress"
 
     # Verify started_at was set
     await db_session.refresh(test_task)
@@ -438,9 +433,8 @@ async def test_change_status_to_completed(task_service, test_task, db_session):
 
     result = await task_service.change_status(task_id=str(test_task.id), new_status="completed")
 
-    # Service still returns dict for success cases
-    assert result["success"] is True
-    assert result["data"]["status"] == "completed"
+    # Service now returns task data dict directly
+    assert result["status"] == "completed"
 
     # Verify completed_at was set
     await db_session.refresh(test_task)
@@ -454,9 +448,8 @@ async def test_change_status_to_cancelled(task_service, test_task, db_session):
 
     result = await task_service.change_status(task_id=str(test_task.id), new_status="cancelled")
 
-    # Service still returns dict for success cases
-    assert result["success"] is True
-    assert result["data"]["status"] == "cancelled"
+    # Service now returns task data dict directly
+    assert result["status"] == "cancelled"
 
     # Verify completed_at was set
     await db_session.refresh(test_task)
@@ -470,8 +463,7 @@ async def test_change_status_invalid(task_service, test_task):
 
     # Service accepts any status (validation should be at schema level)
     # For now, expect it to succeed
-    assert result["success"] is True
-    assert result["data"]["status"] == "invalid_status_xyz"
+    assert result["status"] == "invalid_status_xyz"
 
 
 # ============================================================================

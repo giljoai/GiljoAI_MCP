@@ -78,35 +78,22 @@ class UserService:
     # CRUD Operations
     # ============================================================================
 
-    async def list_users(self, include_all_tenants: bool = False) -> dict[str, Any]:
+    async def list_users(self, include_all_tenants: bool = False) -> list[dict[str, Any]]:
         """
-        List all users in tenant (or all tenants for admin view).
+        List all users (tenant-scoped by default).
 
         Args:
-            include_all_tenants: If True, return users from all tenants (admin only)
+            include_all_tenants: If True, list users from all tenants (admin only)
 
         Returns:
-            Dict with success status and list of users (passwords excluded)
+            List of user dictionaries (password excluded)
 
-        Example:
-            >>> result = await service.list_users()
-            >>> for user in result["data"]:
-            ...     print(user["username"])
+        Raises:
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
             if self._session:
-                sync_session = getattr(self._session, "sync_session", None)
-                if (
-                    getattr(self._session, "closed", False)
-                    or not getattr(self._session, "is_active", True)
-                    or (
-                        sync_session is not None
-                        and (getattr(sync_session, "closed", False) or not getattr(sync_session, "is_active", True))
-                    )
-                    or getattr(self._session, "_is_ctx_manager_closed", False)
-                ):
-                    raise RuntimeError("Session is closed")
                 return await self._list_users_impl(self._session, include_all_tenants)
 
             # Otherwise create new session (production mode)
@@ -118,10 +105,10 @@ class UserService:
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to list users")
             raise BaseGiljoError(
-                message=str(e), context={"operation": "list_users", "include_all_tenants": include_all_tenants}
+                message=str(e), context={"operation": "list_users", "tenant_key": self.tenant_key}
             ) from e
 
-    async def _list_users_impl(self, session: AsyncSession, include_all_tenants: bool = False) -> dict[str, Any]:
+    async def _list_users_impl(self, session: AsyncSession, include_all_tenants: bool = False) -> list[dict[str, Any]]:
         """Implementation that uses provided session"""
         if include_all_tenants:
             # Admin cross-tenant view - see all users
@@ -152,7 +139,7 @@ class UserService:
         )
         self._logger.debug(log_msg)
 
-        return {"success": True, "data": user_list}
+        return user_list
 
     async def get_user(self, user_id: str, include_all_tenants: bool = False) -> dict[str, Any]:
         """
@@ -163,12 +150,11 @@ class UserService:
             include_all_tenants: If True, allow fetching users from any tenant (admin only)
 
         Returns:
-            Dict with success status and user details (password excluded) or error
+            User dictionary (password excluded)
 
-        Example:
-            >>> result = await service.get_user("abc-123")
-            >>> if result["success"]:
-            ...     print(result["user"]["username"])
+        Raises:
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -188,7 +174,14 @@ class UserService:
     async def _get_user_impl(
         self, session: AsyncSession, user_id: str, include_all_tenants: bool = False
     ) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+        """Implementation that uses provided session
+
+        Returns:
+            User dictionary (password excluded)
+
+        Raises:
+            ResourceNotFoundError: User not found
+        """
         if include_all_tenants:
             # Admin cross-tenant fetch
             stmt = select(User).where(User.id == user_id)
@@ -204,18 +197,15 @@ class UserService:
         self._logger.info("Fetched user", extra={"user_id": user_id})
 
         return {
-            "success": True,
-            "user": {
-                "id": str(user.id),
-                "username": user.username,
-                "email": user.email,
-                "full_name": user.full_name,
-                "role": user.role,
-                "tenant_key": user.tenant_key,
-                "is_active": user.is_active,
-                "created_at": user.created_at.isoformat() if user.created_at else None,
-                "last_login": user.last_login.isoformat() if user.last_login else None,
-            },
+            "id": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role,
+            "tenant_key": user.tenant_key,
+            "is_active": user.is_active,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "last_login": user.last_login.isoformat() if user.last_login else None,
         }
 
     async def create_user(
@@ -239,14 +229,11 @@ class UserService:
             is_active: Whether user account is active
 
         Returns:
-            Dict with success status and user details or error
+            User dictionary (password excluded)
 
-        Example:
-            >>> result = await service.create_user(
-            ...     username="newuser",
-            ...     email="new@example.com",
-            ...     password="SecurePassword123"
-            ... )
+        Raises:
+            ValidationError: Username or email already exists
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -275,7 +262,14 @@ class UserService:
         role: str,
         is_active: bool,
     ) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+        """Implementation that uses provided session
+
+        Returns:
+            User dictionary (password excluded)
+
+        Raises:
+            ValidationError: Username or email already exists
+        """
         # Check for duplicate username (global uniqueness)
         stmt = select(User).where(User.username == username)
         result = await session.execute(stmt)
@@ -315,18 +309,15 @@ class UserService:
         self._logger.info(f"Created user {user.id} for tenant {self.tenant_key}")
 
         return {
-            "success": True,
-            "user": {
-                "id": str(user.id),
-                "username": user.username,
-                "email": user.email,
-                "full_name": user.full_name,
-                "role": user.role,
-                "tenant_key": user.tenant_key,
-                "is_active": user.is_active,
-                "must_change_password": user.must_change_password,
-                "created_at": user.created_at.isoformat() if user.created_at else None,
-            },
+            "id": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role,
+            "tenant_key": user.tenant_key,
+            "is_active": user.is_active,
+            "must_change_password": user.must_change_password,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
         }
 
     async def update_user(self, user_id: str, include_all_tenants: bool = False, **updates) -> dict[str, Any]:
@@ -339,14 +330,12 @@ class UserService:
             **updates: Fields to update (email, full_name, is_active)
 
         Returns:
-            Dict with success status and updated user or error
+            User dictionary (password excluded)
 
-        Example:
-            >>> result = await service.update_user(
-            ...     "abc-123",
-            ...     email="newemail@example.com",
-            ...     full_name="Updated Name"
-            ... )
+        Raises:
+            ResourceNotFoundError: User not found
+            ValidationError: Email already exists
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -366,7 +355,15 @@ class UserService:
     async def _update_user_impl(
         self, session: AsyncSession, user_id: str, updates: dict, include_all_tenants: bool = False
     ) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+        """Implementation that uses provided session
+
+        Returns:
+            User dictionary (password excluded)
+
+        Raises:
+            ResourceNotFoundError: User not found
+            ValidationError: Email already exists
+        """
         if include_all_tenants:
             # Admin cross-tenant update
             stmt = select(User).where(User.id == user_id)
@@ -409,29 +406,24 @@ class UserService:
         self._logger.info(f"Updated user {user_id}")
 
         return {
-            "success": True,
-            "user": {
-                "id": str(user.id),
-                "username": user.username,
-                "email": user.email,
-                "full_name": user.full_name,
-                "role": user.role,
-                "is_active": user.is_active,
-            },
+            "id": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role,
+            "is_active": user.is_active,
         }
 
-    async def delete_user(self, user_id: str) -> dict[str, Any]:
+    async def delete_user(self, user_id: str) -> None:
         """
         Soft delete a user (set is_active=False).
 
         Args:
             user_id: User UUID to delete
 
-        Returns:
-            Dict with success status or error
-
-        Example:
-            >>> result = await service.delete_user("abc-123")
+        Raises:
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -448,8 +440,12 @@ class UserService:
             self._logger.exception("Failed to delete user")
             raise BaseGiljoError(message=str(e), context={"operation": "delete_user", "user_id": user_id}) from e
 
-    async def _delete_user_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    async def _delete_user_impl(self, session: AsyncSession, user_id: str) -> None:
+        """Implementation that uses provided session (void return - soft delete)
+
+        Raises:
+            ResourceNotFoundError: User not found
+        """
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -464,13 +460,6 @@ class UserService:
 
         self._logger.info(f"Soft deleted user {user_id}")
 
-        return {
-            "success": True,
-            "message": "User deactivated successfully",
-            "user_id": str(user.id),
-            "username": user.username,
-        }
-
     # ============================================================================
     # Role Management
     # ============================================================================
@@ -484,10 +473,13 @@ class UserService:
             new_role: New role (admin, developer, viewer)
 
         Returns:
-            Dict with success status and updated role or error
+            User dictionary with updated role
 
-        Example:
-            >>> result = await service.change_role("abc-123", "viewer")
+        Raises:
+            ValidationError: Invalid role
+            ResourceNotFoundError: User not found
+            AuthorizationError: Cannot demote last admin
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -507,7 +499,16 @@ class UserService:
             ) from e
 
     async def _change_role_impl(self, session: AsyncSession, user_id: str, new_role: str) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+        """Implementation that uses provided session
+
+        Returns:
+            User dictionary with updated role
+
+        Raises:
+            ValidationError: Invalid role
+            ResourceNotFoundError: User not found
+            AuthorizationError: Cannot demote last admin
+        """
         # Validate role
         valid_roles = ["admin", "developer", "viewer"]
         if new_role not in valid_roles:
@@ -545,7 +546,7 @@ class UserService:
 
         self._logger.info(f"Changed role for user {user.username}: {old_role} -> {new_role}")
 
-        return {"success": True, "user": {"id": str(user.id), "username": user.username, "role": user.role}}
+        return {"id": str(user.id), "username": user.username, "role": user.role}
 
     # ============================================================================
     # Password Management
@@ -553,7 +554,7 @@ class UserService:
 
     async def change_password(
         self, user_id: str, old_password: str | None, new_password: str, is_admin: bool = False
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Change user password with verification.
 
@@ -563,15 +564,11 @@ class UserService:
             new_password: New password
             is_admin: Whether request is from admin (bypasses old password check)
 
-        Returns:
-            Dict with success status or error
-
-        Example:
-            >>> result = await service.change_password(
-            ...     "abc-123",
-            ...     old_password="OldPass123",
-            ...     new_password="NewPass456"
-            ... )
+        Raises:
+            ResourceNotFoundError: User not found
+            ValidationError: Current password not provided
+            AuthenticationError: Current password incorrect
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -590,8 +587,14 @@ class UserService:
 
     async def _change_password_impl(
         self, session: AsyncSession, user_id: str, old_password: str | None, new_password: str, is_admin: bool
-    ) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    ) -> None:
+        """Implementation that uses provided session (void return)
+
+        Raises:
+            ResourceNotFoundError: User not found
+            ValidationError: Current password not provided
+            AuthenticationError: Current password incorrect
+        """
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -615,20 +618,16 @@ class UserService:
 
         self._logger.info(f"Password changed for user: {user.username}")
 
-        return {"success": True, "message": "Password updated successfully"}
-
-    async def reset_password(self, user_id: str) -> dict[str, Any]:
+    async def reset_password(self, user_id: str) -> None:
         """
         Reset user password to default 'GiljoMCP'.
 
         Args:
             user_id: User UUID
 
-        Returns:
-            Dict with success status or error
-
-        Example:
-            >>> result = await service.reset_password("abc-123")
+        Raises:
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -645,8 +644,12 @@ class UserService:
             self._logger.exception("Failed to reset password")
             raise BaseGiljoError(message=str(e), context={"operation": "reset_password", "user_id": user_id}) from e
 
-    async def _reset_password_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    async def _reset_password_impl(self, session: AsyncSession, user_id: str) -> None:
+        """Implementation that uses provided session (void return)
+
+        Raises:
+            ResourceNotFoundError: User not found
+        """
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -668,13 +671,11 @@ class UserService:
 
         self._logger.info(f"Reset password for user: {user.username}")
 
-        return {"success": True, "message": "Password reset successful"}
-
     # ============================================================================
     # Validation Methods
     # ============================================================================
 
-    async def check_username_exists(self, username: str) -> dict[str, Any]:
+    async def check_username_exists(self, username: str) -> bool:
         """
         Check if username already exists.
 
@@ -682,12 +683,10 @@ class UserService:
             username: Username to check
 
         Returns:
-            Dict with success status and exists boolean
+            True if username exists, False otherwise
 
-        Example:
-            >>> result = await service.check_username_exists("testuser")
-            >>> if result["exists"]:
-            ...     print("Username taken")
+        Raises:
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -706,15 +705,19 @@ class UserService:
                 message=str(e), context={"operation": "check_username_exists", "username": username}
             ) from e
 
-    async def _check_username_exists_impl(self, session: AsyncSession, username: str) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    async def _check_username_exists_impl(self, session: AsyncSession, username: str) -> bool:
+        """Implementation that uses provided session
+
+        Returns:
+            True if username exists, False otherwise
+        """
         stmt = select(User).where(User.username == username)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
-        return {"success": True, "exists": user is not None}
+        return user is not None
 
-    async def check_email_exists(self, email: str) -> dict[str, Any]:
+    async def check_email_exists(self, email: str) -> bool:
         """
         Check if email already exists.
 
@@ -722,12 +725,10 @@ class UserService:
             email: Email to check
 
         Returns:
-            Dict with success status and exists boolean
+            True if email exists, False otherwise
 
-        Example:
-            >>> result = await service.check_email_exists("test@example.com")
-            >>> if result["exists"]:
-            ...     print("Email taken")
+        Raises:
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -744,15 +745,19 @@ class UserService:
             self._logger.exception("Failed to check email")
             raise BaseGiljoError(message=str(e), context={"operation": "check_email_exists", "email": email}) from e
 
-    async def _check_email_exists_impl(self, session: AsyncSession, email: str) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    async def _check_email_exists_impl(self, session: AsyncSession, email: str) -> bool:
+        """Implementation that uses provided session
+
+        Returns:
+            True if email exists, False otherwise
+        """
         stmt = select(User).where(User.email == email)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
-        return {"success": True, "exists": user is not None}
+        return user is not None
 
-    async def verify_password(self, user_id: str, password: str) -> dict[str, Any]:
+    async def verify_password(self, user_id: str, password: str) -> bool:
         """
         Verify user password using bcrypt.
 
@@ -761,12 +766,11 @@ class UserService:
             password: Password to verify
 
         Returns:
-            Dict with success status and verified boolean
+            True if password matches, False otherwise
 
-        Example:
-            >>> result = await service.verify_password("abc-123", "TestPass")
-            >>> if result["verified"]:
-            ...     print("Password correct")
+        Raises:
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -783,8 +787,15 @@ class UserService:
             self._logger.exception("Failed to verify password")
             raise BaseGiljoError(message=str(e), context={"operation": "verify_password", "user_id": user_id}) from e
 
-    async def _verify_password_impl(self, session: AsyncSession, user_id: str, password: str) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    async def _verify_password_impl(self, session: AsyncSession, user_id: str, password: str) -> bool:
+        """Implementation that uses provided session
+
+        Returns:
+            True if password matches, False otherwise
+
+        Raises:
+            ResourceNotFoundError: User not found
+        """
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -794,7 +805,7 @@ class UserService:
 
         verified = bcrypt.verify(password, user.password_hash)
 
-        return {"success": True, "verified": verified}
+        return verified
 
     # ============================================================================
     # Configuration Management
@@ -808,11 +819,11 @@ class UserService:
             user_id: User UUID
 
         Returns:
-            Dict with success status and config
+            Field priority configuration dictionary
 
-        Example:
-            >>> result = await service.get_field_priority_config("abc-123")
-            >>> print(result["config"])
+        Raises:
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -832,7 +843,14 @@ class UserService:
             ) from e
 
     async def _get_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+        """Implementation that uses provided session
+
+        Returns:
+            Field priority configuration dictionary
+
+        Raises:
+            ResourceNotFoundError: User not found
+        """
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -842,14 +860,14 @@ class UserService:
 
         # Return custom config if set, otherwise defaults
         if user.field_priority_config:
-            return {"success": True, "config": user.field_priority_config}
+            return user.field_priority_config
 
         # Return system defaults (v2.0)
         from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
 
-        return {"success": True, "config": DEFAULT_FIELD_PRIORITY}
+        return DEFAULT_FIELD_PRIORITY
 
-    async def update_field_priority_config(self, user_id: str, config: dict[str, Any]) -> dict[str, Any]:
+    async def update_field_priority_config(self, user_id: str, config: dict[str, Any]) -> None:
         """
         Update user's field priority configuration.
 
@@ -857,14 +875,10 @@ class UserService:
             user_id: User UUID
             config: New field priority configuration
 
-        Returns:
-            Dict with success status or error
-
-        Example:
-            >>> result = await service.update_field_priority_config(
-            ...     "abc-123",
-            ...     {"version": "2.0", "priorities": {"product_core": 1}}
-            ... )
+        Raises:
+            ValidationError: Invalid config structure or priorities
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -885,8 +899,13 @@ class UserService:
 
     async def _update_field_priority_config_impl(
         self, session: AsyncSession, user_id: str, config: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    ) -> None:
+        """Implementation that uses provided session (void return)
+
+        Raises:
+            ValidationError: Invalid config structure or priorities
+            ResourceNotFoundError: User not found
+        """
         # Validate config structure
         if "version" not in config or "priorities" not in config:
             raise ValidationError(
@@ -921,20 +940,16 @@ class UserService:
             data={"user_id": user_id, "priorities": config["priorities"], "version": config["version"]},
         )
 
-        return {"success": True, "message": "Field priority config updated successfully"}
-
-    async def reset_field_priority_config(self, user_id: str) -> dict[str, Any]:
+    async def reset_field_priority_config(self, user_id: str) -> None:
         """
         Reset field priority configuration to system defaults.
 
         Args:
             user_id: User UUID
 
-        Returns:
-            Dict with success status or error
-
-        Example:
-            >>> result = await service.reset_field_priority_config("abc-123")
+        Raises:
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -953,8 +968,12 @@ class UserService:
                 message=str(e), context={"operation": "reset_field_priority_config", "user_id": user_id}
             ) from e
 
-    async def _reset_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    async def _reset_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> None:
+        """Implementation that uses provided session (void return)
+
+        Raises:
+            ResourceNotFoundError: User not found
+        """
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -968,8 +987,6 @@ class UserService:
 
         self._logger.info(f"Reset field priority config for user {user.username}")
 
-        return {"success": True, "message": "Field priority config reset to defaults"}
-
     async def get_depth_config(self, user_id: str) -> dict[str, Any]:
         """
         Get user's depth configuration or defaults.
@@ -978,11 +995,11 @@ class UserService:
             user_id: User UUID
 
         Returns:
-            Dict with success status and config
+            Depth configuration dictionary
 
-        Example:
-            >>> result = await service.get_depth_config("abc-123")
-            >>> print(result["config"])
+        Raises:
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -1000,7 +1017,14 @@ class UserService:
             raise BaseGiljoError(message=str(e), context={"operation": "get_depth_config", "user_id": user_id}) from e
 
     async def _get_depth_config_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+        """Implementation that uses provided session
+        
+        Returns:
+            Depth configuration dictionary
+            
+        Raises:
+            ResourceNotFoundError: User not found
+        """
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -1018,9 +1042,9 @@ class UserService:
             "architecture_depth": "overview",
         }
 
-        return {"success": True, "config": depth_config}
+        return depth_config
 
-    async def update_depth_config(self, user_id: str, config: dict[str, Any]) -> dict[str, Any]:
+    async def update_depth_config(self, user_id: str, config: dict[str, Any]) -> None:
         """
         Update user's depth configuration.
 
@@ -1028,14 +1052,10 @@ class UserService:
             user_id: User UUID
             config: New depth configuration
 
-        Returns:
-            Dict with success status or error
-
-        Example:
-            >>> result = await service.update_depth_config(
-            ...     "abc-123",
-            ...     {"vision_documents": "heavy", "git_commits": 50}
-            ... )
+        Raises:
+            ValidationError: Invalid config values
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
         """
         try:
             # Use provided session if available (test mode)
@@ -1056,8 +1076,13 @@ class UserService:
 
     async def _update_depth_config_impl(
         self, session: AsyncSession, user_id: str, config: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    ) -> None:
+        """Implementation that uses provided session (void return)
+        
+        Raises:
+            ValidationError: Invalid config values
+            ResourceNotFoundError: User not found
+        """
         # Validate config values
         valid_vision = ["none", "optional", "light", "medium", "full"]
 
@@ -1085,14 +1110,23 @@ class UserService:
             event_type="depth_config_updated", data={"user_id": user_id, "depth_config": config}
         )
 
-        return {"success": True, "message": "Depth config updated successfully"}
-
     # ------------------------------------------------------------------
     # Execution mode (stored in depth_config.execution_mode)
     # ------------------------------------------------------------------
 
-    async def get_execution_mode(self, user_id: str) -> dict[str, Any]:
-        """Get user's execution mode or default."""
+    async def get_execution_mode(self, user_id: str) -> str:
+        """Get user's execution mode or default.
+        
+        Args:
+            user_id: User UUID
+            
+        Returns:
+            Execution mode string ("claude_code" or "multi_terminal")
+            
+        Raises:
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
+        """
         try:
             if self._session:
                 return await self._get_execution_mode_impl(self._session, user_id)
@@ -1105,7 +1139,15 @@ class UserService:
             logger.exception("Failed to get execution mode for user {user_id}")
             raise BaseGiljoError(message=str(e), context={"operation": "get_execution_mode", "user_id": user_id}) from e
 
-    async def _get_execution_mode_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
+    async def _get_execution_mode_impl(self, session: AsyncSession, user_id: str) -> str:
+        """Implementation that uses provided session
+        
+        Returns:
+            Execution mode string ("claude_code" or "multi_terminal")
+            
+        Raises:
+            ResourceNotFoundError: User not found
+        """
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -1116,10 +1158,20 @@ class UserService:
         depth_config = user.depth_config or {}
         mode = depth_config.get("execution_mode", "claude_code")
 
-        return {"success": True, "execution_mode": mode}
+        return mode
 
-    async def update_execution_mode(self, user_id: str, execution_mode: str) -> dict[str, Any]:
-        """Update user's execution mode with validation."""
+    async def update_execution_mode(self, user_id: str, execution_mode: str) -> None:
+        """Update user's execution mode with validation.
+        
+        Args:
+            user_id: User UUID
+            execution_mode: New execution mode ("claude_code" or "multi_terminal")
+            
+        Raises:
+            ValidationError: Invalid execution mode
+            ResourceNotFoundError: User not found
+            BaseGiljoError: Database operation failed
+        """
         try:
             if self._session:
                 return await self._update_execution_mode_impl(self._session, user_id, execution_mode)
@@ -1136,7 +1188,13 @@ class UserService:
 
     async def _update_execution_mode_impl(
         self, session: AsyncSession, user_id: str, execution_mode: str
-    ) -> dict[str, Any]:
+    ) -> None:
+        """Implementation that uses provided session (void return)
+        
+        Raises:
+            ValidationError: Invalid execution mode
+            ResourceNotFoundError: User not found
+        """
         valid_modes = {"claude_code", "multi_terminal"}
         if execution_mode not in valid_modes:
             raise ValidationError(
@@ -1179,8 +1237,6 @@ class UserService:
             "Updated execution mode",
             extra={"user_id": user_id, "execution_mode": execution_mode},
         )
-
-        return {"success": True, "execution_mode": execution_mode}
 
     # ============================================================================
     # Private Helper Methods

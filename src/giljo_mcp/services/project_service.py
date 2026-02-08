@@ -115,7 +115,7 @@ class ProjectService:
         product_id: str | None = None,
         tenant_key: str | None = None,
         status: str = "inactive",
-    ) -> dict[str, Any]:
+    ) -> Project:
         """
         Create a new project.
 
@@ -128,18 +128,18 @@ class ProjectService:
             status: Initial project status (default: "inactive")
 
         Returns:
-            Dict with project details
+            Project: The created project instance
 
         Raises:
             BaseGiljoError: When project creation fails
 
         Example:
-            >>> result = await service.create_project(
+            >>> project = await service.create_project(
             ...     name="Build API",
             ...     mission="Create RESTful API with FastAPI",
             ...     description="User management API"
             ... )
-            >>> print(result["project_id"])
+            >>> print(project.id)
         """
         try:
             async with self._get_session() as session:
@@ -164,22 +164,9 @@ class ProjectService:
                 await session.commit()
                 await session.refresh(project)  # Load DB-generated fields (created_at, updated_at)
 
-                project_id = str(project.id)
+                self._logger.info(f"Created project {project.id} with status '{status}' and tenant key {tenant_key}")
 
-                self._logger.info(f"Created project {project_id} with status '{status}' and tenant key {tenant_key}")
-
-                return {
-                    "success": True,
-                    "project_id": project_id,
-                    "tenant_key": tenant_key,
-                    "product_id": product_id,
-                    "name": name,
-                    "description": description,
-                    "mission": mission,
-                    "status": status,
-                    "created_at": project.created_at.isoformat() if project.created_at else None,
-                    "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                }
+                return project
 
         except Exception as e:
             self._logger.exception("Failed to create project")
@@ -686,24 +673,26 @@ class ProjectService:
             "git_commits_count": git_commits_count,
         }
 
-    async def cancel_project(self, project_id: str, reason: str | None = None) -> dict[str, Any]:
+    async def cancel_project(self, project_id: str, tenant_key: str, reason: str | None = None) -> None:
         """
         Cancel a project with completed_at timestamp.
 
         Args:
             project_id: Project UUID
+            tenant_key: Tenant key for multi-tenant isolation
             reason: Optional cancellation reason to store in metadata
 
         Returns:
-            Dict with success status
+            None
 
         Raises:
             ResourceNotFoundError: When project not found
             BaseGiljoError: When operation fails
 
         Example:
-            >>> result = await service.cancel_project(
+            >>> await service.cancel_project(
             ...     "abc-123",
+            ...     "tenant-key-456",
             ...     reason="Requirements changed"
             ... )
         """
@@ -720,19 +709,21 @@ class ProjectService:
                 if reason:
                     update_values["meta_data"] = {"cancellation_reason": reason}
 
-                result = await session.execute(update(Project).where(Project.id == project_id).values(**update_values))
+                result = await session.execute(
+                    update(Project)
+                    .where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
+                    .values(**update_values)
+                )
 
                 if result.rowcount == 0:
-                    raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
+                    raise ResourceNotFoundError(
+                        message="Project not found or access denied",
+                        context={"project_id": project_id, "tenant_key": tenant_key},
+                    )
 
                 await session.commit()
 
                 self._logger.info(f"Cancelled project {project_id}")
-
-                return {
-                    "success": True,
-                    "message": f"Project {project_id} cancelled successfully",
-                }
 
         except ResourceNotFoundError:
             # Re-raise our custom exceptions
@@ -941,7 +932,7 @@ class ProjectService:
         force: bool = False,
         websocket_manager: Any | None = None,
         tenant_key: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> Project:
         """
         Activate a project.
 
@@ -959,7 +950,7 @@ class ProjectService:
             tenant_key: Optional tenant key (uses current tenant if not provided)
 
         Returns:
-            Dict with success status, message, and project data
+            Project: The activated project instance
 
         Raises:
             ResourceNotFoundError: When project not found
@@ -967,8 +958,8 @@ class ProjectService:
             BaseGiljoError: When operation fails
 
         Example:
-            >>> result = await service.activate_project("abc-123")
-            >>> # Returns: {"success": True, "data": {...}}
+            >>> project = await service.activate_project("abc-123")
+            >>> assert project.status == "active"
         """
         try:
             resolved_tenant = tenant_key or self.tenant_manager.get_current_tenant()
@@ -1056,23 +1047,7 @@ class ProjectService:
                     websocket_manager=ws_mgr,
                 )
 
-                # Build response using ProjectResponse schema structure
-                return {
-                    "success": True,
-                    "data": {
-                        "id": project.id,
-                        "name": project.name,
-                        "status": project.status,
-                        "mission": project.mission,
-                        "description": project.description,
-                        "meta_data": project.meta_data or {},
-                        "created_at": project.created_at.isoformat() if project.created_at else None,
-                        "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                        "activated_at": project.activated_at.isoformat() if project.activated_at else None,
-                        "completed_at": project.completed_at.isoformat() if project.completed_at else None,
-                        "product_id": project.product_id,
-                    },
-                }
+                return project
 
         except (ResourceNotFoundError, ProjectStateError):
             # Re-raise our custom exceptions
@@ -1202,8 +1177,12 @@ class ProjectService:
         }
 
     async def deactivate_project(
-        self, project_id: str, reason: str | None = None, websocket_manager: Any | None = None
-    ) -> dict[str, Any]:
+        self,
+        project_id: str,
+        tenant_key: str | None = None,
+        reason: str | None = None,
+        websocket_manager: Any | None = None,
+    ) -> Project:
         """
         Deactivate an active project.
 
@@ -1211,33 +1190,37 @@ class ProjectService:
 
         Args:
             project_id: Project UUID
-            reason: Optional reason for deactivation (stored in config_data)
+            tenant_key: Optional tenant key (uses current tenant if not provided)
+            reason: Optional reason for deactivation (stored in meta_data)
             websocket_manager: Optional WebSocket manager for real-time updates
 
         Returns:
-            Project data dictionary
+            Project: The deactivated project instance
 
         Raises:
             ResourceNotFoundError: Project not found
             ProjectStateError: Cannot deactivate project with current status
 
         Example:
-            >>> result = await service.deactivate_project(
+            >>> project = await service.deactivate_project(
             ...     "abc-123",
             ...     reason="Taking a break"
             ... )
+            >>> assert project.status == "inactive"
         """
+        resolved_tenant = tenant_key or self.tenant_manager.get_current_tenant()
         async with self._get_session() as session:
             # Fetch project
             result = await session.execute(
-                select(Project).where(
-                    and_(Project.id == project_id, Project.tenant_key == self.tenant_manager.get_current_tenant())
-                )
+                select(Project).where(and_(Project.id == project_id, Project.tenant_key == resolved_tenant))
             )
             project = result.scalar_one_or_none()
 
             if not project:
-                raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
+                raise ResourceNotFoundError(
+                    message="Project not found or access denied",
+                    context={"project_id": project_id, "tenant_key": resolved_tenant},
+                )
 
             # Validate state
             if project.status != "active":
@@ -1262,9 +1245,10 @@ class ProjectService:
             self._logger.info(f"Deactivated project {project_id}")
 
             # Broadcast WebSocket event
-            if websocket_manager:
+            ws_mgr = websocket_manager or self._websocket_manager
+            if ws_mgr:
                 try:
-                    await websocket_manager.broadcast_project_update(
+                    await ws_mgr.broadcast_project_update(
                         project_id=project.id,
                         update_type="status_changed",
                         project_data={
@@ -1276,19 +1260,7 @@ class ProjectService:
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
-            return {
-                "id": project.id,
-                "name": project.name,
-                "status": project.status,
-                "mission": project.mission,
-                "description": project.description,
-                "meta_data": project.meta_data or {},
-                "created_at": project.created_at.isoformat() if project.created_at else None,
-                "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                "activated_at": project.activated_at.isoformat() if project.activated_at else None,
-                "completed_at": project.completed_at.isoformat() if project.completed_at else None,
-                "product_id": project.product_id,
-            }
+            return project
 
     async def cancel_staging(self, project_id: str, websocket_manager: Any | None = None) -> dict[str, Any]:
         """

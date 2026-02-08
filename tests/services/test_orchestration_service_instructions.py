@@ -305,9 +305,8 @@ class TestCreateSuccessorOrchestrator:
             reason="context_limit",
         )
 
-        # Assert: Successor created
-        assert result["success"] is True
-        assert "successor_id" in result  # New agent_id
+        # Assert: Successor created (no success wrapper after 0730b refactor)
+        assert "job_id" in result
         assert result["job_id"] == current_job.job_id  # Same job_id
 
         # Verify successor execution exists in database
@@ -411,10 +410,9 @@ class TestCreateSuccessorOrchestrator:
             reason="context_limit",
         )
 
-        # Assert: Same job_id, different agent_id
-        assert result["success"] is True
+        # Assert: Same job_id, different agent_id (no success wrapper after 0730b refactor)
         assert result["job_id"] == current_job.job_id
-        assert result["successor_id"] != current_agent_id  # Different agent_id
+        assert result.get("agent_id") != current_agent_id  # Different agent_id
 
     @pytest.mark.asyncio
     async def test_rejects_already_completed(self, db_session: AsyncSession, test_project):
@@ -448,16 +446,18 @@ class TestCreateSuccessorOrchestrator:
         )
         service._test_session = db_session
 
-        # Act: Try to create successor
-        result = await service.create_successor_orchestrator(
-            current_job_id=completed_job.job_id,
-            tenant_key=test_project.tenant_key,
-            reason="context_limit",
-        )
+        # Act: Try to create successor - should raise ResourceNotFoundError after 0730b refactor
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
 
-        # Assert: Returns error
-        assert result["success"] is False
-        assert "already completed" in result["error"]
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await service.create_successor_orchestrator(
+                current_job_id=completed_job.job_id,
+                tenant_key=test_project.tenant_key,
+                reason="context_limit",
+            )
+
+        # Assert: Proper exception raised
+        assert "not found" in str(exc_info.value).lower()
 
 
 # ============================================================================
@@ -497,8 +497,7 @@ class TestUpdateAgentMission:
             mission=new_mission,
         )
 
-        # Assert: Mission updated
-        assert result["success"] is True
+        # Assert: Mission updated (no success wrapper after 0730b refactor)
         assert result["mission_updated"] is True
 
         # Verify in database
@@ -514,16 +513,18 @@ class TestUpdateAgentMission:
         )
         service._test_session = db_session
 
-        # Act: Update mission for non-existent job
-        result = await service.update_agent_mission(
-            job_id=str(uuid4()),  # Non-existent
-            tenant_key=test_project.tenant_key,
-            mission="New mission",
-        )
+        # Act: Update mission for non-existent job - should raise ResourceNotFoundError after 0730b refactor
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
 
-        # Assert: Returns NOT_FOUND error
-        assert "error" in result
-        assert result["error"] == "NOT_FOUND"
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await service.update_agent_mission(
+                job_id=str(uuid4()),  # Non-existent
+                tenant_key=test_project.tenant_key,
+                mission="New mission",
+            )
+
+        # Assert: Proper exception raised
+        assert "not found" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_enforces_tenant_isolation(self, db_session: AsyncSession, test_product):

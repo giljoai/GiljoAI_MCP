@@ -11,7 +11,9 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 
+from src.giljo_mcp.exceptions import TemplateNotFoundError, ValidationError
 from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
 from src.giljo_mcp.services.template_service import TemplateService
 
@@ -623,3 +625,4 @@ async def test_tenant_isolation_get_template_history(template_service, tenant_ke
 
         assert len(history) == 1
         assert history[0].tenant_key == tenant_key
+
