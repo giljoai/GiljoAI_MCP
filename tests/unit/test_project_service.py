@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from src.giljo_mcp.exceptions import BaseGiljoError, ProjectStateError, ResourceNotFoundError
 from src.giljo_mcp.models import AgentExecution, Project
 from src.giljo_mcp.services.project_service import ProjectService
 
@@ -49,15 +50,16 @@ class TestProjectServiceCRUD:
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.create_project(
+        project = await service.create_project(
             name="Test Project", mission="Test mission", description="Test description", tenant_key="test-tenant"
         )
 
-        # Assert
-        assert result["success"] is True
-        assert "project_id" in result
-        assert result["name"] == "Test Project"
-        assert result["tenant_key"] == "test-tenant"
+        # Assert - Returns Project instance directly (Handover 0730b)
+        assert isinstance(project, Project)
+        assert project.name == "Test Project"
+        assert project.mission == "Test mission"
+        assert project.description == "Test description"
+        assert project.tenant_key == "test-tenant"
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -70,15 +72,15 @@ class TestProjectServiceCRUD:
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.create_project(name="Test", mission="Mission")
+        project = await service.create_project(name="Test", mission="Mission")
 
-        # Assert
-        assert result["success"] is True
-        assert result["tenant_key"].startswith("tk_")
+        # Assert - Returns Project instance directly (Handover 0730b)
+        assert isinstance(project, Project)
+        assert project.tenant_key.startswith("tk_")
 
     @pytest.mark.asyncio
     async def test_create_project_error_handling(self, mock_db_manager):
-        """Test error handling in create_project"""
+        """Test error handling in create_project - raises exception (Handover 0730b)"""
         # Arrange
         db_manager, session = mock_db_manager
         tenant_manager = Mock()
@@ -88,13 +90,11 @@ class TestProjectServiceCRUD:
 
         service = ProjectService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.create_project(name="Test", mission="Mission")
+        # Act & Assert - Raises BaseGiljoError
+        with pytest.raises(BaseGiljoError) as exc_info:
+            await service.create_project(name="Test", mission="Mission")
 
-        # Assert
-        assert result["success"] is False
-        assert "error" in result
-        assert "Database error" in result["error"]
+        assert "database error" in exc_info.value.message.lower()
 
     @pytest.mark.asyncio
     async def test_get_project_success(self, mock_db_manager):
@@ -340,10 +340,10 @@ class TestProjectServiceLifecycle:
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.activate_project("test-project-id")
+        project = await service.activate_project("test-project-id")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - Returns Project instance directly (Handover 0730b)
+        assert isinstance(project, Project)
         assert mock_project.status == "active"
         assert mock_project.activated_at is not None
         session.commit.assert_awaited()
@@ -385,12 +385,12 @@ class TestProjectServiceLifecycle:
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.activate_project("new-project-id")
+        project = await service.activate_project("new-project-id")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - Returns Project instance directly (Handover 0730b)
+        assert isinstance(project, Project)
         assert new_project.status == "active"
-        assert existing_project.status == "paused"  # Auto-deactivated
+        assert existing_project.status == "inactive"  # Auto-deactivated (changed from "paused" to "inactive")
 
     @pytest.mark.asyncio
     async def test_deactivate_project_success(self, mock_db_manager):
@@ -736,20 +736,19 @@ class TestProjectServiceEdgeCases:
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.create_project(
+        project = await service.create_project(
             name="Full Project",
             mission="Full Mission",
             description="Full Description",
             product_id="product-123",
             tenant_key="tenant-456",
             status="active",
-            context_budget=200000,
         )
 
-        # Assert
-        assert result["success"] is True
-        assert result["product_id"] == "product-123"
-        assert result["status"] == "active"
+        # Assert - Returns Project instance directly (Handover 0730b)
+        assert isinstance(project, Project)
+        assert project.product_id == "product-123"
+        assert project.status == "active"
 
     @pytest.mark.asyncio
     async def test_error_handling_propagates_correctly(self):

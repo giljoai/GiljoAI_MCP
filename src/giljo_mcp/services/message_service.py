@@ -569,6 +569,8 @@ class MessageService:
         Handover 0372: Added from 0366b for agent-level broadcasting.
         Differs from broadcast() which sends to agent types, not active executors.
 
+        Handover 0730b: Returns dict directly (no success wrapper).
+
         Args:
             project_id: Project ID to broadcast to
             content: Message content
@@ -576,7 +578,10 @@ class MessageService:
             tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
-            Dict with success status and message details or error
+            Dict with message_id, to_agents, type, and count
+
+        Raises:
+            ResourceNotFoundError: No active executions found in project
 
         Example:
             >>> result = await service.broadcast_to_project(
@@ -620,8 +625,8 @@ class MessageService:
                     tenant_key=tenant_key,
                 )
 
-                if result.get("success"):
-                    result["count"] = len(agent_ids)
+                # Handover 0730b: Add count to result (send_message already returns dict)
+                result["count"] = len(agent_ids)
 
                 return result
 
@@ -643,13 +648,15 @@ class MessageService:
         """
         Retrieve messages for a specific agent.
 
+        Handover 0730b: Returns dict directly (no success wrapper).
+
         Args:
             agent_name: Name of agent to get messages for
             project_id: Optional project ID filter
             status: Message status filter (default: "pending")
 
         Returns:
-            Dict with success status and list of messages or error
+            Dict with agent, count, and messages list
 
         Example:
             >>> result = await service.get_messages(
@@ -684,8 +691,8 @@ class MessageService:
                     if agent_name in msg.to_agents or not msg.to_agents
                 ]
 
+                # Handover 0730b: Return dict directly (no success wrapper)
                 return {
-                    "success": True,
                     "agent": agent_name,
                     "count": len(agent_messages),
                     "messages": agent_messages,

@@ -51,8 +51,8 @@ async def create_project(
     """
     logger.debug(f"User {current_user.username} creating project: {project.name}")
 
-    # Create project via ProjectService (raises exceptions on error)
-    result = await project_service.create_project(
+    # Create project via ProjectService (raises exceptions on error - Handover 0730b)
+    created_project = await project_service.create_project(
         name=project.name,
         mission=project.mission,
         description=project.description or "",
@@ -61,21 +61,21 @@ async def create_project(
         status=project.status,
     )
 
-    logger.info(f"Created project {result['project_id']} for tenant {current_user.tenant_key}")
+    logger.info(f"Created project {created_project.id} for tenant {current_user.tenant_key}")
 
     # Build response
     return ProjectResponse(
-        id=result["project_id"],
-        alias=result.get("alias", ""),
-        name=result["name"],
-        description=result.get("description"),
-        mission=result.get("mission", ""),
-        status=result["status"],
-        staging_status=None,  # New projects start with null staging_status
-        product_id=project.product_id,
-        created_at=result.get("created_at"),
-        updated_at=result.get("updated_at"),
-        completed_at=None,
+        id=str(created_project.id),
+        alias=created_project.alias or "",
+        name=created_project.name,
+        description=created_project.description,
+        mission=created_project.mission or "",
+        status=created_project.status,
+        staging_status=created_project.staging_status,
+        product_id=created_project.product_id,
+        created_at=created_project.created_at.isoformat() if created_project.created_at else None,
+        updated_at=created_project.updated_at.isoformat() if created_project.updated_at else None,
+        completed_at=created_project.completed_at.isoformat() if created_project.completed_at else None,
         context_budget=150000,  # Hardcoded default (Project.context_budget removed)
         context_used=0,
         agent_count=0,
