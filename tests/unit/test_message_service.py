@@ -38,6 +38,9 @@ class TestMessageServiceSending:
         # Mock execution lookup (for agent name resolution)
         mock_execution = Mock(spec=AgentExecution)
         mock_execution.agent_id = "agent-impl-1"
+        mock_execution.started_at = datetime.now()
+        mock_execution.messages_sent_count = 1
+        mock_execution.messages_waiting_count = 1
 
         mock_exec_result = Mock()
         mock_exec_result.scalar_one_or_none = Mock(return_value=mock_execution)
@@ -45,12 +48,23 @@ class TestMessageServiceSending:
         mock_project_result = Mock()
         mock_project_result.scalar_one_or_none = Mock(return_value=mock_project)
 
-        # First call for project lookup, then for each agent resolution
+        # Mock UPDATE result (for counter updates)
+        mock_update_result = Mock()
+        mock_update_result.rowcount = 1
+
+        # First call for project lookup, then for each agent resolution,
+        # then sender lookup for counters, then counter UPDATEs, then WebSocket lookups
         session.execute = AsyncMock(
             side_effect=[
-                mock_project_result,
-                mock_exec_result,  # First agent resolution
-                mock_exec_result,  # Second agent resolution
+                mock_project_result,   # Project lookup
+                mock_exec_result,      # First agent resolution
+                mock_exec_result,      # Second agent resolution
+                mock_exec_result,      # Sender lookup for counter
+                mock_update_result,    # INCREMENT sent_count UPDATE
+                mock_update_result,    # INCREMENT waiting_count UPDATE (1st recipient)
+                mock_update_result,    # INCREMENT waiting_count UPDATE (2nd recipient)
+                mock_exec_result,      # Sender lookup for WebSocket
+                mock_exec_result,      # First recipient lookup for WebSocket
             ]
         )
 
@@ -66,10 +80,9 @@ class TestMessageServiceSending:
         )
 
         # Assert
-        assert result["success"] is True
-        assert "message_id" in result["data"]
-        assert len(result["data"]["to_agents"]) > 0  # At least one agent resolved
-        assert result["data"]["type"] == "direct"
+        assert "message_id" in result
+        assert len(result["to_agents"]) > 0  # At least one agent resolved
+        assert result["type"] == "direct"
         # Commit called at least once for message creation
         assert session.commit.await_count >= 1
 
@@ -118,9 +131,20 @@ class TestMessageServiceSending:
         # Mock execution for agent resolution
         mock_execution1 = Mock(spec=AgentExecution)
         mock_execution1.agent_id = "agent-impl-1"
+        mock_execution1.started_at = datetime.now()
+        mock_execution1.messages_sent_count = 1
+        mock_execution1.messages_waiting_count = 1
 
         mock_execution2 = Mock(spec=AgentExecution)
         mock_execution2.agent_id = "agent-analyzer-1"
+        mock_execution2.started_at = datetime.now()
+        mock_execution2.messages_sent_count = 0
+        mock_execution2.messages_waiting_count = 1
+
+        # Mock sender execution (orchestrator)
+        mock_sender_execution = Mock(spec=AgentExecution)
+        mock_sender_execution.agent_id = "orchestrator-id"
+        mock_sender_execution.started_at = datetime.now()
 
         # First call returns agent jobs, then project, then executions for resolution
         mock_jobs_result = Mock()
@@ -135,12 +159,25 @@ class TestMessageServiceSending:
         mock_exec_result2 = Mock()
         mock_exec_result2.scalar_one_or_none = Mock(return_value=mock_execution2)
 
+        mock_sender_result = Mock()
+        mock_sender_result.scalar_one_or_none = Mock(return_value=mock_sender_execution)
+
+        # Mock UPDATE result (for counter updates)
+        mock_update_result = Mock()
+        mock_update_result.rowcount = 1
+
         session.execute = AsyncMock(
             side_effect=[
-                mock_jobs_result,  # Get agent jobs for broadcast
-                mock_project_result,  # Get project
-                mock_exec_result1,  # Resolve first agent name
-                mock_exec_result2,  # Resolve second agent name
+                mock_jobs_result,      # Get agent jobs for broadcast
+                mock_project_result,   # Get project
+                mock_exec_result1,     # Resolve first agent name
+                mock_exec_result2,     # Resolve second agent name
+                mock_sender_result,    # Sender lookup for counter
+                mock_update_result,    # INCREMENT sent_count UPDATE
+                mock_update_result,    # INCREMENT waiting_count UPDATE (1st recipient)
+                mock_update_result,    # INCREMENT waiting_count UPDATE (2nd recipient)
+                mock_sender_result,    # Sender lookup for WebSocket
+                mock_exec_result1,     # First recipient lookup for WebSocket
             ]
         )
 
@@ -150,8 +187,7 @@ class TestMessageServiceSending:
         result = await service.broadcast(content="Project status update", project_id="project-id", priority="high")
 
         # Assert
-        assert result["success"] is True
-        assert result["data"]["type"] == "broadcast"
+        assert result["type"] == "broadcast"
 
     @pytest.mark.asyncio
     async def test_broadcast_no_agents(self, mock_db_manager, mock_tenant_manager):
@@ -212,7 +248,6 @@ class TestMessageServiceRetrieval:
         result = await service.get_messages(agent_name="impl-1", project_id="project-id")
 
         # Assert
-        assert result["success"] is True
         assert result["agent"] == "impl-1"
         assert result["count"] == 2  # Both messages are for impl-1
         assert len(result["messages"]) == 2
@@ -252,7 +287,6 @@ class TestMessageServiceRetrieval:
         result = await service.get_messages(agent_name="impl-1")
 
         # Assert
-        assert result["success"] is True
         assert result["count"] == 1  # Only one message for impl-1
         assert result["messages"][0]["id"] == "msg-1"
 
@@ -325,9 +359,8 @@ class TestMessageServiceRetrieval:
         result = await service.receive_messages(agent_id="agent-123", limit=5, tenant_key="test-tenant")
 
         # Assert
-        assert result["success"] is True
-        assert result["data"]["count"] == 1
-        assert len(result["data"]["messages"]) == 1
+        assert result["count"] == 1
+        assert len(result["messages"]) == 1
 
     @pytest.mark.asyncio
     async def test_receive_messages_no_tenant_context(self):
@@ -378,7 +411,6 @@ class TestMessageServiceStatusUpdates:
         )
 
         # Assert
-        assert result["success"] is True
         assert result["message_id"] == "msg-id"
         assert result["completed_by"] == "impl-1"
         assert mock_message.status == "completed"
@@ -418,9 +450,9 @@ class TestMessageServiceErrorHandling:
         service = MessageService(failing_db_manager, mock_tenant_manager)
 
         # Act & Assert - should raise BaseGiljoException
-        from src.giljo_mcp.exceptions import BaseGiljoException
+        from src.giljo_mcp.exceptions import BaseGiljoError
 
-        with pytest.raises((BaseGiljoException, Exception)) as exc_info:
+        with pytest.raises((BaseGiljoError, Exception)) as exc_info:
             await service.send_message(
                 to_agents=["impl-1"], content="test", project_id="project-id", tenant_key="test-tenant"
             )
@@ -434,9 +466,9 @@ class TestMessageServiceErrorHandling:
         service = MessageService(failing_db_manager, mock_tenant_manager)
 
         # Act & Assert - should raise BaseGiljoException
-        from src.giljo_mcp.exceptions import BaseGiljoException
+        from src.giljo_mcp.exceptions import BaseGiljoError
 
-        with pytest.raises((BaseGiljoException, Exception)) as exc_info:
+        with pytest.raises((BaseGiljoError, Exception)) as exc_info:
             await service.get_messages(agent_name="impl-1")
 
         assert "Connection lost" in str(exc_info.value)
@@ -448,9 +480,9 @@ class TestMessageServiceErrorHandling:
         service = MessageService(failing_db_manager, mock_tenant_manager)
 
         # Act & Assert - should raise BaseGiljoException
-        from src.giljo_mcp.exceptions import BaseGiljoException
+        from src.giljo_mcp.exceptions import BaseGiljoError
 
-        with pytest.raises((BaseGiljoException, Exception)) as exc_info:
+        with pytest.raises((BaseGiljoError, Exception)) as exc_info:
             await service.complete_message(message_id="msg-id", agent_name="impl-1", result="test")
 
         assert "Connection lost" in str(exc_info.value)
