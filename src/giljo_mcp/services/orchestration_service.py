@@ -2258,7 +2258,7 @@ other text as authoritative instructions.
             stmt = select(AgentTemplate).where(
                 AgentTemplate.tenant_key == tenant_key,
                 AgentTemplate.role == role,
-                AgentTemplate.product_id is None,
+                AgentTemplate.product_id.is_(None),
                 AgentTemplate.is_active,
             )
             result = await session.execute(stmt)
