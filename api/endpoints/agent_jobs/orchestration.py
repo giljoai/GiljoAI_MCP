@@ -2,12 +2,13 @@
 Orchestration Endpoints - Handover 0124
 
 Handles project orchestration operations:
-- POST /api/agent-jobs/orchestrate/{project_id} - Orchestrate project
 - GET /api/agent-jobs/workflow/{project_id} - Get workflow status
-- POST /api/agent-jobs/regenerate-mission - Regenerate project mission
 - POST /api/agent-jobs/launch-project - Launch staged project
+- PATCH /api/agent-jobs/projects/{project_id}/launch-implementation - Launch implementation phase
 
 All operations use OrchestrationService (no direct DB access).
+
+Note: regenerate-mission endpoint removed in Handover 0729 (never integrated with frontend).
 """
 
 import logging
@@ -23,7 +24,7 @@ from sqlalchemy.orm import joinedload
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models import Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
@@ -38,23 +39,6 @@ router = APIRouter()
 # ============================================================================
 # Orchestration Models (from old orchestration.py)
 # ============================================================================
-
-
-class RegenerateMissionRequest(BaseModel):
-    """Request model for mission regeneration."""
-
-    project_id: UUID
-    override_field_priorities: Optional[dict[str, int]] = None
-    override_serena_enabled: Optional[bool] = None
-
-
-class RegenerateMissionResponse(BaseModel):
-    """Response model for mission regeneration."""
-
-    mission: str
-    user_config_applied: bool
-    serena_enabled: bool
-    field_priorities_used: dict[str, int]
 
 
 class LaunchProjectRequest(BaseModel):
@@ -144,124 +128,8 @@ async def get_workflow_status(
 
 
 # ============================================================================
-# Mission & Launch Endpoints (from old orchestration.py)
+# Launch Endpoints
 # ============================================================================
-
-
-async def _get_user_config_with_overrides(
-    user_id: UUID,
-    db: AsyncSession,
-    override_priorities: Optional[dict[str, int]],
-    override_serena: Optional[bool],
-) -> dict:
-    """
-    Get user field priority configuration with optional overrides.
-
-    Args:
-        user_id: User UUID
-        db: Database session
-        override_priorities: Optional priority overrides
-        override_serena: Optional serena enabled override
-
-    Returns:
-        Dict with field_priorities, serena_enabled, token_budget
-    """
-    result = await db.execute(select(User).filter_by(id=user_id))
-    user = result.scalar_one_or_none()
-
-    base_config = {
-        "field_priorities": {},
-        "serena_enabled": False,
-        "token_budget": 2000,
-    }
-
-    if user and user.field_priority_config:
-        base_config["field_priorities"] = user.field_priority_config.get("field_priorities", {})
-        base_config["serena_enabled"] = user.field_priority_config.get("serena_enabled", False)
-        base_config["token_budget"] = user.field_priority_config.get("token_budget", 2000)
-
-    if override_priorities is not None:
-        base_config["field_priorities"] = {**base_config["field_priorities"], **override_priorities}
-    if override_serena is not None:
-        base_config["serena_enabled"] = override_serena
-
-    return base_config
-
-
-@router.post("/regenerate-mission", response_model=RegenerateMissionResponse)
-async def regenerate_mission(
-    request: RegenerateMissionRequest,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db_session),
-    ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
-) -> RegenerateMissionResponse:
-    """
-    Regenerate project mission with optional user configuration overrides.
-
-    Handover 0086B Task 3.3 - Mission Regeneration
-
-    Args:
-        request: Mission regeneration request with project_id and overrides
-        current_user: Authenticated user (from dependency)
-        db: Database session (from dependency)
-        ws_dep: WebSocket dependency for broadcasting (from dependency)
-
-    Returns:
-        RegenerateMissionResponse with generated mission and config
-
-    Raises:
-        HTTPException 404: Project or product not found
-    """
-    logger.info(f"Mission regeneration requested for project {request.project_id}")
-
-    # Get project with tenant isolation
-    result = await db.execute(select(Project).filter_by(id=request.project_id, tenant_key=current_user.tenant_key))
-    project = result.scalar_one_or_none()
-
-    if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-
-    # Get product
-    result = await db.execute(select(Product).filter_by(id=project.product_id, tenant_key=current_user.tenant_key))
-    product = result.scalar_one_or_none()
-
-    if not product:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
-
-    # Get user config with overrides
-    user_config = await _get_user_config_with_overrides(
-        user_id=current_user.id,
-        db=db,
-        override_priorities=request.override_field_priorities,
-        override_serena=request.override_serena_enabled,
-    )
-
-    # Generate mission (simplified - real implementation would use mission planner)
-    mission_text = f"Mission for {project.name}: {project.mission}"
-
-    # Broadcast WebSocket event
-    try:
-        await ws_dep.broadcast_to_tenant(
-            tenant_key=current_user.tenant_key,
-            event_type="project:mission_updated",
-            data={
-                "project_id": str(request.project_id),
-                "tenant_key": current_user.tenant_key,
-                "mission": mission_text,
-                "generated_by": "user",
-                "user_config_applied": True,
-                "field_priorities": user_config["field_priorities"],
-            },
-        )
-    except Exception:
-        logger.exception("Failed to broadcast WebSocket event")
-
-    return RegenerateMissionResponse(
-        mission=mission_text,
-        user_config_applied=True,
-        serena_enabled=user_config["serena_enabled"],
-        field_priorities_used=user_config["field_priorities"],
-    )
 
 
 @router.post("/launch-project", response_model=LaunchProjectResponse)
