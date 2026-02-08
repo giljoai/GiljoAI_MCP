@@ -1018,10 +1018,10 @@ class UserService:
 
     async def _get_depth_config_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
         """Implementation that uses provided session
-        
+
         Returns:
             Depth configuration dictionary
-            
+
         Raises:
             ResourceNotFoundError: User not found
         """
@@ -1074,11 +1074,9 @@ class UserService:
                 message=str(e), context={"operation": "update_depth_config", "user_id": user_id}
             ) from e
 
-    async def _update_depth_config_impl(
-        self, session: AsyncSession, user_id: str, config: dict[str, Any]
-    ) -> None:
+    async def _update_depth_config_impl(self, session: AsyncSession, user_id: str, config: dict[str, Any]) -> None:
         """Implementation that uses provided session (void return)
-        
+
         Raises:
             ValidationError: Invalid config values
             ResourceNotFoundError: User not found
@@ -1116,13 +1114,13 @@ class UserService:
 
     async def get_execution_mode(self, user_id: str) -> str:
         """Get user's execution mode or default.
-        
+
         Args:
             user_id: User UUID
-            
+
         Returns:
             Execution mode string ("claude_code" or "multi_terminal")
-            
+
         Raises:
             ResourceNotFoundError: User not found
             BaseGiljoError: Database operation failed
@@ -1141,10 +1139,10 @@ class UserService:
 
     async def _get_execution_mode_impl(self, session: AsyncSession, user_id: str) -> str:
         """Implementation that uses provided session
-        
+
         Returns:
             Execution mode string ("claude_code" or "multi_terminal")
-            
+
         Raises:
             ResourceNotFoundError: User not found
         """
@@ -1162,11 +1160,11 @@ class UserService:
 
     async def update_execution_mode(self, user_id: str, execution_mode: str) -> None:
         """Update user's execution mode with validation.
-        
+
         Args:
             user_id: User UUID
             execution_mode: New execution mode ("claude_code" or "multi_terminal")
-            
+
         Raises:
             ValidationError: Invalid execution mode
             ResourceNotFoundError: User not found
@@ -1186,11 +1184,9 @@ class UserService:
                 message=str(e), context={"operation": "update_execution_mode", "user_id": user_id}
             ) from e
 
-    async def _update_execution_mode_impl(
-        self, session: AsyncSession, user_id: str, execution_mode: str
-    ) -> None:
+    async def _update_execution_mode_impl(self, session: AsyncSession, user_id: str, execution_mode: str) -> None:
         """Implementation that uses provided session (void return)
-        
+
         Raises:
             ValidationError: Invalid execution mode
             ResourceNotFoundError: User not found

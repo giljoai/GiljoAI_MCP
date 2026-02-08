@@ -414,14 +414,11 @@ class MessageService:
                         f"[WEBSOCKET DEBUG] Skipping broadcast for message {message_id} - websocket_manager is None"
                     )
 
-                # Build base response
+                # Handover 0730b: Build direct response (no success wrapper)
                 response = {
-                    "success": True,
-                    "data": {
-                        "message_id": message_id,
-                        "to_agents": resolved_to_agents,
-                        "type": message_type,
-                    },
+                    "message_id": message_id,
+                    "to_agents": resolved_to_agents,
+                    "type": message_type,
                 }
 
                 # Handover 0709b: Detect staging orchestrator broadcast and enrich response
@@ -490,6 +487,8 @@ class MessageService:
         """
         Broadcast a message to all agents in a project.
 
+        Handover 0730b: Returns dict directly (no success wrapper).
+
         Args:
             content: Message content
             project_id: Project ID to broadcast to
@@ -497,7 +496,10 @@ class MessageService:
             from_agent: Sender agent name (default: "orchestrator")
 
         Returns:
-            Dict with success status and message details or error
+            Dict with message_id, to_agents, and type (from send_message)
+
+        Raises:
+            ResourceNotFoundError: No agent jobs found in project
 
         Example:
             >>> result = await service.broadcast(
@@ -533,7 +535,8 @@ class MessageService:
                 )
 
                 # Emit additional broadcast-specific WebSocket event if manager is available
-                if self._websocket_manager and result.get("success") and tenant_key:
+                # Handover 0730b: Check for message_id (not "success") since send_message returns dict directly
+                if self._websocket_manager and result.get("message_id") and tenant_key:
                     try:
                         await self._websocket_manager.broadcast_job_message(
                             job_id=project_id,
@@ -900,7 +903,8 @@ class MessageService:
 
                 self._logger.info(f"Retrieved {len(messages_list)} messages for agent {agent_id}")
 
-                return {"success": True, "data": {"messages": messages_list, "count": len(messages_list)}}
+                # Handover 0730b: Return dict directly (no success wrapper)
+                return {"messages": messages_list, "count": len(messages_list)}
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
@@ -1161,8 +1165,8 @@ class MessageService:
                             f"Failed to emit WebSocket event for message completion {message_id}: {ws_error}"
                         )
 
+                # Handover 0730b: Return dict directly (no success wrapper)
                 return {
-                    "success": True,
                     "message_id": message_id,
                     "completed_by": agent_name,
                 }
@@ -1273,8 +1277,8 @@ class MessageService:
                     except Exception as ws_error:  # noqa: BLE001
                         self._logger.warning(f"Failed to emit WebSocket for ack: {ws_error}")
 
+                # Handover 0730b: Return dict directly (no success wrapper)
                 return {
-                    "success": True,
                     "acknowledged": True,
                     "message_id": message_id,
                 }
