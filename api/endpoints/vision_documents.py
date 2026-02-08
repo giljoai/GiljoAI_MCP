@@ -528,11 +528,8 @@ async def delete_vision_document(
 
         product_id = doc.product_id  # Store before deletion
 
-        # Delete the document
+        # Delete the document (already verified existence above, so this will succeed)
         delete_result = await vision_repo.delete(session=db, tenant_key=tenant_key, document_id=document_id)
-
-        if not delete_result["success"]:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=delete_result["message"])
 
         await db.commit()
 
