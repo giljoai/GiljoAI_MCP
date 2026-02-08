@@ -914,6 +914,8 @@ class MessageService:
 
         Uses native Message queries (NOT AgentMessageQueue which has broken SQL).
 
+        Handover 0730b: Returns dict directly (no success wrapper).
+
         Args:
             project_id: Optional project ID filter
             status: Optional message status filter
@@ -922,7 +924,11 @@ class MessageService:
             limit: Optional maximum number of messages to retrieve
 
         Returns:
-            Dict with success status and list of messages or error
+            Dict with messages list and count
+
+        Raises:
+            ResourceNotFoundError: Job not found
+            ValidationError: No active project or tenant context
 
         Example:
             >>> result = await service.list_messages(
@@ -1009,7 +1015,8 @@ class MessageService:
                             }
                         )
 
-                    return {"success": True, "messages": message_list, "count": len(message_list)}
+                    # Handover 0730b: Return dict directly (no success wrapper)
+                    return {"messages": message_list, "count": len(message_list)}
 
                 # Otherwise, list by project
                 if project_id:
@@ -1035,7 +1042,8 @@ class MessageService:
 
                     if not project:
                         # No project = no messages - return empty list, not error (Handover 0464)
-                        return {"success": True, "messages": [], "count": 0}
+                        # Handover 0730b: Return dict directly (no success wrapper)
+                        return {"messages": [], "count": 0}
 
                     query = select(Message).where(Message.project_id == project.id)
 
@@ -1075,7 +1083,8 @@ class MessageService:
                         }
                     )
 
-                return {"success": True, "messages": message_list, "count": len(message_list)}
+                # Handover 0730b: Return dict directly (no success wrapper)
+                return {"messages": message_list, "count": len(message_list)}
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
