@@ -18,6 +18,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp.exceptions import OrchestrationError, ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
@@ -107,43 +108,39 @@ class TestGetOrchestratorInstructions:
 
     @pytest.mark.asyncio
     async def test_validates_job_id_required(self, db_session: AsyncSession, test_project):
-        """Test returns error if job_id is empty."""
+        """Test raises ValidationError if job_id is empty."""
         # Create service
         service = OrchestrationService(
             db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
         )
         service._test_session = db_session
 
-        # Act: Call with empty job_id
-        result = await service.get_orchestrator_instructions(
-            job_id="",
-            tenant_key=test_project.tenant_key,
-        )
+        # Handover 0730b: Exception-based error handling
+        with pytest.raises(ValidationError) as exc_info:
+            await service.get_orchestrator_instructions(
+                job_id="",
+                tenant_key=test_project.tenant_key,
+            )
 
-        # Assert: Returns validation error
-        assert "error" in result
-        assert result["error"] == "VALIDATION_ERROR"
-        assert "Job ID is required" in result["message"]
+        assert "Job ID is required" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_validates_tenant_key_required(self, db_session: AsyncSession):
-        """Test returns error if tenant_key is empty."""
+        """Test raises ValidationError if tenant_key is empty."""
         # Create service
         service = OrchestrationService(
             db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
         )
         service._test_session = db_session
 
-        # Act: Call with empty tenant_key
-        result = await service.get_orchestrator_instructions(
-            job_id=str(uuid4()),
-            tenant_key="",
-        )
+        # Handover 0730b: Exception-based error handling
+        with pytest.raises(ValidationError) as exc_info:
+            await service.get_orchestrator_instructions(
+                job_id=str(uuid4()),
+                tenant_key="",
+            )
 
-        # Assert: Returns validation error
-        assert "error" in result
-        assert result["error"] == "VALIDATION_ERROR"
-        assert "Tenant key is required" in result["message"]
+        assert "Tenant key is required" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_validates_job_is_orchestrator(self, db_session: AsyncSession, test_project):
@@ -177,16 +174,14 @@ class TestGetOrchestratorInstructions:
         )
         service._test_session = db_session
 
-        # Act: Call with implementer job
-        result = await service.get_orchestrator_instructions(
-            job_id=implementer_job.job_id,
-            tenant_key=test_project.tenant_key,
-        )
+        # Handover 0730b: Exception-based error handling
+        with pytest.raises(ValidationError) as exc_info:
+            await service.get_orchestrator_instructions(
+                job_id=implementer_job.job_id,
+                tenant_key=test_project.tenant_key,
+            )
 
-        # Assert: Returns validation error
-        assert "error" in result
-        assert result["error"] == "VALIDATION_ERROR"
-        assert "not an orchestrator" in result["message"]
+        assert "not an orchestrator" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_enforces_tenant_isolation(self, db_session: AsyncSession, test_product):
@@ -245,15 +240,15 @@ class TestGetOrchestratorInstructions:
         )
         service._test_session = db_session
 
-        # Act: Tenant B tries to access tenant A's orchestrator
-        result = await service.get_orchestrator_instructions(
-            job_id=orchestrator_job_a.job_id,
-            tenant_key=tenant_b,  # Different tenant
-        )
+        # Handover 0730b: Exception-based error handling
+        # Tenant B tries to access tenant A's orchestrator - should raise ResourceNotFoundError
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await service.get_orchestrator_instructions(
+                job_id=orchestrator_job_a.job_id,
+                tenant_key=tenant_b,  # Different tenant
+            )
 
-        # Assert: Returns NOT_FOUND error
-        assert "error" in result
-        assert result["error"] == "NOT_FOUND"
+        assert "not found" in str(exc_info.value).lower()
 
 
 # ============================================================================
@@ -265,8 +260,8 @@ class TestCreateSuccessorOrchestrator:
     """Tests for create_successor_orchestrator() method."""
 
     @pytest.mark.asyncio
-    async def test_creates_successor_execution(self, db_session: AsyncSession, test_project):
-        """Test creates new AgentExecution as successor."""
+    async def test_resets_context_same_execution(self, db_session: AsyncSession, test_project):
+        """Test resets context_used on same execution (Handover 0461f: simplified succession)."""
         # Setup: Create current orchestrator execution
         current_job = AgentJob(
             job_id=str(uuid4()),
@@ -279,8 +274,9 @@ class TestCreateSuccessorOrchestrator:
         db_session.add(current_job)
         await db_session.commit()
 
+        current_agent_id = str(uuid4())
         current_execution = AgentExecution(
-            agent_id=str(uuid4()),
+            agent_id=current_agent_id,
             job_id=current_job.job_id,
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
@@ -305,72 +301,22 @@ class TestCreateSuccessorOrchestrator:
             reason="context_limit",
         )
 
-        # Assert: Successor created (no success wrapper after 0730b refactor)
+        # Handover 0730b: No success wrapper
+        # Handover 0461f: Same agent_id (no new execution created)
         assert "job_id" in result
         assert result["job_id"] == current_job.job_id  # Same job_id
+        assert result["agent_id"] == current_agent_id  # SAME agent_id (0461f)
+        assert result["context_reset"] is True
+        assert result["new_context_used"] == 0
 
-        # Verify successor execution exists in database
-        successor_result = await db_session.execute(
-            select(AgentExecution).where(
-                AgentExecution.job_id == current_job.job_id,
-            )
-        )
-        successor = successor_result.scalar_one_or_none()
-        assert successor is not None
-        assert successor.status == "waiting"
-        assert successor.spawned_by == current_execution.agent_id
-
-    @pytest.mark.asyncio
-    async def test_marks_current_decommissioned(self, db_session: AsyncSession, test_project):
-        """Test marks current execution as 'decommissioned'."""
-        # Setup: Create current orchestrator execution
-        current_job = AgentJob(
-            job_id=str(uuid4()),
-            job_type="orchestrator",
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            mission="Original orchestrator mission",
-            status="active",  # AgentJob: active, completed, cancelled
-        )
-        db_session.add(current_job)
-        await db_session.commit()
-
-        current_agent_id = str(uuid4())
-        current_execution = AgentExecution(
-            agent_id=current_agent_id,
-            job_id=current_job.job_id,
-            tenant_key=test_project.tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            status="waiting",
-            context_used=140000,
-            context_budget=150000,
-        )
-        db_session.add(current_execution)
-        await db_session.commit()
-
-        # Create service
-        service = OrchestrationService(
-            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
-        )
-        service._test_session = db_session
-
-        # Act: Create successor
-        result = await service.create_successor_orchestrator(
-            current_job_id=current_job.job_id,
-            tenant_key=test_project.tenant_key,
-            reason="context_limit",
-        )
-
-        # Assert: Current execution marked decommissioned
+        # Verify same execution still exists (not decommissioned)
         await db_session.refresh(current_execution)
-        assert current_execution.status == "decommissioned"
-        assert current_execution.succeeded_by == result["successor_id"]
-        assert current_execution.completed_at is not None
+        assert current_execution.context_used == 0  # Context was reset
+        assert current_execution.status == "waiting"  # Still active
 
     @pytest.mark.asyncio
-    async def test_preserves_job_id(self, db_session: AsyncSession, test_project):
-        """Test same job_id, different agent_id."""
+    async def test_writes_360_memory_entry(self, db_session: AsyncSession, test_project):
+        """Test writes 360 memory entry for handover context (Handover 0461f)."""
         # Setup: Create current orchestrator execution
         current_job = AgentJob(
             job_id=str(uuid4()),
@@ -410,14 +356,62 @@ class TestCreateSuccessorOrchestrator:
             reason="context_limit",
         )
 
-        # Assert: Same job_id, different agent_id (no success wrapper after 0730b refactor)
-        assert result["job_id"] == current_job.job_id
-        assert result.get("agent_id") != current_agent_id  # Different agent_id
+        # Handover 0461f: 360 Memory entry created for handover
+        assert result["memory_entry_created"] is True
+        assert result["reason"] == "context_limit"
 
     @pytest.mark.asyncio
-    async def test_rejects_already_completed(self, db_session: AsyncSession, test_project):
-        """Test returns error if job already completed."""
-        # Setup: Create completed orchestrator job
+    async def test_preserves_job_and_agent_id(self, db_session: AsyncSession, test_project):
+        """Test same job_id AND same agent_id (Handover 0461f: no new execution)."""
+        # Setup: Create current orchestrator execution
+        current_job = AgentJob(
+            job_id=str(uuid4()),
+            job_type="orchestrator",
+            tenant_key=test_project.tenant_key,
+            project_id=test_project.id,
+            mission="Original orchestrator mission",
+            status="active",  # AgentJob: active, completed, cancelled
+        )
+        db_session.add(current_job)
+        await db_session.commit()
+
+        current_agent_id = str(uuid4())
+        current_execution = AgentExecution(
+            agent_id=current_agent_id,
+            job_id=current_job.job_id,
+            tenant_key=test_project.tenant_key,
+            agent_display_name="orchestrator",
+            agent_name="orchestrator",
+            status="waiting",
+            context_used=140000,
+            context_budget=150000,
+        )
+        db_session.add(current_execution)
+        await db_session.commit()
+
+        # Create service
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
+        )
+        service._test_session = db_session
+
+        # Act: Create successor
+        result = await service.create_successor_orchestrator(
+            current_job_id=current_job.job_id,
+            tenant_key=test_project.tenant_key,
+            reason="context_limit",
+        )
+
+        # Handover 0730b: No success wrapper
+        # Handover 0461f: SAME job_id AND SAME agent_id (simplified - no new execution)
+        assert result["job_id"] == current_job.job_id
+        assert result["agent_id"] == current_agent_id  # SAME agent_id (0461f)
+
+    @pytest.mark.asyncio
+    async def test_allows_context_reset_for_completed_execution(self, db_session: AsyncSession, test_project):
+        """Test context reset works even for completed executions (Handover 0461f)."""
+        # NOTE: Handover 0461f simplified succession - no longer filters by status.
+        # Even completed executions can have context reset for fresh session continuation.
         completed_job = AgentJob(
             job_id=str(uuid4()),
             job_type="orchestrator",
@@ -435,7 +429,8 @@ class TestCreateSuccessorOrchestrator:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="orchestrator",
-            status="complete",  # AgentExecution: waiting, working, blocked, complete, failed, cancelled, decommissioned
+            status="complete",  # AgentExecution: complete
+            context_used=120000,
         )
         db_session.add(completed_execution)
         await db_session.commit()
@@ -446,18 +441,16 @@ class TestCreateSuccessorOrchestrator:
         )
         service._test_session = db_session
 
-        # Act: Try to create successor - should raise ResourceNotFoundError after 0730b refactor
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
+        # Handover 0461f: Succession is now just context reset, works for any status
+        result = await service.create_successor_orchestrator(
+            current_job_id=completed_job.job_id,
+            tenant_key=test_project.tenant_key,
+            reason="context_limit",
+        )
 
-        with pytest.raises(ResourceNotFoundError) as exc_info:
-            await service.create_successor_orchestrator(
-                current_job_id=completed_job.job_id,
-                tenant_key=test_project.tenant_key,
-                reason="context_limit",
-            )
-
-        # Assert: Proper exception raised
-        assert "not found" in str(exc_info.value).lower()
+        # Assert: Context was reset (even for completed execution)
+        assert result["context_reset"] is True
+        assert result["new_context_used"] == 0
 
 
 # ============================================================================
@@ -506,25 +499,24 @@ class TestUpdateAgentMission:
 
     @pytest.mark.asyncio
     async def test_returns_not_found_for_invalid_job(self, db_session: AsyncSession, test_project):
-        """Test returns error for non-existent job."""
+        """Test raises exception for non-existent job."""
         # Create service
         service = OrchestrationService(
             db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
         )
         service._test_session = db_session
 
-        # Act: Update mission for non-existent job - should raise ResourceNotFoundError after 0730b refactor
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
-
-        with pytest.raises(ResourceNotFoundError) as exc_info:
+        # Handover 0730b: Exception-based error handling
+        # update_agent_mission wraps ResourceNotFoundError in OrchestrationError
+        with pytest.raises(OrchestrationError) as exc_info:
             await service.update_agent_mission(
                 job_id=str(uuid4()),  # Non-existent
                 tenant_key=test_project.tenant_key,
                 mission="New mission",
             )
 
-        # Assert: Proper exception raised
-        assert "not found" in str(exc_info.value).lower()
+        # Assert: Proper exception raised (wrapped in OrchestrationError)
+        assert "failed to update agent mission" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_enforces_tenant_isolation(self, db_session: AsyncSession, test_product):
@@ -572,16 +564,17 @@ class TestUpdateAgentMission:
         )
         service._test_session = db_session
 
-        # Act: Tenant B tries to update tenant A's job
-        result = await service.update_agent_mission(
-            job_id=job_a.job_id,
-            tenant_key=tenant_b,  # Different tenant
-            mission="Malicious mission update",
-        )
+        # Handover 0730b: Exception-based error handling
+        # Tenant B tries to update tenant A's job - should raise OrchestrationError
+        # (update_agent_mission wraps ResourceNotFoundError in OrchestrationError)
+        with pytest.raises(OrchestrationError) as exc_info:
+            await service.update_agent_mission(
+                job_id=job_a.job_id,
+                tenant_key=tenant_b,  # Different tenant
+                mission="Malicious mission update",
+            )
 
-        # Assert: Returns NOT_FOUND error
-        assert "error" in result
-        assert result["error"] == "NOT_FOUND"
+        assert "failed to update agent mission" in str(exc_info.value).lower()
 
         # Verify original mission unchanged
         await db_session.refresh(job_a)

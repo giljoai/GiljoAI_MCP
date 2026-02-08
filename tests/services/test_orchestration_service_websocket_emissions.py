@@ -79,7 +79,7 @@ async def test_get_agent_mission_emits_ack_and_status_changed(
     job_id = str(uuid4())
     agent_id = str(uuid4())
 
-    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work")
+    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work", created_at=datetime.now(timezone.utc))
     execution = SimpleNamespace(
         agent_id=agent_id,
         job_id=job_id,
@@ -121,7 +121,7 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
     job_id = str(uuid4())
     agent_id = str(uuid4())
 
-    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work")
+    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work", created_at=datetime.now(timezone.utc))
     execution = SimpleNamespace(
         agent_id=agent_id,
         job_id=job_id,
@@ -174,7 +174,9 @@ async def test_acknowledge_job_emits_status_changed(
 
     result = await orchestration_service.acknowledge_job(job_id=job_id, agent_id="ignored", tenant_key=tenant_key)
 
-    assert result["status"] == "success"
+    # Handover 0730b: No success wrapper - returns dict with job and next_instructions
+    assert "job" in result
+    assert "next_instructions" in result
     assert execution.status == "working"
     mock_websocket_manager.broadcast_to_tenant.assert_awaited()
 
@@ -336,5 +338,7 @@ async def test_websocket_failures_do_not_break_orchestration_calls(
 
     result = await orchestration_service.acknowledge_job(job_id=job_id, agent_id="ignored", tenant_key=tenant_key)
 
-    assert result["status"] == "success"
+    # Handover 0730b: No success wrapper - returns dict with job and next_instructions
+    assert "job" in result
+    assert "next_instructions" in result
     assert execution.status == "working"
