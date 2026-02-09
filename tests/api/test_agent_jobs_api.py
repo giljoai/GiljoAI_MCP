@@ -236,7 +236,11 @@ async def tenant_b_product(api_client: AsyncClient, tenant_b_admin_token: str):
 
 @pytest.fixture
 async def tenant_a_project(api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_product):
-    """Create a test project for Tenant A."""
+    """Create a test project for Tenant A and launch implementation.
+
+    Handover 0730e: Projects need implementation_launched_at set for agent job
+    lifecycle tests (get_agent_mission requires this per Handover 0709).
+    """
     response = await api_client.post(
         "/api/v1/projects/",
         json={
@@ -249,12 +253,25 @@ async def tenant_a_project(api_client: AsyncClient, tenant_a_admin_token: str, t
         cookies={"access_token": tenant_a_admin_token},
     )
     assert response.status_code == 201
-    return response.json()
+    project = response.json()
+
+    # Launch implementation phase (required for agent lifecycle tests)
+    launch_response = await api_client.patch(
+        f"/api/agent-jobs/projects/{project['id']}/launch-implementation",
+        cookies={"access_token": tenant_a_admin_token},
+    )
+    assert launch_response.status_code == 200
+
+    return project
 
 
 @pytest.fixture
 async def tenant_b_project(api_client: AsyncClient, tenant_b_admin_token: str, tenant_b_product):
-    """Create a test project for Tenant B."""
+    """Create a test project for Tenant B and launch implementation.
+
+    Handover 0730e: Projects need implementation_launched_at set for agent job
+    lifecycle tests (get_agent_mission requires this per Handover 0709).
+    """
     response = await api_client.post(
         "/api/v1/projects/",
         json={
@@ -267,7 +284,16 @@ async def tenant_b_project(api_client: AsyncClient, tenant_b_admin_token: str, t
         cookies={"access_token": tenant_b_admin_token},
     )
     assert response.status_code == 201
-    return response.json()
+    project = response.json()
+
+    # Launch implementation phase (required for agent lifecycle tests)
+    launch_response = await api_client.patch(
+        f"/api/agent-jobs/projects/{project['id']}/launch-implementation",
+        cookies={"access_token": tenant_b_admin_token},
+    )
+    assert launch_response.status_code == 200
+
+    return project
 
 
 @pytest.fixture
