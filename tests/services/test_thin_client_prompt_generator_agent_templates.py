@@ -14,27 +14,51 @@ Test Coverage:
 Author: GiljoAI Development Team
 Date: 2025-11-17
 Priority: P2 - MEDIUM
+
+Updated: 2026-02-08 (0730 series)
+- Removed context_budget from Project (not a valid field)
+- Added Organization creation for User.org_id NOT NULL constraint (0424j)
 """
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate, Product, Project, User
+from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
-@pytest.mark.asyncio
-async def test_agent_templates_included_in_context_string(db_session: AsyncSession):
-    """
-    BEHAVIOR: Agent templates are formatted and included in orchestrator context string
+async def create_test_org(session: AsyncSession, tenant_key: str) -> Organization:
+    """Helper to create an organization for test users (0424j: User.org_id NOT NULL)."""
+    org = Organization(
+        tenant_key=tenant_key,
+        name=f"Test Org {tenant_key}",
+        slug=f"test-org-{tenant_key.replace('_', '-')}",
+        is_active=True,
+    )
+    session.add(org)
+    await session.flush()
+    return org
 
-    GIVEN: A product with 3 agent templates (implementer, tester, documenter)
-    WHEN: Generating orchestrator context with agent_templates priority = 2
-    THEN: Context string contains "## Available Agents" section with all 3 agents
-    AND: Section appears after "MCP CONNECTION" and before "MCP TOOLS AVAILABLE"
+
+@pytest.mark.asyncio
+async def test_thin_prompt_contains_core_structure(db_session: AsyncSession):
+    """
+    BEHAVIOR: Thin prompt contains essential orchestrator structure
+
+    Updated 0730 series: Thin prompts do NOT embed agent templates inline.
+    Agent templates are fetched via MCP tool get_orchestrator_instructions().
+
+    GIVEN: A product with a project
+    WHEN: Generating thin prompt
+    THEN: Prompt contains IDENTITY, MCP CONNECTION, YOUR ROLE, and WORKFLOW sections
+    AND: Prompt references get_orchestrator_instructions for context fetching
     """
     # ARRANGE
     tenant_key = "test_tenant"
+
+    # Create organization for user (0424j: User.org_id NOT NULL)
+    org = await create_test_org(db_session, tenant_key)
 
     # Create product
     product = Product(id="prod-001", name="Test Product", tenant_key=tenant_key, config_data={})
@@ -45,6 +69,7 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
         id="user-001",
         username="testuser",
         tenant_key=tenant_key,
+        org_id=org.id,  # 0424j: User.org_id NOT NULL
         field_priority_config={
             "agent_templates": 2,  # High Priority
             "tech_stack.languages": 1,
@@ -61,11 +86,10 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
         tenant_key=tenant_key,
         description="Test project description",
         mission="Test project mission",
-        context_budget=100000,
     )
     db_session.add(project)
 
-    # Create agent templates
+    # Create agent templates (stored in DB, fetched via MCP tools at runtime)
     templates_data = [
         {
             "name": "implementer",
@@ -121,49 +145,52 @@ async def test_agent_templates_included_in_context_string(db_session: AsyncSessi
     )
     thin_prompt = result["thin_prompt"]
 
-    # ASSERT
-    # Agent templates section should be present
-    assert "## Available Agents" in thin_prompt, "Agent templates section missing from context"
+    # ASSERT - Core structure present (Handover 0315: thin prompt architecture)
+    assert "IDENTITY:" in thin_prompt, "IDENTITY section missing from thin prompt"
+    assert "MCP CONNECTION:" in thin_prompt, "MCP CONNECTION section missing from thin prompt"
+    assert "YOUR ROLE:" in thin_prompt, "YOUR ROLE section missing from thin prompt"
 
-    # All three agent names should appear (case-insensitive)
-    assert "implementer" in thin_prompt.lower(), "Implementer agent missing from context"
-    assert "tester" in thin_prompt.lower(), "Tester agent missing from context"
-    assert "documenter" in thin_prompt.lower(), "Documenter agent missing from context"
+    # Verify MCP tool reference for context fetching (NOT inline agent templates)
+    assert "get_orchestrator_instructions" in thin_prompt, (
+        "Thin prompt should reference get_orchestrator_instructions MCP tool for context fetching"
+    )
 
-    # Verify section ordering: agents should appear after MCP CONNECTION
-    mcp_index = thin_prompt.find("MCP CONNECTION")
-    agents_index = thin_prompt.find("## Available Agents")
-    assert mcp_index < agents_index, "Agent templates should appear after MCP CONNECTION section"
-
-    # Agents should appear before "YOUR ROLE" section
+    # Verify section ordering: IDENTITY -> MCP CONNECTION -> YOUR ROLE
+    identity_index = thin_prompt.find("IDENTITY:")
+    mcp_index = thin_prompt.find("MCP CONNECTION:")
     role_index = thin_prompt.find("YOUR ROLE:")
-    assert agents_index < role_index, "Agent templates should appear before YOUR ROLE section"
+
+    assert identity_index < mcp_index < role_index, (
+        "Sections should be ordered: IDENTITY -> MCP CONNECTION -> YOUR ROLE"
+    )
 
 
 @pytest.mark.asyncio
-async def test_agent_template_detail_respects_priority_levels(db_session: AsyncSession):
+async def test_thin_prompt_is_concise(db_session: AsyncSession):
     """
-    BEHAVIOR: Agent template detail level varies based on field priority
+    BEHAVIOR: Thin prompt is designed to be concise (~600 tokens)
 
-    GIVEN: Agent templates with full metadata (role, capabilities, expertise, tasks)
-    WHEN: Generating context with different priority levels (1, 2, 3, unassigned)
-    THEN: Detail level matches priority tier (full, summary, names-only, excluded)
+    Updated 0730 series: Agent template priority handling moved to MCP tools.
+    The thin prompt itself does NOT vary based on agent_templates priority.
+    Priority filtering happens when orchestrator calls get_orchestrator_instructions().
 
-    Priority Levels:
-    - Priority 1 (Full): Role, capabilities, expertise, typical tasks
-    - Priority 2 (Summary): Role and capabilities only
-    - Priority 3 (Names): Name and role only
-    - Unassigned (None): Section excluded entirely
+    GIVEN: Agent templates with full metadata
+    WHEN: Generating thin prompt with various priority settings
+    THEN: Thin prompt remains concise (MCP tool references, not inline content)
+    AND: All priorities produce similar token counts (templates fetched at runtime)
     """
     # ARRANGE
     tenant_key = "test_tenant_priority"
+
+    # Create organization for user (0424j: User.org_id NOT NULL)
+    org = await create_test_org(db_session, tenant_key)
 
     # Create product
     product = Product(id="prod-priority", name="Priority Test Product", tenant_key=tenant_key, config_data={})
     db_session.add(product)
 
     # Create user (will update field_priority_config for each test case)
-    user = User(id="user-priority", username="priorityuser", tenant_key=tenant_key, field_priority_config={})
+    user = User(id="user-priority", username="priorityuser", tenant_key=tenant_key, org_id=org.id, field_priority_config={})
     db_session.add(user)
 
     # Create project
@@ -174,7 +201,6 @@ async def test_agent_template_detail_respects_priority_levels(db_session: AsyncS
         tenant_key=tenant_key,
         description="Priority test description",
         mission="Priority test mission",
-        context_budget=100000,
     )
     db_session.add(project)
 
@@ -198,89 +224,58 @@ async def test_agent_template_detail_respects_priority_levels(db_session: AsyncS
 
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
 
-    # TEST CASE 1: Priority 1 (Full Detail)
-    user.field_priority_config = {"agent_templates": 1}
+    # TEST: Thin prompt should be concise regardless of priority settings
+    # (Agent templates NOT embedded inline - fetched via MCP tools)
+    user.field_priority_config = {"agent_templates": 1}  # Priority 1
     await db_session.commit()
 
     result_p1 = await generator.generate(
         project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
     )
-    context_p1 = result_p1["thin_prompt"]
 
-    # Priority 1 should include ALL details
-    assert "**Capabilities**:" in context_p1 or "Capabilities:" in context_p1, "Priority 1 should include capabilities"
-    assert "**Expertise**:" in context_p1 or "Expertise:" in context_p1, "Priority 1 should include expertise"
-    assert "**Typical Tasks**:" in context_p1 or "Typical Tasks:" in context_p1, (
-        "Priority 1 should include typical tasks"
+    # Thin prompt should NOT contain inline agent template content
+    # (Agent details are fetched via get_orchestrator_instructions at runtime)
+    thin_prompt = result_p1["thin_prompt"]
+
+    # Verify thin prompt is concise (target ~600 tokens = ~2400 chars)
+    assert len(thin_prompt) < 5000, f"Thin prompt should be concise, got {len(thin_prompt)} chars"
+
+    # Verify it references MCP tool for context fetching instead of embedding inline
+    assert "get_orchestrator_instructions" in thin_prompt, (
+        "Thin prompt should reference get_orchestrator_instructions for context fetching"
     )
 
-    # TEST CASE 2: Priority 2 (Summary - Capabilities Only)
-    user.field_priority_config = {"agent_templates": 2}
-    await db_session.commit()
-
-    result_p2 = await generator.generate(
-        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
-    )
-    context_p2 = result_p2["thin_prompt"]
-
-    # Priority 2 should include capabilities but NOT expertise or typical tasks
-    assert "**Capabilities**:" in context_p2 or "Capabilities:" in context_p2, "Priority 2 should include capabilities"
-    assert "**Expertise**:" not in context_p2 and "Expertise:" not in context_p2, (
-        "Priority 2 should NOT include expertise"
-    )
-    assert "**Typical Tasks**:" not in context_p2 and "Typical Tasks:" not in context_p2, (
-        "Priority 2 should NOT include typical tasks"
-    )
-
-    # TEST CASE 3: Priority 3 (Names and Roles Only)
-    user.field_priority_config = {"agent_templates": 3}
-    await db_session.commit()
-
-    result_p3 = await generator.generate(
-        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
-    )
-    context_p3 = result_p3["thin_prompt"]
-
-    # Priority 3 should show agent name/role but NO detailed metadata
-    assert "implementer" in context_p3.lower(), "Priority 3 should include agent name"
-    assert "**Capabilities**:" not in context_p3 and "Capabilities:" not in context_p3, (
-        "Priority 3 should NOT include capabilities"
-    )
-
-    # TEST CASE 4: Unassigned (Excluded)
-    user.field_priority_config = {"agent_templates": None}
-    await db_session.commit()
-
-    result_unassigned = await generator.generate(
-        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
-    )
-    context_unassigned = result_unassigned["thin_prompt"]
-
-    # Unassigned priority should completely exclude the section
-    assert "## Available Agents" not in context_unassigned, (
-        "Unassigned priority should exclude agent templates section entirely"
-    )
+    # Verify agent template metadata NOT embedded inline
+    # (capabilities, expertise, typical_tasks should NOT appear in thin prompt)
+    assert "API design" not in thin_prompt, "Agent expertise should NOT be embedded in thin prompt"
+    assert "Implement features" not in thin_prompt, "Agent typical_tasks should NOT be embedded in thin prompt"
 
 
 @pytest.mark.asyncio
-async def test_agent_template_token_accounting(db_session: AsyncSession):
+async def test_thin_prompt_token_estimation(db_session: AsyncSession):
     """
-    BEHAVIOR: Agent template tokens are counted and included in budget calculations
+    BEHAVIOR: Token estimation is provided for thin prompts
 
-    GIVEN: Context with agent templates and other sections
-    WHEN: Calculating total context tokens
-    THEN: Agent template tokens are included in the total count
-    AND: Context with agents has more tokens than without agents
+    Updated 0730 series: Agent templates NOT embedded in thin prompt.
+    Token count reflects thin prompt structure only (not inline templates).
+
+    GIVEN: A project setup
+    WHEN: Generating thin prompt
+    THEN: estimated_prompt_tokens is reasonable (~600 tokens target)
+    AND: Token count is consistent regardless of agent template priority
     """
     # ARRANGE
     tenant_key = "test_tenant_tokens"
+
+    # Create organization for user (0424j: User.org_id NOT NULL)
+    org = await create_test_org(db_session, tenant_key)
 
     # Create product
     product = Product(id="prod-tokens", name="Token Test Product", tenant_key=tenant_key, config_data={})
     db_session.add(product)
 
     # Create user
-    user = User(id="user-tokens", username="tokenuser", tenant_key=tenant_key, field_priority_config={})
+    user = User(id="user-tokens", username="tokenuser", tenant_key=tenant_key, org_id=org.id, field_priority_config={})
     db_session.add(user)
 
     # Create project
@@ -291,7 +286,6 @@ async def test_agent_template_token_accounting(db_session: AsyncSession):
         tenant_key=tenant_key,
         description="Token test description",
         mission="Token test mission",
-        context_budget=100000,
     )
     db_session.add(project)
 
@@ -315,64 +309,49 @@ async def test_agent_template_token_accounting(db_session: AsyncSession):
 
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
 
-    # ACT - Generate context WITH agent templates (Priority 1)
-    user.field_priority_config = {"agent_templates": 1}
-    await db_session.commit()
-
-    result_with_agents = await generator.generate(
-        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
+    # ACT - Generate thin prompt
+    result = await generator.generate(
+        project_id=project.id, user_id=user.id, field_priorities={"agent_templates": 1}
     )
-    context_with_agents = result_with_agents["thin_prompt"]
-    tokens_with = result_with_agents["estimated_prompt_tokens"]
-
-    # ACT - Generate context WITHOUT agent templates (Unassigned)
-    user.field_priority_config = {"agent_templates": None}
-    await db_session.commit()
-
-    result_without_agents = await generator.generate(
-        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
-    )
-    context_without_agents = result_without_agents["thin_prompt"]
-    tokens_without = result_without_agents["estimated_prompt_tokens"]
 
     # ASSERT
-    # Context with agents should have more tokens
-    assert tokens_with > tokens_without, (
-        f"Context with agents ({tokens_with} tokens) should exceed context without agents ({tokens_without} tokens)"
-    )
+    # Token estimation should be provided
+    assert "estimated_prompt_tokens" in result, "Response should include estimated_prompt_tokens"
+    tokens = result["estimated_prompt_tokens"]
 
-    # Difference should be meaningful (at least 50 tokens for full detail agent template)
-    token_difference = tokens_with - tokens_without
-    assert token_difference >= 50, (
-        f"Agent template should add at least 50 tokens (actual difference: {token_difference} tokens)"
-    )
+    # Thin prompt should be around 600-1000 tokens (not 3500+ like old fat prompts)
+    assert 200 < tokens < 1500, f"Thin prompt should be ~600 tokens, got {tokens}"
 
-    # Verify agent section is present in with-agents context
-    assert "## Available Agents" in context_with_agents, "Context with agents should contain agent section"
-
-    # Verify agent section is absent in without-agents context
-    assert "## Available Agents" not in context_without_agents, (
-        "Context without agents should not contain agent section"
-    )
+    # Verify thin_prompt is present
+    assert "thin_prompt" in result, "Response should include thin_prompt"
+    assert len(result["thin_prompt"]) > 0, "thin_prompt should not be empty"
 
 
 @pytest.mark.asyncio
-async def test_multi_tenant_agent_template_isolation(db_session: AsyncSession):
+async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
     """
-    BEHAVIOR: Agent templates respect tenant boundaries
+    BEHAVIOR: Thin prompt includes project context inline
 
-    GIVEN: Two products from different tenants with different agent templates
-    WHEN: Generating context for Tenant A's project
-    THEN: Only Tenant A's agent templates appear in context (not Tenant B's)
+    Updated 0730 series: Agent templates NOT embedded inline (fetched via MCP).
+    However, core project context IS included in thin prompt for efficiency.
+
+    GIVEN: Two products from different tenants
+    WHEN: Generating thin prompt for Tenant A's project
+    THEN: Thin prompt contains Tenant A's project name
+    AND: Thin prompt does NOT contain Tenant B's project details
     """
     # ARRANGE
     # Tenant A setup
     tenant_a_key = "tenant_a"
+
+    # Create organizations for both tenants (0424j: User.org_id NOT NULL)
+    org_a = await create_test_org(db_session, tenant_a_key)
+
     product_a = Product(id="prod-a", name="Tenant A Product", tenant_key=tenant_a_key, config_data={})
     db_session.add(product_a)
 
     user_a = User(
-        id="user-a", username="tenant_a_user", tenant_key=tenant_a_key, field_priority_config={"agent_templates": 2}
+        id="user-a", username="tenant_a_user", tenant_key=tenant_a_key, org_id=org_a.id, field_priority_config={"agent_templates": 2}
     )
     db_session.add(user_a)
 
@@ -383,11 +362,10 @@ async def test_multi_tenant_agent_template_isolation(db_session: AsyncSession):
         tenant_key=tenant_a_key,
         description="Tenant A description",
         mission="Tenant A mission",
-        context_budget=100000,
     )
     db_session.add(project_a)
 
-    # Tenant A agent template
+    # Tenant A agent template (stored in DB, fetched via MCP at runtime)
     template_a = AgentTemplate(
         tenant_key=tenant_a_key,
         product_id=product_a.id,
@@ -420,38 +398,42 @@ async def test_multi_tenant_agent_template_isolation(db_session: AsyncSession):
 
     await db_session.commit()
 
-    # ACT - Generate context for Tenant A
+    # ACT - Generate thin prompt for Tenant A
     generator_a = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_a_key)
     result_a = await generator_a.generate(
         project_id=project_a.id, user_id=user_a.id, field_priorities=user_a.field_priority_config
     )
-    context_a = result_a["thin_prompt"]
+    thin_prompt = result_a["thin_prompt"]
 
-    # ASSERT
-    # Tenant A's agent should be present
-    assert "tenant_a_agent" in context_a.lower() or "Tenant A Specialist" in context_a, (
-        "Tenant A's agent template should appear in Tenant A's context"
-    )
+    # ASSERT - Thin prompt contains Tenant A's project
+    assert "Tenant A Project" in thin_prompt, "Thin prompt should contain project name"
 
-    # Tenant B's agent should NOT be present (multi-tenant isolation)
-    assert "tenant_b_agent" not in context_a.lower(), (
-        "Tenant B's agent should NOT appear in Tenant A's context (tenant isolation violated)"
-    )
-    assert "Tenant B Specialist" not in context_a, "Tenant B's agent role should NOT appear in Tenant A's context"
+    # Tenant B content should NOT appear (multi-tenant isolation)
+    assert "Tenant B Project" not in thin_prompt, "Tenant B's project should NOT appear in Tenant A's thin prompt"
+    assert "Tenant B Product" not in thin_prompt, "Tenant B's product should NOT appear in Tenant A's thin prompt"
+
+    # Note: Agent templates are NOT embedded inline - they are fetched via MCP tools
+    # Tenant isolation for agent templates is tested in MCP tool tests, not thin prompt tests
 
 
 @pytest.mark.asyncio
-async def test_default_priority_for_agent_templates(db_session: AsyncSession):
+async def test_thin_prompt_works_without_field_priorities(db_session: AsyncSession):
     """
-    BEHAVIOR: Agent templates default to Priority 2 when user has no custom config
+    BEHAVIOR: Thin prompt generation works when user has no field_priority_config
+
+    Updated 0730 series: Agent templates NOT embedded inline.
+    Priority handling happens in MCP tools, not thin prompt generation.
 
     GIVEN: A new user with no field_priority_config set
-    WHEN: Generating orchestrator context
-    THEN: Agent templates are included with Priority 2 detail level (summary)
-    AND: Capabilities are shown but NOT expertise or typical tasks
+    WHEN: Generating thin prompt
+    THEN: Thin prompt is generated successfully
+    AND: Prompt contains core structure (IDENTITY, MCP CONNECTION, YOUR ROLE)
     """
     # ARRANGE
     tenant_key = "test_tenant_default"
+
+    # Create organization for user (0424j: User.org_id NOT NULL)
+    org = await create_test_org(db_session, tenant_key)
 
     # Create product
     product = Product(id="prod-default", name="Default Priority Product", tenant_key=tenant_key, config_data={})
@@ -462,6 +444,7 @@ async def test_default_priority_for_agent_templates(db_session: AsyncSession):
         id="user-default",
         username="defaultuser",
         tenant_key=tenant_key,
+        org_id=org.id,  # 0424j: User.org_id NOT NULL
         field_priority_config=None,  # No custom config
     )
     db_session.add(user)
@@ -474,11 +457,10 @@ async def test_default_priority_for_agent_templates(db_session: AsyncSession):
         tenant_key=tenant_key,
         description="Default priority test description",
         mission="Default priority test mission",
-        context_budget=100000,
     )
     db_session.add(project)
 
-    # Create agent template with full metadata
+    # Create agent template with full metadata (stored in DB, fetched via MCP)
     template = AgentTemplate(
         tenant_key=tenant_key,
         product_id=product.id,
@@ -496,35 +478,31 @@ async def test_default_priority_for_agent_templates(db_session: AsyncSession):
     db_session.add(template)
     await db_session.commit()
 
-    # ACT - Generate context without providing field_priorities
+    # ACT - Generate thin prompt without providing field_priorities
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
     result = await generator.generate(
         project_id=project.id,
         user_id=user.id,
         field_priorities=None,  # No custom priorities - should use defaults
     )
-    context = result["thin_prompt"]
+    thin_prompt = result["thin_prompt"]
 
     # ASSERT
-    # Agent templates should be included (not excluded)
-    assert "## Available Agents" in context, "Agent templates should be included by default (not excluded)"
+    # Thin prompt should be generated successfully
+    assert thin_prompt is not None, "Thin prompt should be generated"
+    assert len(thin_prompt) > 0, "Thin prompt should not be empty"
 
-    # Default is Priority 2 (summary) - should include role and capabilities
-    assert "implementer" in context.lower() or "Backend implementation specialist" in context, (
-        "Default priority should show agent name/role"
-    )
+    # Core structure should be present
+    assert "IDENTITY:" in thin_prompt, "IDENTITY section should be present"
+    assert "MCP CONNECTION:" in thin_prompt, "MCP CONNECTION section should be present"
+    assert "YOUR ROLE:" in thin_prompt, "YOUR ROLE section should be present"
 
-    # Priority 2 should include capabilities
-    assert (
-        "**Capabilities**:" in context or "Capabilities:" in context or "Python" in context or "FastAPI" in context
-    ), "Default Priority 2 should include capabilities"
+    # Project name should appear in prompt
+    assert "Default Priority Project" in thin_prompt, "Project name should appear in thin prompt"
 
-    # Priority 2 should NOT include expertise or typical tasks (full detail)
-    assert "**Expertise**:" not in context and "Expertise:" not in context, (
-        "Default Priority 2 should NOT include expertise (full detail)"
-    )
-    assert "**Typical Tasks**:" not in context and "Typical Tasks:" not in context, (
-        "Default Priority 2 should NOT include typical tasks (full detail)"
+    # MCP tool reference should be present (for fetching context including agent templates)
+    assert "get_orchestrator_instructions" in thin_prompt, (
+        "Thin prompt should reference get_orchestrator_instructions for fetching context"
     )
 
 
@@ -543,12 +521,15 @@ async def test_project_description_not_notes_in_context_string(db_session: Async
     # ARRANGE
     tenant_key = "test_tenant_notes_bug"
 
+    # Create organization for user (0424j: User.org_id NOT NULL)
+    org = await create_test_org(db_session, tenant_key)
+
     # Create product
     product = Product(id="prod-notes-bug", name="Notes Bug Test Product", tenant_key=tenant_key, config_data={})
     db_session.add(product)
 
     # Create user
-    user = User(id="user-notes-bug", username="notesbuguser", tenant_key=tenant_key, field_priority_config={})
+    user = User(id="user-notes-bug", username="notesbuguser", tenant_key=tenant_key, org_id=org.id, field_priority_config={})
     db_session.add(user)
 
     # Create project with description
@@ -560,7 +541,6 @@ async def test_project_description_not_notes_in_context_string(db_session: Async
         tenant_key=tenant_key,
         description=project_description,
         mission="Test mission for notes bug",
-        context_budget=100000,
     )
     db_session.add(project)
     await db_session.commit()

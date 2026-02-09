@@ -172,12 +172,17 @@ async def test_log_task_raises_exception_on_database_error(task_service, tenant_
 
 
 @pytest.mark.asyncio
-async def test_log_task_impl_raises_not_found_on_nonexistent_project(task_service, test_tenant_key):
+async def test_log_task_impl_raises_not_found_on_nonexistent_project(task_service, test_tenant_key, test_product):
     """Test _log_task_impl raises ResourceNotFoundError when project_id not found"""
     nonexistent_project_id = str(uuid4())
 
     with pytest.raises(ResourceNotFoundError) as exc_info:
-        await task_service.log_task(content="Test task", project_id=nonexistent_project_id, tenant_key=test_tenant_key)
+        await task_service.log_task(
+            content="Test task",
+            project_id=nonexistent_project_id,
+            product_id=test_product.id,
+            tenant_key=test_tenant_key,
+        )
 
     assert f"Project {nonexistent_project_id} not found" in str(exc_info.value)
 

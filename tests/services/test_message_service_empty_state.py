@@ -7,244 +7,224 @@ Tests that MessageService methods gracefully handle scenarios where:
 - Database is empty (fresh install)
 
 Critical behaviors:
-1. list_messages() returns empty list when no project exists
-2. broadcast() handles gracefully when no agents to broadcast to
+1. get_messages() returns empty list when no agent exists
+2. list_messages() returns empty list when no messages exist
 3. No exceptions thrown on empty database queries
 4. Proper empty result structures returned
 
-Handover Reference: Empty state API resilience - service layer
+Updated for Handover 0730: Exception-based patterns (no success wrapper)
+Updated for actual MessageService API (not fantasy methods)
 """
 
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import ResourceNotFoundError
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.services.message_service import MessageService
+from src.giljo_mcp.tenant import TenantManager
 
 
-def _create_empty_query_result():
-    """
-    Helper to create a properly mocked empty query result.
-
-    SQLAlchemy async query chain:
-    - session.execute() is async, returns a result object
-    - result.scalars() is sync, returns scalars object
-    - scalars.all() is sync, returns list
-    """
-    mock_scalars = MagicMock()
-    mock_scalars.all.return_value = []
-
-    # Result object is NOT async - execute() is what's async
-    mock_result = MagicMock()
-    mock_result.scalars.return_value = mock_scalars
-
-    return mock_result
+@pytest.fixture
+async def test_tenant_key() -> str:
+    """Generate unique tenant key for test isolation."""
+    return f"test-tenant-{uuid4().hex[:8]}"
 
 
-def _create_service_with_empty_db():
-    """
-    Helper to create MessageService with mocked empty database.
+@pytest.fixture
+async def test_product(db_session: AsyncSession, test_tenant_key: str) -> Product:
+    """Create a test product for tests."""
+    product = Product(
+        id=str(uuid4()),
+        tenant_key=test_tenant_key,
+        name="Test Product Empty State",
+        description="Test product for empty state tests",
+        product_memory={},
+    )
+    db_session.add(product)
+    await db_session.commit()
+    await db_session.refresh(product)
+    return product
 
-    Returns tuple of (service, mock_session, mock_db_manager, mock_tenant_manager)
-    """
-    # Create async mock session
-    mock_session = AsyncMock(spec=AsyncSession)
 
-    # Mock execute() to return a MagicMock result (not AsyncMock)
-    # execute() itself is async, but its return value is not
-    mock_result = _create_empty_query_result()
-    mock_session.execute = AsyncMock(return_value=mock_result)
+@pytest.fixture
+async def empty_project(
+    db_session: AsyncSession,
+    test_tenant_key: str,
+    test_product: Product,
+) -> Project:
+    """Create a test project with NO agents."""
+    project = Project(
+        id=str(uuid4()),
+        tenant_key=test_tenant_key,
+        product_id=test_product.id,
+        name="Empty Test Project",
+        description="Test project with no agents",
+        mission="Test mission",
+        status="active",
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(project)
+    await db_session.commit()
+    await db_session.refresh(project)
+    return project
 
-    mock_db_manager = MagicMock()
-    mock_tenant_manager = MagicMock()
 
-    service = MessageService(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager, test_session=mock_session)
+@pytest.fixture
+def mock_websocket_manager():
+    """Mock WebSocket manager for testing without real WebSocket connections."""
+    mock = MagicMock()
+    mock.broadcast_message_sent = AsyncMock()
+    mock.broadcast_message_received = AsyncMock()
+    mock.broadcast_message_acknowledged = AsyncMock()
+    mock.broadcast_job_message = AsyncMock()
+    return mock
 
-    return service, mock_session, mock_db_manager, mock_tenant_manager
+
+@pytest.fixture
+async def message_service(
+    db_manager: DatabaseManager,
+    db_session: AsyncSession,
+    mock_websocket_manager: MagicMock,
+) -> MessageService:
+    """Create MessageService instance with mocked WebSocket manager and test session."""
+    from contextlib import asynccontextmanager
+
+    tenant_manager = TenantManager()
+
+    @asynccontextmanager
+    async def mock_get_session_async():
+        yield db_session
+
+    db_manager.get_session_async = mock_get_session_async
+
+    service = MessageService(
+        db_manager=db_manager,
+        tenant_manager=tenant_manager,
+        websocket_manager=mock_websocket_manager,
+        test_session=db_session,
+    )
+    return service
 
 
 @pytest.mark.asyncio
-async def test_list_messages_no_project_returns_empty():
+async def test_get_messages_nonexistent_agent_returns_empty(
+    message_service: MessageService,
+):
     """
-    list_messages() should return empty array when no project exists.
+    get_messages() should return empty list when agent doesn't exist.
 
-    Scenario: Fresh install, user has no projects yet.
-    Expected: Returns [] without throwing exceptions.
+    Scenario: Fresh install, user has no agents yet.
+    Expected: Returns empty messages list without throwing exceptions.
+
+    Handover 0730: Returns dict with 'messages' key (no success wrapper)
     """
-    # Create service with empty database
-    service, _, _, _ = _create_service_with_empty_db()
+    # Call get_messages for nonexistent agent
+    result = await message_service.get_messages(agent_name="nonexistent-agent")
 
-    # Call list_messages
-    messages = await service.list_messages(project_id="nonexistent-project-id", agent_id=None, status=None, limit=10)
-
-    # Verify empty array returned
-    assert messages == [], "Expected empty array when no messages exist"
-    assert isinstance(messages, list), "Expected list type"
+    # Verify empty result structure
+    assert isinstance(result, dict)
+    assert "messages" in result
+    assert result["messages"] == []
 
 
 @pytest.mark.asyncio
-async def test_list_messages_empty_database_returns_empty():
+async def test_list_messages_nonexistent_project_returns_empty(
+    message_service: MessageService,
+):
     """
-    list_messages() should handle completely empty database.
+    list_messages() should return empty list when project doesn't exist.
 
-    Scenario: Fresh install with zero data in any table.
-    Expected: Returns [] without database errors.
+    Scenario: Query messages for project that doesn't exist.
+    Expected: Returns empty list (graceful handling per Handover 0464).
+
+    Handover 0464: No project = no messages, returns empty list not error
     """
-    # Create service with empty database
-    service, _, _, _ = _create_service_with_empty_db()
-
-    # Call without project_id (query all)
-    messages = await service.list_messages()
-
-    # Verify empty result
-    assert messages == []
-    assert isinstance(messages, list)
-
-
-@pytest.mark.asyncio
-async def test_broadcast_no_project_returns_graceful():
-    """
-    broadcast() should handle gracefully when no agents exist to broadcast to.
-
-    Scenario: User tries to broadcast but no agents are running.
-    Expected: Returns success=False or empty result, no exceptions.
-    """
-    # Mock session
-    mock_session = AsyncMock(spec=AsyncSession)
-
-    # Mock query result - no agent executions found
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_session.execute.return_value = mock_result
-
-    # Mock db_manager and tenant_manager
-    mock_db_manager = MagicMock()
-    mock_tenant_manager = MagicMock()
-
-    # Create service with test_session
-    service = MessageService(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager, test_session=mock_session)
-
-    # Attempt broadcast with no agents
-    result = await service.send_message(
-        from_agent="orchestrator",
-        to_agents=["all"],  # Broadcast to all
-        content="Test broadcast",
-        project_id="test-project-id",
-        message_type="broadcast",
+    result = await message_service.list_messages(
+        project_id="nonexistent-project-id",
+        tenant_key="nonexistent-tenant",
     )
 
-    # Verify graceful handling
-    # Result should indicate no recipients or return empty result
-    # (exact structure depends on implementation)
-    assert result is not None, "Expected non-None result"
-
-    # Common patterns:
-    # 1. {"success": False, "message": "No recipients"}
-    # 2. {"messages_sent": 0, "recipients": []}
-    # 3. [] (empty array of sent messages)
-    if isinstance(result, dict):
-        # If dict, check for indicators of zero recipients
-        assert (
-            result.get("success") is False
-            or result.get("messages_sent") == 0
-            or result.get("recipients") == []
-            or len(result.get("messages", [])) == 0
-        ), f"Expected empty/zero result, got {result}"
-    elif isinstance(result, list):
-        assert result == [], f"Expected empty list, got {result}"
+    # Handover 0464: Returns empty list when project doesn't exist
+    assert isinstance(result, dict)
+    assert "messages" in result
+    assert result["messages"] == []
 
 
 @pytest.mark.asyncio
-async def test_get_message_by_id_nonexistent_returns_none():
+async def test_list_messages_empty_project_returns_empty(
+    message_service: MessageService,
+    empty_project: Project,
+):
     """
-    get_message_by_id() should return None when message doesn't exist.
+    list_messages() should return empty list when project has no messages.
 
-    Scenario: Query for message that doesn't exist in empty database.
-    Expected: Returns None, no exceptions.
+    Scenario: Project exists but has no messages yet.
+    Expected: Returns empty messages list.
+
+    Handover 0730: Returns dict with 'messages' key (no success wrapper)
     """
-    # Mock session
-    mock_session = AsyncMock(spec=AsyncSession)
+    result = await message_service.list_messages(
+        project_id=empty_project.id,
+        tenant_key=empty_project.tenant_key,
+    )
 
-    # Mock query result - no message found
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = None
-    mock_session.execute.return_value = mock_result
-
-    # Mock db_manager and tenant_manager
-    mock_db_manager = MagicMock()
-    mock_tenant_manager = MagicMock()
-
-    # Create service with test_session
-    service = MessageService(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager, test_session=mock_session)
-
-    # Query nonexistent message
-    message = await service.get_message_by_id("nonexistent-message-id")
-
-    # Verify None returned
-    assert message is None, "Expected None for nonexistent message"
+    # Verify empty result structure
+    assert isinstance(result, dict)
+    assert "messages" in result
+    assert result["messages"] == []
 
 
 @pytest.mark.asyncio
-async def test_list_messages_with_filters_empty_returns_empty():
+async def test_broadcast_to_empty_project_raises_not_found(
+    message_service: MessageService,
+    empty_project: Project,
+):
     """
-    list_messages() with filters should return empty array when no matches.
+    broadcast_to_project() should raise ResourceNotFoundError when no agents exist.
 
-    Scenario: Apply filters (status, agent_id) on empty database.
-    Expected: Returns [] without errors.
+    Scenario: User tries to broadcast but no agents are running.
+    Expected: Raises ResourceNotFoundError since no active executions.
+
+    Handover 0730: Exception-based error handling
     """
-    # Mock session
-    mock_session = AsyncMock(spec=AsyncSession)
+    with pytest.raises(ResourceNotFoundError) as exc_info:
+        await message_service.broadcast_to_project(
+            project_id=empty_project.id,
+            content="Test broadcast",
+            from_agent="orchestrator",
+            tenant_key=empty_project.tenant_key,
+        )
 
-    # Mock empty result
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    mock_session.execute.return_value = mock_result
-
-    # Mock db_manager and tenant_manager
-    mock_db_manager = MagicMock()
-    mock_tenant_manager = MagicMock()
-
-    # Create service with test_session
-    service = MessageService(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager, test_session=mock_session)
-
-    # Apply multiple filters on empty database
-    messages = await service.list_messages(project_id="test-project", agent_id="test-agent", status="pending", limit=10)
-
-    # Verify empty result
-    assert messages == []
-    assert isinstance(messages, list)
+    assert "no active executions" in str(exc_info.value).lower()
 
 
 @pytest.mark.asyncio
-async def test_count_messages_empty_database_returns_zero():
+async def test_receive_messages_nonexistent_agent_raises_not_found(
+    message_service: MessageService,
+):
     """
-    count_messages() should return 0 when database is empty.
+    receive_messages() should raise ResourceNotFoundError when agent doesn't exist.
 
-    Scenario: Count messages in empty database.
-    Expected: Returns 0, no exceptions.
+    Scenario: Query for messages for nonexistent agent.
+    Expected: Raises ResourceNotFoundError.
+
+    Handover 0730: Exception-based error handling
     """
-    # Mock session
-    mock_session = AsyncMock(spec=AsyncSession)
+    with pytest.raises(ResourceNotFoundError) as exc_info:
+        await message_service.receive_messages(
+            agent_id="nonexistent-agent-id",
+            tenant_key="nonexistent-tenant",
+        )
 
-    # Mock count result
-    mock_result = MagicMock()
-    mock_result.scalar.return_value = 0
-    mock_session.execute.return_value = mock_result
-
-    # Mock db_manager and tenant_manager
-    mock_db_manager = MagicMock()
-    mock_tenant_manager = MagicMock()
-
-    # Create service with test_session
-    service = MessageService(db_manager=mock_db_manager, tenant_manager=mock_tenant_manager, test_session=mock_session)
-
-    # Count messages
-    count = await service.count_messages(project_id="test-project", status="pending")
-
-    # Verify zero count
-    assert count == 0, "Expected count of 0 for empty database"
-    assert isinstance(count, int), "Expected integer count"
+    assert "not found" in str(exc_info.value).lower()
 
 
 class TestEmptyStateBoundaryConditions:
@@ -252,73 +232,49 @@ class TestEmptyStateBoundaryConditions:
     Boundary condition tests for empty state scenarios.
 
     Tests edge cases like:
-    - Pagination with skip > 0 on empty database
-    - Complex filters on empty database
-    - Aggregation queries on empty database
+    - Limit=0 queries
+    - Empty message tables
+    - Nonexistent entities
     """
 
     @pytest.mark.asyncio
-    async def test_list_messages_pagination_skip_on_empty(self):
+    async def test_list_messages_limit_zero_returns_empty(
+        self,
+        message_service: MessageService,
+        empty_project: Project,
+    ):
         """
-        list_messages() with skip > 0 should handle empty database.
+        list_messages() with limit=0 should return empty array.
 
-        Scenario: Request page 2 when no data exists.
-        Expected: Returns [], no index errors.
+        Scenario: Request zero messages.
+        Expected: Returns empty list.
         """
-        # Create service with empty database
-        service, _, _, _ = _create_service_with_empty_db()
+        result = await message_service.list_messages(
+            project_id=empty_project.id,
+            tenant_key=empty_project.tenant_key,
+            limit=0,
+        )
 
-        # Request page 2 (skip=10) on empty database
-        messages = await service.list_messages(skip=10, limit=10)
-
-        assert messages == []
+        assert isinstance(result, dict)
+        assert "messages" in result
+        assert result["messages"] == []
 
     @pytest.mark.asyncio
-    async def test_aggregate_stats_empty_database_returns_zeros(self):
+    async def test_get_messages_with_filters_empty_returns_empty(
+        self,
+        message_service: MessageService,
+    ):
         """
-        Message statistics/aggregation should return zero counts on empty database.
+        get_messages() with status filter should return empty when no matches.
 
-        Scenario: Request message counts by status when no messages exist.
-        Expected: Returns all zeros, no errors.
+        Scenario: Apply status filter on empty agent.
+        Expected: Returns empty list.
         """
-        # Create service with empty database
-        service, mock_session, _, _ = _create_service_with_empty_db()
+        result = await message_service.get_messages(
+            agent_name="nonexistent-agent",
+            status="pending",
+        )
 
-        # Mock aggregation result for stats query
-        mock_result = AsyncMock()
-        mock_result.all.return_value = []  # No rows returned
-        mock_session.execute.return_value = mock_result
-
-        # Get message counts by status
-        stats = await service.get_message_stats(project_id="test-project")
-
-        # Verify zero stats
-        # (exact structure depends on implementation)
-        if isinstance(stats, dict):
-            assert all(v == 0 for v in stats.values() if isinstance(v, (int, float)))
-        elif isinstance(stats, list):
-            assert stats == []
-
-    @pytest.mark.asyncio
-    async def test_delete_messages_empty_database_no_error(self):
-        """
-        delete_messages() should succeed silently when no messages exist.
-
-        Scenario: Attempt to delete messages from empty database.
-        Expected: Returns success (0 deleted), no errors.
-        """
-        # Create service with empty database
-        service, mock_session, _, _ = _create_service_with_empty_db()
-
-        # Mock delete result - zero rows affected
-        mock_result = AsyncMock()
-        mock_result.rowcount = 0
-        mock_session.execute.return_value = mock_result
-        mock_session.commit = AsyncMock()
-
-        # Attempt to delete nonexistent messages
-        deleted_count = await service.delete_messages(project_id="test-project", status="read")
-
-        # Verify zero deleted, no errors
-        assert deleted_count == 0
-        assert isinstance(deleted_count, int)
+        assert isinstance(result, dict)
+        assert "messages" in result
+        assert result["messages"] == []

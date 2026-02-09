@@ -304,5 +304,5 @@ class TestOrchestratorStatusFilterFix:
 
         # ASSERT: Both "waiting" and "working" should still be found
         assert len(found) == 2
-        assert found[0].status == "waiting"
-        assert found[1].status == "working"
+        statuses = {f.status for f in found}
+        assert statuses == {"waiting", "working"}

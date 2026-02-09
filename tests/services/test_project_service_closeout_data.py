@@ -1,10 +1,12 @@
 """
 Unit tests for ProjectService.get_closeout_data (Handover 0249a).
+Updated 0730d: Exception-based error handling patterns (no success wrappers).
 """
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp.exceptions import ResourceNotFoundError
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.services.project_service import ProjectService
@@ -50,10 +52,9 @@ async def test_get_closeout_data_all_agents_complete(
     await db_session.commit()
 
     service = ProjectService(db_manager, tenant_manager)
-    result = await service.get_closeout_data(project.id, db_session=db_session)
+    # 0730d: get_closeout_data returns data directly (no success wrapper)
+    data = await service.get_closeout_data(project.id, db_session=db_session)
 
-    assert result["success"] is True
-    data = result["data"]
     assert data["project_id"] == project.id
     assert data["project_name"] == "Closeout Ready"
     assert data["agent_count"] == 3
@@ -135,10 +136,9 @@ async def test_get_closeout_data_with_failed_agents(
     await db_session.commit()
 
     service = ProjectService(db_manager, tenant_manager)
-    result = await service.get_closeout_data(project.id, db_session=db_session)
+    # 0730d: get_closeout_data returns data directly (no success wrapper)
+    data = await service.get_closeout_data(project.id, db_session=db_session)
 
-    assert result["success"] is True
-    data = result["data"]
     assert data["project_id"] == project.id
     assert data["project_name"] == "Mixed Outcomes"
     assert data["agent_count"] == 3
@@ -197,10 +197,9 @@ async def test_get_closeout_data_with_git_integration(
     await db_session.commit()
 
     service = ProjectService(db_manager, tenant_manager)
-    result = await service.get_closeout_data(project.id, db_session=db_session)
+    # 0730d: get_closeout_data returns data directly (no success wrapper)
+    data = await service.get_closeout_data(project.id, db_session=db_session)
 
-    assert result["success"] is True
-    data = result["data"]
     assert data["project_id"] == project.id
     assert data["project_name"] == "Git Enabled Project"
     assert data["agent_count"] == 1
@@ -228,7 +227,9 @@ async def test_get_closeout_data_tenant_isolation(db_manager, db_session: AsyncS
 
     tenant_manager.set_current_tenant(tenant_two)
     service = ProjectService(db_manager, tenant_manager)
-    result = await service.get_closeout_data(project.id)
 
-    assert result["success"] is False
-    assert "not found" in result["error"].lower()
+    # 0730d: Exception-based error handling - raises ResourceNotFoundError
+    with pytest.raises(ResourceNotFoundError) as exc_info:
+        await service.get_closeout_data(project.id)
+
+    assert "not found" in str(exc_info.value).lower()

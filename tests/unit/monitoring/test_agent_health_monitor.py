@@ -74,6 +74,7 @@ class TestAgentHealthStatus:
         now = datetime.now(timezone.utc)
 
         status = AgentHealthStatus(
+            execution_id="exec-uuid-1",
             job_id="test-job-1",
             agent_id="agent-uuid-1",
             agent_display_name="implementer",
