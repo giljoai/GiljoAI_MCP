@@ -12,6 +12,10 @@ BUG CONTEXT:
 
 These tests will initially FAIL to confirm the bug exists.
 
+Updated for:
+- 0424j: User.org_id NOT NULL constraint
+- 0730: Exception-based error handling patterns
+
 Handover: Field Priority Bug Fix - Phase 1
 """
 
@@ -20,7 +24,9 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
+from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.services.user_service import UserService
 
 
@@ -39,6 +45,21 @@ async def test_tenant_key():
 
 
 @pytest_asyncio.fixture
+async def test_organization(db_session, test_tenant_key):
+    """Create test organization for users (0424j: User.org_id NOT NULL)"""
+    org = Organization(
+        id=str(uuid4()),
+        tenant_key=test_tenant_key,
+        name=f"Test Org {test_tenant_key}",
+        slug=f"test-org-{test_tenant_key.replace('_', '-')}",
+        is_active=True,
+    )
+    db_session.add(org)
+    await db_session.flush()
+    return org
+
+
+@pytest_asyncio.fixture
 async def user_service(db_manager, db_session, test_tenant_key):
     """Create UserService instance for testing with shared session"""
     return UserService(
@@ -50,7 +71,7 @@ async def user_service(db_manager, db_session, test_tenant_key):
 
 
 @pytest_asyncio.fixture
-async def test_user(db_session, test_tenant_key):
+async def test_user(db_session, test_tenant_key, test_organization):
     """Create test user WITHOUT field priority configuration"""
     user = User(
         id=str(uuid4()),
@@ -60,6 +81,7 @@ async def test_user(db_session, test_tenant_key):
         full_name="Test User",
         role="developer",
         tenant_key=test_tenant_key,
+        org_id=test_organization.id,  # 0424j: User.org_id NOT NULL
         is_active=True,
         field_priority_config=None,  # Start with no config
     )
@@ -70,7 +92,7 @@ async def test_user(db_session, test_tenant_key):
 
 
 @pytest_asyncio.fixture
-async def user_with_priorities(db_session, test_tenant_key):
+async def user_with_priorities(db_session, test_tenant_key, test_organization):
     """Create test user WITH field priority configuration (correct structure)"""
     user = User(
         id=str(uuid4()),
@@ -80,6 +102,7 @@ async def user_with_priorities(db_session, test_tenant_key):
         full_name="Configured User",
         role="developer",
         tenant_key=test_tenant_key,
+        org_id=test_organization.id,  # 0424j: User.org_id NOT NULL
         is_active=True,
         field_priority_config={
             "version": "2.0",
@@ -110,7 +133,7 @@ async def test_field_priorities_persist_with_priorities_key(user_service, test_u
     TEST 1: Field priorities should persist to database with 'priorities' key.
 
     USER STORY:
-    1. User opens My Settings → Context → Field Priority Configuration
+    1. User opens My Settings -> Context -> Field Priority Configuration
     2. User configures priorities: product_core=1, vision_documents=2, etc.
     3. User clicks Save
     4. Configuration should be stored in User.field_priority_config JSONB column
@@ -125,8 +148,8 @@ async def test_field_priorities_persist_with_priorities_key(user_service, test_u
         }
     }
 
-    BUG:
-    This test will FAIL if the code uses "fields" key instead of "priorities" key.
+    NOTE: Service uses exception-based error handling (0730 refactoring).
+    Success = no exception raised, returns None.
     """
     # ARRANGE: Create valid field priority configuration
     new_config = {
@@ -142,10 +165,8 @@ async def test_field_priorities_persist_with_priorities_key(user_service, test_u
     }
 
     # ACT: Update user's field priority configuration
-    result = await user_service.update_field_priority_config(user_id=test_user.id, config=new_config)
-
-    # ASSERT: Configuration should be saved successfully
-    assert result["success"] is True, "Failed to update field priority config"
+    # Exception-based pattern: no exception = success (void return)
+    await user_service.update_field_priority_config(user_id=test_user.id, config=new_config)
 
     # Refresh user from database to verify persistence
     await db_session.refresh(test_user)
@@ -176,30 +197,27 @@ async def test_field_priorities_retrieved_with_correct_structure(user_service, u
 
     USER STORY:
     1. User already has configured field priorities
-    2. User opens My Settings → Context → Field Priority Configuration
+    2. User opens My Settings -> Context -> Field Priority Configuration
     3. UI loads existing configuration
     4. Configuration should have 'priorities' key
 
-    BUG:
-    This test will FAIL if the code expects "fields" key when reading config.
+    NOTE: Service uses exception-based error handling (0730 refactoring).
+    get_field_priority_config returns the config dict directly (not wrapped).
     """
     # ACT: Retrieve user's field priority configuration
-    result = await user_service.get_field_priority_config(user_with_priorities.id)
+    # Exception-based pattern: returns config dict directly
+    config = await user_service.get_field_priority_config(user_with_priorities.id)
 
-    # ASSERT: Configuration should be retrieved successfully
-    assert result["success"] is True, "Failed to retrieve field priority config"
+    # ASSERT: Config should be a dict with expected structure
+    assert isinstance(config, dict), "Config should be a dictionary"
 
-    # CRITICAL ASSERTION 1: Config should exist
-    assert "config" in result, "Response should contain 'config' key"
-    config = result["config"]
-
-    # CRITICAL ASSERTION 2: Config should have "priorities" key
+    # CRITICAL ASSERTION 1: Config should have "priorities" key
     assert "priorities" in config, f"Config should have 'priorities' key. Got keys: {config.keys()}"
 
-    # CRITICAL ASSERTION 3: Config should NOT have "fields" key
+    # CRITICAL ASSERTION 2: Config should NOT have "fields" key
     assert "fields" not in config, "Config should NOT have 'fields' key - should be 'priorities'"
 
-    # CRITICAL ASSERTION 4: Priorities should match database
+    # CRITICAL ASSERTION 3: Priorities should match database
     expected_priorities = {
         "product_core": 1,
         "vision_documents": 2,
@@ -220,20 +238,20 @@ async def test_default_field_priorities_use_priorities_key(user_service, test_us
 
     USER STORY:
     1. New user has no custom field priority configuration
-    2. User opens My Settings → Context → Field Priority Configuration
+    2. User opens My Settings -> Context -> Field Priority Configuration
     3. UI should show default configuration with 'priorities' key
 
-    BUG:
-    This test will FAIL if defaults use "fields" key instead of "priorities".
+    NOTE: Service uses exception-based error handling (0730 refactoring).
+    get_field_priority_config returns the config dict directly (not wrapped).
+
+    Default priorities use v2.1 nested format: {"toggle": True, "priority": 1}
     """
     # ACT: Retrieve defaults for user without configuration
-    result = await user_service.get_field_priority_config(test_user.id)
+    # Exception-based pattern: returns config dict directly
+    config = await user_service.get_field_priority_config(test_user.id)
 
-    # ASSERT: Should return default configuration
-    assert result["success"] is True, "Failed to retrieve default config"
-    assert "config" in result, "Response should contain default config"
-
-    config = result["config"]
+    # ASSERT: Config should be a dict with expected structure
+    assert isinstance(config, dict), "Config should be a dictionary"
 
     # CRITICAL ASSERTION 1: Default config should have "priorities" key
     assert "priorities" in config, f"Default config should have 'priorities' key. Got keys: {config.keys()}"
@@ -246,9 +264,19 @@ async def test_default_field_priorities_use_priorities_key(user_service, test_us
     assert isinstance(priorities, dict), "priorities should be a dict"
     assert len(priorities) > 0, "Default priorities should not be empty"
 
-    # Verify all priorities are valid values (1-4)
-    for category, priority in priorities.items():
-        assert priority in {1, 2, 3, 4}, f"Invalid priority {priority} for category '{category}'"
+    # Verify all priorities are valid
+    # v2.1 format: {"toggle": bool, "priority": int} per category
+    # v2.0 format: int per category (for backwards compatibility)
+    for category, priority_config in priorities.items():
+        if isinstance(priority_config, dict):
+            # v2.1 nested format
+            assert "toggle" in priority_config, f"Missing 'toggle' for category '{category}'"
+            assert "priority" in priority_config, f"Missing 'priority' for category '{category}'"
+            priority_value = priority_config["priority"]
+            assert priority_value in {1, 2, 3, 4}, f"Invalid priority {priority_value} for category '{category}'"
+        else:
+            # v2.0 simple format (backwards compatibility)
+            assert priority_config in {1, 2, 3, 4}, f"Invalid priority {priority_config} for category '{category}'"
 
 
 @pytest.mark.asyncio
@@ -257,6 +285,8 @@ async def test_field_priorities_version_is_2_0(user_service, test_user):
     TEST 1d: Field priority config should always have version 2.0.
 
     This confirms we're using the current config schema version.
+
+    NOTE: Service uses exception-based error handling (0730 refactoring).
     """
     # ARRANGE: Create config with version 2.0
     new_config = {
@@ -264,14 +294,13 @@ async def test_field_priorities_version_is_2_0(user_service, test_user):
         "priorities": {"product_core": 1, "vision_documents": 2, "agent_templates": 3, "project_description": 1},
     }
 
-    # ACT: Update config
+    # ACT: Update config (void return on success)
     await user_service.update_field_priority_config(user_id=test_user.id, config=new_config)
 
     # ASSERT: Retrieved config should have version 2.0
-    result = await user_service.get_field_priority_config(test_user.id)
+    config = await user_service.get_field_priority_config(test_user.id)
 
-    assert result["success"] is True
-    assert result["config"]["version"] == "2.0", f"Expected version 2.0, got {result['config'].get('version')}"
+    assert config["version"] == "2.0", f"Expected version 2.0, got {config.get('version')}"
 
 
 # ============================================================================
@@ -285,17 +314,19 @@ async def test_field_priorities_handles_none_gracefully(user_service, test_user,
     TEST 1e: When user has field_priority_config=None, should return defaults.
 
     This ensures the system handles missing configuration gracefully.
+
+    NOTE: Service uses exception-based error handling (0730 refactoring).
+    get_field_priority_config returns the config dict directly (not wrapped).
     """
     # ARRANGE: Verify user has no config
     assert test_user.field_priority_config is None
 
     # ACT: Retrieve config (should return defaults)
-    result = await user_service.get_field_priority_config(test_user.id)
+    config = await user_service.get_field_priority_config(test_user.id)
 
     # ASSERT: Should return default config, not error
-    assert result["success"] is True
-    assert "config" in result
-    assert "priorities" in result["config"]
+    assert isinstance(config, dict), "Config should be a dictionary"
+    assert "priorities" in config, "Default config should have 'priorities' key"
 
 
 @pytest.mark.asyncio
@@ -304,6 +335,9 @@ async def test_field_priorities_validates_structure(user_service, test_user):
     TEST 1f: Invalid config structure should be rejected.
 
     This ensures validation is working correctly.
+
+    NOTE: Service uses exception-based error handling (0730 refactoring).
+    Invalid config raises ValidationError instead of returning error dict.
     """
     # ARRANGE: Create invalid config (wrong key)
     invalid_config = {
@@ -313,11 +347,12 @@ async def test_field_priorities_validates_structure(user_service, test_user):
         },
     }
 
-    # ACT: Try to update with invalid config
-    result = await user_service.update_field_priority_config(user_id=test_user.id, config=invalid_config)
+    # ACT & ASSERT: Should raise ValidationError for invalid config
+    with pytest.raises(ValidationError) as exc_info:
+        await user_service.update_field_priority_config(user_id=test_user.id, config=invalid_config)
 
-    # ASSERT: Should be rejected
-    # NOTE: This might pass if validation doesn't check for correct key
-    # The test documents expected behavior
-    assert result["success"] is False, "Config with 'fields' key should be rejected - should use 'priorities'"
-    assert "priorities" in result.get("error", "").lower() or "invalid" in result.get("error", "").lower()
+    # Verify the error message mentions the issue
+    error_message = str(exc_info.value).lower()
+    assert "priorities" in error_message or "invalid" in error_message, (
+        f"Error should mention 'priorities' or 'invalid'. Got: {exc_info.value}"
+    )

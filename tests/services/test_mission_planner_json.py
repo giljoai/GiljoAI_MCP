@@ -5,9 +5,10 @@ Validates that MissionPlanner now returns structured JSON instead of markdown st
 using JSONContextBuilder for priority-based organization.
 
 Part of Handover 0347b - MissionPlanner JSON Refactor.
+Updated for exception-based patterns (Handover 0730).
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
@@ -17,14 +18,25 @@ from src.giljo_mcp.models import Product, Project, VisionDocument
 
 @pytest.fixture
 def mock_db_manager():
-    """Mock database manager for testing."""
-    from unittest.mock import MagicMock
-
+    """Mock database manager for testing with proper async session handling."""
     mock_manager = Mock()
 
-    # Create a proper async context manager mock
+    # Create a proper async context manager mock with execute returning proper result
     mock_session = MagicMock()
-    mock_session.execute = AsyncMock()
+
+    # Mock execute to return an async result that has scalars().all() pattern
+    mock_execute_result = MagicMock()
+    mock_scalars_result = MagicMock()
+    mock_scalars_result.all.return_value = []  # No templates by default
+    mock_scalars_result.first.return_value = None
+    mock_execute_result.scalars.return_value = mock_scalars_result
+    mock_execute_result.scalar_one_or_none.return_value = None
+
+    # Make execute return a coroutine that resolves to our mock result
+    async def mock_execute(*args, **kwargs):
+        return mock_execute_result
+
+    mock_session.execute = mock_execute
     mock_session.commit = AsyncMock()
 
     # Create async context manager
@@ -33,6 +45,12 @@ def mock_db_manager():
     mock_context.__aexit__ = AsyncMock(return_value=None)
 
     mock_manager.get_session_async = Mock(return_value=mock_context)
+
+    # Store references for test access
+    mock_manager._mock_session = mock_session
+    mock_manager._mock_execute_result = mock_execute_result
+    mock_manager._mock_scalars_result = mock_scalars_result
+
     return mock_manager
 
 
@@ -144,14 +162,6 @@ class TestMissionPlannerJSONRefactor:
 
     async def test_reference_fields_have_fetch_tools(self, mock_db_manager, sample_product, sample_project):
         """Test that priority 3 (REFERENCE) fields have summary + fetch_tool pointers."""
-        # Mock vision document query result
-        mock_vision_result = Mock()
-        mock_vision_result.scalar_one_or_none = Mock(return_value=None)  # No vision doc for simplicity
-
-        # Configure mock session to return the result
-        mock_session = mock_db_manager.get_session_async.return_value.__aenter__.return_value
-        mock_session.execute = AsyncMock(return_value=mock_vision_result)
-
         planner = MissionPlanner(mock_db_manager)
 
         result = await planner._build_context_with_priorities(
@@ -196,7 +206,7 @@ class TestMissionPlannerJSONRefactor:
             depth_config={},
         )
 
-        # Estimate token count (1 token ≈ 4 chars)
+        # Estimate token count (1 token ~ 4 chars)
         import json
 
         json_str = json.dumps(result)
@@ -240,14 +250,21 @@ class TestMissionPlannerJSONRefactor:
             assert vision is not None, "Should return vision document"
 
     async def test_helper_method_get_memory_summary(self, mock_db_manager, sample_product, sample_project):
-        """Test new helper method _get_memory_summary."""
+        """Test new helper method _get_memory_summary with updated signature."""
         planner = MissionPlanner(mock_db_manager)
 
-        # Call helper (if implemented)
+        # Call helper with updated signature (session, product_id, tenant_key, max_entries)
         if hasattr(planner, "_get_memory_summary"):
-            summary = await planner._get_memory_summary(sample_product, max_entries=3)
-            # Should return brief summary or empty string
-            assert isinstance(summary, (str, dict)), "Summary should be str or dict"
+            # Get a mock session from our mock db manager
+            mock_session = mock_db_manager._mock_session
+            summary = await planner._get_memory_summary(
+                session=mock_session,
+                product_id=str(sample_product.id),
+                tenant_key=sample_product.tenant_key,
+                max_entries=3,
+            )
+            # Should return brief summary dict (normalized table approach)
+            assert isinstance(summary, dict), "Summary should be dict"
 
     async def test_json_serializable_output(self, mock_db_manager, sample_product, sample_project):
         """Test that all output is JSON-serializable (no datetime, UUID objects, etc)."""

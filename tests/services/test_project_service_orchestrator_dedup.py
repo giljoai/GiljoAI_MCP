@@ -1,10 +1,13 @@
 """
 Tests for orchestrator deduplication on project reactivation (Handover 0485 - Bug B)
+Updated 0730d: Exception-based error handling patterns (no success wrappers).
 
 Verifies that when a project is reactivated, the system does NOT create duplicate
 orchestrators if one already exists in a non-failed state (complete, blocked, etc.).
 """
 
+from contextlib import asynccontextmanager
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -48,6 +51,26 @@ async def test_user(db_session: AsyncSession):
     return user
 
 
+def create_project_service(db_session: AsyncSession, tenant_key: str) -> ProjectService:
+    """Helper to create ProjectService with proper mocking."""
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield db_session
+
+    db_manager = MagicMock()
+    db_manager.get_session_async = mock_get_session
+
+    tenant_manager = TenantManager()
+    tenant_manager.set_current_tenant(tenant_key)
+
+    return ProjectService(
+        db_manager=db_manager,
+        tenant_manager=tenant_manager,
+        test_session=db_session,
+    )
+
+
 class TestOrchestratorDeduplication:
     """Test orchestrator deduplication when reactivating projects"""
 
@@ -69,6 +92,7 @@ class TestOrchestratorDeduplication:
         project = Project(
             name=f"Test Project {uuid4().hex[:8]}",
             description="Test project for orchestrator dedup",
+            mission="Test mission for orchestrator dedup",
             product_id=product.id,
             tenant_key=test_user.tenant_key,
             status="inactive",
@@ -103,24 +127,7 @@ class TestOrchestratorDeduplication:
         await db_session.commit()
 
         # Create ProjectService
-        from contextlib import asynccontextmanager
-        from unittest.mock import MagicMock
-
-        @asynccontextmanager
-        async def mock_get_session():
-            yield db_session
-
-        db_manager = MagicMock()
-        db_manager.get_session_async = mock_get_session
-
-        tenant_manager = TenantManager()
-        tenant_manager.set_current_tenant(test_user.tenant_key)
-
-        project_service = ProjectService(
-            db_manager=db_manager,
-            tenant_manager=tenant_manager,
-            test_session=db_session,
-        )
+        project_service = create_project_service(db_session, test_user.tenant_key)
 
         # Call _ensure_orchestrator_fixture
         result = await project_service._ensure_orchestrator_fixture(
@@ -167,6 +174,7 @@ class TestOrchestratorDeduplication:
         project = Project(
             name=f"Test Project {uuid4().hex[:8]}",
             description="Test project for blocked orchestrator",
+            mission="Test mission for blocked orchestrator",
             product_id=product.id,
             tenant_key=test_user.tenant_key,
             status="inactive",
@@ -201,24 +209,7 @@ class TestOrchestratorDeduplication:
         await db_session.commit()
 
         # Create ProjectService
-        from contextlib import asynccontextmanager
-        from unittest.mock import MagicMock
-
-        @asynccontextmanager
-        async def mock_get_session():
-            yield db_session
-
-        db_manager = MagicMock()
-        db_manager.get_session_async = mock_get_session
-
-        tenant_manager = TenantManager()
-        tenant_manager.set_current_tenant(test_user.tenant_key)
-
-        project_service = ProjectService(
-            db_manager=db_manager,
-            tenant_manager=tenant_manager,
-            test_session=db_session,
-        )
+        project_service = create_project_service(db_session, test_user.tenant_key)
 
         # Call _ensure_orchestrator_fixture
         result = await project_service._ensure_orchestrator_fixture(
@@ -264,6 +255,7 @@ class TestOrchestratorDeduplication:
         project = Project(
             name=f"Test Project {uuid4().hex[:8]}",
             description="Test project for failed orchestrator",
+            mission="Test mission for failed orchestrator",
             product_id=product.id,
             tenant_key=test_user.tenant_key,
             status="inactive",
@@ -298,24 +290,7 @@ class TestOrchestratorDeduplication:
         await db_session.commit()
 
         # Create ProjectService
-        from contextlib import asynccontextmanager
-        from unittest.mock import MagicMock
-
-        @asynccontextmanager
-        async def mock_get_session():
-            yield db_session
-
-        db_manager = MagicMock()
-        db_manager.get_session_async = mock_get_session
-
-        tenant_manager = TenantManager()
-        tenant_manager.set_current_tenant(test_user.tenant_key)
-
-        project_service = ProjectService(
-            db_manager=db_manager,
-            tenant_manager=tenant_manager,
-            test_session=db_session,
-        )
+        project_service = create_project_service(db_session, test_user.tenant_key)
 
         # Call _ensure_orchestrator_fixture
         result = await project_service._ensure_orchestrator_fixture(
@@ -329,6 +304,9 @@ class TestOrchestratorDeduplication:
         assert "job_id" in result
         assert "agent_id" in result
         assert result["job_id"] != failed_job_id  # NEW orchestrator
+
+        # Commit to ensure the new orchestrator is persisted
+        await db_session.commit()
 
         # ASSERT: Should now have TWO orchestrators (failed + new)
         stmt = (
@@ -368,6 +346,7 @@ class TestOrchestratorDeduplication:
         project = Project(
             name=f"Test Project {uuid4().hex[:8]}",
             description="Test project for launch dedup",
+            mission="Test mission for launch dedup",
             product_id=product.id,
             tenant_key=test_user.tenant_key,
             status="active",
@@ -402,26 +381,10 @@ class TestOrchestratorDeduplication:
         await db_session.commit()
 
         # Create ProjectService
-        from contextlib import asynccontextmanager
-        from unittest.mock import MagicMock
-
-        @asynccontextmanager
-        async def mock_get_session():
-            yield db_session
-
-        db_manager = MagicMock()
-        db_manager.get_session_async = mock_get_session
-
-        tenant_manager = TenantManager()
-        tenant_manager.set_current_tenant(test_user.tenant_key)
-
-        project_service = ProjectService(
-            db_manager=db_manager,
-            tenant_manager=tenant_manager,
-            test_session=db_session,
-        )
+        project_service = create_project_service(db_session, test_user.tenant_key)
 
         # Call launch_project
+        # 0730d: launch_project returns dict directly (no success wrapper)
         result = await project_service.launch_project(
             project_id=project.id,
             user_id=str(test_user.id),
