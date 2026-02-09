@@ -17,6 +17,7 @@ Test Coverage:
 """
 
 from datetime import datetime, timezone
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -51,11 +52,12 @@ async def auth_service(db_manager, db_session):
 @pytest_asyncio.fixture
 async def test_org(db_session):
     """Create test organization for user fixtures (0424j: User.org_id NOT NULL)"""
+    unique_id = str(uuid4())[:8]
     org = Organization(
-        id="test-org-001",
-        tenant_key="test_tenant_001",
-        name="Test Organization",
-        slug="test-org",
+        id=str(uuid4()),
+        tenant_key=f"test_tenant_{unique_id}",
+        name=f"Test Organization {unique_id}",
+        slug=f"test-org-{unique_id}",
         is_active=True,
     )
     db_session.add(org)
@@ -67,15 +69,16 @@ async def test_org(db_session):
 @pytest_asyncio.fixture
 async def test_user(db_session, test_org):
     """Create test user with known credentials"""
+    unique_id = str(uuid4())[:8]
     password = "Test1234!"
     user = User(
-        id="test-user-001",
-        username="testuser",
-        email="test@example.com",
+        id=str(uuid4()),
+        username=f"testuser_{unique_id}",
+        email=f"test_{unique_id}@example.com",
         full_name="Test User",
         password_hash=bcrypt.hash(password),
         role="developer",
-        tenant_key="test_tenant_001",
+        tenant_key=test_org.tenant_key,  # Use org's tenant_key
         org_id=test_org.id,  # 0424j: User.org_id NOT NULL
         is_active=True,
         created_at=datetime.now(timezone.utc),
@@ -89,11 +92,12 @@ async def test_user(db_session, test_org):
 @pytest_asyncio.fixture
 async def test_inactive_org(db_session):
     """Create second test organization for inactive user (0424j)"""
+    unique_id = str(uuid4())[:8]
     org = Organization(
-        id="test-org-002",
-        tenant_key="test_tenant_002",
-        name="Test Organization 2",
-        slug="test-org-2",
+        id=str(uuid4()),
+        tenant_key=f"test_tenant_inactive_{unique_id}",
+        name=f"Test Organization Inactive {unique_id}",
+        slug=f"test-org-inactive-{unique_id}",
         is_active=True,
     )
     db_session.add(org)
@@ -105,14 +109,15 @@ async def test_inactive_org(db_session):
 @pytest_asyncio.fixture
 async def test_inactive_user(db_session, test_inactive_org):
     """Create inactive test user"""
+    unique_id = str(uuid4())[:8]
     password = "Inactive1234!"
     user = User(
-        id="test-user-inactive",
-        username="inactiveuser",
-        email="inactive@example.com",
+        id=str(uuid4()),
+        username=f"inactiveuser_{unique_id}",
+        email=f"inactive_{unique_id}@example.com",
         password_hash=bcrypt.hash(password),
         role="developer",
-        tenant_key="test_tenant_002",
+        tenant_key=test_inactive_org.tenant_key,  # Use org's tenant_key
         org_id=test_inactive_org.id,  # 0424j: User.org_id NOT NULL
         is_active=False,
         created_at=datetime.now(timezone.utc),
@@ -127,12 +132,13 @@ async def test_inactive_user(db_session, test_inactive_org):
 async def test_api_key(db_session, test_user):
     """Create test API key"""
     user, _ = test_user
-    raw_key = "gk_test_key_123456789"
+    unique_id = str(uuid4())[:8]
+    raw_key = f"gk_test_key_{unique_id}_{uuid4().hex[:12]}"
     api_key = APIKey(
-        id="test-api-key-001",
+        id=str(uuid4()),
         tenant_key=user.tenant_key,
         user_id=user.id,
-        name="Test API Key",
+        name=f"Test API Key {unique_id}",
         key_hash=bcrypt.hash(raw_key),
         key_prefix="gk_test_key_",
         permissions=["*"],
@@ -149,8 +155,8 @@ async def test_api_key(db_session, test_user):
 async def setup_state(db_session, test_org):
     """Create setup state for first admin checking"""
     state = SetupState(
-        id="setup-state-001",
-        tenant_key="test_tenant_001",
+        id=str(uuid4()),
+        tenant_key=test_org.tenant_key,  # Use org's tenant_key
         database_initialized=True,
         database_initialized_at=datetime.now(timezone.utc),
         first_admin_created=False,
@@ -280,7 +286,7 @@ class TestListAPIKeys:
 
         assert isinstance(result, list)
         assert len(result) == 1
-        assert result[0]["name"] == "Test API Key"
+        assert result[0]["name"].startswith("Test API Key")  # Dynamic unique names
         assert result[0]["is_active"] is True
 
     @pytest.mark.asyncio
