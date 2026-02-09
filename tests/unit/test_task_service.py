@@ -72,10 +72,9 @@ class TestTaskServiceCreation:
             tenant_key="test-tenant"
         )
 
-        # Assert
-        assert result["success"] is True
-        assert "task_id" in result
-        assert result["message"] == "Task logged successfully"
+        # Assert - exception-based pattern: log_task returns task_id string directly
+        assert isinstance(result, str)  # Returns task_id string, not dict
+        assert result is not None  # task_id should be set
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -94,8 +93,8 @@ class TestTaskServiceCreation:
             tenant_key="test-tenant"
         )
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern: log_task returns task_id string directly
+        assert isinstance(result, str)  # Returns task_id string, not dict
         # Verify that add was called once for the task (no project lookup)
         assert session.add.call_count == 1
         session.commit.assert_awaited_once()
@@ -124,8 +123,8 @@ class TestTaskServiceCreation:
             tenant_key="test-tenant"
         )
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern: log_task returns task_id string directly
+        assert isinstance(result, str)  # Returns task_id string, not dict
 
     @pytest.mark.asyncio
     async def test_create_task_success(self, mock_db_manager, mock_tenant_manager):
@@ -144,9 +143,8 @@ class TestTaskServiceCreation:
             tenant_key="test-tenant"
         )
 
-        # Assert
-        assert result["success"] is True
-        assert "task_id" in result
+        # Assert - exception-based pattern: create_task delegates to log_task (returns task_id string)
+        assert isinstance(result, str)  # Returns task_id string, not dict
 
 
 class TestTaskServiceRetrieval:
@@ -216,8 +214,9 @@ class TestTaskServiceRetrieval:
         # Act
         result = await service.list_tasks()
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern: list_tasks returns {"tasks": [], "count": N}
+        assert "tasks" in result
+        assert "count" in result
         assert len(result["tasks"]) == 2
         assert result["count"] == 2
         assert result["tasks"][0]["id"] == "task-1"
@@ -265,8 +264,8 @@ class TestTaskServiceRetrieval:
         # Act
         result = await service.list_tasks(status="waiting")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern: list_tasks returns {"tasks": [], "count": N}
+        assert "tasks" in result
         assert len(result["tasks"]) == 1
         assert result["tasks"][0]["status"] == "pending"
 
@@ -284,8 +283,8 @@ class TestTaskServiceRetrieval:
         # Act
         result = await service.list_tasks()
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern: list_tasks returns {"tasks": [], "count": N}
+        assert "tasks" in result
         assert len(result["tasks"]) == 0
         assert result["count"] == 0
 
@@ -322,7 +321,8 @@ class TestTaskServiceRetrieval:
         result = await service.list_tasks(filter_type="product_tasks")
 
         # Assert - service returns empty list when no active product
-        assert result["success"] is True
+        # exception-based pattern: list_tasks returns {"tasks": [], "count": N}
+        assert "tasks" in result
         assert result["tasks"] == []
         assert result["count"] == 0
 
@@ -349,8 +349,7 @@ class TestTaskServiceUpdates:
         # Act
         result = await service.update_task(task_id="task-id", status="in_progress", priority="high")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern: update_task returns {"task_id": ..., "updated_fields": [...]}
         assert result["task_id"] == "task-id"
         assert "status" in result["updated_fields"]
         assert "priority" in result["updated_fields"]
@@ -395,8 +394,10 @@ class TestTaskServiceUpdates:
         # Act
         result = await service.assign_task(task_id="task-id", agent_name="impl-1")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern: assign_task delegates to update_task
+        # Returns {"task_id": ..., "updated_fields": [...]}
+        assert result["task_id"] == "task-id"
+        assert "assigned_to" in result["updated_fields"]
         assert mock_task.assigned_to == "impl-1"
         assert mock_task.status == "assigned"
 
@@ -418,8 +419,10 @@ class TestTaskServiceUpdates:
         # Act
         result = await service.complete_task(task_id="task-id")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern: complete_task delegates to update_task
+        # Returns {"task_id": ..., "updated_fields": [...]}
+        assert result["task_id"] == "task-id"
+        assert "status" in result["updated_fields"]
         assert mock_task.status == "completed"
 
 

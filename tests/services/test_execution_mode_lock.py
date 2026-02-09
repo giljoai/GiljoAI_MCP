@@ -5,11 +5,14 @@ BEHAVIOR TESTED:
 - execution_mode can be changed BEFORE mission is generated (staging)
 - execution_mode CANNOT be changed AFTER mission is generated
 - Other fields CAN be changed after mission is generated
+
+Updated for Handover 0730: Exception-based patterns (no success wrapper)
 """
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp.exceptions import ProjectStateError
 from src.giljo_mcp.models import Project
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
@@ -45,9 +48,9 @@ async def test_update_execution_mode_allowed_before_staging(
     service = ProjectService(db_manager, tenant_manager, test_session=db_session)
     result = await service.update_project(project.id, {"execution_mode": "autonomous"})
 
-    # Assert: Success
-    assert result["success"] is True, f"Expected success, got error: {result.get('error')}"
-    assert result["data"]["execution_mode"] == "autonomous"
+    # Handover 0730: Returns project dict directly (no success wrapper)
+    assert result["execution_mode"] == "autonomous"
+    assert result["id"] == project.id
 
 
 @pytest.mark.asyncio
@@ -57,7 +60,7 @@ async def test_update_execution_mode_blocked_after_mission_generated(
     """
     GIVEN: A project with a generated mission (staging complete)
     WHEN: Attempting to change execution_mode
-    THEN: Should return error indicating mode is locked
+    THEN: Should raise ProjectStateError
     """
     # Setup tenant
     tenant_key = TenantManager.generate_tenant_key()
@@ -75,16 +78,17 @@ async def test_update_execution_mode_blocked_after_mission_generated(
     db_session.add(project)
     await db_session.commit()
 
-    # Action: Try to update execution_mode (should fail)
+    # Action: Try to update execution_mode (should raise ProjectStateError)
     service = ProjectService(db_manager, tenant_manager, test_session=db_session)
-    result = await service.update_project(project.id, {"execution_mode": "autonomous"})
 
-    # Assert: Failure with specific error message
-    assert result["success"] is False, "Expected failure when updating execution_mode after staging"
-    assert "error" in result
-    error_msg = result["error"].lower()
+    # Handover 0730: Exception-based pattern
+    with pytest.raises(ProjectStateError) as exc_info:
+        await service.update_project(project.id, {"execution_mode": "autonomous"})
+
+    # Assert: Error message indicates mission/staging lock
+    error_msg = str(exc_info.value).lower()
     assert "mission" in error_msg or "staging" in error_msg, (
-        f"Expected error about mission/staging, got: {result['error']}"
+        f"Expected error about mission/staging, got: {exc_info.value}"
     )
 
 
@@ -123,11 +127,10 @@ async def test_update_other_fields_still_allowed_after_staging(
         },
     )
 
-    # Assert: Success - other fields can still be updated
-    assert result["success"] is True, f"Expected success for non-execution_mode updates, got: {result.get('error')}"
-    assert result["data"]["name"] == "Updated Name"
-    assert result["data"]["description"] == "Updated description"
-    assert result["data"]["execution_mode"] == "interactive"  # Should remain unchanged
+    # Handover 0730: Returns project dict directly (no success wrapper)
+    assert result["name"] == "Updated Name"
+    assert result["description"] == "Updated description"
+    assert result["execution_mode"] == "interactive"  # Should remain unchanged
 
 
 @pytest.mark.asyncio
@@ -159,6 +162,5 @@ async def test_execution_mode_unlocked_with_whitespace_only_mission(
     service = ProjectService(db_manager, tenant_manager, test_session=db_session)
     result = await service.update_project(project.id, {"execution_mode": "autonomous"})
 
-    # Assert: Success
-    assert result["success"] is True, f"Expected success with whitespace mission, got: {result.get('error')}"
-    assert result["data"]["execution_mode"] == "autonomous"
+    # Handover 0730: Returns project dict directly (no success wrapper)
+    assert result["execution_mode"] == "autonomous"

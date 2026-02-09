@@ -21,6 +21,44 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
 from src.giljo_mcp.auth.jwt_manager import JWTManager
 from src.giljo_mcp.models import APIKey, User
+from src.giljo_mcp.models.organizations import Organization
+
+
+class OrganizationFactory:
+    """Factory for creating test organizations (0424j: User.org_id NOT NULL)."""
+
+    # Cache to reuse orgs within a test session
+    _org_cache: Dict[str, str] = {}
+
+    @staticmethod
+    async def get_or_create_org(
+        session: AsyncSession,
+        tenant_key: str,
+    ) -> str:
+        """Get or create organization for tenant, return org_id."""
+        # Check cache first
+        if tenant_key in OrganizationFactory._org_cache:
+            return OrganizationFactory._org_cache[tenant_key]
+
+        # Create new org
+        org_id = str(uuid4())
+        org = Organization(
+            id=org_id,
+            tenant_key=tenant_key,
+            name=f"Test Org {tenant_key}",
+            slug=f"test-org-{tenant_key.replace('_', '-')}",
+            is_active=True,
+        )
+        session.add(org)
+        await session.flush()  # Don't commit - let test transaction handle it
+
+        OrganizationFactory._org_cache[tenant_key] = org_id
+        return org_id
+
+    @staticmethod
+    def clear_cache():
+        """Clear org cache between test sessions."""
+        OrganizationFactory._org_cache.clear()
 
 
 class UserFactory:
@@ -48,11 +86,16 @@ class UserFactory:
             role: User role (admin, developer, viewer)
             tenant_key: Tenant key for multi-tenant isolation
             is_active: Whether user is active
-            **kwargs: Additional user fields
+            **kwargs: Additional user fields (including org_id)
 
         Returns:
             Created user instance
         """
+        # Get or create organization for this tenant (0424j: User.org_id NOT NULL)
+        org_id = kwargs.pop("org_id", None)
+        if not org_id:
+            org_id = await OrganizationFactory.get_or_create_org(session, tenant_key)
+
         user = User(
             id=kwargs.get("id", str(uuid4())),
             username=username,
@@ -60,6 +103,7 @@ class UserFactory:
             password_hash=bcrypt.hash(password),
             role=role,
             tenant_key=tenant_key,
+            org_id=org_id,  # 0424j: User.org_id NOT NULL
             is_active=is_active,
             created_at=kwargs.get("created_at", datetime.now(timezone.utc)),
             full_name=kwargs.get("full_name"),

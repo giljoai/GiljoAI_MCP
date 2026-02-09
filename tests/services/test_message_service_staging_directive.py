@@ -262,11 +262,12 @@ async def message_service(
     # Patch the db_manager's method
     db_manager.get_session_async = mock_get_session_async
 
-    # Create service with mocked WebSocket manager
+    # Create service with mocked WebSocket manager and test_session
     service = MessageService(
         db_manager=db_manager,
         tenant_manager=tenant_manager,
         websocket_manager=mock_websocket_manager,
+        test_session=db_session,  # Share test transaction
     )
 
     return service
@@ -307,8 +308,9 @@ async def test_staging_orchestrator_broadcast_includes_directive(
         tenant_key=test_tenant_key,
     )
 
+    # Handover 0730: send_message returns dict directly (no success wrapper)
     # Assert response contains staging_directive
-    assert result["success"] is True
+    assert "message_id" in result, f"Expected message_id in result, got {result}"
     assert "staging_directive" in result, "Response should include staging_directive for staging orchestrator broadcast"
 
     # Verify directive structure
@@ -351,8 +353,9 @@ async def test_regular_agent_broadcast_no_directive(
         tenant_key=test_tenant_key,
     )
 
+    # Handover 0730: send_message returns dict directly (no success wrapper)
     # Assert response does NOT contain staging_directive
-    assert result["success"] is True
+    assert "message_id" in result, f"Expected message_id in result, got {result}"
     assert "staging_directive" not in result, "Regular agent broadcasts should not include staging_directive"
 
 
@@ -386,8 +389,9 @@ async def test_implementation_orchestrator_broadcast_no_directive(
         tenant_key=test_tenant_key,
     )
 
+    # Handover 0730: send_message returns dict directly (no success wrapper)
     # Assert response does NOT contain staging_directive
-    assert result["success"] is True
+    assert "message_id" in result, f"Expected message_id in result, got {result}"
     assert "staging_directive" not in result, (
         "Implementation orchestrator broadcasts should not include staging_directive"
     )
@@ -475,6 +479,7 @@ async def test_direct_message_no_directive(
         tenant_key=test_tenant_key,
     )
 
+    # Handover 0730: send_message returns dict directly (no success wrapper)
     # Assert response does NOT contain staging_directive
-    assert result["success"] is True
+    assert "message_id" in result, f"Expected message_id in result, got {result}"
     assert "staging_directive" not in result, "Direct messages should not include staging_directive (only broadcasts)"
