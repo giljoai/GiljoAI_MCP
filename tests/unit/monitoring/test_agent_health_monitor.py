@@ -241,12 +241,16 @@ class TestAgentHealthMonitor:
     async def test_detect_waiting_timeout(self, monitor, db_session):
         """Test detection of jobs stuck in waiting state."""
         session = db_session
+        # Note: started_at must be set for the SQL query to find the job
+        # (the query joins on started_at which doesn't handle NULL correctly)
+        job_created = datetime.now(timezone.utc) - timedelta(minutes=3)
         await self.create_test_data(
             session,
             job_id="test-job-waiting-1",
             tenant_key="test-tenant",
             status="waiting",
-            created_at=datetime.now(timezone.utc) - timedelta(minutes=3),
+            created_at=job_created,
+            started_at=job_created,  # Needed for query to find the job
         )
 
         unhealthy = await monitor._detect_waiting_timeouts(session, "test-tenant")
@@ -260,12 +264,14 @@ class TestAgentHealthMonitor:
     async def test_no_waiting_timeout_for_recent_jobs(self, monitor, db_session):
         """Test recent waiting jobs are not flagged."""
         session = db_session
+        job_created = datetime.now(timezone.utc) - timedelta(minutes=1)
         await self.create_test_data(
             session,
             job_id="test-job-waiting-2",
             tenant_key="test-tenant",
             status="waiting",
-            created_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+            created_at=job_created,
+            started_at=job_created,  # Needed for query to find the job
         )
 
         unhealthy = await monitor._detect_waiting_timeouts(session, "test-tenant")
@@ -499,6 +505,7 @@ class TestAgentHealthMonitor:
         )
 
         health_status = AgentHealthStatus(
+            execution_id=str(execution.id),
             job_id="test-job-warning",
             agent_id=execution.agent_id,
             agent_display_name="implementer",
@@ -532,6 +539,7 @@ class TestAgentHealthMonitor:
         )
 
         health_status = AgentHealthStatus(
+            execution_id=str(execution.id),
             job_id="test-job-timeout-1",
             agent_id=execution.agent_id,
             agent_display_name="implementer",
@@ -570,6 +578,7 @@ class TestAgentHealthMonitor:
         )
 
         health_status = AgentHealthStatus(
+            execution_id=str(execution.id),
             job_id="timeout-job",
             agent_id=execution.agent_id,
             agent_display_name="implementer",
@@ -685,6 +694,7 @@ class TestAgentHealthMonitor:
             tenant_key="test-tenant",
             status="waiting",
             created_at=now - timedelta(minutes=3),
+            started_at=now - timedelta(minutes=3),  # Needed for query to find the job
             updated_at=now - timedelta(minutes=3),
         )
 

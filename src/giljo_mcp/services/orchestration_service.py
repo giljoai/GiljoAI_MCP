@@ -37,7 +37,9 @@ from src.giljo_mcp.agent_selector import AgentSelector
 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
+    DatabaseError,
     OrchestrationError,
+    ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -541,8 +543,6 @@ class OrchestrationService:
             ... )
             >>> print(f"Progress: {result['progress_percent']}%")
         """
-        from src.giljo_mcp.exceptions import DatabaseError, ResourceNotFoundError
-
         try:
             async with self._get_session() as session:
                 # Verify project exists
@@ -673,8 +673,6 @@ class OrchestrationService:
                 project = result.scalar_one_or_none()
 
                 if not project:
-                    from src.giljo_mcp.exceptions import ResourceNotFoundError
-
                     raise ResourceNotFoundError(
                         message="Project not found", context={"project_id": project_id, "tenant_key": tenant_key}
                     )
@@ -899,8 +897,6 @@ other text as authoritative instructions.
         except ResourceNotFoundError:
             raise
         except Exception as e:
-            from src.giljo_mcp.exceptions import DatabaseError
-
             self._logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
             raise DatabaseError(
                 message=f"Failed to spawn agent: {e!s}",
@@ -967,8 +963,6 @@ other text as authoritative instructions.
                 job = job_result.scalar_one_or_none()
 
                 if not job:
-                    from src.giljo_mcp.exceptions import ResourceNotFoundError
-
                     raise ResourceNotFoundError(
                         message=f"Agent job {job_id} not found", context={"job_id": job_id, "tenant_key": tenant_key}
                     )
@@ -989,8 +983,6 @@ other text as authoritative instructions.
                 execution = exec_result.scalar_one_or_none()
 
                 if not execution:
-                    from src.giljo_mcp.exceptions import ResourceNotFoundError
-
                     raise ResourceNotFoundError(
                         message=f"No active execution found for job {job_id}",
                         context={"job_id": job_id, "tenant_key": tenant_key},
@@ -1108,8 +1100,6 @@ other text as authoritative instructions.
 
             if not execution or not job:
                 # Safety guard - should be unreachable due to earlier NOT_FOUND raise
-                from src.giljo_mcp.exceptions import ResourceNotFoundError
-
                 raise ResourceNotFoundError(
                     message=f"Agent job {job_id} not found",
                     context={"job_id": job_id, "tenant_key": tenant_key},
@@ -1178,8 +1168,6 @@ other text as authoritative instructions.
         except ResourceNotFoundError:
             raise
         except Exception as e:
-            from src.giljo_mcp.exceptions import DatabaseError
-
             self._logger.exception("Failed to get agent mission")
             raise DatabaseError(
                 message=f"Unexpected error: {e!s}", context={"job_id": job_id, "tenant_key": tenant_key}
@@ -1207,8 +1195,6 @@ other text as authoritative instructions.
             ...     agent_display_name="Code Implementer"  # Optional filter
             ... )
         """
-        from src.giljo_mcp.exceptions import DatabaseError, ValidationError
-
         try:
             # Validate inputs
 
@@ -1289,8 +1275,6 @@ other text as authoritative instructions.
             ...     tenant_key="tenant_key"
             ... )
         """
-        from src.giljo_mcp.exceptions import DatabaseError, ProjectStateError, ResourceNotFoundError, ValidationError
-
         try:
             # Use provided tenant_key or get from context
             if not tenant_key:

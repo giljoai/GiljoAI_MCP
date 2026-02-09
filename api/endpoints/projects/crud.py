@@ -81,7 +81,7 @@ async def create_project(
         agent_count=0,
         message_count=0,
         agents=[],
-        execution_mode=result.get("execution_mode", "multi_terminal"),  # Handover 0260
+        execution_mode=created_project.execution_mode or "multi_terminal",  # Handover 0260
     )
 
 
