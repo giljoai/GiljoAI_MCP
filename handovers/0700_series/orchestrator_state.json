@@ -1,10 +1,10 @@
 {
   "series_id": "0700_code_cleanup",
   "created_at": "2026-02-03T00:00:00Z",
-  "status": "remediation_complete_awaiting_0730",
-  "current_handover": "0727-COMPLETE",
+  "status": "0730d_complete_0730e_ready",
+  "current_handover": "0730e-READY",
   "next_handovers": [
-    "0730-VALIDATE"
+    "0730e"
   ],
   "handovers": [
     {
@@ -451,6 +451,40 @@
       "lines_removed": 60,
       "risk": "VERY LOW (dead code removal)",
       "created": "2026-02-07"
+    },
+    {
+      "id": "0730e",
+      "title": "API Test Fixes",
+      "series": "0730 Service Response Models",
+      "phase": "Phase 5 of 5 (Extended)",
+      "priority": "P2",
+      "status": "ready",
+      "agent": "backend-integration-tester",
+      "estimated_effort": "4-8 hours",
+      "depends_on": [
+        "0730d"
+      ],
+      "blocks": [],
+      "scope": "Fix ~175 API test failures using patterns from 0730d",
+      "deliverables": [
+        "All API tests passing",
+        "UUID fixtures applied to all test files",
+        "org_id NOT NULL compliance",
+        "Exception-based assertions"
+      ],
+      "remaining_issues": {
+        "failed": 101,
+        "errors": 74,
+        "total": 175
+      },
+      "patterns_to_apply": [
+        "UUID fixtures (prevent duplicate key violations)",
+        "org_id NOT NULL (0424j compliance)",
+        "Exception-based assertions (pytest.raises)",
+        "API URL versioning (/api/v1/)",
+        "authed_client fixture usage"
+      ],
+      "created": "2026-02-09"
     }
   ],
   "doc_mapping": {
@@ -482,7 +516,7 @@
     "deprecated_code_lines": 1500,
     "total_addressable_lines": 2000
   },
-  "notes": "COMPLETE (2026-02-08): All 0700 series handovers finished including 0730 series. 0720 achieved 100% delinting (1850→0 issues). 0725 INVALIDATED (75%+ false positives), replaced by 0725b re-audit. 0725b confirms HEALTHY architecture with only 2 actual orphans (not 129). 0727 fixed all test imports and production bugs. 0433 task product binding 9/10 phases complete. 0730 series COMPLETE (122 service methods refactored, 12 services updated, 57 endpoints simplified, 100% tests passing). Orphan cleanup complete (2 files, 627 lines deleted). COMPLETE: 0700a-i, 0700-REMEDIATION, 0702-REVISED, 0703-REVISED, 0704-REVISED, 0706b, 0707-LINT, 0708-TYPES, 0709-SECURITY, 0373, 0720, 0725b, 0727, 0730a-d. SKIPPED: 0710, 0714, 0715, 0711 (pre-completed). INVALIDATED: 0725, 0726, 0729. Series saved ~20 hours via validation-first pattern. Architecture: HEALTHY. 0740 READY: Comprehensive post-cleanup audit handover created - 7 parallel audits, TODO dashboard, comparison metrics.",
-  "current_status": "0740_handover_ready_awaiting_approval",
-  "last_updated": "2026-02-08"
+  "notes": "COMPLETE (2026-02-09): 0730d complete (services layer 100% passing). 0730e handover created for API test fixes (~175 issues). 0720 achieved 100% delinting (1850→0 issues). 0725 INVALIDATED (75%+ false positives), replaced by 0725b re-audit. 0725b confirms HEALTHY architecture with only 2 actual orphans (not 129). 0727 fixed all test imports and production bugs. 0433 task product binding 9/10 phases complete. 0730 series (a-d) COMPLETE (122 service methods refactored, 12 services updated, 57 endpoints simplified, services tests 100% passing). Orphan cleanup complete (2 files, 627 lines deleted). COMPLETE: 0700a-i, 0700-REMEDIATION, 0702-REVISED, 0703-REVISED, 0704-REVISED, 0706b, 0707-LINT, 0708-TYPES, 0709-SECURITY, 0373, 0720, 0725b, 0727, 0730a-d. READY: 0730e (API test fixes). SKIPPED: 0710, 0714, 0715, 0711 (pre-completed). INVALIDATED: 0725, 0726, 0729. Series saved ~20 hours via validation-first pattern. Architecture: HEALTHY. 0740 READY: Comprehensive post-cleanup audit handover created - 7 parallel audits, TODO dashboard, comparison metrics.",
+  "current_status": "0730e_ready_for_execution",
+  "last_updated": "2026-02-09"
 }
