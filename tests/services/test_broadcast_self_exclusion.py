@@ -193,7 +193,9 @@ async def test_broadcast_excludes_sender(
         tenant_key=test_tenant_key,
     )
 
-    assert result["success"] is True
+    # Handover 0730: send_message returns dict directly (no success wrapper)
+    # Check for message_id to verify success
+    assert "message_id" in result, f"Expected message_id in result, got {result}"
 
     # Refresh all agents to get updated counts
     await db_session.refresh(agent_a)
@@ -255,7 +257,8 @@ async def test_broadcast_excludes_sender_by_agent_id(
         tenant_key=test_tenant_key,
     )
 
-    assert result["success"] is True
+    # Handover 0730: send_message returns dict directly (no success wrapper)
+    assert "message_id" in result, f"Expected message_id in result, got {result}"
 
     # Refresh all agents
     await db_session.refresh(agent_a)
@@ -299,7 +302,8 @@ async def test_broadcast_with_multiple_messages_accumulates_correctly(
             from_agent=agent_a.agent_display_name,
             tenant_key=test_tenant_key,
         )
-        assert result["success"] is True
+        # Handover 0730: send_message returns dict directly (no success wrapper)
+        assert "message_id" in result, f"Expected message_id in result, got {result}"
 
     # Refresh all agents
     await db_session.refresh(agent_a)
@@ -346,7 +350,8 @@ async def test_broadcast_from_different_agents(
         from_agent=agent_a.agent_display_name,
         tenant_key=test_tenant_key,
     )
-    assert result["success"] is True
+    # Handover 0730: send_message returns dict directly (no success wrapper)
+    assert "message_id" in result, f"Expected message_id in result, got {result}"
 
     # Agent B broadcasts
     result = await message_service.send_message(
@@ -356,7 +361,7 @@ async def test_broadcast_from_different_agents(
         from_agent=agent_b.agent_display_name,
         tenant_key=test_tenant_key,
     )
-    assert result["success"] is True
+    assert "message_id" in result, f"Expected message_id in result, got {result}"
 
     # Agent C broadcasts
     result = await message_service.send_message(
@@ -366,7 +371,7 @@ async def test_broadcast_from_different_agents(
         from_agent=agent_c.agent_display_name,
         tenant_key=test_tenant_key,
     )
-    assert result["success"] is True
+    assert "message_id" in result, f"Expected message_id in result, got {result}"
 
     # Refresh all agents
     await db_session.refresh(agent_a)
@@ -426,9 +431,10 @@ async def test_broadcast_to_empty_project_no_crash(
         tenant_key=test_tenant_key,
     )
 
-    # Should succeed but create no messages
-    assert result["success"] is True
-    assert result["data"]["message_id"] is None  # No messages created
+    # Handover 0730: send_message returns dict directly (no success wrapper)
+    # Should succeed but create no messages (message_id is None for empty broadcast)
+    assert "message_id" in result
+    assert result["message_id"] is None  # No messages created
 
     # Verify no messages were created
     result = await db_session.execute(select(Message).where(Message.project_id == project.id))

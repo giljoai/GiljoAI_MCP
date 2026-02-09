@@ -27,7 +27,8 @@ async def test_status_transition_to_working_sets_mission_acknowledged_at(
 ):
     """Test that transitioning to 'working' status sets mission_acknowledged_at"""
     tenant_key = TenantManager.generate_tenant_key()
-    manager = AgentJobManager(db_manager, tenant_manager)
+    # Pass test_session to share transaction with db_session fixture
+    manager = AgentJobManager(db_manager, tenant_manager, test_session=db_session)
 
     # Create product and project for testing
     product = Product(
@@ -81,7 +82,8 @@ async def test_mission_acknowledged_at_only_set_once(
 ):
     """Test that mission_acknowledged_at is only set on FIRST transition to working"""
     tenant_key = TenantManager.generate_tenant_key()
-    manager = AgentJobManager(db_manager, tenant_manager)
+    # Pass test_session to share transaction with db_session fixture
+    manager = AgentJobManager(db_manager, tenant_manager, test_session=db_session)
 
     # Create product and project
     product = Product(
@@ -136,7 +138,8 @@ async def test_other_status_transitions_dont_set_mission_acknowledged_at(
 ):
     """Test that non-'working' status transitions don't set mission_acknowledged_at"""
     tenant_key = TenantManager.generate_tenant_key()
-    manager = AgentJobManager(db_manager, tenant_manager)
+    # Pass test_session to share transaction with db_session fixture
+    manager = AgentJobManager(db_manager, tenant_manager, test_session=db_session)
 
     # Create product and project
     product = Product(

@@ -3,9 +3,10 @@ Tests for ProjectService nuclear_delete_project using product_memory_entries tab
 
 Verifies that soft-delete uses ProductMemoryRepository instead of JSONB.
 Handover 0390b Phase 3.
+Updated 0730d: Exception-based error handling patterns (no success wrappers).
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -31,8 +32,8 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
         description="Test project for memory table delete",
         mission="Test mission for project deletion",
         status="active",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
     db_session.add(project)
 
@@ -46,7 +47,7 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
             sequence=i + 1,
             entry_type="project_closeout",
             source="test",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             project_name=project.name,
             summary=f"Test entry {i + 1}",
             deleted_by_user=False,
@@ -63,10 +64,12 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
     entry_ids = [entry.id for entry in entries]
 
     # Act - Nuclear delete the project
+    # 0730d: nuclear_delete_project returns dict directly (no success wrapper)
     result = await project_service_with_session.nuclear_delete_project(project_id=project.id, websocket_manager=None)
 
-    # Assert - Verify success
-    assert result["success"] is True
+    # Assert - Verify result structure (no success key, direct dict)
+    assert "message" in result
+    assert "deleted_counts" in result
     assert "memory_entries_marked" in result["deleted_counts"]
     assert result["deleted_counts"]["memory_entries_marked"] == 3
 
@@ -76,8 +79,8 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
     from sqlalchemy import select
 
     stmt = select(ProductMemoryEntry).where(ProductMemoryEntry.id.in_(entry_ids))
-    result = await db_session.execute(stmt)
-    marked_entries = result.scalars().all()
+    query_result = await db_session.execute(stmt)
+    marked_entries = query_result.scalars().all()
 
     assert len(marked_entries) == 3
     for entry in marked_entries:
@@ -101,18 +104,19 @@ async def test_nuclear_delete_with_no_memory_entries(
         description="Test project without memory entries",
         mission="Test mission without memory",
         status="active",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
     db_session.add(project)
     await db_session.commit()
     await db_session.refresh(project)
 
     # Act - Nuclear delete
+    # 0730d: nuclear_delete_project returns dict directly (no success wrapper)
     result = await project_service_with_session.nuclear_delete_project(project_id=project.id, websocket_manager=None)
 
-    # Assert - Success with 0 entries marked
-    assert result["success"] is True
+    # Assert - 0 entries marked (no success key)
+    assert "deleted_counts" in result
     assert result["deleted_counts"]["memory_entries_marked"] == 0
 
 
@@ -130,8 +134,8 @@ async def test_nuclear_delete_tenant_isolation(db_session, test_tenant_key, test
         description="Project for testing tenant isolation",
         mission="Test mission for tenant isolation",
         status="active",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
     db_session.add(project1)
 
@@ -142,7 +146,7 @@ async def test_nuclear_delete_tenant_isolation(db_session, test_tenant_key, test
         sequence=1,
         entry_type="project_closeout",
         source="test",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         project_name=project1.name,
         summary="Tenant 1 entry",
         deleted_by_user=False,
@@ -155,8 +159,9 @@ async def test_nuclear_delete_tenant_isolation(db_session, test_tenant_key, test
     await db_session.commit()
 
     # Act - Delete first project
+    # 0730d: nuclear_delete_project returns dict directly (no success wrapper)
     result = await project_service_with_session.nuclear_delete_project(project_id=project1.id, websocket_manager=None)
 
-    # Assert
-    assert result["success"] is True
+    # Assert - no success key, check deleted_counts directly
+    assert "deleted_counts" in result
     assert result["deleted_counts"]["memory_entries_marked"] == 1

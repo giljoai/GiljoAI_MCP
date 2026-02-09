@@ -356,6 +356,7 @@ class TestGetFullAgentTemplates:
         assert len(result) == 4
 
 
+@pytest.mark.skip(reason="Handover 0246+: Thin-client architecture - orchestrator instructions no longer embed agent templates JSON. Agent discovery via get_available_agents() MCP tool instead.")
 class TestAgentTemplateDepthIntegration:
     """Integration tests for agent templates depth configuration in orchestrator instructions."""
 
