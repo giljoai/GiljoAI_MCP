@@ -29,14 +29,31 @@ from src.giljo_mcp.models import APIKey, User
 
 @pytest.fixture
 async def test_user(db_session):
-    """Create test user with API keys."""
+    """Create test user with API keys (0424j compliant - org_id required)."""
+    from src.giljo_mcp.models.organizations import Organization
+    from src.giljo_mcp.tenant import TenantManager
+
+    unique_suffix = uuid4().hex[:8]
+    tenant_key = TenantManager.generate_tenant_key()
+
+    # Create org first (0424j: org_id is NOT NULL)
+    org = Organization(
+        name=f"API Test Org {unique_suffix}",
+        slug=f"api-test-org-{unique_suffix}",
+        tenant_key=tenant_key,
+        is_active=True,
+    )
+    db_session.add(org)
+    await db_session.flush()
+
     user = User(
         id=str(uuid4()),
-        username="api_test_user",
-        email="apiuser@example.com",
+        username=f"api_test_user_{unique_suffix}",
+        email=f"apiuser_{unique_suffix}@example.com",
         password_hash=bcrypt.hash("TestPassword123!"),
         role="developer",
-        tenant_key="test_tenant",
+        tenant_key=tenant_key,
+        org_id=org.id,  # Required after 0424j
         is_active=True,
         created_at=datetime.now(timezone.utc),
     )
