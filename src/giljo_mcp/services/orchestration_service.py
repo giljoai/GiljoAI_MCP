@@ -2254,10 +2254,15 @@ other text as authoritative instructions.
                 return template
 
             # Try system default template (is_default=True, any tenant)
-            stmt = select(AgentTemplate).where(
-                AgentTemplate.role == role,
-                AgentTemplate.is_default,
-                AgentTemplate.is_active,
+            # Use .limit(1) since multiple system defaults may exist for same role
+            stmt = (
+                select(AgentTemplate)
+                .where(
+                    AgentTemplate.role == role,
+                    AgentTemplate.is_default,
+                    AgentTemplate.is_active,
+                )
+                .limit(1)
             )
             result = await session.execute(stmt)
             template = result.scalar_one_or_none()

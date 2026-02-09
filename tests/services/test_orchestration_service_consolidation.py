@@ -522,12 +522,15 @@ class TestGetAgentTemplateInternal:
     @pytest.mark.asyncio
     async def test_falls_back_to_system_default(self, db_session: AsyncSession, test_tenant_key, test_product):
         """Test template resolution falls back to system defaults."""
+        # Use unique role to avoid conflicts with real system defaults
+        unique_role = f"test_role_{uuid4().hex[:8]}"
+
         # Setup: Create only system default template
         system_template = AgentTemplate(
             id=str(uuid4()),
-            name="System Implementer",
+            name=f"System {unique_role.title()}",
             category="role",
-            role="implementer",
+            role=unique_role,
             tool="claude",
             tenant_key="system",  # System templates use "system" tenant_key
             is_default=True,
@@ -541,7 +544,7 @@ class TestGetAgentTemplateInternal:
 
         # Act: Get template with product_id (no product/tenant templates exist)
         template = await service._get_agent_template_internal(
-            role="implementer", tenant_key=test_tenant_key, product_id=test_product.id, session=db_session
+            role=unique_role, tenant_key=test_tenant_key, product_id=test_product.id, session=db_session
         )
 
         # Assert: Should fall back to system default
