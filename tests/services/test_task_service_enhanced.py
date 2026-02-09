@@ -170,11 +170,29 @@ async def test_task(db_session, test_tenant_key, test_product, test_project, tes
 
 
 @pytest_asyncio.fixture
-async def other_tenant_task(db_session, other_tenant_key, other_tenant_user):
-    """Create task in different tenant"""
+async def other_tenant_product(db_session, other_tenant_key):
+    """Create product for other tenant"""
+    product = Product(
+        id=str(uuid4()),
+        name=f"Other Product {uuid4().hex[:6]}",
+        description="Product for other tenant",
+        tenant_key=other_tenant_key,
+        is_active=True,
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(product)
+    await db_session.commit()
+    await db_session.refresh(product)
+    return product
+
+
+@pytest_asyncio.fixture
+async def other_tenant_task(db_session, other_tenant_key, other_tenant_product, other_tenant_user):
+    """Create task in different tenant with required product_id (0433)"""
     task = Task(
         id=str(uuid4()),
         tenant_key=other_tenant_key,
+        product_id=other_tenant_product.id,  # Required per handover 0433
         title="Other Tenant Task",
         description="Task in different tenant",
         status="waiting",

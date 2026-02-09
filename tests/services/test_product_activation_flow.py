@@ -1,16 +1,20 @@
 """
 Unit tests for ProductService activation flow - specifically get_active_product eager loading.
 
-Handover 0320 Fix: Tests written FIRST following TDD discipline (RED → GREEN → REFACTOR).
+Handover 0320 Fix: Tests written FIRST following TDD discipline (RED -> GREEN -> REFACTOR).
+Updated 0730d: Exception-based error handling patterns (no success wrappers).
 
 Root Cause: get_active_product() doesn't eager-load vision_documents relationship,
 causing SQLAlchemy async lazy loading errors when accessing primary_vision_path property.
 """
 
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, PropertyMock
 
 import pytest
 
+from src.giljo_mcp.exceptions import BaseGiljoError
 from src.giljo_mcp.models.products import Product, VisionDocument
 
 
@@ -19,12 +23,16 @@ def mock_db_manager():
     """Mock database manager with async session support."""
     db_manager = MagicMock()
     session = AsyncMock()
-    session.__aenter__ = AsyncMock(return_value=session)
-    session.__aexit__ = AsyncMock(return_value=False)
     session.execute = AsyncMock()
     session.commit = AsyncMock()
     session.flush = AsyncMock()
-    db_manager.get_session_async = MagicMock(return_value=session)
+
+    # Create proper async context manager
+    @asynccontextmanager
+    async def mock_get_session():
+        yield session
+
+    db_manager.get_session_async = mock_get_session
     return db_manager, session
 
 
@@ -51,8 +59,9 @@ async def test_get_active_product_returns_vision_path_without_lazy_load_error(mo
     mock_product.is_active = True
     mock_product.deleted_at = None
     mock_product.project_path = "/path/to/project"
-    mock_product.created_at = "2025-01-01T00:00:00"
-    mock_product.updated_at = "2025-01-01T00:00:00"
+    # Use datetime objects that have .isoformat() method
+    mock_product.created_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    mock_product.updated_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
     mock_product.config_data = {}
 
     # Mock vision_documents as already loaded (eager loading)
@@ -79,8 +88,7 @@ async def test_get_active_product_returns_vision_path_without_lazy_load_error(mo
     # Call get_active_product - should NOT raise MissingGreenlet error
     result = await service.get_active_product()
 
-    # Verify success
-    assert result["success"] is True
+    # Verify success (0730d: no success wrapper, check product directly)
     assert result["product"] is not None
     assert result["product"]["id"] == "test-product-id"
     assert result["product"]["name"] == "Test Product"
@@ -90,7 +98,7 @@ async def test_get_active_product_returns_vision_path_without_lazy_load_error(mo
 @pytest.mark.asyncio
 async def test_get_active_product_no_active_product(mock_db_manager):
     """
-    Test get_active_product returns success with null product when no active product.
+    Test get_active_product returns None product when no active product.
     """
     from src.giljo_mcp.services.product_service import ProductService
 
@@ -105,7 +113,7 @@ async def test_get_active_product_no_active_product(mock_db_manager):
 
     result = await service.get_active_product()
 
-    assert result["success"] is True
+    # 0730d: No success wrapper, check product is None
     assert result["product"] is None
     assert "No active product" in result.get("message", "")
 
@@ -136,13 +144,16 @@ async def test_get_active_product_multi_tenant_isolation(mock_db_manager):
 
     # The query should have been built with tenant filter
     # In a real integration test, we'd verify the actual SQL
-    assert result["success"] is True
+    # 0730d: No success wrapper, just verify product is None (tenant isolation works)
+    assert result["product"] is None
 
 
 @pytest.mark.asyncio
 async def test_get_active_product_handles_exception(mock_db_manager):
     """
-    Test get_active_product handles exceptions gracefully.
+    Test get_active_product raises BaseGiljoError on database failures.
+
+    0730d: Exception-based error handling - raises instead of returning error dict.
     """
     from src.giljo_mcp.services.product_service import ProductService
 
@@ -153,11 +164,11 @@ async def test_get_active_product_handles_exception(mock_db_manager):
 
     service = ProductService(db_manager, tenant_key="test-tenant")
 
-    result = await service.get_active_product()
+    # 0730d: Should raise BaseGiljoError, not return error dict
+    with pytest.raises(BaseGiljoError) as exc_info:
+        await service.get_active_product()
 
-    assert result["success"] is False
-    assert "error" in result
-    assert "Database connection failed" in result["error"]
+    assert "Database connection failed" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
@@ -178,8 +189,9 @@ async def test_get_active_product_with_empty_vision_documents(mock_db_manager):
     mock_product.is_active = True
     mock_product.deleted_at = None
     mock_product.project_path = "/path/to/project"
-    mock_product.created_at = "2025-01-01T00:00:00"
-    mock_product.updated_at = "2025-01-01T00:00:00"
+    # Use datetime objects that have .isoformat() method
+    mock_product.created_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    mock_product.updated_at = datetime(2025, 1, 1, tzinfo=timezone.utc)
     mock_product.config_data = {}
     mock_product.vision_documents = []  # Empty
 
@@ -195,5 +207,5 @@ async def test_get_active_product_with_empty_vision_documents(mock_db_manager):
 
     result = await service.get_active_product()
 
-    assert result["success"] is True
+    # 0730d: No success wrapper
     assert result["product"]["vision_path"] == ""

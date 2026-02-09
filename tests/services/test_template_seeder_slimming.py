@@ -27,12 +27,15 @@ from src.giljo_mcp.template_seeder import (
 class TestMCPCoordinationSectionSlimming:
     """Test MCP coordination section keeps essential wiring, removes lifecycle duplication."""
 
-    def test_mcp_section_contains_critical_native_tools_warning(self):
-        """MCP section must contain the CRITICAL native tools warning."""
+    def test_mcp_section_contains_native_tools_guidance(self):
+        """MCP section must contain guidance about native tool calls."""
         section = _get_mcp_coordination_section()
-        assert "CRITICAL" in section
-        assert "MCP TOOLS ARE NATIVE" in section or "MCP tools" in section.lower()
+        # Section should explain that MCP tools are native tool calls
         assert "native" in section.lower()
+        assert "mcp" in section.lower()
+        # Should show correct vs wrong usage pattern
+        assert "CORRECT" in section or "correct" in section.lower()
+        assert "WRONG" in section or "wrong" in section.lower()
 
     def test_mcp_section_contains_get_agent_mission_reference(self):
         """MCP section must reference get_agent_mission tool."""
@@ -44,17 +47,19 @@ class TestMCPCoordinationSectionSlimming:
         section = _get_mcp_coordination_section()
         assert "full_protocol" in section
 
-    def test_mcp_section_contains_bootstrap_sequence(self):
-        """MCP section must contain bootstrap sequence pointing to get_agent_mission."""
+    def test_mcp_section_references_full_protocol_for_details(self):
+        """MCP section should reference full_protocol for tool signatures and detailed behavior."""
         section = _get_mcp_coordination_section()
-        # Should have a bootstrap/startup section
-        assert "bootstrap" in section.lower() or "startup" in section.lower() or "before any work" in section.lower()
+        # Slimmed section delegates to full_protocol for details (Handover 0353, 0431)
+        assert "full_protocol" in section.lower() or "tool signatures" in section.lower()
 
-    def test_mcp_section_references_key_mcp_tools(self):
-        """MCP section should list key MCP tools (report_progress, complete_job, etc.)."""
+    def test_mcp_section_shows_tool_call_example(self):
+        """MCP section should show an example of calling MCP tools correctly."""
         section = _get_mcp_coordination_section()
-        assert "report_progress" in section
-        assert "complete_job" in section
+        # Should show the mcp__giljo-mcp__ prefix pattern
+        assert "mcp__giljo-mcp__" in section
+        # Should show get_agent_mission as the key tool reference
+        assert "get_agent_mission" in section
 
 
 class TestCheckInProtocolSectionSlimming:
@@ -153,7 +158,8 @@ class TestDefaultTemplatesSlimming:
         implementer = next((t for t in templates if t["role"] == "implementer"), None)
         assert implementer is not None, "Implementer template must exist"
 
-        content = implementer["system_instructions"]
+        # Handover 0106: Templates use user_instructions for role-specific guidance
+        content = implementer["user_instructions"]
         # Should have role-specific text
         assert "implement" in content.lower() or "code" in content.lower()
 
@@ -163,7 +169,8 @@ class TestDefaultTemplatesSlimming:
         tester = next((t for t in templates if t["role"] == "tester"), None)
         assert tester is not None, "Tester template must exist"
 
-        content = tester["system_instructions"]
+        # Handover 0106: Templates use user_instructions for role-specific guidance
+        content = tester["user_instructions"]
         # Should have role-specific text
         assert "test" in content.lower()
 
@@ -173,7 +180,8 @@ class TestDefaultTemplatesSlimming:
         analyzer = next((t for t in templates if t["role"] == "analyzer"), None)
         assert analyzer is not None, "Analyzer template must exist"
 
-        content = analyzer["system_instructions"]
+        # Handover 0106: Templates use user_instructions for role-specific guidance
+        content = analyzer["user_instructions"]
         # Should have role-specific text
         assert "analy" in content.lower()  # analyze, analysis
 
@@ -183,7 +191,8 @@ class TestDefaultTemplatesSlimming:
         documenter = next((t for t in templates if t["role"] == "documenter"), None)
         assert documenter is not None, "Documenter template must exist"
 
-        content = documenter["system_instructions"]
+        # Handover 0106: Templates use user_instructions for role-specific guidance
+        content = documenter["user_instructions"]
         # Should have role-specific text
         assert "document" in content.lower()
 
@@ -199,7 +208,8 @@ class TestDefaultTemplatesSlimming:
             if template["role"] == "orchestrator":
                 continue  # Orchestrator is system-managed, skip
 
-            content = template["system_instructions"]
+            # Handover 0106: Templates use user_instructions for role-specific guidance
+            content = template["user_instructions"]
 
             # Templates should NOT have Phase 1-5 headers
             lifecycle_headers = [

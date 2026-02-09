@@ -90,17 +90,15 @@ class TestInstallPyStillWorks:
 
     def test_mcp_tools_init_imports_work(self):
         """MCP tools __init__.py should import without errors."""
-        # The tools module is now HTTP-only and doesn't export individual tools
-        # It only exports placeholder registration functions
-        from src.giljo_mcp.tools import (
-            register_agent_tools,
-            register_message_tools,
-            register_orchestration_tools,
-        )
+        # The tools module is now HTTP-only (Handover 0334)
+        # All tools are implemented in api/endpoints/mcp_http.py
+        # The package just documents the architecture
+        import src.giljo_mcp.tools as tools_module
 
-        assert register_agent_tools is not None
-        assert register_message_tools is not None
-        assert register_orchestration_tools is not None
+        # Should import without error
+        assert tools_module is not None
+        # Should be empty (HTTP-only architecture)
+        assert tools_module.__all__ == []
 
 
 class TestNoLegacyQueueReferences:

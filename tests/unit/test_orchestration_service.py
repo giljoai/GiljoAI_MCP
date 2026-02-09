@@ -75,8 +75,7 @@ class TestOrchestrationServiceJobManagement:
                 tenant_key="test-tenant",
             )
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern: spawn_agent_job returns dict directly (no success wrapper)
         assert "job_id" in result
         assert "agent_prompt" in result
         assert result["thin_client"] is True
@@ -85,7 +84,9 @@ class TestOrchestrationServiceJobManagement:
 
     @pytest.mark.asyncio
     async def test_spawn_agent_job_project_not_found(self, mock_db_manager):
-        """Test spawn_agent_job fails when project doesn't exist"""
+        """Test spawn_agent_job raises ResourceNotFoundError when project doesn't exist"""
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         # Arrange
         db_manager, session = mock_db_manager
         tenant_manager = Mock()
@@ -94,18 +95,17 @@ class TestOrchestrationServiceJobManagement:
 
         service = OrchestrationService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.spawn_agent_job(
-            agent_display_name="implementer",
-            agent_name="impl-1",
-            mission="test",
-            project_id="nonexistent",
-            tenant_key="test-tenant",
-        )
+        # Act & Assert - exception-based pattern
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await service.spawn_agent_job(
+                agent_display_name="implementer",
+                agent_name="impl-1",
+                mission="test",
+                project_id="nonexistent",
+                tenant_key="test-tenant",
+            )
 
-        # Assert
-        assert "error" in result
-        assert "NOT_FOUND" in result["error"]
+        assert "not found" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_get_agent_mission_success(self, mock_db_manager):
@@ -148,8 +148,7 @@ class TestOrchestrationServiceJobManagement:
             # Act
             result = await service.get_agent_mission(job_id="job-123", tenant_key="test-tenant")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern: get_agent_mission returns dict directly (no success wrapper)
         assert result["job_id"] == "job-123"
         assert result["agent_display_name"] == "implementer"
         assert "Implement feature X" in result["mission"]
@@ -189,8 +188,7 @@ class TestOrchestrationServiceJobManagement:
         # Act
         result = await service.acknowledge_job(job_id="job-123", agent_id="agent-456")
 
-        # Assert
-        assert result["status"] == "success"
+        # Assert - exception-based pattern: acknowledge_job returns {"job": {...}, "next_instructions": ...}
         assert result["job"]["job_id"] == "job-123"
         assert result["job"]["mission"] == "Test mission"
         # acknowledge_job transitions waiting -> working
@@ -206,25 +204,38 @@ class TestOrchestrationServiceJobManagement:
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
-        # Mock already-acknowledged job
-        mock_job = Mock(spec=AgentExecution)
-        mock_job.job_id = "job-123"
-        mock_job.agent_display_name = "implementer"
-        mock_job.mission = "Test mission"
-        mock_job.acknowledged = True
-        mock_job.status = "working"
-        mock_job.started_at = datetime.now()
+        # Mock already-acknowledged AgentExecution (already in 'working' status)
+        mock_execution = Mock(spec=AgentExecution)
+        mock_execution.job_id = "job-123"
+        mock_execution.agent_id = "agent-456"
+        mock_execution.agent_display_name = "implementer"
+        mock_execution.agent_name = "implementer"
+        mock_execution.status = "working"  # Already working
+        mock_execution.started_at = datetime.now()
+        mock_execution.mission_acknowledged_at = datetime.now()
 
-        session.execute.return_value = Mock(scalar_one_or_none=Mock(return_value=mock_job))
+        # Mock AgentJob (contains mission)
+        mock_job = Mock(spec=AgentJob)
+        mock_job.job_id = "job-123"
+        mock_job.mission = "Test mission"
+        mock_job.project_id = None  # No project -> skip implementation gate check
+
+        # Two queries: 1) fetch AgentExecution, 2) fetch AgentJob
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
+            Mock(scalar_one_or_none=Mock(return_value=mock_job)),
+        ]
 
         service = OrchestrationService(db_manager, tenant_manager)
 
         # Act
         result = await service.acknowledge_job(job_id="job-123", agent_id="agent-456")
 
-        # Assert
-        assert result["status"] == "success"
-        # Should not commit again
+        # Assert - exception-based pattern: returns {"job": {...}, "next_instructions": ...}
+        # For idempotent call (already working), returns current state without committing
+        assert result["job"]["job_id"] == "job-123"
+        assert result["job"]["status"] == "working"
+        # Should not commit again (idempotent)
         session.commit.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -365,12 +376,13 @@ class TestOrchestrationServiceWorkflow:
 
         service = OrchestrationService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.get_workflow_status(project_id="nonexistent", tenant_key="test-tenant")
+        # Act & Assert - exception-based pattern: raises ResourceNotFoundError
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
 
-        # Assert
-        assert "error" in result
-        assert "not found" in result["error"]
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            await service.get_workflow_status(project_id="nonexistent", tenant_key="test-tenant")
+
+        assert "not found" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     @pytest.mark.asyncio
@@ -411,27 +423,28 @@ class TestOrchestrationServiceWorkflow:
         # Act
         result = await service.get_pending_jobs(agent_display_name="implementer", tenant_key="test-tenant")
 
-        # Assert
-        assert result["status"] == "success"
+        # Assert - exception-based pattern: get_pending_jobs returns {"jobs": [...], "count": N}
+        assert "jobs" in result
         assert result["count"] == 2
         assert len(result["jobs"]) == 2
         assert result["jobs"][0]["job_id"] == "job-1"
         assert result["jobs"][1]["job_id"] == "job-2"
 
     @pytest.mark.asyncio
-    async def test_get_pending_jobs_empty_agent_display_name(self):
-        """Test get_pending_jobs validation for empty agent_display_name"""
+    async def test_get_pending_jobs_empty_tenant_key(self):
+        """Test get_pending_jobs validation for empty tenant_key"""
+        from src.giljo_mcp.exceptions import ValidationError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
         service = OrchestrationService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.get_pending_jobs(agent_display_name="", tenant_key="test-tenant")
+        # Act & Assert - exception-based pattern: raises ValidationError for empty tenant_key
+        with pytest.raises(ValidationError) as exc_info:
+            await service.get_pending_jobs(agent_display_name="implementer", tenant_key="")
 
-        # Assert
-        assert result["status"] == "error"
-        assert "cannot be empty" in result["error"]
+        assert "cannot be empty" in str(exc_info.value).lower()
 
 
 class TestOrchestrationServiceErrorHandling:
@@ -440,30 +453,37 @@ class TestOrchestrationServiceErrorHandling:
     @pytest.mark.asyncio
     async def test_spawn_agent_job_database_exception(self):
         """Test database exception handling in spawn_agent_job"""
+        from src.giljo_mcp.exceptions import DatabaseError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
 
-        db_manager.get_session_async = AsyncMock(side_effect=Exception("Connection lost"))
+        # Create a proper async context manager that raises on enter
+        session = AsyncMock()
+        session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
+        session.__aexit__ = AsyncMock(return_value=None)
+        db_manager.get_session_async = Mock(return_value=session)
 
         service = OrchestrationService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.spawn_agent_job(
-            agent_display_name="implementer",
-            agent_name="impl-1",
-            mission="test",
-            project_id="project-id",
-            tenant_key="test-tenant",
-        )
+        # Act & Assert - exception-based pattern: raises DatabaseError
+        with pytest.raises(DatabaseError) as exc_info:
+            await service.spawn_agent_job(
+                agent_display_name="implementer",
+                agent_name="impl-1",
+                mission="test",
+                project_id="project-id",
+                tenant_key="test-tenant",
+            )
 
-        # Assert
-        assert "error" in result
-        assert "INTERNAL_ERROR" in result["error"]
+        assert "connection lost" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_acknowledge_job_no_tenant_context(self):
-        """Test acknowledge_job fails without tenant context"""
+        """Test acknowledge_job raises ValidationError without tenant context"""
+        from src.giljo_mcp.exceptions import ValidationError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
@@ -472,12 +492,11 @@ class TestOrchestrationServiceErrorHandling:
 
         service = OrchestrationService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.acknowledge_job(job_id="job-123", agent_id="agent-456")
+        # Act & Assert - exception-based pattern: raises ValidationError
+        with pytest.raises(ValidationError) as exc_info:
+            await service.acknowledge_job(job_id="job-123", agent_id="agent-456")
 
-        # Assert
-        assert result["status"] == "error"
-        assert "No tenant context" in result["error"]
+        assert "No tenant context" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_complete_job_invalid_result(self):
