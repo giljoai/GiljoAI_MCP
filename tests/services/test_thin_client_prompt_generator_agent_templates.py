@@ -18,9 +18,13 @@ Priority: P2 - MEDIUM
 Updated: 2026-02-08 (0730 series)
 - Removed context_budget from Project (not a valid field)
 - Added Organization creation for User.org_id NOT NULL constraint (0424j)
+
+Updated: 2026-02-09 (0730 series - UUID fix)
+- Use UUIDs for all test entities to avoid conflicts with existing database records
 """
 
 import pytest
+from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate, Product, Project, User
@@ -28,12 +32,12 @@ from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
-async def create_test_org(session: AsyncSession, tenant_key: str) -> Organization:
+async def create_test_org(session: AsyncSession, tenant_key: str, unique_suffix: str) -> Organization:
     """Helper to create an organization for test users (0424j: User.org_id NOT NULL)."""
     org = Organization(
         tenant_key=tenant_key,
-        name=f"Test Org {tenant_key}",
-        slug=f"test-org-{tenant_key.replace('_', '-')}",
+        name=f"Test Org {unique_suffix}",
+        slug=f"test-org-{unique_suffix}",
         is_active=True,
     )
     session.add(org)
@@ -55,19 +59,25 @@ async def test_thin_prompt_contains_core_structure(db_session: AsyncSession):
     AND: Prompt references get_orchestrator_instructions for context fetching
     """
     # ARRANGE
-    tenant_key = "test_tenant"
+    unique_id = str(uuid4())[:8]
+    tenant_key = f"test_tenant_{unique_id}"
 
     # Create organization for user (0424j: User.org_id NOT NULL)
-    org = await create_test_org(db_session, tenant_key)
+    org = await create_test_org(db_session, tenant_key, unique_id)
 
     # Create product
-    product = Product(id="prod-001", name="Test Product", tenant_key=tenant_key, config_data={})
+    product = Product(
+        id=str(uuid4()),
+        name=f"Test Product {unique_id}",
+        tenant_key=tenant_key,
+        config_data={},
+    )
     db_session.add(product)
 
     # Create user with field priority config
     user = User(
-        id="user-001",
-        username="testuser",
+        id=str(uuid4()),
+        username=f"testuser_{unique_id}",
         tenant_key=tenant_key,
         org_id=org.id,  # 0424j: User.org_id NOT NULL
         field_priority_config={
@@ -80,8 +90,8 @@ async def test_thin_prompt_contains_core_structure(db_session: AsyncSession):
 
     # Create project
     project = Project(
-        id="proj-001",
-        name="Test Project",
+        id=str(uuid4()),
+        name=f"Test Project {unique_id}",
         product_id=product.id,
         tenant_key=tenant_key,
         description="Test project description",
@@ -180,23 +190,35 @@ async def test_thin_prompt_is_concise(db_session: AsyncSession):
     AND: All priorities produce similar token counts (templates fetched at runtime)
     """
     # ARRANGE
-    tenant_key = "test_tenant_priority"
+    unique_id = str(uuid4())[:8]
+    tenant_key = f"test_tenant_priority_{unique_id}"
 
     # Create organization for user (0424j: User.org_id NOT NULL)
-    org = await create_test_org(db_session, tenant_key)
+    org = await create_test_org(db_session, tenant_key, unique_id)
 
     # Create product
-    product = Product(id="prod-priority", name="Priority Test Product", tenant_key=tenant_key, config_data={})
+    product = Product(
+        id=str(uuid4()),
+        name=f"Priority Test Product {unique_id}",
+        tenant_key=tenant_key,
+        config_data={},
+    )
     db_session.add(product)
 
     # Create user (will update field_priority_config for each test case)
-    user = User(id="user-priority", username="priorityuser", tenant_key=tenant_key, org_id=org.id, field_priority_config={})
+    user = User(
+        id=str(uuid4()),
+        username=f"priorityuser_{unique_id}",
+        tenant_key=tenant_key,
+        org_id=org.id,
+        field_priority_config={},
+    )
     db_session.add(user)
 
     # Create project
     project = Project(
-        id="proj-priority",
-        name="Priority Test Project",
+        id=str(uuid4()),
+        name=f"Priority Test Project {unique_id}",
         product_id=product.id,
         tenant_key=tenant_key,
         description="Priority test description",
@@ -265,23 +287,35 @@ async def test_thin_prompt_token_estimation(db_session: AsyncSession):
     AND: Token count is consistent regardless of agent template priority
     """
     # ARRANGE
-    tenant_key = "test_tenant_tokens"
+    unique_id = str(uuid4())[:8]
+    tenant_key = f"test_tenant_tokens_{unique_id}"
 
     # Create organization for user (0424j: User.org_id NOT NULL)
-    org = await create_test_org(db_session, tenant_key)
+    org = await create_test_org(db_session, tenant_key, unique_id)
 
     # Create product
-    product = Product(id="prod-tokens", name="Token Test Product", tenant_key=tenant_key, config_data={})
+    product = Product(
+        id=str(uuid4()),
+        name=f"Token Test Product {unique_id}",
+        tenant_key=tenant_key,
+        config_data={},
+    )
     db_session.add(product)
 
     # Create user
-    user = User(id="user-tokens", username="tokenuser", tenant_key=tenant_key, org_id=org.id, field_priority_config={})
+    user = User(
+        id=str(uuid4()),
+        username=f"tokenuser_{unique_id}",
+        tenant_key=tenant_key,
+        org_id=org.id,
+        field_priority_config={},
+    )
     db_session.add(user)
 
     # Create project
     project = Project(
-        id="proj-tokens",
-        name="Token Test Project",
+        id=str(uuid4()),
+        name=f"Token Test Project {unique_id}",
         product_id=product.id,
         tenant_key=tenant_key,
         description="Token test description",
@@ -341,23 +375,35 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
     AND: Thin prompt does NOT contain Tenant B's project details
     """
     # ARRANGE
+    unique_id_a = str(uuid4())[:8]
+    unique_id_b = str(uuid4())[:8]
+
     # Tenant A setup
-    tenant_a_key = "tenant_a"
+    tenant_a_key = f"tenant_a_{unique_id_a}"
 
     # Create organizations for both tenants (0424j: User.org_id NOT NULL)
-    org_a = await create_test_org(db_session, tenant_a_key)
+    org_a = await create_test_org(db_session, tenant_a_key, unique_id_a)
 
-    product_a = Product(id="prod-a", name="Tenant A Product", tenant_key=tenant_a_key, config_data={})
+    product_a = Product(
+        id=str(uuid4()),
+        name=f"Tenant A Product {unique_id_a}",
+        tenant_key=tenant_a_key,
+        config_data={},
+    )
     db_session.add(product_a)
 
     user_a = User(
-        id="user-a", username="tenant_a_user", tenant_key=tenant_a_key, org_id=org_a.id, field_priority_config={"agent_templates": 2}
+        id=str(uuid4()),
+        username=f"tenant_a_user_{unique_id_a}",
+        tenant_key=tenant_a_key,
+        org_id=org_a.id,
+        field_priority_config={"agent_templates": 2},
     )
     db_session.add(user_a)
 
     project_a = Project(
-        id="proj-a",
-        name="Tenant A Project",
+        id=str(uuid4()),
+        name=f"Tenant A Project {unique_id_a}",
         product_id=product_a.id,
         tenant_key=tenant_a_key,
         description="Tenant A description",
@@ -369,7 +415,7 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
     template_a = AgentTemplate(
         tenant_key=tenant_a_key,
         product_id=product_a.id,
-        name="tenant_a_agent",
+        name=f"tenant_a_agent_{unique_id_a}",
         role="Tenant A Specialist",
         category="role",
         description="Tenant A exclusive agent",
@@ -379,15 +425,20 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
     db_session.add(template_a)
 
     # Tenant B setup
-    tenant_b_key = "tenant_b"
-    product_b = Product(id="prod-b", name="Tenant B Product", tenant_key=tenant_b_key, config_data={})
+    tenant_b_key = f"tenant_b_{unique_id_b}"
+    product_b = Product(
+        id=str(uuid4()),
+        name=f"Tenant B Product {unique_id_b}",
+        tenant_key=tenant_b_key,
+        config_data={},
+    )
     db_session.add(product_b)
 
     # Tenant B agent template (should NOT appear in Tenant A's context)
     template_b = AgentTemplate(
         tenant_key=tenant_b_key,
         product_id=product_b.id,
-        name="tenant_b_agent",
+        name=f"tenant_b_agent_{unique_id_b}",
         role="Tenant B Specialist",
         category="role",
         description="Tenant B exclusive agent",
@@ -406,11 +457,11 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
     thin_prompt = result_a["thin_prompt"]
 
     # ASSERT - Thin prompt contains Tenant A's project
-    assert "Tenant A Project" in thin_prompt, "Thin prompt should contain project name"
+    assert f"Tenant A Project {unique_id_a}" in thin_prompt, "Thin prompt should contain project name"
 
     # Tenant B content should NOT appear (multi-tenant isolation)
-    assert "Tenant B Project" not in thin_prompt, "Tenant B's project should NOT appear in Tenant A's thin prompt"
-    assert "Tenant B Product" not in thin_prompt, "Tenant B's product should NOT appear in Tenant A's thin prompt"
+    assert f"Tenant B Project {unique_id_b}" not in thin_prompt, "Tenant B's project should NOT appear in Tenant A's thin prompt"
+    assert f"Tenant B Product {unique_id_b}" not in thin_prompt, "Tenant B's product should NOT appear in Tenant A's thin prompt"
 
     # Note: Agent templates are NOT embedded inline - they are fetched via MCP tools
     # Tenant isolation for agent templates is tested in MCP tool tests, not thin prompt tests
@@ -430,19 +481,25 @@ async def test_thin_prompt_works_without_field_priorities(db_session: AsyncSessi
     AND: Prompt contains core structure (IDENTITY, MCP CONNECTION, YOUR ROLE)
     """
     # ARRANGE
-    tenant_key = "test_tenant_default"
+    unique_id = str(uuid4())[:8]
+    tenant_key = f"test_tenant_default_{unique_id}"
 
     # Create organization for user (0424j: User.org_id NOT NULL)
-    org = await create_test_org(db_session, tenant_key)
+    org = await create_test_org(db_session, tenant_key, unique_id)
 
     # Create product
-    product = Product(id="prod-default", name="Default Priority Product", tenant_key=tenant_key, config_data={})
+    product = Product(
+        id=str(uuid4()),
+        name=f"Default Priority Product {unique_id}",
+        tenant_key=tenant_key,
+        config_data={},
+    )
     db_session.add(product)
 
     # Create user with NO field_priority_config (should use defaults)
     user = User(
-        id="user-default",
-        username="defaultuser",
+        id=str(uuid4()),
+        username=f"defaultuser_{unique_id}",
         tenant_key=tenant_key,
         org_id=org.id,  # 0424j: User.org_id NOT NULL
         field_priority_config=None,  # No custom config
@@ -450,9 +507,10 @@ async def test_thin_prompt_works_without_field_priorities(db_session: AsyncSessi
     db_session.add(user)
 
     # Create project
+    project_name = f"Default Priority Project {unique_id}"
     project = Project(
-        id="proj-default",
-        name="Default Priority Project",
+        id=str(uuid4()),
+        name=project_name,
         product_id=product.id,
         tenant_key=tenant_key,
         description="Default priority test description",
@@ -464,7 +522,7 @@ async def test_thin_prompt_works_without_field_priorities(db_session: AsyncSessi
     template = AgentTemplate(
         tenant_key=tenant_key,
         product_id=product.id,
-        name="implementer",
+        name=f"implementer_{unique_id}",
         role="Backend implementation specialist",
         category="role",
         description="Default priority test template",
@@ -498,7 +556,7 @@ async def test_thin_prompt_works_without_field_priorities(db_session: AsyncSessi
     assert "YOUR ROLE:" in thin_prompt, "YOUR ROLE section should be present"
 
     # Project name should appear in prompt
-    assert "Default Priority Project" in thin_prompt, "Project name should appear in thin prompt"
+    assert project_name in thin_prompt, "Project name should appear in thin prompt"
 
     # MCP tool reference should be present (for fetching context including agent templates)
     assert "get_orchestrator_instructions" in thin_prompt, (
@@ -519,24 +577,36 @@ async def test_project_description_not_notes_in_context_string(db_session: Async
     AND: No AttributeError is raised
     """
     # ARRANGE
-    tenant_key = "test_tenant_notes_bug"
+    unique_id = str(uuid4())[:8]
+    tenant_key = f"test_tenant_notes_bug_{unique_id}"
 
     # Create organization for user (0424j: User.org_id NOT NULL)
-    org = await create_test_org(db_session, tenant_key)
+    org = await create_test_org(db_session, tenant_key, unique_id)
 
     # Create product
-    product = Product(id="prod-notes-bug", name="Notes Bug Test Product", tenant_key=tenant_key, config_data={})
+    product = Product(
+        id=str(uuid4()),
+        name=f"Notes Bug Test Product {unique_id}",
+        tenant_key=tenant_key,
+        config_data={},
+    )
     db_session.add(product)
 
     # Create user
-    user = User(id="user-notes-bug", username="notesbuguser", tenant_key=tenant_key, org_id=org.id, field_priority_config={})
+    user = User(
+        id=str(uuid4()),
+        username=f"notesbuguser_{unique_id}",
+        tenant_key=tenant_key,
+        org_id=org.id,
+        field_priority_config={},
+    )
     db_session.add(user)
 
     # Create project with description
     project_description = "This is the project description field that should appear in context"
     project = Project(
-        id="proj-notes-bug",
-        name="Notes Bug Test Project",
+        id=str(uuid4()),
+        name=f"Notes Bug Test Project {unique_id}",
         product_id=product.id,
         tenant_key=tenant_key,
         description=project_description,
