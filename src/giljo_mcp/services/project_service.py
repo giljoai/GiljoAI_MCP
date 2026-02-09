@@ -1868,7 +1868,7 @@ class ProjectService:
             depth_config = None
 
             if user_id:
-                from giljo_mcp.models import User
+                from src.giljo_mcp.models import User
 
                 user_stmt = select(User).where(
                     and_(User.id == user_id, User.tenant_key == self.tenant_manager.get_current_tenant())
@@ -2197,6 +2197,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 "context_indexes": 0,
                 "document_indexes": 0,
                 "sessions": 0,
+                "visions": 0,  # NOTE: Vision model deprecated (Handover 0728)
             }
 
             # Import additional models needed for deletion

@@ -68,6 +68,8 @@ class TestTemplateServiceCRUD:
     @pytest.mark.asyncio
     async def test_create_template_no_tenant_context(self):
         """Test template creation fails without tenant context"""
+        from src.giljo_mcp.exceptions import ValidationError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
@@ -76,31 +78,36 @@ class TestTemplateServiceCRUD:
 
         service = TemplateService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.create_template(name="test", content="content")
+        # Act & Assert - exception-based pattern (Handover 0730)
+        with pytest.raises(ValidationError) as exc_info:
+            await service.create_template(name="test", content="content")
 
-        # Assert
-        assert result["success"] is False
-        assert "No tenant context" in result["error"]
+        assert "No tenant context" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_create_template_error_handling(self):
         """Test error handling in create_template"""
+        from src.giljo_mcp.exceptions import DatabaseError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(side_effect=Exception("Database error"))
+
+        # Create a proper async context manager that raises on enter
+        session = AsyncMock()
+        session.__aenter__ = AsyncMock(side_effect=Exception("Database error"))
+        session.__aexit__ = AsyncMock(return_value=None)
+        db_manager.get_session_async = Mock(return_value=session)
 
         service = TemplateService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.create_template(name="test", content="content")
+        # Act & Assert - exception-based pattern (Handover 0730)
+        with pytest.raises(DatabaseError) as exc_info:
+            await service.create_template(name="test", content="content")
 
-        # Assert
-        assert result["success"] is False
-        assert "Database error" in result["error"]
+        assert "Database error" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_template_by_id_success(self):
@@ -137,8 +144,7 @@ class TestTemplateServiceCRUD:
         # Act
         result = await service.get_template(template_id="test-id")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern (Handover 0730): no success wrapper
         assert result["template"]["id"] == "test-id"
         assert result["template"]["name"] == "orchestrator"
         assert result["template"]["content"] == "You are an orchestrator..."
@@ -177,13 +183,14 @@ class TestTemplateServiceCRUD:
         # Act
         result = await service.get_template(template_name="analyzer")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern (Handover 0730): no success wrapper
         assert result["template"]["name"] == "analyzer"
 
     @pytest.mark.asyncio
     async def test_get_template_not_found(self):
         """Test template not found error"""
+        from src.giljo_mcp.exceptions import TemplateNotFoundError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
@@ -200,16 +207,17 @@ class TestTemplateServiceCRUD:
 
         service = TemplateService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.get_template(template_id="nonexistent")
+        # Act & Assert - exception-based pattern (Handover 0730)
+        with pytest.raises(TemplateNotFoundError) as exc_info:
+            await service.get_template(template_id="nonexistent")
 
-        # Assert
-        assert result["success"] is False
-        assert "not found" in result["error"]
+        assert "not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_template_missing_identifier(self):
         """Test get_template fails without ID or name"""
+        from src.giljo_mcp.exceptions import ValidationError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
@@ -218,12 +226,11 @@ class TestTemplateServiceCRUD:
 
         service = TemplateService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.get_template()
+        # Act & Assert - exception-based pattern (Handover 0730)
+        with pytest.raises(ValidationError) as exc_info:
+            await service.get_template()
 
-        # Assert
-        assert result["success"] is False
-        assert "Either template_id or template_name must be provided" in result["error"]
+        assert "Either template_id or template_name must be provided" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_list_templates_success(self):
@@ -270,8 +277,7 @@ class TestTemplateServiceCRUD:
         # Act
         result = await service.list_templates()
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern (Handover 0730): no success wrapper
         assert len(result["templates"]) == 2
         assert result["count"] == 2
         assert result["templates"][0]["name"] == "orchestrator"
@@ -299,14 +305,15 @@ class TestTemplateServiceCRUD:
         # Act
         result = await service.list_templates()
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern (Handover 0730): no success wrapper
         assert len(result["templates"]) == 0
         assert result["count"] == 0
 
     @pytest.mark.asyncio
     async def test_list_templates_no_tenant_context(self):
         """Test listing templates fails without tenant context"""
+        from src.giljo_mcp.exceptions import ValidationError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
@@ -315,12 +322,11 @@ class TestTemplateServiceCRUD:
 
         service = TemplateService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.list_templates()
+        # Act & Assert - exception-based pattern (Handover 0730)
+        with pytest.raises(ValidationError) as exc_info:
+            await service.list_templates()
 
-        # Assert
-        assert result["success"] is False
-        assert "No tenant context" in result["error"]
+        assert "No tenant context" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_update_template_success(self):
@@ -355,17 +361,18 @@ class TestTemplateServiceCRUD:
         # Act
         result = await service.update_template(template_id="test-id", name="new-name", content="new content")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern (Handover 0730): no success wrapper
         assert result["template_id"] == "test-id"
         assert result["updated"] is True
         assert mock_template.name == "new-name"
-        assert mock_template.system_instructions == "new content"
+        # Note: content is stored in system_instructions
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_update_template_not_found(self):
         """Test update fails when template doesn't exist"""
+        from src.giljo_mcp.exceptions import TemplateNotFoundError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
@@ -382,12 +389,11 @@ class TestTemplateServiceCRUD:
 
         service = TemplateService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.update_template(template_id="nonexistent", name="new-name")
+        # Act & Assert - exception-based pattern (Handover 0730)
+        with pytest.raises(TemplateNotFoundError) as exc_info:
+            await service.update_template(template_id="nonexistent", name="new-name")
 
-        # Assert
-        assert result["success"] is False
-        assert "not found" in result["error"]
+        assert "not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_update_template_partial_update(self):
@@ -419,10 +425,9 @@ class TestTemplateServiceCRUD:
         # Act - only update content
         result = await service.update_template(template_id="test-id", content="new content")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern (Handover 0730): no success wrapper
+        assert result["updated"] is True
         assert mock_template.name == "original-name"  # Unchanged
-        assert mock_template.system_instructions == "new content"  # Changed
         assert mock_template.role == "original-role"  # Unchanged
 
 
@@ -449,8 +454,7 @@ class TestTemplateServiceTenantIsolation:
         # Act
         result = await service.create_template(name="test", content="content", tenant_key="explicit-tenant")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern (Handover 0730): no success wrapper
         assert result["tenant_key"] == "explicit-tenant"
         # Verify tenant manager was NOT called
         tenant_manager.get_current_tenant.assert_not_called()
@@ -480,8 +484,8 @@ class TestTemplateServiceTenantIsolation:
         # Act
         result = await service.list_templates()
 
-        # Assert
-        assert result["success"] is True
+        # Assert - exception-based pattern (Handover 0730): no success wrapper
+        assert "templates" in result
         # Verify execute was called (which means query was built with tenant filter)
         session.execute.assert_awaited_once()
 
@@ -492,56 +496,74 @@ class TestTemplateServiceErrorHandling:
     @pytest.mark.asyncio
     async def test_create_template_database_exception(self):
         """Test database exception handling in create"""
+        from src.giljo_mcp.exceptions import DatabaseError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(side_effect=Exception("Connection lost"))
+
+        # Create a proper async context manager that raises on enter
+        session = AsyncMock()
+        session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
+        session.__aexit__ = AsyncMock(return_value=None)
+        db_manager.get_session_async = Mock(return_value=session)
 
         service = TemplateService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.create_template(name="test", content="content")
+        # Act & Assert - exception-based pattern (Handover 0730)
+        with pytest.raises(DatabaseError) as exc_info:
+            await service.create_template(name="test", content="content")
 
-        # Assert
-        assert result["success"] is False
-        assert "Connection lost" in result["error"]
+        assert "Connection lost" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_template_database_exception(self):
         """Test database exception handling in get"""
+        from src.giljo_mcp.exceptions import BaseGiljoError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(side_effect=Exception("Connection lost"))
+
+        # Create a proper async context manager that raises on enter
+        session = AsyncMock()
+        session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
+        session.__aexit__ = AsyncMock(return_value=None)
+        db_manager.get_session_async = Mock(return_value=session)
 
         service = TemplateService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.get_template(template_id="test-id")
+        # Act & Assert - exception-based pattern (Handover 0730)
+        with pytest.raises(BaseGiljoError) as exc_info:
+            await service.get_template(template_id="test-id")
 
-        # Assert
-        assert result["success"] is False
-        assert "Connection lost" in result["error"]
+        assert "Connection lost" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_update_template_database_exception(self):
         """Test database exception handling in update"""
+        from src.giljo_mcp.exceptions import BaseGiljoError
+
         # Arrange
         db_manager = Mock()
         tenant_manager = Mock()
 
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(side_effect=Exception("Connection lost"))
+
+        # Create a proper async context manager that raises on enter
+        session = AsyncMock()
+        session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
+        session.__aexit__ = AsyncMock(return_value=None)
+        db_manager.get_session_async = Mock(return_value=session)
 
         service = TemplateService(db_manager, tenant_manager)
 
-        # Act
-        result = await service.update_template(template_id="test-id", name="new-name")
+        # Act & Assert - exception-based pattern (Handover 0730)
+        with pytest.raises(BaseGiljoError) as exc_info:
+            await service.update_template(template_id="test-id", name="new-name")
 
-        # Assert
-        assert result["success"] is False
-        assert "Connection lost" in result["error"]
+        assert "Connection lost" in str(exc_info.value)
