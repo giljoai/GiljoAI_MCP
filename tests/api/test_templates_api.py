@@ -366,38 +366,6 @@ class TestTemplateCRUD:
         response = await api_client.get(f"/api/v1/templates/{fake_id}")
         assert response.status_code == 401
 
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be modified")
-    @pytest.mark.asyncio
-    async def test_update_template_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
-    ):
-        """Test PUT /api/v1/templates/{id} - Update template successfully."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be modified")
-    @pytest.mark.asyncio
-    async def test_update_template_not_found(self, api_client: AsyncClient, tenant_a_token: str):
-        """Test PUT /api/v1/templates/{id} - Return 404 for nonexistent template."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be modified")
-    @pytest.mark.asyncio
-    async def test_update_template_unauthorized(self, api_client: AsyncClient, tenant_a_template: dict):
-        """Test PUT /api/v1/templates/{id} - Reject without authentication."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be deleted")
-    @pytest.mark.asyncio
-    async def test_delete_template_happy_path(self, api_client: AsyncClient, tenant_a_token: str):
-        """Test DELETE /api/v1/templates/{id} - Delete template successfully."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be deleted")
-    @pytest.mark.asyncio
-    async def test_delete_template_not_found(self, api_client: AsyncClient, tenant_a_token: str):
-        """Test DELETE /api/v1/templates/{id} - Return 404 for nonexistent template."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be deleted")
-    @pytest.mark.asyncio
-    async def test_delete_template_unauthorized(self, api_client: AsyncClient, tenant_a_template: dict):
-        """Test DELETE /api/v1/templates/{id} - Reject without authentication."""
-
     @pytest.mark.asyncio
     async def test_get_active_count_happy_path(
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
@@ -426,60 +394,7 @@ class TestTemplateCRUD:
 
 
 class TestTemplateHistory:
-    """Test history operations: history, restore, reset, reset_system
-
-    Note: Most history tests are skipped because templates are system-managed
-    and cannot be modified, so there's no history to test.
-    """
-
-    @pytest.mark.skip(reason="Templates are system-managed - no history generated without updates")
-    @pytest.mark.asyncio
-    async def test_get_history_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict):
-        """Test GET /api/v1/templates/{id}/history - Get template edit history."""
-
-    @pytest.mark.skip(reason="Templates are system-managed - history endpoint not applicable")
-    @pytest.mark.asyncio
-    async def test_get_history_not_found(self, api_client: AsyncClient, tenant_a_token: str):
-        """Test GET /api/v1/templates/{id}/history - Return 404 for nonexistent template."""
-
-    @pytest.mark.skip(reason="Templates are system-managed - history endpoint not applicable")
-    @pytest.mark.asyncio
-    async def test_get_history_unauthorized(self, api_client: AsyncClient, tenant_a_template: dict):
-        """Test GET /api/v1/templates/{id}/history - Reject without authentication."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be restored")
-    @pytest.mark.asyncio
-    async def test_restore_template_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
-    ):
-        """Test POST /api/v1/templates/{id}/restore/{archive_id} - Restore template version."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be restored")
-    @pytest.mark.asyncio
-    async def test_restore_template_not_found(self, api_client: AsyncClient, tenant_a_token: str):
-        """Test POST /api/v1/templates/{id}/restore/{archive_id} - Return 404 for nonexistent template."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be restored")
-    @pytest.mark.asyncio
-    async def test_restore_template_unauthorized(self, api_client: AsyncClient, tenant_a_template: dict):
-        """Test POST /api/v1/templates/{id}/restore/{archive_id} - Reject without authentication."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be reset")
-    @pytest.mark.asyncio
-    async def test_reset_template_happy_path(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
-    ):
-        """Test POST /api/v1/templates/{id}/reset - Reset template to defaults."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be reset")
-    @pytest.mark.asyncio
-    async def test_reset_template_not_found(self, api_client: AsyncClient, tenant_a_token: str):
-        """Test POST /api/v1/templates/{id}/reset - Return 404 for nonexistent template."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be reset")
-    @pytest.mark.asyncio
-    async def test_reset_template_unauthorized(self, api_client: AsyncClient, tenant_a_template: dict):
-        """Test POST /api/v1/templates/{id}/reset - Reject without authentication."""
+    """Test history operations: reset_system (only active endpoint)"""
 
     @pytest.mark.asyncio
     async def test_reset_system_instructions_happy_path(
@@ -521,11 +436,6 @@ class TestTemplateHistory:
 
 class TestTemplatePreview:
     """Test preview operations: diff, preview"""
-
-    @pytest.mark.skip(reason="Templates are system-managed - diff requires updates which are not allowed")
-    @pytest.mark.asyncio
-    async def test_get_diff_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict):
-        """Test GET /api/v1/templates/{id}/diff - Get diff between template and default."""
 
     @pytest.mark.asyncio
     async def test_get_diff_not_found(self, api_client: AsyncClient, tenant_a_token: str):
@@ -621,20 +531,6 @@ class TestMultiTenantIsolation:
         # Should return 404 (not 403) to avoid leaking existence
         assert response.status_code == 404
 
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be updated")
-    @pytest.mark.asyncio
-    async def test_update_template_cross_tenant_blocked(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_b_template: dict
-    ):
-        """Test PUT /api/v1/templates/{id} - Block cross-tenant update."""
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be deleted")
-    @pytest.mark.asyncio
-    async def test_delete_template_cross_tenant_blocked(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_b_template: dict
-    ):
-        """Test DELETE /api/v1/templates/{id} - Block cross-tenant deletion."""
-
     @pytest.mark.asyncio
     async def test_history_cross_tenant_blocked(
         self, api_client: AsyncClient, tenant_a_token: str, tenant_b_template: dict
@@ -644,13 +540,6 @@ class TestMultiTenantIsolation:
             f"/api/v1/templates/{tenant_b_template['id']}/history", cookies={"access_token": tenant_a_token}
         )
         assert response.status_code == 404
-
-    @pytest.mark.skip(reason="Templates are system-managed and cannot be reset")
-    @pytest.mark.asyncio
-    async def test_reset_cross_tenant_blocked(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_b_template: dict
-    ):
-        """Test POST /api/v1/templates/{id}/reset - Block cross-tenant reset."""
 
     @pytest.mark.asyncio
     async def test_diff_cross_tenant_blocked(
@@ -673,26 +562,3 @@ class TestMultiTenantIsolation:
             cookies={"access_token": tenant_a_token},
         )
         assert response.status_code == 404
-
-
-# ============================================================================
-# CACHE BEHAVIOR TESTS
-# ============================================================================
-
-
-class TestCacheBehavior:
-    """Test template caching and invalidation"""
-
-    @pytest.mark.skip(reason="Templates are system-managed - cache invalidation on update not applicable")
-    @pytest.mark.asyncio
-    async def test_cache_invalidation_on_update(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
-    ):
-        """Test that cache is invalidated when template is updated."""
-
-    @pytest.mark.skip(reason="Templates are system-managed - cache invalidation on reset not applicable")
-    @pytest.mark.asyncio
-    async def test_cache_invalidation_on_reset(
-        self, api_client: AsyncClient, tenant_a_token: str, tenant_a_template: dict
-    ):
-        """Test that cache is invalidated when template is reset."""
