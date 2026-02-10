@@ -826,7 +826,6 @@ class TestProductVision:
     """Test vision document operations: upload, list, delete, list_chunks"""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Production bug: vision.py creates new DatabaseManager instead of using injected session")
     async def test_upload_vision_document_happy_path(
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product
     ):
@@ -848,7 +847,6 @@ class TestProductVision:
         assert "total_tokens" in data
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Production bug: vision.py creates new DatabaseManager instead of using injected session")
     async def test_upload_vision_document_txt_file(
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product
     ):
@@ -881,7 +879,6 @@ class TestProductVision:
         assert "Invalid file type" in response.json()["message"]
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Production bug: vision.py creates new DatabaseManager instead of using injected session")
     async def test_upload_vision_document_duplicate_name(
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product
     ):
@@ -925,7 +922,6 @@ class TestProductVision:
         assert isinstance(data, list)
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Production bug: vision.py creates new DatabaseManager instead of using injected session")
     async def test_list_vision_documents_with_documents(
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product
     ):
@@ -959,7 +955,6 @@ class TestProductVision:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Production bug: vision.py creates new DatabaseManager instead of using injected session")
     async def test_delete_vision_document_happy_path(
         self, api_client: AsyncClient, tenant_a_token: str, tenant_a_product
     ):
@@ -1089,7 +1084,6 @@ class TestMultiTenantIsolation:
         assert "message" in data
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Production bug: vision.py creates new DatabaseManager instead of using injected session")
     async def test_vision_documents_tenant_isolation(
         self, api_client: AsyncClient, tenant_a_token: str, tenant_b_token: str, tenant_a_product, tenant_b_product
     ):

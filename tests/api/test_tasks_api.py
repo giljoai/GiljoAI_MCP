@@ -697,7 +697,6 @@ class TestTaskCRUD:
 class TestTaskStatus:
     """Test status change endpoint"""
 
-    @pytest.mark.skip(reason="Production bug: TaskResponse missing priority/created_at in change_task_status endpoint")
     @pytest.mark.asyncio
     async def test_change_task_status_happy_path(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_task):
         """Test PATCH /api/v1/tasks/{task_id}/status/ - Change status successfully."""
@@ -712,7 +711,6 @@ class TestTaskStatus:
         assert data["status"] == "in_progress"
         assert data["started_at"] is not None
 
-    @pytest.mark.skip(reason="Production bug: TaskResponse missing priority/created_at in change_task_status endpoint")
     @pytest.mark.asyncio
     async def test_change_task_status_to_completed(self, api_client: AsyncClient, tenant_a_token: str, tenant_a_task):
         """Test PATCH /api/v1/tasks/{task_id}/status/ - Change to completed."""

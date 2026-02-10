@@ -931,14 +931,26 @@ class TaskService:
 
         self._logger.info(f"Changed task {task_id} status to {new_status}")
 
-        # Convert to dict for response
+        # Convert to dict for response - include all TaskResponse fields
         task_data = {
             "id": str(task.id),
-            "status": task.status,
-            "started_at": task.started_at.isoformat() if task.started_at else None,
-            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
             "title": task.title,
             "description": task.description,
+            "category": task.category,
+            "status": task.status,
+            "priority": task.priority,
+            "product_id": str(task.product_id) if task.product_id else None,
+            "project_id": str(task.project_id) if task.project_id else None,
+            "job_id": str(task.job_id) if task.job_id else None,
+            "parent_task_id": str(task.parent_task_id) if task.parent_task_id else None,
+            "created_by_user_id": str(task.created_by_user_id) if task.created_by_user_id else None,
+            "converted_to_project_id": str(task.converted_to_project_id) if task.converted_to_project_id else None,
+            "created_at": task.created_at,
+            "started_at": task.started_at,
+            "completed_at": task.completed_at,
+            "due_date": task.due_date,
+            "estimated_effort": task.estimated_effort,
+            "actual_effort": task.actual_effort,
         }
 
         return task_data
