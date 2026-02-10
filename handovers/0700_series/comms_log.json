@@ -894,6 +894,43 @@
         "depends_on": "0730d (complete)",
         "estimated_effort": "4-8 hours"
       }
+    },
+    {
+      "id": "0730e-test-cleanup",
+      "timestamp": "2026-02-10T02:28:16Z",
+      "from_handover": "0730e",
+      "to_handovers": [
+        "orchestrator",
+        "0740"
+      ],
+      "type": "info",
+      "subject": "0730e Test Cleanup Phase 1 Complete - Obsolete Tests Deleted",
+      "message": "Deleted 6 obsolete test files (-74 tests) and removed 29 skipped tests from active files. Test suite slimmed from 654 → 524 tests. Priority 1: Deleted test_jobs_endpoint_mission_acknowledged.py, test_jobs_endpoint_message_counters.py, test_table_view_endpoint.py, test_table_view_mission_fields.py, test_websocket_table_updates.py, test_0367b_mcpagentjob_removal.py. Priority 2: Removed 22 skipped template tests, 7 skipped slash command tests. Result: 364 passed, 96 failed, 39 errors, 25 skipped. 3 parallel subagents launched to fix remaining failures.",
+      "files_affected": [
+        "DELETED: tests/api/test_jobs_endpoint_mission_acknowledged.py",
+        "DELETED: tests/api/test_jobs_endpoint_message_counters.py",
+        "DELETED: tests/api/test_table_view_endpoint.py",
+        "DELETED: tests/api/test_table_view_mission_fields.py",
+        "DELETED: tests/api/test_websocket_table_updates.py",
+        "DELETED: tests/api/test_0367b_mcpagentjob_removal.py",
+        "tests/api/test_templates_api.py",
+        "tests/api/test_slash_commands_api.py"
+      ],
+      "action_required": true,
+      "context": {
+        "tests_before": 654,
+        "tests_after": 524,
+        "tests_deleted": 130,
+        "files_deleted": 6,
+        "skipped_tests_removed": 29,
+        "remaining_issues": {
+          "failed": 96,
+          "errors": 39,
+          "skipped": 25
+        },
+        "parallel_agents_running": 3,
+        "phase": "cleanup complete, fix agents running"
+      }
     }
   ],
   "schema": {
