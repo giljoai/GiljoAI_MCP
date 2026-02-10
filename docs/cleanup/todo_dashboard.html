@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GiljoAI MCP - TODO Inventory Dashboard (0740)</title>
+<style>
+  :root {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-card: #0f3460;
+    --bg-table-row: #1a1a3e;
+    --bg-table-hover: #252550;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0b0;
+    --text-muted: #707080;
+    --accent-blue: #4da6ff;
+    --accent-green: #4caf50;
+    --accent-orange: #ff9800;
+    --accent-red: #f44336;
+    --accent-purple: #9c27b0;
+    --border-color: #2a2a4a;
+    --status-done: #4caf50;
+    --status-active: #ff9800;
+    --status-obsolete: #9e9e9e;
+    --priority-p0: #f44336;
+    --priority-p1: #ff9800;
+    --priority-p2: #2196f3;
+    --priority-p3: #9e9e9e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    padding: 20px;
+  }
+
+  .dashboard-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+  }
+
+  .dashboard-header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .dashboard-header .subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  .dashboard-header .generated {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 8px;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .summary-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .summary-card .label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+
+  .summary-card .value {
+    font-size: 32px;
+    font-weight: 700;
+  }
+
+  .summary-card .detail {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .summary-card.total .value { color: var(--accent-blue); }
+  .summary-card.done .value { color: var(--status-done); }
+  .summary-card.active .value { color: var(--status-active); }
+  .summary-card.obsolete .value { color: var(--status-obsolete); }
+
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .filter-group .filter-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+
+  .filter-btn {
+    padding: 4px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .filter-btn:hover {
+    border-color: var(--accent-blue);
+    color: var(--text-primary);
+  }
+
+  .filter-btn.active {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: #fff;
+  }
+
+  .filter-btn.active.done { background: var(--status-done); border-color: var(--status-done); }
+  .filter-btn.active.active-status { background: var(--status-active); border-color: var(--status-active); }
+  .filter-btn.active.obsolete { background: var(--status-obsolete); border-color: var(--status-obsolete); }
+  .filter-btn.active.p0 { background: var(--priority-p0); border-color: var(--priority-p0); }
+  .filter-btn.active.p1 { background: var(--priority-p1); border-color: var(--priority-p1); }
+  .filter-btn.active.p2 { background: var(--priority-p2); border-color: var(--priority-p2); }
+  .filter-btn.active.p3 { background: var(--priority-p3); border-color: var(--priority-p3); }
+
+  .filter-separator {
+    width: 1px;
+    height: 28px;
+    background: var(--border-color);
+    margin: 0 8px;
+  }
+
+  .results-count {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    padding-left: 4px;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead {
+    background: var(--bg-card);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border-color);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  th:hover { color: var(--accent-blue); }
+
+  th .sort-indicator {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 10px;
+    opacity: 0.5;
+  }
+
+  th.sorted .sort-indicator { opacity: 1; }
+
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+  }
+
+  tr { background: var(--bg-primary); }
+
+  tr:hover { background: var(--bg-table-hover); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .badge-done { background: rgba(76, 175, 80, 0.2); color: var(--status-done); }
+  .badge-active { background: rgba(255, 152, 0, 0.2); color: var(--status-active); }
+  .badge-obsolete { background: rgba(158, 158, 158, 0.2); color: var(--status-obsolete); }
+  .badge-p0 { background: rgba(244, 67, 54, 0.2); color: var(--priority-p0); }
+  .badge-p1 { background: rgba(255, 152, 0, 0.2); color: var(--priority-p1); }
+  .badge-p2 { background: rgba(33, 150, 243, 0.2); color: var(--priority-p2); }
+  .badge-p3 { background: rgba(158, 158, 158, 0.2); color: var(--priority-p3); }
+  .badge-testing { background: rgba(33, 150, 243, 0.15); color: #64b5f6; }
+  .badge-enhancement { background: rgba(156, 39, 176, 0.15); color: #ce93d8; }
+  .badge-cleanup { background: rgba(158, 158, 158, 0.15); color: #bdbdbd; }
+
+  .file-path {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--accent-blue);
+  }
+
+  .line-num {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .todo-text {
+    max-width: 400px;
+    word-wrap: break-word;
+  }
+
+  .context-text {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    max-width: 400px;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .data-error {
+    text-align: center;
+    padding: 40px 20px;
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    border-radius: 8px;
+    color: var(--accent-red);
+    margin: 20px 0;
+  }
+
+  .data-error h3 { margin-bottom: 8px; }
+  .data-error p { font-size: 13px; color: var(--text-secondary); }
+
+  .footer {
+    text-align: center;
+    padding: 16px;
+    margin-top: 24px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  @media (max-width: 768px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .filter-bar { flex-direction: column; }
+    .filter-separator { width: 100%; height: 1px; margin: 4px 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="dashboard-header">
+  <h1>TODO Inventory Dashboard</h1>
+  <div class="subtitle">GiljoAI MCP - Audit 0740 Post-Cleanup Analysis</div>
+  <div class="generated" id="generated-info">Loading data...</div>
+</div>
+
+<div class="summary-grid" id="summary-grid">
+  <div class="summary-card total">
+    <div class="label">Total TODOs</div>
+    <div class="value" id="total-count">--</div>
+    <div class="detail">After false-positive filtering</div>
+  </div>
+  <div class="summary-card done">
+    <div class="label">Done</div>
+    <div class="value" id="done-count">--</div>
+    <div class="detail">Work completed, comment remains</div>
+  </div>
+  <div class="summary-card active">
+    <div class="label">Active</div>
+    <div class="value" id="active-count">--</div>
+    <div class="detail">Still needs attention</div>
+  </div>
+  <div class="summary-card obsolete">
+    <div class="label">Obsolete</div>
+    <div class="value" id="obsolete-count">--</div>
+    <div class="detail">No longer relevant</div>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <div class="filter-group">
+    <span class="filter-label">Status:</span>
+    <button class="filter-btn active" data-filter="status" data-value="all" onclick="toggleFilter(this)">All</button>
+    <button class="filter-btn done" data-filter="status" data-value="done" onclick="toggleFilter(this)">Done</button>
+    <button class="filter-btn active-status" data-filter="status" data-value="active" onclick="toggleFilter(this)">Active</button>
+    <button class="filter-btn obsolete" data-filter="status" data-value="obsolete" onclick="toggleFilter(this)">Obsolete</button>
+  </div>
+  <div class="filter-separator"></div>
+  <div class="filter-group">
+    <span class="filter-label">Priority:</span>
+    <button class="filter-btn active" data-filter="priority" data-value="all" onclick="toggleFilter(this)">All</button>
+    <button class="filter-btn p0" data-filter="priority" data-value="p0" onclick="toggleFilter(this)">P0</button>
+    <button class="filter-btn p1" data-filter="priority" data-value="p1" onclick="toggleFilter(this)">P1</button>
+    <button class="filter-btn p2" data-filter="priority" data-value="p2" onclick="toggleFilter(this)">P2</button>
+    <button class="filter-btn p3" data-filter="priority" data-value="p3" onclick="toggleFilter(this)">P3</button>
+  </div>
+  <div class="filter-separator"></div>
+  <div class="filter-group">
+    <span class="filter-label">Category:</span>
+    <button class="filter-btn active" data-filter="category" data-value="all" onclick="toggleFilter(this)">All</button>
+    <button class="filter-btn" data-filter="category" data-value="testing" onclick="toggleFilter(this)">Testing</button>
+    <button class="filter-btn" data-filter="category" data-value="enhancement" onclick="toggleFilter(this)">Enhancement</button>
+    <button class="filter-btn" data-filter="category" data-value="cleanup" onclick="toggleFilter(this)">Cleanup</button>
+  </div>
+</div>
+
+<div class="results-count" id="results-count">Loading...</div>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th data-sort="id" onclick="sortTable(this)" class="sorted">
+          # <span class="sort-indicator">&#9650;</span>
+        </th>
+        <th data-sort="file" onclick="sortTable(this)">
+          File <span class="sort-indicator">&#9650;</span>
+        </th>
+        <th data-sort="line" onclick="sortTable(this)">
+          Line <span class="sort-indicator">&#9650;</span>
+        </th>
+        <th data-sort="priority" onclick="sortTable(this)">
+          Priority <span class="sort-indicator">&#9650;</span>
+        </th>
+        <th data-sort="status" onclick="sortTable(this)">
+          Status <span class="sort-indicator">&#9650;</span>
+        </th>
+        <th data-sort="text" onclick="sortTable(this)">
+          TODO Text <span class="sort-indicator">&#9650;</span>
+        </th>
+        <th data-sort="category" onclick="sortTable(this)">
+          Category <span class="sort-indicator">&#9650;</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody id="todo-body">
+      <tr><td colspan="7" class="no-results">Loading data...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  GiljoAI MCP TODO Inventory - Generated by 0740 Audit | Standalone offline dashboard
+</div>
+
+<div class="data-error" id="data-error" style="display: none;">
+  <h3>Data Load Error</h3>
+  <p id="error-message">Unable to load TODO data.</p>
+  <p style="margin-top: 8px;">
+    Expected data file at: <code>../../handovers/0740_todo_data.json</code> (relative to this HTML file)
+  </p>
+</div>
+
+<script>
+// ---- Embedded fallback data ----
+// If the JSON file cannot be loaded (file:// protocol, CORS, etc.),
+// the dashboard uses this embedded copy of the data.
+var EMBEDDED_DATA = {
+  "generated_at": "2026-02-10T12:00:00Z",
+  "baseline": "post-0730",
+  "summary": {
+    "total": 28,
+    "done": 5,
+    "active": 13,
+    "obsolete": 10,
+    "by_priority": {"p0": 0, "p1": 3, "p2": 17, "p3": 8}
+  },
+  "todos": [
+    {"id":"todo-001","file":"api/endpoints/mcp_installer.py","line":232,"priority":"p2","status":"active","text":"Query from APIKey table if needed","category":"enhancement","context":"API key retrieval uses getattr fallback instead of querying the existing APIKey table"},
+    {"id":"todo-002","file":"frontend/src/components/TemplateManager.vue","line":1111,"priority":"p2","status":"done","text":"Add toast notification when toast composable is available","category":"enhancement","context":"useToast.js composable now exists at frontend/src/composables/useToast.js"},
+    {"id":"todo-003","file":"frontend/src/components/TemplateManager.vue","line":1124,"priority":"p2","status":"done","text":"Add error toast when composable is available","category":"enhancement","context":"useToast.js composable now exists"},
+    {"id":"todo-004","file":"frontend/src/components/TemplateManager.vue","line":1287,"priority":"p2","status":"done","text":"Add toast notification when composable is available","category":"enhancement","context":"useToast.js composable now exists - clipboard copy success notification"},
+    {"id":"todo-005","file":"tests/performance/test_vision_chunking_load.py","line":20,"priority":"p3","status":"active","text":"ChunkingTools class doesn't exist yet","category":"testing","context":"Performance test references non-existent ChunkingTools class"},
+    {"id":"todo-006","file":"tests/performance/test_message_queue_load.py","line":20,"priority":"p3","status":"active","text":"MessageTools class doesn't exist yet","category":"testing","context":"Performance test references non-existent MessageTools class"},
+    {"id":"todo-007","file":"tests/performance/test_database_benchmarks.py","line":12,"priority":"p2","status":"obsolete","text":"TODO(0127a-2): Refactoring for MCPAgentJob model","category":"testing","context":"MCPAgentJob was never created; model is AgentExecution. Entire file skipped."},
+    {"id":"todo-008","file":"tests/performance/test_database_benchmarks.py","line":30,"priority":"p2","status":"obsolete","text":"TODO(0127a-2): Agent to MCPAgentJob refactoring","category":"testing","context":"Duplicate TODO in same file, same obsolete model reference"},
+    {"id":"todo-009","file":"tests/test_e2e_sub_agent_lifecycle.py","line":20,"priority":"p3","status":"active","text":"AgentTools class doesn't exist yet","category":"testing","context":"E2E test references non-existent AgentTools class"},
+    {"id":"todo-010","file":"tests/test_pin_recovery.py","line":348,"priority":"p1","status":"done","text":"Add authentication header when JWT is implemented","category":"testing","context":"JWT auth IS implemented in api/auth_utils.py and api/middleware/auth.py"},
+    {"id":"todo-011","file":"tests/test_pin_recovery.py","line":426,"priority":"p1","status":"done","text":"Add admin authentication header when JWT is implemented","category":"testing","context":"JWT auth is implemented"},
+    {"id":"todo-012","file":"tests/test_pin_recovery.py","line":460,"priority":"p2","status":"active","text":"Add non-admin authentication header","category":"testing","context":"JWT auth implemented but test not updated"},
+    {"id":"todo-013","file":"tests/test_pin_recovery.py","line":474,"priority":"p2","status":"active","text":"Add admin authentication header","category":"testing","context":"Admin self-reset test needs JWT auth headers"},
+    {"id":"todo-014","file":"tests/test_pin_recovery.py","line":505,"priority":"p2","status":"active","text":"Add admin authentication header","category":"testing","context":"User creation endpoint test needs JWT auth headers"},
+    {"id":"todo-015","file":"tests/integration/test_full_stack_mode_flow.py","line":203,"priority":"p2","status":"active","text":"Optimize prompt generator to reach 600 tokens target","category":"enhancement","context":"Test has relaxed assertion from 600 to 1200 token target"},
+    {"id":"todo-016","file":"tests/integration/test_backup_integration.py","line":21,"priority":"p2","status":"obsolete","text":"TODO(0127a-2): Refactoring for MCPAgentJob model","category":"testing","context":"Entire file skipped. MCPAgentJob never existed."},
+    {"id":"todo-017","file":"tests/integration/test_backup_integration.py","line":243,"priority":"p3","status":"active","text":"Verify backup file content when implementation exists","category":"testing","context":"Placeholder for verifying tenant-isolated backup content"},
+    {"id":"todo-018","file":"tests/integration/test_hierarchical_context.py","line":14,"priority":"p2","status":"obsolete","text":"TODO(0127a-2): Refactoring for MCPAgentJob model","category":"testing","context":"Skipped test file referencing obsolete MCPAgentJob model"},
+    {"id":"todo-019","file":"tests/integration/test_message_queue_integration.py","line":10,"priority":"p2","status":"obsolete","text":"TODO(0127a-2): Refactoring for MCPAgentJob model","category":"testing","context":"Skipped test file referencing obsolete MCPAgentJob model"},
+    {"id":"todo-020","file":"tests/integration/test_orchestration_e2e.py","line":146,"priority":"p1","status":"active","text":"Fix database injection (MessageService requires separate db_manager)","category":"testing","context":"Real architectural issue blocking agent communication test coverage"},
+    {"id":"todo-021","file":"tests/services/test_vision_summarizer.py","line":240,"priority":"p3","status":"active","text":"Implement VisionDocumentSummarizer tests (3 placeholders at lines 240, 261, 281)","category":"testing","context":"VisionDocumentSummarizer now exists but placeholder tests were never implemented"},
+    {"id":"todo-022","file":"tests/unit/test_vision_repository_async.py","line":65,"priority":"p3","status":"obsolete","text":"Update to await after async refactoring","category":"cleanup","context":"mark_chunked is already async. Test already uses await. TODO is stale."},
+    {"id":"todo-023","file":"tests/unit/test_products_crud.py","line":31,"priority":"p3","status":"obsolete","text":"Complete mock implementation once ProductService exists","category":"testing","context":"ProductService exists since handover 0120 series. Test is a trivial stub."},
+    {"id":"todo-024","file":"tests/unit/test_products_crud.py","line":49,"priority":"p3","status":"obsolete","text":"Complete mock implementation once ProductService exists","category":"testing","context":"Same as todo-023 - ProductService exists. Stub test only."},
+    {"id":"todo-025","file":"tests/integration/test_orchestrator_template.py","line":20,"priority":"p2","status":"obsolete","text":"TODO(0127a): Commented-out import referencing old Agent model","category":"testing","context":"File skipped with 0127a-2 marker. MCPAgentJob never created; model is AgentExecution."},
+    {"id":"todo-026","file":"tests/integration/test_upgrade_validation.py","line":25,"priority":"p2","status":"obsolete","text":"TODO(0127a): Commented-out import referencing old Agent model","category":"testing","context":"File skipped with 0127a-2 marker."},
+    {"id":"todo-027","file":"tests/integration/test_server_mode_auth.py","line":83,"priority":"p2","status":"active","text":"Replace with actual API key generation/retrieval","category":"testing","context":"Test fixture returns hardcoded placeholder API key string."},
+    {"id":"todo-028","file":"tests/integration/test_priority_system_integration.py","line":560,"priority":"p2","status":"active","text":"Phase 6 - Add WebSocket event assertion","category":"testing","context":"After priority config update, verify WebSocket event emitted with priority_config_updated type."}
+  ]
+};
+
+// ---- State ----
+var allTodos = [];
+var currentFilters = { status: 'all', priority: 'all', category: 'all' };
+var currentSort = { column: 'id', ascending: true };
+var priorityOrder = { 'p0': 0, 'p1': 1, 'p2': 2, 'p3': 3 };
+var statusOrder = { 'active': 0, 'done': 1, 'obsolete': 2 };
+
+// ---- Initialize ----
+function init() {
+  // Try loading from JSON file first, fall back to embedded data
+  loadData();
+}
+
+function loadData() {
+  // Try fetching the external JSON file
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '../../handovers/0740_todo_data.json', true);
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          processData(data);
+        } catch (e) {
+          console.warn('JSON parse error, using embedded data:', e);
+          processData(EMBEDDED_DATA);
+        }
+      } else {
+        console.warn('HTTP ' + xhr.status + ', using embedded data');
+        processData(EMBEDDED_DATA);
+      }
+    };
+    xhr.onerror = function() {
+      console.warn('Network error loading JSON, using embedded data');
+      processData(EMBEDDED_DATA);
+    };
+    xhr.send();
+  } catch (e) {
+    // XHR not available or blocked (file:// protocol)
+    console.warn('XHR failed, using embedded data:', e);
+    processData(EMBEDDED_DATA);
+  }
+}
+
+function processData(data) {
+  document.getElementById('data-error').style.display = 'none';
+
+  // Update summary cards
+  var summary = data.summary;
+  document.getElementById('total-count').textContent = summary.total;
+  document.getElementById('done-count').textContent = summary.done;
+  document.getElementById('active-count').textContent = summary.active;
+  document.getElementById('obsolete-count').textContent = summary.obsolete;
+  document.getElementById('generated-info').textContent =
+    'Generated: ' + data.generated_at + ' | Baseline: ' + data.baseline;
+
+  // Store todos
+  allTodos = data.todos;
+
+  // Render table
+  renderTable();
+}
+
+function showError(msg) {
+  document.getElementById('data-error').style.display = 'block';
+  document.getElementById('error-message').textContent = msg;
+}
+
+// ---- Filtering ----
+function toggleFilter(btn) {
+  var filterType = btn.getAttribute('data-filter');
+  var filterValue = btn.getAttribute('data-value');
+
+  // Update active state in this filter group
+  var group = btn.parentElement;
+  var buttons = group.querySelectorAll('.filter-btn');
+  buttons.forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+
+  // Update filter state
+  currentFilters[filterType] = filterValue;
+
+  // Re-render
+  renderTable();
+}
+
+function getFilteredTodos() {
+  return allTodos.filter(function(todo) {
+    if (currentFilters.status !== 'all' && todo.status !== currentFilters.status) return false;
+    if (currentFilters.priority !== 'all' && todo.priority !== currentFilters.priority) return false;
+    if (currentFilters.category !== 'all' && todo.category !== currentFilters.category) return false;
+    return true;
+  });
+}
+
+// ---- Sorting ----
+function sortTable(th) {
+  var column = th.getAttribute('data-sort');
+
+  if (currentSort.column === column) {
+    currentSort.ascending = !currentSort.ascending;
+  } else {
+    currentSort.column = column;
+    currentSort.ascending = true;
+  }
+
+  // Update sort indicators
+  var allTh = document.querySelectorAll('thead th');
+  allTh.forEach(function(t) {
+    t.classList.remove('sorted');
+    t.querySelector('.sort-indicator').innerHTML = '&#9650;';
+  });
+  th.classList.add('sorted');
+  th.querySelector('.sort-indicator').innerHTML = currentSort.ascending ? '&#9650;' : '&#9660;';
+
+  renderTable();
+}
+
+function getSortedTodos(todos) {
+  var col = currentSort.column;
+  var asc = currentSort.ascending;
+
+  return todos.slice().sort(function(a, b) {
+    var valA, valB;
+
+    if (col === 'id') {
+      valA = parseInt(a.id.replace('todo-', ''));
+      valB = parseInt(b.id.replace('todo-', ''));
+    } else if (col === 'line') {
+      valA = a.line;
+      valB = b.line;
+    } else if (col === 'priority') {
+      valA = priorityOrder[a.priority] || 99;
+      valB = priorityOrder[b.priority] || 99;
+    } else if (col === 'status') {
+      valA = statusOrder[a.status] || 99;
+      valB = statusOrder[b.status] || 99;
+    } else {
+      valA = (a[col] || '').toLowerCase();
+      valB = (b[col] || '').toLowerCase();
+    }
+
+    if (valA < valB) return asc ? -1 : 1;
+    if (valA > valB) return asc ? 1 : -1;
+    return 0;
+  });
+}
+
+// ---- Rendering ----
+function renderTable() {
+  var filtered = getFilteredTodos();
+  var sorted = getSortedTodos(filtered);
+
+  document.getElementById('results-count').textContent =
+    'Showing ' + sorted.length + ' of ' + allTodos.length + ' TODOs';
+
+  var tbody = document.getElementById('todo-body');
+
+  if (sorted.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="no-results">No TODOs match the current filters.</td></tr>';
+    return;
+  }
+
+  var html = '';
+  sorted.forEach(function(todo) {
+    var num = todo.id.replace('todo-', '');
+    var statusBadge = '<span class="badge badge-' + todo.status + '">' + todo.status + '</span>';
+    var priorityBadge = '<span class="badge badge-' + todo.priority + '">' + todo.priority.toUpperCase() + '</span>';
+    var categoryBadge = '<span class="badge badge-' + todo.category + '">' + todo.category + '</span>';
+
+    html += '<tr>';
+    html += '<td>' + num + '</td>';
+    html += '<td><span class="file-path">' + escapeHtml(todo.file) + '</span></td>';
+    html += '<td><span class="line-num">' + todo.line + '</span></td>';
+    html += '<td>' + priorityBadge + '</td>';
+    html += '<td>' + statusBadge + '</td>';
+    html += '<td><div class="todo-text">' + escapeHtml(todo.text) + '</div>';
+    if (todo.context) {
+      html += '<div class="context-text">' + escapeHtml(todo.context) + '</div>';
+    }
+    html += '</td>';
+    html += '<td>' + categoryBadge + '</td>';
+    html += '</tr>';
+  });
+
+  tbody.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+// ---- Start ----
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
