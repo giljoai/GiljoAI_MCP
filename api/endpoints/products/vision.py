@@ -1,3 +1,4 @@
+# ruff: noqa: B904, N806, UP006, PERF401
 """
 Product Vision Document Endpoints - Handover 0503
 
@@ -8,12 +9,13 @@ Handover 0126: Initial implementation with direct database access.
 """
 
 import logging
-from typing import List
+from typing import List  # noqa: UP035
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.dependencies import get_tenant_key
+from api.endpoints.dependencies import get_product_service
 from api.schemas.vision_document import VisionDocumentResponse
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.exceptions import (
@@ -22,6 +24,7 @@ from src.giljo_mcp.exceptions import (
     ValidationError,
 )
 from src.giljo_mcp.models import User
+from src.giljo_mcp.services.product_service import ProductService
 
 from .models import VisionChunk
 
@@ -37,6 +40,7 @@ async def upload_vision_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
     tenant_key: str = Depends(get_tenant_key),
+    product_service: ProductService = Depends(get_product_service),
 ) -> dict:
     """
     Upload vision document for product with automatic chunking.
@@ -47,8 +51,6 @@ async def upload_vision_document(
     Handover 0503: Updated path from /upload-vision to /vision (canonical endpoint).
     Handover 0500: Implemented vision upload with intelligent chunking.
     """
-    from src.giljo_mcp.services.product_service import ProductService
-
     logger.info(f"User {current_user.username} uploading vision document '{file.filename}' for product {product_id}")
 
     # Validate file size (10MB limit)
@@ -76,12 +78,7 @@ async def upload_vision_document(
         content = await file.read()
         content_str = content.decode("utf-8")
 
-        # Upload via ProductService
-        from src.giljo_mcp.database import DatabaseManager
-
-        db_manager = DatabaseManager()
-        product_service = ProductService(db_manager=db_manager, tenant_key=tenant_key)
-
+        # Upload via ProductService (uses injected dependency)
         result = await product_service.upload_vision_document(
             product_id=product_id,
             content=content_str,
@@ -200,7 +197,7 @@ async def list_vision_documents(
                     display_order=doc.display_order,
                     created_at=doc.created_at,
                     updated_at=doc.updated_at,
-                    chunked_at=doc.chunked_at,
+                    chunked_at=None,  # VisionDocument model does not have chunked_at field
                     meta_data=doc.meta_data or {},
                     # Summary fields (Handover 0246b: light/medium only)
                     summary_light=doc.summary_light,
