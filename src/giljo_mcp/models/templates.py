@@ -112,7 +112,7 @@ class AgentTemplate(Base):
     __table_args__ = (
         UniqueConstraint("product_id", "name", "version", name="uq_template_product_name_version"),
         Index("idx_template_tenant", "tenant_key"),
-        Index("idx_agent_templates_org", "org_id"),
+        Index("idx_template_org_id", "org_id"),
         Index("idx_template_product", "product_id"),
         Index("idx_template_category", "category"),
         Index("idx_template_role", "role"),
