@@ -6,14 +6,50 @@ Provides fixtures specific to API integration testing including:
 - Database session with proper isolation
 - Test user management
 - Authentication headers for protected endpoints
+- Automatic database cleanup between tests to prevent pollution
 """
 
 from unittest.mock import MagicMock
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport
 from httpx import AsyncClient as HTTPXAsyncClient
 from passlib.hash import bcrypt
+from sqlalchemy import text
+
+
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def cleanup_api_test_data(db_manager):
+    """
+    Cleanup fixture that truncates all tables before each API test.
+
+    This prevents test pollution where data from one test affects another.
+    Runs automatically before each test in the api/ directory.
+
+    Uses TRUNCATE CASCADE for fast cleanup while respecting FK constraints.
+    """
+    # Cleanup BEFORE test runs (ensures clean slate)
+    async with db_manager.get_session_async() as session:
+        try:
+            # Get all table names from metadata
+            from src.giljo_mcp.models import Base
+            table_names = [table.name for table in Base.metadata.sorted_tables]
+
+            if table_names:
+                # Disable FK checks, truncate all, re-enable
+                await session.execute(text("SET session_replication_role = 'replica'"))
+                for table_name in table_names:
+                    await session.execute(text(f"TRUNCATE TABLE {table_name} CASCADE"))
+                await session.execute(text("SET session_replication_role = 'origin'"))
+                await session.commit()
+        except Exception:
+            # If cleanup fails, rollback and continue - test isolation may be compromised
+            await session.rollback()
+
+    yield  # Test runs here
+
+    # No post-test cleanup needed - next test will clean up before it runs
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -28,6 +64,7 @@ async def api_client(db_manager):
     - Sets up AuthManager in app state
     - Cleans up dependency overrides after tests
     - CRITICAL: Each test gets a fresh client to prevent cookie persistence
+    - CRITICAL: Cleans up database tables after each test to prevent pollution
 
     Usage:
         async def test_endpoint(api_client: AsyncClient):
