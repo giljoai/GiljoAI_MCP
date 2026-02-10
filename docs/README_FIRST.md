@@ -295,12 +295,10 @@ if (!token || !validate_token(token)) {
 
 ### User Management
 
-**Default Admin Account**:
-- Created during installation
-- Username: `admin`
-- Password: `admin` (temporary, must change)
-- Role: `admin`
-- Tenant: `default`
+**First User Setup**:
+- No default credentials exist. The first admin account is created interactively during the setup wizard.
+- Navigate to `/welcome` on first launch, then `/first-login` to create the admin account.
+- Admin password resets use a 4-digit recovery PIN (see Handover 0023).
 
 **Password Policy**:
 - Minimum 12 characters

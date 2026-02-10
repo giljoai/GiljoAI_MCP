@@ -157,7 +157,7 @@ class Product(Base):
 
     __table_args__ = (
         Index("idx_product_tenant", "tenant_key"),
-        Index("idx_products_org", "org_id"),
+        Index("idx_product_org_id", "org_id"),
         Index("idx_product_name", "name"),
         Index("idx_product_config_data_gin", "config_data", postgresql_using="gin"),  # GIN index for JSONB
         Index(
