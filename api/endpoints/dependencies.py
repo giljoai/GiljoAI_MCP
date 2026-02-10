@@ -10,6 +10,7 @@ from api.dependencies import get_tenant_key
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.services import AuthService, UserService
 from src.giljo_mcp.services.message_service import MessageService
+from src.giljo_mcp.services.product_service import ProductService
 from src.giljo_mcp.services.task_service import TaskService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -123,3 +124,22 @@ async def get_message_service(
     # Set tenant context for this request
     tenant_manager.set_current_tenant(tenant_key)
     return MessageService(db_manager=db_manager, tenant_manager=tenant_manager, websocket_manager=websocket_manager)
+
+
+async def get_product_service(
+    tenant_key: str = Depends(get_tenant_key),
+    db_manager: DatabaseManager = Depends(get_db_manager),
+    websocket_manager=Depends(get_websocket_manager),
+) -> ProductService:
+    """
+    Get ProductService instance with tenant isolation.
+
+    Args:
+        tenant_key: Tenant key from request context
+        db_manager: Database manager instance
+        websocket_manager: WebSocket manager for real-time events
+
+    Returns:
+        ProductService instance configured for the current tenant
+    """
+    return ProductService(db_manager=db_manager, tenant_key=tenant_key, websocket_manager=websocket_manager)
