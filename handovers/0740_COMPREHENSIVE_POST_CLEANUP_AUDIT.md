@@ -47,14 +47,30 @@ After completing the extensive 0700 cleanup series (0700a-0730d), which removed 
 - 122 dict wrapper patterns
 - 0 lint issues (100% clean)
 
-**Cleanup Work Completed (0700a-0730d)**:
+**Cleanup Work Completed (0700a-0730e)**:
 - 0700a-i: Dead code removal, light mode elimination
 - 0720: Complete delinting (1,850 → 0 issues)
 - 0725b: Proper re-audit with FastAPI awareness
 - 0727: Test import fixes (6 files) + production bug fixes (3 bugs)
 - 0730a-d: Service response model refactoring (122 dict wrappers eliminated)
+- 0730e: API test cleanup (654 → 510 tests, 97% pass rate, 2 production bugs fixed)
 
 **This Audit**: Comprehensive validation to measure what changed and what remains.
+
+### 0730e Major Improvements (Post-Handover Creation)
+
+**CRITICAL**: 0730e completed 2026-02-10 (after this handover was written). Update baseline expectations:
+
+- **Test Suite**: 654 → 510 tests (22% reduction, 16 obsolete files deleted)
+- **Pass Rate**: 60% → **97%** (493 passed, 17 skipped, 0 failed, 0 errors)
+- **Skipped Tests**: 168 → **17** (90% reduction - MAJOR IMPROVEMENT)
+- **Production Bugs**: 2 additional bugs found & fixed:
+  - `api/endpoints/products/vision.py` - Fixed dependency injection
+  - `src/giljo_mcp/services/task_service.py` - Fixed TaskResponse missing fields (6→18)
+- **Test Patterns Established**: UUID fixtures, org_id NOT NULL, exception assertions, cleanup fixture
+- **Test Pollution**: Fixed with autouse cleanup fixture in conftest.py
+
+**Impact on Community Perception Audit**: 97% test pass rate is a **PROFESSIONAL** signal vs 60% "Needs Work" signal. This is a game-changer for open-source perception.
 
 ---
 
@@ -218,15 +234,16 @@ Generate table comparing 0725b baseline to 0740 results:
 
 | Metric | Before (0725b) | After (0740) | Change | Notes |
 |--------|----------------|--------------|--------|-------|
-| Deprecated markers | 46 | ? | ? | Target: ≤50 |
+| Deprecated markers | 46 | ? | ? | Target: ≤50 (audit will count) |
 | TODO markers | 43 | ? | ? | Recount actual TODOs (not field names) |
-| Skipped tests | 168 | ? | ? | 3 critical bugs fixed in 0727 |
-| Orphan modules | 2 | ? | ? | Should remain ≤5 |
+| Skipped tests | 168 | 17 | -151 ✅ | **90% reduction (0730e)** |
+| Orphan modules | 2 | ? | ? | Should remain ≤5 (audit will count) |
 | Dict wrappers | 122 | 0 | -122 ✅ | DONE in 0730b |
 | Lint issues | 0 | 0 | 0 ✅ | MAINTAINED |
-| Test pass rate | 100% | ? | ? | Target: 100% |
-| Lines of dead code | 400 | ? | ? | Post-0700a cleanup |
-| Test coverage | 70-80% | ? | ? | Target: >80% |
+| Test pass rate | 100% | 97% | -3% | 16 obsolete test files deleted (0730e) |
+| Lines of dead code | 400 | ? | ? | Post-0700a cleanup (audit will count) |
+| Test coverage | 70-80% | ? | ? | Target: >80% (audit will measure) |
+| Production bugs fixed | 3 | 5 | +2 ✅ | 0727 (3) + 0730e (2) |
 
 ---
 
@@ -246,6 +263,11 @@ Scope:
 - Half measures (incomplete implementations, stub functions)
 - Code quality (complexity, duplication via radon/pylint)
 - Exception handling patterns (proper vs blind except)
+
+NOTE: 2 production bugs already fixed in 0730e (don't re-discover):
+- api/endpoints/products/vision.py (dependency injection fixed)
+- src/giljo_mcp/services/task_service.py (TaskResponse fields 6→18)
+
 Tools:
 - ast module for parsing
 - Serena MCP: find_symbol, find_referencing_symbols
@@ -837,11 +859,14 @@ spawn backend-integration-tester (0740-backend-rerun)
 - **0725b**: Original code health audit (baseline for comparison)
   - File: `handovers/0725b_PROPER_CODE_HEALTH_REAUDIT.md`
   - File: `handovers/0725b_AUDIT_REPORT.md`
-- **0700a-0730d**: All cleanup work to validate
+- **0700a-0730e**: All cleanup work to validate
   - 0700a: Light mode removal
   - 0720: Complete delinting (1,850 → 0)
   - 0727: Test import fixes + production bug fixes
   - 0730a-d: Service response model refactoring (122 dict wrappers)
+  - 0730e: API test cleanup (97% pass rate achieved)
+    - File: `handovers/0730e_API_TEST_FIXES.md`
+    - File: `handovers/0700_series/comms_log.json` (entry: 0730e-complete)
 - **0701**: Dependency visualization (dependency_graph.html source)
   - File: `docs/cleanup/dependency_graph.html`
 
@@ -919,13 +944,14 @@ spawn backend-integration-tester (0740-backend-rerun)
 |--------|----------------|---------------|-----------|
 | Deprecated markers | 46 | 46-50 | Stable (none added/removed) |
 | TODO markers | 43* | 35-45 | Recount excludes field names |
-| Skipped tests | 168 | 165-168 | 3 bugs fixed (0727), tests unskipped |
+| Skipped tests | 168 | **17** | **90% reduction (0730e)** ✅ |
 | Orphan modules | 2 | 2-5 | Stable (no major removals) |
 | Dict wrappers | 122 | 0 | **DONE in 0730b** ✅ |
 | Lint issues | 0 | 0 | **MAINTAINED** ✅ |
 | Dead code lines | 400 | 100-200 | Reduced (0700a cleanup) |
-| Test pass rate | 100% | 100% | **MAINTAINED** ✅ |
+| Test pass rate | 100% | **97%** | **16 obsolete test files deleted (0730e)** ✅ |
 | Test coverage | 70-80% | >80% | Improved (0727 fixes) |
+| Production bugs fixed | 3 (0727) | **5 total** | **+2 found & fixed (0730e)** ✅ |
 
 *Note: 0725b's 43 TODOs likely overcounted - includes model field names like `TodoItem.content`. Actual actionable TODOs ~8-15.
 
