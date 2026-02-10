@@ -1,11 +1,9 @@
 {
   "series_id": "0700_code_cleanup",
   "created_at": "2026-02-03T00:00:00Z",
-  "status": "0730e_in_progress",
-  "current_handover": "0730e-IN_PROGRESS",
-  "next_handovers": [
-    "0740"
-  ],
+  "status": "0740_complete",
+  "current_handover": "0740-COMPLETE",
+  "next_handovers": [],
   "handovers": [
     {
       "id": "0720",
@@ -529,6 +527,56 @@
       "created": "2026-02-09",
       "started_at": "2026-02-10T02:00:00Z",
       "note": "0730e COMPLETE. Test suite reduced from 654 to 510 tests. All remaining tests pass. 2 production bugs discovered and fixed. Test pollution resolved with cleanup fixture."
+    },
+    {
+      "id": "0740",
+      "title": "Comprehensive Post-Cleanup Audit",
+      "status": "complete",
+      "effort_hours": "8",
+      "priority": "HIGH",
+      "dependencies": ["0730e"],
+      "scope": "8-agent parallel audit: backend, frontend, database, dependencies, TODO, architecture, documentation, community perception",
+      "started_at": "2026-02-10T09:00:00Z",
+      "completed_at": "2026-02-10T16:00:00Z",
+      "worker_session_id": "orchestrator-0740",
+      "docs_updated": [],
+      "spec_file": "handovers/0740_COMPREHENSIVE_POST_CLEANUP_AUDIT.md",
+      "validation_required": false,
+      "actual_results": {
+        "agents_deployed": 8,
+        "total_findings": 85,
+        "p0_critical": 3,
+        "p1_high": 12,
+        "p2_medium": 25,
+        "p3_low": 20,
+        "architecture_score": "7.5/10",
+        "community_verdict": "SOLID",
+        "security_vulns": 1,
+        "npm_vulns": 7,
+        "dead_functions": 141,
+        "orphan_modules": 5,
+        "dict_wrappers_services": 0,
+        "dict_wrappers_endpoints": 36,
+        "todos_active": 13,
+        "todos_obsolete": 10,
+        "false_positive_rate": "0-5%"
+      },
+      "deliverables": {
+        "reports": [
+          "handovers/0740_findings_backend.md",
+          "handovers/0740_findings_frontend.md",
+          "handovers/0740_findings_database.md",
+          "handovers/0740_findings_dependencies.md",
+          "handovers/0740_findings_architecture.md",
+          "handovers/0740_findings_documentation.md",
+          "handovers/0740_findings_community_perception.md",
+          "handovers/0740_todo_inventory.md",
+          "handovers/0740_todo_data.json",
+          "handovers/0740_USER_SUMMARY.md"
+        ],
+        "dashboard": "docs/cleanup/todo_dashboard.html"
+      },
+      "note": "0740 COMPLETE. 8-agent comprehensive audit of the 0700 cleanup series. Architecture: 7.5/10. Community verdict: SOLID. Service dict wrappers: 0 (100% remediation). 3 P0 items found (orphaned DB table, credential docs contradiction, MCP SDK CVE). 141 dead functions and 5 orphan modules identified for next cleanup. Follow-up handovers recommended: 0741 (P0 security/DB fixes), 0742 (dead code removal), 0743 (documentation refresh), 0744 (community governance)."
     }
   ],
   "doc_mapping": {
@@ -554,13 +602,18 @@
   },
   "technical_debt_baseline": {
     "deprecated_markers": 46,
-    "todo_markers": 43,
-    "skipped_tests": 168,
-    "dead_code_lines": 400,
-    "deprecated_code_lines": 1500,
-    "total_addressable_lines": 2000
+    "todo_markers": 28,
+    "skipped_tests": 17,
+    "dead_code_lines": 2345,
+    "dead_functions": 141,
+    "orphan_modules": 5,
+    "dict_wrappers_services": 0,
+    "dict_wrappers_endpoints": 36,
+    "security_vulns_python": 1,
+    "security_vulns_npm": 7,
+    "total_addressable_lines": 4000
   },
-  "notes": "IN PROGRESS (2026-02-10): 0730e cleanup phase complete - deleted 6 obsolete test files (test_jobs_endpoint_mission_acknowledged.py, test_jobs_endpoint_message_counters.py, test_table_view_endpoint.py, test_table_view_mission_fields.py, test_websocket_table_updates.py, test_0367b_mcpagentjob_removal.py) and removed 29 skipped tests. Test suite: 654→524 tests. Remaining issues: 96 failed, 39 errors, 25 skipped. 3 parallel subagents running to fix remaining failures. 0730d complete (services layer 100% passing). 0720 achieved 100% delinting (1850→0 issues). 0725 INVALIDATED (75%+ false positives), replaced by 0725b re-audit. 0725b confirms HEALTHY architecture with only 2 actual orphans (not 129). 0727 fixed all test imports and production bugs. 0433 task product binding 9/10 phases complete. 0730 series (a-d) COMPLETE (122 service methods refactored, 12 services updated, 57 endpoints simplified, services tests 100% passing). Orphan cleanup complete (2 files, 627 lines deleted). COMPLETE: 0700a-i, 0700-REMEDIATION, 0702-REVISED, 0703-REVISED, 0704-REVISED, 0706b, 0707-LINT, 0708-TYPES, 0709-SECURITY, 0373, 0720, 0725b, 0727, 0730a-d. IN PROGRESS: 0730e (API test fixes - cleanup done, fixes in progress). SKIPPED: 0710, 0714, 0715, 0711 (pre-completed). INVALIDATED: 0725, 0726, 0729. Series saved ~20 hours via validation-first pattern. Architecture: HEALTHY. 0740 READY: Comprehensive post-cleanup audit handover created - 7 parallel audits, TODO dashboard, comparison metrics.",
-  "current_status": "0730e_in_progress_cleanup_complete",
+  "notes": "COMPLETE (2026-02-10): 0740 audit finished. 8 agents deployed, 85 findings across P0-P3. Architecture score 7.5/10. Community: SOLID. IN PROGRESS (2026-02-10): 0730e cleanup phase complete - deleted 6 obsolete test files (test_jobs_endpoint_mission_acknowledged.py, test_jobs_endpoint_message_counters.py, test_table_view_endpoint.py, test_table_view_mission_fields.py, test_websocket_table_updates.py, test_0367b_mcpagentjob_removal.py) and removed 29 skipped tests. Test suite: 654→524 tests. Remaining issues: 96 failed, 39 errors, 25 skipped. 3 parallel subagents running to fix remaining failures. 0730d complete (services layer 100% passing). 0720 achieved 100% delinting (1850→0 issues). 0725 INVALIDATED (75%+ false positives), replaced by 0725b re-audit. 0725b confirms HEALTHY architecture with only 2 actual orphans (not 129). 0727 fixed all test imports and production bugs. 0433 task product binding 9/10 phases complete. 0730 series (a-d) COMPLETE (122 service methods refactored, 12 services updated, 57 endpoints simplified, services tests 100% passing). Orphan cleanup complete (2 files, 627 lines deleted). COMPLETE: 0700a-i, 0700-REMEDIATION, 0702-REVISED, 0703-REVISED, 0704-REVISED, 0706b, 0707-LINT, 0708-TYPES, 0709-SECURITY, 0373, 0720, 0725b, 0727, 0730a-d. IN PROGRESS: 0730e (API test fixes - cleanup done, fixes in progress). SKIPPED: 0710, 0714, 0715, 0711 (pre-completed). INVALIDATED: 0725, 0726, 0729. Series saved ~20 hours via validation-first pattern. Architecture: HEALTHY. 0740 READY: Comprehensive post-cleanup audit handover created - 7 parallel audits, TODO dashboard, comparison metrics.",
+  "current_status": "0740_audit_complete",
   "last_updated": "2026-02-10"
 }
