@@ -38,6 +38,7 @@ async def tenant_a_user(db_manager):
     from passlib.hash import bcrypt
 
     from src.giljo_mcp.models import User
+    from src.giljo_mcp.models.organizations import Organization
     from src.giljo_mcp.tenant import TenantManager
 
     # Generate unique username and valid tenant_key
@@ -46,6 +47,16 @@ async def tenant_a_user(db_manager):
     tenant_key = TenantManager.generate_tenant_key(f"tenant_a_{unique_id}")
 
     async with db_manager.get_session_async() as session:
+        # Create organization first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Tenant A Task Org {unique_id}",
+            slug=f"tenant-a-task-org-{unique_id}",
+            tenant_key=tenant_key,
+            is_active=True,
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=username,
             password_hash=bcrypt.hash("password_a"),
@@ -53,6 +64,7 @@ async def tenant_a_user(db_manager):
             role="developer",
             tenant_key=tenant_key,
             is_active=True,
+            org_id=org.id,  # Required NOT NULL (0424j)
         )
         session.add(user)
         await session.commit()
@@ -72,6 +84,7 @@ async def tenant_b_user(db_manager):
     from passlib.hash import bcrypt
 
     from src.giljo_mcp.models import User
+    from src.giljo_mcp.models.organizations import Organization
     from src.giljo_mcp.tenant import TenantManager
 
     # Generate unique username and valid tenant_key
@@ -80,6 +93,16 @@ async def tenant_b_user(db_manager):
     tenant_key = TenantManager.generate_tenant_key(f"tenant_b_{unique_id}")
 
     async with db_manager.get_session_async() as session:
+        # Create organization first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Tenant B Task Org {unique_id}",
+            slug=f"tenant-b-task-org-{unique_id}",
+            tenant_key=tenant_key,
+            is_active=True,
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=username,
             password_hash=bcrypt.hash("password_b"),
@@ -87,6 +110,7 @@ async def tenant_b_user(db_manager):
             role="developer",
             tenant_key=tenant_key,
             is_active=True,
+            org_id=org.id,  # Required NOT NULL (0424j)
         )
         session.add(user)
         await session.commit()
@@ -106,6 +130,7 @@ async def tenant_a_admin(db_manager):
     from passlib.hash import bcrypt
 
     from src.giljo_mcp.models import User
+    from src.giljo_mcp.models.organizations import Organization
     from src.giljo_mcp.tenant import TenantManager
 
     unique_id = uuid4().hex[:8]
@@ -113,6 +138,16 @@ async def tenant_a_admin(db_manager):
     tenant_key = TenantManager.generate_tenant_key(f"tenant_a_{unique_id}")
 
     async with db_manager.get_session_async() as session:
+        # Create organization first (0424j: org_id is NOT NULL)
+        org = Organization(
+            name=f"Tenant A Admin Org {unique_id}",
+            slug=f"tenant-a-admin-org-{unique_id}",
+            tenant_key=tenant_key,
+            is_active=True,
+        )
+        session.add(org)
+        await session.flush()
+
         user = User(
             username=username,
             password_hash=bcrypt.hash("password_admin"),
@@ -120,6 +155,7 @@ async def tenant_a_admin(db_manager):
             role="admin",
             tenant_key=tenant_key,
             is_active=True,
+            org_id=org.id,  # Required NOT NULL (0424j)
         )
         session.add(user)
         await session.commit()
