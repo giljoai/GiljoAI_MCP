@@ -6,6 +6,10 @@ Validates that the simplified succession:
 2. Returns the SAME agent_id (no swap)
 3. Resets context_used to 0
 4. Creates 360 Memory entry with session_handover type
+
+Updated for exception-based patterns (Handover 0730b):
+- No "success" wrapper in return values
+- Errors raised via exceptions (ResourceNotFoundError, ValidationError)
 """
 
 from unittest.mock import patch
@@ -76,9 +80,10 @@ class TestCreateSuccessorOrchestrator:
             tenant_key=test_tenant_key,
         )
 
-        assert spawn_result.get("success") is True
+        # Exception-based pattern: no "success" key, values returned directly
+        assert "job_id" in spawn_result, "spawn_agent_job should return job_id"
         job_id = spawn_result["job_id"]
-        agent_id = spawn_result["agent_id"]
+        spawn_result["agent_id"]
 
         # Get initial count of AgentExecution rows
         result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job_id))
@@ -102,7 +107,9 @@ class TestCreateSuccessorOrchestrator:
                 reason="manual",
             )
 
-        assert result["success"] is True
+        # Exception-based: verify return has expected keys (no "success" wrapper)
+        assert "job_id" in result, "Result should have job_id"
+        assert "agent_id" in result, "Result should have agent_id"
 
         # Verify count of AgentExecution rows remains the same
         result = await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job_id))
@@ -147,7 +154,7 @@ class TestCreateSuccessorOrchestrator:
                 reason="context_limit",
             )
 
-        assert result["success"] is True
+        # Exception-based: result returned directly (no success wrapper)
         assert result["agent_id"] == original_agent_id  # SAME agent_id, not new
 
         # Verify in database
@@ -198,7 +205,7 @@ class TestCreateSuccessorOrchestrator:
                 reason="manual",
             )
 
-        assert result["success"] is True
+        # Exception-based: verify return format
         assert result["context_reset"] is True
         assert result["old_context_used"] == original_context_used
         assert result["new_context_used"] == 0
@@ -267,7 +274,6 @@ class TestCreateSuccessorOrchestrator:
         assert "80000" in summary  # context_used
 
         # Verify result indicates memory entry was created
-        assert result["success"] is True
         assert result.get("memory_entry_created") is True
 
     @pytest.mark.asyncio
@@ -279,7 +285,7 @@ class TestCreateSuccessorOrchestrator:
         test_product_and_project,
     ):
         """Verify only orchestrators can use succession."""
-        from src.giljo_mcp.services.exceptions import ValidationError
+        from src.giljo_mcp.exceptions import ValidationError
 
         service = orchestration_service_with_session
         product, project = test_product_and_project
@@ -347,8 +353,7 @@ class TestCreateSuccessorOrchestrator:
                 reason="context_limit",
             )
 
-        # Verify all required fields are present
-        assert result["success"] is True
+        # Verify all required fields are present (exception-based: no "success" key)
         assert "job_id" in result
         assert result["job_id"] == job_id
 
@@ -405,8 +410,8 @@ class TestCreateSuccessorOrchestrator:
                 reason="manual",
             )
 
-        # Should succeed
-        assert result["success"] is True
+        # Should succeed (exception-based: no "success" key, but job_id present)
+        assert "job_id" in result
         assert result["job_id"] == job_id
 
     @pytest.mark.asyncio
@@ -417,7 +422,7 @@ class TestCreateSuccessorOrchestrator:
         test_tenant_key: str,
     ):
         """Verify error when job doesn't exist."""
-        from src.giljo_mcp.services.exceptions import ResourceNotFoundError
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
 
         service = orchestration_service_with_session
 
@@ -443,7 +448,7 @@ class TestCreateSuccessorOrchestrator:
         test_product_and_project,
     ):
         """Verify tenant isolation - can't access other tenant's jobs."""
-        from src.giljo_mcp.services.exceptions import ResourceNotFoundError
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
 
         service = orchestration_service_with_session
         product, project = test_product_and_project
