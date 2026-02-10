@@ -98,7 +98,7 @@ class Task(Base):
 
     __table_args__ = (
         Index("idx_task_tenant", "tenant_key"),
-        Index("idx_tasks_org", "org_id"),
+        Index("idx_task_org_id", "org_id"),
         Index("idx_task_product", "product_id"),
         Index("idx_task_project", "project_id"),
         Index("idx_task_status", "status"),
