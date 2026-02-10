@@ -71,9 +71,8 @@ async def send_message(
         tenant_key=current_user.tenant_key,  # Handover 0733: Enforce tenant isolation
     )
 
-    # Extract from nested data structure (Handover 0405 consistency)
-    data = result.get("data", {})
-    message_id = data.get("message_id")
+    # Handover 0730b: Service returns direct response (no "data" wrapper)
+    message_id = result.get("message_id")
 
     response = MessageResponse(
         id=message_id,
@@ -130,12 +129,11 @@ async def send_message_from_ui(
         tenant_key=current_user.tenant_key,  # Handover 0405: Required for broadcast fan-out
     )
 
-    # Handover 0405: Extract from nested data structure
-    data = result.get("data", {})
+    # Handover 0730b: Service returns direct response (no "data" wrapper)
     return {
         "success": True,
-        "message_id": data.get("message_id"),
-        "to_agents": data.get("to_agents", payload.to_agents),
+        "message_id": result.get("message_id"),
+        "to_agents": result.get("to_agents", payload.to_agents),
     }
 
 
@@ -296,10 +294,9 @@ async def broadcast_message(
         from_agent=broadcast.from_agent or "user",
     )
 
-    # Extract from nested data structure (Handover 0405 consistency)
-    data = message_result.get("data", {})
-    message_id = data.get("message_id")
-    agent_names = data.get("to_agents", [])
+    # Handover 0730b: Service returns direct response (no "data" wrapper)
+    message_id = message_result.get("message_id")
+    agent_names = message_result.get("to_agents", [])
 
     # Broadcast WebSocket notification
     if state.websocket_manager:
