@@ -211,7 +211,7 @@ async def test_list_tasks_raises_validation_error_no_tenant_context(db_manager):
 @pytest.mark.asyncio
 async def test_list_tasks_raises_exception_on_database_error(task_service):
     """Test list_tasks raises BaseGiljoError on database errors"""
-    with patch.object(task_service.db_manager, "get_session_async", side_effect=Exception("DB error")):
+    with patch.object(task_service, "_list_tasks_impl", side_effect=Exception("DB error")):
         with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.list_tasks()
 
@@ -237,7 +237,7 @@ async def test_update_task_raises_not_found_on_nonexistent_task(task_service):
 @pytest.mark.asyncio
 async def test_update_task_raises_exception_on_database_error(task_service):
     """Test update_task raises BaseGiljoError on database errors"""
-    with patch.object(task_service.db_manager, "get_session_async", side_effect=Exception("DB error")):
+    with patch.object(task_service, "_update_task_impl", side_effect=Exception("DB error")):
         with pytest.raises(BaseGiljoError) as exc_info:
             await task_service.update_task(task_id=str(uuid4()), status="completed")
 
