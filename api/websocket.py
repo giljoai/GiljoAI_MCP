@@ -289,21 +289,6 @@ class WebSocketManager:
 
         logger.debug(f"Client {client_id} unsubscribed from {entity_key}")
 
-    async def send_personal_message(self, message: str, client_id: str):
-        """Send message to specific client"""
-        if client_id in self.active_connections:
-            websocket = self.active_connections[client_id]
-            try:
-                await websocket.send_text(message)
-            except (RuntimeError, ValueError, KeyError) as e:
-                logger.exception(
-                    "websocket_send_message_error",
-                    error_code=ErrorCode.WS_MESSAGE_SEND_FAILED.value,
-                    client_id=client_id,
-                    error_message=str(e),
-                )
-                self.disconnect(client_id)
-
     async def send_json(self, data: dict, client_id: str):
         """Send JSON data to specific client"""
         if client_id in self.active_connections:
@@ -410,15 +395,6 @@ class WebSocketManager:
             entity_key = f"{entity_type}:{entity_id}"
             return len(self.entity_subscribers.get(entity_key, []))
         return sum(len(subs) for subs in self.subscriptions.values())
-
-    def get_auth_context(self, client_id: str) -> Optional[dict[str, Any]]:
-        """Get auth context for a client"""
-        return self.auth_contexts.get(client_id)
-
-    def is_authenticated(self, client_id: str) -> bool:
-        """Check if client is authenticated"""
-        auth_context = self.auth_contexts.get(client_id, {})
-        return auth_context.get("auth_type", "none") != "none"
 
     # Enhanced broadcast methods for real-time updates
     # Note: broadcast_agent_update method is defined later with full multi-tenant support
@@ -554,89 +530,6 @@ class WebSocketManager:
             self.disconnect(client_id)
             logger.info(f"Removed inactive connection: {client_id}")
 
-    async def handle_pong(self, client_id: str):
-        """Handle pong response from client"""
-        # Could track last pong time for connection health monitoring
-        logger.debug(f"Received pong from {client_id}")
-
-    # Sub-agent integration broadcasts
-
-    async def broadcast_sub_agent_spawned(
-        self,
-        interaction_id: str,
-        parent_agent_name: str,
-        sub_agent_name: str,
-        project_id: str,
-        mission: str,
-        start_time: str,
-        meta_data: Optional[dict] = None,
-    ):
-        """Broadcast when a parent agent spawns a sub-agent"""
-        message = {
-            "type": "agent.sub_agent.spawned",
-            "data": {
-                "interaction_id": interaction_id,
-                "parent_agent_name": parent_agent_name,
-                "sub_agent_name": sub_agent_name,
-                "project_id": project_id,
-                "mission": mission,
-                "start_time": start_time,
-                "meta_data": meta_data or {},
-            },
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
-        # Notify project subscribers
-        await self.notify_entity_update("project", project_id, message)
-
-        # Notify parent agent subscribers
-        await self.notify_entity_update("agent", f"{project_id}:{parent_agent_name}", message)
-
-        # Log for debugging
-        logger.info(f"Broadcast sub-agent spawn: {parent_agent_name} -> {sub_agent_name}")
-
-    async def broadcast_sub_agent_completed(
-        self,
-        interaction_id: str,
-        sub_agent_name: str,
-        parent_agent_name: str,
-        project_id: str,
-        status: str,  # 'completed' or 'error'
-        duration_seconds: int,
-        tokens_used: Optional[int] = None,
-        result: Optional[str] = None,
-        error_message: Optional[str] = None,
-        meta_data: Optional[dict] = None,
-    ):
-        """Broadcast when a sub-agent completes (success or error)"""
-        event_type = "agent.sub_agent.completed" if status == "completed" else "agent.sub_agent.error"
-
-        message = {
-            "type": event_type,
-            "data": {
-                "interaction_id": interaction_id,
-                "sub_agent_name": sub_agent_name,
-                "parent_agent_name": parent_agent_name,
-                "project_id": project_id,
-                "status": status,
-                "duration_seconds": duration_seconds,
-                "tokens_used": tokens_used,
-                "result": result if status == "completed" else None,
-                "error_message": error_message if status == "error" else None,
-                "meta_data": meta_data or {},
-            },
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
-        # Notify project subscribers
-        await self.notify_entity_update("project", project_id, message)
-
-        # Notify parent agent subscribers
-        await self.notify_entity_update("agent", f"{project_id}:{parent_agent_name}", message)
-
-        # Log for debugging
-        logger.info(f"Broadcast sub-agent {status}: {sub_agent_name} (duration: {duration_seconds}s)")
-
     async def broadcast_agent_update(
         self,
         agent_id: str,
@@ -682,75 +575,6 @@ class WebSocketManager:
         await self.notify_entity_update("agent", f"{project_id}:{agent_name}", event)
 
         logger.debug(f"Broadcast agent:update - {agent_name} (status: {status}, context: {context_usage})")
-
-    async def broadcast_template_update(
-        self,
-        template_id: str,
-        template_name: str,
-        operation: str,  # 'create', 'update', 'delete', 'archive'
-        tenant_key: str,
-        product_id: str,
-        user_id: Optional[str] = None,
-        change_summary: Optional[str] = None,
-        version: Optional[int] = None,
-        meta_data: Optional[dict] = None,
-    ):
-        """Broadcast template CRUD operations."""
-        data: dict[str, Any] = {
-            "template_id": template_id,
-            "template_name": template_name,
-            "operation": operation,
-            "tenant_key": tenant_key,
-            "product_id": product_id,
-            "user_id": user_id,
-            "change_summary": change_summary,
-            "version": version,
-            "meta_data": meta_data or {},
-            "update_time": datetime.now(timezone.utc).isoformat(),
-        }
-
-        event = EventFactory.tenant_envelope(
-            event_type="template:update",
-            tenant_key=tenant_key,
-            data=data,
-            schema_version="1.0",
-        )
-
-        await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
-
-        await self.notify_entity_update("product", product_id, event)
-
-        logger.info(f"Broadcast template:update - {template_name} ({operation}) by user {user_id}")
-
-    async def broadcast_templates_exported(
-        self,
-        tenant_key: str,
-        product_id: str,
-        template_count: int,
-        export_path: str,
-        requested_by: Optional[str] = None,
-    ):
-        """Broadcast when templates are exported."""
-        data: dict[str, Any] = {
-            "tenant_key": tenant_key,
-            "product_id": product_id,
-            "template_count": template_count,
-            "export_path": export_path,
-            "requested_by": requested_by,
-        }
-
-        event = EventFactory.tenant_envelope(
-            event_type="template:exported",
-            tenant_key=tenant_key,
-            data=data,
-            schema_version="1.0",
-        )
-
-        await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
-
-        await self.notify_entity_update("product", product_id, event)
-
-        logger.info(f"Broadcast template:exported - {template_count} templates exported")
 
     # Agent Job Event Broadcasts (Handover 0019, 0286, 0362)
 
@@ -894,34 +718,6 @@ class WebSocketManager:
 
         logger.debug(f"Broadcast message:new - {job_id} (from: {from_agent}, to: {to_agent})")
 
-    async def broadcast_children_spawned(
-        self,
-        parent_job_id: str,
-        tenant_key: str,
-        children_spawned: int,
-        child_job_ids: list[str],
-        spawned_at: Optional[datetime] = None,
-    ):
-        """Broadcast child job spawn event."""
-        data: dict[str, Any] = {
-            "tenant_key": tenant_key,
-            "parent_job_id": parent_job_id,
-            "children_spawned": children_spawned,
-            "child_job_ids": child_job_ids,
-            "spawned_at": (spawned_at or datetime.now(timezone.utc)).isoformat(),
-        }
-
-        event = EventFactory.tenant_envelope(
-            event_type="agent_job:children_spawned",
-            tenant_key=tenant_key,
-            data=data,
-            schema_version="1.0",
-        )
-
-        await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
-
-        logger.info(f"Broadcast agent_job:children_spawned - parent: {parent_job_id}, children: {children_spawned}")
-
     # Agent Communication Events (Handover 0040: Professional Agent Flow Visualization)
 
     async def broadcast_message_sent(
@@ -1064,40 +860,6 @@ class WebSocketManager:
             f"Broadcast status_update - job {job_id}: {status} (progress: {progress_percentage}%, task: {current_task})"
         )
 
-    async def broadcast_artifact_created(
-        self,
-        job_id: str,
-        tenant_key: str,
-        agent_id: str,
-        artifact_type: str,
-        artifact_path: str,
-        artifact_metadata: Optional[dict] = None,
-        timestamp: Optional[datetime] = None,
-    ):
-        """Broadcast artifact creation event."""
-        message_data: dict[str, Any] = {
-            "tenant_key": tenant_key,
-            "job_id": job_id,
-            "agent_id": agent_id,
-            "artifact_type": artifact_type,
-            "artifact_path": artifact_path,
-            "created_at": (timestamp or datetime.now(timezone.utc)).isoformat(),
-        }
-
-        if artifact_metadata:
-            message_data["metadata"] = artifact_metadata
-
-        event = EventFactory.tenant_envelope(
-            event_type="agent_communication:artifact_created",
-            tenant_key=tenant_key,
-            data=message_data,
-            schema_version="1.0",
-        )
-
-        await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
-
-        logger.info(f"Broadcast artifact_created - {artifact_type}: {artifact_path} (job: {job_id})")
-
     # Agent Health Monitoring Events (Handover 0106)
 
     async def broadcast_health_alert(
@@ -1163,34 +925,4 @@ class WebSocketManager:
             "broadcast_auto_failed",
             job_id=job_id,
             reason=reason,
-        )
-
-    async def broadcast_validation_failure(
-        self,
-        tenant_key: str,
-        template_id: str,
-        validation_errors: list,
-    ):
-        """Broadcast template validation failure event."""
-        message_data: dict[str, Any] = {
-            "tenant_key": tenant_key,
-            "template_id": template_id,
-            "errors": [e.to_dict() if hasattr(e, "to_dict") else str(e) for e in validation_errors],
-            "fallback_used": True,
-            "severity": "warning",
-        }
-
-        event = EventFactory.tenant_envelope(
-            event_type="template:validation_failed",
-            tenant_key=tenant_key,
-            data=message_data,
-            schema_version="1.0",
-        )
-
-        await self.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
-
-        logger.warning(
-            "broadcast_validation_failed",
-            template_id=template_id,
-            error_count=len(validation_errors),
         )
