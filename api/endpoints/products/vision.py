@@ -112,13 +112,7 @@ async def upload_vision_document(
                 detail=f"A vision document named '{file.filename}' already exists for this product. Please rename your file and try again.",
             )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except HTTPException:
+    except (ResourceNotFoundError, ValidationError, AuthorizationError, HTTPException):
         raise
     except Exception as e:
         logger.exception("Vision upload failed")
@@ -155,74 +149,61 @@ async def list_vision_documents(
 
     logger.debug(f"User {current_user.username} listing vision documents for product {product_id}")
 
-    try:
-        # Query vision documents for this product
-        stmt = (
-            select(VisionDocument)
-            .where(
-                and_(
-                    VisionDocument.tenant_key == tenant_key,
-                    VisionDocument.product_id == product_id,
-                )
+    # Query vision documents for this product
+    stmt = (
+        select(VisionDocument)
+        .where(
+            and_(
+                VisionDocument.tenant_key == tenant_key,
+                VisionDocument.product_id == product_id,
             )
-            .order_by(VisionDocument.display_order, VisionDocument.created_at)
+        )
+        .order_by(VisionDocument.display_order, VisionDocument.created_at)
+    )
+
+    result = await db.execute(stmt)
+    documents = result.scalars().all()
+
+    # Convert to response models
+    response_docs = []
+    for doc in documents:
+        # Check if summaries exist
+        has_summaries = bool(doc.summary_light or doc.summary_medium)
+
+        response_docs.append(
+            VisionDocumentResponse(
+                id=doc.id,
+                tenant_key=doc.tenant_key,
+                product_id=doc.product_id,
+                document_name=doc.document_name,
+                document_type=doc.document_type,
+                storage_type=doc.storage_type,
+                vision_path=doc.vision_path,
+                vision_document=doc.vision_document,
+                chunked=doc.chunked,
+                chunk_count=doc.chunk_count,
+                total_tokens=doc.total_tokens,
+                file_size=doc.file_size,
+                content_hash=doc.content_hash,
+                version=doc.version,
+                is_active=doc.is_active,
+                display_order=doc.display_order,
+                created_at=doc.created_at,
+                updated_at=doc.updated_at,
+                chunked_at=None,  # VisionDocument model does not have chunked_at field
+                meta_data=doc.meta_data or {},
+                # Summary fields (Handover 0246b: light/medium only)
+                summary_light=doc.summary_light,
+                summary_medium=doc.summary_medium,
+                summary_light_tokens=doc.summary_light_tokens,
+                summary_medium_tokens=doc.summary_medium_tokens,
+                has_summaries=has_summaries,
+            )
         )
 
-        result = await db.execute(stmt)
-        documents = result.scalars().all()
+    logger.debug(f"Retrieved {len(response_docs)} vision documents for product {product_id}")
 
-        # Convert to response models
-        response_docs = []
-        for doc in documents:
-            # Check if summaries exist
-            has_summaries = bool(doc.summary_light or doc.summary_medium)
-
-            response_docs.append(
-                VisionDocumentResponse(
-                    id=doc.id,
-                    tenant_key=doc.tenant_key,
-                    product_id=doc.product_id,
-                    document_name=doc.document_name,
-                    document_type=doc.document_type,
-                    storage_type=doc.storage_type,
-                    vision_path=doc.vision_path,
-                    vision_document=doc.vision_document,
-                    chunked=doc.chunked,
-                    chunk_count=doc.chunk_count,
-                    total_tokens=doc.total_tokens,
-                    file_size=doc.file_size,
-                    content_hash=doc.content_hash,
-                    version=doc.version,
-                    is_active=doc.is_active,
-                    display_order=doc.display_order,
-                    created_at=doc.created_at,
-                    updated_at=doc.updated_at,
-                    chunked_at=None,  # VisionDocument model does not have chunked_at field
-                    meta_data=doc.meta_data or {},
-                    # Summary fields (Handover 0246b: light/medium only)
-                    summary_light=doc.summary_light,
-                    summary_medium=doc.summary_medium,
-                    summary_light_tokens=doc.summary_light_tokens,
-                    summary_medium_tokens=doc.summary_medium_tokens,
-                    has_summaries=has_summaries,
-                )
-            )
-
-        logger.debug(f"Retrieved {len(response_docs)} vision documents for product {product_id}")
-
-        return response_docs
-
-    except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception("Failed to list vision documents")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+    return response_docs
 
 
 @router.delete("/{product_id}/vision/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -246,50 +227,35 @@ async def delete_vision_document(
 
     logger.info(f"User {current_user.username} deleting vision document {doc_id} for product {product_id}")
 
-    try:
-        # Verify document exists and belongs to this product/tenant
-        stmt = select(VisionDocument).where(
-            and_(
-                VisionDocument.id == doc_id,
-                VisionDocument.product_id == product_id,
-                VisionDocument.tenant_key == tenant_key,
-            )
+    # Verify document exists and belongs to this product/tenant
+    stmt = select(VisionDocument).where(
+        and_(
+            VisionDocument.id == doc_id,
+            VisionDocument.product_id == product_id,
+            VisionDocument.tenant_key == tenant_key,
         )
+    )
 
-        result = await db.execute(stmt)
-        doc = result.scalar_one_or_none()
+    result = await db.execute(stmt)
+    doc = result.scalar_one_or_none()
 
-        if not doc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vision document not found")
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vision document not found")
 
-        # Delete associated chunks first
-        delete_chunks_stmt = delete(MCPContextIndex).where(
-            and_(
-                MCPContextIndex.vision_document_id == doc_id,
-                MCPContextIndex.tenant_key == tenant_key,
-            )
+    # Delete associated chunks first
+    delete_chunks_stmt = delete(MCPContextIndex).where(
+        and_(
+            MCPContextIndex.vision_document_id == doc_id,
+            MCPContextIndex.tenant_key == tenant_key,
         )
-        await db.execute(delete_chunks_stmt)
+    )
+    await db.execute(delete_chunks_stmt)
 
-        # Delete the vision document
-        await db.delete(doc)
-        await db.commit()
+    # Delete the vision document
+    await db.delete(doc)
+    await db.commit()
 
-        logger.info(f"Successfully deleted vision document {doc_id}")
-
-        return
-
-    except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception("Failed to delete vision document")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+    logger.info(f"Successfully deleted vision document {doc_id}")
 
 
 @router.get("/{product_id}/vision-chunks", response_model=List[VisionChunk])
@@ -315,51 +281,38 @@ async def get_vision_chunks(
 
     logger.debug(f"User {current_user.username} retrieving vision chunks for product {product_id}")
 
-    try:
-        # Query context chunks for this product
-        stmt = (
-            select(MCPContextIndex)
-            .where(
-                and_(
-                    MCPContextIndex.tenant_key == tenant_key,
-                    MCPContextIndex.product_id == product_id,
-                    MCPContextIndex.vision_document_id.isnot(None),
-                )
+    # Query context chunks for this product
+    stmt = (
+        select(MCPContextIndex)
+        .where(
+            and_(
+                MCPContextIndex.tenant_key == tenant_key,
+                MCPContextIndex.product_id == product_id,
+                MCPContextIndex.vision_document_id.isnot(None),
             )
-            .order_by(MCPContextIndex.vision_document_id, MCPContextIndex.chunk_order)
+        )
+        .order_by(MCPContextIndex.vision_document_id, MCPContextIndex.chunk_order)
+    )
+
+    result = await db.execute(stmt)
+    chunks = result.scalars().all()
+
+    # Convert to response model
+    response_chunks = []
+    for chunk in chunks:
+        response_chunks.append(
+            VisionChunk(
+                chunk_number=chunk.chunk_order,
+                total_chunks=len(chunks),
+                content=chunk.content,
+                char_start=0,  # Not tracked in current schema
+                char_end=len(chunk.content),
+                boundary_type="semantic",  # Default boundary type
+                keywords=chunk.keywords or [],
+                headers=chunk.summary.split("\n") if chunk.summary else [],
+            )
         )
 
-        result = await db.execute(stmt)
-        chunks = result.scalars().all()
+    logger.debug(f"Retrieved {len(response_chunks)} vision chunks for product {product_id}")
 
-        # Convert to response model
-        response_chunks = []
-        for chunk in chunks:
-            response_chunks.append(
-                VisionChunk(
-                    chunk_number=chunk.chunk_order,
-                    total_chunks=len(chunks),
-                    content=chunk.content,
-                    char_start=0,  # Not tracked in current schema
-                    char_end=len(chunk.content),
-                    boundary_type="semantic",  # Default boundary type
-                    keywords=chunk.keywords or [],
-                    headers=chunk.summary.split("\n") if chunk.summary else [],
-                )
-            )
-
-        logger.debug(f"Retrieved {len(response_chunks)} vision chunks for product {product_id}")
-
-        return response_chunks
-
-    except ResourceNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except AuthorizationError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception("Failed to retrieve vision chunks")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+    return response_chunks
