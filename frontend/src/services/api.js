@@ -13,7 +13,6 @@ const apiClient = axios.create({
 // Export function to update baseURL after runtime config is fetched
 export function updateApiBaseURL(newBaseURL) {
   apiClient.defaults.baseURL = newBaseURL
-  console.log('[API] Updated axios baseURL to:', newBaseURL)
 }
 
 // Store current tenant key (set by user store after login)
@@ -21,7 +20,6 @@ let currentTenantKey = null
 
 export function setTenantKey(tenantKey) {
   currentTenantKey = tenantKey
-  console.log('[API] Tenant key updated to:', tenantKey)
 }
 
 // Request interceptor for tenant key
@@ -103,7 +101,6 @@ apiClient.interceptors.response.use(
 
             if (setupData.is_fresh_install) {
               // Fresh install (0 users) - redirect to create admin account
-              console.log('[API] 401 on fresh install, redirecting to create admin account')
               window.location.href = '/welcome'
               return Promise.reject(error)
             }

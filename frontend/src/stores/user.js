@@ -51,9 +51,7 @@ export const useUserStore = defineStore('user', () => {
     isLoading.value = true
     try {
       const response = await api.auth.me()
-      console.log('[UserStore] API response from /auth/me:', response.data)
       currentUser.value = response.data
-      console.log('[UserStore] Current user set to:', currentUser.value)
 
       // Store org fields from API response (Handover 0424h)
       orgId.value = response.data?.org_id || null

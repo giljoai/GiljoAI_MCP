@@ -109,8 +109,6 @@ const retryConnection = async () => {
     await api.setup.status()
 
     // Success! Redirect to appropriate page
-    console.log('[ServerDown] Connection restored, redirecting...')
-
     // Check if user is authenticated
     try {
       await api.auth.me()
@@ -119,8 +117,7 @@ const retryConnection = async () => {
       router.push('/login')
     }
   } catch (error) {
-    console.log('[ServerDown] Server still unreachable')
-    // Reset auto-retry countdown
+    // Server still unreachable - reset auto-retry countdown
     autoRetrySeconds.value = 10
     autoRetryProgress.value = 100
   } finally {

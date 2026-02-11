@@ -372,9 +372,6 @@ const fetchTemplateData = async () => {
       const response = await apiClient.templates.list({ is_active: true })
       const templates = Array.isArray(response.data) ? response.data : (response.data?.templates || [])
 
-      console.log('[AgentDetailsModal] Searching for template matching:', { displayName, agentName })
-      console.log('[AgentDetailsModal] Available templates:', templates.map(t => t.name))
-
       // Find matching template by name (case-insensitive)
       const searchTerms = [displayName, agentName].filter(Boolean).map(s => s.toLowerCase())
       const match = templates.find(t => {
@@ -389,10 +386,7 @@ const fetchTemplateData = async () => {
       })
 
       if (match) {
-        console.log('[AgentDetailsModal] Found matching template:', match.name)
         templateData.value = match
-      } else {
-        console.log('[AgentDetailsModal] No matching template found')
       }
     }
   } catch (err) {

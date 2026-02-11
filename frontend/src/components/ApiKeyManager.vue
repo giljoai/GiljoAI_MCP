@@ -138,7 +138,6 @@ async function loadKeys() {
   try {
     const response = await api.apiKeys.list()
     apiKeys.value = response.data
-    console.log('[API Keys] Loaded', apiKeys.value.length, 'keys')
   } catch (err) {
     console.error('[API Keys] Failed to load:', err)
     // Don't show error if it's just a 401 (not authenticated)
@@ -151,7 +150,6 @@ async function loadKeys() {
 }
 
 async function refreshKeys() {
-  console.log('[API Keys] Refreshing keys after wizard completion')
   await loadKeys()
 }
 
@@ -171,7 +169,6 @@ async function revokeKey() {
   revoking.value = true
   try {
     await api.apiKeys.delete(keyToRevoke.value.id)
-    console.log('[API Keys] Revoked key:', keyToRevoke.value.name)
 
     // Optimistically remove from list, then reload to ensure consistency
     const revokedId = keyToRevoke.value.id

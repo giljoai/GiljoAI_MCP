@@ -1005,12 +1005,6 @@ async function saveProject() {
   }
 
   try {
-    console.log('[PROJECTS][CreateProject] saveProject clicked', {
-      editing: !!editingProject.value,
-      activeProduct: activeProduct.value,
-      projectData: projectData.value,
-    })
-
     if (editingProject.value) {
       // Update existing project
       const updateData = {
@@ -1018,8 +1012,6 @@ async function saveProject() {
         mission: projectData.value.mission,
         status: projectData.value.status,
       }
-
-      console.log('[PROJECTS][CreateProject] update payload', updateData)
 
       await projectStore.updateProject(editingProject.value.id, updateData)
       await projectStore.fetchProjects()
@@ -1035,10 +1027,7 @@ async function saveProject() {
         product_id: activeProduct.value?.id,
       }
 
-      console.log('[PROJECTS][CreateProject] create payload', createData)
-
       const result = await projectStore.createProject(createData)
-      console.log('[PROJECTS][CreateProject] createProject result', result)
       createdProjectId.value = result.id
 
       await projectStore.fetchProjects()

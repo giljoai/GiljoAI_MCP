@@ -329,8 +329,6 @@ async function handleSubmit() {
       confirm_pin: confirmPin.value,
     })
 
-    console.log('[FirstLogin] Setup completed successfully')
-
     // Redirect to dashboard
     router.push('/')
   } catch (err) {

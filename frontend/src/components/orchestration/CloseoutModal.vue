@@ -306,10 +306,6 @@ const loadMemoryEntries = async () => {
 
     // API returns structured response: { success, entries, total_count, filtered_count }
     memoryEntries.value = response.data.entries || []
-
-    console.log(
-      `[CloseoutModal] Loaded ${memoryEntries.value.length} memory entries for project ${props.projectId}`,
-    )
   } catch (err) {
     console.error('[CloseoutModal] Failed to load 360 memory:', err)
     error.value =
@@ -326,8 +322,6 @@ const handleContinueWorking = async () => {
   try {
     // Call the continue-working endpoint to restore/reactivate project
     await api.projects.restoreCompleted(props.projectId)
-
-    console.log(`[CloseoutModal] Continuing work on project ${props.projectId}`)
 
     emit('continue')
     emit('close')
@@ -347,8 +341,6 @@ const handleCloseOutProject = async () => {
   try {
     // Call the archive endpoint to close out project (Handover 0412)
     const response = await api.projects.archive(props.projectId)
-
-    console.log(`[CloseoutModal] Closed out project ${props.projectId}`)
 
     emit('closeout', response.data)
     emit('close')

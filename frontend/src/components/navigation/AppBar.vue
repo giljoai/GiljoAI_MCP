@@ -165,8 +165,6 @@ const handleLogout = async () => {
 
     // Redirect to login page
     router.push('/login')
-
-    console.log('[Auth] User logged out successfully')
   } catch (error) {
     console.error('[Auth] Logout failed:', error)
     // Even if logout fails, clear local state and redirect
