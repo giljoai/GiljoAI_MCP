@@ -56,7 +56,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useOrchestrationStore } from '@/stores/orchestration'
-import { useAgentJobsStore } from '@/stores/agentJobs'
+import { useAgentJobsStore } from '@/stores/agentJobsStore'
 import AgentCard from '@/components/AgentCard.vue'
 import OrchestratorCard from './OrchestratorCard.vue'
 import AgentTableView from './AgentTableView.vue' // NEW - Handover 0228
@@ -127,7 +127,7 @@ const allAgentsForTable = computed(() => {
   return agents
 })
 
-const tableAgents = computed(() => agentJobsStore.sortedAgents)
+const tableAgents = computed(() => agentJobsStore.sortedJobs)
 
 const gridStyles = computed(() => {
   return {
@@ -207,7 +207,7 @@ const handleCloseProject = () => {
 
 const handleAgentStatusUpdate = (event) => {
   orchestrationStore.handleAgentStatusUpdate(event)
-  agentJobsStore.updateAgent(event)
+  agentJobsStore.upsertJob(event)
 }
 
 // NEW - Handover 0228: Table view event handlers
@@ -238,7 +238,7 @@ onUnmounted(() => {
 watch(
   allAgentsForTable,
   (agents) => {
-    agentJobsStore.setAgents(agents)
+    agentJobsStore.setJobs(agents)
   },
   { immediate: true, deep: true },
 )
