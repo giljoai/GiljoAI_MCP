@@ -138,7 +138,7 @@ def upgrade():
 **File**: `src/giljo_mcp/models.py`
 
 ```python
-class MCPAgentJob(Base):
+class AgentJob(Base):
     __tablename__ = 'mcp_agent_jobs'
 
     # ... existing fields ...
@@ -509,7 +509,7 @@ async def get_job_health(
 import asyncio
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
-from src.giljo_mcp.models import MCPAgentJob
+from src.giljo_mcp.models import AgentJob
 from src.giljo_mcp.database import get_db
 from api.websocket import broadcast_websocket_event
 
@@ -528,9 +528,9 @@ async def monitor_agent_health():
                 stale_threshold = datetime.now(timezone.utc) - timedelta(minutes=10)
 
                 result = await db.execute(
-                    select(MCPAgentJob).where(
-                        MCPAgentJob.status.in_(['active', 'working']),
-                        MCPAgentJob.last_progress_at < stale_threshold
+                    select(AgentJob).where(
+                        AgentJob.status.in_(['active', 'working']),
+                        AgentJob.last_progress_at < stale_threshold
                     )
                 )
                 stale_jobs = result.scalars().all()
@@ -661,16 +661,16 @@ Emitted when job completes (including cancelled jobs).
 ```python
 # Good - tenant isolated
 job = await db.execute(
-    select(MCPAgentJob).where(
-        MCPAgentJob.id == job_id,
-        MCPAgentJob.tenant_key == tenant_key
+    select(AgentJob).where(
+        AgentJob.id == job_id,
+        AgentJob.tenant_key == tenant_key
     )
 )
 
 # Bad - cross-tenant leak risk
 job = await db.execute(
-    select(MCPAgentJob).where(
-        MCPAgentJob.id == job_id
+    select(AgentJob).where(
+        AgentJob.id == job_id
     )
 )
 ```
@@ -682,10 +682,10 @@ Monitor queries include tenant isolation:
 ```python
 # Monitor only active jobs for this tenant
 stale_jobs = await db.execute(
-    select(MCPAgentJob).where(
-        MCPAgentJob.tenant_key == tenant_key,  # Tenant isolation
-        MCPAgentJob.status.in_(['active', 'working']),
-        MCPAgentJob.last_progress_at < stale_threshold
+    select(AgentJob).where(
+        AgentJob.tenant_key == tenant_key,  # Tenant isolation
+        AgentJob.status.in_(['active', 'working']),
+        AgentJob.last_progress_at < stale_threshold
     )
 )
 ```

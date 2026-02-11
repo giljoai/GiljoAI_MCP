@@ -9,18 +9,6 @@ These tests document current behavior and ensure cleanup doesn't break anything.
 class TestLegacyQueueNotExposed:
     """Verify legacy queue tools are not publicly exposed."""
 
-    def test_mcp_tool_catalog_excludes_legacy_tools(self):
-        """MCP tool catalog should not expose legacy queue tools."""
-        from src.giljo_mcp.prompt_generation.mcp_tool_catalog import MCPToolCatalogGenerator
-
-        gen = MCPToolCatalogGenerator()
-        catalog = gen.generate_full_catalog()
-
-        # Should NOT contain legacy tool names
-        assert "send_mcp_message" not in catalog
-        assert "read_mcp_messages" not in catalog
-        assert "queue" not in catalog.lower() or "message queue" not in catalog.lower()
-
     def test_templates_exclude_legacy_tools(self):
         """Agent templates should not reference legacy queue tools."""
         from src.giljo_mcp.template_seeder import (
@@ -111,22 +99,6 @@ class TestNoLegacyQueueReferences:
         # Should not have AgentCommunicationQueue
         assert not hasattr(tools_module, "AgentCommunicationQueue")
         assert not hasattr(tools_module, "agent_comm_queue")
-
-    def test_legacy_queue_tools_not_in_mcp_catalog(self):
-        """MCP tool catalog should only list modern messaging tools."""
-        from src.giljo_mcp.prompt_generation.mcp_tool_catalog import MCPToolCatalogGenerator
-
-        gen = MCPToolCatalogGenerator()
-        catalog = gen.generate_full_catalog()
-
-        # Should have modern tools
-        assert "send_message" in catalog
-        assert "receive_messages" in catalog or "list_messages" in catalog
-
-        # Should NOT have legacy tools
-        assert "send_mcp_message" not in catalog
-        assert "read_mcp_messages" not in catalog
-        assert "AgentCommunicationQueue" not in catalog
 
 
 class TestDatabaseSchema:

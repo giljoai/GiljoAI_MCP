@@ -377,18 +377,11 @@ async def list_vision_documents(
     Raises:
         HTTPException 500: If listing fails
     """
-    try:
-        docs = await vision_repo.list_by_product(
-            session=db, tenant_key=tenant_key, product_id=product_id, active_only=active_only
-        )
+    docs = await vision_repo.list_by_product(
+        session=db, tenant_key=tenant_key, product_id=product_id, active_only=active_only
+    )
 
-        return [VisionDocumentResponse.model_validate(doc) for doc in docs]
-
-    except SQLAlchemyError as e:
-        logger.error(f"Failed to list vision documents: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to list vision documents: {e!s}"
-        ) from e
+    return [VisionDocumentResponse.model_validate(doc) for doc in docs]
 
 
 @router.put("/{document_id}", response_model=VisionDocumentResponse)

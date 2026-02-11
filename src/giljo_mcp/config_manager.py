@@ -276,37 +276,6 @@ class ConfigManager:
     # deployment_mode property removed in v3.0
     # No longer needed as mode detection is removed
 
-    def get_data_dir(self) -> Path:
-        """Get application data directory (restored from cleanup)."""
-        if hasattr(self, "_override_base_dir") and self._override_base_dir:
-            path = self._override_base_dir / ".giljo-mcp" / "data"
-        else:
-            path = Path.home() / ".giljo-mcp" / "data"
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def get_config_dir(self) -> Path:
-        """Get configuration directory (restored from cleanup)."""
-        if hasattr(self, "_override_base_dir") and self._override_base_dir:
-            path = self._override_base_dir / ".giljo-mcp" / "config"
-        else:
-            path = Path.home() / ".giljo-mcp" / "config"
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def get_log_dir(self) -> Path:
-        """Get log directory (restored from cleanup)."""
-        if hasattr(self, "_override_base_dir") and self._override_base_dir:
-            path = self._override_base_dir / ".giljo-mcp" / "logs"
-        else:
-            path = Path.home() / ".giljo-mcp" / "logs"
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def get_database_url(self) -> str:
-        """Get database connection URL (restored from cleanup)."""
-        return self.database.get_connection_string()
-
     def load(self):
         """Load configuration from file and environment variables."""
         with self._lock:
@@ -788,15 +757,6 @@ class ConfigManager:
         db_manager = self.create_database_manager()
 
         return TenantManager(db_manager=db_manager, multi_tenant_enabled=self.features.multi_tenant)
-
-    def save_to_file(self, path: Optional[Path] = None):
-        """Save current configuration to a YAML file."""
-        save_path = path or self.config_path
-
-        with open(save_path, "w", encoding="utf-8") as f:
-            yaml.dump(self.get_all_settings(), f, default_flow_style=False, sort_keys=False)
-
-        logger.info(f"Configuration saved to {save_path}")
 
     @classmethod
     def load_from_file(cls, path: Path) -> "ConfigManager":

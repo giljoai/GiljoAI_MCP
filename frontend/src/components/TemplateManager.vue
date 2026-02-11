@@ -1451,8 +1451,7 @@ const confirmReset = (template) => {
 const resetTemplate = async () => {
   resetting.value = true
   try {
-    const response = await api.templates.reset(resettingTemplate.value.id)
-    console.log('Template reset response:', response.data)
+    await api.templates.reset(resettingTemplate.value.id)
     await loadTemplates()
     resetDialog.value = false
     resettingTemplate.value = null
@@ -1481,12 +1480,6 @@ const viewDiff = async (template) => {
 
 // Handover 0335: Handle template export WebSocket event (Enhanced with debugging)
 const handleTemplateExported = (data) => {
-  console.log('[TemplateManager] Received template:exported event', {
-    payload: data,
-    currentTenant: currentTenantKey.value,
-    hasTemplates: templates.value.length > 0,
-  })
-
   // Normalize payload - WebSocket store flattens nested data structure
   // Backend sends: { type, data: { tenant_key, template_ids, ... }, timestamp }
   // Store normalizes to: { type, tenant_key, template_ids, ..., timestamp }
@@ -1497,21 +1490,11 @@ const handleTemplateExported = (data) => {
 
   // Validate required fields
   if (!tenantKey || !templateIds || !exportedAt) {
-    console.warn('[TemplateManager] Export event rejected: missing required fields', {
-      hasTenantKey: !!tenantKey,
-      hasTemplateIds: !!templateIds,
-      hasExportedAt: !!exportedAt,
-      payload: data,
-    })
     return
   }
 
   // Multi-tenant isolation check
   if (tenantKey !== currentTenantKey.value) {
-    console.warn('[TemplateManager] Export event rejected: tenant mismatch', {
-      expected: currentTenantKey.value,
-      received: tenantKey,
-    })
     return
   }
 
@@ -1527,34 +1510,22 @@ const handleTemplateExported = (data) => {
     }
   })
 
-  if (updateCount > 0) {
-    console.log(
-      `[TemplateManager] Updated ${updateCount}/${templateIds.length} templates as exported (${exportType})`
-    )
-  } else {
-    console.warn(
-      `[TemplateManager] No templates matched exported IDs. Available: ${templates.value.map((t) => t.id).join(', ')}. Exported: ${templateIds.join(', ')}`
-    )
-  }
 }
+
 
 // Lifecycle
 onMounted(() => {
-  console.log('[TemplateManager] Mounting with tenant:', currentTenantKey.value)
-
   loadTemplates()
   loadActiveCount() // Handover 0075: Load active agent count
 
   // Handover 0335: Subscribe to template export WebSocket events
   // Pattern matches JobsTab and LaunchTab (working components)
   on('template:exported', handleTemplateExported)
-  console.log('[TemplateManager] Registered handler for template:exported event')
 })
 
 onUnmounted(() => {
   // Handover 0335: Cleanup WebSocket subscription
   off('template:exported', handleTemplateExported)
-  console.log('[TemplateManager] Unregistered handler for template:exported event')
 })
 
 // Watch for variable changes
@@ -1573,11 +1544,8 @@ watch(
   (newEvent) => {
     if (!newEvent) return
 
-    console.log('[TemplateManager] Received export event from parent via inject:', newEvent)
-
     // Validate tenant_key matches current user
     if (newEvent.tenant_key !== currentTenantKey.value) {
-      console.warn('[TemplateManager] Export event tenant mismatch, ignoring')
       return
     }
 

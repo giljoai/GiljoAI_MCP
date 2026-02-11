@@ -47,21 +47,6 @@ class TestConfigManager:
         # v3.0: Server always binds to 0.0.0.0, firewall controls access
         assert config.server.api_host == "0.0.0.0"
 
-    def test_path_settings_os_neutral(self):
-        """Test that path settings use OS-neutral paths."""
-        config = get_config()
-
-        # Verify paths are Path objects
-        assert isinstance(config.get_data_dir(), Path)
-        assert isinstance(config.get_config_dir(), Path)
-        assert isinstance(config.get_log_dir(), Path)
-
-        # Verify paths are under user home
-        home = Path.home()
-        assert str(config.get_data_dir()).startswith(str(home))
-        assert str(config.get_config_dir()).startswith(str(home))
-        assert str(config.get_log_dir()).startswith(str(home))
-
     @patch.dict(
         os.environ,
         {
@@ -82,45 +67,6 @@ class TestConfigManager:
         assert config_manager.server.api_host == "0.0.0.0"
         assert config_manager.server.api_port == 9000
         assert config_manager.server.debug is True
-
-    def test_database_url_construction(self):
-        """Test database URL construction for PostgreSQL."""
-        config = get_config()
-
-        # Test PostgreSQL URL construction (project standardized on PostgreSQL)
-        config.database.type = "postgresql"
-        config.database.host = "localhost"
-        config.database.port = 5432
-        config.database.username = "testuser"
-        config.database.password = "testpass"
-        config.database.database_name = "testdb"
-
-        pg_url = config.get_database_url()
-        assert pg_url == "postgresql://testuser:testpass@localhost:5432/testdb"
-
-    def test_config_directory_creation(self):
-        """Test that configuration directories are created properly."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config = get_config()
-
-            # Override paths to use temp directory
-            temp_path = Path(temp_dir)
-            config._override_base_dir = temp_path
-
-            # Get directories (should create them)
-            data_dir = config.get_data_dir()
-            config_dir = config.get_config_dir()
-            log_dir = config.get_log_dir()
-
-            # Verify they were created
-            assert data_dir.exists()
-            assert config_dir.exists()
-            assert log_dir.exists()
-
-            # Verify they're under temp directory
-            assert str(data_dir).startswith(str(temp_path))
-            assert str(config_dir).startswith(str(temp_path))
-            assert str(log_dir).startswith(str(temp_path))
 
     def test_config_validation(self):
         """Test configuration validation."""
@@ -175,22 +121,6 @@ class TestConfigManager:
         assert config.message.max_queue_size > 0
         assert config.message.message_timeout > 0
         assert config.message.max_retries > 0
-
-    def test_config_file_operations(self):
-        """Test configuration file save/load operations."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config_file = Path(temp_dir) / "test_config.yaml"
-
-            config = get_config()
-
-            # Save configuration
-            config.save_to_file(config_file)
-            assert config_file.exists()
-
-            # Load configuration
-            new_config = ConfigManager.load_from_file(config_file)
-            assert new_config.app_name == config.app_name
-            assert new_config.server.api_port == config.server.api_port
 
     def test_config_singleton_behavior(self):
         """Test that get_config returns the same instance."""
