@@ -10,6 +10,7 @@ Tests that MessageService correctly implements the messaging contract:
 
 Updated for Handover 0730: Exception-based patterns (no success wrapper)
 Updated for Handover 0700c: AgentExecution.messages JSONB removed, using counter columns
+Updated for Handover 0731c: Typed returns (SendMessageResult, CompleteMessageResult, etc.)
 """
 
 from datetime import datetime, timezone
@@ -28,6 +29,11 @@ from src.giljo_mcp.models.projects import Project
 
 # Import models using modular imports (Post-Handover 0128a)
 from src.giljo_mcp.models.tasks import Message
+from src.giljo_mcp.schemas.service_responses import (
+    CompleteMessageResult,
+    MessageListResult,
+    SendMessageResult,
+)
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -195,7 +201,7 @@ class TestMessageCreationAndCounterUpdates:
         assert recipient.messages_waiting_count == 0
 
         # Act: Send message from orchestrator to analyzer
-        # Handover 0730b: Returns dict directly (no success wrapper)
+        # Handover 0731c: Returns SendMessageResult typed model
         result = await message_service.send_message(
             to_agents=[recipient.agent_display_name],
             content="Analyze the codebase for patterns",
@@ -206,9 +212,10 @@ class TestMessageCreationAndCounterUpdates:
             tenant_key=project.tenant_key,
         )
 
-        # Assert: Message sending succeeded
-        assert "message_id" in result
-        message_id = result["message_id"]
+        # Assert: Message sending succeeded - typed return
+        assert isinstance(result, SendMessageResult)
+        assert result.message_id is not None
+        message_id = result.message_id
 
         # Assert: Message row exists in database
         msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
@@ -268,7 +275,7 @@ class TestMessageCompletion:
             from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
-        message_id = send_result["message_id"]
+        message_id = send_result.message_id
 
         # Auto-acknowledge via receive_messages (Handover 0326)
         receive_result = await message_service.receive_messages(
@@ -276,8 +283,9 @@ class TestMessageCompletion:
             limit=10,
             tenant_key=project.tenant_key,
         )
-        assert len(receive_result["messages"]) >= 1, (
-            f"Expected messages but got {receive_result['count']}"
+        assert isinstance(receive_result, MessageListResult)
+        assert len(receive_result.messages) >= 1, (
+            f"Expected messages but got {receive_result.count}"
         )
 
         # Act: Complete the message
@@ -287,9 +295,10 @@ class TestMessageCompletion:
             result="Feature X implemented successfully with 95% test coverage",
         )
 
-        # Assert: Completion succeeded
-        assert complete_result["message_id"] == message_id
-        assert complete_result["completed_by"] == recipient.agent_display_name
+        # Assert: Completion succeeded - typed return
+        assert isinstance(complete_result, CompleteMessageResult)
+        assert complete_result.message_id == message_id
+        assert complete_result.completed_by == recipient.agent_display_name
 
         # Assert: Message status is "completed"
         msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
@@ -345,8 +354,9 @@ class TestBroadcastMessaging:
             tenant_key=project.tenant_key,
         )
 
-        # Assert: Broadcast succeeded
-        message_id = result["message_id"]
+        # Assert: Broadcast succeeded - typed return
+        assert isinstance(result, SendMessageResult)
+        message_id = result.message_id
 
         # Assert: Message row exists
         msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
