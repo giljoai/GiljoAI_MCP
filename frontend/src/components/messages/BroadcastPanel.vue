@@ -187,6 +187,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 import type { BroadcastTemplate, MessagePriority } from '@/types/message'
@@ -263,10 +264,10 @@ const canSend = computed(() => {
 const markdownPreview = computed(() => {
   if (!messageContent.value) return ''
   try {
-    return marked(messageContent.value)
+    return DOMPurify.sanitize(marked(messageContent.value))
   } catch (err) {
     console.error('[BroadcastPanel] Markdown parsing error:', err)
-    return messageContent.value
+    return DOMPurify.sanitize(messageContent.value)
   }
 })
 
