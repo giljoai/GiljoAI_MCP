@@ -1,7 +1,7 @@
 # Testing Strategy & Patterns
 
 **Version**: v3.1+ (Post-Remediation)
-**Last Updated**: 2025-11-15
+**Last Updated**: 2026-02-10
 **Coverage Target**: >80% across all services and endpoints
 
 ## Overview
@@ -233,12 +233,13 @@ async def test_complete_product_lifecycle(db_session, test_tenant):
     })
 
     # 2. Upload vision document
+    # Success: direct return (no wrapper)
     vision_content = "Build e-commerce platform with cart, checkout, payments..."
     vision_result = await product_service.upload_vision_document(
         product.id,
         vision_content
     )
-    assert vision_result['success'] is True
+    assert vision_result is not None
 
     # 3. Activate product
     await product_service.activate_product(product.id)
@@ -266,7 +267,6 @@ async def test_complete_product_lifecycle(db_session, test_tenant):
     # Verify orchestrator created
     assert orchestrator.status == "pending"
     assert orchestrator.context_budget == 200000
-    assert orchestrator.instance_number == 1
 ```
 
 ### **Multi-Tenant Isolation Tests**
@@ -319,13 +319,13 @@ async def test_succession_lineage_preservation(db_session, test_tenant):
         context_budget=100000
     )
 
-    # Simulate context usage and trigger succession
+    # Manual succession via simple-handover endpoint
     await service.update_context_usage(job1.id, 91000)
-    job2 = await service.trigger_succession(job1.id, "context_limit")
+    job2 = await service.create_simple_handover(job1.id, test_tenant, reason="context_limit")
 
-    # Trigger another succession (instance 2 → 3)
+    # Trigger another succession (instance 2 -> 3)
     await service.update_context_usage(job2.id, 91000)
-    job3 = await service.trigger_succession(job2.id, "context_limit")
+    job3 = await service.create_simple_handover(job2.id, test_tenant, reason="context_limit")
 
     # Verify lineage chain
     assert job1.spawned_by is None  # First orchestrator
@@ -333,10 +333,8 @@ async def test_succession_lineage_preservation(db_session, test_tenant):
 
     assert job2.spawned_by == job1.id
     assert job2.handover_to == job3.id
-    assert job2.instance_number == 2
 
     assert job3.spawned_by == job2.id
-    assert job3.instance_number == 3
 
     # Verify all handover summaries preserved
     assert job1.handover_summary is not None
@@ -385,8 +383,9 @@ def test_vision_upload(test_user_token, test_product_id):
     )
 
     assert response.status_code == 200
+    # Success: direct return (exception on error)
     data = response.json()
-    assert data['success'] is True
+    assert data is not None
     assert data['chunks'] > 0  # Vision chunked
 ```
 
@@ -626,4 +625,4 @@ touch tests/services/__init__.py
 
 ---
 
-**Last Updated**: 2025-11-15 (Post-Remediation v3.1.1)
+**Last Updated**: 2026-02-10 (Post-Remediation v3.1.1)

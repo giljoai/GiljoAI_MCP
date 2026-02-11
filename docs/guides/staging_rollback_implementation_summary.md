@@ -80,7 +80,7 @@ staging_status = Column(
 
 **Features Implemented**:
 - ✅ Multi-tenant isolation (filters by `current_user.tenant_key`)
-- ✅ Orchestrator discovery with instance_number support (succession compatibility)
+- ✅ Orchestrator discovery (succession compatibility)
 - ✅ Atomic transaction safety with `session.commit()`
 - ✅ Soft delete via `rollback_project_staging()` from `staging_rollback.py`
 - ✅ Project `staging_status` clearance (set to NULL)

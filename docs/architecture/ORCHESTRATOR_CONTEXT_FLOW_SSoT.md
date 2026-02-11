@@ -112,7 +112,6 @@ Content-Type: application/json
    - `status`: "pending"
    - `context_budget`: 200,000 tokens (configurable)
    - `context_used`: 0 tokens (initial)
-   - `instance_number`: 1 (first orchestrator)
 3. **Stage prompt generation**: Generate thin client prompt (NOT full mission context yet)
 4. **Return launch prompt**: User copies prompt and launches Claude Code/Codex/Gemini
 
@@ -1305,7 +1304,6 @@ CREATE TABLE mcp_agent_jobs (
     tenant_key VARCHAR(255),
     context_used INTEGER DEFAULT 0,  -- Token tracking
     context_budget INTEGER DEFAULT 200000,  -- 200K tokens
-    instance_number INTEGER DEFAULT 1,  -- Succession tracking
     spawned_by INTEGER REFERENCES mcp_agent_jobs(id),  -- Lineage
     handover_to INTEGER REFERENCES mcp_agent_jobs(id),  -- Successor
     handover_summary TEXT,  -- Condensed context for successor
