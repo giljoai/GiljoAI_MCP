@@ -724,7 +724,7 @@
                   </v-window-item>
                   <v-window-item value="side-by-side">
                     <v-card variant="outlined" class="diff-viewer">
-                      <div class="pa-4 diff-html-container" v-html="diffData.diff_html"></div>
+                      <div class="pa-4 diff-html-container" v-html="sanitizedDiffHtml"></div>
                     </v-card>
                   </v-window-item>
                 </v-window>
@@ -775,6 +775,7 @@ import { format } from 'date-fns'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
+import DOMPurify from 'dompurify'
 
 // Handover 0335: WebSocket setup for real-time export status updates
 const { on, off } = useWebSocketV2()
@@ -1048,6 +1049,11 @@ const remainingUserSlots = computed(() => {
 })
 const systemReservedSlots = computed(() => activeStats.value.systemReserved ?? 1)
 const userAgentLimit = computed(() => activeStats.value.userLimit ?? 7)
+
+// Sanitized diff HTML for safe rendering
+const sanitizedDiffHtml = computed(() => {
+  return diffData.value?.diff_html ? DOMPurify.sanitize(diffData.value.diff_html) : ''
+})
 
 // Methods
 const loadTemplates = async () => {

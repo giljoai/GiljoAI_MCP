@@ -72,7 +72,7 @@ CLIENT PC                          SERVER (F:\GiljoAI_MCP)
 
 10. Receives agent list        ←── 11. Returns agents with versions
 
-12. Spawns agent jobs              12. Creates MCPAgentJob records
+12. Spawns agent jobs              12. Creates AgentJob records
     (database records only)    ──→     in PostgreSQL
 
 13. Agent 1 starts in
@@ -374,11 +374,11 @@ Tech Stack Requirements: Python 3.11+, FastAPI, Vue3, PostgreSQL 18
 >
 > See Handover 0366 series for migration details. Will be removed in v4.0.
 
-**Purpose**: Create MCPAgentJob records for discovered agents
+**Purpose**: Create AgentJob records for discovered agents
 
 **Actions**:
 1. For each discovered and compatible agent:
-   a. Create MCPAgentJob record with:
+   a. Create AgentJob record with:
       - `project_id`: Current project UUID
       - `agent_type`: From discovery (implementer, tester, etc.)
       - `status`: 'waiting' (initial state)
@@ -579,14 +579,7 @@ Before calling `complete_job()`, orchestrators MUST:
 
 ## Staging Result Storage
 
-After successful completion, staging results are stored in `MCPAgentJob.staging_result` (JSONB column):
-
-> **Migration Note (Handover 0366a - Dec 2025)**
->
-> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
-> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
->
-> See Handover 0366 series for migration details. Will be removed in v4.0.
+After successful completion, staging results are stored in `AgentJob.staging_result` (JSONB column):
 
 ```json
 {
@@ -689,7 +682,7 @@ SELECT name, version, is_active FROM agent_templates WHERE tenant_key = 'YOUR_TE
 **Diagnosis**:
 ```python
 # Check for existing jobs
-existing_jobs = session.query(MCPAgentJob).filter_by(
+existing_jobs = session.query(AgentJob).filter_by(
     project_id=project_id,
     status='waiting'
 ).count()
