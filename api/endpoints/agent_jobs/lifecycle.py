@@ -82,34 +82,35 @@ async def spawn_agent_job(
     # NOTE: OrchestrationService already broadcasts agent:created, but we broadcast again
     # to ensure the endpoint's caller gets the event even if the service broadcast failed.
     # Handover 0457: Include execution_id for frontend Map key consistency
+    # 0731d: OrchestrationService returns SpawnResult typed model
     try:
         await ws_dep.broadcast_to_tenant(
             tenant_key=current_user.tenant_key,
             event_type="agent:created",
             data={
                 "project_id": request.project_id,
-                "execution_id": result.get("execution_id"),  # Handover 0457: Unique row ID for frontend Map key
-                "agent_id": result.get("agent_id"),  # Handover 0457: Executor UUID
-                "job_id": result["job_id"],
+                "execution_id": result.execution_id,  # Handover 0457: Unique row ID for frontend Map key
+                "agent_id": result.agent_id,  # Handover 0457: Executor UUID
+                "job_id": result.job_id,
                 "agent_display_name": request.agent_display_name,
                 "agent_name": request.agent_name or request.agent_display_name,
                 "status": "waiting",
                 "mission": request.mission,  # Handover 0464: Include mission for UI display
             },
         )
-        logger.info(f"Agent spawn broadcasted: {result['job_id']}")
+        logger.info(f"Agent spawn broadcasted: {result.job_id}")
     except Exception:
         logger.exception("Failed to broadcast agent spawn event")
         # Non-critical - continue without broadcast
 
-    logger.info(f"Spawned agent job {result['job_id']} for tenant {current_user.tenant_key}")
+    logger.info(f"Spawned agent job {result.job_id} for tenant {current_user.tenant_key}")
 
     return SpawnAgentResponse(
         success=True,
-        job_id=result["job_id"],
-        agent_prompt=result.get("agent_prompt", ""),
-        mission_stored=result.get("mission_stored", True),
-        thin_client=result.get("thin_client", True),
+        job_id=result.job_id,
+        agent_prompt=result.agent_prompt,
+        mission_stored=result.mission_stored,
+        thin_client=result.thin_client,
     )
 
 
@@ -143,13 +144,13 @@ async def acknowledge_job(
 
     logger.info(f"Acknowledged job {job_id} for tenant {current_user.tenant_key}")
 
-    # Service returns {"job": {...}, "next_instructions": ...}
-    job_data = result.get("job", {})
+    # 0731d: OrchestrationService returns AcknowledgeJobResult typed model
+    job_data = result.job
     return JobAcknowledgeResponse(
         job_id=job_id,
         status=job_data.get("status", "active"),
         started_at=job_data.get("started_at"),
-        message=result.get("next_instructions", "Job acknowledged successfully"),
+        message=result.next_instructions,
     )
 
 
@@ -186,13 +187,13 @@ async def complete_job(
 
     logger.info(f"Completed job {job_id} for tenant {current_user.tenant_key}")
 
-    # Service returns {"status": "success", "job_id": ..., "message": ...}
+    # 0731d: OrchestrationService returns CompleteJobResult typed model
     # Response model expects execution status, not result status
     return JobCompleteResponse(
         job_id=job_id,
         status="completed",  # Fixed: execution status, not result status
         completed_at=None,  # Not returned by service
-        message=result.get("message", "Job completed successfully"),
+        message=result.message,
     )
 
 
@@ -227,11 +228,11 @@ async def report_job_error(
 
     logger.info(f"Reported error for job {job_id} for tenant {current_user.tenant_key}")
 
-    # Service returns {"status": "success", "job_id": ..., "message": ...}
+    # 0731d: OrchestrationService returns ErrorReportResult typed model
     # Response model expects execution status (blocked), not result status
     return JobErrorResponse(
         job_id=job_id,
         status="blocked",  # Fixed: execution status, not result status
         completed_at=None,  # Not returned by service
-        message=result.get("message", "Job error reported"),
+        message=result.message,
     )

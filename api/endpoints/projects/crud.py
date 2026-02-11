@@ -109,27 +109,26 @@ async def list_projects(
 
     logger.info(f"Found {len(projects)} projects for tenant {current_user.tenant_key}")
 
-    # Convert to response models
-    # Note: ProjectService returns dict format, convert to ProjectResponse
+    # Convert to response models (0731d: ProjectService returns list[ProjectListItem] typed models)
     return [
         ProjectResponse(
-            id=proj.get("id"),
-            alias=proj.get("alias", ""),
-            name=proj.get("name"),
-            description=proj.get("description"),
-            mission=proj.get("mission", ""),
-            status=proj.get("status"),
-            staging_status=proj.get("staging_status"),
-            product_id=proj.get("product_id"),
-            created_at=proj.get("created_at"),
-            updated_at=proj.get("updated_at"),
-            completed_at=proj.get("completed_at"),
-            context_budget=proj.get("context_budget", 150000),
-            context_used=proj.get("context_used", 0),
-            agent_count=proj.get("agent_count", 0),
-            message_count=proj.get("message_count", 0),
+            id=proj.id,
+            alias="",
+            name=proj.name,
+            description=proj.description,
+            mission=proj.mission or "",
+            status=proj.status,
+            staging_status=proj.staging_status,
+            product_id=proj.product_id,
+            created_at=proj.created_at,
+            updated_at=proj.updated_at,
+            completed_at=None,
+            context_budget=proj.context_budget,
+            context_used=proj.context_used,
+            agent_count=0,
+            message_count=0,
             agents=[],
-            execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
+            execution_mode="multi_terminal",  # Handover 0260
         )
         for proj in projects
     ]
@@ -163,26 +162,26 @@ async def get_deleted_projects(
 
     logger.info(f"Found {len(projects)} deleted projects for tenant {current_user.tenant_key}")
 
-    # Convert to response models
+    # Convert to response models (0731d: ProjectService returns list[ProjectListItem] typed models)
     return [
         ProjectResponse(
-            id=proj.get("id"),
-            alias=proj.get("alias", ""),
-            name=proj.get("name"),
-            description=proj.get("description"),
-            mission=proj.get("mission", ""),
-            status=proj.get("status"),
-            staging_status=proj.get("staging_status"),
-            product_id=proj.get("product_id"),
-            created_at=proj.get("created_at"),
-            updated_at=proj.get("updated_at"),
-            completed_at=proj.get("completed_at"),
-            deleted_at=proj.get("deleted_at"),
-            context_budget=proj.get("context_budget", 150000),
-            context_used=proj.get("context_used", 0),
-            agent_count=proj.get("agent_count", 0),
-            message_count=proj.get("message_count", 0),
-            execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
+            id=proj.id,
+            alias="",
+            name=proj.name,
+            description=proj.description,
+            mission=proj.mission or "",
+            status=proj.status,
+            staging_status=proj.staging_status,
+            product_id=proj.product_id,
+            created_at=proj.created_at,
+            updated_at=proj.updated_at,
+            completed_at=None,
+            deleted_at=None,
+            context_budget=proj.context_budget,
+            context_used=proj.context_used,
+            agent_count=0,
+            message_count=0,
+            execution_mode="multi_terminal",  # Handover 0260
             agents=[],
         )
         for proj in projects
@@ -220,26 +219,25 @@ async def get_active_project(
         logger.info(f"No active project found for tenant {current_user.tenant_key}")
         return None
 
-    logger.info(f"Retrieved active project {proj.get('name')} for tenant {current_user.tenant_key}")
+    logger.info(f"Retrieved active project {proj.name} for tenant {current_user.tenant_key}")
 
     return ProjectResponse(
-        id=proj.get("id"),
-        alias=proj.get("alias", ""),
-        name=proj.get("name"),
-        description=proj.get("description"),
-        mission=proj.get("mission", ""),
-        status=proj.get("status"),
-        staging_status=proj.get("staging_status"),
-        product_id=proj.get("product_id"),
-        created_at=proj.get("created_at"),
-        updated_at=proj.get("updated_at"),
-        completed_at=proj.get("completed_at"),
-        deleted_at=proj.get("deleted_at"),
-        context_budget=proj.get("context_budget", 150000),
-        context_used=proj.get("context_used", 0),
-        agent_count=proj.get("agent_count", 0),
-        message_count=proj.get("message_count", 0),
-        execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
+        id=proj.id,
+        alias=proj.alias,
+        name=proj.name,
+        description=proj.description,
+        mission=proj.mission or "",
+        status=proj.status,
+        product_id=proj.product_id,
+        created_at=proj.created_at,
+        updated_at=proj.updated_at,
+        completed_at=proj.completed_at,
+        deleted_at=proj.deleted_at,
+        context_budget=proj.context_budget,
+        context_used=proj.context_used,
+        agent_count=proj.agent_count,
+        message_count=proj.message_count,
+        execution_mode="multi_terminal",  # Handover 0260
     )
 
 
@@ -271,25 +269,25 @@ async def get_project(
     logger.info(f"Retrieved project {project_id} for tenant {current_user.tenant_key}")
 
     # Production-grade: Use agents from service response (not hardcoded empty array)
-    agents_from_service = proj.get("agents", [])
+    agents_from_service = proj.agents
 
     return ProjectResponse(
-        id=proj.get("id"),
-        alias=proj.get("alias", ""),
-        name=proj.get("name"),
-        description=proj.get("description"),
-        mission=proj.get("mission", ""),
-        status=proj.get("status"),
-        staging_status=proj.get("staging_status"),
-        product_id=proj.get("product_id"),
-        created_at=proj.get("created_at"),
-        updated_at=proj.get("updated_at"),
-        completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
-        context_used=proj.get("context_used", 0),
-        agent_count=proj.get("agent_count", len(agents_from_service)),
-        message_count=proj.get("message_count", 0),
-        execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
+        id=proj.id,
+        alias=proj.alias or "",
+        name=proj.name,
+        description=proj.description,
+        mission=proj.mission or "",
+        status=proj.status,
+        staging_status=proj.staging_status,
+        product_id=proj.product_id,
+        created_at=proj.created_at,
+        updated_at=proj.updated_at,
+        completed_at=proj.completed_at,
+        context_budget=proj.context_budget,
+        context_used=proj.context_used,
+        agent_count=proj.agent_count or len(agents_from_service),
+        message_count=proj.message_count,
+        execution_mode=proj.execution_mode or "multi_terminal",  # Handover 0260
         agents=agents_from_service,  # Fixed: Use agents from ProjectService, not hardcoded []
     )
 
@@ -327,29 +325,61 @@ async def update_project(
 
     if not update_dict:
         # No fields to update, just return current project (raises exceptions on error)
-        proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
+        detail = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
+        proj_id = detail.id
+        proj_alias = detail.alias or ""
+        proj_name = detail.name
+        proj_desc = detail.description
+        proj_mission = detail.mission or ""
+        proj_status = detail.status
+        proj_staging = detail.staging_status
+        proj_product = detail.product_id
+        proj_created = detail.created_at
+        proj_updated = detail.updated_at
+        proj_completed = detail.completed_at
+        proj_budget = detail.context_budget
+        proj_used = detail.context_used
+        proj_agents = detail.agent_count
+        proj_messages = detail.message_count
+        proj_mode = detail.execution_mode or "multi_terminal"
     else:
-        # Update via ProjectService (raises exceptions on error)
+        # Update via ProjectService (raises exceptions on error, returns ProjectData)
         proj = await project_service.update_project(project_id=project_id, updates=update_dict)
+        proj_id = proj.id
+        proj_alias = ""
+        proj_name = proj.name
+        proj_desc = proj.description
+        proj_mission = proj.mission or ""
+        proj_status = proj.status
+        proj_staging = None
+        proj_product = proj.product_id
+        proj_created = proj.created_at
+        proj_updated = proj.updated_at
+        proj_completed = proj.completed_at
+        proj_budget = 150000
+        proj_used = 0
+        proj_agents = 0
+        proj_messages = 0
+        proj_mode = proj.execution_mode or "multi_terminal"
 
     logger.info(f"Updated project {project_id}")
 
     return ProjectResponse(
-        id=proj.get("id"),
-        alias=proj.get("alias", ""),
-        name=proj.get("name"),
-        description=proj.get("description"),
-        mission=proj.get("mission", ""),
-        status=proj.get("status"),
-        staging_status=proj.get("staging_status"),
-        product_id=proj.get("product_id"),
-        created_at=proj.get("created_at"),
-        updated_at=proj.get("updated_at"),
-        completed_at=proj.get("completed_at"),
-        context_budget=proj.get("context_budget", 150000),
-        context_used=proj.get("context_used", 0),
-        agent_count=proj.get("agent_count", 0),
-        message_count=proj.get("message_count", 0),
-        execution_mode=proj.get("execution_mode", "multi_terminal"),  # Handover 0260
+        id=proj_id,
+        alias=proj_alias,
+        name=proj_name,
+        description=proj_desc,
+        mission=proj_mission,
+        status=proj_status,
+        staging_status=proj_staging,
+        product_id=proj_product,
+        created_at=proj_created,
+        updated_at=proj_updated,
+        completed_at=proj_completed,
+        context_budget=proj_budget,
+        context_used=proj_used,
+        agent_count=proj_agents,
+        message_count=proj_messages,
+        execution_mode=proj_mode,
         agents=[],
     )

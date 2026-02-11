@@ -167,11 +167,11 @@ async def list_tasks(
         tenant_key=None,  # Will use current tenant from context
     )
 
-    tasks_data = result["tasks"]
-    logger.info(f"Found {len(tasks_data)} tasks for user {current_user.username}")
+    # Service returns list[Task] ORM objects directly (0731 typed returns)
+    logger.info(f"Found {len(result)} tasks for user {current_user.username}")
 
-    # Convert task dicts to TaskResponse objects
-    return [TaskResponse(**task) for task in tasks_data]
+    # Convert Task ORM objects to TaskResponse using helper
+    return [task_to_response(task) for task in result]
 
 
 @router.post("/", response_model=TaskResponse)
@@ -254,8 +254,8 @@ async def get_task(
         ResourceNotFoundError: Task not found
         DatabaseError: Database operation failed
     """
-    task_data = await task_service.get_task(task_id)
-    return TaskResponse(**task_data)
+    task = await task_service.get_task(task_id)
+    return task_to_response(task)
 
 
 @router.patch("/{task_id}", response_model=TaskResponse)
@@ -291,10 +291,10 @@ async def update_task(
     logger.debug(f"User {current_user.username} updating task {task_id}")
 
     # First verify task exists and user has permission via get_task
-    task_data = await task_service.get_task(task_id)
+    task = await task_service.get_task(task_id)
 
-    # Simple permission check: admin or creator
-    if current_user.role != "admin" and task_data["created_by_user_id"] != str(current_user.id):
+    # Simple permission check: admin or creator (Task ORM attribute access)
+    if current_user.role != "admin" and str(task.created_by_user_id) != str(current_user.id):
         logger.warning(f"User {current_user.username} not authorized to update task {task_id}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this task")
 
@@ -304,9 +304,9 @@ async def update_task(
 
     logger.info(f"Updated task {task_id} by user {current_user.username}")
 
-    # Fetch updated task data for response
-    task_data = await task_service.get_task(task_id)
-    return TaskResponse(**task_data)
+    # Fetch updated task for response
+    task = await task_service.get_task(task_id)
+    return task_to_response(task)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -378,14 +378,14 @@ async def convert_task_to_project(
         user_id=str(current_user.id),
     )
 
-    logger.info(f"Converted task {task_id} to project {data['project_id']} (strategy: {conversion_request.strategy})")
+    logger.info(f"Converted task {task_id} to project {data.project_id} (strategy: {conversion_request.strategy})")
 
     return ProjectConversionResponse(
-        project_id=data["project_id"],
-        project_name=data["project_name"],
-        original_task_id=data["original_task_id"],
-        conversion_strategy=data["conversion_strategy"],
-        created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(timezone.utc),
+        project_id=data.project_id,
+        project_name=data.project_name,
+        original_task_id=data.task_id,
+        conversion_strategy=conversion_request.strategy,
+        created_at=datetime.now(timezone.utc),
     )
 
 
@@ -404,5 +404,5 @@ async def change_task_status(
         ResourceNotFoundError: Task not found
         DatabaseError: Database operation failed
     """
-    task_data = await task_service.change_status(task_id, status_update.status)
-    return TaskResponse(**task_data)
+    task = await task_service.change_status(task_id, status_update.status)
+    return task_to_response(task)
