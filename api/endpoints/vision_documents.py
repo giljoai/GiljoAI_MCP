@@ -587,48 +587,27 @@ async def regenerate_consolidated_vision(
         HTTPException 400: If consolidation fails or skipped
         HTTPException 404: If product not found
     """
-    try:
-        # Verify product exists and belongs to tenant
-        result = await db.execute(select(Product).filter(Product.id == product_id, Product.tenant_key == tenant_key))
-        product = result.scalar_one_or_none()
+    # Verify product exists and belongs to tenant
+    result = await db.execute(select(Product).filter(Product.id == product_id, Product.tenant_key == tenant_key))
+    product = result.scalar_one_or_none()
 
-        if not product:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product {product_id} not found")
+    if not product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product {product_id} not found")
 
-        # Run consolidation service (exception-based error handling)
-        consolidation_service = ConsolidatedVisionService()
-        consolidation_result = await consolidation_service.consolidate_vision_documents(
-            product_id=product_id, session=db, tenant_key=tenant_key, force=force
-        )
+    # Run consolidation service (exception-based error handling)
+    consolidation_service = ConsolidatedVisionService()
+    consolidation_result = await consolidation_service.consolidate_vision_documents(
+        product_id=product_id, session=db, tenant_key=tenant_key, force=force
+    )
 
-        # Exception-based: Success returns data directly
-        return {
-            "success": True,
-            "light_tokens": consolidation_result["light"]["tokens"],
-            "medium_tokens": consolidation_result["medium"]["tokens"],
-            "source_docs": consolidation_result["source_docs"],
-            "hash": consolidation_result["hash"],
-        }
-
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions
-    except ValidationError as e:
-        # No changes detected - return 400 with error code
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=e.message,
-        ) from e
-    except ResourceNotFoundError as e:
-        # Product not found - return 404
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=e.message,
-        ) from e
-    except (SQLAlchemyError, ValueError, KeyError) as e:
-        logger.error(f"Failed to regenerate consolidated vision: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to regenerate consolidated vision: {e!s}"
-        ) from e
+    # Exception-based: Success returns data directly
+    return {
+        "success": True,
+        "light_tokens": consolidation_result["light"]["tokens"],
+        "medium_tokens": consolidation_result["medium"]["tokens"],
+        "source_docs": consolidation_result["source_docs"],
+        "hash": consolidation_result["hash"],
+    }
 
 
 @router.post("/{document_id}/regenerate-summaries", response_model=RechunkResponse)

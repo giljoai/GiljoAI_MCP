@@ -513,31 +513,73 @@ async def get_implementation_prompt(
     """
     from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
-    try:
-        # 1. Fetch project with multi-tenant filtering
-        project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
-        project_result = await db.execute(project_stmt)
-        project = project_result.scalar_one_or_none()
+    # 1. Fetch project with multi-tenant filtering
+    project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
+    project_result = await db.execute(project_stmt)
+    project = project_result.scalar_one_or_none()
 
-        if not project:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found or not accessible"
-            )
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found or not accessible"
+        )
 
-        # 2. Validate CLI mode
-        if project.execution_mode != "claude_code_cli":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Project is not in CLI mode. Implementation prompts are only for claude_code_cli execution mode.",
-            )
+    # 2. Validate CLI mode
+    if project.execution_mode != "claude_code_cli":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Project is not in CLI mode. Implementation prompts are only for claude_code_cli execution mode.",
+        )
 
-        # 3. Fetch orchestrator execution (waiting after staging, or working during execution)
-        orchestrator_stmt = (
+    # 3. Fetch orchestrator execution (waiting after staging, or working during execution)
+    orchestrator_stmt = (
+        select(AgentExecution)
+        .options(joinedload(AgentExecution.job))
+        .where(
+            AgentExecution.tenant_key == current_user.tenant_key,
+            AgentExecution.agent_display_name == "orchestrator",
+            AgentExecution.status.in_(["waiting", "working"]),
+        )
+        .join(
+            AgentJob,
+            (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key),
+        )
+        .where(AgentJob.project_id == project_id)
+        .order_by(AgentExecution.started_at.desc().nullslast())
+    )
+
+    orchestrator_result = await db.execute(orchestrator_stmt)
+    orchestrator_execution = orchestrator_result.scalar_one_or_none()
+
+    if not orchestrator_execution:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No orchestrator found for this project. Please ensure staging has been completed.",
+        )
+
+    # 4. Fetch spawned agent executions (waiting or working status)
+    # First try by spawned_by (agent_id now), then fallback to project_id for legacy data
+    agent_executions_stmt = (
+        select(AgentExecution)
+        .options(joinedload(AgentExecution.job))
+        .where(
+            AgentExecution.spawned_by == orchestrator_execution.agent_id,
+            AgentExecution.tenant_key == current_user.tenant_key,
+            AgentExecution.status.in_(["waiting", "working"]),
+        )
+        .order_by(AgentExecution.started_at.asc().nullsfirst())
+    )
+
+    agent_executions_result = await db.execute(agent_executions_stmt)
+    agent_executions = agent_executions_result.scalars().all()
+
+    # Fallback: Query by project_id for agents without spawned_by set (legacy data)
+    if not agent_executions:
+        fallback_stmt = (
             select(AgentExecution)
             .options(joinedload(AgentExecution.job))
             .where(
                 AgentExecution.tenant_key == current_user.tenant_key,
-                AgentExecution.agent_display_name == "orchestrator",
+                AgentExecution.agent_display_name != "orchestrator",  # Exclude orchestrator itself
                 AgentExecution.status.in_(["waiting", "working"]),
             )
             .join(
@@ -545,98 +587,48 @@ async def get_implementation_prompt(
                 (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key),
             )
             .where(AgentJob.project_id == project_id)
-            .order_by(AgentExecution.started_at.desc().nullslast())
-        )
-
-        orchestrator_result = await db.execute(orchestrator_stmt)
-        orchestrator_execution = orchestrator_result.scalar_one_or_none()
-
-        if not orchestrator_execution:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No orchestrator found for this project. Please ensure staging has been completed.",
-            )
-
-        # 4. Fetch spawned agent executions (waiting or working status)
-        # First try by spawned_by (agent_id now), then fallback to project_id for legacy data
-        agent_executions_stmt = (
-            select(AgentExecution)
-            .options(joinedload(AgentExecution.job))
-            .where(
-                AgentExecution.spawned_by == orchestrator_execution.agent_id,
-                AgentExecution.tenant_key == current_user.tenant_key,
-                AgentExecution.status.in_(["waiting", "working"]),
-            )
             .order_by(AgentExecution.started_at.asc().nullsfirst())
         )
 
-        agent_executions_result = await db.execute(agent_executions_stmt)
-        agent_executions = agent_executions_result.scalars().all()
+        fallback_result = await db.execute(fallback_stmt)
+        agent_executions = fallback_result.scalars().all()
 
-        # Fallback: Query by project_id for agents without spawned_by set (legacy data)
-        if not agent_executions:
-            fallback_stmt = (
-                select(AgentExecution)
-                .options(joinedload(AgentExecution.job))
-                .where(
-                    AgentExecution.tenant_key == current_user.tenant_key,
-                    AgentExecution.agent_display_name != "orchestrator",  # Exclude orchestrator itself
-                    AgentExecution.status.in_(["waiting", "working"]),
-                )
-                .join(
-                    AgentJob,
-                    (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key),
-                )
-                .where(AgentJob.project_id == project_id)
-                .order_by(AgentExecution.started_at.asc().nullsfirst())
-            )
-
-            fallback_result = await db.execute(fallback_stmt)
-            agent_executions = fallback_result.scalars().all()
-
-        if not agent_executions:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No agent jobs spawned yet. Please run staging first to create agent jobs.",
-            )
-
-        # 5. Generate implementation prompt using existing generator method
-        generator = ThinClientPromptGenerator(db, current_user.tenant_key)
-
-        # Build agent jobs list for prompt generator (using executions + jobs)
-        [
-            {
-                "job_id": agent_exec.job_id,
-                "agent_display_name": agent_exec.agent_display_name,
-                "agent_name": agent_exec.agent_name or agent_exec.agent_display_name,
-                "status": agent_exec.status,
-                "mission": agent_exec.job.mission if agent_exec.job else "(No mission assigned)",
-            }
-            for agent_exec in agent_executions
-        ]
-
-        # Call the existing implementation prompt generator
-        # Handover 0385: Use job_id (not agent_id) for mission retrieval
-        prompt = generator._build_claude_code_execution_prompt(
-            orchestrator_id=orchestrator_execution.job_id, project=project, agent_jobs=agent_executions
-        )
-
-        logger.info(
-            f"[IMPLEMENTATION PROMPT] Generated for project={project_id}, "
-            f"orchestrator={orchestrator_execution.agent_id}, agents={len(agent_executions)}, "
-            f"user={current_user.username}"
-        )
-
-        # 6. Return implementation prompt response
-        return {
-            "prompt": prompt,
-            "orchestrator_job_id": orchestrator_execution.agent_id,
-            "agent_count": len(agent_executions),
-        }
-
-    except Exception as e:
-        # Unexpected error during generation
-        logger.exception("[IMPLEMENTATION PROMPT] Generation failed for project={project_id}")
+    if not agent_executions:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate implementation prompt: {e!s}"
-        ) from e
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No agent jobs spawned yet. Please run staging first to create agent jobs.",
+        )
+
+    # 5. Generate implementation prompt using existing generator method
+    generator = ThinClientPromptGenerator(db, current_user.tenant_key)
+
+    # Build agent jobs list for prompt generator (using executions + jobs)
+    [
+        {
+            "job_id": agent_exec.job_id,
+            "agent_display_name": agent_exec.agent_display_name,
+            "agent_name": agent_exec.agent_name or agent_exec.agent_display_name,
+            "status": agent_exec.status,
+            "mission": agent_exec.job.mission if agent_exec.job else "(No mission assigned)",
+        }
+        for agent_exec in agent_executions
+    ]
+
+    # Call the existing implementation prompt generator
+    # Handover 0385: Use job_id (not agent_id) for mission retrieval
+    prompt = generator._build_claude_code_execution_prompt(
+        orchestrator_id=orchestrator_execution.job_id, project=project, agent_jobs=agent_executions
+    )
+
+    logger.info(
+        f"[IMPLEMENTATION PROMPT] Generated for project={project_id}, "
+        f"orchestrator={orchestrator_execution.agent_id}, agents={len(agent_executions)}, "
+        f"user={current_user.username}"
+    )
+
+    # 6. Return implementation prompt response
+    return {
+        "prompt": prompt,
+        "orchestrator_job_id": orchestrator_execution.agent_id,
+        "agent_count": len(agent_executions),
+    }
