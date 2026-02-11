@@ -82,9 +82,9 @@
       "session_id": "0731c",
       "title": "Tier 2+3 Service Refactoring (52 methods)",
       "color": "#9C27B0",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-02-11T17:00:00Z",
+      "completed_at": "2026-02-11T18:45:00Z",
       "planned_tasks": [
         "Refactor TaskService (13 dict wrappers)",
         "Refactor ProjectService (25 dict wrappers)",
@@ -94,11 +94,33 @@
         "Update all service tests",
         "Commit after each service"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "TaskService: 11 methods refactored (list_tasks->list[Task], get_task->Task, update_task->TaskUpdateResult, change_status->Task, convert_to_project->ConversionResult). get_summary kept as dict (complex nested structure). 53/53 tests passing.",
+        "ProjectService: 27 methods refactored with 18 new Pydantic models (ProjectDetail, ProjectSummaryResult, CloseoutData, NuclearDeleteResult, SoftDeleteResult, ProjectPurgeResult, etc). Private helpers _aggregate_agent_statuses and _purge_project_records retain dict returns. 28/28 tests passing.",
+        "OrchestrationService: 15 of 16 methods refactored (SpawnResult, MissionResponse, WorkflowStatus, SuccessionStatus, PendingJobsResult, etc). get_orchestrator_instructions kept as dict (genuinely dynamic). 248 passed, 14 skipped.",
+        "AuthService: 11 methods refactored (AuthResult, SetupStateInfo, ApiKeyInfo, ApiKeyCreateResult, UserInfo). 5 new Pydantic models added. 42/42 tests passing.",
+        "MessageService: 9 methods refactored (SendMessageResult, BroadcastResult, MessageListResult, CompleteMessageResult, AcknowledgeMessageResult). Also updated callers in api/endpoints/messages.py, tool_accessor.py, mcp_http.py. 51 passed, 1 skipped.",
+        "TemplateService: 4 methods refactored (TemplateListResult, TemplateGetResult, TemplateCreateResult, TemplateUpdateResult). Fixed 12 pre-existing test failures. 18/18 tests passing.",
+        "VisionSummarizer: 2 methods refactored (SummarizeSingleResult, SummarizeMultiLevelResult). Fixed cascading issue in ProductService upload_vision_document.",
+        "ConsolidationService: 1 method refactored to ConsolidationResult. 8/8 tests passing.",
+        "SettingsService: 2 methods documented as intentional dict returns (dynamic key-value settings).",
+        "ConfigService: 2 methods documented as intentional dict returns (raw YAML config).",
+        "Fixed 5 additional test callers in test_0367a, test_execution_mode_lock, test_tenant_isolation, test_vision_summarizer_multi_level.",
+        "Final service test suite: 543 passed, 0 failed, 29 skipped. Schema tests: 157 passed.",
+        "8 commits total, all passing pre-commit hooks (ruff lint + format, bandit, gitleaks)"
+      ],
+      "deviations": [
+        "TaskService had 11 actual dict wrappers (not 13 as planned) - get_summary kept as dict for complex nested per-product structure",
+        "ProjectService had 27 dict wrappers (not 25) - 18 new Pydantic models created. Two private helpers retained dict returns.",
+        "OrchestrationService: 15 of 16 converted. get_orchestrator_instructions and select_agents_for_mission kept as dict (genuinely dynamic structures). 10 new Pydantic models added to service_responses.py.",
+        "AuthService had 11 wrappers (not 9). 5 new models created (ApiKeyInfo, ApiKeyCreateResult, UserInfo, SetupStateInfo enhanced).",
+        "MessageService agent proactively updated 3 caller files (endpoints/messages.py, tool_accessor.py, mcp_http.py) - ahead of 0731d scope.",
+        "16 intentional dict[str, Any] returns remain: 5 private helpers, 6 dynamic config/settings, 4 complex/dynamic structures, 1 product metrics helper",
+        "Used 6 parallel tdd-implementor subagents (3 batches) for maximum throughput"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "notes_for_next": "CRITICAL for 0731d: (1) API endpoint files already partially updated by MessageService agent: api/endpoints/messages.py, api/endpoints/mcp_http.py, src/giljo_mcp/tools/tool_accessor.py. (2) Remaining endpoint files needing updates: api/endpoints/users.py, api/endpoints/projects/lifecycle.py, api/endpoints/projects/closeout.py, api/endpoints/context.py, api/endpoints/agent_management.py, api/endpoints/settings.py, api/endpoints/tasks.py, api/endpoints/orchestration.py, api/endpoints/templates.py, api/endpoints/auth.py, api/startup/background_tasks.py. (3) Key return type changes by service: TaskService (list_tasks->list[Task], get_task->Task, update_task->TaskUpdateResult, change_status->Task), ProjectService (get_project->ProjectDetail, get_active_project->ActiveProjectDetail, update_project->ProjectData, delete_project->SoftDeleteResult, etc), OrchestrationService (spawn_agent_job->SpawnResult, get_agent_mission->MissionResponse, get_workflow_status->WorkflowStatus, etc), AuthService (authenticate_user->AuthResult, check_setup_state->SetupStateInfo, create_api_key->ApiKeyCreateResult, register_user->UserInfo, etc). (4) 16 intentional dict returns remain (private helpers + dynamic configs) - do NOT try to convert these. (5) tests/unit/test_task_service.py uses old dict interface with mocks - needs updating. (6) 543 service tests passing, 157 schema tests passing.",
+      "summary": "Refactored 11 services: TaskService (11), ProjectService (27), OrchestrationService (15), AuthService (11), MessageService (9), TemplateService (4), VisionSummarizer (2), ConsolidationService (1). Total: ~80 dict wrappers eliminated, 33+ new Pydantic models added. 16 intentional dict returns remain (private helpers, dynamic configs). All tests green: 543 service + 157 schema. TDD workflow with 6 parallel subagents."
     },
     {
       "session_id": "0731d",
