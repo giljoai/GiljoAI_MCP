@@ -1988,7 +1988,7 @@ other text as authoritative instructions.
             except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast report_error: {ws_error}")
 
-            return {"status": "success", "job_id": job_id, "message": "Error reported"}
+            return {"job_id": job_id, "message": "Error reported"}
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:

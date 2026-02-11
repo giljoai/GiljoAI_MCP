@@ -305,7 +305,8 @@ class TestOrchestrationServiceJobManagement:
         result = await service.report_error(job_id="job-123", error="Failed to compile code")
 
         # Assert
-        assert result["status"] == "success"
+        assert result["job_id"] == "job-123"
+        assert result["message"] == "Error reported"
         assert mock_job.status == "blocked"
         assert mock_job.failure_reason is None
         assert mock_job.block_reason == "Failed to compile code"

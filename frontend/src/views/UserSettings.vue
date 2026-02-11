@@ -507,7 +507,6 @@ async function saveAppearanceSettings() {
     }
 
     await settingsStore.updateSettings({ appearance: settings.value.appearance })
-    console.log('Appearance settings saved')
   } catch (error) {
     console.error('Failed to save appearance settings:', error)
   }
@@ -516,7 +515,6 @@ async function saveAppearanceSettings() {
 async function saveNotificationSettings() {
   try {
     await settingsStore.updateSettings({ notifications: settings.value.notifications })
-    console.log('Notification settings saved')
   } catch (error) {
     console.error('Failed to save notification settings:', error)
   }
@@ -553,7 +551,6 @@ async function checkSerenaStatus() {
   try {
     const status = await setupService.getSerenaStatus()
     serenaEnabled.value = status.enabled || false
-    console.log('[USER SETTINGS] Serena prompt injection status:', serenaEnabled.value)
   } catch (error) {
     console.error('[USER SETTINGS] Failed to check Serena status:', error)
     serenaEnabled.value = false
@@ -566,7 +563,6 @@ async function toggleSerena(enabled) {
     const result = await setupService.toggleSerena(enabled)
     if (result.success) {
       serenaEnabled.value = result.enabled
-      console.log('[USER SETTINGS] Serena prompt injection toggled:', result.enabled)
     } else {
       // Revert on failure
       serenaEnabled.value = !enabled
@@ -610,12 +606,10 @@ onMounted(async () => {
   // This listener is at parent level to ensure it captures events even when
   // ContextPriorityConfig tab is not actively mounted
   on('product:git:settings:changed', handleGitIntegrationUpdate)
-  console.log('[USER SETTINGS] WebSocket listener registered for git integration updates')
 
   // Handover 0335: Listen for template export events at parent level
   // This ensures events are captured even when TemplateManager tab is not active
   on('template:exported', handleTemplateExportEvent)
-  console.log('[USER SETTINGS] WebSocket listener registered for template export events')
 
   // Preface Startup with the product intro tour, unless user hid it
   maybeShowIntroTour()
@@ -637,18 +631,14 @@ onUnmounted(() => {
   // Clean up WebSocket listeners to prevent memory leaks
   off('product:git:settings:changed', handleGitIntegrationUpdate)
   off('template:exported', handleTemplateExportEvent) // Handover 0335
-  console.log('[USER SETTINGS] WebSocket listeners cleaned up')
 })
 
 // Git Integration Functions (system-level like Serena)
 async function loadGitSettings() {
-  console.log('[USER SETTINGS] Loading git settings...')
-
   try {
     const settings = await setupService.getGitSettings()
     gitConfig.value = settings
     gitEnabled.value = settings.enabled || false
-    console.log('[USER SETTINGS] Git settings loaded:', settings)
   } catch (error) {
     console.error('[USER SETTINGS] Failed to load git settings:', error)
     // Set defaults on error
@@ -663,7 +653,6 @@ async function loadGitSettings() {
 }
 
 async function toggleGit(enabled) {
-  console.log('[USER SETTINGS] Git integration toggled:', enabled)
   togglingGit.value = true
 
   try {
@@ -673,7 +662,6 @@ async function toggleGit(enabled) {
     if (result.settings) {
       gitConfig.value = result.settings
     }
-    console.log('[USER SETTINGS] Git toggle result:', result)
   } catch (error) {
     console.error('[USER SETTINGS] Git toggle failed:', error)
     // Revert on error
@@ -725,11 +713,6 @@ function handleGitIntegrationUpdate(data) {
 
   const newState = data.settings.enabled || false
   gitEnabled.value = newState
-
-  console.log('[USER SETTINGS] Git integration updated via WebSocket:', {
-    enabled: newState,
-    timestamp: new Date().toISOString(),
-  })
 }
 
 
@@ -746,8 +729,6 @@ function handleGitIntegrationUpdate(data) {
  * @param {string} data.exported_at - ISO timestamp of export
  */
 function handleTemplateExportEvent(data) {
-  console.log('[USER SETTINGS] Received template:exported event:', data)
-
   if (!data || !data.template_ids || !data.exported_at) {
     console.warn('[USER SETTINGS] Invalid template export event - missing required fields:', data)
     return
@@ -759,11 +740,6 @@ function handleTemplateExportEvent(data) {
     ...data,
     _eventId: Date.now(), // Force reactivity
   }
-
-  console.log('[USER SETTINGS] Template export event forwarded to child components:', {
-    templateCount: data.template_ids?.length || 0,
-    exportType: data.export_type,
-  })
 }
 
 function isIntroTourHidden() {

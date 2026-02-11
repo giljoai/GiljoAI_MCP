@@ -87,7 +87,7 @@ need to talk this through and ensure we are close with our build to implement so
   ✅ AgentJobManager (592 lines, 92.49% coverage)
   ✅ AgentCommunicationQueue (461 lines, 84.29% coverage)
   ✅ JobCoordinator (605 lines, 90.61% coverage)
-  ✅ MCPAgentJob model with JSONB messages
+  ✅ AgentJob + AgentExecution models for job lifecycle and execution tracking
   ✅ 13 API endpoints in agent_jobs.py
   ✅ WebSocket real-time events
   ✅ Multi-tenant isolation enforced

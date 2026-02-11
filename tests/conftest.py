@@ -109,19 +109,6 @@ async def setup_agent_coordination(db_manager, db_session):
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
-async def setup_agent_job_status(db_manager, db_session, tenant_manager):
-    """
-    Auto-setup fixture to inject db_manager into agent_job_status module.
-
-    This allows get_job_status() and get_agent_status() to work in tests (Handover 0366c).
-    """
-    from src.giljo_mcp.tools import agent_job_status
-
-    agent_job_status.init_for_testing(db_manager, db_session, tenant_manager)
-    yield
-
-
-@pytest_asyncio.fixture(scope="function", autouse=True)
 async def setup_project_tools(db_manager, db_session):
     """
     Auto-setup fixture to inject db_manager and session into project module.
@@ -147,19 +134,6 @@ async def setup_context_module(db_manager):
     import src.giljo_mcp.database as db_module
 
     db_module.set_db_manager(db_manager)
-    yield
-
-
-@pytest_asyncio.fixture(scope="function", autouse=True)
-async def setup_agent_status(db_manager):
-    """
-    Auto-setup fixture to inject db_manager into agent_status module.
-
-    This allows set_agent_status() and report_progress() to work in tests (Handover 0366c).
-    """
-    from src.giljo_mcp.tools import agent_status
-
-    agent_status.init_for_testing(db_manager)
     yield
 
 

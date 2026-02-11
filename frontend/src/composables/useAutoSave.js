@@ -51,12 +51,6 @@ export function useAutoSave(options = {}) {
       const serialized = JSON.stringify(cacheData)
       localStorage.setItem(key, serialized)
 
-      console.log('[AUTO-SAVE] ✓ Saved to LocalStorage:', {
-        key,
-        sizeBytes: serialized.length,
-        timestamp: new Date(cacheData.timestamp).toISOString(),
-      })
-
       return true
     } catch (error) {
       console.error('[AUTO-SAVE] Failed to save to LocalStorage:', error)
@@ -89,11 +83,6 @@ export function useAutoSave(options = {}) {
       lastSaved.value = Date.now()
       hasUnsavedChanges.value = false
       errorMessage.value = null
-
-      console.log('[AUTO-SAVE] ✓ Saved to backend:', {
-        key,
-        timestamp: new Date(lastSaved.value).toISOString(),
-      })
 
       return true
     } catch (error) {
@@ -153,7 +142,6 @@ export function useAutoSave(options = {}) {
     try {
       const cached = localStorage.getItem(key)
       if (!cached) {
-        console.log('[AUTO-SAVE] No cache found for key:', key)
         return null
       }
 
@@ -165,15 +153,6 @@ export function useAutoSave(options = {}) {
         clearCache()
         return null
       }
-
-      const ageMs = Date.now() - cacheData.timestamp
-      const ageMinutes = Math.round(ageMs / 60000)
-
-      console.log('[AUTO-SAVE] ✓ Restored from cache:', {
-        key,
-        age: `${ageMinutes} minutes ago`,
-        timestamp: new Date(cacheData.timestamp).toISOString(),
-      })
 
       return cacheData.data
     } catch (error) {
@@ -194,7 +173,6 @@ export function useAutoSave(options = {}) {
 
     try {
       localStorage.removeItem(key)
-      console.log('[AUTO-SAVE] ✓ Cleared cache:', key)
       hasUnsavedChanges.value = false
       saveStatus.value = 'saved'
       errorMessage.value = null
@@ -267,7 +245,6 @@ export function useAutoSave(options = {}) {
     onUnmounted(() => {
       stopWatch()
       debouncedSave.cancel()
-      console.log('[AUTO-SAVE] Cleanup complete:', key)
     })
   }
 

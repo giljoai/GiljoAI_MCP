@@ -4,7 +4,7 @@
 
 This document details all database schema modifications required for ADR-0108.
 
-## 1. MCPAgentJob Table Modifications
+## 1. AgentJob Table Modifications (mcp_agent_jobs)
 
 ### Add Optimistic Locking Field
 

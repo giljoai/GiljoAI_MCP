@@ -175,9 +175,8 @@ class TestReportJobError:
 
         mock_service = AsyncMock()
         mock_service.report_error.return_value = {
-            "status": "failed",
-            "completed_at": datetime.now(timezone.utc),
-            "message": "Job error reported",
+            "job_id": "job-123",
+            "message": "Error reported",
         }
 
         request = JobErrorRequest(error="Test error message")
@@ -187,5 +186,5 @@ class TestReportJobError:
         )
 
         assert response.job_id == "job-123"
-        assert response.status == "failed"
+        assert response.status == "blocked"
         mock_service.report_error.assert_called_once()

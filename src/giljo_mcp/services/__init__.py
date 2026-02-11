@@ -11,16 +11,13 @@ Handover 0424b: OrgService added for organization management
 """
 
 from .auth_service import AuthService
-from .claude_config_manager import ClaudeConfigManager
 from .config_service import ConfigService
 from .context_service import ContextService
-from .git_service import GitService
 from .message_service import MessageService
 from .orchestration_service import OrchestrationService
 from .org_service import OrgService
 from .product_service import ProductService
 from .project_service import ProjectService
-from .serena_detector import SerenaDetector
 from .task_service import TaskService
 from .template_service import TemplateService
 from .user_service import UserService
@@ -28,16 +25,13 @@ from .user_service import UserService
 
 __all__ = [
     "AuthService",
-    "ClaudeConfigManager",
     "ConfigService",
     "ContextService",
-    "GitService",
     "MessageService",
     "OrchestrationService",
     "OrgService",
     "ProductService",
     "ProjectService",
-    "SerenaDetector",
     "TaskService",
     "TemplateService",
     "UserService",

@@ -37,7 +37,7 @@ Terminal states → {} (no transitions)
 
 - Week 1: Database schema changes
 - Week 2: Deploy core components
-- Week 3-4: Migrate Agent → MCPAgentJob
+- Week 3-4: [Historical] Migrate Agent → AgentJob + AgentExecution
 
 ## File Structure
 
