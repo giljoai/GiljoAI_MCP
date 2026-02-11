@@ -41,8 +41,7 @@ Request (JSON):
 ```
 {
   "project_id": "<uuid>",
-  "tool": "claude-code|codex|gemini",
-  "instance_number": 1
+  "tool": "claude-code|codex|gemini"
 }
 ```
 
