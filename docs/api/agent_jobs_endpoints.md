@@ -199,7 +199,6 @@ Content-Type: application/json
   {
     "agent_id": "agent_a1b2c3d4e5f6",
     "job_id": "job_550e8400-e29b-41d4-a716-446655440000",
-    "instance_number": 1,
     "status": "complete",
     "progress": 100,
     "spawned_by": "orchestrator_parent_xyz",
@@ -210,7 +209,6 @@ Content-Type: application/json
   {
     "agent_id": "agent_e5f6g7h8i9j0",
     "job_id": "job_550e8400-e29b-41d4-a716-446655440000",
-    "instance_number": 2,
     "status": "working",
     "progress": 65,
     "spawned_by": "agent_a1b2c3d4e5f6",
@@ -226,7 +224,6 @@ Content-Type: application/json
 |-------|------|-------------|
 | `agent_id` | string | Unique agent execution identifier (UUID) |
 | `job_id` | string | Parent job identifier (UUID) |
-| `instance_number` | integer | Sequential succession number (1, 2, 3, ...) |
 | `status` | string | Execution status (waiting, working, blocked, complete, failed, cancelled, decommissioned) |
 | `progress` | integer | Execution progress 0-100% |
 | `spawned_by` | string | Agent ID who spawned this executor (nullable) |
@@ -243,7 +240,7 @@ Content-Type: application/json
 
 ### Sorting
 
-Executions are returned sorted by `instance_number` ascending (chronological order).
+Executions are returned sorted by `created_at` ascending (chronological order).
 
 ### Error Responses
 
@@ -303,7 +300,6 @@ Content-Type: application/json
 {
   "agent_id": "agent_a1b2c3d4e5f6",
   "job_id": "job_550e8400-e29b-41d4-a716-446655440000",
-  "instance_number": 1,
   "status": "complete",
   "progress": 100,
   "current_task": "Completed service layer refactoring",
@@ -330,7 +326,6 @@ Content-Type: application/json
 |-------|------|-------------|
 | `agent_id` | string | Unique agent execution identifier (UUID) |
 | `job_id` | string | Parent job identifier (UUID) |
-| `instance_number` | integer | Sequential succession number (1, 2, 3, ...) |
 | `status` | string | Execution status (waiting, working, blocked, complete, failed, cancelled, decommissioned) |
 | `progress` | integer | Execution progress 0-100% |
 | `current_task` | string | Description of current/last task (nullable) |
@@ -456,7 +451,6 @@ Emitted when a new agent execution is spawned (succession or initial spawn).
   "execution": {
     "agent_id": "agent_e5f6g7h8i9j0",
     "job_id": "job_550e8400-e29b-41d4-a716-446655440000",
-    "instance_number": 2,
     "status": "waiting",
     "progress": 0,
     "spawned_by": "agent_a1b2c3d4e5f6",

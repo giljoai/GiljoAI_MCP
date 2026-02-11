@@ -26,8 +26,8 @@
 | 0745b | Dependency Security & Cleanup | NOT STARTED | -- | -- |
 | 0745c | Backend Dead Code Removal | NOT STARTED | -- | -- |
 | 0745d | Frontend Cleanup | NOT STARTED | -- | -- |
-| 0745e | Architecture Polish | NOT STARTED | -- | -- |
-| 0745f | Documentation Sync | NOT STARTED | -- | -- |
+| 0745e | Architecture Polish | COMPLETED | feature/0745e-architecture-polish | 2026-02-10 |
+| 0745f | Documentation Sync | COMPLETED | feature/0745f-documentation-sync | 2026-02-10 |
 
 ---
 
@@ -510,6 +510,40 @@ TESTING: None needed (docs only). Just verify no markdown formatting errors.
 When done, update the original handover file with a completion summary.
 Count: files updated, broken links fixed/removed, stale references purged.
 ```
+
+### Completion Summary (0745f)
+
+**Completed**: 2026-02-10
+**Branch**: `feature/0745f-documentation-sync`
+**Effort**: ~3 hours (estimated 4-6h)
+
+**Files Updated (20+)**:
+- `docs/README_FIRST.md` — Removed admin/admin (P0), purged ~500 lines of dead handover sections, fixed 6+ broken relative paths
+- `docs/SERVICES.md` — JSONB "DEPRECATED" changed to "REMOVED (0700c)", instance_number removed, MCPAgentJob replaced with AgentJob/AgentExecution
+- `docs/TESTING.md` — Removed dict wrapper assertions, instance_number assertions, trigger_succession references
+- `docs/ORCHESTRATOR.md` — 12 edits: MCPAgentJob replacements, dict wrapper updates, instance_number removals, broken links removed
+- `docs/guides/thin_client_migration_guide.md` — OrchestratorPromptGenerator marked REMOVED, timeline collapsed, instance_number purged
+- `docs/api/context_tools.md` — sequential_history JSONB replaced with product_memory_entries table
+- `docs/architecture/exception_mapping.md` — Dict wrapper "Current Pattern" relabeled "Legacy Pattern (Removed)"
+- `docs/testing/ORCHESTRATOR_SIMULATOR.md` — Dict wrapper patterns removed from 4 locations
+- `docs/HANDOVERS.md` — 3 broken links removed
+- `README.md` — 2 broken links fixed (STARTUP_SIMPLIFICATION, VERIFICATION_OCT9)
+- `SECURITY.md` — Created at project root (fixes broken README badge)
+
+**Instance_number purge (8 additional files)**:
+- `docs/api/prompts_endpoints.md`, `docs/api/agent_jobs_endpoints.md`
+- `docs/guides/succession_quick_ref.md`, `docs/guides/orchestrator_succession_developer_guide.md`
+- `docs/guides/staging_rollback_implementation_summary.md`
+- `docs/architecture/schema_mapping_report.md`, `docs/architecture/ORCHESTRATOR_CONTEXT_FLOW_SSoT.md`
+- `docs/user_guides/agent_monitoring_guide.md`
+
+**Summary Counts**:
+- Files updated: 20+
+- Broken links fixed/removed: 15+
+- Dead doc sections removed: ~500 lines from README_FIRST.md alone
+- instance_number references purged: 40+ across 12 files
+- Dict wrapper patterns updated: 10+ locations
+- MCPAgentJob references replaced: 8+ locations
 
 ---
 
