@@ -9,6 +9,6 @@ export { useMessageStore } from './messages'
 export { useTaskStore } from './tasks'
 export { useSettingsStore } from './settings'
 export { useWebSocketStore } from './websocket'
-export { useAgentJobsStore } from './agentJobs'
+export { useAgentJobsStore } from './agentJobsStore'
 
 export default pinia

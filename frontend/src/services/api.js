@@ -328,10 +328,6 @@ export const api = {
   context: {
     getIndex: (productId) =>
       apiClient.get('/api/v1/context/index/', { params: { product_id: productId } }),
-    getSection: (documentName, sectionName) =>
-      apiClient.get('/api/v1/context/section/', {
-        params: { document_name: documentName, section_name: sectionName },
-      }),
   },
 
   // Settings & Configuration
@@ -340,9 +336,6 @@ export const api = {
     // Legacy config endpoints (kept for backward compatibility)
     get: () => apiClient.get('/api/v1/config/'),
     update: (data) => apiClient.put('/api/v1/config/', data),
-    getProduct: () => apiClient.get('/api/v1/config/product/'),
-    testDatabase: () => apiClient.get('/api/v1/config/health/database'),
-
     // New settings endpoints (Handover 0506)
     getGeneral: () => apiClient.get('/api/v1/settings/general'),
     updateGeneral: (settings) => apiClient.put('/api/v1/settings/general', { settings }),
@@ -360,12 +353,6 @@ export const api = {
     addCookieDomain: (domain) => apiClient.post('/api/v1/user/settings/cookie-domains', { domain }),
     removeCookieDomain: (domain) =>
       apiClient.delete('/api/v1/user/settings/cookie-domains', { data: { domain } }),
-  },
-
-  // Session Info
-  session: {
-    info: () => apiClient.get('/api/v1/stats/session/'),
-    stats: () => apiClient.get('/api/v1/stats/'),
   },
 
   // Setup Status
@@ -454,12 +441,6 @@ export const api = {
     get: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}`),
     spawn: (data) => apiClient.post('/api/agent-jobs/spawn', data),
     status: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/status`),
-    terminate: (jobId, reason) => apiClient.post(`/api/agent-jobs/${jobId}/terminate`, { reason }),
-    hierarchy: (projectId) =>
-      apiClient.get('/api/agent-jobs/hierarchy', { params: { project_id: projectId } }),
-    metrics: (projectId, hours = 24) =>
-      apiClient.get('/api/agent-jobs/metrics', { params: { project_id: projectId, hours } }),
-
     // Additional job-specific endpoints (new functionality)
     acknowledge: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/acknowledge`),
     reportProgress: (jobId, data) => apiClient.post(`/api/agent-jobs/${jobId}/progress`, data),
@@ -514,13 +495,7 @@ export const api = {
 
   // Orchestrator (Multi-Agent Workflow Coordination)
   orchestrator: {
-    launch: (data) => apiClient.post('/api/v1/orchestration/launch', data),
     launchProject: (data) => apiClient.post('/api/agent-jobs/launch-project', data),
-    getWorkflowStatus: (projectId) =>
-      apiClient.get(`/api/v1/orchestration/workflow-status/${projectId}`),
-    getMetrics: (projectId) => apiClient.get(`/api/v1/orchestration/metrics/${projectId}`),
-    createMissions: (data) => apiClient.post('/api/v1/orchestration/create-missions', data),
-    spawnTeam: (data) => apiClient.post('/api/v1/orchestration/spawn-team', data),
   },
 
   // Prompts (Handover 0119 Phase 1 - Standardized to /api/v1/prompts)
