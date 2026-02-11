@@ -22,7 +22,7 @@ Design Principles:
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import and_, func, or_, select, update
@@ -37,6 +37,13 @@ from src.giljo_mcp.exceptions import (
     ValidationError,
 )
 from src.giljo_mcp.models import Product, Project, Task, VisionDocument
+from src.giljo_mcp.schemas.service_responses import (
+    CascadeImpact,
+    DeleteResult,
+    ProductStatistics,
+    PurgeResult,
+    VisionUploadResult,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -138,7 +145,7 @@ class ProductService:
         config_data: dict[str, Any | None] = None,
         product_memory: dict[str, Any | None] = None,  # Handover 0135
         target_platforms: list[str | None] = None,  # Handover 0425
-    ) -> dict[str, Any]:
+    ) -> Product:
         """
         Create a new product.
 
@@ -151,20 +158,20 @@ class ProductService:
             target_platforms: Target OS platforms (windows, linux, macos, or all) - Handover 0425
 
         Returns:
-            Dict with product details
+            Product ORM model after commit and refresh
 
         Raises:
             ValidationError: If target_platforms invalid or product name already exists
             BaseGiljoError: If database operation fails
 
         Example:
-            >>> result = await service.create_product(
+            >>> product = await service.create_product(
             ...     name="MyApp",
             ...     description="Mobile application",
             ...     project_path="/projects/myapp",
             ...     target_platforms=["windows", "linux"]
             ... )
-            >>> print(result["product_id"])
+            >>> print(product.id)
         """
         try:
             # Handover 0425: Validate target_platforms if provided
@@ -211,18 +218,8 @@ class ProductService:
 
                 self._logger.info(f"Created product {product.id} for tenant {self.tenant_key}")
 
-                # Handover 0390b: Build product_memory from table (will be empty for new product)
-                product_memory = await self._build_product_memory_response(session, product)
-
-                # Handover 0730b: Return dict without "success" wrapper
-                return {
-                    "product_id": str(product.id),
-                    "name": product.name,
-                    "description": product.description,
-                    "is_active": product.is_active,
-                    "product_memory": product_memory,  # Handover 0390b: From table
-                    "created_at": product.created_at.isoformat() if product.created_at else None,
-                }
+                # Handover 0731b: Return Product ORM model directly
+                return product
 
         except ValidationError:
             # Re-raise validation errors as-is
@@ -234,24 +231,23 @@ class ProductService:
                 context={"product_name": name, "tenant_key": self.tenant_key},
             ) from e
 
-    async def get_product(self, product_id: str, include_metrics: bool = True) -> dict[str, Any]:
+    async def get_product(self, product_id: str) -> Product:
         """
-        Get a specific product by ID with optional metrics.
+        Get a specific product by ID.
 
         Args:
             product_id: Product UUID
-            include_metrics: Include project/task counts (default: True)
 
         Returns:
-            Dict with product details
+            Product ORM model
 
         Raises:
             ResourceNotFoundError: If product not found
             BaseGiljoError: If database operation fails
 
         Example:
-            >>> result = await service.get_product("abc-123")
-            >>> print(result["product"]["name"])
+            >>> product = await service.get_product("abc-123")
+            >>> print(product.name)
         """
         try:
             async with self._get_session() as session:
@@ -281,35 +277,8 @@ class ProductService:
                 # Handover 0412: Force refresh to ensure we have latest DB data
                 await session.refresh(product)
 
-                # Handover 0390b: Build product_memory from table
-                product_memory = await self._build_product_memory_response(session, product)
-                self._logger.info(
-                    f"Product {product_id}: product_memory with {len(product_memory.get('sequential_history', []))} entries"
-                )
-
-                # Normalize config_data so that an empty dict is treated as "no config"
-                # for API consumers, while preserving the raw structure for internal use.
-                config_data = product.config_data or None
-
-                product_data = {
-                    "id": str(product.id),
-                    "name": product.name,
-                    "description": product.description,
-                    "vision_path": product.primary_vision_path,  # Using new VisionDocument relationship
-                    "project_path": product.project_path,
-                    "is_active": product.is_active,
-                    "config_data": config_data,
-                    "has_config_data": bool(config_data),
-                    "product_memory": product_memory,  # Handover 0390b: From table
-                    "created_at": product.created_at.isoformat() if product.created_at else None,
-                    "updated_at": product.updated_at.isoformat() if product.updated_at else None,
-                }
-
-                if include_metrics:
-                    metrics = await self._get_product_metrics(session, product_id)
-                    product_data.update(metrics)
-
-                return {"product": product_data}
+                # Handover 0731b: Return Product ORM model directly
+                return product
 
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
@@ -321,24 +290,23 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def list_products(self, include_inactive: bool = False, include_metrics: bool = True) -> dict[str, Any]:
+    async def list_products(self, include_inactive: bool = False) -> list[Product]:
         """
         List all products for tenant with optional filtering.
 
         Args:
             include_inactive: Include inactive products (default: False)
-            include_metrics: Include project/task counts (default: True)
 
         Returns:
-            Dict with list of products
+            List of Product ORM models
 
         Raises:
             BaseGiljoError: If database operation fails
 
         Example:
-            >>> result = await service.list_products()
-            >>> for product in result["products"]:
-            ...     print(product["name"])
+            >>> products = await service.list_products()
+            >>> for product in products:
+            ...     print(product.name)
         """
         try:
             async with self._get_session() as session:
@@ -358,39 +326,14 @@ class ProductService:
                 result = await session.execute(stmt)
                 products = result.scalars().all()
 
-                product_list = []
                 for product in products:
                     # Handover 0136: Ensure product_memory is initialized (backward compatibility)
                     await self._ensure_product_memory_initialized(session, product)
 
-                    # Handover 0390b: Build product_memory from table
-                    product_memory = await self._build_product_memory_response(session, product)
+                self._logger.debug(f"Found {len(products)} products for tenant {self.tenant_key}")
 
-                    config_data = product.config_data or None
-
-                    product_data = {
-                        "id": str(product.id),
-                        "name": product.name,
-                        "description": product.description,
-                        "vision_path": product.primary_vision_path,  # Using new VisionDocument relationship
-                        "project_path": product.project_path,
-                        "is_active": product.is_active,
-                        "config_data": config_data,
-                        "has_config_data": bool(config_data),
-                        "product_memory": product_memory,  # Handover 0390b: From table
-                        "created_at": product.created_at.isoformat() if product.created_at else None,
-                        "updated_at": product.updated_at.isoformat() if product.updated_at else None,
-                    }
-
-                    if include_metrics:
-                        metrics = await self._get_product_metrics(session, product.id)
-                        product_data.update(metrics)
-
-                    product_list.append(product_data)
-
-                self._logger.debug(f"Found {len(product_list)} products for tenant {self.tenant_key}")
-
-                return {"products": product_list}
+                # Handover 0731b: Return list of Product ORM models directly
+                return list(products)
 
         except Exception as e:
             self._logger.exception("Failed to list products")
@@ -398,7 +341,7 @@ class ProductService:
                 message=f"Failed to list products: {e!s}", context={"tenant_key": self.tenant_key}
             ) from e
 
-    async def update_product(self, product_id: str, **updates) -> dict[str, Any]:
+    async def update_product(self, product_id: str, **updates) -> Product:
         """
         Update a product.
 
@@ -407,7 +350,7 @@ class ProductService:
             **updates: Fields to update (name, description, project_path, config_data, product_memory, target_platforms, etc.)
 
         Returns:
-            Dict with updated product
+            Product ORM model after commit and refresh
 
         Raises:
             ResourceNotFoundError: If product not found
@@ -415,7 +358,7 @@ class ProductService:
             BaseGiljoError: If database operation fails
 
         Example:
-            >>> result = await service.update_product(
+            >>> product = await service.update_product(
             ...     "abc-123",
             ...     description="Updated description",
             ...     config_data={"tech_stack": {"python": "3.11"}},
@@ -463,14 +406,8 @@ class ProductService:
                         data={"product_id": product_id, "product_memory": product_memory},
                     )
 
-                return {
-                    "product": {
-                        "id": str(product.id),
-                        "name": product.name,
-                        "description": product.description,
-                        "updated_at": product.updated_at.isoformat() if product.updated_at else None,
-                    },
-                }
+                # Handover 0731b: Return Product ORM model directly
+                return product
 
         except (ResourceNotFoundError, ValidationError):
             # Re-raise our custom errors as-is
@@ -487,7 +424,7 @@ class ProductService:
         product_id: str,
         quality_standards: str,
         tenant_key: str,
-    ) -> dict[str, Any]:
+    ) -> Product:
         """
         Update quality standards for a product.
 
@@ -499,14 +436,10 @@ class ProductService:
             tenant_key: Tenant isolation key
 
         Returns:
-            Updated product data:
-            {
-                "product_id": "uuid",
-                "quality_standards": "80% coverage, zero bugs"
-            }
+            Product ORM model after commit
 
         Raises:
-            ValueError: If product not found or tenant mismatch
+            ResourceNotFoundError: If product not found or tenant mismatch
 
         Multi-Tenant Isolation:
             Verifies product.tenant_key matches provided tenant_key.
@@ -515,7 +448,7 @@ class ProductService:
             Emits "product_updated" event to tenant for real-time UI sync.
 
         Example:
-            >>> result = await product_service.update_quality_standards(
+            >>> product = await product_service.update_quality_standards(
             ...     product_id="123e4567-e89b-12d3-a456-426614174000",
             ...     quality_standards="TDD required, 85% coverage, zero P0 bugs",
             ...     tenant_key="tenant_abc"
@@ -569,13 +502,14 @@ class ProductService:
                 data={"product_id": product_id, "field": "quality_standards", "quality_standards": quality_standards},
             )
 
-            return {"product_id": product_id, "quality_standards": quality_standards}
+            # Handover 0731b: Return Product ORM model directly
+            return product
 
     # ============================================================================
     # Lifecycle Management
     # ============================================================================
 
-    async def activate_product(self, product_id: str) -> dict[str, Any]:
+    async def activate_product(self, product_id: str) -> Product:
         """
         Activate a product (deactivates other products for tenant).
 
@@ -585,14 +519,14 @@ class ProductService:
             product_id: Product UUID to activate
 
         Returns:
-            Dict with activated product
+            Product ORM model after activation
 
         Raises:
             ResourceNotFoundError: If product not found
             BaseGiljoError: If database operation fails
 
         Example:
-            >>> result = await service.activate_product("abc-123")
+            >>> product = await service.activate_product("abc-123")
         """
         try:
             async with self._get_session() as session:
@@ -625,7 +559,7 @@ class ProductService:
                     await session.flush()
 
                     # CRITICAL FIX: Deactivate ALL projects in deactivated products
-                    # Enforces non-negotiable rule: one active product → one active project
+                    # Enforces non-negotiable rule: one active product -> one active project
                     deactivated_product_ids = [p.id for p in products_to_deactivate]
 
                     # Bulk update: Set all active projects in deactivated products to inactive
@@ -656,14 +590,8 @@ class ProductService:
 
                 self._logger.info(f"Activated product {product_id} (deactivated {len(products_to_deactivate)} others)")
 
-                return {
-                    "product": {
-                        "id": str(product.id),
-                        "name": product.name,
-                        "is_active": product.is_active,
-                    },
-                    "deactivated_count": len(products_to_deactivate),
-                }
+                # Handover 0731b: Return Product ORM model directly
+                return product
 
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
@@ -675,7 +603,7 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def deactivate_product(self, product_id: str) -> dict[str, Any]:
+    async def deactivate_product(self, product_id: str) -> Product:
         """
         Deactivate a product.
 
@@ -683,14 +611,14 @@ class ProductService:
             product_id: Product UUID to deactivate
 
         Returns:
-            Dict with deactivated product
+            Product ORM model after deactivation
 
         Raises:
             ResourceNotFoundError: If product not found
             BaseGiljoError: If database operation fails
 
         Example:
-            >>> result = await service.deactivate_product("abc-123")
+            >>> product = await service.deactivate_product("abc-123")
         """
         try:
             async with self._get_session() as session:
@@ -713,13 +641,8 @@ class ProductService:
 
                 self._logger.info(f"Deactivated product {product_id}")
 
-                return {
-                    "product": {
-                        "id": str(product.id),
-                        "name": product.name,
-                        "is_active": product.is_active,
-                    },
-                }
+                # Handover 0731b: Return Product ORM model directly
+                return product
 
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
@@ -731,7 +654,7 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def delete_product(self, product_id: str) -> dict[str, Any]:
+    async def delete_product(self, product_id: str) -> DeleteResult:
         """
         Soft delete a product.
 
@@ -739,7 +662,7 @@ class ProductService:
             product_id: Product UUID to delete
 
         Returns:
-            Dict with deletion status
+            DeleteResult Pydantic model with deleted flag and timestamp
 
         Raises:
             ResourceNotFoundError: If product not found
@@ -747,6 +670,7 @@ class ProductService:
 
         Example:
             >>> result = await service.delete_product("abc-123")
+            >>> assert result.deleted is True
         """
         try:
             async with self._get_session() as session:
@@ -770,10 +694,8 @@ class ProductService:
 
                 self._logger.info(f"Soft deleted product {product_id}")
 
-                return {
-                    "message": "Product deleted successfully",
-                    "deleted_at": product.deleted_at.isoformat() if product.deleted_at else None,
-                }
+                # Handover 0731b: Return DeleteResult Pydantic model
+                return DeleteResult(deleted=True, deleted_at=product.deleted_at)
 
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
@@ -785,7 +707,7 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def restore_product(self, product_id: str) -> dict[str, Any]:
+    async def restore_product(self, product_id: str) -> Product:
         """
         Restore a soft-deleted product.
 
@@ -793,14 +715,14 @@ class ProductService:
             product_id: Product UUID to restore
 
         Returns:
-            Dict with restored product
+            Product ORM model after restoration
 
         Raises:
             ResourceNotFoundError: If deleted product not found
             BaseGiljoError: If database operation fails
 
         Example:
-            >>> result = await service.restore_product("abc-123")
+            >>> product = await service.restore_product("abc-123")
         """
         try:
             async with self._get_session() as session:
@@ -828,13 +750,8 @@ class ProductService:
 
                 self._logger.info(f"Restored product {product_id}")
 
-                return {
-                    "product": {
-                        "id": str(product.id),
-                        "name": product.name,
-                        "is_active": product.is_active,
-                    },
-                }
+                # Handover 0731b: Return Product ORM model directly
+                return product
 
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
@@ -846,24 +763,22 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def list_deleted_products(self) -> dict[str, Any]:
+    async def list_deleted_products(self) -> list[Product]:
         """
-        List soft-deleted products with purge information.
+        List soft-deleted products.
 
         Returns:
-            Dict with list of deleted products
+            List of Product ORM models (soft-deleted)
 
         Raises:
             BaseGiljoError: If database operation fails
 
         Example:
-            >>> result = await service.list_deleted_products()
-            >>> for product in result["products"]:
-            ...     print(f"{product['name']} - purge in {product['days_until_purge']} days")
+            >>> products = await service.list_deleted_products()
+            >>> for product in products:
+            ...     print(f"{product.name} deleted at {product.deleted_at}")
         """
         try:
-            purge_days = 10  # 10-day purge policy (matches purge_expired_deleted_products)
-
             async with self._get_session() as session:
                 stmt = (
                     select(Product)
@@ -874,34 +789,9 @@ class ProductService:
                 result = await session.execute(stmt)
                 deleted_products = result.scalars().all()
 
-                product_list = []
-                for product in deleted_products:
-                    # Calculate purge date
-                    purge_date = product.deleted_at + timedelta(days=purge_days)
-                    days_until_purge = max(0, (purge_date - datetime.now(timezone.utc)).days)
-
-                    # Count related entities
-                    project_count = await session.execute(
-                        select(func.count(Project.id)).where(Project.product_id == product.id)
-                    )
-                    vision_count = await session.execute(
-                        select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product.id)
-                    )
-
-                    product_list.append(
-                        {
-                            "id": str(product.id),
-                            "name": product.name,
-                            "description": product.description,
-                            "deleted_at": product.deleted_at.isoformat() if product.deleted_at else None,
-                            "days_until_purge": days_until_purge,
-                            "purge_date": purge_date.isoformat(),
-                            "project_count": project_count.scalar() or 0,
-                            "vision_documents_count": vision_count.scalar() or 0,
-                        }
-                    )
-
-                return {"products": product_list}
+                # Handover 0731b: Return list of Product ORM models directly
+                # Purge date computation moved to endpoint layer
+                return list(deleted_products)
 
         except Exception as e:
             self._logger.exception("Failed to list deleted products")
@@ -913,20 +803,20 @@ class ProductService:
     # Active Product Management
     # ============================================================================
 
-    async def get_active_product(self) -> dict[str, Any]:
+    async def get_active_product(self) -> Optional[Product]:
         """
         Get the currently active product for the tenant.
 
         Returns:
-            Dict with active product (or None if no active product)
+            Product ORM model if active product exists, None otherwise
 
         Raises:
             BaseGiljoError: If database operation fails
 
         Example:
-            >>> result = await service.get_active_product()
-            >>> if result.get("product"):
-            ...     print(f"Active: {result['product']['name']}")
+            >>> product = await service.get_active_product()
+            >>> if product:
+            ...     print(f"Active: {product.name}")
         """
         try:
             async with self._get_session() as session:
@@ -944,27 +834,8 @@ class ProductService:
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
 
-                if not product:
-                    return {"product": None, "message": "No active product"}
-
-                # Get metrics for active product
-                metrics = await self._get_product_metrics(session, product.id)
-
-                return {
-                    "product": {
-                        "id": str(product.id),
-                        "name": product.name,
-                        "description": product.description,
-                        "vision_path": product.primary_vision_path,
-                        "project_path": product.project_path,
-                        "created_at": product.created_at.isoformat() if product.created_at else None,
-                        "updated_at": product.updated_at.isoformat() if product.updated_at else None,
-                        "config_data": product.config_data,
-                        "has_config_data": bool(product.config_data),
-                        "is_active": product.is_active,
-                        **metrics,
-                    },
-                }
+                # Handover 0731b: Return Product or None directly
+                return product
 
         except Exception as e:
             self._logger.exception("Failed to get active product")
@@ -976,7 +847,7 @@ class ProductService:
     # Metrics & Statistics
     # ============================================================================
 
-    async def get_product_statistics(self, product_id: str) -> dict[str, Any]:
+    async def get_product_statistics(self, product_id: str) -> ProductStatistics:
         """
         Get comprehensive statistics for a product.
 
@@ -984,15 +855,15 @@ class ProductService:
             product_id: Product UUID
 
         Returns:
-            Dict with statistics
+            ProductStatistics Pydantic model
 
         Raises:
             ResourceNotFoundError: If product not found
             BaseGiljoError: If database operation fails
 
         Example:
-            >>> result = await service.get_product_statistics("abc-123")
-            >>> print(f"Projects: {result['statistics']['total_projects']}")
+            >>> stats = await service.get_product_statistics("abc-123")
+            >>> print(f"Projects: {stats.project_count}")
         """
         try:
             async with self._get_session() as session:
@@ -1010,16 +881,20 @@ class ProductService:
 
                 metrics = await self._get_product_metrics(session, product_id)
 
-                return {
-                    "statistics": {
-                        "product_id": product_id,
-                        "name": product.name,
-                        "is_active": product.is_active,
-                        **metrics,
-                        "created_at": product.created_at.isoformat() if product.created_at else None,
-                        "updated_at": product.updated_at.isoformat() if product.updated_at else None,
-                    },
-                }
+                # Handover 0731b: Return ProductStatistics Pydantic model
+                return ProductStatistics(
+                    product_id=product_id,
+                    name=product.name,
+                    is_active=product.is_active,
+                    project_count=metrics["project_count"],
+                    unfinished_projects=metrics["unfinished_projects"],
+                    task_count=metrics["task_count"],
+                    unresolved_tasks=metrics["unresolved_tasks"],
+                    vision_documents_count=metrics["vision_documents_count"],
+                    has_vision=metrics["has_vision"],
+                    created_at=product.created_at,
+                    updated_at=product.updated_at,
+                )
 
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
@@ -1031,7 +906,7 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
-    async def get_cascade_impact(self, product_id: str) -> dict[str, Any]:
+    async def get_cascade_impact(self, product_id: str) -> CascadeImpact:
         """
         Get cascade impact analysis for product deletion.
 
@@ -1041,15 +916,15 @@ class ProductService:
             product_id: Product UUID
 
         Returns:
-            Dict with impact analysis
+            CascadeImpact Pydantic model
 
         Raises:
             ResourceNotFoundError: If product not found
             BaseGiljoError: If database operation fails
 
         Example:
-            >>> result = await service.get_cascade_impact("abc-123")
-            >>> print(f"Will affect {result['impact']['total_projects']} projects")
+            >>> impact = await service.get_cascade_impact("abc-123")
+            >>> print(f"Will affect {impact.total_projects} projects")
         """
         try:
             async with self._get_session() as session:
@@ -1080,16 +955,15 @@ class ProductService:
                     select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product_id)
                 )
 
-                return {
-                    "impact": {
-                        "product_id": product_id,
-                        "product_name": product.name,
-                        "total_projects": project_count.scalar() or 0,
-                        "total_tasks": task_count.scalar() or 0,
-                        "total_vision_documents": vision_count.scalar() or 0,
-                        "warning": "Deleting this product will soft-delete all related entities",
-                    },
-                }
+                # Handover 0731b: Return CascadeImpact Pydantic model
+                return CascadeImpact(
+                    product_id=product_id,
+                    product_name=product.name,
+                    total_projects=project_count.scalar() or 0,
+                    total_tasks=task_count.scalar() or 0,
+                    total_vision_documents=vision_count.scalar() or 0,
+                    warning="Deleting this product will soft-delete all related entities",
+                )
 
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
@@ -1128,7 +1002,7 @@ class ProductService:
             default_branch: Default branch name (default: "main")
 
         Returns:
-            Dict with settings
+            Git integration settings dict directly (no wrapper)
 
         Raises:
             ResourceNotFoundError: If product not found
@@ -1195,7 +1069,8 @@ class ProductService:
                     data={"product_id": product_id, "settings": product.product_memory["git_integration"]},
                 )
 
-                return {"settings": product.product_memory["git_integration"]}
+                # Handover 0731b: Return settings dict directly (no wrapper)
+                return product.product_memory["git_integration"]
 
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
@@ -1214,7 +1089,7 @@ class ProductService:
         filename: str,
         auto_chunk: bool = True,
         max_tokens: int = 25000,
-    ) -> dict[str, Any]:
+    ) -> VisionUploadResult:
         """
         Upload and optionally chunk vision document for product.
 
@@ -1229,13 +1104,8 @@ class ProductService:
             max_tokens: Max tokens per chunk (default: 25000 for 32K models)
 
         Returns:
-            Dict with document/chunk details:
-            {
-                "document_id": str,
-                "document_name": str,
-                "chunks_created": int,
-                "total_tokens": int,
-            }
+            VisionUploadResult Pydantic model with document_id, document_name,
+            chunks_created, and total_tokens
 
         Raises:
             ValidationError: If product not found or validation fails
@@ -1248,7 +1118,7 @@ class ProductService:
             ...     content="# Vision\\n...",
             ...     filename="vision.md"
             ... )
-            >>> print(f"Created {result['chunks_created']} chunks")
+            >>> print(f"Created {result.chunks_created} chunks")
         """
         try:
             from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
@@ -1369,12 +1239,13 @@ class ProductService:
                             f"{chunk_result.get('error', 'Unknown error')}"
                         )
 
-                return {
-                    "document_id": str(doc.id),
-                    "document_name": doc.document_name,
-                    "chunks_created": chunks_created,
-                    "total_tokens": total_tokens,
-                }
+                # Handover 0731b: Return VisionUploadResult Pydantic model
+                return VisionUploadResult(
+                    document_id=str(doc.id),
+                    document_name=doc.document_name,
+                    chunks_created=chunks_created,
+                    total_tokens=total_tokens,
+                )
 
         except ValueError as e:
             self._logger.exception("Validation error uploading vision document")
@@ -1680,7 +1551,7 @@ class ProductService:
             "has_vision": vision_documents_count > 0,
         }
 
-    async def purge_expired_deleted_products(self, days_before_purge: int = 10) -> dict[str, Any]:
+    async def purge_expired_deleted_products(self, days_before_purge: int = 10) -> PurgeResult:
         """
         Hard delete products that were soft-deleted more than specified days ago.
 
@@ -1695,9 +1566,7 @@ class ProductService:
             days_before_purge: Number of days before permanent deletion (default: 10)
 
         Returns:
-            dict: Purge results with count and details
-                - purged_count: int - Number of products purged
-                - products: list - Details of purged products
+            PurgeResult Pydantic model with purged_count and purged_ids
 
         Raises:
             DatabaseError: If database not available
@@ -1705,7 +1574,7 @@ class ProductService:
 
         Example:
             >>> result = await service.purge_expired_deleted_products()
-            >>> print(f"Purged {result['purged_count']} expired products")
+            >>> print(f"Purged {result.purged_count} expired products")
         """
 
         if not self.db_manager:
@@ -1732,21 +1601,15 @@ class ProductService:
                     self._logger.info(
                         f"[Product Purge] No expired deleted products to purge (cutoff: {days_before_purge} days)"
                     )
-                    return {"purged_count": 0, "products": []}
+                    return PurgeResult(purged_count=0, purged_ids=[])
 
                 # Hard delete each expired product (cascade handles children)
-                purged_products = []
+                purged_ids = []
                 for product in expired_products:
-                    purged_info = {
-                        "id": product.id,
-                        "name": product.name,
-                        "tenant_key": product.tenant_key,
-                        "deleted_at": product.deleted_at.isoformat() if product.deleted_at else None,
-                    }
                     days_ago = (datetime.now(timezone.utc) - product.deleted_at).days
+                    purged_ids.append(str(product.id))
 
                     await session.delete(product)
-                    purged_products.append(purged_info)
 
                     self._logger.info(
                         f"[Product Purge] Auto-purged expired product {product.id} (deleted {days_ago} days ago)"
@@ -1754,11 +1617,10 @@ class ProductService:
 
                 await session.commit()
 
-                self._logger.info(
-                    f"[Product Purge] Successfully purged {len(purged_products)} expired deleted products"
-                )
+                self._logger.info(f"[Product Purge] Successfully purged {len(purged_ids)} expired deleted products")
 
-                return {"purged_count": len(purged_products), "products": purged_products}
+                # Handover 0731b: Return PurgeResult Pydantic model
+                return PurgeResult(purged_count=len(purged_ids), purged_ids=purged_ids)
 
         except DatabaseError:
             # Re-raise database errors as-is
