@@ -16,6 +16,11 @@ from sqlalchemy import and_, select
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.schemas.service_responses import (
+    CompleteMessageResult,
+    MessageListResult,
+    SendMessageResult,
+)
 from src.giljo_mcp.services.context_service import ContextService
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
@@ -220,7 +225,7 @@ class ToolAccessor:
         priority: str = "normal",
         from_agent: str | None = None,
         tenant_key: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> SendMessageResult:
         """Send message to one or more agents (delegates to MessageService)"""
         return await self._message_service.send_message(
             to_agents=to_agents,
@@ -232,15 +237,15 @@ class ToolAccessor:
             tenant_key=tenant_key,
         )
 
-    async def get_messages(self, agent_name: str, project_id: str | None = None) -> dict[str, Any]:
+    async def get_messages(self, agent_name: str, project_id: str | None = None) -> MessageListResult:
         """Retrieve pending messages for an agent (delegates to MessageService)"""
         return await self._message_service.get_messages(agent_name=agent_name, project_id=project_id)
 
-    async def complete_message(self, message_id: str, agent_name: str, result: str) -> dict[str, Any]:
+    async def complete_message(self, message_id: str, agent_name: str, result: str) -> CompleteMessageResult:
         """Mark message as completed with result (delegates to MessageService)"""
         return await self._message_service.complete_message(message_id=message_id, agent_name=agent_name, result=result)
 
-    async def broadcast(self, content: str, project_id: str, priority: str = "normal") -> dict[str, Any]:
+    async def broadcast(self, content: str, project_id: str, priority: str = "normal") -> SendMessageResult:
         """Broadcast message to all agents in project (delegates to MessageService)"""
         return await self._message_service.broadcast(content=content, project_id=project_id, priority=priority)
 
@@ -252,7 +257,7 @@ class ToolAccessor:
         exclude_self: bool = True,
         exclude_progress: bool = True,
         message_types: list[str | None] = None,
-    ) -> dict[str, Any]:
+    ) -> MessageListResult:
         """
         Receive pending messages for an agent with optional filtering (delegates to MessageService).
 
@@ -268,7 +273,7 @@ class ToolAccessor:
             message_types: Optional allow-list of message types (default: None = all types)
 
         Returns:
-            List of message dicts
+            MessageListResult with messages list and count
         """
         return await self._message_service.receive_messages(
             agent_id=agent_id,
@@ -286,7 +291,7 @@ class ToolAccessor:
         agent_id: str | None = None,
         tenant_key: str | None = None,
         limit: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> MessageListResult:
         """
         List messages in a project or for a specific agent (delegates to MessageService).
 

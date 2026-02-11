@@ -37,6 +37,14 @@ from src.giljo_mcp.exceptions import (
 from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.repositories.message_repository import MessageRepository
+from src.giljo_mcp.schemas.service_responses import (
+    AcknowledgeMessageResult,
+    BroadcastResult,
+    CompleteMessageResult,
+    MessageListResult,
+    SendMessageResult,
+    StagingDirective,
+)
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -112,7 +120,7 @@ class MessageService:
         priority: str = "normal",
         from_agent: Optional[str] = None,
         tenant_key: Optional[str] = None,
-    ) -> dict[str, Any]:
+    ) -> SendMessageResult:
         """
         Send a message to one or more agents.
 
@@ -129,7 +137,8 @@ class MessageService:
             tenant_key: Tenant key for multi-tenant isolation (required for security)
 
         Returns:
-            Dict with success status and message details or error
+            SendMessageResult with message_id, to_agents, message_type,
+            and optional staging_directive
 
         Example:
             >>> result = await service.send_message(
@@ -414,12 +423,12 @@ class MessageService:
                         f"[WEBSOCKET DEBUG] Skipping broadcast for message {message_id} - websocket_manager is None"
                     )
 
-                # Handover 0730b: Build direct response (no success wrapper)
-                response = {
-                    "message_id": message_id,
-                    "to_agents": resolved_to_agents,
-                    "type": message_type,
-                }
+                # Handover 0731c: Build typed response (SendMessageResult)
+                response = SendMessageResult(
+                    message_id=message_id,
+                    to_agents=resolved_to_agents,
+                    message_type=message_type,
+                )
 
                 # Handover 0709b: Detect staging orchestrator broadcast and enrich response
                 # Defense-in-depth Layer 5.5: Reinforced advisory STOP signal for staging completion
@@ -454,20 +463,20 @@ class MessageService:
                             is_staging = sender_execution.status == "waiting"
 
                             if is_orchestrator and is_staging:
-                                # Enrich response with staging directive
-                                response["staging_directive"] = {
-                                    "status": "STAGING_SESSION_COMPLETE",
-                                    "action": "STOP",
-                                    "message": (
+                                # Enrich response with staging directive (typed model)
+                                response.staging_directive = StagingDirective(
+                                    status="STAGING_SESSION_COMPLETE",
+                                    action="STOP",
+                                    message=(
                                         "STAGING IS COMPLETE. Your session must end NOW. "
                                         "Do NOT proceed to implementation. Do NOT call Task(). "
                                         "Do NOT call complete_job() or write_360_memory(). "
                                         "The user will click 'Implement' in the dashboard to start "
                                         "a new implementation session with a fresh orchestrator."
                                     ),
-                                    "implementation_gate": "LOCKED",
-                                    "next_step": "Report staging complete to user and stop.",
-                                }
+                                    implementation_gate="LOCKED",
+                                    next_step="Report staging complete to user and stop.",
+                                )
                                 self._logger.info(
                                     f"[STAGING DIRECTIVE] Added STOP directive to staging orchestrator broadcast "
                                     f"(agent_id={from_agent}, status=waiting)"
@@ -483,11 +492,9 @@ class MessageService:
 
     async def broadcast(
         self, content: str, project_id: str, priority: str = "normal", from_agent: str = "orchestrator"
-    ) -> dict[str, Any]:
+    ) -> SendMessageResult:
         """
         Broadcast a message to all agents in a project.
-
-        Handover 0730b: Returns dict directly (no success wrapper).
 
         Args:
             content: Message content
@@ -496,7 +503,7 @@ class MessageService:
             from_agent: Sender agent name (default: "orchestrator")
 
         Returns:
-            Dict with message_id, to_agents, and type (from send_message)
+            SendMessageResult with message_id, to_agents, message_type
 
         Raises:
             ResourceNotFoundError: No agent jobs found in project
@@ -535,12 +542,12 @@ class MessageService:
                 )
 
                 # Emit additional broadcast-specific WebSocket event if manager is available
-                # Handover 0730b: Check for message_id (not "success") since send_message returns dict directly
-                if self._websocket_manager and result.get("message_id") and tenant_key:
+                # Handover 0731c: Check for message_id on typed SendMessageResult
+                if self._websocket_manager and result.message_id and tenant_key:
                     try:
                         await self._websocket_manager.broadcast_job_message(
                             job_id=project_id,
-                            message_id=result.get("message_id", ""),
+                            message_id=result.message_id or "",
                             from_agent=from_agent,
                             tenant_key=tenant_key,
                             to_agent=None,  # Broadcast has no single target
@@ -565,14 +572,12 @@ class MessageService:
         content: str,
         from_agent: str = "orchestrator",
         tenant_key: Optional[str] = None,
-    ) -> dict[str, Any]:
+    ) -> BroadcastResult:
         """
         Broadcast a message to all active executions in a project.
 
         Handover 0372: Added from 0366b for agent-level broadcasting.
         Differs from broadcast() which sends to agent types, not active executors.
-
-        Handover 0730b: Returns dict directly (no success wrapper).
 
         Args:
             project_id: Project ID to broadcast to
@@ -581,7 +586,7 @@ class MessageService:
             tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
-            Dict with message_id, to_agents, type, and count
+            BroadcastResult with message_id, to_agents, message_type, and recipients_count
 
         Raises:
             ResourceNotFoundError: No active executions found in project
@@ -618,7 +623,7 @@ class MessageService:
                 agent_ids = [execution.agent_id for execution in executions]
 
                 # Send message to all active executors
-                result = await self.send_message(
+                send_result = await self.send_message(
                     to_agents=agent_ids,
                     content=content,
                     project_id=project_id,
@@ -628,10 +633,13 @@ class MessageService:
                     tenant_key=tenant_key,
                 )
 
-                # Handover 0730b: Add count to result (send_message already returns dict)
-                result["count"] = len(agent_ids)
-
-                return result
+                # Handover 0731c: Return BroadcastResult typed model
+                return BroadcastResult(
+                    message_id=send_result.message_id,
+                    to_agents=send_result.to_agents,
+                    message_type=send_result.message_type,
+                    recipients_count=len(agent_ids),
+                )
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
@@ -647,11 +655,9 @@ class MessageService:
 
     async def get_messages(
         self, agent_name: str, project_id: Optional[str] = None, status: str = "pending"
-    ) -> dict[str, Any]:
+    ) -> MessageListResult:
         """
         Retrieve messages for a specific agent.
-
-        Handover 0730b: Returns dict directly (no success wrapper).
 
         Args:
             agent_name: Name of agent to get messages for
@@ -659,7 +665,7 @@ class MessageService:
             status: Message status filter (default: "pending")
 
         Returns:
-            Dict with agent, count, and messages list
+            MessageListResult with agent, count, and messages list
 
         Example:
             >>> result = await service.get_messages(
@@ -694,12 +700,12 @@ class MessageService:
                     if agent_name in msg.to_agents or not msg.to_agents
                 ]
 
-                # Handover 0730b: Return dict directly (no success wrapper)
-                return {
-                    "agent": agent_name,
-                    "count": len(agent_messages),
-                    "messages": agent_messages,
-                }
+                # Handover 0731c: Return MessageListResult typed model
+                return MessageListResult(
+                    agent=agent_name,
+                    count=len(agent_messages),
+                    messages=agent_messages,
+                )
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
@@ -718,7 +724,7 @@ class MessageService:
         exclude_self: bool = True,
         exclude_progress: bool = True,
         message_types: Optional[list[str]] = None,
-    ) -> dict[str, Any]:
+    ) -> MessageListResult:
         """
         Receive pending messages for an agent executor with optional filtering.
 
@@ -733,7 +739,7 @@ class MessageService:
             message_types: Optional allow-list of message types (default: None = all types)
 
         Returns:
-            Dict with success status and list of messages or error
+            MessageListResult with messages list and count
 
         Example:
             >>> result = await service.receive_messages(
@@ -903,8 +909,8 @@ class MessageService:
 
                 self._logger.info(f"Retrieved {len(messages_list)} messages for agent {agent_id}")
 
-                # Handover 0730b: Return dict directly (no success wrapper)
-                return {"messages": messages_list, "count": len(messages_list)}
+                # Handover 0731c: Return MessageListResult typed model
+                return MessageListResult(messages=messages_list, count=len(messages_list))
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
@@ -919,13 +925,11 @@ class MessageService:
         agent_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
         limit: Optional[int] = None,
-    ) -> dict[str, Any]:
+    ) -> MessageListResult:
         """
         List messages in a project or for a specific agent.
 
         Uses native Message queries (NOT AgentMessageQueue which has broken SQL).
-
-        Handover 0730b: Returns dict directly (no success wrapper).
 
         Args:
             project_id: Optional project ID filter
@@ -935,7 +939,7 @@ class MessageService:
             limit: Optional maximum number of messages to retrieve
 
         Returns:
-            Dict with messages list and count
+            MessageListResult with messages list and count
 
         Raises:
             ResourceNotFoundError: Job not found
@@ -1026,8 +1030,8 @@ class MessageService:
                             }
                         )
 
-                    # Handover 0730b: Return dict directly (no success wrapper)
-                    return {"messages": message_list, "count": len(message_list)}
+                    # Handover 0731c: Return MessageListResult typed model
+                    return MessageListResult(messages=message_list, count=len(message_list))
 
                 # Otherwise, list by project
                 if project_id:
@@ -1053,8 +1057,8 @@ class MessageService:
 
                     if not project:
                         # No project = no messages - return empty list, not error (Handover 0464)
-                        # Handover 0730b: Return dict directly (no success wrapper)
-                        return {"messages": [], "count": 0}
+                        # Handover 0731c: Return MessageListResult typed model
+                        return MessageListResult(messages=[], count=0)
 
                     query = select(Message).where(Message.project_id == project.id)
 
@@ -1094,8 +1098,8 @@ class MessageService:
                         }
                     )
 
-                # Handover 0730b: Return dict directly (no success wrapper)
-                return {"messages": message_list, "count": len(message_list)}
+                # Handover 0731c: Return MessageListResult typed model
+                return MessageListResult(messages=message_list, count=len(message_list))
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
@@ -1109,7 +1113,7 @@ class MessageService:
     # Message Status Updates
     # ============================================================================
 
-    async def complete_message(self, message_id: str, agent_name: str, result: str) -> dict[str, Any]:
+    async def complete_message(self, message_id: str, agent_name: str, result: str) -> CompleteMessageResult:
         """
         Mark a message as completed with a result.
 
@@ -1119,7 +1123,7 @@ class MessageService:
             result: Completion result/response
 
         Returns:
-            Dict with success status or error
+            CompleteMessageResult with message_id and completed_by
 
         Example:
             >>> result = await service.complete_message(
@@ -1165,11 +1169,11 @@ class MessageService:
                             f"Failed to emit WebSocket event for message completion {message_id}: {ws_error}"
                         )
 
-                # Handover 0730b: Return dict directly (no success wrapper)
-                return {
-                    "message_id": message_id,
-                    "completed_by": agent_name,
-                }
+                # Handover 0731c: Return CompleteMessageResult typed model
+                return CompleteMessageResult(
+                    message_id=message_id,
+                    completed_by=agent_name,
+                )
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
@@ -1184,7 +1188,7 @@ class MessageService:
         message_id: str,
         agent_id: str,
         tenant_key: Optional[str] = None,
-    ) -> dict[str, Any]:
+    ) -> AcknowledgeMessageResult:
         """
         Explicitly acknowledge a message using agent_id (executor).
 
@@ -1197,7 +1201,7 @@ class MessageService:
             tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
-            Dict with success status or error
+            AcknowledgeMessageResult with acknowledged status and message_id
 
         Example:
             >>> result = await service.acknowledge_message(
@@ -1277,11 +1281,11 @@ class MessageService:
                     except Exception as ws_error:  # noqa: BLE001
                         self._logger.warning(f"Failed to emit WebSocket for ack: {ws_error}")
 
-                # Handover 0730b: Return dict directly (no success wrapper)
-                return {
-                    "acknowledged": True,
-                    "message_id": message_id,
-                }
+                # Handover 0731c: Return AcknowledgeMessageResult typed model
+                return AcknowledgeMessageResult(
+                    acknowledged=True,
+                    message_id=message_id,
+                )
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping

@@ -7,6 +7,7 @@ Tests for Handover 0372: MessageService Unification
 - New methods (broadcast_to_project, acknowledge_message)
 
 Updated for Handover 0730: Exception-based patterns (no success wrapper)
+Updated for Handover 0731c: Typed returns (SendMessageResult, BroadcastResult, etc.)
 """
 
 from datetime import datetime, timezone
@@ -24,6 +25,12 @@ from src.giljo_mcp.models.projects import Project
 
 # Import models using modular imports
 from src.giljo_mcp.models.tasks import Message
+from src.giljo_mcp.schemas.service_responses import (
+    AcknowledgeMessageResult,
+    BroadcastResult,
+    MessageListResult,
+    SendMessageResult,
+)
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -186,9 +193,10 @@ class TestMessageService0372AgentIDRouting:
             tenant_key=project.tenant_key,
         )
 
-        # Handover 0730: send_message returns dict directly (no success wrapper)
-        assert "message_id" in result
-        message_id = result["message_id"]
+        # Handover 0731c: send_message returns SendMessageResult typed model
+        assert isinstance(result, SendMessageResult)
+        assert result.message_id is not None
+        message_id = result.message_id
 
         # Assert: Message exists in database
         msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
@@ -247,9 +255,10 @@ class TestMessageService0372AgentIDRouting:
             tenant_key=project.tenant_key,
         )
 
-        # Handover 0730: send_message returns dict directly (no success wrapper)
-        assert "message_id" in result
-        message_id = result["message_id"]
+        # Handover 0731c: send_message returns SendMessageResult typed model
+        assert isinstance(result, SendMessageResult)
+        assert result.message_id is not None
+        message_id = result.message_id
 
         # Assert: Message routes to NEW orchestrator (agent_id)
         msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
@@ -290,8 +299,9 @@ class TestMessageService0372Filtering:
             from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
-        # Handover 0730: send_message returns dict directly (no success wrapper)
-        assert "message_id" in send_result
+        # Handover 0731c: send_message returns SendMessageResult typed model
+        assert isinstance(send_result, SendMessageResult)
+        assert send_result.message_id is not None
 
         # Act: Receive messages with exclude_self=True (default)
         result = await message_service.receive_messages(
@@ -301,12 +311,11 @@ class TestMessageService0372Filtering:
             exclude_self=True,
         )
 
-        # Handover 0730: receive_messages returns {"messages": [...], "count": ...}
-        assert isinstance(result, dict)
-        assert "messages" in result
+        # Handover 0731c: receive_messages returns MessageListResult typed model
+        assert isinstance(result, MessageListResult)
 
         # Extract messages from result
-        messages = result.get("messages", [])
+        messages = result.messages
 
         # Assert: Orchestrator should NOT see their own broadcast
         for msg in messages:
@@ -339,8 +348,9 @@ class TestMessageService0372Filtering:
             from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
-        # Handover 0730: send_message returns dict directly (no success wrapper)
-        assert "message_id" in progress_result
+        # Handover 0731c: send_message returns SendMessageResult typed model
+        assert isinstance(progress_result, SendMessageResult)
+        assert progress_result.message_id is not None
 
         # Arrange: Send regular message
         direct_result = await message_service.send_message(
@@ -351,7 +361,8 @@ class TestMessageService0372Filtering:
             from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
-        assert "message_id" in direct_result
+        assert isinstance(direct_result, SendMessageResult)
+        assert direct_result.message_id is not None
 
         # Act: Receive messages with exclude_progress=True (default)
         result = await message_service.receive_messages(
@@ -362,7 +373,7 @@ class TestMessageService0372Filtering:
         )
 
         # Extract messages from result
-        messages = result.get("messages", [])
+        messages = result.messages
 
         # Assert: No progress messages in results
         for msg in messages:
@@ -399,14 +410,10 @@ class TestMessageService0372NewMethods:
             tenant_key=project.tenant_key,
         )
 
-        # Handover 0730: broadcast_to_project returns dict directly (no success wrapper)
-        # It returns send_message result + count
-        assert "message_id" in result
-        assert "count" in result
-        # Note: count is the number of active executions, but self is excluded from broadcast
-        # So if orchestrator sends, count == len(agents) - 1 (excluding sender)
-        # Actually, broadcast_to_project sends to all agent_ids including sender
-        assert result["count"] == len(agents)
+        # Handover 0731c: broadcast_to_project returns BroadcastResult typed model
+        assert isinstance(result, BroadcastResult)
+        assert result.message_id is not None
+        assert result.recipients_count == len(agents)
 
     @pytest.mark.asyncio
     async def test_acknowledge_message_explicit_works(
@@ -430,9 +437,10 @@ class TestMessageService0372NewMethods:
             from_agent=orchestrator.agent_display_name,
             tenant_key=project.tenant_key,
         )
-        # Handover 0730: send_message returns dict directly (no success wrapper)
-        assert "message_id" in send_result
-        message_id = send_result["message_id"]
+        # Handover 0731c: send_message returns SendMessageResult typed model
+        assert isinstance(send_result, SendMessageResult)
+        assert send_result.message_id is not None
+        message_id = send_result.message_id
 
         # Act: Explicitly acknowledge message
         ack_result = await message_service.acknowledge_message(
@@ -441,9 +449,10 @@ class TestMessageService0372NewMethods:
             tenant_key=project.tenant_key,
         )
 
-        # Handover 0730: acknowledge_message returns {"acknowledged": True, "message_id": ...}
-        assert ack_result["acknowledged"] is True
-        assert ack_result["message_id"] == message_id
+        # Handover 0731c: acknowledge_message returns AcknowledgeMessageResult typed model
+        assert isinstance(ack_result, AcknowledgeMessageResult)
+        assert ack_result.acknowledged is True
+        assert ack_result.message_id == message_id
 
         # Assert: Message status updated
         msg_result = await db_session.execute(select(Message).where(Message.id == message_id))

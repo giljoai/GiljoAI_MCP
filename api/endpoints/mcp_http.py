@@ -767,7 +767,11 @@ async def handle_tools_call(
         # Convert result to JSON string for proper formatting
         import json
 
-        result_text = json.dumps(result, indent=2, ensure_ascii=False)
+        from pydantic import BaseModel as PydanticBaseModel
+
+        # Handover 0731c: Convert Pydantic models to dicts for JSON serialization
+        serializable_result = result.model_dump() if isinstance(result, PydanticBaseModel) else result
+        result_text = json.dumps(serializable_result, indent=2, ensure_ascii=False)
 
         return {"content": [{"type": "text", "text": result_text}], "isError": False}
 
