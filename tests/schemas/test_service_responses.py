@@ -560,9 +560,7 @@ class TestConversionResult:
             ConversionResult(task_id="t1", project_id="p1")
 
     def test_model_dump(self):
-        result = ConversionResult(
-            task_id="t", project_id="p", project_name="N"
-        )
+        result = ConversionResult(task_id="t", project_id="p", project_name="N")
         dumped = result.model_dump()
         assert dumped == {
             "task_id": "t",
@@ -835,9 +833,7 @@ class TestInstructionsResponse:
         assert "memory_360" not in r2.priority_categories
 
     def test_model_dump(self):
-        result = InstructionsResponse(
-            orchestrator_id="o", instructions="i", priority_categories=["a"]
-        )
+        result = InstructionsResponse(orchestrator_id="o", instructions="i", priority_categories=["a"])
         dumped = result.model_dump()
         assert dumped["orchestrator_id"] == "o"
         assert dumped["priority_categories"] == ["a"]
@@ -1054,9 +1050,7 @@ class TestAuthResult:
             AuthResult(user_id="u1", username="u", token="t")
 
     def test_model_dump(self):
-        result = AuthResult(
-            user_id="u", username="n", token="t", tenant_key="k"
-        )
+        result = AuthResult(user_id="u", username="n", token="t", tenant_key="k")
         dumped = result.model_dump()
         assert dumped["user_id"] == "u"
         assert dumped["username"] == "n"
