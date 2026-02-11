@@ -18,6 +18,11 @@ import pytest
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import ResourceNotFoundError
 from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Product, Project
+from src.giljo_mcp.schemas.service_responses import (
+    MissionResponse,
+    SpawnResult,
+    SuccessionContextResult,
+)
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -143,15 +148,18 @@ class TestSpawnAgentJob:
             tenant_key=test_project["tenant_key"],
         )
 
-        # Handover 0730b: No success wrapper - returns dict with job_id, agent_id, etc.
-        assert "job_id" in result
-        assert "agent_id" in result
+        # Handover 0731c: Returns SpawnResult typed model
+        assert isinstance(result, SpawnResult)
+        assert result.job_id
+        assert result.agent_id
+        assert result.thin_client is True
+        assert result.mission_stored is True
 
         # Verify job exists
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
 
-            job_query = select(AgentJob).where(AgentJob.job_id == result["job_id"])
+            job_query = select(AgentJob).where(AgentJob.job_id == result.job_id)
             job_result = await session.execute(job_query)
             job = job_result.scalar_one_or_none()
 
@@ -161,7 +169,7 @@ class TestSpawnAgentJob:
             assert job.status == "active"
 
             # Verify execution exists
-            exec_query = select(AgentExecution).where(AgentExecution.job_id == result["job_id"])
+            exec_query = select(AgentExecution).where(AgentExecution.job_id == result.job_id)
             exec_result = await session.execute(exec_query)
             execution = exec_result.scalar_one_or_none()
 
@@ -185,14 +193,15 @@ class TestSpawnAgentJob:
             tenant_key=test_project["tenant_key"],
         )
 
-        # Handover 0730b: No success wrapper - returns dict with job_id, agent_id, etc.
-        assert "job_id" in result
+        # Handover 0731c: Returns SpawnResult typed model
+        assert isinstance(result, SpawnResult)
+        assert result.job_id
 
         # Verify job type matches agent_display_name
         async with db_manager.get_session_async() as session:
             from sqlalchemy import select
 
-            job_query = select(AgentJob).where(AgentJob.job_id == result["job_id"])
+            job_query = select(AgentJob).where(AgentJob.job_id == result.job_id)
             job_result = await session.execute(job_query)
             job = job_result.scalar_one_or_none()
 
@@ -219,8 +228,8 @@ class TestSuccession:
             tenant_key=test_project["tenant_key"],
         )
 
-        original_job_id = result["job_id"]
-        original_agent_id = result["agent_id"]
+        original_job_id = result.job_id
+        original_agent_id = result.agent_id
 
         # Create successor
         succession_result = await orchestration_service.create_successor_orchestrator(
@@ -229,13 +238,12 @@ class TestSuccession:
             reason="context_limit",
         )
 
-        # Handover 0730b: No success wrapper - returns dict with context reset info
-        # Handover 0461f: Same agent_id (no new execution created)
-        assert "job_id" in succession_result
-        assert succession_result["job_id"] == original_job_id  # Same job!
-        assert succession_result["agent_id"] == original_agent_id  # Same agent! (0461f)
-        assert succession_result["context_reset"] is True
-        assert succession_result["new_context_used"] == 0
+        # Handover 0731c: Returns SuccessionContextResult typed model
+        assert isinstance(succession_result, SuccessionContextResult)
+        assert succession_result.job_id == original_job_id  # Same job!
+        assert succession_result.agent_id == original_agent_id  # Same agent! (0461f)
+        assert succession_result.context_reset is True
+        assert succession_result.new_context_used == 0
 
         # Verify database state - should still have 1 execution (not 2)
         async with db_manager.get_session_async() as session:
@@ -296,7 +304,7 @@ class TestMultiTenantIsolation:
             tenant_key=test_project["tenant_key"],
         )
 
-        job_id = result["job_id"]
+        job_id = result.job_id
         wrong_tenant = "wrong_tenant_key"
 
         # Handover 0730b: Exception-based error handling
@@ -366,7 +374,7 @@ class TestAgentMission:
         test_project: dict,
         db_manager: DatabaseManager,
     ):
-        """Test that get_agent_mission returns full_protocol field."""
+        """Test that get_agent_mission returns MissionResponse with full_protocol field."""
         # Create job
         result = await orchestration_service.spawn_agent_job(
             agent_display_name="implementer",
@@ -376,7 +384,7 @@ class TestAgentMission:
             tenant_key=test_project["tenant_key"],
         )
 
-        job_id = result["job_id"]
+        job_id = result.job_id
 
         # Get mission
         mission_result = await orchestration_service.get_agent_mission(
@@ -384,10 +392,9 @@ class TestAgentMission:
             tenant_key=test_project["tenant_key"],
         )
 
-        # Handover 0730b: No success wrapper - returns dict with full_protocol
-        assert "full_protocol" in mission_result
+        # Handover 0731c: Returns MissionResponse typed model
+        assert isinstance(mission_result, MissionResponse)
         # full_protocol may be None if implementation phase gate blocks agent
-        # For now, verify the key exists in the response
-        if mission_result["full_protocol"] is not None:
-            assert isinstance(mission_result["full_protocol"], str)
-            assert len(mission_result["full_protocol"]) > 0
+        if mission_result.full_protocol is not None:
+            assert isinstance(mission_result.full_protocol, str)
+            assert len(mission_result.full_protocol) > 0
