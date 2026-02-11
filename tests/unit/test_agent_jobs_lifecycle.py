@@ -2,6 +2,7 @@
 Unit tests for agent_jobs lifecycle endpoints - Handover 0124
 
 Tests spawn, acknowledge, complete, and error endpoints using OrchestrationService.
+Updated: Handover 0731d - mock returns use typed Pydantic models.
 """
 
 from datetime import datetime, timezone
@@ -15,6 +16,12 @@ from api.endpoints.agent_jobs.models import (
     JobCompleteRequest,
     JobErrorRequest,
     SpawnAgentRequest,
+)
+from src.giljo_mcp.schemas.service_responses import (
+    AcknowledgeJobResult,
+    CompleteJobResult,
+    ErrorReportResult,
+    SpawnResult,
 )
 
 
@@ -31,12 +38,13 @@ class TestSpawnAgentJob:
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.spawn_agent_job.return_value = {
-            "job_id": "job-123",
-            "agent_prompt": "Test prompt",
-            "mission_stored": True,
-            "thin_client": True,
-        }
+        mock_service.spawn_agent_job.return_value = SpawnResult(
+            job_id="job-123",
+            agent_id="agent-456",
+            agent_prompt="Test prompt",
+            mission_stored=True,
+            thin_client=True,
+        )
 
         mock_ws_dep = AsyncMock()
 
@@ -73,24 +81,24 @@ class TestSpawnAgentJob:
 
     @pytest.mark.asyncio
     async def test_spawn_agent_service_error(self):
-        """Test spawn agent with service error."""
+        """Test spawn agent with service error (exception-based, Handover 0731d)."""
+        from src.giljo_mcp.exceptions import OrchestrationError
+
         mock_user = MagicMock()
         mock_user.username = "test_user"
         mock_user.role = "admin"
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.spawn_agent_job.return_value = {"error": "Failed to spawn"}
+        mock_service.spawn_agent_job.side_effect = OrchestrationError("Failed to spawn")
 
         request = SpawnAgentRequest(agent_display_name="implementer", mission="Test mission", project_id="proj-123")
 
-        # Should raise 400
-        with pytest.raises(HTTPException) as exc_info:
+        # Service raises OrchestrationError, propagates to global exception handler
+        with pytest.raises(OrchestrationError):
             await lifecycle.spawn_agent_job(
                 request=request, current_user=mock_user, orchestration_service=mock_service, ws_dep=AsyncMock()
             )
-
-        assert exc_info.value.status_code == 400
 
 
 class TestAcknowledgeJob:
@@ -104,11 +112,10 @@ class TestAcknowledgeJob:
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.acknowledge_job.return_value = {
-            "status": "active",
-            "started_at": datetime.now(timezone.utc),
-            "message": "Job acknowledged successfully",
-        }
+        mock_service.acknowledge_job.return_value = AcknowledgeJobResult(
+            job={"status": "active", "started_at": datetime.now(timezone.utc).isoformat()},
+            next_instructions="Job acknowledged successfully",
+        )
 
         response = await lifecycle.acknowledge_job(
             job_id="job-123", current_user=mock_user, orchestration_service=mock_service
@@ -120,19 +127,20 @@ class TestAcknowledgeJob:
 
     @pytest.mark.asyncio
     async def test_acknowledge_job_not_found(self):
-        """Test acknowledge job when job not found."""
+        """Test acknowledge job when job not found (exception-based, Handover 0731d)."""
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
+
         mock_user = MagicMock()
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.acknowledge_job.return_value = {"error": "Job not found"}
+        mock_service.acknowledge_job.side_effect = ResourceNotFoundError("Job not found")
 
-        with pytest.raises(HTTPException) as exc_info:
+        # Service raises ResourceNotFoundError, propagates to global exception handler
+        with pytest.raises(ResourceNotFoundError):
             await lifecycle.acknowledge_job(
                 job_id="job-123", current_user=mock_user, orchestration_service=mock_service
             )
-
-        assert exc_info.value.status_code == 404
 
 
 class TestCompleteJob:
@@ -146,11 +154,11 @@ class TestCompleteJob:
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.complete_job.return_value = {
-            "status": "completed",
-            "completed_at": datetime.now(timezone.utc),
-            "message": "Job completed successfully",
-        }
+        mock_service.complete_job.return_value = CompleteJobResult(
+            status="success",
+            job_id="job-123",
+            message="Job completed successfully",
+        )
 
         request = JobCompleteRequest(result="Task completed successfully")
 
@@ -174,10 +182,10 @@ class TestReportJobError:
         mock_user.tenant_key = "test_tenant"
 
         mock_service = AsyncMock()
-        mock_service.report_error.return_value = {
-            "job_id": "job-123",
-            "message": "Error reported",
-        }
+        mock_service.report_error.return_value = ErrorReportResult(
+            job_id="job-123",
+            message="Error reported",
+        )
 
         request = JobErrorRequest(error="Test error message")
 

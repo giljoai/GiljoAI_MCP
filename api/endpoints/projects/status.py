@@ -52,12 +52,29 @@ async def get_project_summary(
     """
     logger.debug(f"User {current_user.username} getting summary for project {project_id}")
 
-    # Get summary via ProjectService (raises exceptions on error)
+    # Get summary via ProjectService (raises exceptions on error, returns ProjectSummaryResult)
     summary_data = await project_service.get_project_summary(project_id=project_id)
 
     logger.info(f"Retrieved summary for project {project_id}")
 
-    return ProjectSummaryResponse(**summary_data)
+    # 0731d: ProjectService returns ProjectSummaryResult typed model
+    return ProjectSummaryResponse(
+        id=summary_data.id,
+        name=summary_data.name,
+        status=summary_data.status,
+        mission=summary_data.mission,
+        total_jobs=summary_data.total_jobs,
+        completed_jobs=summary_data.completed_jobs,
+        failed_jobs=summary_data.failed_jobs,
+        active_jobs=summary_data.active_jobs,
+        pending_jobs=summary_data.pending_jobs,
+        completion_percentage=summary_data.completion_percentage,
+        created_at=summary_data.created_at,
+        activated_at=summary_data.activated_at,
+        last_activity_at=summary_data.last_activity_at,
+        product_id=summary_data.product_id,
+        product_name=summary_data.product_name,
+    )
 
 
 @router.get("/{project_id}/orchestrator", response_model=OrchestratorResponse)

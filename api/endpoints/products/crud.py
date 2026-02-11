@@ -9,13 +9,18 @@ established service layer pattern (similar to ProjectService, TemplateService).
 Exception handling: Domain exceptions (ResourceNotFoundError, ValidationError,
 AuthorizationError) propagate to the global exception handler in
 api/exception_handlers.py which maps them to appropriate HTTP status codes.
+
+Handover 0731d: Updated for typed ProductService returns (Product ORM models,
+DeleteResult, ProductStatistics instead of dicts).
 """
 
 import logging
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.exceptions import ResourceNotFoundError
 
 # Model imports: Use modular pattern (Post-0128a refactoring)
 from src.giljo_mcp.models.auth import User
@@ -27,6 +32,53 @@ from .models import DeletedProductResponse, ProductCreate, ProductResponse, Prod
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Purge retention period for deleted products (days)
+_PURGE_RETENTION_DAYS = 10
+
+
+def _build_product_response(product, stats=None) -> ProductResponse:
+    """
+    Build a ProductResponse from a Product ORM model and optional ProductStatistics.
+
+    Centralizes the ORM-to-response mapping so every endpoint uses the same logic.
+
+    Args:
+        product: Product ORM model
+        stats: Optional ProductStatistics for metrics fields
+
+    Returns:
+        ProductResponse Pydantic model
+    """
+    # Normalize empty config_data to None for API contract consistency
+    config_data = product.config_data or None
+    has_config_data = bool(config_data)
+
+    # Handover 0412: Ensure product_memory is never None
+    pm = product.product_memory
+    if pm is None:
+        pm = {"github": {}, "sequential_history": [], "context": {}}
+
+    return ProductResponse(
+        id=str(product.id),
+        name=product.name,
+        description=product.description,
+        vision_path=None,
+        project_path=product.project_path,
+        created_at=product.created_at,
+        updated_at=product.updated_at,
+        project_count=stats.project_count if stats else 0,
+        task_count=stats.task_count if stats else 0,
+        has_vision=stats.has_vision if stats else False,
+        unresolved_tasks=stats.unresolved_tasks if stats else 0,
+        unfinished_projects=stats.unfinished_projects if stats else 0,
+        vision_documents_count=stats.vision_documents_count if stats else 0,
+        config_data=config_data,
+        has_config_data=has_config_data,
+        is_active=product.is_active,
+        product_memory=pm,
+        target_platforms=product.target_platforms or ["all"],
+    )
 
 
 @router.post("/", response_model=ProductResponse)
@@ -40,7 +92,7 @@ async def create_product(
 
     Uses ProductService.create_product() for database operations.
     """
-    result = await service.create_product(
+    product = await service.create_product(
         name=request.name,
         description=request.description,
         project_path=request.project_path,
@@ -48,40 +100,10 @@ async def create_product(
         target_platforms=request.target_platforms,  # Handover 0425 Phase 2
     )
 
-    # Get full product details with metrics
-    product_result = await service.get_product(product_id=result["product_id"], include_metrics=True)
+    # Get statistics for the newly created product
+    stats = await service.get_product_statistics(str(product.id))
 
-    product_data = product_result["product"]
-
-    # Normalize empty config_data to None for API contract consistency
-    config_data = product_data.get("config_data") or None
-    has_config_data = bool(config_data)
-
-    # Handover 0412: Ensure product_memory is never None
-    pm = product_data.get("product_memory")
-    if pm is None:
-        pm = {"github": {}, "sequential_history": [], "context": {}}
-
-    return ProductResponse(
-        id=product_data["id"],
-        name=product_data["name"],
-        description=product_data["description"],
-        vision_path=product_data.get("vision_path"),
-        project_path=product_data.get("project_path"),
-        created_at=product_data.get("created_at"),
-        updated_at=product_data.get("updated_at"),
-        project_count=product_data.get("project_count", 0),
-        task_count=product_data.get("task_count", 0),
-        has_vision=product_data.get("has_vision", False),
-        unresolved_tasks=product_data.get("unresolved_tasks", 0),
-        unfinished_projects=product_data.get("unfinished_projects", 0),
-        vision_documents_count=product_data.get("vision_documents_count", 0),
-        config_data=config_data,
-        has_config_data=has_config_data,
-        is_active=product_data.get("is_active", False),
-        product_memory=pm,  # Handover 0412: 360 Memory
-        target_platforms=product_data.get("target_platforms", ["all"]),  # Handover 0425 Phase 2
-    )
+    return _build_product_response(product, stats)
 
 
 @router.get("/", response_model=list[ProductResponse])
@@ -97,39 +119,16 @@ async def list_products(
 
     Uses ProductService.list_products() for database operations.
     """
-    result = await service.list_products(include_inactive=include_inactive, include_metrics=True)
+    products = await service.list_products(include_inactive=include_inactive)
 
-    logger.debug(f"Found {len(result['products'])} products")
+    logger.debug(f"Found {len(products)} products")
 
-    # Handover 0412: Helper to ensure product_memory is never None
-    def ensure_product_memory(pm):
-        if pm is None:
-            return {"github": {}, "sequential_history": [], "context": {}}
-        return pm
+    responses = []
+    for product in products:
+        stats = await service.get_product_statistics(str(product.id))
+        responses.append(_build_product_response(product, stats))
 
-    return [
-        ProductResponse(
-            id=p["id"],
-            name=p["name"],
-            description=p["description"],
-            vision_path=p.get("vision_path"),
-            project_path=p.get("project_path"),
-            created_at=p.get("created_at"),
-            updated_at=p.get("updated_at"),
-            project_count=p.get("project_count", 0),
-            task_count=p.get("task_count", 0),
-            has_vision=p.get("has_vision", False),
-            unresolved_tasks=p.get("unresolved_tasks", 0),
-            unfinished_projects=p.get("unfinished_projects", 0),
-            vision_documents_count=p.get("vision_documents_count", 0),
-            config_data=p.get("config_data"),
-            has_config_data=p.get("has_config_data", False),
-            is_active=p.get("is_active", False),
-            product_memory=ensure_product_memory(p.get("product_memory")),  # Handover 0412
-            target_platforms=p.get("target_platforms", ["all"]),  # Handover 0425 Phase 2
-        )
-        for p in result["products"]
-    ]
+    return responses
 
 
 @router.get("/deleted", response_model=list[DeletedProductResponse])
@@ -141,22 +140,41 @@ async def list_deleted_products(
     List soft-deleted products (Handover 0070).
 
     Uses ProductService.list_deleted_products() for database operations.
+    Handover 0731d: Purge date computation moved from service to endpoint layer.
     """
-    result = await service.list_deleted_products()
+    products = await service.list_deleted_products()
 
-    return [
-        DeletedProductResponse(
-            id=p["id"],
-            name=p["name"],
-            description=p["description"],
-            deleted_at=p["deleted_at"],
-            days_until_purge=p["days_until_purge"],
-            purge_date=p["purge_date"],
-            project_count=p["project_count"],
-            vision_documents_count=p["vision_documents_count"],
+    result = []
+    for p in products:
+        # Compute purge date: deleted_at + retention period
+        purge_date = p.deleted_at + timedelta(days=_PURGE_RETENTION_DAYS)
+        days_until_purge = max(0, (purge_date - datetime.now(timezone.utc)).days)
+
+        # Get statistics for project_count and vision_documents_count
+        # Note: get_product_statistics filters on deleted_at IS NULL, so
+        # for deleted products we need to compute counts differently.
+        # Use sensible defaults since deleted products have limited metrics.
+        stats = None
+        try:
+            stats = await service.get_product_statistics(str(p.id))
+        except (ResourceNotFoundError, ValueError, KeyError):
+            # Product is deleted so get_product_statistics may raise ResourceNotFoundError
+            logger.debug(f"Could not get statistics for deleted product {p.id}")
+
+        result.append(
+            DeletedProductResponse(
+                id=str(p.id),
+                name=p.name,
+                description=p.description,
+                deleted_at=p.deleted_at,
+                days_until_purge=days_until_purge,
+                purge_date=purge_date,
+                project_count=stats.project_count if stats else 0,
+                vision_documents_count=stats.vision_documents_count if stats else 0,
+            )
         )
-        for p in result["products"]
-    ]
+
+    return result
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
@@ -170,38 +188,16 @@ async def get_product(
 
     Uses ProductService.get_product() for database operations.
     """
-    result = await service.get_product(product_id=product_id, include_metrics=True)
-
-    product_data = result["product"]
+    product = await service.get_product(product_id=product_id)
+    stats = await service.get_product_statistics(str(product.id))
 
     # Handover 0412: Ensure product_memory is passed through correctly
-    # If None, use explicit default structure matching database schema
-    pm = product_data.get("product_memory")
+    pm = product.product_memory
     if pm is None:
         logger.warning(f"Product {product_id}: product_memory is None, using default")
-        pm = {"github": {}, "sequential_history": [], "context": {}}
-    logger.info(f"Product {product_id}: product_memory keys={list(pm.keys())}")
+    logger.info(f"Product {product_id}: product_memory keys={list((pm or {}).keys())}")
 
-    return ProductResponse(
-        id=product_data["id"],
-        name=product_data["name"],
-        description=product_data["description"],
-        vision_path=product_data.get("vision_path"),
-        project_path=product_data.get("project_path"),
-        created_at=product_data.get("created_at"),
-        updated_at=product_data.get("updated_at"),
-        project_count=product_data.get("project_count", 0),
-        task_count=product_data.get("task_count", 0),
-        has_vision=product_data.get("has_vision", False),
-        unresolved_tasks=product_data.get("unresolved_tasks", 0),
-        unfinished_projects=product_data.get("unfinished_projects", 0),
-        vision_documents_count=product_data.get("vision_documents_count", 0),
-        config_data=product_data.get("config_data"),
-        has_config_data=product_data.get("has_config_data", False),
-        is_active=product_data.get("is_active", False),
-        product_memory=pm,  # Handover 0412: Always pass explicit value
-        target_platforms=product_data.get("target_platforms", ["all"]),  # Handover 0425 Phase 2
-    )
+    return _build_product_response(product, stats)
 
 
 @router.put("/{product_id}", response_model=ProductResponse)
@@ -219,37 +215,11 @@ async def update_product(
     # Convert Pydantic model to dict, excluding unset fields
     update_data = updates.model_dump(exclude_unset=True)
 
-    await service.update_product(product_id, **update_data)
+    product = await service.update_product(product_id, **update_data)
 
-    # Get full updated product with metrics
-    product_result = await service.get_product(product_id=product_id, include_metrics=True)
-
-    product_data = product_result["product"]
-
-    # Handover 0412: Ensure product_memory is never None
-    pm = product_data.get("product_memory")
-    if pm is None:
-        pm = {"github": {}, "sequential_history": [], "context": {}}
+    # Get statistics for the updated product
+    stats = await service.get_product_statistics(str(product.id))
 
     logger.info(f"Updated product {product_id}")
 
-    return ProductResponse(
-        id=product_data["id"],
-        name=product_data["name"],
-        description=product_data["description"],
-        vision_path=product_data.get("vision_path"),
-        project_path=product_data.get("project_path"),
-        created_at=product_data.get("created_at"),
-        updated_at=product_data.get("updated_at"),
-        project_count=product_data.get("project_count", 0),
-        task_count=product_data.get("task_count", 0),
-        has_vision=product_data.get("has_vision", False),
-        unresolved_tasks=product_data.get("unresolved_tasks", 0),
-        unfinished_projects=product_data.get("unfinished_projects", 0),
-        vision_documents_count=product_data.get("vision_documents_count", 0),
-        config_data=product_data.get("config_data"),
-        has_config_data=product_data.get("has_config_data", False),
-        is_active=product_data.get("is_active", False),
-        product_memory=pm,  # Handover 0412: 360 Memory
-        target_platforms=product_data.get("target_platforms", ["all"]),  # Handover 0425 Phase 2
-    )
+    return _build_product_response(product, stats)

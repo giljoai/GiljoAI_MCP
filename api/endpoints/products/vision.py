@@ -6,6 +6,7 @@ Handles vision document upload and retrieval operations using ProductService.
 
 Handover 0503: Consolidated vision endpoints, updated paths, added proper response schemas.
 Handover 0126: Initial implementation with direct database access.
+Handover 0731d: Updated for typed ProductService returns (VisionUploadResult instead of dict).
 """
 
 import logging
@@ -79,6 +80,7 @@ async def upload_vision_document(
         content_str = content.decode("utf-8")
 
         # Upload via ProductService (uses injected dependency)
+        # Handover 0731d: returns VisionUploadResult Pydantic model
         result = await product_service.upload_vision_document(
             product_id=product_id,
             content=content_str,
@@ -88,17 +90,17 @@ async def upload_vision_document(
         )
 
         logger.info(
-            f"Successfully uploaded vision document {result['document_id']}: "
-            f"{result['chunks_created']} chunks, {result['total_tokens']} tokens"
+            f"Successfully uploaded vision document {result.document_id}: "
+            f"{result.chunks_created} chunks, {result.total_tokens} tokens"
         )
 
         return {
             "success": True,
             "message": "Vision document uploaded and chunked successfully",
-            "document_id": result["document_id"],
-            "document_name": result["document_name"],
-            "chunks_created": result["chunks_created"],
-            "total_tokens": result["total_tokens"],
+            "document_id": result.document_id,
+            "document_name": result.document_name,
+            "chunks_created": result.chunks_created,
+            "total_tokens": result.total_tokens,
         }
 
     except UnicodeDecodeError:

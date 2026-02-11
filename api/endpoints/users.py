@@ -335,21 +335,8 @@ async def list_users(
 
     logger.info(f"Found {len(users)} users (all tenants)")
 
-    # Convert service response to UserResponse objects
-    return [
-        UserResponse(
-            id=user["id"],
-            username=user["username"],
-            email=user["email"],
-            full_name=user["full_name"],
-            role=user["role"],
-            tenant_key=user["tenant_key"],
-            is_active=user["is_active"],
-            created_at=user["created_at"],
-            last_login=user["last_login"],
-        )
-        for user in users
-    ]
+    # 0731d: UserService returns list[User] ORM objects - use attribute access
+    return [user_to_response(user) for user in users]
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -389,17 +376,8 @@ async def create_user(
 
     logger.info(f"Created user: {user_data.username} (role: {user_data.role}) in tenant {current_user.tenant_key}")
 
-    return UserResponse(
-        id=user["id"],
-        username=user["username"],
-        email=user["email"],
-        full_name=user["full_name"],
-        role=user["role"],
-        tenant_key=user["tenant_key"],
-        is_active=user["is_active"],
-        created_at=user["created_at"],
-        last_login=None,
-    )
+    # 0731d: UserService returns User ORM object - use helper
+    return user_to_response(user)
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -433,22 +411,13 @@ async def get_user(
     is_admin = current_user.role == "admin"
     user = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
 
+    # 0731d: UserService returns User ORM object - use attribute access
     # Authorization: admin can view any user, non-admin can only view self
-    if not is_admin and user["id"] != str(current_user.id):
-        logger.warning(f"Non-admin {current_user.username} tried to view user {user['username']}")
+    if not is_admin and str(user.id) != str(current_user.id):
+        logger.warning(f"Non-admin {current_user.username} tried to view user {user.username}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot view other users' profiles")
 
-    return UserResponse(
-        id=user["id"],
-        username=user["username"],
-        email=user["email"],
-        full_name=user["full_name"],
-        role=user["role"],
-        tenant_key=user["tenant_key"],
-        is_active=user["is_active"],
-        created_at=user["created_at"],
-        last_login=user["last_login"],
-    )
+    return user_to_response(user)
 
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -486,8 +455,9 @@ async def update_user(
     # Authorization: admin can update any user, non-admin can only update self
     user = await user_service.get_user(str(user_id), include_all_tenants=is_admin)
 
-    if not is_admin and user["id"] != str(current_user.id):
-        logger.warning(f"Non-admin {current_user.username} tried to update user {user['username']}")
+    # 0731d: UserService returns User ORM object - use attribute access
+    if not is_admin and str(user.id) != str(current_user.id):
+        logger.warning(f"Non-admin {current_user.username} tried to update user {user.username}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot update other users' profiles")
 
     # Build updates dict (only include non-None values)
@@ -503,19 +473,9 @@ async def update_user(
 
     updated_user = await user_service.update_user(str(user_id), include_all_tenants=is_admin, **updates)
 
-    logger.info(f"Updated user: {user['username']}")
+    logger.info(f"Updated user: {user.username}")
 
-    return UserResponse(
-        id=updated_user["id"],
-        username=updated_user["username"],
-        email=updated_user["email"],
-        full_name=updated_user["full_name"],
-        role=updated_user["role"],
-        tenant_key=current_user.tenant_key,
-        is_active=updated_user["is_active"],
-        created_at=user["created_at"],  # Use original created_at
-        last_login=user["last_login"],
-    )
+    return user_to_response(updated_user)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -583,15 +543,16 @@ async def change_user_role(
             detail="You cannot change your own role (prevents lockout)",
         )
 
+    # 0731d: UserService returns User ORM object - use attribute access
     user = await user_service.change_role(str(user_id), role_data.role)
 
-    logger.info(f"Changed role for user {user['username']} to {user['role']}")
+    logger.info(f"Changed role for user {user.username} to {user.role}")
 
     return RoleChangeResponse(
         message="User role updated successfully",
-        user_id=user["id"],
-        username=user["username"],
-        role=user["role"],
+        user_id=str(user.id),
+        username=user.username,
+        role=user.role,
     )
 
 
