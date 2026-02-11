@@ -194,125 +194,130 @@ class TestPaginatedResult:
 
 
 class TestProductStatistics:
-    """Tests for ProductStatistics model."""
+    """Tests for ProductStatistics model (Handover 0731c: updated with product metadata fields)."""
 
-    def test_creation_defaults(self):
-        """All fields should default to 0."""
-        stats = ProductStatistics()
-        assert stats.total_projects == 0
-        assert stats.active_projects == 0
-        assert stats.completed_projects == 0
-        assert stats.total_jobs == 0
-        assert stats.active_jobs == 0
-        assert stats.total_tasks == 0
-        assert stats.total_vision_documents == 0
+    def test_creation_with_required_fields(self):
+        """Required fields: product_id, name, is_active."""
+        stats = ProductStatistics(product_id="p1", name="Test Product", is_active=True)
+        assert stats.product_id == "p1"
+        assert stats.name == "Test Product"
+        assert stats.is_active is True
+        assert stats.project_count == 0
+        assert stats.task_count == 0
+        assert stats.vision_documents_count == 0
 
-    def test_creation_with_values(self):
+    def test_creation_with_all_fields(self):
         stats = ProductStatistics(
-            total_projects=10,
-            active_projects=3,
-            completed_projects=5,
-            total_jobs=50,
-            active_jobs=8,
-            total_tasks=200,
-            total_vision_documents=15,
+            product_id="p2",
+            name="Full Product",
+            is_active=True,
+            project_count=10,
+            unfinished_projects=3,
+            task_count=200,
+            unresolved_tasks=45,
+            vision_documents_count=15,
+            has_vision=True,
         )
-        assert stats.total_projects == 10
-        assert stats.active_projects == 3
-        assert stats.completed_projects == 5
-        assert stats.total_jobs == 50
-        assert stats.active_jobs == 8
-        assert stats.total_tasks == 200
-        assert stats.total_vision_documents == 15
+        assert stats.project_count == 10
+        assert stats.unfinished_projects == 3
+        assert stats.task_count == 200
+        assert stats.unresolved_tasks == 45
+        assert stats.vision_documents_count == 15
+        assert stats.has_vision is True
+
+    def test_missing_product_id_raises(self):
+        with pytest.raises(ValidationError):
+            ProductStatistics(name="P", is_active=True)
 
     def test_model_dump(self):
-        stats = ProductStatistics(total_projects=5)
+        stats = ProductStatistics(product_id="p", name="n", is_active=False, project_count=5)
         dumped = stats.model_dump()
-        assert dumped["total_projects"] == 5
-        assert dumped["active_projects"] == 0
+        assert dumped["product_id"] == "p"
+        assert dumped["project_count"] == 5
+        assert dumped["task_count"] == 0
 
     def test_from_attributes_config(self):
         assert ProductStatistics.model_config.get("from_attributes") is True
 
 
 class TestCascadeImpact:
-    """Tests for CascadeImpact model."""
+    """Tests for CascadeImpact model (Handover 0731c: updated field names)."""
 
-    def test_creation_with_product_id(self):
-        """product_id is required."""
-        impact = CascadeImpact(product_id="prod-123")
+    def test_creation_with_required_fields(self):
+        """product_id and product_name are required."""
+        impact = CascadeImpact(product_id="prod-123", product_name="Test Product")
         assert impact.product_id == "prod-123"
-        assert impact.projects_affected == 0
-        assert impact.jobs_affected == 0
-        assert impact.tasks_affected == 0
-        assert impact.vision_documents_affected == 0
-        assert impact.memory_entries_affected == 0
+        assert impact.product_name == "Test Product"
+        assert impact.total_projects == 0
+        assert impact.total_tasks == 0
+        assert impact.total_vision_documents == 0
+        assert impact.warning == ""
 
     def test_missing_product_id_raises(self):
         with pytest.raises(ValidationError):
-            CascadeImpact()
+            CascadeImpact(product_name="P")
+
+    def test_missing_product_name_raises(self):
+        with pytest.raises(ValidationError):
+            CascadeImpact(product_id="p1")
 
     def test_creation_with_counts(self):
         impact = CascadeImpact(
             product_id="prod-456",
-            projects_affected=3,
-            jobs_affected=12,
-            tasks_affected=45,
-            vision_documents_affected=7,
-            memory_entries_affected=20,
+            product_name="Test",
+            total_projects=3,
+            total_tasks=45,
+            total_vision_documents=7,
+            warning="This will delete all related data",
         )
-        assert impact.projects_affected == 3
-        assert impact.jobs_affected == 12
-        assert impact.tasks_affected == 45
-        assert impact.vision_documents_affected == 7
-        assert impact.memory_entries_affected == 20
+        assert impact.total_projects == 3
+        assert impact.total_tasks == 45
+        assert impact.total_vision_documents == 7
+        assert "delete" in impact.warning
 
     def test_model_dump(self):
-        impact = CascadeImpact(product_id="p1", projects_affected=2)
+        impact = CascadeImpact(product_id="p1", product_name="P", total_projects=2)
         dumped = impact.model_dump()
         assert dumped["product_id"] == "p1"
-        assert dumped["projects_affected"] == 2
+        assert dumped["total_projects"] == 2
 
     def test_from_attributes_config(self):
         assert CascadeImpact.model_config.get("from_attributes") is True
 
 
 class TestVisionUploadResult:
-    """Tests for VisionUploadResult model."""
+    """Tests for VisionUploadResult model (Handover 0731c: filename renamed to document_name)."""
 
     def test_creation_with_required_fields(self):
-        result = VisionUploadResult(document_id="doc-1", filename="design.pdf")
+        result = VisionUploadResult(document_id="doc-1", document_name="design.pdf")
         assert result.document_id == "doc-1"
-        assert result.filename == "design.pdf"
+        assert result.document_name == "design.pdf"
         assert result.chunks_created == 0
         assert result.total_tokens == 0
-        assert result.summary_level is None
 
     def test_missing_document_id_raises(self):
         with pytest.raises(ValidationError):
-            VisionUploadResult(filename="test.pdf")
+            VisionUploadResult(document_name="test.pdf")
 
-    def test_missing_filename_raises(self):
+    def test_missing_document_name_raises(self):
         with pytest.raises(ValidationError):
             VisionUploadResult(document_id="doc-1")
 
     def test_creation_with_all_fields(self):
         result = VisionUploadResult(
             document_id="doc-2",
-            filename="architecture.md",
+            document_name="architecture.md",
             chunks_created=5,
             total_tokens=12000,
-            summary_level="medium",
         )
         assert result.chunks_created == 5
         assert result.total_tokens == 12000
-        assert result.summary_level == "medium"
 
     def test_model_dump(self):
-        result = VisionUploadResult(document_id="d", filename="f.txt")
+        result = VisionUploadResult(document_id="d", document_name="f.txt")
         dumped = result.model_dump()
         assert dumped["document_id"] == "d"
-        assert dumped["filename"] == "f.txt"
+        assert dumped["document_name"] == "f.txt"
         assert dumped["chunks_created"] == 0
 
     def test_from_attributes_config(self):
@@ -578,72 +583,71 @@ class TestConversionResult:
 
 
 class TestSendMessageResult:
-    """Tests for SendMessageResult model."""
+    """Tests for SendMessageResult model (Handover 0731c: updated with to_agents, message_type)."""
 
-    def test_creation_with_required_fields(self):
+    def test_creation_defaults(self):
+        result = SendMessageResult()
+        assert result.message_id is None
+        assert result.to_agents == []
+        assert result.message_type == "direct"
+        assert result.staging_directive is None
+
+    def test_creation_with_message_id(self):
         result = SendMessageResult(message_id="msg-1")
         assert result.message_id == "msg-1"
-        assert result.delivered_to == []
 
     def test_creation_with_recipients(self):
         result = SendMessageResult(
             message_id="msg-2",
-            delivered_to=["agent-1", "agent-2"],
+            to_agents=["agent-1", "agent-2"],
         )
-        assert len(result.delivered_to) == 2
+        assert len(result.to_agents) == 2
 
-    def test_missing_message_id_raises(self):
-        with pytest.raises(ValidationError):
-            SendMessageResult()
-
-    def test_delivered_to_default_factory_isolation(self):
-        r1 = SendMessageResult(message_id="m1")
-        r2 = SendMessageResult(message_id="m2")
-        r1.delivered_to.append("agent-x")
-        assert "agent-x" not in r2.delivered_to
+    def test_to_agents_default_factory_isolation(self):
+        r1 = SendMessageResult()
+        r2 = SendMessageResult()
+        r1.to_agents.append("agent-x")
+        assert "agent-x" not in r2.to_agents
 
     def test_model_dump(self):
-        result = SendMessageResult(message_id="m1", delivered_to=["a"])
+        result = SendMessageResult(message_id="m1", to_agents=["a"])
         dumped = result.model_dump()
         assert dumped["message_id"] == "m1"
-        assert dumped["delivered_to"] == ["a"]
+        assert dumped["to_agents"] == ["a"]
 
     def test_from_attributes_config(self):
         assert SendMessageResult.model_config.get("from_attributes") is True
 
 
 class TestBroadcastResult:
-    """Tests for BroadcastResult model."""
+    """Tests for BroadcastResult model (Handover 0731c: updated with to_agents, message_type)."""
 
-    def test_creation_with_required_fields(self):
-        result = BroadcastResult(broadcast_id="bc-1")
-        assert result.broadcast_id == "bc-1"
+    def test_creation_defaults(self):
+        result = BroadcastResult()
+        assert result.message_id is None
+        assert result.to_agents == []
+        assert result.message_type == "broadcast"
         assert result.recipients_count == 0
-        assert result.message_ids == []
 
     def test_creation_with_all_fields(self):
         result = BroadcastResult(
-            broadcast_id="bc-2",
-            recipients_count=5,
-            message_ids=["m1", "m2", "m3", "m4", "m5"],
+            message_id="msg-1",
+            to_agents=["agent-1", "agent-2"],
+            recipients_count=2,
         )
-        assert result.recipients_count == 5
-        assert len(result.message_ids) == 5
+        assert result.recipients_count == 2
+        assert len(result.to_agents) == 2
 
-    def test_missing_broadcast_id_raises(self):
-        with pytest.raises(ValidationError):
-            BroadcastResult()
-
-    def test_message_ids_default_factory_isolation(self):
-        r1 = BroadcastResult(broadcast_id="b1")
-        r2 = BroadcastResult(broadcast_id="b2")
-        r1.message_ids.append("x")
-        assert "x" not in r2.message_ids
+    def test_to_agents_default_factory_isolation(self):
+        r1 = BroadcastResult()
+        r2 = BroadcastResult()
+        r1.to_agents.append("x")
+        assert "x" not in r2.to_agents
 
     def test_model_dump(self):
-        result = BroadcastResult(broadcast_id="b1", recipients_count=2, message_ids=["a", "b"])
+        result = BroadcastResult(message_id="m1", recipients_count=2, to_agents=["a", "b"])
         dumped = result.model_dump()
-        assert dumped["broadcast_id"] == "b1"
+        assert dumped["message_id"] == "m1"
         assert dumped["recipients_count"] == 2
 
     def test_from_attributes_config(self):
@@ -688,77 +692,116 @@ class TestMessageListResult:
 
 
 class TestSpawnResult:
-    """Tests for SpawnResult model."""
+    """Tests for SpawnResult model (Handover 0731c: expanded with agent_id, prompt fields)."""
 
     def test_creation_with_required_fields(self):
         result = SpawnResult(
             job_id="job-1",
-            agent_role="tdd-implementor",
-            project_id="proj-1",
+            agent_id="agent-1",
+            agent_prompt="Your mission prompt",
         )
         assert result.job_id == "job-1"
-        assert result.agent_role == "tdd-implementor"
-        assert result.project_id == "proj-1"
-        assert result.status == "pending"
+        assert result.agent_id == "agent-1"
+        assert result.agent_prompt == "Your mission prompt"
+        assert result.thin_client is True
+        assert result.mission_stored is True
 
-    def test_creation_with_custom_status(self):
+    def test_creation_with_all_fields(self):
         result = SpawnResult(
             job_id="job-2",
-            agent_role="backend-integration-tester",
-            project_id="proj-2",
-            status="active",
+            agent_id="agent-2",
+            execution_id="exec-2",
+            agent_prompt="Prompt here",
+            prompt_tokens=150,
+            mission_stored=True,
+            mission_tokens=80,
+            total_tokens=230,
+            thin_client=True,
+            thin_client_note=["Note 1", "Note 2"],
         )
-        assert result.status == "active"
+        assert result.execution_id == "exec-2"
+        assert result.prompt_tokens == 150
+        assert result.mission_tokens == 80
+        assert result.total_tokens == 230
+        assert len(result.thin_client_note) == 2
 
     def test_missing_job_id_raises(self):
         with pytest.raises(ValidationError):
-            SpawnResult(agent_role="tester", project_id="p1")
+            SpawnResult(agent_id="a1", agent_prompt="p")
 
-    def test_missing_agent_role_raises(self):
+    def test_missing_agent_id_raises(self):
         with pytest.raises(ValidationError):
-            SpawnResult(job_id="j1", project_id="p1")
+            SpawnResult(job_id="j1", agent_prompt="p")
 
-    def test_missing_project_id_raises(self):
+    def test_missing_agent_prompt_raises(self):
         with pytest.raises(ValidationError):
-            SpawnResult(job_id="j1", agent_role="tester")
+            SpawnResult(job_id="j1", agent_id="a1")
 
     def test_model_dump(self):
-        result = SpawnResult(job_id="j", agent_role="r", project_id="p")
+        result = SpawnResult(job_id="j", agent_id="a", agent_prompt="p")
         dumped = result.model_dump()
         assert dumped["job_id"] == "j"
-        assert dumped["status"] == "pending"
+        assert dumped["agent_id"] == "a"
+        assert dumped["thin_client"] is True
+
+    def test_thin_client_note_default_factory_isolation(self):
+        r1 = SpawnResult(job_id="j1", agent_id="a1", agent_prompt="p1")
+        r2 = SpawnResult(job_id="j2", agent_id="a2", agent_prompt="p2")
+        r1.thin_client_note.append("x")
+        assert "x" not in r2.thin_client_note
 
     def test_from_attributes_config(self):
         assert SpawnResult.model_config.get("from_attributes") is True
 
 
 class TestMissionResponse:
-    """Tests for MissionResponse model."""
+    """Tests for MissionResponse model (Handover 0731c: expanded with team-aware fields)."""
 
     def test_creation_with_required_fields(self):
-        result = MissionResponse(job_id="job-1", mission="Implement auth module")
+        result = MissionResponse(job_id="job-1")
         assert result.job_id == "job-1"
-        assert result.mission == "Implement auth module"
+        assert result.mission is None
         assert result.full_protocol is None
-        assert result.agent_role is None
+        assert result.agent_id is None
+        assert result.blocked is False
 
     def test_creation_with_all_fields(self):
         result = MissionResponse(
             job_id="job-2",
+            agent_id="agent-2",
+            agent_name="impl-1",
+            agent_display_name="implementer",
             mission="Build feature X",
+            project_id="proj-1",
+            parent_job_id="parent-1",
+            estimated_tokens=500,
+            status="working",
+            created_at="2026-01-01T00:00:00Z",
+            started_at="2026-01-01T00:01:00Z",
+            thin_client=True,
             full_protocol="Phase 1: ...\nPhase 2: ...",
-            agent_role="tdd-implementor",
+            blocked=False,
+            error=None,
+            user_instruction=None,
         )
         assert result.full_protocol is not None
-        assert result.agent_role == "tdd-implementor"
+        assert result.agent_display_name == "implementer"
+        assert result.estimated_tokens == 500
 
     def test_missing_job_id_raises(self):
         with pytest.raises(ValidationError):
             MissionResponse(mission="Do something")
 
-    def test_missing_mission_raises(self):
-        with pytest.raises(ValidationError):
-            MissionResponse(job_id="j1")
+    def test_blocked_response(self):
+        result = MissionResponse(
+            job_id="j1",
+            blocked=True,
+            error="BLOCKED: Implementation not launched",
+            user_instruction="Click Implement button",
+        )
+        assert result.blocked is True
+        assert result.mission is None
+        assert "BLOCKED" in result.error
 
     def test_model_dump(self):
         result = MissionResponse(job_id="j", mission="m")
@@ -766,23 +809,28 @@ class TestMissionResponse:
         assert dumped["job_id"] == "j"
         assert dumped["mission"] == "m"
         assert dumped["full_protocol"] is None
-        assert dumped["agent_role"] is None
+        assert dumped["blocked"] is False
 
     def test_from_attributes_config(self):
         assert MissionResponse.model_config.get("from_attributes") is True
 
 
 class TestMissionUpdateResult:
-    """Tests for MissionUpdateResult model."""
+    """Tests for MissionUpdateResult model (Handover 0731c: added mission_length field)."""
 
     def test_creation_with_required_fields(self):
         result = MissionUpdateResult(job_id="job-1")
         assert result.job_id == "job-1"
         assert result.mission_updated is True
+        assert result.mission_length == 0
 
     def test_creation_with_explicit_false(self):
         result = MissionUpdateResult(job_id="job-2", mission_updated=False)
         assert result.mission_updated is False
+
+    def test_creation_with_mission_length(self):
+        result = MissionUpdateResult(job_id="j1", mission_length=1500)
+        assert result.mission_length == 1500
 
     def test_missing_job_id_raises(self):
         with pytest.raises(ValidationError):
@@ -791,131 +839,133 @@ class TestMissionUpdateResult:
     def test_model_dump(self):
         result = MissionUpdateResult(job_id="j")
         dumped = result.model_dump()
-        assert dumped == {"job_id": "j", "mission_updated": True}
+        assert dumped == {"job_id": "j", "mission_updated": True, "mission_length": 0}
 
     def test_from_attributes_config(self):
         assert MissionUpdateResult.model_config.get("from_attributes") is True
 
 
 class TestInstructionsResponse:
-    """Tests for InstructionsResponse model."""
+    """Tests for InstructionsResponse model (Handover 0731c: now alias for SuccessionContextResult).
+
+    InstructionsResponse is a legacy alias kept for backward compatibility.
+    get_orchestrator_instructions() returns dict[str, Any] (genuinely dynamic),
+    so InstructionsResponse is aliased to SuccessionContextResult.
+    """
+
+    def test_is_alias_for_succession_context_result(self):
+        from src.giljo_mcp.schemas.service_responses import SuccessionContextResult
+
+        assert InstructionsResponse is SuccessionContextResult
 
     def test_creation_with_required_fields(self):
         result = InstructionsResponse(
-            orchestrator_id="orch-1",
-            instructions="Step 1: Discover agents...",
+            job_id="job-1",
+            agent_id="agent-1",
         )
-        assert result.orchestrator_id == "orch-1"
-        assert result.instructions == "Step 1: Discover agents..."
-        assert result.priority_categories == []
-
-    def test_creation_with_priority_categories(self):
-        result = InstructionsResponse(
-            orchestrator_id="orch-2",
-            instructions="Full protocol here",
-            priority_categories=["product_core", "tech_stack", "vision_documents"],
-        )
-        assert len(result.priority_categories) == 3
-        assert "product_core" in result.priority_categories
-
-    def test_missing_orchestrator_id_raises(self):
-        with pytest.raises(ValidationError):
-            InstructionsResponse(instructions="test")
-
-    def test_missing_instructions_raises(self):
-        with pytest.raises(ValidationError):
-            InstructionsResponse(orchestrator_id="o1")
-
-    def test_priority_categories_default_factory_isolation(self):
-        r1 = InstructionsResponse(orchestrator_id="o1", instructions="i1")
-        r2 = InstructionsResponse(orchestrator_id="o2", instructions="i2")
-        r1.priority_categories.append("memory_360")
-        assert "memory_360" not in r2.priority_categories
+        assert result.job_id == "job-1"
+        assert result.agent_id == "agent-1"
+        assert result.context_reset is True
 
     def test_model_dump(self):
-        result = InstructionsResponse(orchestrator_id="o", instructions="i", priority_categories=["a"])
+        result = InstructionsResponse(job_id="j", agent_id="a")
         dumped = result.model_dump()
-        assert dumped["orchestrator_id"] == "o"
-        assert dumped["priority_categories"] == ["a"]
+        assert dumped["job_id"] == "j"
+        assert dumped["agent_id"] == "a"
 
     def test_from_attributes_config(self):
         assert InstructionsResponse.model_config.get("from_attributes") is True
 
 
 class TestSuccessionResult:
-    """Tests for SuccessionResult model."""
+    """Tests for SuccessionResult model (Handover 0731c: now alias for SuccessionContextResult).
+
+    SuccessionResult is a legacy alias kept for backward compatibility.
+    The canonical model is SuccessionContextResult with job_id, agent_id, context_reset fields.
+    """
+
+    def test_is_alias_for_succession_context_result(self):
+        from src.giljo_mcp.schemas.service_responses import SuccessionContextResult
+
+        assert SuccessionResult is SuccessionContextResult
 
     def test_creation_with_required_fields(self):
         result = SuccessionResult(
-            predecessor_id="orch-1",
-            successor_id="orch-2",
+            job_id="job-1",
+            agent_id="agent-1",
         )
-        assert result.predecessor_id == "orch-1"
-        assert result.successor_id == "orch-2"
-        assert result.handover_summary is None
+        assert result.job_id == "job-1"
+        assert result.agent_id == "agent-1"
+        assert result.context_reset is True
+        assert result.memory_entry_created is True
 
-    def test_creation_with_handover_summary(self):
+    def test_creation_with_all_fields(self):
         result = SuccessionResult(
-            predecessor_id="o1",
-            successor_id="o2",
-            handover_summary="Context transferred: 3 active agents, 2 pending tasks.",
+            job_id="j1",
+            agent_id="a1",
+            context_reset=True,
+            old_context_used=140000,
+            new_context_used=0,
+            memory_entry_created=True,
+            reason="context_limit",
+            message="Context reset successful",
         )
-        assert result.handover_summary is not None
-        assert "3 active agents" in result.handover_summary
+        assert result.old_context_used == 140000
+        assert result.new_context_used == 0
+        assert result.reason == "context_limit"
 
-    def test_missing_predecessor_id_raises(self):
+    def test_missing_job_id_raises(self):
         with pytest.raises(ValidationError):
-            SuccessionResult(successor_id="o2")
+            SuccessionResult(agent_id="a1")
 
-    def test_missing_successor_id_raises(self):
+    def test_missing_agent_id_raises(self):
         with pytest.raises(ValidationError):
-            SuccessionResult(predecessor_id="o1")
+            SuccessionResult(job_id="j1")
 
     def test_model_dump(self):
-        result = SuccessionResult(predecessor_id="p", successor_id="s")
+        result = SuccessionResult(job_id="j", agent_id="a")
         dumped = result.model_dump()
-        assert dumped["predecessor_id"] == "p"
-        assert dumped["successor_id"] == "s"
-        assert dumped["handover_summary"] is None
+        assert dumped["job_id"] == "j"
+        assert dumped["agent_id"] == "a"
+        assert dumped["context_reset"] is True
 
     def test_from_attributes_config(self):
         assert SuccessionResult.model_config.get("from_attributes") is True
 
 
 class TestSuccessionStatus:
-    """Tests for SuccessionStatus model."""
+    """Tests for SuccessionStatus model (Handover 0731c: redesigned for check_succession_status)."""
 
-    def test_creation_with_required_fields(self):
-        result = SuccessionStatus(orchestrator_id="orch-1")
-        assert result.orchestrator_id == "orch-1"
+    def test_creation_defaults(self):
+        result = SuccessionStatus()
+        assert result.should_trigger is False
         assert result.context_used == 0
         assert result.context_budget == 0
-        assert result.succession_recommended is False
-        assert result.active_agents == 0
+        assert result.usage_percentage == 0.0
+        assert result.threshold_reached is False
+        assert result.recommendation == ""
 
     def test_creation_with_all_fields(self):
         result = SuccessionStatus(
-            orchestrator_id="orch-2",
+            should_trigger=True,
             context_used=85000,
             context_budget=100000,
-            succession_recommended=True,
-            active_agents=4,
+            usage_percentage=85.0,
+            threshold_reached=True,
+            recommendation="Succession recommended: context usage at 85%",
         )
+        assert result.should_trigger is True
         assert result.context_used == 85000
         assert result.context_budget == 100000
-        assert result.succession_recommended is True
-        assert result.active_agents == 4
-
-    def test_missing_orchestrator_id_raises(self):
-        with pytest.raises(ValidationError):
-            SuccessionStatus()
+        assert result.usage_percentage == 85.0
+        assert result.threshold_reached is True
+        assert "85%" in result.recommendation
 
     def test_model_dump(self):
-        result = SuccessionStatus(orchestrator_id="o1", context_used=5000)
+        result = SuccessionStatus(context_used=5000)
         dumped = result.model_dump()
-        assert dumped["orchestrator_id"] == "o1"
         assert dumped["context_used"] == 5000
-        assert dumped["succession_recommended"] is False
+        assert dumped["should_trigger"] is False
 
     def test_from_attributes_config(self):
         assert SuccessionStatus.model_config.get("from_attributes") is True
@@ -964,39 +1014,40 @@ class TestTemplateListResult:
 
 
 class TestConsolidationResult:
-    """Tests for ConsolidationResult model."""
+    """Tests for ConsolidationResult model (Handover 0731c: updated with SummaryLevel fields)."""
 
-    def test_creation_with_required_fields(self):
-        result = ConsolidationResult(product_id="prod-1")
-        assert result.product_id == "prod-1"
-        assert result.documents_consolidated == 0
-        assert result.aggregate == {}
+    def test_creation_defaults(self):
+        result = ConsolidationResult()
+        assert result.hash == ""
+        assert result.source_docs == []
+        assert result.light is not None
+        assert result.medium is not None
 
     def test_creation_with_all_fields(self):
+        from src.giljo_mcp.schemas.service_responses import SummaryLevel
+
         result = ConsolidationResult(
-            product_id="prod-2",
-            documents_consolidated=5,
-            aggregate={"total_tokens": 50000, "avg_tokens": 10000},
+            light=SummaryLevel(summary="Brief summary", tokens=100),
+            medium=SummaryLevel(summary="Medium summary", tokens=500),
+            hash="abc123",
+            source_docs=["doc1.pdf", "doc2.md"],
         )
-        assert result.documents_consolidated == 5
-        assert result.aggregate["total_tokens"] == 50000
+        assert result.light.summary == "Brief summary"
+        assert result.medium.tokens == 500
+        assert result.hash == "abc123"
+        assert len(result.source_docs) == 2
 
-    def test_missing_product_id_raises(self):
-        with pytest.raises(ValidationError):
-            ConsolidationResult()
-
-    def test_aggregate_default_factory_isolation(self):
-        r1 = ConsolidationResult(product_id="p1")
-        r2 = ConsolidationResult(product_id="p2")
-        r1.aggregate["key"] = "value"
-        assert "key" not in r2.aggregate
+    def test_source_docs_default_factory_isolation(self):
+        r1 = ConsolidationResult()
+        r2 = ConsolidationResult()
+        r1.source_docs.append("doc.pdf")
+        assert "doc.pdf" not in r2.source_docs
 
     def test_model_dump(self):
-        result = ConsolidationResult(product_id="p", documents_consolidated=3)
+        result = ConsolidationResult(hash="h1")
         dumped = result.model_dump()
-        assert dumped["product_id"] == "p"
-        assert dumped["documents_consolidated"] == 3
-        assert dumped["aggregate"] == {}
+        assert dumped["hash"] == "h1"
+        assert dumped["source_docs"] == []
 
     def test_from_attributes_config(self):
         assert ConsolidationResult.model_config.get("from_attributes") is True
@@ -1165,7 +1216,7 @@ class TestModelFromDict:
     """Test model construction from dictionaries (common API pattern)."""
 
     def test_spawn_result_from_dict(self):
-        data = {"job_id": "j1", "agent_role": "tester", "project_id": "p1"}
+        data = {"job_id": "j1", "agent_id": "a1", "agent_prompt": "prompt"}
         result = SpawnResult(**data)
         assert result.job_id == "j1"
 
@@ -1181,9 +1232,8 @@ class TestModelFromDict:
         assert result.role == "admin"
 
     def test_product_statistics_from_partial_dict(self):
-        """Models with all-default fields should accept partial dicts."""
-        data = {"total_projects": 5, "active_jobs": 2}
+        """Models with required+default fields should accept partial dicts with required fields."""
+        data = {"product_id": "p1", "name": "Test", "is_active": True, "project_count": 5}
         stats = ProductStatistics(**data)
-        assert stats.total_projects == 5
-        assert stats.active_jobs == 2
-        assert stats.total_tasks == 0
+        assert stats.project_count == 5
+        assert stats.task_count == 0

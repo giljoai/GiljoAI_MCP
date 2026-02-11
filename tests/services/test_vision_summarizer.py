@@ -9,12 +9,15 @@ This test suite covers Sumy LSA integration for vision document summarization:
 - Setting-based conditional execution
 
 Coverage Target: >90%
+
+Updated Handover 0731: Migrated from dict returns to typed SummarizeSingleResult.
 """
 
 import time
 
 import pytest
 
+from src.giljo_mcp.schemas.service_responses import SummarizeSingleResult
 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
 
@@ -105,21 +108,17 @@ def test_summarizer_achieves_70_percent_compression(summarizer):
 
     result = summarizer.summarize(large_text, target_tokens=25000)
 
-    # Verify result structure
-    assert "summary" in result
-    assert "original_tokens" in result
-    assert "summary_tokens" in result
-    assert "compression_ratio" in result
-    assert "processing_time_ms" in result
+    # Verify typed SummarizeSingleResult (Handover 0731)
+    assert isinstance(result, SummarizeSingleResult)
 
     # Verify compression achieved
     # Note: LSA doesn't hit exact targets - accepting 50%+ compression as success
-    assert result["original_tokens"] >= 95000, "Original token count should be ~100K"
-    assert result["summary_tokens"] <= 50000, "Summary should be under 50K tokens (50%+ compression)"
-    assert result["compression_ratio"] >= 0.50, "Should achieve 50%+ compression"
+    assert result.original_tokens >= 95000, "Original token count should be ~100K"
+    assert result.summary_tokens <= 50000, "Summary should be under 50K tokens (50%+ compression)"
+    assert result.compression_ratio >= 0.50, "Should achieve 50%+ compression"
 
     # Verify summary is not empty
-    assert len(result["summary"]) > 0, "Summary should not be empty"
+    assert len(result.summary) > 0, "Summary should not be empty"
 
 
 def test_summarizer_preserves_key_sentences(summarizer):
@@ -140,8 +139,9 @@ def test_summarizer_preserves_key_sentences(summarizer):
 
     result = summarizer.summarize(text, target_tokens=100)
 
-    # Extract sentences from summary
-    summary_sentences = [s.strip() + "." for s in result["summary"].split(".") if s.strip()]
+    # Extract sentences from summary (typed return - Handover 0731)
+    assert isinstance(result, SummarizeSingleResult)
+    summary_sentences = [s.strip() + "." for s in result.summary.split(".") if s.strip()]
 
     # Verify every summary sentence exists in original
     for sentence in summary_sentences:
@@ -159,16 +159,18 @@ def test_summarizer_handles_empty_input(summarizer):
     """
     # Test empty string
     result = summarizer.summarize("", target_tokens=1000)
-    assert result["summary"] == ""
-    assert result["original_tokens"] == 0
-    assert result["summary_tokens"] == 0
-    assert result["compression_ratio"] == 0.0
+    assert isinstance(result, SummarizeSingleResult)
+    assert result.summary == ""
+    assert result.original_tokens == 0
+    assert result.summary_tokens == 0
+    assert result.compression_ratio == 0.0
 
     # Test very short string
     short_text = "Short sentence."
     result = summarizer.summarize(short_text, target_tokens=1000)
-    assert result["summary"] == short_text
-    assert result["compression_ratio"] == 0.0  # No compression needed
+    assert isinstance(result, SummarizeSingleResult)
+    assert result.summary == short_text
+    assert result.compression_ratio == 0.0  # No compression needed
 
 
 def test_summarizer_handles_small_documents(summarizer):
@@ -181,10 +183,11 @@ def test_summarizer_handles_small_documents(summarizer):
 
     result = summarizer.summarize(small_text, target_tokens=25000)
 
-    # Should return original unchanged
-    assert result["summary"] == small_text
-    assert result["original_tokens"] == result["summary_tokens"]
-    assert result["compression_ratio"] == 0.0
+    # Should return original unchanged (typed return - Handover 0731)
+    assert isinstance(result, SummarizeSingleResult)
+    assert result.summary == small_text
+    assert result.original_tokens == result.summary_tokens
+    assert result.compression_ratio == 0.0
 
 
 def test_processing_time_under_5_seconds(summarizer):
@@ -199,13 +202,14 @@ def test_processing_time_under_5_seconds(summarizer):
     result = summarizer.summarize(large_text, target_tokens=25000)
     elapsed = time.time() - start
 
+    assert isinstance(result, SummarizeSingleResult)
     assert elapsed < 5.0, (
-        f"Summarization took {elapsed:.2f}s, exceeds 5s requirement. Document: {result['original_tokens']} tokens."
+        f"Summarization took {elapsed:.2f}s, exceeds 5s requirement. Document: {result.original_tokens} tokens."
     )
 
     # Verify processing time is tracked
-    assert result["processing_time_ms"] > 0
-    assert result["processing_time_ms"] < 5000
+    assert result.processing_time_ms > 0
+    assert result.processing_time_ms < 5000
 
 
 def test_token_estimation_accuracy(summarizer):
