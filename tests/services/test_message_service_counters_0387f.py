@@ -8,6 +8,7 @@ Tests that MessageService correctly updates counter columns instead of JSONB:
 - Counters survive without JSONB persistence
 
 This is the TDD phase for counter-based message persistence.
+Updated for Handover 0731c: Typed returns (SendMessageResult, AcknowledgeMessageResult, etc.)
 """
 
 from datetime import datetime, timezone
@@ -24,6 +25,10 @@ from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 
 # Import models using modular imports
+from src.giljo_mcp.schemas.service_responses import (
+    AcknowledgeMessageResult,
+    SendMessageResult,
+)
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -184,8 +189,8 @@ async def test_send_message_increments_sender_sent_count(
         tenant_key=test_tenant_key,
     )
 
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    assert "message_id" in result
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
 
     # Refresh agents to get updated counts
     await db_session.refresh(orchestrator)
@@ -222,8 +227,8 @@ async def test_send_broadcast_increments_sender_sent_count_once(
         tenant_key=test_tenant_key,
     )
 
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    assert "message_id" in result
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
 
     # Refresh agents to get updated counts
     await db_session.refresh(orchestrator)
@@ -257,8 +262,8 @@ async def test_send_broadcast_increments_each_recipient_waiting_count(
         tenant_key=test_tenant_key,
     )
 
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    assert "message_id" in result
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
 
     # Refresh recipients to get updated counts
     for agent in recipients:
@@ -289,9 +294,9 @@ async def test_acknowledge_message_decrements_waiting_increments_read(
         from_agent=orchestrator.agent_display_name,
         tenant_key=test_tenant_key,
     )
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    assert "message_id" in result
-    message_id = result["message_id"]
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
+    message_id = result.message_id
 
     # Refresh to get updated counts
     await db_session.refresh(analyzer)
@@ -299,13 +304,14 @@ async def test_acknowledge_message_decrements_waiting_increments_read(
     assert analyzer.messages_read_count == 0
 
     # Acknowledge message
-    # Note: acknowledge_message also uses exception-based pattern (no success wrapper)
+    # Handover 0731c: acknowledge_message returns AcknowledgeMessageResult typed model
     ack_result = await message_service.acknowledge_message(
         message_id=message_id,
         agent_id=analyzer.agent_id,
         tenant_key=test_tenant_key,
     )
-    assert "status" in ack_result or "acknowledged" in str(ack_result).lower()
+    assert isinstance(ack_result, AcknowledgeMessageResult)
+    assert ack_result.acknowledged is True
 
     # Refresh to get updated counts
     await db_session.refresh(analyzer)
@@ -335,8 +341,8 @@ async def test_counters_survive_without_jsonb_persistence(
         from_agent=orchestrator.agent_display_name,
         tenant_key=test_tenant_key,
     )
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    assert "message_id" in result
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
 
     # Store IDs before expiring objects
     orchestrator_id = orchestrator.agent_id
@@ -381,8 +387,8 @@ async def test_multiple_messages_accumulate_counters(
             from_agent=orchestrator.agent_display_name,
             tenant_key=test_tenant_key,
         )
-        # Handover 0730: send_message returns dict directly (no success wrapper)
-        assert "message_id" in result
+        # Handover 0731c: send_message returns SendMessageResult typed model
+        assert isinstance(result, SendMessageResult)
 
     # Refresh agents
     await db_session.refresh(orchestrator)
@@ -420,8 +426,8 @@ async def test_message_sent_event_includes_sender_counter(
         tenant_key=test_tenant_key,
     )
 
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    assert "message_id" in result
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
 
     # Verify WebSocket broadcast_message_sent was called
     assert mock_websocket_manager.broadcast_message_sent.called
@@ -457,8 +463,8 @@ async def test_message_sent_event_includes_recipient_counter(
         tenant_key=test_tenant_key,
     )
 
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    assert "message_id" in result
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
 
     # Verify WebSocket broadcast_message_sent was called
     assert mock_websocket_manager.broadcast_message_sent.called
@@ -494,8 +500,8 @@ async def test_message_received_event_includes_waiting_counter(
         tenant_key=test_tenant_key,
     )
 
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    assert "message_id" in result
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
 
     # Verify WebSocket broadcast_message_received was called
     assert mock_websocket_manager.broadcast_message_received.called
@@ -530,9 +536,9 @@ async def test_message_acknowledged_event_includes_counters(
         from_agent=orchestrator.agent_display_name,
         tenant_key=test_tenant_key,
     )
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    assert "message_id" in result
-    message_id = result["message_id"]
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
+    message_id = result.message_id
 
     # Reset mock to track only acknowledge call
     mock_websocket_manager.reset_mock()
@@ -543,8 +549,9 @@ async def test_message_acknowledged_event_includes_counters(
         agent_id=analyzer.agent_id,
         tenant_key=test_tenant_key,
     )
-    # Handover 0730: acknowledge_message returns status dict (no success wrapper)
-    assert "status" in ack_result or "acknowledged" in str(ack_result).lower()
+    # Handover 0731c: acknowledge_message returns AcknowledgeMessageResult typed model
+    assert isinstance(ack_result, AcknowledgeMessageResult)
+    assert ack_result.acknowledged is True
 
     # Verify WebSocket broadcast_message_acknowledged was called
     assert mock_websocket_manager.broadcast_message_acknowledged.called
@@ -582,8 +589,8 @@ async def test_broadcast_message_includes_counters_for_multiple_recipients(
         tenant_key=test_tenant_key,
     )
 
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    assert "message_id" in result
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
 
     # Verify broadcast_message_sent was called
     assert mock_websocket_manager.broadcast_message_sent.called
