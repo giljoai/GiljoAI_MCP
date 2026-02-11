@@ -293,13 +293,17 @@ result = await fetch_context(
 
 #### memory_360
 
+Data is sourced from the normalized `product_memory_entries` table (Handover 0700c replaced the JSONB `sequential_history` array):
+
 ```json
 {
-  "sequential_history": [
+  "entries": [
     {
+      "id": "uuid",
       "sequence": 1,
       "type": "project_closeout",
       "project_id": "uuid",
+      "product_id": "uuid",
       "summary": "Completed feature X...",
       "git_commits": [...],
       "timestamp": "2025-11-16T10:00:00Z"

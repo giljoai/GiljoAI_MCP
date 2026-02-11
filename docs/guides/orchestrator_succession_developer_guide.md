@@ -52,7 +52,7 @@
 │                   GiljoAI MCP Server                             │
 │                                                                   │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │ API Endpoint: POST /agent_jobs/{id}/trigger_succession    │  │
+│  │ API Endpoint: POST /agent_jobs/{id}/create_simple_handover    │  │
 │  │ - Validates orchestrator job                              │  │
 │  │ - Calls succession manager                                │  │
 │  └───────────────────────────────────────────────────────────┘  │
@@ -60,7 +60,7 @@
 │                          ▼                                        │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │ OrchestratorSuccessionManager                              │  │
-│  │ - create_successor() → New MCPAgentJob                    │  │
+│  │ - create_successor() → New AgentJob                    │  │
 │  │ - generate_handover_summary() → Compressed state          │  │
 │  │ - complete_handover() → Update database                   │  │
 │  └───────────────────────────────────────────────────────────┘  │
@@ -156,9 +156,6 @@ Orchestrator   MCP Tool    API Endpoint    SuccessionManager    Database    WebS
 ```sql
 -- Handover 0080: Orchestrator succession columns
 ALTER TABLE mcp_agent_jobs
-    -- Instance numbering (1, 2, 3, ...)
-    ADD COLUMN IF NOT EXISTS instance_number INTEGER DEFAULT 1 NOT NULL,
-
     -- UUID of successor orchestrator job
     ADD COLUMN IF NOT EXISTS handover_to VARCHAR(36) NULL,
 
@@ -181,10 +178,6 @@ ALTER TABLE mcp_agent_jobs
 ### Indexes for Performance
 
 ```sql
--- Efficient succession chain queries
-CREATE INDEX IF NOT EXISTS idx_agent_jobs_instance
-    ON mcp_agent_jobs(project_id, agent_type, instance_number);
-
 -- Reverse lookup (find parent from successor)
 CREATE INDEX IF NOT EXISTS idx_agent_jobs_handover
     ON mcp_agent_jobs(handover_to);
@@ -193,11 +186,6 @@ CREATE INDEX IF NOT EXISTS idx_agent_jobs_handover
 ### Constraints for Data Integrity
 
 ```sql
--- Instance number must be >= 1
-ALTER TABLE mcp_agent_jobs
-    ADD CONSTRAINT IF NOT EXISTS ck_mcp_agent_job_instance_number
-    CHECK (instance_number >= 1);
-
 -- Succession reason must be valid enum
 ALTER TABLE mcp_agent_jobs
     ADD CONSTRAINT IF NOT EXISTS ck_mcp_agent_job_succession_reason
@@ -213,14 +201,13 @@ ALTER TABLE mcp_agent_jobs
 ### Example Data
 
 ```sql
--- Instance 1 (Handed over)
+-- Predecessor (Handed over)
 INSERT INTO mcp_agent_jobs (
     tenant_key,
     job_id,
     agent_type,
     mission,
     status,
-    instance_number,
     context_used,
     context_budget,
     handover_to,
@@ -233,7 +220,6 @@ INSERT INTO mcp_agent_jobs (
     'orchestrator',
     'Develop e-commerce platform...',
     'complete',
-    1,
     145000,
     150000,
     'orch-a1b2c3d4-5e6f-7890-1234-567890abcdef',
@@ -242,14 +228,13 @@ INSERT INTO mcp_agent_jobs (
     '2025-11-02T14:30:00Z'
 );
 
--- Instance 2 (Waiting to be launched)
+-- Successor (Waiting to be launched)
 INSERT INTO mcp_agent_jobs (
     tenant_key,
     job_id,
     agent_type,
     mission,
     status,
-    instance_number,
     spawned_by,
     project_id,
     context_used,
@@ -258,9 +243,8 @@ INSERT INTO mcp_agent_jobs (
     'tenant-abc123',
     'orch-a1b2c3d4-5e6f-7890-1234-567890abcdef',
     'orchestrator',
-    'Continue orchestration from instance 1...',
+    'Continue orchestration from predecessor...',
     'waiting',
-    2,
     'orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124',
     '6adbec5c-9e11-46b4-ad8b-060c69a8d124',
     0,
@@ -274,7 +258,6 @@ INSERT INTO mcp_agent_jobs (
 -- Get full succession chain for a project
 SELECT
     job_id,
-    instance_number,
     status,
     context_used,
     context_budget,
@@ -288,22 +271,22 @@ FROM mcp_agent_jobs
 WHERE project_id = '6adbec5c-9e11-46b4-ad8b-060c69a8d124'
     AND agent_type = 'orchestrator'
     AND tenant_key = 'tenant-abc123'
-ORDER BY instance_number ASC;
+ORDER BY created_at ASC;
 ```
 
 **Expected Output:**
 
 ```
-job_id                                  | instance_number | status   | usage_percent | handover_to                            | ...
-orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124 | 1               | complete | 96.67         | orch-a1b2c3d4-5e6f-7890-1234-567890abcdef | ...
-orch-a1b2c3d4-5e6f-7890-1234-567890abcdef | 2               | waiting  | 0.00          | NULL                                   | ...
+job_id                                     | status   | usage_percent | handover_to                                | ...
+orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124 | complete | 96.67         | orch-a1b2c3d4-5e6f-7890-1234-567890abcdef  | ...
+orch-a1b2c3d4-5e6f-7890-1234-567890abcdef | waiting  | 0.00          | NULL                                       | ...
 ```
 
 ## Backend API Reference
 
 ### Endpoint: Trigger Succession
 
-**POST** `/agent_jobs/{job_id}/trigger_succession`
+**POST** `/agent_jobs/{job_id}/create_simple_handover`
 
 Manually trigger succession for an orchestrator job.
 
@@ -325,7 +308,6 @@ Manually trigger succession for an orchestrator job.
 {
   "success": true,
   "successor_id": "orch-a1b2c3d4-5e6f-7890-1234-567890abcdef",
-  "instance_number": 2,
   "status": "waiting",
   "handover_summary": {
     "project_status": "60% complete",
@@ -344,7 +326,7 @@ Manually trigger succession for an orchestrator job.
       "percentage": 96.67
     }
   },
-  "message": "Successor orchestrator created (instance 2). Original orchestrator marked complete. Launch successor manually from dashboard."
+  "message": "Successor orchestrator created. Original orchestrator marked complete. Launch successor manually from dashboard."
 }
 ```
 
@@ -392,7 +374,6 @@ Retrieve the full succession chain for an orchestrator's project.
   "chain": [
     {
       "job_id": "orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124",
-      "instance_number": 1,
       "status": "complete",
       "context_used": 145000,
       "context_budget": 150000,
@@ -404,7 +385,6 @@ Retrieve the full succession chain for an orchestrator's project.
     },
     {
       "job_id": "orch-a1b2c3d4-5e6f-7890-1234-567890abcdef",
-      "instance_number": 2,
       "status": "waiting",
       "context_used": 0,
       "context_budget": 150000,
@@ -439,10 +419,9 @@ Retrieve the full succession chain for an orchestrator's project.
 {
   "success": True,
   "successor_id": "orch-a1b2c3d4-5e6f-7890-1234-567890abcdef",
-  "instance_number": 2,
   "status": "waiting",
   "handover_summary": {...},  # Full handover summary dict
-  "message": "Successor orchestrator created (instance 2)..."
+  "message": "Successor orchestrator created..."
 }
 ```
 
@@ -452,7 +431,7 @@ Retrieve the full succession chain for an orchestrator's project.
 from giljo_mcp.tools.succession_tools import create_successor_orchestrator
 
 # Orchestrator detects 90% context usage
-async def check_and_trigger_succession(orchestrator):
+async def check_and_create_simple_handover(orchestrator):
     if orchestrator.context_used >= (orchestrator.context_budget * 0.90):
         result = await create_successor_orchestrator(
             current_job_id=orchestrator.job_id,
@@ -461,7 +440,6 @@ async def check_and_trigger_succession(orchestrator):
         )
 
         print(f"Successor created: {result['successor_id']}")
-        print(f"Instance number: {result['instance_number']}")
         print(f"Handover summary: {result['handover_summary']}")
 
         return result['successor_id']
@@ -492,7 +470,6 @@ async def check_and_trigger_succession(orchestrator):
   "context_budget": 150000,             # Maximum budget
   "usage_percentage": 90.00,            # Percentage used
   "threshold_reached": True,            # True if >= 90%
-  "instance_number": 1,                 # Current instance number
   "recommendation": "Context usage at 90.0%. Succession recommended immediately..."
 }
 ```
@@ -530,7 +507,6 @@ async def monitor_context_usage(orchestrator):
   "event": "job:succession_triggered",
   "data": {
     "orchestrator_id": "orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124",
-    "instance_number": 1,
     "project_id": "6adbec5c-9e11-46b4-ad8b-060c69a8d124",
     "reason": "context_limit",
     "timestamp": "2025-11-02T14:30:00Z"
@@ -552,7 +528,7 @@ socket.on('job:succession_triggered', (data) => {
   })
 
   // Show notification
-  toast.info(`Orchestrator instance ${data.instance_number} is creating successor...`)
+  toast.info(`Orchestrator ${data.orchestrator_id} is creating successor...`)
 })
 ```
 
@@ -568,7 +544,6 @@ socket.on('job:succession_triggered', (data) => {
   "data": {
     "successor_id": "orch-a1b2c3d4-5e6f-7890-1234-567890abcdef",
     "predecessor_id": "orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124",
-    "instance_number": 2,
     "project_id": "6adbec5c-9e11-46b4-ad8b-060c69a8d124",
     "handover_summary": {...},
     "timestamp": "2025-11-02T14:30:05Z"
@@ -583,7 +558,6 @@ socket.on('job:successor_created', (data) => {
   // Add successor card to UI
   store.commit('addAgentJob', {
     jobId: data.successor_id,
-    instanceNumber: data.instance_number,
     status: 'waiting',
     showNewBadge: true
   })
@@ -614,7 +588,6 @@ interface Props {
     job_id: string
     agent_type: string
     status: string
-    instance_number?: number
     context_used?: number
     context_budget?: number
     handover_to?: string
@@ -640,27 +613,12 @@ contextUsageColor() {
   if (pct >= 75) return 'warning'    // Yellow
   return 'success'                    // Green
 }
-
-// Instance badge text
-instanceBadgeText() {
-  return `#${this.agent.instance_number || 1}`
-}
 ```
 
 **Template Sections:**
 
 ```vue
 <template>
-  <!-- Instance Number Badge -->
-  <v-chip
-    v-if="agent.instance_number"
-    color="primary"
-    size="small"
-    class="instance-badge"
-  >
-    {{ instanceBadgeText }}
-  </v-chip>
-
   <!-- Context Usage Progress Bar -->
   <v-progress-linear
     v-if="agent.context_budget"
@@ -715,7 +673,7 @@ data() {
   return {
     successionChain: [],  // Array of orchestrator jobs
     loading: true,
-    expandedSummaries: [] // Instance numbers with expanded summaries
+    expandedSummaries: [] // Job IDs with expanded summaries
   }
 }
 ```
@@ -734,10 +692,10 @@ async fetchSuccessionChain() {
   }
 }
 
-toggleSummary(instanceNumber) {
-  const index = this.expandedSummaries.indexOf(instanceNumber)
+toggleSummary(jobId) {
+  const index = this.expandedSummaries.indexOf(jobId)
   if (index === -1) {
-    this.expandedSummaries.push(instanceNumber)
+    this.expandedSummaries.push(jobId)
   } else {
     this.expandedSummaries.splice(index, 1)
   }
@@ -801,13 +759,13 @@ async copyToClipboard() {
 ```python
 import pytest
 from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
-from giljo_mcp.models import MCPAgentJob
+from giljo_mcp.models import AgentJob
 
 def test_context_threshold_detection(db_session, tenant_key):
     """Test that succession can be triggered when context is high."""
     manager = OrchestratorSuccessionManager(db_session, tenant_key)
 
-    orchestrator = MCPAgentJob(
+    orchestrator = AgentJob(
         tenant_key=tenant_key,
         job_id="orch-test-123",
         agent_type="orchestrator",
@@ -842,7 +800,6 @@ def test_successor_creation(db_session, tenant_key, orchestrator):
     successor = manager.create_successor(orchestrator, reason="context_limit")
 
     assert successor.job_id != orchestrator.job_id
-    assert successor.instance_number == orchestrator.instance_number + 1
     assert successor.spawned_by == orchestrator.job_id
     assert successor.status == "waiting"
     assert successor.context_used == 0
@@ -861,14 +818,13 @@ from sqlalchemy import select
 async def test_full_succession_workflow(db_session, tenant_key, project):
     """Test complete succession from trigger to handover."""
     # Create initial orchestrator
-    orch1 = MCPAgentJob(
+    orch1 = AgentJob(
         tenant_key=tenant_key,
         job_id="orch-1",
         agent_type="orchestrator",
         project_id=project.project_id,
         context_used=135000,
-        context_budget=150000,
-        instance_number=1
+        context_budget=150000
     )
     db_session.add(orch1)
     db_session.commit()
@@ -892,7 +848,6 @@ async def test_full_succession_workflow(db_session, tenant_key, project):
     # Verify Instance 2 (successor)
     assert orch2.status == "waiting"
     assert orch2.spawned_by == orch1.job_id
-    assert orch2.instance_number == 2
     assert orch2.context_used == 0
 ```
 
@@ -907,7 +862,7 @@ def test_multi_tenant_isolation(db_session):
     tenant2_key = "tenant-xyz"
 
     # Create orchestrator for tenant 1
-    orch_tenant1 = MCPAgentJob(
+    orch_tenant1 = AgentJob(
         tenant_key=tenant1_key,
         job_id="orch-tenant1",
         agent_type="orchestrator"
@@ -928,7 +883,7 @@ def test_sql_injection_prevention(db_session, tenant_key):
     malicious_reason = "context_limit'; DROP TABLE mcp_agent_jobs; --"
 
     with pytest.raises(ValueError, match="Invalid succession reason"):
-        orchestrator = MCPAgentJob(tenant_key=tenant_key, job_id="test")
+        orchestrator = AgentJob(tenant_key=tenant_key, job_id="test")
         manager.create_successor(orchestrator, reason=malicious_reason)
 ```
 
@@ -995,7 +950,7 @@ class OrchestratorAgent:
             print(f"Warning: Context usage at {usage_percent:.1f}%")
             print("Consider triggering manual succession via /gil_handover")
 
-    async def trigger_succession(self):
+    async def create_simple_handover(self):
         """Trigger manual succession (called by user action)."""
         print(f"Context usage: {self.context_used}/{self.context_budget} tokens")
         print("User triggered succession...")
@@ -1008,7 +963,6 @@ class OrchestratorAgent:
         )
 
         print(f"Successor created: {result['successor_id']}")
-        print(f"Instance number: {result['instance_number']}")
         print(f"Handover summary: {result['handover_summary']}")
 
         # Gracefully exit
@@ -1034,7 +988,7 @@ await orchestrator.update_context_usage(45000)  # 135K total (90%) → user sees
 import requests
 
 # API endpoint
-url = "http://10.1.0.164:7272/api/agent_jobs/orch-6adbec5c-9e11/trigger_succession"
+url = "http://10.1.0.164:7272/api/agent_jobs/orch-6adbec5c-9e11/create_simple_handover"
 headers = {
     "Authorization": "Bearer your-jwt-token-here",
     "Content-Type": "application/json"
@@ -1049,7 +1003,6 @@ response = requests.post(url, headers=headers, params=params)
 if response.status_code == 200:
     data = response.json()
     print(f"Successor created: {data['successor_id']}")
-    print(f"Instance number: {data['instance_number']}")
     print(f"Handover summary: {data['handover_summary']}")
 else:
     print(f"Error: {response.json()['error']}")
@@ -1059,25 +1012,25 @@ else:
 
 ```python
 from sqlalchemy import select
-from giljo_mcp.models import MCPAgentJob
+from giljo_mcp.models import AgentJob
 from giljo_mcp.database import DatabaseManager
 
 # Get succession chain for a project
 db_manager = DatabaseManager()
 
 with db_manager.get_session() as session:
-    query = select(MCPAgentJob).where(
-        MCPAgentJob.project_id == "6adbec5c-9e11-46b4-ad8b-060c69a8d124",
-        MCPAgentJob.agent_type == "orchestrator",
-        MCPAgentJob.tenant_key == "tenant-abc123"
-    ).order_by(MCPAgentJob.instance_number)
+    query = select(AgentJob).where(
+        AgentJob.project_id == "6adbec5c-9e11-46b4-ad8b-060c69a8d124",
+        AgentJob.agent_type == "orchestrator",
+        AgentJob.tenant_key == "tenant-abc123"
+    ).order_by(AgentJob.created_at)
 
     orchestrators = session.execute(query).scalars().all()
 
     print("Succession Chain:")
     for orch in orchestrators:
         status_icon = "✅" if orch.status == "complete" else "⏳" if orch.status == "waiting" else "🔄"
-        print(f"{status_icon} Instance {orch.instance_number}: {orch.job_id}")
+        print(f"{status_icon} {orch.job_id}")
         print(f"   Status: {orch.status}")
         print(f"   Context: {orch.context_used}/{orch.context_budget} ({orch.context_used/orch.context_budget*100:.1f}%)")
         if orch.handover_to:
@@ -1094,15 +1047,15 @@ with db_manager.get_session() as session:
 ```sql
 -- EXPLAIN ANALYZE for succession chain query
 EXPLAIN ANALYZE
-SELECT job_id, instance_number, status
+SELECT job_id, status
 FROM mcp_agent_jobs
 WHERE project_id = '6adbec5c-9e11-46b4-ad8b-060c69a8d124'
     AND agent_type = 'orchestrator'
     AND tenant_key = 'tenant-abc123'
-ORDER BY instance_number;
+ORDER BY created_at;
 
 -- Expected execution plan:
--- Index Scan using idx_agent_jobs_instance on mcp_agent_jobs
+-- Index Scan using idx_mcp_agent_jobs_tenant_project on mcp_agent_jobs
 -- Execution time: ~0.5ms (with 10 orchestrator instances)
 ```
 
@@ -1147,7 +1100,7 @@ def on_succession_triggered(project_id):
 Always verify tenant key in succession operations:
 
 ```python
-def create_successor(self, orchestrator: MCPAgentJob, reason: str):
+def create_successor(self, orchestrator: AgentJob, reason: str):
     # Verify tenant isolation
     if orchestrator.tenant_key != self.tenant_key:
         raise ValueError(
@@ -1189,7 +1142,6 @@ Log all succession events:
 ```python
 logger.info(
     f"Succession completed: {orchestrator.job_id} → {successor.job_id}, "
-    f"instance {orchestrator.instance_number} → {successor.instance_number}, "
     f"reason: {reason}, tenant: {tenant_key}"
 )
 ```
@@ -1200,9 +1152,9 @@ Use parameterized queries:
 
 ```python
 # ✅ CORRECT - Parameterized query
-query = select(MCPAgentJob).where(
-    MCPAgentJob.job_id == job_id,
-    MCPAgentJob.tenant_key == tenant_key
+query = select(AgentJob).where(
+    AgentJob.job_id == job_id,
+    AgentJob.tenant_key == tenant_key
 )
 
 # ❌ WRONG - String interpolation (SQL injection risk)
