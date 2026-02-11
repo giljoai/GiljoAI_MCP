@@ -558,59 +558,51 @@ async def generate_download_token(
         f"(tenant: {current_user.tenant_key}, content_type: {content_type})"
     )
 
-    try:
-        from src.giljo_mcp.downloads.token_manager import TokenManager
-        from src.giljo_mcp.file_staging import FileStaging
+    from src.giljo_mcp.downloads.token_manager import TokenManager
+    from src.giljo_mcp.file_staging import FileStaging
 
-        tenant_key = current_user.tenant_key
-        token_manager = TokenManager(db_session=db)
+    tenant_key = current_user.tenant_key
+    token_manager = TokenManager(db_session=db)
 
-        # 1) Generate token first (pending)
-        filename = "slash_commands.zip" if content_type == "slash_commands" else "agent_templates.zip"
-        token = await token_manager.generate_token(
-            tenant_key=tenant_key,
-            download_type=content_type,
-            metadata={"filename": filename, "requested_by": current_user.username},
-        )
+    # 1) Generate token first (pending)
+    filename = "slash_commands.zip" if content_type == "slash_commands" else "agent_templates.zip"
+    token = await token_manager.generate_token(
+        tenant_key=tenant_key,
+        download_type=content_type,
+        metadata={"filename": filename, "requested_by": current_user.username},
+    )
 
-        # 2) Stage files at temp/{tenant_key}/{token}/
-        staging = FileStaging(db_session=db)
-        staging_path = await staging.create_staging_directory(tenant_key, token)
-        if content_type == "slash_commands":
-            zip_path, message = await staging.stage_slash_commands(staging_path)
-        else:
-            zip_path, message = await staging.stage_agent_templates(staging_path, tenant_key, db_session=db)
+    # 2) Stage files at temp/{tenant_key}/{token}/
+    staging = FileStaging(db_session=db)
+    staging_path = await staging.create_staging_directory(tenant_key, token)
+    if content_type == "slash_commands":
+        zip_path, message = await staging.stage_slash_commands(staging_path)
+    else:
+        zip_path, message = await staging.stage_agent_templates(staging_path, tenant_key, db_session=db)
 
-        if not zip_path:
-            # Mark failed and return error
-            await token_manager.mark_failed(token, message)
-            logger.error(f"Failed to stage content for token {token}: {message}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=message)
+    if not zip_path:
+        # Mark failed and return error
+        await token_manager.mark_failed(token, message)
+        logger.error(f"Failed to stage content for token {token}: {message}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=message)
 
-        # 3) Mark ready
-        await token_manager.mark_ready(token)
+    # 3) Mark ready
+    await token_manager.mark_ready(token)
 
-        # 4) Build download URL and return
-        server_url = get_server_url(request)
-        download_url = f"{server_url}/api/download/temp/{token}/{filename}"
+    # 4) Build download URL and return
+    server_url = get_server_url(request)
+    download_url = f"{server_url}/api/download/temp/{token}/{filename}"
 
-        token_data = await token_manager.get_token_info(token, tenant_key)
-        expires_at = token_data["expires_at"] if token_data else None
+    token_data = await token_manager.get_token_info(token, tenant_key)
+    expires_at = token_data["expires_at"] if token_data else None
 
-        logger.info(f"Token generated and staged successfully: token={token}, type={content_type}, file={zip_path}")
-        return {
-            "download_url": download_url,
-            "expires_at": expires_at,
-            "content_type": content_type,
-            "one_time_use": True,
-        }
-
-    except (OSError, ValueError, KeyError) as e:
-        logger.exception("Failed to generate download token")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate download token: {e!s}",
-        ) from e
+    logger.info(f"Token generated and staged successfully: token={token}, type={content_type}, file={zip_path}")
+    return {
+        "download_url": download_url,
+        "expires_at": expires_at,
+        "content_type": content_type,
+        "one_time_use": True,
+    }
 
 
 @router.get("/temp/{token}/{filename}")
