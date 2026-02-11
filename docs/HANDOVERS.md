@@ -442,10 +442,7 @@ Append to completed handover:
 
 ## Related Documentation
 
-- **CCW vs CLI Guide**: [handovers/CCW_OR_CLI_EXECUTION_GUIDE.md](../handovers/CCW_OR_CLI_EXECUTION_GUIDE.md)
-- **Handover Instructions**: [handovers/HANDOVER_INSTRUCTIONS.md](../handovers/HANDOVER_INSTRUCTIONS.md)
-- **Remediation Summary**: [handovers/completed/0132_remediation_project_complete.md](../handovers/completed/0132_remediation_project_complete.md)
-- **Roadmap**: [handovers/REFACTORING_ROADMAP_0131-0200.md](../handovers/REFACTORING_ROADMAP_0131-0200.md)
+- **Handover Instructions**: [handovers/handover_instructions.md](../handovers/handover_instructions.md)
 
 ---
 
