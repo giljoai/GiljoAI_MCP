@@ -727,9 +727,8 @@ function removeVisionFile(index) {
 // Handover 0320: Handler for ProductForm upload-vision event
 // Note: Vision files are now managed internally by ProductForm and passed via save event
 // This handler is kept for potential future use (e.g., immediate upload)
-function uploadVisionDocument(file) {
+function uploadVisionDocument() {
   // Currently not used - ProductForm passes files via save event
-  console.log('[ProductsView] uploadVisionDocument called:', file)
 }
 
 // Handover 0320: Handler for ProductForm remove-vision event (delete existing document)
@@ -1309,7 +1308,7 @@ onMounted(async () => {
   try {
     await settingsStore.fetchFieldPriorityConfig()
   } catch (error) {
-    console.log('Field priority config not available:', error)
+    // Field priority config not available
   }
   // Handover 0051: Add beforeunload listener
   window.addEventListener('beforeunload', handleBeforeUnload)

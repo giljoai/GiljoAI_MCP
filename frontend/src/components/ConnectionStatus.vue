@@ -329,8 +329,7 @@ const sendTestMessage = () => {
 }
 
 const clearQueue = () => {
-  // V2: Queue is managed internally, show info
-  console.log(`Message queue size: ${wsStore.messageQueueSize}`)
+  // V2: Queue is managed internally
   updateDebugInfo()
 }
 

@@ -248,8 +248,6 @@ const refreshMessages = () => {
 
 // WebSocket handlers
 const handleNewMessage = (data: any) => {
-  console.log('[MessagePanel] New message received:', data)
-
   // Add new message to beginning of list
   const newMessage: Message = {
     id: data.message_id || data.id,
@@ -274,8 +272,6 @@ const handleNewMessage = (data: any) => {
 }
 
 const handleMessageUpdate = (data: any) => {
-  console.log('[MessagePanel] Message update received:', data)
-
   const messageId = data.message_id || data.id
   const index = messages.value.findIndex((msg) => msg.id === messageId)
 
