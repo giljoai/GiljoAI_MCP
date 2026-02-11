@@ -185,8 +185,6 @@ async function handleLogin() {
     // Use user store login method - this will authenticate AND populate currentUser
     const loginSuccess = await userStore.login(username.value, password.value)
 
-    console.log('[Login] After login, userStore.currentUser is:', userStore.currentUser)
-
     if (!loginSuccess) {
       error.value = 'Login failed. Please check your credentials.'
       return
@@ -199,7 +197,6 @@ async function handleLogin() {
 
       if (firstLoginData.must_change_password || firstLoginData.must_set_pin) {
         // Redirect to first login page for password change and/or PIN setup
-        console.log('[Login] First login detected, redirecting to /first-login')
         router.push('/first-login')
         return
       }
@@ -211,7 +208,6 @@ async function handleLogin() {
     // Legacy check for backward compatibility
     if (userStore.currentUser?.password_change_required) {
       // Redirect to first login page for password setup
-      console.log('[Login] Legacy password change required, redirecting to /first-login')
       router.push('/first-login')
       return
     }
@@ -227,8 +223,6 @@ async function handleLogin() {
       localStorage.removeItem('remember_me')
       localStorage.removeItem('remembered_username')
     }
-
-    console.log('[Login] Login successful - setup marked complete')
 
     // Show success message briefly
     successMessage.value = 'Login successful! Redirecting...'
@@ -288,9 +282,7 @@ async function handleLogin() {
 
 // Handle forgot password click
 function handleForgotPasswordClick() {
-  console.log('[Login] Forgot password clicked, opening modal')
   showForgotPassword.value = true
-  console.log('[Login] showForgotPassword is now:', showForgotPassword.value)
 }
 
 // Handle password reset success
@@ -317,7 +309,6 @@ onMounted(async () => {
 
   // REMOVED: Auto-login check
   // Always require manual login - no automatic authentication
-  console.log('[Login] Manual login required - no auto-authentication')
 })
 </script>
 

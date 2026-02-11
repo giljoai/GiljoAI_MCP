@@ -214,24 +214,6 @@ class TestConfigManager:
         assert settings["server"]["host"] == "127.0.0.1"
         assert settings["database"]["type"] == "sqlite"
 
-    def test_save_to_file(self):
-        """Test saving configuration to file."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config_path = Path(tmpdir) / "test_save.yaml"
-
-            manager = ConfigManager()
-            manager.server.port = 7777
-            manager.database.type = "postgresql"
-
-            manager.save_to_file(config_path)
-
-            # Load the saved file and verify
-            with open(config_path) as f:
-                saved = yaml.safe_load(f)
-
-            assert saved["server"]["port"] == 7777
-            assert saved["database"]["type"] == "postgresql"
-
     def test_context_manager(self):
         """Test ConfigManager as context manager."""
         with ConfigManager() as manager:

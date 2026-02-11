@@ -95,27 +95,17 @@ Use `get_team_agents(job_id, tenant_key)` to discover all agent executors workin
 - `"pending"` - Created but not completed
 - `"completed"` - Explicitly completed with result
 
-**JSONB Mirror** (`MCPAgentJob.messages`):
+**Message Counters** (on `AgentExecution`):
 - **Purpose**: Counter persistence for UI display (Messages Sent/Waiting/Read)
-- **Pattern**: Not a separate messaging system - just a cache/mirror
-- **Updates**: Automatically synchronized by `MessageService`
+- **Pattern**: Counter columns on AgentExecution (not JSONB)
+- **Updates**: Automatically maintained by `MessageService`
 
-**Counter Logic**:
+**Counter Columns** (Handover 0700c):
 ```python
-# Messages Sent: Outbound messages from agent
-sent_count = len([m for m in agent.messages if m["from"] == agent.id])
-
-# Messages Waiting: Inbound, unacknowledged messages
-waiting_count = len([
-    m for m in agent.messages
-    if agent.id in m["to_agents"] and agent.id not in m["acknowledged_by"]
-])
-
-# Messages Read: Acknowledged messages
-read_count = len([
-    m for m in agent.messages
-    if agent.id in m["acknowledged_by"]
-])
+# Counter columns on AgentExecution model:
+messages_sent_count    # Outbound messages from agent
+messages_waiting_count # Inbound messages pending read
+messages_read_count    # Inbound messages acknowledged
 ```
 
 **Architecture Flow**:
@@ -144,7 +134,7 @@ Agent → MCP Tool (send_message) → MessageService → Database + JSONB Mirror
 - Signal health and blocking conditions
 - Coordinate workflow dependencies
 
-**Canonical Store**: `MCPAgentJob` table via `AgentJobManager`
+**Canonical Store**: `AgentJob` table via `AgentJobManager`
 
 **Job Statuses**:
 ```python
@@ -204,7 +194,7 @@ ws.on("job:progress_updated", (data) => {
 });
 ```
 
-**Critical Rule**: Messages MUST NOT be used for job status signaling. Job state lives in `MCPAgentJob` table, not `messages` table.
+**Critical Rule**: Messages MUST NOT be used for job status signaling. Job state lives in `AgentJob` table, not `messages` table.
 
 **Example Usage**:
 ```python
@@ -261,7 +251,7 @@ elif status["failed_agents"] > 0:
 - ❌ Send job status as a message (`send_message("Status: complete")`)
 - ❌ Use message acknowledgment as job acknowledgment
 - ❌ Embed progress percentages in message content
-- ❌ Query `messages` table for job status (use `MCPAgentJob`)
+- ❌ Query `messages` table for job status (use `AgentJob`)
 
 ---
 
@@ -331,7 +321,7 @@ get_agent_mission(
 
 **Mission Storage** (Database Fields):
 - `Project.mission` - AI-generated orchestrator plan
-- `MCPAgentJob.mission` - Agent-specific work assignment
+- `AgentJob.mission` - Agent-specific work assignment
 
 **Critical Distinction** (Field Naming):
 - `description` - Human-provided input (user requirements)
@@ -552,8 +542,8 @@ await complete_job(
 ```
 
 **Result**:
-- `MCPAgentJob` status transitions: waiting → working → complete
-- Progress percentages stored in `MCPAgentJob.progress`
+- `AgentJob` status transitions: waiting → working → complete
+- Progress percentages stored in `AgentJob.progress`
 - WebSocket events: `job:status_changed`, `job:progress_updated` (4 times)
 
 **UI Display**:
@@ -603,7 +593,7 @@ await complete_job(job_id="job-abc", result={...})
 ```
 
 **Result**:
-- Mission fetched from `MCPAgentJob.mission` (database field)
+- Mission fetched from `AgentJob.mission` (database field)
 - No message created (missions are NOT messages)
 - Agent has full context to execute work
 
@@ -661,7 +651,7 @@ await report_progress(
 )
 ```
 
-**Why**: Job status is a signal, not a message. Status lives in `MCPAgentJob` table.
+**Why**: Job status is a signal, not a message. Status lives in `AgentJob` table.
 
 ---
 
@@ -736,11 +726,11 @@ await update_project_mission(
 **Service Layer Test**:
 ```python
 @pytest.mark.asyncio
-async def test_send_message_creates_message_and_updates_jsonb():
+async def test_send_message_creates_message_and_updates_counters():
     service = MessageService(session, tenant_key="test_tenant")
 
-    # Send message
-    result = await service.send_message(
+    # Send message (returns Message object; raises on failure)
+    message = await service.send_message(
         to_agents=["tester"],
         content="Ready for testing",
         project_id="proj-456",
@@ -749,16 +739,14 @@ async def test_send_message_creates_message_and_updates_jsonb():
     )
 
     # Verify message created
-    assert result["success"] is True
-    message = result["data"]
     assert message.content == "Ready for testing"
 
-    # Verify JSONB mirror updated
-    implementer_job = await get_job_by_agent_id("implementer-1")
-    tester_job = await get_job_by_agent_id("tester-1")
+    # Verify counter columns updated (Handover 0700c)
+    implementer_exec = await get_execution_by_agent_id("implementer-1")
+    tester_exec = await get_execution_by_agent_id("tester-1")
 
-    assert implementer_job.messages[-1]["status"] == "sent"
-    assert tester_job.messages[-1]["status"] == "waiting"
+    assert implementer_exec.messages_sent_count >= 1
+    assert tester_exec.messages_waiting_count >= 1
 ```
 
 **MCP Tool Test**:
@@ -766,6 +754,7 @@ async def test_send_message_creates_message_and_updates_jsonb():
 @pytest.mark.asyncio
 async def test_send_message_mcp_tool():
     # Call MCP tool (Handover 0366: Uses agent_id routing)
+    # MCP tools raise on failure; return data on success
     result = await send_message(
         to_agent_id="agent-tester-123",  # Agent executor UUID
         content="Ready for testing",
@@ -773,9 +762,6 @@ async def test_send_message_mcp_tool():
         tenant_key="test_tenant",
         message_type="direct"
     )
-
-    # Verify response
-    assert result["success"] is True
 
     # Verify message persisted
     messages = await list_messages(
@@ -853,14 +839,13 @@ async def test_get_agent_mission():
         agent_type="implementer"
     )
 
-    # Fetch mission
+    # Fetch mission (raises ResourceNotFoundError if job missing)
     result = await get_agent_mission(
         job_id=job.id,
         tenant_key="test_tenant"
     )
 
-    # Verify response
-    assert result["success"] is True
+    # Verify response contains mission and context
     assert "Implement authentication system" in result["mission"]
     assert result["context"]["agent_type"] == "implementer"
 ```
@@ -896,11 +881,11 @@ async def test_get_agent_mission():
 | Agent notifies another agent | MESSAGES | `send_message()` | `messages` table | Uses `agent_id` (executor) |
 | User sends instruction to agent | MESSAGES | `send_message()` | `messages` table | Uses `agent_id` (executor) |
 | Agent receives messages | MESSAGES | `receive_messages()` | `messages` table | Uses `agent_id` (executor) |
-| Agent reports progress | SIGNALS | `report_progress()` | `MCPAgentJob.progress` | Uses `job_id` (work order) |
-| Agent changes status | SIGNALS | `complete_job()`, `report_error()` | `MCPAgentJob.status` | Uses `job_id` (work order) |
-| Agent fetches work assignment | INSTRUCTIONS | `get_agent_mission()` | `MCPAgentJob.mission` | Uses `job_id` (work order) |
+| Agent reports progress | SIGNALS | `report_progress()` | `AgentJob.progress` | Uses `job_id` (work order) |
+| Agent changes status | SIGNALS | `complete_job()`, `report_error()` | `AgentJob.status` | Uses `job_id` (work order) |
+| Agent fetches work assignment | INSTRUCTIONS | `get_agent_mission()` | `AgentJob.mission` | Uses `job_id` (work order) |
 | Orchestrator fetches context | INSTRUCTIONS | `get_orchestrator_instructions()` | `Project.mission` | Uses `orchestrator_id` (work order) |
-| Check workflow completion | SIGNALS | `get_workflow_status()` | `MCPAgentJob` aggregation | Uses `project_id` |
+| Check workflow completion | SIGNALS | `get_workflow_status()` | `AgentJob` aggregation | Uses `project_id` |
 
 **Golden Rule**: If you're unsure which category, ask:
 1. Is this **communication** between entities? → MESSAGES (use `agent_id` for routing)

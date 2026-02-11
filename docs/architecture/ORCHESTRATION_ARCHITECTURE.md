@@ -91,22 +91,17 @@ The orchestration system follows a clean 4-layer architecture:
 
 | Module | Primary Responsibility | Lines | Dependencies | Database Models | Status |
 |--------|----------------------|-------|--------------|-----------------|--------|
-| **ProjectOrchestrator** | Project lifecycle, agent spawning with multi-tool routing, context tracking, main workflow | 2,013 | AgentJobManager, MissionPlanner, WorkflowEngine, AgentMessageQueue, AgentSelector | Project, MCPAgentJob, Product, AgentTemplate, Message, Job | ACTIVE |
-| **AgentJobManager** | Job lifecycle (7-state system), status transitions, task sync, cancellation | 1,031 | DatabaseManager, Job/MCPAgentJob/Task models | Job, MCPAgentJob, Task | ACTIVE |
-| **AgentMessageQueue** | ACID message queue, priority routing, circuit breakers, DLQ, crash recovery | 1,308 | DatabaseManager, TenantManager, Message/MCPAgentJob models | Message, MCPAgentJob | ACTIVE |
+| **ProjectOrchestrator** | Project lifecycle, agent spawning with multi-tool routing, context tracking, main workflow | 2,013 | AgentJobManager, MissionPlanner, WorkflowEngine, AgentMessageQueue, AgentSelector | Project, AgentJob, AgentExecution, Product, AgentTemplate, Message | ACTIVE |
+| **AgentJobManager** | Job lifecycle (7-state system), status transitions, task sync, cancellation | 1,031 | DatabaseManager, AgentJob/AgentExecution/Task models | AgentJob, AgentExecution, Task | ACTIVE |
+| **AgentMessageQueue** | ACID message queue, priority routing, circuit breakers, DLQ, crash recovery | 1,308 | DatabaseManager, TenantManager, Message/AgentExecution models | Message, AgentExecution | ACTIVE |
 | **MissionPlanner** | Mission generation with context prioritization and orchestration, field priorities, dependency detection | 1,564 | DatabaseManager, ContextRepository, Product/Project/User, tiktoken, Serena | Product, Project, User, Context chunks | ACTIVE |
 | **JobCoordinator** | Multi-agent coordination (parallel, chains, trees), result aggregation | 498 | AgentJobManager, AgentJobRepository, MessageQueue | Job | ACTIVE |
 
 > **Migration Note (Handover 0366a - Dec 2025)**
 >
-> The `MCPAgentJob` model referenced in the table above is **deprecated** as of v3.3.0.
-> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
->
-> **Key Changes:**
-> - `job_id` = The work to be done (persists across succession)
-> - `agent_id` = The executor doing the work (changes on succession)
->
-> See Handover 0366 series for migration details. Will be removed in v4.0.
+> The former `MCPAgentJob` model was split into `AgentJob` (work order) and
+> `AgentExecution` (executor instance) as of v3.3.0 (Handover 0366a).
+> The table references above reflect the current model names.
 | **WorkflowEngine** | Workflow execution (waterfall/parallel), retry logic, failure recovery | 463 | AgentJobManager, JobCoordinator, AgentJobRepository | Job | ACTIVE |
 
 ---
@@ -184,7 +179,7 @@ The orchestration system follows a clean 4-layer architecture:
 - `WorkflowEngine` - Workflow execution
 - `AgentMessageQueue` - Message passing
 - `AgentSelector` - Agent selection logic
-- Database models: `Project`, `MCPAgentJob`, `Product`, `AgentTemplate`, `Message`, `Job`
+- Database models: `Project`, `AgentJob`, `AgentExecution`, `Product`, `AgentTemplate`, `Message`
 
 ---
 
@@ -253,7 +248,7 @@ All methods listed above are public. Internal methods prefixed with `_` are priv
 #### Dependencies
 
 - `DatabaseManager` - Database access
-- Database models: `Job`, `MCPAgentJob`, `Task`
+- Database models: `AgentJob`, `AgentExecution`, `Task`
 
 ---
 
@@ -329,7 +324,7 @@ class MessagePriority(Enum):
 
 - `DatabaseManager` - Database access
 - `TenantManager` - Tenant isolation
-- Database models: `Message`, `MCPAgentJob`
+- Database models: `Message`, `AgentExecution`
 - External: WAL for crash recovery
 
 ---
@@ -750,7 +745,7 @@ Each module has well-defined responsibilities with clear boundaries:
 ### Phase 2: Medium-Risk Improvements
 
 **3. Unify Job Models** (Future)
-- **Current:** Two job models (`Job` for MCP jobs, `MCPAgentJob` for agent jobs)
+- **Current:** Two job models (`AgentJob` for work orders, `AgentExecution` for executor instances)
 - **Issue:** Potential confusion, separate tables
 - **Action:** Evaluate if models can be unified or better differentiated
 - **Effort:** 2-3 days (analysis + plan)

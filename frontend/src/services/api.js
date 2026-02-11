@@ -170,32 +170,12 @@ export const api = {
     delete: (id) => apiClient.delete(`/api/v1/products/${id}`),
     getCascadeImpact: (id) => apiClient.get(`/api/v1/products/${id}/cascade-impact`),
 
-    // Vision document endpoints (Handover 0507: Consolidated to /vision)
-    uploadVision: (id, file) => {
-      const formData = new FormData()
-      formData.append('file', file) // Backend expects 'file' parameter
-      return apiClient.post(`/api/v1/products/${id}/vision`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-    },
-    listVision: (id) => apiClient.get(`/api/v1/products/${id}/vision`),
-    deleteVision: (id, docId) => apiClient.delete(`/api/v1/products/${id}/vision/${docId}`),
-    getVisionChunks: (id) => apiClient.get(`/api/v1/products/${id}/vision-chunks`),
-    // Consolidated vision regeneration endpoint (Handover 0377)
-    regenerateConsolidated: (id, force = true) =>
-      apiClient.post(`/api/v1/products/${id}/vision/regenerate-consolidated`, null, {
-        params: { force },
-      }),
     // Product activation endpoints (Handover 0049)
     activate: (id) => apiClient.post(`/api/v1/products/${id}/activate`),
     deactivate: (id) => apiClient.post(`/api/v1/products/${id}/deactivate`),
     // Soft delete recovery endpoints
     getDeletedProducts: () => apiClient.get('/api/v1/products/deleted'),
     restoreProduct: (id) => apiClient.post(`/api/v1/products/${id}/restore`),
-    // Git integration endpoints (Handover 013B)
-    getGitIntegration: (id) => apiClient.get(`/api/v1/products/${id}/git-integration`),
-    updateGitIntegration: (id, settings) =>
-      apiClient.post(`/api/v1/products/${id}/git-integration`, settings),
     // 360 Memory endpoints (Handover 0490)
     getMemoryEntries: (productId, params) =>
       apiClient.get(`/api/v1/products/${productId}/memory-entries`, { params }),
@@ -210,11 +190,7 @@ export const api = {
     create: (data) => apiClient.post('/api/v1/projects/', data),
     update: (id, data) => apiClient.patch(`/api/v1/projects/${id}`, data),
     delete: (id) => apiClient.delete(`/api/v1/projects/${id}`),
-    close: (id, summary) => apiClient.delete(`/api/v1/projects/${id}`, { params: { summary } }),
     fetchDeleted: () => apiClient.get('/api/v1/projects/deleted'),
-    // Status change endpoints - use PATCH for generic status updates
-    changeStatus: (id, newStatus) =>
-      apiClient.patch(`/api/v1/projects/${id}`, { status: newStatus }),
     // Specific action endpoints (Handover 0507: Added force and reason parameters)
     activate: (id, force = false) => apiClient.post(`/api/v1/projects/${id}/activate`, { force }),
     deactivate: (id, reason = null) =>
@@ -226,13 +202,9 @@ export const api = {
     purgeAllDeleted: () => apiClient.delete('/api/v1/projects/deleted'),
     // Completed projects are resumed via the continue-working endpoint
     restoreCompleted: (id) => apiClient.post(`/api/v1/projects/${id}/continue-working`),
-    // Handover 0507: Project launch and summary with config parameter support
-    summary: (id) => apiClient.get(`/api/v1/projects/${id}/summary`),
-    launch: (id, config = null) => apiClient.post(`/api/v1/projects/${id}/launch`, config),
     // Handover 0108: Staging cancellation
     cancelStaging: (id) => apiClient.post(`/api/v1/projects/${id}/cancel-staging`),
     // Closeout endpoints (Handover 0371, 0412)
-    getCloseoutData: (id) => apiClient.get(`/api/v1/projects/${id}/closeout`),
     completeWithData: (id, data) => apiClient.post(`/api/v1/projects/${id}/complete`, data),
     archive: (id) => apiClient.post(`/api/v1/projects/${id}/archive`),  // Handover 0412: Simple archive
     // Implementation phase gate (Handover 0709)
@@ -284,20 +256,13 @@ export const api = {
     changeStatus: (id, status) => apiClient.patch(`/api/v1/tasks/${id}/status/`, { status }),
     summary: (productId) =>
       apiClient.get('/api/v1/tasks/summary/', { params: { product_id: productId } }),
-    convert: (id, data) => apiClient.post(`/api/v1/tasks/${id}/convert/`, data),
     convertToProject: (id) => apiClient.post(`/api/v1/tasks/${id}/convert`, {}),
   },
 
   // Users (for tenant user listing and assignment)
   // Handover 0506: Fixed paths to use /api/v1/users
   users: {
-    list: () => apiClient.get('/api/v1/users/'),
-    get: (userId) => apiClient.get(`/api/v1/users/${userId}`),
     update: (userId, updates) => apiClient.patch(`/api/v1/users/${userId}`, updates),
-    delete: (userId) => apiClient.delete(`/api/v1/users/${userId}`),
-    getMe: () => apiClient.get('/api/v1/users/me'),
-    changePassword: (oldPassword, newPassword) =>
-      apiClient.put('/api/v1/users/me/password', { oldPassword, newPassword }),
     // Field priority configuration (Handover 0048)
     getFieldPriorityConfig: () => apiClient.get('/api/v1/users/me/field-priority'),
     updateFieldPriorityConfig: (config) => apiClient.put('/api/v1/users/me/field-priority', config),
@@ -309,8 +274,6 @@ export const api = {
     // List all vision documents for a product
     listByProduct: (productId) =>
       apiClient.get(`/api/vision-documents/product/${productId}?active_only=false`),
-    // Get a specific vision document
-    get: (documentId) => apiClient.get(`/api/vision-documents/${documentId}`),
     // Upload a new vision document (accepts FormData)
     upload: (formData) => {
       return apiClient.post('/api/vision-documents/', formData, {
@@ -319,16 +282,8 @@ export const api = {
     },
     // Delete a vision document
     delete: (documentId) => apiClient.delete(`/api/vision-documents/${documentId}`),
-    // Get chunks for a specific document
-    getChunks: (documentId) => apiClient.get(`/api/vision-documents/${documentId}/chunks`),
   },
 
-
-  // Context & Discovery
-  context: {
-    getIndex: (productId) =>
-      apiClient.get('/api/v1/context/index/', { params: { product_id: productId } }),
-  },
 
   // Settings & Configuration
   // Handover 0506: Added new settings endpoints (general, network, database, product-info, cookie-domain)
@@ -336,17 +291,8 @@ export const api = {
     // Legacy config endpoints (kept for backward compatibility)
     get: () => apiClient.get('/api/v1/config/'),
     update: (data) => apiClient.put('/api/v1/config/', data),
-    // New settings endpoints (Handover 0506)
-    getGeneral: () => apiClient.get('/api/v1/settings/general'),
-    updateGeneral: (settings) => apiClient.put('/api/v1/settings/general', { settings }),
-
-    getNetwork: () => apiClient.get('/api/v1/settings/network'),
-    updateNetwork: (settings) => apiClient.put('/api/v1/settings/network', { settings }),
 
     getDatabase: () => apiClient.get('/api/v1/settings/database'),
-
-    getProductInfo: () => apiClient.get('/api/v1/settings/product-info'),
-    getCookieDomain: () => apiClient.get('/api/v1/settings/cookie-domain'),
 
     // User settings - cookie domain management
     getCookieDomains: () => apiClient.get('/api/v1/user/settings/cookie-domains'),
@@ -378,7 +324,6 @@ export const api = {
     reset: (id) => apiClient.post(`/api/v1/templates/${id}/reset/`),
     diff: (id) => apiClient.get(`/api/v1/templates/${id}/diff/`),
     activeCount: () => apiClient.get('/api/v1/templates/stats/active-count'),
-    exportClaudeCode: (data) => apiClient.post('/api/export/claude-code', data),
   },
 
   // Authentication (JWT via httpOnly cookies)
@@ -392,7 +337,6 @@ export const api = {
     createFirstAdmin: (data) => apiClient.post('/api/auth/create-first-admin', data),
     listUsers: () => apiClient.get('/api/v1/users/'),  // 0371: Fixed - was /api/auth/users (missing PUT/DELETE)
     updateUser: (userId, data) => apiClient.put(`/api/v1/users/${userId}`, data),
-    deleteUser: (userId) => apiClient.delete(`/api/v1/users/${userId}`),
     // Password reset endpoints (Handover 0023)
     checkFirstLogin: (username) => apiClient.post('/api/auth/check-first-login', { username }),
     completeFirstLogin: (data) => apiClient.post('/api/auth/complete-first-login', data),
@@ -407,14 +351,6 @@ export const api = {
     list: () => apiClient.get('/api/auth/api-keys'),
     create: (name) => apiClient.post('/api/auth/api-keys', { name }),
     delete: (keyId) => apiClient.delete(`/api/auth/api-keys/${keyId}`),
-  },
-
-  // AI Tools Integration
-  aiTools: {
-    getSupportedTools: () => apiClient.get('/api/ai-tools/supported'),
-    generateConfig: (toolName) => apiClient.get(`/api/ai-tools/config-generator/${toolName}`),
-    downloadSetupGuide: (toolName) =>
-      apiClient.get(`/api/ai-tools/config-generator/${toolName}/markdown`),
   },
 
   // Serena MCP Integration
@@ -443,8 +379,6 @@ export const api = {
     status: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/status`),
     // Additional job-specific endpoints (new functionality)
     acknowledge: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/acknowledge`),
-    reportProgress: (jobId, data) => apiClient.post(`/api/agent-jobs/${jobId}/progress`, data),
-    complete: (jobId, data) => apiClient.post(`/api/agent-jobs/${jobId}/complete`, data),
 
     // Mission update endpoint (Handover 0244b)
     updateMission: (jobId, data) => apiClient.patch(`/api/agent-jobs/${jobId}/mission`, data),
@@ -453,29 +387,9 @@ export const api = {
     // NOTE: Legacy succession endpoints (triggerSuccession, checkSuccessionStatus, initiateHandover)
     // removed in Handover 0700d. Use simpleHandover instead.
     simpleHandover: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/simple-handover`),
-    // Get all executions for a job (succession history)
-    getExecutions: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/executions`),
 
     // Message and communication endpoints (Handover 0066 - Kanban Dashboard)
     messages: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/messages`),
-    getMessageThread: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/messages`),
-    sendMessage: (jobId, data) =>
-      apiClient.post(`/api/agent-jobs/${jobId}/messages`, {
-        message: {
-          content: data.content,
-          to_agent: data.to,
-          type: data.type || "direct",
-          from_agent: "developer",
-        },
-      }),
-    broadcast: (data) =>
-      apiClient.post(`/api/v1/messages/broadcast`, {
-        project_id: data.project_id,
-        content: data.content,
-        priority: data.priority || 'normal',
-        from_agent: data.from_agent || 'user',
-      }),
-
   },
 
   // Organizations (Handover 0424 - gap fix)
@@ -515,9 +429,6 @@ export const api = {
 
   // Downloads
   downloads: {
-    // Generic temp download with token
-    downloadViaToken: (token, filename) =>
-      apiClient.get(`/api/download/temp/${token}/${filename}`, { responseType: 'blob' }),
     // Generate slash commands installation instructions with timed download URL
     generateSlashCommandsInstructions: () =>
       apiClient.post('/api/download/generate-token', null, { params: { content_type: 'slash_commands' } }),

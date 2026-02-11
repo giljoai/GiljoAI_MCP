@@ -183,7 +183,6 @@ async function loadNetworkSettings() {
     // Set CORS origins
     corsOrigins.value = config.security?.cors?.allowed_origins || []
 
-    console.log('[SYSTEM SETTINGS] Network settings loaded successfully')
   } catch (error) {
     console.error('[SYSTEM SETTINGS] Failed to load network settings:', error)
 
@@ -213,9 +212,6 @@ async function saveNetworkSettings() {
       }),
     })
 
-    if (response.ok) {
-      console.log('[SYSTEM SETTINGS] Network settings saved successfully')
-    }
   } catch (error) {
     console.error('Failed to save network settings:', error)
   }
@@ -229,15 +225,13 @@ async function loadDatabaseSettings() {
       credentials: 'include',
     })
     await response.json()
-
-    console.log('Database settings reloaded from config')
   } catch (error) {
     console.error('Failed to load database settings:', error)
   }
 }
 
-function handleDatabaseSuccess(result) {
-  console.log('Database connection successful:', result)
+function handleDatabaseSuccess(_result) {
+  // Database connection successful
 }
 
 function handleDatabaseError(error) {
@@ -250,7 +244,6 @@ async function loadCookieDomains() {
   try {
     const response = await api.settings.getCookieDomains()
     cookieDomains.value = response.data.domains || []
-    console.log('[SECURITY] Cookie domains loaded:', cookieDomains.value.length)
   } catch (error) {
     console.error('[SECURITY] Failed to load cookie domains:', error)
     securityFeedback.value = {
@@ -279,7 +272,6 @@ async function addCookieDomain(domain) {
       type: 'success',
       message: `Domain "${domain}" added successfully.`,
     }
-    console.log('[SECURITY] Cookie domain added:', domain)
   } catch (error) {
     console.error('[SECURITY] Failed to add cookie domain:', error)
     securityFeedback.value = {
@@ -297,7 +289,6 @@ async function removeCookieDomain(domain) {
       type: 'success',
       message: `Domain "${domain}" removed successfully.`,
     }
-    console.log('[SECURITY] Cookie domain removed:', domain)
   } catch (error) {
     console.error('[SECURITY] Failed to remove cookie domain:', error)
     securityFeedback.value = {

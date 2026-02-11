@@ -217,16 +217,16 @@ Function: `spawn_agent_job()`
 
 **Process**:
 1. Takes mission from orchestrator
-2. Creates `MCPAgentJob` database record
-3. Stores full mission in `MCPAgentJob.mission` field
+2. Creates `AgentJob` database record
+3. Stores full mission in `AgentJob.mission` field
 4. Returns thin prompt (~10 lines)
 5. Agent calls `get_agent_mission()` to fetch full mission
 6. Agent receives Serena instructions
 
 **Key fields**:
-- `MCPAgentJob.mission` - Full mission including Serena instructions
-- `MCPAgentJob.template_id` - Link to source template
-- `MCPAgentJob.spawned_by` - Parent orchestrator ID (for succession)
+- `AgentJob.mission` - Full mission including Serena instructions
+- `AgentJob.template_id` - Link to source template
+- `AgentJob.spawned_by` - Parent orchestrator ID (for succession)
 
 ---
 
@@ -280,7 +280,7 @@ get_orchestrator_instructions() MCP Tool
    spawn_agent_job()
        |
        ├─ Store mission in DB
-       ├─ Create MCPAgentJob
+       ├─ Create AgentJob
        ├─ Return thin prompt
        |
        v

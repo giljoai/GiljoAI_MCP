@@ -90,17 +90,18 @@ async def create_product(self, product_id: str, vision_content: str, tenant_key:
     db.commit()
 
     # Chunk and index vision document
-    result = self.context_manager.process_vision_document(
-        tenant_key=tenant_key,
-        product_id=product_id,
-        content=vision_content
-    )
-
-    if result["success"]:
+    try:
+        result = self.context_manager.process_vision_document(
+            tenant_key=tenant_key,
+            product_id=product_id,
+            content=vision_content
+        )
         product.chunked = True
         db.commit()
         logger.info(f"Chunked vision: {result['chunks_created']} chunks, "
                     f"{result['total_tokens']} tokens")
+    except Exception as e:
+        logger.error(f"Failed to chunk vision: {e}")
 ```
 
 ### 3. Load Context for Agents
@@ -178,41 +179,34 @@ class EnhancedOrchestrator:
         Initialize product with vision document processing.
 
         This is the first step: chunk and index the vision document.
+
+        Raises:
+            RuntimeError: If vision processing fails.
         """
-        try:
-            # Process vision document
-            result = self.context_manager.process_vision_document(
-                tenant_key=tenant_key,
-                product_id=product_id,
-                content=vision_content
-            )
+        # Process vision document (raises on failure)
+        result = self.context_manager.process_vision_document(
+            tenant_key=tenant_key,
+            product_id=product_id,
+            content=vision_content
+        )
 
-            if result["success"]:
-                logger.info(
-                    f"Product {product_id} initialized: "
-                    f"{result['chunks_created']} chunks, "
-                    f"{result['total_tokens']} tokens"
-                )
+        logger.info(
+            f"Product {product_id} initialized: "
+            f"{result['chunks_created']} chunks, "
+            f"{result['total_tokens']} tokens"
+        )
 
-                # Update product chunked flag
-                async with self.db_manager.get_session_async() as db:
-                    product = await db.get(Product, product_id)
-                    if product:
-                        product.chunked = True
-                        await db.commit()
+        # Update product chunked flag
+        async with self.db_manager.get_session_async() as db:
+            product = await db.get(Product, product_id)
+            if product:
+                product.chunked = True
+                await db.commit()
 
-                return {
-                    "success": True,
-                    "chunks": result["chunks_created"],
-                    "tokens": result["total_tokens"]
-                }
-            else:
-                logger.error(f"Failed to process vision for {product_id}")
-                return {"success": False, "error": "Vision processing failed"}
-
-        except Exception as e:
-            logger.error(f"Error initializing product {product_id}: {e}")
-            return {"success": False, "error": str(e)}
+        return {
+            "chunks": result["chunks_created"],
+            "tokens": result["total_tokens"]
+        }
 
     async def spawn_agent(
         self,
@@ -226,61 +220,59 @@ class EnhancedOrchestrator:
         Spawn agent with role-based context loading.
 
         This is the key integration point: load only relevant context.
+
+        Raises:
+            ValueError: If product not found.
+            RuntimeError: If context loading fails.
         """
-        try:
-            # Determine token budget for agent type
-            max_tokens = self.token_budgets.get(agent_type, 10000)
+        # Determine token budget for agent type
+        max_tokens = self.token_budgets.get(agent_type, 10000)
 
-            # Special case: orchestrator gets full vision
-            if agent_type == "orchestrator":
-                context = await self._load_full_vision(product_id, tenant_key)
-            else:
-                # Load filtered context for worker agents
-                context = self.context_manager.load_context_for_agent(
-                    tenant_key=tenant_key,
-                    product_id=product_id,
-                    query=mission,
-                    role=agent_type,
-                    max_tokens=max_tokens
-                )
-
-            # Create agent with context
-            agent = await self._create_agent_instance(
-                agent_id=agent_id or self._generate_agent_id(agent_type),
-                agent_type=agent_type,
-                mission=mission,
-                context_chunks=context["chunks"],
+        # Special case: orchestrator gets full vision
+        if agent_type == "orchestrator":
+            context = await self._load_full_vision(product_id, tenant_key)
+        else:
+            # Load filtered context for worker agents
+            context = self.context_manager.load_context_for_agent(
+                tenant_key=tenant_key,
                 product_id=product_id,
-                tenant_key=tenant_key
+                query=mission,
+                role=agent_type,
+                max_tokens=max_tokens
             )
 
-            # Track agent
-            self.agents[agent["id"]] = agent
+        # Create agent with context
+        agent = await self._create_agent_instance(
+            agent_id=agent_id or self._generate_agent_id(agent_type),
+            agent_type=agent_type,
+            mission=mission,
+            context_chunks=context["chunks"],
+            product_id=product_id,
+            tenant_key=tenant_key
+        )
 
-            # Log context prioritization
-            full_tokens = await self._get_full_vision_tokens(product_id, tenant_key)
-            reduction = ((full_tokens - context["total_tokens"]) / full_tokens) * 100
+        # Track agent
+        self.agents[agent["id"]] = agent
 
-            logger.info(
-                f"Spawned {agent_type} agent {agent['id']}: "
-                f"{context['total_chunks']} chunks, "
-                f"{context['total_tokens']} tokens "
-                f"({reduction:.1f}% reduction), "
-                f"avg relevance: {context['average_relevance']:.2f}"
-            )
+        # Log context prioritization
+        full_tokens = await self._get_full_vision_tokens(product_id, tenant_key)
+        reduction = ((full_tokens - context["total_tokens"]) / full_tokens) * 100
 
-            return {
-                "success": True,
-                "agent_id": agent["id"],
-                "chunks_loaded": context["total_chunks"],
-                "tokens_loaded": context["total_tokens"],
-                "token_reduction": reduction,
-                "average_relevance": context["average_relevance"]
-            }
+        logger.info(
+            f"Spawned {agent_type} agent {agent['id']}: "
+            f"{context['total_chunks']} chunks, "
+            f"{context['total_tokens']} tokens "
+            f"({reduction:.1f}% reduction), "
+            f"avg relevance: {context['average_relevance']:.2f}"
+        )
 
-        except Exception as e:
-            logger.error(f"Error spawning {agent_type} agent: {e}")
-            return {"success": False, "error": str(e)}
+        return {
+            "agent_id": agent["id"],
+            "chunks_loaded": context["total_chunks"],
+            "tokens_loaded": context["total_tokens"],
+            "token_reduction": reduction,
+            "average_relevance": context["average_relevance"]
+        }
 
     async def _create_agent_instance(
         self,
@@ -610,14 +602,16 @@ async def spawn_agent_new(agent_type, mission, product_id, tenant_key):
    ```python
    for product in existing_products:
        if not product.chunked:
-           result = self.context_manager.process_vision_document(
-               tenant_key=product.tenant_key,
-               product_id=product.id,
-               content=product.vision_document
-           )
-           if result["success"]:
+           try:
+               result = self.context_manager.process_vision_document(
+                   tenant_key=product.tenant_key,
+                   product_id=product.id,
+                   content=product.vision_document
+               )
                product.chunked = True
                db.commit()
+           except Exception as e:
+               logger.error(f"Failed to chunk product {product.id}: {e}")
    ```
 
 3. **Update Agent Spawning**
@@ -647,15 +641,16 @@ async def create_product(product_data: Dict) -> Product:
 
     # Chunk vision immediately
     if product.vision_document:
-        result = context_manager.process_vision_document(
-            tenant_key=product.tenant_key,
-            product_id=product.id,
-            content=product.vision_document
-        )
-
-        if result["success"]:
+        try:
+            context_manager.process_vision_document(
+                tenant_key=product.tenant_key,
+                product_id=product.id,
+                content=product.vision_document
+            )
             product.chunked = True
             db.commit()
+        except Exception as e:
+            logger.error(f"Chunking failed for product {product.id}: {e}")
 
     return product
 ```
@@ -718,14 +713,10 @@ if context["average_relevance"] < 0.5:
 
 ```python
 try:
-    result = context_manager.process_vision_document(...)
-    if not result["success"]:
-        # Fallback: use full vision
-        logger.warning("Chunking failed, using full vision")
-        context = await load_full_vision(product_id)
+    context_manager.process_vision_document(...)
 except Exception as e:
-    logger.error(f"Context management error: {e}")
-    # Fallback strategy
+    # Fallback: use full vision
+    logger.warning(f"Chunking failed, using full vision: {e}")
     context = await load_full_vision(product_id)
 ```
 
@@ -872,13 +863,13 @@ def orchestrator(db_manager):
 
 async def test_product_initialization(orchestrator):
     """Test product initialization with chunking"""
+    # Raises on failure; returns dict on success
     result = await orchestrator.initialize_product(
         product_id="test-prod",
         vision_content="# Vision\n\nTest vision document...",
         tenant_key="tk_test"
     )
 
-    assert result["success"] is True
     assert result["chunks"] > 0
     assert result["tokens"] > 0
 
@@ -887,7 +878,7 @@ async def test_worker_agent_spawning(orchestrator):
     # Initialize product first
     await orchestrator.initialize_product(...)
 
-    # Spawn agent
+    # Spawn agent (raises on failure)
     result = await orchestrator.spawn_agent(
         agent_type="backend",
         mission="Implement authentication",
@@ -895,7 +886,6 @@ async def test_worker_agent_spawning(orchestrator):
         tenant_key="tk_test"
     )
 
-    assert result["success"] is True
     assert result["token_reduction"] > 60  # At least 60% reduction
     assert result["average_relevance"] > 0.5  # Good relevance
 ```
@@ -906,15 +896,15 @@ async def test_worker_agent_spawning(orchestrator):
 async def test_complete_workflow(orchestrator, sample_vision):
     """Test complete workflow from product creation to agent spawning"""
 
-    # 1. Initialize product
+    # 1. Initialize product (raises on failure)
     init_result = await orchestrator.initialize_product(
         product_id="test-workflow",
         vision_content=sample_vision,
         tenant_key="tk_test"
     )
-    assert init_result["success"] is True
+    assert init_result["chunks"] > 0
 
-    # 2. Spawn multiple agents
+    # 2. Spawn multiple agents (raises on failure)
     agents = []
     for agent_type in ["backend", "frontend", "database"]:
         result = await orchestrator.spawn_agent(
@@ -923,7 +913,7 @@ async def test_complete_workflow(orchestrator, sample_vision):
             product_id="test-workflow",
             tenant_key="tk_test"
         )
-        assert result["success"] is True
+        assert result["agent_id"] is not None
         agents.append(result)
 
     # 3. Verify context prioritization

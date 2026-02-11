@@ -104,9 +104,9 @@ class StateTransitionManager:
     ) -> StateTransitionResult:
         async with self.db_manager.get_session_async() as session:
             # Load job with FOR UPDATE lock
-            stmt = select(MCPAgentJob).where(
-                MCPAgentJob.job_id == job_id,
-                MCPAgentJob.tenant_key == tenant_key
+            stmt = select(AgentJob).where(
+                AgentJob.job_id == job_id,
+                AgentJob.tenant_key == tenant_key
             ).with_for_update()
             
             result = await session.execute(stmt)
