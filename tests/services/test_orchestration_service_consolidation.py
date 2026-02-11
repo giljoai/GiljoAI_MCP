@@ -244,8 +244,11 @@ class TestProcessProductVision:
         service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock())
         service._test_session = db_session
 
-        # Act & Assert: Should raise ValueError
-        with pytest.raises(ValueError, match="not active"):
+        # Act & Assert: Should raise ValidationError for inactive product
+        # Handover 0731c: Service now raises giljo_mcp ValidationError instead of ValueError
+        from src.giljo_mcp.exceptions import ValidationError as GiljoValidationError
+
+        with pytest.raises(GiljoValidationError, match="not active"):
             await service.process_product_vision(
                 tenant_key=test_tenant_key,
                 product_id=inactive_product.id,
@@ -275,7 +278,10 @@ class TestProcessProductVision:
         service._test_session = db_session
 
         # Act & Assert: Tenant B should not access tenant A's product
-        with pytest.raises(ValueError, match="not found"):
+        # Handover 0731c: Service now raises ResourceNotFoundError instead of ValueError
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
+
+        with pytest.raises(ResourceNotFoundError, match="not found"):
             await service.process_product_vision(
                 tenant_key=tenant_b,  # Different tenant
                 product_id=product_a.id,
@@ -584,7 +590,10 @@ class TestMultiTenantIsolation:
         service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock())
 
         # Act & Assert: Tenant B should not access tenant A's product
-        with pytest.raises(ValueError):
+        # Handover 0731c: Service now raises ResourceNotFoundError instead of ValueError
+        from src.giljo_mcp.exceptions import ResourceNotFoundError
+
+        with pytest.raises(ResourceNotFoundError):
             await service.process_product_vision(
                 tenant_key=tenant_b,  # Different tenant
                 product_id=product_a.id,

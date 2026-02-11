@@ -99,17 +99,20 @@ class TestSpawnAgentJobDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Verify return structure (no success wrapper after 0730b refactor)
-        assert "job_id" in result
-        assert "agent_id" in result
+        # Handover 0731c: Returns SpawnResult typed model
+        from src.giljo_mcp.schemas.service_responses import SpawnResult
+
+        assert isinstance(result, SpawnResult)
+        assert result.job_id
+        assert result.agent_id
 
         # Verify job_id and agent_id are DIFFERENT UUIDs
-        assert result["job_id"] != result["agent_id"]
-        assert isinstance(uuid.UUID(result["job_id"]), uuid.UUID)
-        assert isinstance(uuid.UUID(result["agent_id"]), uuid.UUID)
+        assert result.job_id != result.agent_id
+        assert isinstance(uuid.UUID(result.job_id), uuid.UUID)
+        assert isinstance(uuid.UUID(result.agent_id), uuid.UUID)
 
         # Verify AgentJob was created
-        job_stmt = select(AgentJob).where(AgentJob.job_id == result["job_id"])
+        job_stmt = select(AgentJob).where(AgentJob.job_id == result.job_id)
         job_result = await db_session.execute(job_stmt)
         job = job_result.scalar_one_or_none()
         assert job is not None
@@ -120,11 +123,11 @@ class TestSpawnAgentJobDualModel:
         assert job.project_id == test_project.id
 
         # Verify AgentExecution was created
-        exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == result["agent_id"])
+        exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == result.agent_id)
         exec_result = await db_session.execute(exec_stmt)
         execution = exec_result.scalar_one_or_none()
         assert execution is not None
-        assert execution.job_id == result["job_id"]
+        assert execution.job_id == result.job_id
         assert execution.agent_display_name == "implementer"
         assert execution.tenant_key == test_tenant_key
 
@@ -148,13 +151,13 @@ class TestSpawnAgentJobDualModel:
         )
 
         # Verify mission in AgentJob (includes Serena MCP notice)
-        job_stmt = select(AgentJob).where(AgentJob.job_id == result["job_id"])
+        job_stmt = select(AgentJob).where(AgentJob.job_id == result.job_id)
         job_result = await db_session.execute(job_stmt)
         job = job_result.scalar_one()
         assert mission in job.mission
 
         # Verify AgentExecution does NOT have mission field
-        exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == result["agent_id"])
+        exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == result.agent_id)
         exec_result = await db_session.execute(exec_stmt)
         execution = exec_result.scalar_one()
         # AgentExecution should NOT have a 'mission' attribute
@@ -176,14 +179,17 @@ class TestSpawnAgentJobDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Verify return structure (no success wrapper after 0730b refactor)
-        assert "job_id" in result
-        assert "agent_id" in result
+        # Handover 0731c: Returns SpawnResult typed model
+        from src.giljo_mcp.schemas.service_responses import SpawnResult
+
+        assert isinstance(result, SpawnResult)
+        assert result.job_id
+        assert result.agent_id
 
         # Verify both IDs are valid UUIDs
         try:
-            uuid.UUID(result["job_id"])
-            uuid.UUID(result["agent_id"])
+            uuid.UUID(result.job_id)
+            uuid.UUID(result.agent_id)
         except ValueError:
             pytest.fail("job_id or agent_id is not a valid UUID")
 
@@ -226,8 +232,8 @@ class TestSuccessionDualModel:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
         )
-        initial_job_id = initial["job_id"]
-        initial_agent_id = initial["agent_id"]
+        initial_job_id = initial.job_id
+        initial_agent_id = initial.agent_id
 
         # Set context_used to simulate near-limit
         exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == initial_agent_id)
@@ -243,12 +249,15 @@ class TestSuccessionDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Handover 0730b: No success wrapper
+        # Handover 0731c: Returns SuccessionContextResult typed model
         # Handover 0461f: Same agent_id, context reset
-        assert succession_result["job_id"] == initial_job_id
-        assert succession_result["agent_id"] == initial_agent_id  # SAME agent_id
-        assert succession_result["context_reset"] is True
-        assert succession_result["new_context_used"] == 0
+        from src.giljo_mcp.schemas.service_responses import SuccessionContextResult
+
+        assert isinstance(succession_result, SuccessionContextResult)
+        assert succession_result.job_id == initial_job_id
+        assert succession_result.agent_id == initial_agent_id  # SAME agent_id
+        assert succession_result.context_reset is True
+        assert succession_result.new_context_used == 0
 
         # Verify only ONE AgentExecution exists (not duplicated)
         exec_count_stmt = select(AgentExecution).where(AgentExecution.job_id == initial_job_id)
@@ -274,7 +283,7 @@ class TestSuccessionDualModel:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
         )
-        initial_job_id = initial["job_id"]
+        initial_job_id = initial.job_id
 
         # Use create_successor_orchestrator
         succession_result = await service.create_successor_orchestrator(
@@ -283,9 +292,10 @@ class TestSuccessionDualModel:
             tenant_key=test_tenant_key,
         )
 
+        # Handover 0731c: Returns SuccessionContextResult typed model
         # Verify 360 Memory entry created
-        assert succession_result["memory_entry_created"] is True
-        assert succession_result["reason"] == "manual"
+        assert succession_result.memory_entry_created is True
+        assert succession_result.reason == "manual"
 
     async def test_succession_preserves_job_and_agent_id(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify same job_id AND same agent_id after succession (Handover 0461f)."""
@@ -303,8 +313,8 @@ class TestSuccessionDualModel:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
         )
-        initial_job_id = initial["job_id"]
-        initial_agent_id = initial["agent_id"]
+        initial_job_id = initial.job_id
+        initial_agent_id = initial.agent_id
 
         # Use create_successor_orchestrator
         succession_result = await service.create_successor_orchestrator(
@@ -313,9 +323,10 @@ class TestSuccessionDualModel:
             tenant_key=test_tenant_key,
         )
 
+        # Handover 0731c: Returns SuccessionContextResult typed model
         # Handover 0461f: SAME job_id AND SAME agent_id (no ID swap)
-        assert succession_result["job_id"] == initial_job_id
-        assert succession_result["agent_id"] == initial_agent_id
+        assert succession_result.job_id == initial_job_id
+        assert succession_result.agent_id == initial_agent_id
 
 
 # ============================================================================
@@ -352,17 +363,17 @@ class TestQueryMethodsDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # List jobs - returns {"jobs": [...], "total": N, ...}
+        # Handover 0731c: list_jobs returns JobListResult typed model
         jobs_result = await service.list_jobs(tenant_key=test_tenant_key)
-        jobs = jobs_result["jobs"]
+        jobs = jobs_result.jobs
 
         assert len(jobs) >= 1
-        job_entry = next((j for j in jobs if j["job_id"] == result["job_id"]), None)
+        job_entry = next((j for j in jobs if j["job_id"] == result.job_id), None)
         assert job_entry is not None
         assert "job_id" in job_entry
         assert "agent_id" in job_entry
-        assert job_entry["job_id"] == result["job_id"]
-        assert job_entry["agent_id"] == result["agent_id"]
+        assert job_entry["job_id"] == result.job_id
+        assert job_entry["agent_id"] == result.agent_id
 
     async def test_get_pending_jobs_filters_by_execution_status(
         self, db_session, db_manager, test_project, test_tenant_key
@@ -393,20 +404,20 @@ class TestQueryMethodsDualModel:
         )
 
         # Update working agent to "working" status
-        working_exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == working_result["agent_id"])
+        working_exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == working_result.agent_id)
         working_exec_result = await db_session.execute(working_exec_stmt)
         working_exec = working_exec_result.scalar_one()
         working_exec.status = "working"
         await db_session.commit()
 
-        # Get pending jobs for implementer type (waiting only)
+        # Handover 0731c: get_pending_jobs returns PendingJobsResult typed model
         pending_result = await service.get_pending_jobs(agent_display_name="implementer", tenant_key=test_tenant_key)
-        pending_jobs = pending_result.get("jobs", [])
+        pending_jobs = pending_result.jobs
 
         # Verify only waiting job of type implementer is returned
         pending_job_ids = [j["job_id"] for j in pending_jobs]
-        assert waiting_result["job_id"] in pending_job_ids
-        assert working_result["job_id"] not in pending_job_ids
+        assert waiting_result.job_id in pending_job_ids
+        assert working_result.job_id not in pending_job_ids
 
     async def test_get_agent_mission_returns_mission_from_job(
         self, db_session, db_manager, test_project, test_tenant_key
@@ -427,12 +438,12 @@ class TestQueryMethodsDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Get mission via job_id (job_id parameter is actually job_id)
-        fetched_mission = await service.get_agent_mission(job_id=result["job_id"], tenant_key=test_tenant_key)
+        # Handover 0731c: get_agent_mission returns MissionResponse typed model
+        fetched_mission = await service.get_agent_mission(job_id=result.job_id, tenant_key=test_tenant_key)
 
         # No success wrapper after 0730b refactor
         # Mission includes team context header prefix, so check it ends with the original mission
-        assert mission in fetched_mission["mission"]
+        assert mission in fetched_mission.mission
 
     async def test_get_workflow_status_aggregates_across_executions(
         self, db_session, db_manager, test_project, test_tenant_key
@@ -463,10 +474,11 @@ class TestQueryMethodsDualModel:
         # Get workflow status
         status = await service.get_workflow_status(project_id=test_project.id, tenant_key=test_tenant_key)
 
-        # get_workflow_status returns counts directly without "success" key
-        assert "error" not in status
-        assert "total_agents" in status
-        assert status["total_agents"] >= 2
+        # Handover 0731c: get_workflow_status returns WorkflowStatus typed model
+        from src.giljo_mcp.schemas.service_responses import WorkflowStatus
+
+        assert isinstance(status, WorkflowStatus)
+        assert status.total_agents >= 2
 
 
 # ============================================================================
@@ -503,15 +515,18 @@ class TestUpdateMethodsDualModel:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
         )
-        agent_id = result["agent_id"]
-        job_id = result["job_id"]
+        agent_id = result.agent_id
+        job_id = result.job_id
 
         # Acknowledge job (requires job_id and agent_id)
         ack_result = await service.acknowledge_job(job_id=job_id, agent_id=agent_id, tenant_key=test_tenant_key)
 
-        # Handover 0730b: No success wrapper - returns dict with job and next_instructions
-        assert "job" in ack_result
-        assert "next_instructions" in ack_result
+        # Handover 0731c: Returns AcknowledgeJobResult typed model
+        from src.giljo_mcp.schemas.service_responses import AcknowledgeJobResult
+
+        assert isinstance(ack_result, AcknowledgeJobResult)
+        assert ack_result.job
+        assert ack_result.next_instructions
 
         # Verify AgentExecution.mission_acknowledged_at is set
         exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == agent_id)
@@ -534,15 +549,16 @@ class TestUpdateMethodsDualModel:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
         )
-        agent_id = result["agent_id"]
-        job_id = result["job_id"]
+        agent_id = result.agent_id
+        job_id = result.job_id
 
         # Complete job (requires job_id and result dict)
         complete_result = await service.complete_job(
             job_id=job_id, result={"output": "Task done"}, tenant_key=test_tenant_key
         )
 
-        assert complete_result.get("status") == "success"
+        # Handover 0731c: Returns CompleteJobResult typed model
+        assert complete_result.status == "success"
 
         # Verify AgentExecution.status is "complete"
         exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == agent_id)
@@ -573,8 +589,8 @@ class TestUpdateMethodsDualModel:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
         )
-        agent_id = result["agent_id"]
-        job_id = result["job_id"]
+        agent_id = result.agent_id
+        job_id = result.job_id
 
         # Report progress (requires job_id and progress dict)
         # Note: In test environment, message queue may fail but progress fields still get updated
