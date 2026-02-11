@@ -86,8 +86,8 @@ async def test_activate_product_deactivates_projects_in_old_product(db_session, 
     service = ProductService(db_manager, tenant_key=tenant_key, test_session=db_session)
     result = await service.activate_product(product_b.id)
 
-    # Verify Product B is now active (exception-based pattern - success is implicit)
-    assert result["product"]["is_active"] is True
+    # Verify Product B is now active (0731b: returns Product ORM model)
+    assert result.is_active is True
 
     # Refresh objects to get latest state
     await db_session.refresh(product_a)
@@ -184,8 +184,8 @@ async def test_product_switch_emits_websocket_events(db_session, db_manager):
     )
     result = await service.activate_product(product_b.id)
 
-    # Exception-based pattern - success is implicit, verify returned data
-    assert result["product"]["is_active"] is True
+    # 0731b: returns Product ORM model
+    assert result.is_active is True
 
     # CRITICAL ASSERTION - WebSocket event should be emitted
     # This should FAIL initially because the code doesn't exist yet
@@ -274,8 +274,8 @@ async def test_product_switch_multi_tenant_isolation(db_session, db_manager):
     # Tenant A switches to Product B
     service_a = ProductService(db_manager, tenant_key=tenant_a, test_session=db_session)
     result = await service_a.activate_product(product_b.id)
-    # Exception-based pattern - success is implicit, verify returned data
-    assert result["product"]["is_active"] is True
+    # 0731b: returns Product ORM model
+    assert result.is_active is True
 
     # Refresh all projects
     await db_session.refresh(project_x_tenant_a)
