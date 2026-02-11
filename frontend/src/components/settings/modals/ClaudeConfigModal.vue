@@ -147,7 +147,6 @@ const copyConfig = () => {
   }
 }`
   navigator.clipboard.writeText(config)
-  console.log('[INTEGRATIONS] Claude configuration copied to clipboard')
 }
 
 const downloadInstructions = () => {
@@ -204,6 +203,5 @@ Visit your GiljoAI dashboard for additional configuration help.`
   a.download = 'claude-code-giljo-mcp-setup.txt'
   a.click()
   URL.revokeObjectURL(url)
-  console.log('[INTEGRATIONS] Claude setup instructions downloaded')
 }
 </script>

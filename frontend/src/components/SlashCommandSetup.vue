@@ -140,7 +140,6 @@ function fallbackCopyToClipboard(text) {
 async function copySlashCommandSetup() {
   try {
     generatingInstructions.value = true
-    console.log('[SLASH COMMAND SETUP] Generating download instructions...')
 
     // Call backend to generate timed download URL
     const response = await api.downloads.generateSlashCommandsInstructions()
@@ -159,7 +158,6 @@ async function copySlashCommandSetup() {
     copied.value = true
     showCopyFeedback.value = true
     copyFeedbackMessage.value = 'Installation command copied to clipboard!'
-    console.log('[SLASH COMMAND SETUP] Curl command copied successfully')
 
     // Reset copied state after 2 seconds
     setTimeout(() => {
@@ -194,7 +192,6 @@ async function copyToClipboard(text) {
   if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
     try {
       await navigator.clipboard.writeText(text)
-      console.log('[SLASH COMMAND SETUP] Text copied via Clipboard API')
       return
     } catch (error) {
       console.warn('[SLASH COMMAND SETUP] Clipboard API failed, using fallback:', error)
@@ -206,7 +203,6 @@ async function copyToClipboard(text) {
   if (!success) {
     throw new Error('All copy methods failed')
   }
-  console.log('[SLASH COMMAND SETUP] Text copied via fallback')
 }
 
 async function downloadSlashCommands() {
@@ -234,7 +230,6 @@ async function downloadSlashCommands() {
 
     showCopyFeedback.value = true
     copyFeedbackMessage.value = 'Slash commands downloaded successfully!'
-    console.log('[SLASH COMMAND SETUP] Download successful')
   } catch (error) {
     console.error('[SLASH COMMAND SETUP] Failed to download slash commands:', error)
     showCopyFeedback.value = true

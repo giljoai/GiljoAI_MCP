@@ -521,9 +521,6 @@ async function fetchHistoricalProjects() {
 
   // For now, keep empty array until project completion workflow is tested
   historicalProjects.value = []
-  console.log(
-    '[Dashboard] Historical Projects placeholder - awaiting implementation after job testing',
-  )
 }
 
 // Methods
@@ -639,9 +636,8 @@ const refreshData = async () => {
 }
 
 // WebSocket handlers
-const handleRealtimeUpdate = (data) => {
+const handleRealtimeUpdate = () => {
   // Update stats in real-time if needed
-  console.log('WebSocket update:', data)
 }
 
 // LAN Welcome Banner

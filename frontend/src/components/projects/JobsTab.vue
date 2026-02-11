@@ -836,7 +836,6 @@ async function handlePlay(agent) {
  * Opens Message Audit Modal for selected agent (Sent tab)
  */
 function handleMessages(agent) {
-  console.log('[JobsTab] Messages action:', agent.agent_display_name)
   selectedJobId.value = agent.job_id || agent.agent_id
   messageAuditInitialTab.value = 'sent'
   showMessageAuditModal.value = true
@@ -865,7 +864,6 @@ function handleStepsClick(agent) {
  * Opens AgentDetailsModal to show template or orchestrator prompt
  */
 function handleAgentRole(agent) {
-  console.log('[JobsTab] Agent role action:', agent.agent_display_name)
   selectedJobId.value = agent.job_id || agent.agent_id
   showAgentDetailsModal.value = true
 }
@@ -875,7 +873,6 @@ function handleAgentRole(agent) {
  * Opens modal to show agent's assigned job/mission
  */
 function handleAgentJob(agent) {
-  console.log('[JobsTab] Agent job action:', agent.agent_display_name)
   selectedJobId.value = agent.job_id || agent.agent_id
   jobModalInitialTab.value = 'mission'
   showAgentJobModal.value = true
@@ -888,7 +885,6 @@ function handleAgentJob(agent) {
 async function handleHandOver(agent) {
   try {
     const jobId = agent.job_id || agent.agent_id
-    console.log('[JobsTab] Hand over action:', agent.agent_display_name, jobId)
 
     // Call simple-handover endpoint (Handover 0461d)
     const response = await api.agentJobs.simpleHandover(jobId)
@@ -944,8 +940,6 @@ async function sendMessage() {
       priority: 'normal',
       from_agent: 'user'  // UI user sending message
     }
-
-    console.log('[JobsTab] Sending message payload:', payload)
 
     // Use unified endpoint (Handover 0299) - single API call, no emit needed
     await api.messages.sendUnified(
