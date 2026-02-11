@@ -98,24 +98,6 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
-  async function loadProductInfo() {
-    try {
-      const response = await api.settings.getProduct()
-      productInfo.value = response.data
-    } catch (err) {
-      console.error('Failed to load product info:', err)
-    }
-  }
-
-  async function loadSessionInfo() {
-    try {
-      const response = await api.session.info()
-      sessionInfo.value = response.data
-    } catch (err) {
-      console.error('Failed to load session info:', err)
-    }
-  }
-
   function updateSetting(key, value) {
     if (settings.value[key] !== undefined) {
       settings.value[key] = value
@@ -230,8 +212,6 @@ export const useSettingsStore = defineStore('settings', () => {
     // Actions
     loadSettings,
     saveSettings,
-    loadProductInfo,
-    loadSessionInfo,
     updateSetting,
     resetSettings,
     clearError,

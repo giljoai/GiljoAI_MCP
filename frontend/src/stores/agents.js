@@ -120,52 +120,6 @@ export const useAgentStore = defineStore('agents', () => {
     }
   }
 
-  // MIGRATION NOTE (Handover 0119): Migrated from api.agents.decommission() to api.agentJobs.terminate()
-  async function decommissionAgent(id, reason = 'completed') {
-    loading.value = true
-    error.value = null
-    try {
-      const response = await api.agentJobs.terminate(id, reason)
-      agents.value = agents.value.filter((a) => a.id !== id)
-      if (currentAgent.value?.id === id) {
-        currentAgent.value = null
-      }
-      return response.data
-    } catch (err) {
-      error.value = err.message
-      console.error('Failed to decommission agent:', err)
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // MIGRATION NOTE (Handover 0119): Migrated from api.agents.tree() to api.agentJobs.hierarchy()
-  async function fetchAgentTree(projectId) {
-    try {
-      const response = await api.agentJobs.hierarchy(projectId)
-      agentTree.value = response.data
-      return response.data
-    } catch (err) {
-      console.error('Failed to fetch agent tree:', err)
-      return null
-    }
-  }
-
-  // MIGRATION NOTE (Handover 0119): Migrated from api.agents.metrics() to api.agentJobs.metrics()
-  async function fetchAgentMetrics(projectId, timeRange = '24h') {
-    try {
-      const hours =
-        typeof timeRange === 'string' && timeRange.endsWith('h') ? parseInt(timeRange) : 24
-      const response = await api.agentJobs.metrics(projectId, isNaN(hours) ? 24 : hours)
-      agentMetrics.value = response.data
-      return response.data
-    } catch (err) {
-      console.error('Failed to fetch agent metrics:', err)
-      return null
-    }
-  }
-
   function updateAgentStatus(agentId, status) {
     const agent = agents.value.find((a) => a.id === agentId)
     if (agent) {
@@ -387,12 +341,9 @@ export const useAgentStore = defineStore('agents', () => {
     createAgent,
     fetchAgentHealth,
     assignJob,
-    decommissionAgent,
     updateAgentStatus,
     clearError,
     handleRealtimeUpdate,
-    fetchAgentTree,
-    fetchAgentMetrics,
     addTimelineEvent,
     handleAgentSpawn,
     handleAgentComplete,
