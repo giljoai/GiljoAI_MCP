@@ -3,6 +3,7 @@ TaskService - Dedicated service for task management
 
 This service extracts all task-related operations from ToolAccessor
 as part of Phase 2 of the god object refactoring (Handover 0123).
+Updated for typed returns (Handover 0731c).
 
 Responsibilities:
 - CRUD operations for tasks
@@ -16,6 +17,17 @@ Design Principles:
 - Async/Await: Full SQLAlchemy 2.0 async support
 - Error Handling: Consistent exception handling and logging
 - Testability: Can be unit tested independently
+
+Return Type Conventions (0731c):
+- Simple lookups return the ORM model directly (Task)
+- Not-found cases raise ResourceNotFoundError
+- Validation failures raise ValidationError
+- Authorization failures raise AuthorizationError
+- Delete operations return None (already correct)
+- Update operations return TaskUpdateResult
+- Conversion operations return ConversionResult
+- List operations return list[Task]
+- Summary operations return dict (complex nested structure)
 """
 
 import logging
@@ -33,6 +45,7 @@ from src.giljo_mcp.exceptions import (
     ValidationError,
 )
 from src.giljo_mcp.models import Project, Task
+from src.giljo_mcp.schemas.service_responses import ConversionResult, TaskUpdateResult
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -217,7 +230,7 @@ class TaskService:
         project_id: Optional[str] = None,
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
-    ) -> dict[str, Any]:
+    ) -> str:
         """
         Create a new task with full details.
 
@@ -234,10 +247,10 @@ class TaskService:
             tenant_key: Required tenant key for multi-tenant isolation
 
         Returns:
-            Dict with success status and task_id or error
+            Task ID string (delegated from log_task)
 
         Example:
-            >>> result = await service.create_task(
+            >>> task_id = await service.create_task(
             ...     title="Implement feature X",
             ...     description="Add new feature X with unit tests",
             ...     priority="high",
@@ -268,7 +281,7 @@ class TaskService:
         created_by_user_id: Optional[str] = None,
         filter_type: Optional[str] = None,
         tenant_key: Optional[str] = None,
-    ) -> dict[str, Any]:
+    ) -> list[Task]:
         """List tasks with optional filters (enhanced for API endpoint support - Handover 0324).
 
         Args:
@@ -282,18 +295,16 @@ class TaskService:
             tenant_key: Tenant key for filtering (uses current if not provided)
 
         Returns:
-            Dictionary with:
-            - tasks: list of task dictionaries
-            - count: number of tasks
+            List of Task ORM models (0731c typed return)
 
         Raises:
             ValidationError: No tenant context
             DatabaseError: Database operation failed
 
         Example:
-            >>> result = await service.list_tasks(status="pending", priority="high")
-            >>> for task in result["tasks"]:
-            ...     print(f"{task['id']}: {task['description']}")
+            >>> tasks = await service.list_tasks(status="pending", priority="high")
+            >>> for task in tasks:
+            ...     print(f"{task.id}: {task.description}")
         """
         try:
             # Use provided tenant_key or get from context
@@ -303,79 +314,28 @@ class TaskService:
             if not tenant_key:
                 raise ValidationError(message="No tenant context available", context={"operation": "list_tasks"})
 
+            if self._session:
+                return await self._list_tasks_impl(
+                    self._session,
+                    tenant_key,
+                    status,
+                    project_id,
+                    product_id,
+                    priority,
+                    created_by_user_id,
+                    filter_type,
+                )
             async with self.db_manager.get_session_async() as session:
-                # Start with tenant-scoped base query
-                query = select(Task).where(Task.tenant_key == tenant_key)
-
-                # Handle special filter types (product-scoped filtering)
-                if filter_type == "product_tasks":
-                    # Use explicit product_id if provided, otherwise get active product
-                    if product_id:
-                        query = query.where(Task.product_id == product_id)
-                    else:
-                        # Get active product for tenant
-                        from src.giljo_mcp.models.products import Product
-
-                        product_query = select(Product).where(and_(Product.tenant_key == tenant_key, Product.is_active))
-                        product_result = await session.execute(product_query)
-                        active_product = product_result.scalar_one_or_none()
-
-                        if active_product:
-                            query = query.where(Task.product_id == active_product.id)
-                        else:
-                            # No active product - return empty list
-                            return {"tasks": [], "count": 0}
-
-                # Apply other filters
-                if product_id and not filter_type:
-                    query = query.where(Task.product_id == product_id)
-
-                if project_id:
-                    query = query.where(Task.project_id == project_id)
-
-                if status:
-                    query = query.where(Task.status == status)
-
-                if priority:
-                    query = query.where(Task.priority == priority)
-
-                if created_by_user_id:
-                    query = query.where(Task.created_by_user_id == created_by_user_id)
-
-                # Order by creation date (newest first)
-                query = query.order_by(Task.created_at.desc())
-
-                # Execute query
-                result = await session.execute(query)
-                tasks = result.scalars().all()
-
-                # Convert to dict list
-                task_list = [
-                    {
-                        "id": str(task.id),
-                        "tenant_key": task.tenant_key,
-                        "product_id": task.product_id,
-                        "project_id": task.project_id,
-                        "parent_task_id": task.parent_task_id,
-                        "job_id": task.job_id,
-                        "created_by_user_id": task.created_by_user_id,
-                        "converted_to_project_id": task.converted_to_project_id,
-                        "title": task.title,
-                        "description": task.description,
-                        "category": task.category,
-                        "status": task.status,
-                        "priority": task.priority,
-                        "created_at": task.created_at.isoformat() if task.created_at else None,
-                        "started_at": task.started_at.isoformat() if task.started_at else None,
-                        "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-                        "due_date": task.due_date.isoformat() if task.due_date else None,
-                        "estimated_effort": task.estimated_effort,
-                        "actual_effort": task.actual_effort,
-                    }
-                    for task in tasks
-                ]
-
-                return {"tasks": task_list, "count": len(task_list)}
+                return await self._list_tasks_impl(
+                    session,
+                    tenant_key,
+                    status,
+                    project_id,
+                    product_id,
+                    priority,
+                    created_by_user_id,
+                    filter_type,
+                )
 
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
@@ -384,25 +344,89 @@ class TaskService:
             self._logger.exception("Failed to list tasks")
             raise BaseGiljoError(message=str(e), context={"operation": "list_tasks"}) from e
 
+    async def _list_tasks_impl(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        status: Optional[str],
+        project_id: Optional[str],
+        product_id: Optional[str],
+        priority: Optional[str],
+        created_by_user_id: Optional[str],
+        filter_type: Optional[str],
+    ) -> list[Task]:
+        """Implementation of list_tasks with explicit session parameter.
+
+        Returns:
+            List of Task ORM models
+
+        Raises:
+            ValidationError: No tenant context
+        """
+        # Start with tenant-scoped base query
+        query = select(Task).where(Task.tenant_key == tenant_key)
+
+        # Handle special filter types (product-scoped filtering)
+        if filter_type == "product_tasks":
+            # Use explicit product_id if provided, otherwise get active product
+            if product_id:
+                query = query.where(Task.product_id == product_id)
+            else:
+                # Get active product for tenant
+                from src.giljo_mcp.models.products import Product
+
+                product_query = select(Product).where(and_(Product.tenant_key == tenant_key, Product.is_active))
+                product_result = await session.execute(product_query)
+                active_product = product_result.scalar_one_or_none()
+
+                if active_product:
+                    query = query.where(Task.product_id == active_product.id)
+                else:
+                    # No active product - return empty list
+                    return []
+
+        # Apply other filters
+        if product_id and not filter_type:
+            query = query.where(Task.product_id == product_id)
+
+        if project_id:
+            query = query.where(Task.project_id == project_id)
+
+        if status:
+            query = query.where(Task.status == status)
+
+        if priority:
+            query = query.where(Task.priority == priority)
+
+        if created_by_user_id:
+            query = query.where(Task.created_by_user_id == created_by_user_id)
+
+        # Order by creation date (newest first)
+        query = query.order_by(Task.created_at.desc())
+
+        # Execute query
+        result = await session.execute(query)
+        tasks = result.scalars().all()
+
+        return list(tasks)
+
     # ============================================================================
     # Task Updates
     # ============================================================================
 
-    async def update_task(self, task_id: str, **kwargs) -> dict[str, Any]:
+    async def update_task(self, task_id: str, **kwargs) -> TaskUpdateResult:
         """Update a task with arbitrary fields.
 
         Automatically handles timestamp updates based on status changes:
-        - status → "in_progress": Sets started_at if not already set
-        - status → "completed" or "cancelled": Sets completed_at if not already set
+        - status -> "in_progress": Sets started_at if not already set
+        - status -> "completed" or "cancelled": Sets completed_at if not already set
 
         Args:
             task_id: Task UUID (required)
             **kwargs: Field names and values to update
 
         Returns:
-            Dictionary with:
-            - task_id: the updated task ID
-            - updated_fields: list of field names that were updated
+            TaskUpdateResult with task_id and list of updated field names
 
         Raises:
             ResourceNotFoundError: Task not found
@@ -414,45 +438,13 @@ class TaskService:
             ...     status="in_progress",
             ...     priority="high"
             ... )
+            >>> print(result.updated_fields)
         """
         try:
+            if self._session:
+                return await self._update_task_impl(self._session, task_id, **kwargs)
             async with self.db_manager.get_session_async() as session:
-                task_query = select(Task).where(Task.id == task_id)
-                task_result = await session.execute(task_query)
-                task = task_result.scalar_one_or_none()
-
-                if not task:
-                    raise ResourceNotFoundError(message=f"Task {task_id} not found", context={"task_id": task_id})
-
-                # Update fields
-                updated_fields = []
-                for key, value in kwargs.items():
-                    if hasattr(task, key):
-                        setattr(task, key, value)
-                        updated_fields.append(key)
-                    else:
-                        self._logger.warning(f"Attempted to update non-existent field '{key}' on task {task_id}")
-
-                # Auto-update timestamps based on status changes (Handover 0324)
-                if "status" in kwargs:
-                    new_status = kwargs["status"]
-                    now = datetime.now(timezone.utc)
-
-                    if new_status == "in_progress" and not task.started_at:
-                        task.started_at = now
-                        updated_fields.append("started_at")
-                        self._logger.debug(f"Auto-set started_at for task {task_id}")
-
-                    elif new_status in ("completed", "cancelled") and not task.completed_at:
-                        task.completed_at = now
-                        updated_fields.append("completed_at")
-                        self._logger.debug(f"Auto-set completed_at for task {task_id}")
-
-                await session.commit()
-
-                self._logger.info(f"Updated task {task_id}: {updated_fields}")
-
-                return {"task_id": task_id, "updated_fields": updated_fields}
+                return await self._update_task_impl(session, task_id, **kwargs)
 
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
@@ -461,7 +453,53 @@ class TaskService:
             self._logger.exception("Failed to update task")
             raise BaseGiljoError(message=str(e), context={"operation": "update_task", "task_id": task_id}) from e
 
-    async def assign_task(self, task_id: str, agent_name: str) -> dict[str, Any]:
+    async def _update_task_impl(self, session: AsyncSession, task_id: str, **kwargs) -> TaskUpdateResult:
+        """Implementation of update_task with explicit session parameter.
+
+        Returns:
+            TaskUpdateResult with task_id and list of updated field names
+
+        Raises:
+            ResourceNotFoundError: Task not found
+        """
+        task_query = select(Task).where(Task.id == task_id)
+        task_result = await session.execute(task_query)
+        task = task_result.scalar_one_or_none()
+
+        if not task:
+            raise ResourceNotFoundError(message=f"Task {task_id} not found", context={"task_id": task_id})
+
+        # Update fields
+        updated_fields = []
+        for key, value in kwargs.items():
+            if hasattr(task, key):
+                setattr(task, key, value)
+                updated_fields.append(key)
+            else:
+                self._logger.warning(f"Attempted to update non-existent field '{key}' on task {task_id}")
+
+        # Auto-update timestamps based on status changes (Handover 0324)
+        if "status" in kwargs:
+            new_status = kwargs["status"]
+            now = datetime.now(timezone.utc)
+
+            if new_status == "in_progress" and not task.started_at:
+                task.started_at = now
+                updated_fields.append("started_at")
+                self._logger.debug(f"Auto-set started_at for task {task_id}")
+
+            elif new_status in ("completed", "cancelled") and not task.completed_at:
+                task.completed_at = now
+                updated_fields.append("completed_at")
+                self._logger.debug(f"Auto-set completed_at for task {task_id}")
+
+        await session.commit()
+
+        self._logger.info(f"Updated task {task_id}: {updated_fields}")
+
+        return TaskUpdateResult(task_id=task_id, updated_fields=updated_fields)
+
+    async def assign_task(self, task_id: str, agent_name: str) -> TaskUpdateResult:
         """
         Assign a task to an agent.
 
@@ -470,17 +508,18 @@ class TaskService:
             agent_name: Name of agent to assign to
 
         Returns:
-            Dict with success status or error
+            TaskUpdateResult with task_id and updated field names
 
         Example:
             >>> result = await service.assign_task(
             ...     task_id="abc-123",
             ...     agent_name="impl-1"
             ... )
+            >>> print(result.updated_fields)
         """
         return await self.update_task(task_id, assigned_to=agent_name, status="assigned")
 
-    async def complete_task(self, task_id: str) -> dict[str, Any]:
+    async def complete_task(self, task_id: str) -> TaskUpdateResult:
         """
         Mark a task as completed.
 
@@ -488,10 +527,11 @@ class TaskService:
             task_id: Task UUID
 
         Returns:
-            Dict with success status or error
+            TaskUpdateResult with task_id and updated field names
 
         Example:
             >>> result = await service.complete_task("abc-123")
+            >>> print(result.updated_fields)
         """
         return await self.update_task(task_id, status="completed")
 
@@ -499,7 +539,7 @@ class TaskService:
     # Enhanced Operations (Handover 0322 Phase 3)
     # ============================================================================
 
-    async def get_task(self, task_id: str) -> dict[str, Any]:
+    async def get_task(self, task_id: str) -> Task:
         """Retrieve a single task by ID.
 
         This method retrieves a task with full tenant isolation.
@@ -509,8 +549,7 @@ class TaskService:
             task_id: Task UUID
 
         Returns:
-            Task data dictionary with fields:
-            - id, title, description, status, priority, etc.
+            Task ORM model (0731c typed return)
 
         Raises:
             ValidationError: No tenant context
@@ -518,8 +557,8 @@ class TaskService:
             DatabaseError: Database operation failed
 
         Example:
-            >>> task_data = await service.get_task("abc-123")
-            >>> print(task_data["title"])
+            >>> task = await service.get_task("abc-123")
+            >>> print(task.title)
         """
         try:
             if self._session:
@@ -533,11 +572,11 @@ class TaskService:
             self._logger.exception("Failed to get task {task_id}")
             raise BaseGiljoError(message=str(e), context={"operation": "get_task", "task_id": task_id}) from e
 
-    async def _get_task_impl(self, session: AsyncSession, task_id: str) -> dict[str, Any]:
+    async def _get_task_impl(self, session: AsyncSession, task_id: str) -> Task:
         """Implementation of get_task with explicit session parameter.
 
         Returns:
-            Task data dictionary
+            Task ORM model
 
         Raises:
             ValidationError: No tenant context
@@ -558,31 +597,7 @@ class TaskService:
                 message="Task not found", context={"task_id": task_id, "tenant_key": tenant_key}
             )
 
-        # Convert to dict
-        task_data = {
-            "id": str(task.id),
-            "tenant_key": task.tenant_key,
-            "product_id": task.product_id,
-            "project_id": task.project_id,
-            "parent_task_id": task.parent_task_id,
-            "job_id": task.job_id,
-            "created_by_user_id": task.created_by_user_id,
-            "converted_to_project_id": task.converted_to_project_id,
-            "title": task.title,
-            "description": task.description,
-            "category": task.category,
-            "status": task.status,
-            "priority": task.priority,
-            "estimated_effort": task.estimated_effort,
-            "actual_effort": task.actual_effort,
-            "created_at": task.created_at.isoformat() if task.created_at else None,
-            "started_at": task.started_at.isoformat() if task.started_at else None,
-            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-            "due_date": task.due_date.isoformat() if task.due_date else None,
-            "meta_data": task.meta_data,
-        }
-
-        return task_data
+        return task
 
     async def delete_task(self, task_id: str, user_id: str) -> None:
         """Delete a task (with permission check).
@@ -670,7 +685,7 @@ class TaskService:
 
     async def convert_to_project(
         self, task_id: str, project_name: Optional[str], strategy: str, include_subtasks: bool, user_id: str
-    ) -> dict[str, Any]:
+    ) -> ConversionResult:
         """Convert task to project with optional subtask handling.
 
         This is a complex multi-entity operation involving:
@@ -688,8 +703,7 @@ class TaskService:
             user_id: User performing conversion
 
         Returns:
-            Project data dictionary with:
-            - project_id, project_name, original_task_id, conversion_strategy, created_at
+            ConversionResult with task_id, project_id, and project_name (0731c typed return)
 
         Raises:
             ValidationError: No tenant context, already converted, no active product
@@ -705,6 +719,7 @@ class TaskService:
             ...     include_subtasks=True,
             ...     user_id=user.id
             ... )
+            >>> print(result.project_id)
         """
         try:
             if self._session:
@@ -730,11 +745,11 @@ class TaskService:
         strategy: str,
         include_subtasks: bool,
         user_id: str,
-    ) -> dict[str, Any]:
+    ) -> ConversionResult:
         """Implementation of convert_to_project with explicit session parameter.
 
         Returns:
-            Project data dictionary with project_id, project_name, original_task_id, etc.
+            ConversionResult with task_id, project_id, and project_name
 
         Raises:
             ValidationError: No tenant context, already converted, no active product
@@ -846,29 +861,26 @@ class TaskService:
 
         self._logger.info(f"Converted task {task_id} to project {new_project.id} (strategy: {strategy})")
 
-        return {
-            "project_id": str(new_project.id),
-            "project_name": new_project.name,
-            "original_task_id": str(task_id),
-            "conversion_strategy": strategy,
-            "created_at": new_project.created_at.isoformat() if new_project.created_at else None,
-        }
+        return ConversionResult(
+            task_id=str(task_id),
+            project_id=str(new_project.id),
+            project_name=new_project.name,
+        )
 
-    async def change_status(self, task_id: str, new_status: str) -> dict[str, Any]:
+    async def change_status(self, task_id: str, new_status: str) -> Task:
         """Change task status with automatic timestamp updates.
 
         Status transitions:
-        - "todo" → "in_progress": Set started_at
-        - * → "completed": Set completed_at
-        - * → "cancelled": Set completed_at
+        - "todo" -> "in_progress": Set started_at
+        - * -> "completed": Set completed_at
+        - * -> "cancelled": Set completed_at
 
         Args:
             task_id: Task UUID
             new_status: New status value
 
         Returns:
-            Task data dictionary with updated status and timestamps:
-            - id, status, started_at, completed_at, title, description
+            Task ORM model with updated status and timestamps (0731c typed return)
 
         Raises:
             ValidationError: No tenant context
@@ -876,8 +888,8 @@ class TaskService:
             DatabaseError: Database operation failed
 
         Example:
-            >>> task_data = await service.change_status("abc-123", "in_progress")
-            >>> print(task_data["status"])
+            >>> task = await service.change_status("abc-123", "in_progress")
+            >>> print(task.status)
         """
         try:
             if self._session:
@@ -891,11 +903,11 @@ class TaskService:
             self._logger.exception("Failed to change task {task_id} status")
             raise BaseGiljoError(message=str(e), context={"operation": "change_status", "task_id": task_id}) from e
 
-    async def _change_status_impl(self, session: AsyncSession, task_id: str, new_status: str) -> dict[str, Any]:
+    async def _change_status_impl(self, session: AsyncSession, task_id: str, new_status: str) -> Task:
         """Implementation of change_status with explicit session parameter.
 
         Returns:
-            Task data dictionary with updated status and timestamps
+            Task ORM model with updated status and timestamps
 
         Raises:
             ValidationError: No tenant context
@@ -931,29 +943,7 @@ class TaskService:
 
         self._logger.info(f"Changed task {task_id} status to {new_status}")
 
-        # Convert to dict for response - include all TaskResponse fields
-        task_data = {
-            "id": str(task.id),
-            "title": task.title,
-            "description": task.description,
-            "category": task.category,
-            "status": task.status,
-            "priority": task.priority,
-            "product_id": str(task.product_id) if task.product_id else None,
-            "project_id": str(task.project_id) if task.project_id else None,
-            "job_id": str(task.job_id) if task.job_id else None,
-            "parent_task_id": str(task.parent_task_id) if task.parent_task_id else None,
-            "created_by_user_id": str(task.created_by_user_id) if task.created_by_user_id else None,
-            "converted_to_project_id": str(task.converted_to_project_id) if task.converted_to_project_id else None,
-            "created_at": task.created_at,
-            "started_at": task.started_at,
-            "completed_at": task.completed_at,
-            "due_date": task.due_date,
-            "estimated_effort": task.estimated_effort,
-            "actual_effort": task.actual_effort,
-        }
-
-        return task_data
+        return task
 
     async def get_summary(self, product_id: Optional[str] = None) -> dict[str, Any]:
         """Get task summary statistics.
@@ -965,7 +955,7 @@ class TaskService:
 
         Returns:
             Summary data dictionary with:
-            - summary: dict of product_id → stats (total, by status, by priority)
+            - summary: dict of product_id -> stats (total, by status, by priority)
             - total_products: count of products with tasks
             - total_tasks: total number of tasks
 
