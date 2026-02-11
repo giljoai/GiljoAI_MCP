@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.exceptions import OrchestrationError, ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.schemas.service_responses import MissionUpdateResult, SuccessionContextResult
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 
@@ -301,13 +302,12 @@ class TestCreateSuccessorOrchestrator:
             reason="context_limit",
         )
 
-        # Handover 0730b: No success wrapper
-        # Handover 0461f: Same agent_id (no new execution created)
-        assert "job_id" in result
-        assert result["job_id"] == current_job.job_id  # Same job_id
-        assert result["agent_id"] == current_agent_id  # SAME agent_id (0461f)
-        assert result["context_reset"] is True
-        assert result["new_context_used"] == 0
+        # Handover 0731c: Returns SuccessionContextResult typed model
+        assert isinstance(result, SuccessionContextResult)
+        assert result.job_id == current_job.job_id  # Same job_id
+        assert result.agent_id == current_agent_id  # SAME agent_id (0461f)
+        assert result.context_reset is True
+        assert result.new_context_used == 0
 
         # Verify same execution still exists (not decommissioned)
         await db_session.refresh(current_execution)
@@ -356,9 +356,10 @@ class TestCreateSuccessorOrchestrator:
             reason="context_limit",
         )
 
-        # Handover 0461f: 360 Memory entry created for handover
-        assert result["memory_entry_created"] is True
-        assert result["reason"] == "context_limit"
+        # Handover 0731c: Returns SuccessionContextResult typed model
+        assert isinstance(result, SuccessionContextResult)
+        assert result.memory_entry_created is True
+        assert result.reason == "context_limit"
 
     @pytest.mark.asyncio
     async def test_preserves_job_and_agent_id(self, db_session: AsyncSession, test_project):
@@ -402,10 +403,10 @@ class TestCreateSuccessorOrchestrator:
             reason="context_limit",
         )
 
-        # Handover 0730b: No success wrapper
-        # Handover 0461f: SAME job_id AND SAME agent_id (simplified - no new execution)
-        assert result["job_id"] == current_job.job_id
-        assert result["agent_id"] == current_agent_id  # SAME agent_id (0461f)
+        # Handover 0731c: Returns SuccessionContextResult typed model
+        assert isinstance(result, SuccessionContextResult)
+        assert result.job_id == current_job.job_id
+        assert result.agent_id == current_agent_id  # SAME agent_id (0461f)
 
     @pytest.mark.asyncio
     async def test_allows_context_reset_for_completed_execution(self, db_session: AsyncSession, test_project):
@@ -448,9 +449,10 @@ class TestCreateSuccessorOrchestrator:
             reason="context_limit",
         )
 
-        # Assert: Context was reset (even for completed execution)
-        assert result["context_reset"] is True
-        assert result["new_context_used"] == 0
+        # Handover 0731c: Returns SuccessionContextResult typed model
+        assert isinstance(result, SuccessionContextResult)
+        assert result.context_reset is True
+        assert result.new_context_used == 0
 
 
 # ============================================================================
@@ -490,8 +492,10 @@ class TestUpdateAgentMission:
             mission=new_mission,
         )
 
-        # Assert: Mission updated (no success wrapper after 0730b refactor)
-        assert result["mission_updated"] is True
+        # Handover 0731c: Returns MissionUpdateResult typed model
+        assert isinstance(result, MissionUpdateResult)
+        assert result.mission_updated is True
+        assert result.mission_length == len(new_mission)
 
         # Verify in database
         await db_session.refresh(agent_job)
