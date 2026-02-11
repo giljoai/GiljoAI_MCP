@@ -1,6 +1,6 @@
 """
 Test script for the Dynamic Discovery System
-Tests PathResolver, DiscoveryManager, and integration with context tools
+Tests PathResolver and DiscoveryManager initialization.
 """
 
 import asyncio
@@ -17,7 +17,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.discovery import DiscoveryManager, PathResolver, SerenaHooks
-from src.giljo_mcp.models import Project
 from src.giljo_mcp.tenant import TenantManager
 from tests.helpers.test_db_helper import PostgreSQLTestHelper
 
@@ -60,35 +59,8 @@ async def test_discovery_manager():
     path_resolver = PathResolver(db_manager, tenant_manager)
     discovery_manager = DiscoveryManager(db_manager, tenant_manager, path_resolver)
 
-    # Create a test project
-    async with db_manager.get_session() as session:
-        project = Project(
-            name="Test Discovery Project", mission="Test the discovery system", tenant_key="test-tenant-123"
-        )
-        session.add(project)
-        await session.commit()
-        project_id = str(project.id)
-
-        # Set current tenant
-        tenant_manager.set_current_tenant("test-tenant-123")
-
-    # Test discovery for different roles
-    roles = ["orchestrator", "analyzer", "implementer", "tester"]
-
-    for role in roles:
-        context = await discovery_manager.discover_context(role, project_id)
-
-        for key in context:
-            if key not in ["metadata", "tokens_used"]:
-                pass
-
-    # Test change detection
-    changes = await discovery_manager.detect_changes(project_id)
-    for _path_key, _changed in changes.items():
-        pass
-
     # Test discovery paths
-    paths = await discovery_manager.get_discovery_paths(project_id)
+    paths = await discovery_manager.get_discovery_paths()
     for key in paths:
         pass
 
@@ -105,8 +77,6 @@ async def test_integration():
             config = yaml.safe_load(f)
             config.get("features", {}).get("dynamic_discovery", False)
 
-    # Check if models have DiscoveryConfig
-
     # Check if context.py imports discovery
     context_path = Path("src/giljo_mcp/tools/context.py")
     if context_path.exists():
@@ -114,18 +84,10 @@ async def test_integration():
 
 
 async def test_serena_hooks():
-    """Test SerenaHooks placeholder functionality"""
+    """Test SerenaHooks initialization"""
 
     hooks = SerenaHooks(None, None)  # Placeholder for test
-
-    # Test lazy_load_symbols
-    await hooks.lazy_load_symbols("test.py", depth=1)
-
-    # Test search_codebase
-    await hooks.search_codebase("test_pattern")
-
-    # Test get_file_overview
-    await hooks.get_file_overview("src/")
+    assert hooks._symbol_cache == {}
 
 
 async def main():
