@@ -16,7 +16,7 @@
 | Red progress bar (90%+ context) | Succession imminent |
 | "NEW" badge (green) | Successor waiting to be launched |
 | "Handed Over" badge (grey) | Predecessor completed handover |
-| Instance number badges (#1, #2, #3) | Succession chain position |
+| Succession chain links (spawned_by) | Succession chain position |
 
 ## Launch Successor
 
@@ -46,12 +46,12 @@ codex mcp add giljo-orchestrator
 ### Get Succession Chain
 
 ```sql
-SELECT job_id, instance_number, status, handover_to
+SELECT job_id, status, handover_to
 FROM mcp_agent_jobs
 WHERE project_id = 'your-project-id'
   AND agent_type = 'orchestrator'
   AND tenant_key = 'your-tenant-key'
-ORDER BY instance_number;
+ORDER BY created_at;
 ```
 
 ### Check Context Usage
@@ -59,7 +59,6 @@ ORDER BY instance_number;
 ```sql
 SELECT
     job_id,
-    instance_number,
     context_used,
     context_budget,
     ROUND((context_used::float / context_budget * 100)::numeric, 2) AS usage_percent
@@ -69,10 +68,10 @@ WHERE job_id = 'orchestrator-job-id';
 
 ## API Endpoints
 
-### Trigger Succession (Manual)
+### Create Handover (Manual)
 
 ```bash
-POST /api/agent_jobs/{job_id}/trigger_succession?reason=manual
+POST /api/agent_jobs/{job_id}/create_simple_handover?reason=manual
 Authorization: Bearer <token>
 ```
 
@@ -81,7 +80,6 @@ Authorization: Bearer <token>
 {
   "success": true,
   "successor_id": "orch-...",
-  "instance_number": 2,
   "handover_summary": {...}
 }
 ```
@@ -98,23 +96,23 @@ Authorization: Bearer <token>
 {
   "project_id": "...",
   "chain": [
-    {"job_id": "...", "instance_number": 1, "status": "complete", ...},
-    {"job_id": "...", "instance_number": 2, "status": "waiting", ...}
+    {"job_id": "...", "status": "complete", ...},
+    {"job_id": "...", "status": "waiting", ...}
   ]
 }
 ```
 
 ## MCP Tools
 
-### create_successor_orchestrator
+### create_simple_handover
 
 ```python
-result = await create_successor_orchestrator(
+result = await create_simple_handover(
     current_job_id="orch-6adbec5c-9e11...",
     tenant_key="tenant-abc123",
     reason="context_limit"  # or 'manual', 'phase_transition'
 )
-# Returns: {success, successor_id, instance_number, handover_summary}
+# Returns: {success, successor_id, handover_summary}
 ```
 
 ### check_succession_status
@@ -136,7 +134,6 @@ status = await check_succession_status(
   "event": "job:succession_triggered",
   "data": {
     "orchestrator_id": "orch-...",
-    "instance_number": 1,
     "reason": "context_limit"
   }
 }
@@ -150,7 +147,6 @@ status = await check_succession_status(
   "data": {
     "successor_id": "orch-...",
     "predecessor_id": "orch-...",
-    "instance_number": 2,
     "handover_summary": {...}
   }
 }
@@ -170,7 +166,7 @@ status = await check_succession_status(
 
 ### Database
 - Table: `mcp_agent_jobs`
-- Columns: `instance_number`, `handover_to`, `handover_summary`, `succession_reason`, `context_used`, `context_budget`, `handover_context_refs`
+- Columns: `handover_to`, `handover_summary`, `succession_reason`, `context_used`, `context_budget`, `handover_context_refs`
 
 ## Troubleshooting
 
