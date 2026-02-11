@@ -128,18 +128,19 @@ async def list_jobs(
         offset=offset,
     )
 
+    # 0731d: OrchestrationService returns JobListResult typed model
     logger.info(
-        f"Found {len(result['jobs'])} jobs for user {current_user.username} (total={result['total']}, offset={offset})"
+        f"Found {len(result.jobs)} jobs for user {current_user.username} (total={result.total}, offset={offset})"
     )
 
     # Convert job dicts to JobResponse models
-    job_responses = [job_to_response(job) for job in result["jobs"]]
+    job_responses = [job_to_response(job) for job in result.jobs]
 
     return JobListResponse(
         jobs=job_responses,
-        total=result["total"],
-        limit=result["limit"],
-        offset=result["offset"],
+        total=result.total,
+        limit=result.limit,
+        offset=result.offset,
     )
 
 
@@ -165,7 +166,8 @@ async def list_pending_jobs(
     # Service raises exceptions on failure, caught by global exception handler
     result = await orchestration_service.get_pending_jobs(tenant_key=current_user.tenant_key)
 
-    jobs = result.get("jobs", [])
+    # 0731d: OrchestrationService returns PendingJobsResult typed model
+    jobs = result.jobs
     logger.info(f"Found {len(jobs)} pending jobs for tenant {current_user.tenant_key}")
 
     return PendingJobsResponse(jobs=[job_to_response(job) for job in jobs], count=len(jobs))
@@ -197,24 +199,21 @@ async def get_job(
 
     logger.info(f"Retrieved job {job_id} for tenant {current_user.tenant_key}")
 
-    # Convert result to JobResponse
-    # The get_agent_mission returns: job_id, mission, context_chunks, status
-    # We need to expand this or call a different service method
-    # For now, return what we have (this may need enhancement)
+    # 0731d: OrchestrationService returns MissionResponse typed model
+    # Convert to JobResponse via dict bridge (MissionResponse has different field set)
     return job_to_response(
         {
-            "agent_id": result.get("agent_id", ""),  # 0366: use agent_id
-            "job_id": result["job_id"],
+            "agent_id": result.agent_id or "",  # 0366: use agent_id
+            "job_id": result.job_id,
             "tenant_key": current_user.tenant_key,
-            "agent_display_name": result.get("agent_display_name", "unknown"),
-            "mission": result["mission"],
-            "status": result["status"],
-            "spawned_by": result.get("spawned_by"),
-            "context_chunks": result.get("context_chunks", []),
-            "acknowledged": result.get("acknowledged", False),
-            "started_at": result.get("started_at"),
-            "completed_at": result.get("completed_at"),
-            "created_at": result.get("created_at"),
+            "agent_display_name": result.agent_display_name or "unknown",
+            "mission": result.mission or "",
+            "status": result.status or "unknown",
+            "spawned_by": result.parent_job_id,
+            "context_chunks": [],
+            "started_at": result.started_at,
+            "completed_at": None,
+            "created_at": result.created_at,
         }
     )
 
@@ -247,9 +246,10 @@ async def get_job_mission(
 
     logger.info(f"Retrieved mission for job {job_id} for tenant {current_user.tenant_key}")
 
+    # 0731d: OrchestrationService returns MissionResponse typed model
     return JobMissionResponse(
-        job_id=result["job_id"],
-        mission=result["mission"],
-        context_chunks=result.get("context_chunks", []),
-        status=result["status"],
+        job_id=result.job_id,
+        mission=result.mission or "",
+        context_chunks=[],
+        status=result.status or "unknown",
     )

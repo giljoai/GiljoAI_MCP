@@ -106,14 +106,15 @@ async def get_workflow_status(
 
     logger.info(f"Retrieved workflow status for project {project_id}")
 
+    # 0731d: OrchestrationService returns WorkflowStatus typed model
     return WorkflowStatusResponse(
         project_id=project_id,
-        status=result.get("current_stage", "unknown"),
-        agent_count=result.get("total_agents", 0),
-        completed_count=result.get("completed_agents", 0),
-        failed_count=result.get("failed_agents", 0),
-        active_count=result.get("active_agents", 0),
-        progress_percent=int(result.get("progress_percent", 0)),
+        status=result.current_stage,
+        agent_count=result.total_agents,
+        completed_count=result.completed_agents,
+        failed_count=result.failed_agents,
+        active_count=result.active_agents,
+        progress_percent=int(result.progress_percent),
     )
 
 
