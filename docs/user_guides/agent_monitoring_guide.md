@@ -56,7 +56,6 @@ An **Agent Job** represents the **work order** that needs to be done. It contain
 An **Agent Execution** represents a **specific agent instance** working on a job. It contains:
 
 - **Agent ID**: Unique identifier for this executor (agent_a1b2c3d4)
-- **Instance Number**: Sequential number (1, 2, 3) showing succession order
 - **Status**: waiting, working, blocked, complete, failed, cancelled
 - **Context Tracking**: Context used/budget for orchestrators
 - **Succession Chain**: Links to previous/next agents (spawned_by, succeeded_by)
@@ -374,7 +373,6 @@ An agent that hasn't checked in for **10+ minutes**.
 
 - **`agent_id`**: Unique identifier for this agent instance (e.g., "agent_a1b2c3d4")
 - **`job_id`**: Foreign key to parent AgentJob
-- **`instance_number`**: Sequential succession number (1, 2, 3, ...)
 - **`agent_type`**: Agent type for this executor
 - **`status`**: Execution status (waiting, working, blocked, complete, failed, cancelled, decommissioned)
 - **`spawned_by`**: Agent ID of parent executor (succession chain)

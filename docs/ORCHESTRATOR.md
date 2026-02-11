@@ -34,7 +34,7 @@ User Action: "Launch Project"
 │ - Environment Understanding                         │
 │ - Agent Discovery (get_available_agents)            │
 │ - Context Prioritization (unified fetch_context())  │
-│ - Agent Job Spawning (MCPAgentJob records)          │
+│ - Agent Job Spawning (AgentJob records)              │
 │ - Activation (project → active status)              │
 │ Token Budget: 931 tokens (22% under 1200 limit)     │
 └────────────┬────────────────────────────────────────┘
@@ -130,19 +130,7 @@ Before spawning any agents, the orchestrator executes a **7-task staging workflo
    └─ Condense into <10K tokens (See: docs/api/context_tools.md)
 
 6. AGENT JOB SPAWNING
-   ├─ Create MCPAgentJob records for each agent
-
-> **Migration Note (Handover 0366a - Dec 2025)**
->
-> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
-> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
->
-> **Key Changes:**
-> - `job_id` = The work to be done (persists across succession)
-> - `agent_id` = The executor doing the work (changes on succession)
->
-> See Handover 0366 series for migration details. Will be removed in v4.0.
-
+   ├─ Create AgentJob records for each agent
    ├─ Assign execution mode (claude-code or multi-terminal)
    ├─ Set initial status to 'waiting'
    └─ Store staging result in database
@@ -255,7 +243,7 @@ result = get_available_agents()
 
 ### Staging Result Storage
 
-After successful staging, results are stored in `MCPAgentJob.staging_result`:
+After successful staging, results are stored in `AgentJob.staging_result`:
 
 ```json
 {
@@ -279,14 +267,7 @@ After successful staging, results are stored in `MCPAgentJob.staging_result`:
 }
 ```
 
-**Code Reference**: `src/giljo_mcp/models.py::MCPAgentJob.staging_result`
-
-> **Migration Note (Handover 0366a - Dec 2025)**
->
-> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
-> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
->
-> See Handover 0366 series for migration details. Will be removed in v4.0.
+**Code Reference**: `src/giljo_mcp/models.py::AgentJob.staging_result`
 
 ---
 
@@ -341,7 +322,7 @@ Task(
 - Each agent runs in separate terminal/session
 - Generic unified template for all agent types
 - Mission fetched from database at runtime
-- Orchestrator coordinates via MCPAgentJob records
+- Orchestrator coordinates via AgentJob records
 - Optimized for distributed execution
 
 **Implementation**:
@@ -407,8 +388,8 @@ mission_data = get_agent_mission(
 )
 
 # Receives (Handover 0334 enhanced response):
+# Returns mission data directly; raises exception on error
 {
-    "success": true,
     "agent_job_id": "7e57d004-2b97-0e7a-b45f-5387367791cd",
     "agent_name": "implementer",
     "agent_type": "implementer",
@@ -678,9 +659,7 @@ send_message(to_agent="all", message="Milestone X completed, team status update.
 - Faster overall project completion through active coordination
 
 **Related Documentation**:
-- Implementation Details: [Handover 0355](../handovers/0355_protocol_message_handling_fix.md)
 - Staging Workflow: [STAGING_WORKFLOW.md](components/STAGING_WORKFLOW.md#task-8-execution-phase-monitoring)
-- Message Tools API: [MCP Tools Manual](manuals/MCP_TOOLS_MANUAL.md)
 
 ---
 
@@ -721,11 +700,11 @@ The `write_360_memory()` function performs four verification checks when `author
 
 ### CLOSEOUT_BLOCKED Response
 
-When verification fails, `write_360_memory()` returns:
+When verification fails, `write_360_memory()` raises a `CloseoutBlockedError` containing:
 
 ```python
+# CloseoutBlockedError.detail contains:
 {
-    "success": False,
     "error": "CLOSEOUT_BLOCKED",
     "blockers": [
         {
@@ -757,19 +736,20 @@ When verification fails, `write_360_memory()` returns:
 When orchestrator receives CLOSEOUT_BLOCKED, it should:
 
 ```python
-# 1. Check which agents are blocking
-result = await write_360_memory(
-    project_id=project_id,
-    tenant_key=tenant_key,
-    summary="Project completion summary",
-    key_outcomes=["..."],
-    decisions_made=["..."],
-    author_job_id=orchestrator_job_id  # Required for verification
-)
+# 1. Attempt closeout (raises CloseoutBlockedError if agents not ready)
+try:
+    result = await write_360_memory(
+        project_id=project_id,
+        tenant_key=tenant_key,
+        summary="Project completion summary",
+        key_outcomes=["..."],
+        decisions_made=["..."],
+        author_job_id=orchestrator_job_id  # Required for verification
+    )
 
-if result["error"] == "CLOSEOUT_BLOCKED":
+except CloseoutBlockedError as e:
     # 2. Process each blocker
-    for blocker in result["blockers"]:
+    for blocker in e.detail["blockers"]:
         if blocker["issue_type"] == "still_working":
             # Send message asking agent for status update
             send_message(
@@ -804,11 +784,10 @@ if result["error"] == "CLOSEOUT_BLOCKED":
 
 ### Successful Closeout Response
 
-When all checks pass, `write_360_memory()` includes verification summary:
+When all checks pass, `write_360_memory()` returns the result directly (raises exception on error):
 
 ```python
 {
-    "success": True,
     "entry_id": "uuid-of-memory-entry",
     "sequence_number": 5,
     "git_commits_count": 12,
@@ -889,7 +868,6 @@ context_used INTEGER DEFAULT 0,          -- Current token usage
 context_budget INTEGER DEFAULT 200000,   -- Maximum tokens allowed
 
 -- Succession
-instance_number INTEGER DEFAULT 1,       -- Orchestrator instance in chain
 spawned_by INTEGER REFERENCES mcp_agent_jobs(id),  -- Parent orchestrator
 handover_to INTEGER REFERENCES mcp_agent_jobs(id), -- Successor orchestrator
 handover_summary TEXT,                   -- Condensed context for successor
@@ -918,7 +896,6 @@ job = await service.create_orchestrator_job(
 # Result:
 # job.context_used = 0
 # job.context_budget = 200000
-# job.instance_number = 1
 # job.spawned_by = None (first orchestrator)
 ```
 
@@ -1066,7 +1043,7 @@ Dashboard shows "Hand Over" button on working orchestrator cards:
 2. LaunchSuccessorDialog opens with generated prompt
 3. User copies prompt
 4. Launches new Claude Code session with prompt
-5. Successor orchestrator created with instance_number++
+5. Successor orchestrator created
 
 ---
 
@@ -1236,7 +1213,6 @@ curl -X POST http://localhost:7272/api/agent-jobs/123/simple-handover \
 Response:
 ```json
 {
-  "success": true,
   "message": "Context reset and handover recorded",
   "continuation_prompt": "Continue from where you left off..."
 }
@@ -1565,18 +1541,16 @@ context = fetch_context(
 
 ### User Guides
 - **Orchestrator Succession**: [user_guides/orchestrator_succession_guide.md](user_guides/orchestrator_succession_guide.md)
-- **Agent Execution Modes**: [user_guides/AGENT_EXECUTION_MODES.md](user_guides/AGENT_EXECUTION_MODES.md)
 
 ### Developer Guides
-- **Succession Developer Guide**: [developer_guides/orchestrator_succession_developer_guide.md](developer_guides/orchestrator_succession_developer_guide.md)
+- **Succession Developer Guide**: [guides/orchestrator_succession_developer_guide.md](guides/orchestrator_succession_developer_guide.md)
 - **Quick Reference**: [../CLAUDE.md](../CLAUDE.md#orchestrator-workflow-pipeline-v32-handovers-0246a-c)
 
 ### Handover Documents (0246 Series)
 - **Handover 0246a**: Staging Prompt Implementation (7-task workflow, 931 tokens)
 - **Handover 0246b**: Generic Agent Template (6-phase protocol, 1,253 tokens)
 - **Handover 0246c**: Dynamic Agent Discovery (71% token savings, 420 tokens)
-- **Summary**: [../handovers/orchestrator_workflow_after246.md](../handovers/orchestrator_workflow_after246.md)
 
 ---
 
-**Last Updated**: 2026-01-22 (v3.3 - Handover 0431 closeout verification added)
+**Last Updated**: 2026-02-10 (v3.3 - Removed MCPAgentJob refs, dict wrappers, instance_number)
