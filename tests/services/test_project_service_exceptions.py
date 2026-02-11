@@ -1,8 +1,10 @@
 """
 Tests for ProjectService exception handling (Handover 0480c)
+Updated 0731c: Added typed return validation tests.
 
 Verifies that ProjectService raises appropriate exceptions instead of
 returning {"success": False, ...} dicts.
+Also verifies typed returns for happy path scenarios.
 """
 
 from uuid import uuid4
@@ -14,6 +16,13 @@ from src.giljo_mcp.exceptions import (
     ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
+)
+from src.giljo_mcp.schemas.service_responses import (
+    OperationResult,
+    ProjectData,
+    ProjectDetail,
+    ProjectMissionUpdateResult,
+    SoftDeleteResult,
 )
 from src.giljo_mcp.services.project_service import ProjectService
 
@@ -33,8 +42,8 @@ class TestProjectServiceExceptions:
 
     @pytest.mark.asyncio
     async def test_get_project_requires_tenant_key(self, project_service: ProjectService):
-        """Test get_project raises ValueError when tenant_key is missing"""
-        with pytest.raises(ValueError) as exc_info:
+        """Test get_project raises ValidationError when tenant_key is missing"""
+        with pytest.raises(ValidationError) as exc_info:
             await project_service.get_project("some-id", "")
 
         assert "tenant_key" in str(exc_info.value).lower()
@@ -133,6 +142,104 @@ class TestProjectServiceExceptions:
         assert "not found" in exc_info.value.message.lower()
 
     # REMOVED: update_execution_mode method doesn't exist in ProjectService
+
+
+class TestProjectServiceTypedReturns:
+    """Test that ProjectService methods return typed models (Handover 0731c)"""
+
+    @pytest.mark.asyncio
+    async def test_get_project_returns_project_detail(
+        self, project_service: ProjectService, test_tenant_key: str, active_project
+    ):
+        """Test get_project returns ProjectDetail typed model"""
+        result = await project_service.get_project(active_project.id, test_tenant_key)
+        assert isinstance(result, ProjectDetail)
+        assert result.id == str(active_project.id)
+        assert result.name == "Active Test Project"
+        assert result.status == "active"
+
+    @pytest.mark.asyncio
+    async def test_update_project_mission_returns_typed(
+        self, project_service: ProjectService, test_tenant_key: str, active_project
+    ):
+        """Test update_project_mission returns ProjectMissionUpdateResult"""
+        result = await project_service.update_project_mission(
+            active_project.id, "Updated mission text", test_tenant_key
+        )
+        assert isinstance(result, ProjectMissionUpdateResult)
+        assert result.project_id == active_project.id
+        assert result.message == "Mission updated successfully"
+
+    @pytest.mark.asyncio
+    async def test_cancel_staging_returns_project_data(
+        self, project_service: ProjectService, test_tenant_key: str, db_session
+    ):
+        """Test cancel_staging returns ProjectData typed model"""
+        from src.giljo_mcp.models.projects import Project as ProjectModel
+
+        # Create a project in staging status for cancel_staging to work
+        project = ProjectModel(
+            id=str(uuid4()),
+            name="Staging Project",
+            mission="Test mission",
+            description="Test description",
+            tenant_key=test_tenant_key,
+            status="staging",
+        )
+        db_session.add(project)
+        await db_session.commit()
+        await db_session.refresh(project)
+
+        result = await project_service.cancel_staging(project.id)
+        assert isinstance(result, ProjectData)
+        assert result.status == "cancelled"
+        assert result.name == "Staging Project"
+
+    @pytest.mark.asyncio
+    async def test_update_project_returns_project_data(
+        self, project_service: ProjectService, test_tenant_key: str, active_project
+    ):
+        """Test update_project returns ProjectData typed model"""
+        result = await project_service.update_project(
+            active_project.id, {"name": "Updated Name"}
+        )
+        assert isinstance(result, ProjectData)
+        assert result.name == "Updated Name"
+        assert result.id == active_project.id
+
+    @pytest.mark.asyncio
+    async def test_restore_project_returns_operation_result(
+        self, project_service: ProjectService, test_tenant_key: str, db_session
+    ):
+        """Test restore_project returns OperationResult typed model"""
+        from src.giljo_mcp.models.projects import Project
+
+        # Create a completed project to restore
+        project = Project(
+            id=str(uuid4()),
+            name="Completed Project",
+            mission="Test mission",
+            description="Test description",
+            tenant_key=test_tenant_key,
+            status="completed",
+        )
+        db_session.add(project)
+        await db_session.commit()
+        await db_session.refresh(project)
+
+        result = await project_service.restore_project(project.id)
+        assert isinstance(result, OperationResult)
+        assert "restored" in result.message.lower()
+
+    @pytest.mark.asyncio
+    async def test_delete_project_returns_soft_delete_result(
+        self, project_service: ProjectService, test_tenant_key: str, active_project
+    ):
+        """Test delete_project returns SoftDeleteResult typed model"""
+        result = await project_service.delete_project(active_project.id)
+        assert isinstance(result, SoftDeleteResult)
+        assert result.message == "Project deleted successfully"
+        assert result.deleted_at is not None
 
 
 @pytest.fixture
