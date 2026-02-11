@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-07 (Added 0730 Security Patch - Tenant Isolation)
+**Last Updated:** 2026-02-11 (Added 0731 Typed Service Returns, 0750 Final Scrub COMPLETE, cleanup branch merged)
 
 ---
 
@@ -17,7 +17,7 @@
 | 0401-0500 | Agent Monitoring & Ghost Fixes | 0414-0433 COMPLETE, 0460-0463 COMPLETE, 0480 REVISED Complete, 0500-0501 COMPLETE |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
-| **0700-0750** | **Code Cleanup Series** | **Ready** (0700-0711 documented) |
+| **0700-0750** | **Code Cleanup Series** | **0750 COMPLETE** (merged to master 549fbd25), 0731 IN PROGRESS |
 
 ---
 
@@ -231,6 +231,36 @@
 > **Impact**: User A can access User B's projects/tasks/jobs by knowing resource IDs
 > **Scope**: API layer only (pass current_user.tenant_key to service calls)
 > **Follow-up**: 0731 will do comprehensive service layer cleanup (remove fallbacks, make tenant_key required)
+
+### Typed Service Returns Series (0731) - IN PROGRESS
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0731a** | **Pydantic Response Models + Design Validation** | **Ready** | **HIGH** | 4-6h |
+| **0731b** | **Tier 1 Service Refactor (Org/User/Product)** | **BLOCKED** (needs 0731a) | **HIGH** | 8-12h |
+| **0731c** | **Tier 2+3 Service Refactor (11 services)** | **BLOCKED** (needs 0731b) | **HIGH** | 6-10h |
+| **0731d** | **API Endpoint Updates + Final Validation** | **BLOCKED** (needs 0731c) | **HIGH** | 4-8h |
+
+> **Purpose**: Replace all `dict[str, Any]` service returns with typed Pydantic models and exception-based error handling
+> **Impact**: 111 dict wrapper instances across 14 services, ~45-60 endpoint consumers
+> **Branch**: `feature/0731-typed-service-returns` (from master @ 549fbd25)
+> **Design Reference**: `docs/architecture/service_response_models.md` (from 0730a)
+> **Chain Log**: `prompts/0731_chain/chain_log.json`
+> **Estimated Total**: 22-36h across 4 sequential sessions
+> **Execution**: Multi-terminal chain pattern (MULTI_TERMINAL_CHAIN_STRATEGY.md)
+
+### Post-Cleanup Audit & Scrub Series (0750) - COMPLETE
+| ID | Title | Status | Priority | Commit |
+|----|-------|--------|----------|--------|
+| **0750a** | **Backend Except Cleanup** | **COMPLETE** | HIGH | 418d106e |
+| **0750b** | **Frontend Console Cleanup** | **COMPLETE** | HIGH | 7badd1ac |
+| **0750c** | **Final Audit & Archive** | **COMPLETE** | HIGH | c9bd8bad |
+| **0750d** | **Orphan Components + Dead Exports** | **COMPLETE** | LOW | 549fbd25 |
+
+> **Status**: 100% COMPLETE (2026-02-11). All merged to master.
+> **Impact**: ~110 files changed, ~15,800 lines removed, architecture score 8/10
+> **Commits**: e14f1b85, 7f0cdf33, 418d106e, 7badd1ac, c9bd8bad, 549fbd25
+> **Key Results**: 53 redundant except blocks removed, ~135 console.log removed, 7 orphan modules deleted, 41 dead API methods removed, 14 old reports archived, 3 orphan Vue components deleted, 25 dead JS exports removed
+> **Branch**: `cleanup/post-0745-audit-fixes` (merged to master)
 
 ### Test Suite & Remediation (0481-0484) - In Progress
 | ID | Title | Status | Priority | Notes |
@@ -654,7 +684,7 @@ completed/reference/
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
-**0700-0750** (Code Cleanup): 0700-0708
+**0700-0750** (Code Cleanup): 0700-0708, 0730-0731 (service returns), 0745-0750 (audit+scrub)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers in Root Folder (Needs Cleanup)
