@@ -16,10 +16,13 @@ Design Principles:
 - Async/Await: Full SQLAlchemy 2.0 async support
 - Error Handling: Consistent exception handling and logging
 - Testability: Can be unit tested independently
+
+Updated Handover 0731: Migrated from dict returns to typed
+TemplateListResult, TemplateGetResult, TemplateCreateResult, TemplateUpdateResult.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import and_, func, select, update
@@ -36,6 +39,13 @@ from src.giljo_mcp.exceptions import (
 # Model imports: Use domain-specific imports (Post-0128a)
 from src.giljo_mcp.models.agent_identity import AgentJob
 from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
+from src.giljo_mcp.schemas.service_responses import (
+    TemplateCreateResult,
+    TemplateDetail,
+    TemplateGetResult,
+    TemplateListResult,
+    TemplateUpdateResult,
+)
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from src.giljo_mcp.tenant import TenantManager
 
@@ -75,7 +85,7 @@ class TemplateService:
     # CRUD Operations
     # ============================================================================
 
-    async def list_templates(self, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def list_templates(self, tenant_key: Optional[str] = None) -> TemplateListResult:
         """
         List all agent templates for a tenant.
 
@@ -83,7 +93,7 @@ class TemplateService:
             tenant_key: Tenant key for filtering (uses current tenant if not provided)
 
         Returns:
-            Dict with template list and count
+            TemplateListResult with templates list and count.
 
         Raises:
             ValidationError: When no tenant context is available
@@ -91,7 +101,7 @@ class TemplateService:
 
         Example:
             >>> result = await service.list_templates()
-            >>> for template in result["templates"]:
+            >>> for template in result.templates:
             ...     print(template["name"])
         """
         try:
@@ -122,7 +132,7 @@ class TemplateService:
                     for t in templates
                 ]
 
-                return {"templates": template_list, "count": len(template_list)}
+                return TemplateListResult(templates=template_list, count=len(template_list))
 
         except ValidationError:
             # Re-raise our custom exceptions
@@ -133,7 +143,7 @@ class TemplateService:
 
     async def get_template(
         self, template_id: Optional[str] = None, template_name: Optional[str] = None, tenant_key: Optional[str] = None
-    ) -> dict[str, Any]:
+    ) -> TemplateGetResult:
         """
         Get a specific template by ID or name.
 
@@ -143,7 +153,7 @@ class TemplateService:
             tenant_key: Tenant key for filtering (uses current tenant if not provided)
 
         Returns:
-            Dict with template details
+            TemplateGetResult with template detail.
 
         Raises:
             ValidationError: When neither template_id nor template_name provided, or no tenant context
@@ -152,7 +162,7 @@ class TemplateService:
 
         Example:
             >>> result = await service.get_template(template_name="orchestrator")
-            >>> print(result["template"]["content"])
+            >>> print(result.template.content)
         """
         try:
             if not template_id and not template_name:
@@ -193,19 +203,19 @@ class TemplateService:
                         },
                     )
 
-                return {
-                    "template": {
-                        "id": str(template.id),
-                        "name": template.name,
-                        "role": template.role,
-                        "content": template.system_instructions,
-                        "cli_tool": template.cli_tool,
-                        "background_color": template.background_color,
-                        "category": template.category,
-                        "tenant_key": template.tenant_key,
-                        "product_id": template.product_id,
-                    }
-                }
+                return TemplateGetResult(
+                    template=TemplateDetail(
+                        id=str(template.id),
+                        name=template.name,
+                        role=template.role,
+                        content=template.system_instructions,
+                        cli_tool=template.cli_tool,
+                        background_color=template.background_color,
+                        category=template.category,
+                        tenant_key=template.tenant_key,
+                        product_id=template.product_id,
+                    )
+                )
 
         except (ValidationError, TemplateNotFoundError):
             # Re-raise our custom exceptions
@@ -232,7 +242,7 @@ class TemplateService:
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
         **kwargs,
-    ) -> dict[str, Any]:
+    ) -> TemplateCreateResult:
         """
         Create a new agent template.
 
@@ -247,7 +257,7 @@ class TemplateService:
             tenant_key: Tenant key for multi-tenancy (auto-determined if not provided)
 
         Returns:
-            Dict with template details
+            TemplateCreateResult with template_id, name, and tenant_key.
 
         Raises:
             ValidationError: When no tenant context is available
@@ -259,7 +269,7 @@ class TemplateService:
             ...     content="You are an analyzer agent for...",
             ...     role="analyzer"
             ... )
-            >>> print(result["template_id"])
+            >>> print(result.template_id)
         """
         try:
             # Use provided tenant_key or get from context
@@ -289,11 +299,11 @@ class TemplateService:
 
                 self._logger.info(f"Created template '{name}' (ID: {template_id}) for tenant {tenant_key}")
 
-                return {
-                    "template_id": template_id,
-                    "name": name,
-                    "tenant_key": tenant_key,
-                }
+                return TemplateCreateResult(
+                    template_id=template_id,
+                    name=name,
+                    tenant_key=tenant_key,
+                )
 
         except ValidationError:
             # Re-raise our custom exceptions
@@ -319,7 +329,7 @@ class TemplateService:
         background_color: Optional[str] = None,
         tenant_key: Optional[str] = None,
         **kwargs,
-    ) -> dict[str, Any]:
+    ) -> TemplateUpdateResult:
         """
         Update an existing template.
 
@@ -334,7 +344,7 @@ class TemplateService:
             tenant_key: Tenant key for validation (uses current tenant if not provided)
 
         Returns:
-            Dict with success status
+            TemplateUpdateResult with template_id and updated flag.
 
         Raises:
             ValidationError: When no tenant context is available
@@ -387,10 +397,10 @@ class TemplateService:
 
                 self._logger.info(f"Updated template {template_id}")
 
-                return {
-                    "template_id": template_id,
-                    "updated": True,
-                }
+                return TemplateUpdateResult(
+                    template_id=template_id,
+                    updated=True,
+                )
 
         except (ValidationError, TemplateNotFoundError):
             # Re-raise our custom exceptions

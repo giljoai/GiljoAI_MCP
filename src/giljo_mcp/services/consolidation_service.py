@@ -1,12 +1,12 @@
 """Service for consolidating vision documents into unified summaries (Handover 0377).
 
 Updated Handover 0730b: Migrated from dict wrappers to exception-based error handling.
+Updated Handover 0731: Migrated from dict returns to typed ConsolidationResult.
 """
 
 import hashlib
 import logging
 from datetime import datetime, timezone
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.schemas.service_responses import ConsolidationResult, SummaryLevel
 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
 
@@ -28,7 +29,7 @@ class ConsolidatedVisionService:
 
     async def consolidate_vision_documents(
         self, product_id: str, session: AsyncSession, tenant_key: str, force: bool = False
-    ) -> dict[str, Any]:
+    ) -> ConsolidationResult:
         """
         Consolidate all active vision documents into light/medium summaries.
 
@@ -39,12 +40,7 @@ class ConsolidatedVisionService:
             force: Force regeneration even if no changes detected
 
         Returns:
-            {
-                "light": {"summary": "...", "tokens": int},
-                "medium": {"summary": "...", "tokens": int},
-                "hash": "...",
-                "source_docs": ["doc_id1", "doc_id2", ...]
-            }
+            ConsolidationResult with light/medium summaries, hash, and source_docs.
 
         Raises:
             ResourceNotFoundError: Product not found or tenant mismatch
@@ -57,7 +53,7 @@ class ConsolidatedVisionService:
         product = result.scalar_one_or_none()
 
         if not product:
-            logger.warning("consolidate_vision_documents.product_not_found", product_id=product_id)
+            logger.warning("consolidate_vision_documents.product_not_found: product_id=%s", product_id)
             raise ResourceNotFoundError(
                 message="Product not found", error_code="PRODUCT_NOT_FOUND", context={"product_id": product_id}
             )
@@ -65,10 +61,9 @@ class ConsolidatedVisionService:
         # Multi-tenant isolation check
         if product.tenant_key != tenant_key:
             logger.warning(
-                "consolidate_vision_documents.tenant_mismatch",
-                product_id=product_id,
-                expected_tenant=tenant_key,
-                actual_tenant=product.tenant_key,
+                "consolidate_vision_documents.tenant_mismatch: product_id=%s expected_tenant=%s",
+                product_id,
+                tenant_key,
             )
             # Don't leak tenant info - raise same error as not found
             raise ResourceNotFoundError(
@@ -80,7 +75,7 @@ class ConsolidatedVisionService:
 
         # Check if content has changed (unless force=True)
         if not force and product.consolidated_vision_hash == aggregate_hash:
-            logger.info("consolidate_vision_documents.no_changes", product_id=product_id, hash=aggregate_hash)
+            logger.info("consolidate_vision_documents.no_changes: product_id=%s hash=%s", product_id, aggregate_hash)
             raise ValidationError(
                 message="No changes detected in vision documents",
                 error_code="NO_CHANGES",
@@ -89,19 +84,19 @@ class ConsolidatedVisionService:
 
         # Generate summaries
         logger.info(
-            "consolidate_vision_documents.generating_summaries",
-            product_id=product_id,
-            aggregate_tokens=self.summarizer.estimate_tokens(aggregate_text),
-            source_docs=len(source_doc_ids),
+            "consolidate_vision_documents.generating_summaries: product_id=%s aggregate_tokens=%d source_docs=%d",
+            product_id,
+            self.summarizer.estimate_tokens(aggregate_text),
+            len(source_doc_ids),
         )
 
         summary_result = self.summarizer.summarize_multi_level(aggregate_text)
 
-        # Update product fields
-        product.consolidated_vision_light = summary_result["light"]["summary"]
-        product.consolidated_vision_light_tokens = summary_result["light"]["tokens"]
-        product.consolidated_vision_medium = summary_result["medium"]["summary"]
-        product.consolidated_vision_medium_tokens = summary_result["medium"]["tokens"]
+        # Update product fields (summary_result is typed SummarizeMultiLevelResult)
+        product.consolidated_vision_light = summary_result.light.summary
+        product.consolidated_vision_light_tokens = summary_result.light.tokens
+        product.consolidated_vision_medium = summary_result.medium.summary
+        product.consolidated_vision_medium_tokens = summary_result.medium.tokens
         product.consolidated_vision_hash = aggregate_hash
         product.consolidated_at = datetime.now(timezone.utc)
 
@@ -109,20 +104,25 @@ class ConsolidatedVisionService:
         await session.commit()
 
         logger.info(
-            "consolidate_vision_documents.success",
-            product_id=product_id,
-            light_tokens=summary_result["light"]["tokens"],
-            medium_tokens=summary_result["medium"]["tokens"],
-            processing_time_ms=summary_result["processing_time_ms"],
+            "consolidate_vision_documents.success: product_id=%s light_tokens=%d medium_tokens=%d",
+            product_id,
+            summary_result.light.tokens,
+            summary_result.medium.tokens,
         )
 
-        # Return ConsolidationResult (exception-based - no "success" wrapper)
-        return {
-            "light": {"summary": summary_result["light"]["summary"], "tokens": summary_result["light"]["tokens"]},
-            "medium": {"summary": summary_result["medium"]["summary"], "tokens": summary_result["medium"]["tokens"]},
-            "hash": aggregate_hash,
-            "source_docs": source_doc_ids,
-        }
+        # Return typed ConsolidationResult (Handover 0731)
+        return ConsolidationResult(
+            light=SummaryLevel(
+                summary=summary_result.light.summary,
+                tokens=summary_result.light.tokens,
+            ),
+            medium=SummaryLevel(
+                summary=summary_result.medium.summary,
+                tokens=summary_result.medium.tokens,
+            ),
+            hash=aggregate_hash,
+            source_docs=source_doc_ids,
+        )
 
     def _build_aggregate(self, product: Product) -> tuple[str, list[str], str]:
         """
