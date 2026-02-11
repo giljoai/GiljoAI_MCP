@@ -521,14 +521,6 @@ async def mock_discovery_manager():
     mock_discovery = MagicMock()
 
     # Mock discovery methods
-    mock_discovery.discover_context = AsyncMock(
-        return_value={
-            "priority": {"vision": [], "sessions": [], "devlog": []},
-            "context_budget": 100000,
-            "agent_role": "default",
-        }
-    )
-
     mock_discovery.get_discovery_paths = AsyncMock(
         return_value={
             "vision": Path("docs/vision"),
@@ -537,9 +529,6 @@ async def mock_discovery_manager():
             "claude": Path("CLAUDE.md"),
         }
     )
-
-    mock_discovery.detect_changes = AsyncMock(return_value={})
-    mock_discovery.PRIORITY_ORDER = ["vision", "sessions", "devlog", "claude"]
 
     return mock_discovery
 
