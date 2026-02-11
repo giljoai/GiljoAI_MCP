@@ -199,30 +199,81 @@ class ConversionResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class SendMessageResult(BaseModel):
-    """Message send result."""
+class StagingDirective(BaseModel):
+    """Staging session completion directive for orchestrator stop signal.
 
-    message_id: str
-    delivered_to: list[str] = Field(default_factory=list)
+    Defense-in-depth Layer 5.5: Reinforced advisory STOP signal for staging
+    completion (Handover 0709b).
+    """
+
+    status: str
+    action: str
+    message: str
+    implementation_gate: str
+    next_step: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SendMessageResult(BaseModel):
+    """Message send result.
+
+    Returned by send_message() and broadcast().
+    message_id is Optional because broadcasting to an empty project yields None.
+    staging_directive is present only when a staging-phase orchestrator broadcasts.
+    """
+
+    message_id: Optional[str] = None
+    to_agents: list[str] = Field(default_factory=list)
+    message_type: str = "direct"
+    staging_directive: Optional[StagingDirective] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class BroadcastResult(BaseModel):
-    """Broadcast message result."""
+    """Broadcast-to-project result.
 
-    broadcast_id: str
+    Extends SendMessageResult semantics with a recipient count.
+    Returned by broadcast_to_project().
+    """
+
+    message_id: Optional[str] = None
+    to_agents: list[str] = Field(default_factory=list)
+    message_type: str = "broadcast"
     recipients_count: int = 0
-    message_ids: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class MessageListResult(BaseModel):
-    """Message list result."""
+    """Message list result.
+
+    Returned by get_messages(), receive_messages(), and list_messages().
+    The optional agent field is populated by get_messages() only.
+    """
 
     messages: list[dict] = Field(default_factory=list)
     count: int = 0
+    agent: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CompleteMessageResult(BaseModel):
+    """Message completion result."""
+
+    message_id: str
+    completed_by: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AcknowledgeMessageResult(BaseModel):
+    """Message acknowledgment result."""
+
+    acknowledged: bool = True
+    message_id: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -232,67 +283,219 @@ class MessageListResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class WorkflowStatus(BaseModel):
+    """Workflow status for a project.
+
+    Fields match OrchestrationService.get_workflow_status() output.
+    Tracks agent execution counts and overall progress.
+    """
+
+    active_agents: int = 0
+    completed_agents: int = 0
+    failed_agents: int = 0
+    pending_agents: int = 0
+    current_stage: str = "Not started"
+    progress_percent: float = 0.0
+    total_agents: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SpawnResult(BaseModel):
-    """Agent spawn result."""
+    """Agent spawn result.
+
+    Fields match OrchestrationService.spawn_agent_job() output.
+    Contains both work order (job_id) and executor (agent_id) UUIDs
+    plus the thin client prompt for agent startup.
+    """
 
     job_id: str
-    agent_role: str
-    project_id: str
-    status: str = "pending"
+    agent_id: str
+    execution_id: Optional[str] = None
+    agent_prompt: str
+    prompt_tokens: int = 0
+    mission_stored: bool = True
+    mission_tokens: int = 0
+    total_tokens: int = 0
+    thin_client: bool = True
+    thin_client_note: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class MissionResponse(BaseModel):
-    """Agent mission response."""
+    """Agent mission response.
+
+    Fields match OrchestrationService.get_agent_mission() output.
+    Contains the full team-aware mission with lifecycle protocol.
+    """
 
     job_id: str
-    mission: str
+    agent_id: Optional[str] = None
+    agent_name: Optional[str] = None
+    agent_display_name: Optional[str] = None
+    mission: Optional[str] = None
+    project_id: Optional[str] = None
+    parent_job_id: Optional[str] = None
+    estimated_tokens: int = 0
+    status: Optional[str] = None
+    created_at: Optional[str] = None
+    started_at: Optional[str] = None
+    thin_client: bool = True
     full_protocol: Optional[str] = None
-    agent_role: Optional[str] = None
+    blocked: bool = False
+    error: Optional[str] = None
+    user_instruction: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PendingJobsResult(BaseModel):
+    """Pending jobs list result.
+
+    Fields match OrchestrationService.get_pending_jobs() output.
+    """
+
+    jobs: list[dict] = Field(default_factory=list)
+    count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AcknowledgeJobResult(BaseModel):
+    """Job acknowledgment result.
+
+    Fields match OrchestrationService.acknowledge_job() output.
+    """
+
+    job: dict = Field(default_factory=dict)
+    next_instructions: str = "Begin executing your mission"
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProgressResult(BaseModel):
+    """Progress report result.
+
+    Fields match OrchestrationService.report_progress() output.
+    """
+
+    status: str = "success"
+    message: str = "Progress reported successfully"
+    warnings: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CompleteJobResult(BaseModel):
+    """Job completion result.
+
+    Fields match OrchestrationService.complete_job() output.
+    """
+
+    status: str = "success"
+    job_id: str
+    message: str = "Job completed successfully"
+    warnings: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ErrorReportResult(BaseModel):
+    """Error report result.
+
+    Fields match OrchestrationService.report_error() output.
+    """
+
+    job_id: str
+    message: str = "Error reported"
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JobListResult(BaseModel):
+    """Paginated job list result.
+
+    Fields match OrchestrationService.list_jobs() output.
+    """
+
+    jobs: list[dict] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 100
+    offset: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class MissionUpdateResult(BaseModel):
-    """Mission update result."""
+    """Mission update result.
+
+    Fields match OrchestrationService.update_agent_mission() output.
+    """
 
     job_id: str
     mission_updated: bool = True
+    mission_length: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class InstructionsResponse(BaseModel):
-    """Orchestrator instructions response."""
+class SuccessionContextResult(BaseModel):
+    """Successor orchestrator context result (Handover 0461f).
 
-    orchestrator_id: str
-    instructions: str
-    priority_categories: list[str] = Field(default_factory=list)
+    Fields match OrchestrationService.create_successor_orchestrator() output.
+    Same agent_id is preserved (no ID swap); context is reset and written to 360 Memory.
+    """
 
-    model_config = ConfigDict(from_attributes=True)
-
-
-class SuccessionResult(BaseModel):
-    """Orchestrator succession result."""
-
-    predecessor_id: str
-    successor_id: str
-    handover_summary: Optional[str] = None
+    job_id: str
+    agent_id: str
+    context_reset: bool = True
+    old_context_used: int = 0
+    new_context_used: int = 0
+    memory_entry_created: bool = True
+    reason: str = "manual"
+    message: str = ""
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class SuccessionStatus(BaseModel):
-    """Orchestrator succession status."""
+    """Orchestrator succession status check result.
 
-    orchestrator_id: str
+    Fields match OrchestrationService.check_succession_status() output.
+    """
+
+    should_trigger: bool = False
     context_used: int = 0
     context_budget: int = 0
-    succession_recommended: bool = False
-    active_agents: int = 0
+    usage_percentage: float = 0.0
+    threshold_reached: bool = False
+    recommendation: str = ""
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class OrchestrationWorkflowResult(BaseModel):
+    """Full orchestration workflow result.
+
+    Fields match OrchestrationService.process_product_vision() output.
+    """
+
+    project_id: str
+    mission_plan: dict = Field(default_factory=dict)
+    selected_agents: list[str] = Field(default_factory=list)
+    spawned_jobs: list[str] = Field(default_factory=list)
+    workflow_result: Optional[object] = None
+    token_reduction: dict = Field(default_factory=dict)
+
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
+
+
+# Legacy aliases for backward compatibility with existing imports.
+# These models were replaced by more specific types but are kept as aliases
+# so that existing test files and __init__.py exports continue to work.
+InstructionsResponse = SuccessionContextResult  # Legacy alias; orchestrator instructions returns dict
+SuccessionResult = SuccessionContextResult  # Legacy alias; renamed to SuccessionContextResult in 0731c
 
 
 # ---------------------------------------------------------------------------
@@ -314,12 +517,359 @@ class TemplateListResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ConsolidationResult(BaseModel):
-    """Vision document consolidation result."""
+class SummaryLevel(BaseModel):
+    """Single summary level (light or medium) within a consolidation result."""
 
-    product_id: str
-    documents_consolidated: int = 0
-    aggregate: dict = Field(default_factory=dict)
+    summary: str = ""
+    tokens: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ConsolidationResult(BaseModel):
+    """Vision document consolidation result.
+
+    Fields match ConsolidatedVisionService.consolidate_vision_documents() output.
+    """
+
+    light: SummaryLevel = Field(default_factory=SummaryLevel)
+    medium: SummaryLevel = Field(default_factory=SummaryLevel)
+    hash: str = ""
+    source_docs: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SummarizeSingleResult(BaseModel):
+    """Single-document summarization result.
+
+    Fields match VisionDocumentSummarizer.summarize() output.
+    """
+
+    summary: str = ""
+    original_tokens: int = 0
+    summary_tokens: int = 0
+    compression_ratio: float = 0.0
+    processing_time_ms: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MultiLevelSummaryLevel(BaseModel):
+    """Single level within a multi-level summarization result."""
+
+    summary: str = ""
+    tokens: int = 0
+    sentences: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SummarizeMultiLevelResult(BaseModel):
+    """Multi-level summarization result.
+
+    Fields match VisionDocumentSummarizer.summarize_multi_level() output.
+    """
+
+    light: MultiLevelSummaryLevel = Field(default_factory=MultiLevelSummaryLevel)
+    medium: MultiLevelSummaryLevel = Field(default_factory=MultiLevelSummaryLevel)
+    original_tokens: int = 0
+    processing_time_ms: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TemplateDetail(BaseModel):
+    """Single template detail for get_template response."""
+
+    id: str
+    name: str
+    role: Optional[str] = None
+    content: Optional[str] = None
+    cli_tool: Optional[str] = None
+    background_color: Optional[str] = None
+    category: Optional[str] = None
+    tenant_key: Optional[str] = None
+    product_id: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TemplateGetResult(BaseModel):
+    """Single template retrieval result."""
+
+    template: TemplateDetail
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TemplateCreateResult(BaseModel):
+    """Template creation result."""
+
+    template_id: str
+    name: str
+    tenant_key: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TemplateUpdateResult(BaseModel):
+    """Template update result."""
+
+    template_id: str
+    updated: bool = True
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ---------------------------------------------------------------------------
+# Project Service Models
+# ---------------------------------------------------------------------------
+
+
+class ProjectDetail(BaseModel):
+    """Full project detail with agent information.
+
+    Fields match ProjectService.get_project() output.
+    """
+
+    id: str
+    alias: Optional[str] = None
+    name: str
+    mission: Optional[str] = None
+    description: Optional[str] = None
+    status: str
+    staging_status: Optional[str] = None
+    product_id: Optional[str] = None
+    tenant_key: str
+    context_budget: int = 150000
+    context_used: int = 0
+    execution_mode: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    agents: list[dict] = Field(default_factory=list)
+    agent_count: int = 0
+    message_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectListItem(BaseModel):
+    """Project item for list operations.
+
+    Fields match ProjectService.list_projects() output per item.
+    """
+
+    id: str
+    name: str
+    mission: Optional[str] = None
+    description: Optional[str] = None
+    status: str
+    staging_status: Optional[str] = None
+    tenant_key: str
+    product_id: Optional[str] = None
+    created_at: str
+    updated_at: str
+    context_budget: int = 150000
+    context_used: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ActiveProjectDetail(BaseModel):
+    """Active project detail.
+
+    Fields match ProjectService.get_active_project() output.
+    """
+
+    id: str
+    alias: str = ""
+    name: str
+    mission: str = ""
+    description: Optional[str] = None
+    status: str
+    product_id: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    deleted_at: Optional[str] = None
+    context_budget: int = 150000
+    context_used: int = 0
+    agent_count: int = 0
+    message_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectMissionUpdateResult(BaseModel):
+    """Project mission update result."""
+
+    message: str
+    project_id: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectCompleteResult(BaseModel):
+    """Project completion result with memory update metadata."""
+
+    message: str
+    memory_updated: bool = False
+    sequence_number: int = 0
+    git_commits_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectCloseOutResult(BaseModel):
+    """Project close-out result with decommissioned agent details."""
+
+    message: str
+    agents_decommissioned: int = 0
+    decommissioned_agent_ids: list[str] = Field(default_factory=list)
+    project_status: str = "completed"
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectResumeResult(BaseModel):
+    """Project resume (continue_working) result."""
+
+    message: str
+    agents_resumed: int = 0
+    resumed_agent_ids: list[str] = Field(default_factory=list)
+    project_status: str = "inactive"
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectData(BaseModel):
+    """Generic project data for cancel_staging and update_project responses."""
+
+    id: str
+    name: str
+    status: str
+    mission: Optional[str] = None
+    description: Optional[str] = None
+    execution_mode: Optional[str] = None
+    meta_data: dict = Field(default_factory=dict)
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    activated_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    product_id: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectSummaryResult(BaseModel):
+    """Project summary with metrics for dashboard display."""
+
+    id: str
+    name: str
+    status: str
+    mission: Optional[str] = None
+    total_jobs: int = 0
+    completed_jobs: int = 0
+    failed_jobs: int = 0
+    active_jobs: int = 0
+    pending_jobs: int = 0
+    completion_percentage: float = 0.0
+    created_at: Optional[str] = None
+    activated_at: Optional[str] = None
+    last_activity_at: Optional[str] = None
+    product_id: str = ""
+    product_name: str = ""
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CloseoutData(BaseModel):
+    """Project closeout data with agent status counts."""
+
+    project_id: str
+    project_name: str
+    agent_count: int = 0
+    completed_agents: int = 0
+    failed_agents: int = 0
+    all_agents_complete: bool = False
+    has_failed_agents: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CanCloseResult(BaseModel):
+    """Project can-close readiness assessment."""
+
+    can_close: bool = False
+    summary: Optional[str] = None
+    all_agents_finished: bool = False
+    agent_statuses: dict[str, int] = Field(default_factory=dict)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CloseoutPromptResult(BaseModel):
+    """Closeout prompt and checklist for project completion."""
+
+    prompt: str
+    checklist: list[str] = Field(default_factory=list)
+    project_name: str
+    agent_summary: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectLaunchResult(BaseModel):
+    """Project launch result with orchestrator details."""
+
+    project_id: str
+    orchestrator_job_id: str
+    launch_prompt: str
+    status: str
+    staging_status: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectSwitchResult(BaseModel):
+    """Project switch/context change result."""
+
+    project_id: str
+    name: str
+    mission: Optional[str] = None
+    tenant_key: str
+    context_usage: str = ""
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NuclearDeleteResult(BaseModel):
+    """Nuclear (permanent) project deletion result."""
+
+    message: str
+    deleted_counts: dict[str, int] = Field(default_factory=dict)
+    project_name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SoftDeleteResult(BaseModel):
+    """Soft delete project result."""
+
+    message: str
+    deleted_at: Optional[str] = None
+    cancelled_jobs: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectPurgeResult(BaseModel):
+    """Purge deleted projects result."""
+
+    purged_count: int = 0
+    projects: list[dict] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -330,22 +880,98 @@ class ConsolidationResult(BaseModel):
 
 
 class AuthResult(BaseModel):
-    """Authentication result."""
+    """Authentication result returned by authenticate_user and create_first_admin.
+
+    Contains the authenticated user's profile data and a JWT token for
+    session establishment.  Optional fields (email, full_name, is_active,
+    created_at, last_login) are populated when the full user profile is
+    available (e.g. authenticate_user), but may be omitted in lightweight
+    flows.
+    """
 
     user_id: str
     username: str
     token: str
     tenant_key: str
     role: str = "user"
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    is_active: bool = True
+    created_at: Optional[str] = None
+    last_login: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class SetupState(BaseModel):
-    """System setup state."""
+class SetupStateInfo(BaseModel):
+    """Setup state information for a tenant.
 
-    is_configured: bool = False
-    has_admin: bool = False
-    has_database: bool = False
+    Maps directly to the SetupState ORM model fields returned by
+    AuthService.check_setup_state().
+    """
+
+    first_admin_created: bool = False
+    database_initialized: bool = False
+    tenant_key: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ApiKeyInfo(BaseModel):
+    """API key summary information (no sensitive data).
+
+    Returned by AuthService.list_api_keys(). Contains only the key
+    prefix (never the full key or hash) for display purposes.
+    """
+
+    id: str
+    name: str
+    key_prefix: str
+    permissions: list[str] = Field(default_factory=list)
+    is_active: bool = True
+    created_at: Optional[str] = None
+    last_used: Optional[str] = None
+    revoked_at: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ApiKeyCreateResult(BaseModel):
+    """Result of creating a new API key.
+
+    Contains the raw API key (shown only once), the key prefix for future
+    identification, and the hashed version stored in the database.
+
+    SECURITY: The ``api_key`` field contains the plaintext key and must
+    only be returned to the user once at creation time.
+    """
+
+    id: str
+    name: str
+    api_key: str
+    key_prefix: str
+    key_hash: str
+    permissions: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserInfo(BaseModel):
+    """Basic user profile information returned by registration methods.
+
+    Returned by AuthService.register_user(), create_user_in_org(),
+    and _register_user_impl(). Does not include sensitive fields
+    like password hashes.
+    """
+
+    id: str
+    username: str
+    email: Optional[str] = None
+    role: str
+    tenant_key: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Keep legacy SetupState alias for backward compatibility with existing imports
+SetupState = SetupStateInfo
