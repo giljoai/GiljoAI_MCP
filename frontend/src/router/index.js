@@ -253,15 +253,11 @@ router.beforeEach(async (to, from, next) => {
 
       if (setupState.is_fresh_install) {
         // Fresh install (0 users) - redirect to create admin account
-        console.log(
-          '[ROUTER] Fresh install detected (0 users), redirecting to create admin account',
-        )
         next('/welcome')
         return
       }
     } catch (error) {
-      // Network error - log but continue (will fail at auth check if needed)
-      console.log('[ROUTER] Setup status check failed:', error.message)
+      // Network error - continue (will fail at auth check if needed)
     }
   }
 
@@ -283,7 +279,6 @@ router.beforeEach(async (to, from, next) => {
         }
       } catch (error) {
         // On error, allow access (conservative for fresh installs)
-        console.log('[ROUTER] Welcome security check failed, allowing access')
       }
     }
 
@@ -308,7 +303,6 @@ router.beforeEach(async (to, from, next) => {
       }
     } catch (error) {
       // Not authenticated, redirect to login
-      console.log('[ROUTER] User not authenticated, redirecting to login')
       next({
         path: '/login',
         query: { redirect: to.fullPath },
@@ -319,7 +313,6 @@ router.beforeEach(async (to, from, next) => {
 
   // Check admin role requirement
   if (to.meta.requiresAdmin && !userStore.isAdmin) {
-    console.log('[ROUTER] Admin access required, redirecting to dashboard')
     next({ name: 'Dashboard' })
     return
   }

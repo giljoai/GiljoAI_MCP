@@ -556,7 +556,6 @@ async function handleStageProject() {
     const copied = await copyPromptToClipboard(prompt)
 
     if (copied) {
-      console.log('[ProjectTabs] Orchestrator prompt copied to clipboard')
       // Show success toast
       toastMessage.value = 'Orchestrator prompt copied - paste into ANY terminal (fresh or existing)'
       toastColor.value = 'success'
@@ -685,8 +684,6 @@ async function handleHandOver(agent) {
       throw new Error('Orchestrator job_id missing')
     }
 
-    console.log('[ProjectTabs] Initiating handover for orchestrator:', jobId)
-
     const response = await api.agentJobs.initiateHandover(jobId)
     const prompt = response?.data?.prompt
 
@@ -697,8 +694,6 @@ async function handleHandOver(agent) {
     // Copy handover prompt to clipboard
     await navigator.clipboard.writeText(prompt)
 
-    // Show success notification
-    console.log('[ProjectTabs] Handover prompt copied to clipboard')
     alert('📋 Handover prompt copied!\n\nPaste into your current orchestrator terminal to trigger handover.')
 
   } catch (error) {
@@ -712,7 +707,6 @@ async function handleHandOver(agent) {
  */
 function openCloseoutModal() {
   showCloseoutModal.value = true
-  console.log('[ProjectTabs] Opening closeout modal for project:', props.project.project_id || props.project.id)
 }
 
 /**

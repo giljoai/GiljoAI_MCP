@@ -46,7 +46,6 @@ export async function initializeApiConfig() {
     const { updateApiBaseURL } = await import('@/services/api')
     updateApiBaseURL(newBaseURL)
 
-    console.log('[API Config] Initialized from backend:', runtimeConfig)
     return true
   } catch (error) {
     console.error('[API Config] Failed to initialize from backend, using fallback:', error)

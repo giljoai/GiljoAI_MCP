@@ -207,7 +207,6 @@ function isDefaultOrigin(origin) {
 
 function copyOrigin(origin) {
   navigator.clipboard.writeText(origin)
-  console.log('[NETWORK SETTINGS] Origin copied to clipboard:', origin)
 }
 
 function addOrigin() {
@@ -219,15 +218,13 @@ function addOrigin() {
     // Would emit save event with updated origins
     // For now this is disabled
     newOrigin.value = ''
-    console.log('[NETWORK SETTINGS] Origin add attempted (disabled)')
   } catch (error) {
     console.error('Invalid origin format:', error)
   }
 }
 
-function removeOrigin(index) {
+function removeOrigin() {
   // Would emit save event with updated origins
   // For now this is disabled
-  console.log('[NETWORK SETTINGS] Origin remove attempted at index:', index, '(disabled)')
 }
 </script>

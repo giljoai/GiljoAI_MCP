@@ -129,7 +129,6 @@ orchestrator_enabled = true
 subagent_coordination = true
 context_sharing = true`
   navigator.clipboard.writeText(config)
-  console.log('[INTEGRATIONS] Codex configuration copied to clipboard')
 }
 
 const downloadInstructions = () => {
@@ -181,6 +180,5 @@ Visit your GiljoAI dashboard for additional configuration help.`
   a.download = 'codex-cli-giljo-mcp-setup.txt'
   a.click()
   URL.revokeObjectURL(url)
-  console.log('[INTEGRATIONS] Codex setup instructions downloaded')
 }
 </script>

@@ -164,7 +164,6 @@ async function fetchProjectDetails() {
     // API returns {jobs: [...], total: N, limit: N, offset: N}
     if (agentJobsResponse.data && agentJobsResponse.data.jobs && Array.isArray(agentJobsResponse.data.jobs)) {
       project.value.agents = agentJobsResponse.data.jobs
-      console.log('[ProjectLaunchView] Loaded agent jobs:', agentJobsResponse.data.jobs.length)
     }
   } catch (err) {
     error.value = err.response?.data?.detail || err.message || 'Failed to load project'

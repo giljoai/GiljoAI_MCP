@@ -226,7 +226,6 @@ async function copyProductCommand() {
     if (success) {
       showCopyFeedback.value = true
       copyFeedbackMessage.value = 'Product agent install instructions copied to clipboard'
-      console.log('[CLAUDE EXPORT] Product agent instructions copied')
     } else {
       throw new Error('Clipboard copy failed')
     }
@@ -249,7 +248,6 @@ async function copyPersonalCommand() {
     if (success) {
       showCopyFeedback.value = true
       copyFeedbackMessage.value = 'Personal agent install instructions copied to clipboard'
-      console.log('[CLAUDE EXPORT] Personal agent instructions copied')
     } else {
       throw new Error('Clipboard copy failed')
     }
@@ -267,7 +265,6 @@ async function loadActiveTemplates() {
     loading.value = true
     const response = await api.templates.list({ is_active: true })
     activeTemplates.value = response.data || []
-    console.log('[CLAUDE EXPORT] Loaded active templates:', activeTemplates.value.length)
   } catch (error) {
     console.error('[CLAUDE EXPORT] Failed to load templates:', error)
     activeTemplates.value = []
@@ -295,7 +292,6 @@ async function downloadPersonalAgents() {
 
     showCopyFeedback.value = true
     copyFeedbackMessage.value = 'Downloaded personal agent templates'
-    console.log('[CLAUDE EXPORT] Personal agent templates downloaded')
   } catch (error) {
     console.error('[CLAUDE EXPORT] Failed to download personal agents:', error)
     showCopyFeedback.value = true
@@ -323,7 +319,6 @@ async function downloadProductAgents() {
 
     showCopyFeedback.value = true
     copyFeedbackMessage.value = 'Downloaded product agent templates'
-    console.log('[CLAUDE EXPORT] Product agent templates downloaded')
   } catch (error) {
     console.error('[CLAUDE EXPORT] Failed to download product agents:', error)
     showCopyFeedback.value = true

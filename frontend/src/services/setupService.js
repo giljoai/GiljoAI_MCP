@@ -187,8 +187,6 @@ class SetupService {
    * @returns {Promise<{success: boolean, message: string}>}
    */
   async completeSetup(config) {
-    console.log('[SETUP_SERVICE] completeSetup called with:', config)
-
     // Transform wizard config to API format
     // aiTools is array of objects [{id, name, configured}], need to extract IDs
     const toolIds = (config.aiTools || []).map((tool) => {
@@ -200,8 +198,6 @@ class SetupService {
       tools_attached: toolIds,
       serena_enabled: config.serenaEnabled || false,
     }
-
-    console.log('[SETUP_SERVICE] Sending payload:', payload)
 
     const response = await fetch(`${this.getBaseURL()}/api/setup/complete`, {
       method: 'POST',
@@ -257,12 +253,10 @@ class SetupService {
         })
 
         if (response.ok) {
-          console.log(`Backend online after ${attempt} attempts`)
           return true
         }
       } catch (error) {
         // Backend not ready yet, continue polling
-        console.log(`Attempt ${attempt}/${maxAttempts}: Backend not ready`)
       }
 
       // Wait before next attempt
