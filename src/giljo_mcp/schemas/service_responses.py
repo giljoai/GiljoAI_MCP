@@ -70,40 +70,52 @@ class PaginatedResult(BaseModel, Generic[T]):
 
 
 class ProductStatistics(BaseModel):
-    """Product statistics response."""
+    """Product statistics response.
 
-    total_projects: int = 0
-    active_projects: int = 0
-    completed_projects: int = 0
-    total_jobs: int = 0
-    active_jobs: int = 0
-    total_tasks: int = 0
-    total_vision_documents: int = 0
+    Fields match ProductService._get_product_metrics() output plus product metadata.
+    """
+
+    product_id: str
+    name: str
+    is_active: bool
+    project_count: int = 0
+    unfinished_projects: int = 0
+    task_count: int = 0
+    unresolved_tasks: int = 0
+    vision_documents_count: int = 0
+    has_vision: bool = False
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class CascadeImpact(BaseModel):
-    """Cascade delete impact analysis."""
+    """Cascade delete impact analysis.
+
+    Fields match ProductService.get_cascade_impact() output.
+    """
 
     product_id: str
-    projects_affected: int = 0
-    jobs_affected: int = 0
-    tasks_affected: int = 0
-    vision_documents_affected: int = 0
-    memory_entries_affected: int = 0
+    product_name: str
+    total_projects: int = 0
+    total_tasks: int = 0
+    total_vision_documents: int = 0
+    warning: str = ""
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class VisionUploadResult(BaseModel):
-    """Vision document upload result."""
+    """Vision document upload result.
+
+    Fields match ProductService.upload_vision_document() output.
+    """
 
     document_id: str
-    filename: str
+    document_name: str
     chunks_created: int = 0
     total_tokens: int = 0
-    summary_level: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
