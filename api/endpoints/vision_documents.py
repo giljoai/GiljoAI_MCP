@@ -61,10 +61,10 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
             product_id=product_id, session=db_session, tenant_key=tenant_key, force=False
         )
 
-        # Exception-based: Success returns data directly
+        # 0731d: ConsolidatedVisionService returns ConsolidationResult typed model
         logger.info(
             f"vision_documents_consolidated: product_id={product_id}, "
-            f"light_tokens={result['light']['tokens']}, medium_tokens={result['medium']['tokens']}"
+            f"light_tokens={result.light.tokens}, medium_tokens={result.medium.tokens}"
         )
     except ValidationError as e:
         # Not an error - "no_changes" is expected behavior
@@ -244,23 +244,24 @@ async def create_vision_document(
                 summarizer = VisionDocumentSummarizer()
                 summaries = summarizer.summarize_multi_level(document_content)
 
+                # 0731d: VisionDocumentSummarizer returns SummarizeMultiLevelResult typed model
                 # Re-attach doc to session and store summaries (Handover 0246b: light and medium only)
                 db.add(doc)
-                doc.summary_light = summaries["light"]["summary"]
-                doc.summary_medium = summaries["medium"]["summary"]
-                doc.summary_light_tokens = summaries["light"]["tokens"]
-                doc.summary_medium_tokens = summaries["medium"]["tokens"]
+                doc.summary_light = summaries.light.summary
+                doc.summary_medium = summaries.medium.summary
+                doc.summary_light_tokens = summaries.light.tokens
+                doc.summary_medium_tokens = summaries.medium.tokens
                 doc.is_summarized = True
-                doc.original_token_count = summaries["original_tokens"]
+                doc.original_token_count = summaries.original_tokens
 
                 await db.commit()
 
                 logger.info(
                     f"Vision document {doc.id} summarized: "
-                    f"Light={summaries['light']['tokens']} tokens, "
-                    f"Medium={summaries['medium']['tokens']} tokens "
-                    f"(from {summaries['original_tokens']} tokens) "
-                    f"in {summaries['processing_time_ms']}ms"
+                    f"Light={summaries.light.tokens} tokens, "
+                    f"Medium={summaries.medium.tokens} tokens "
+                    f"(from {summaries.original_tokens} tokens) "
+                    f"in {summaries.processing_time_ms}ms"
                 )
             except (ImportError, ValueError, KeyError) as e:
                 # Summarization failed but document created - log warning and continue
@@ -437,21 +438,22 @@ async def update_vision_document(
                 summarizer = VisionDocumentSummarizer()
                 summaries = summarizer.summarize_multi_level(content)
 
+                # 0731d: VisionDocumentSummarizer returns SummarizeMultiLevelResult typed model
                 # Update summaries (Handover 0246b: light and medium only)
                 db.add(doc)
-                doc.summary_light = summaries["light"]["summary"]
-                doc.summary_medium = summaries["medium"]["summary"]
-                doc.summary_light_tokens = summaries["light"]["tokens"]
-                doc.summary_medium_tokens = summaries["medium"]["tokens"]
+                doc.summary_light = summaries.light.summary
+                doc.summary_medium = summaries.medium.summary
+                doc.summary_light_tokens = summaries.light.tokens
+                doc.summary_medium_tokens = summaries.medium.tokens
                 doc.is_summarized = True
-                doc.original_token_count = summaries["original_tokens"]
+                doc.original_token_count = summaries.original_tokens
 
                 await db.commit()
 
                 logger.info(
                     f"Vision document {document_id} summaries updated: "
-                    f"Light={summaries['light']['tokens']} tokens, "
-                    f"Medium={summaries['medium']['tokens']} tokens"
+                    f"Light={summaries.light.tokens} tokens, "
+                    f"Medium={summaries.medium.tokens} tokens"
                 )
             except (ImportError, ValueError, KeyError) as e:
                 # Summarization failed but content updated - log warning and continue
@@ -593,13 +595,13 @@ async def regenerate_consolidated_vision(
         product_id=product_id, session=db, tenant_key=tenant_key, force=force
     )
 
-    # Exception-based: Success returns data directly
+    # 0731d: ConsolidatedVisionService returns ConsolidationResult typed model
     return {
         "success": True,
-        "light_tokens": consolidation_result["light"]["tokens"],
-        "medium_tokens": consolidation_result["medium"]["tokens"],
-        "source_docs": consolidation_result["source_docs"],
-        "hash": consolidation_result["hash"],
+        "light_tokens": consolidation_result.light.tokens,
+        "medium_tokens": consolidation_result.medium.tokens,
+        "source_docs": consolidation_result.source_docs,
+        "hash": consolidation_result.hash,
     }
 
 
@@ -655,28 +657,29 @@ async def regenerate_summaries(
         summarizer = VisionDocumentSummarizer()
         summaries = summarizer.summarize_multi_level(content)
 
+        # 0731d: VisionDocumentSummarizer returns SummarizeMultiLevelResult typed model
         # Update document
         db.add(doc)
-        doc.summary_light = summaries["light"]["summary"]
-        doc.summary_medium = summaries["medium"]["summary"]
-        doc.summary_light_tokens = summaries["light"]["tokens"]
-        doc.summary_medium_tokens = summaries["medium"]["tokens"]
+        doc.summary_light = summaries.light.summary
+        doc.summary_medium = summaries.medium.summary
+        doc.summary_light_tokens = summaries.light.tokens
+        doc.summary_medium_tokens = summaries.medium.tokens
         doc.is_summarized = True
-        doc.original_token_count = summaries["original_tokens"]
+        doc.original_token_count = summaries.original_tokens
 
         await db.commit()
 
         logger.info(
             f"Vision document {document_id} summaries regenerated: "
-            f"Light={summaries['light']['tokens']} tokens, "
-            f"Medium={summaries['medium']['tokens']} tokens"
+            f"Light={summaries.light.tokens} tokens, "
+            f"Medium={summaries.medium.tokens} tokens"
         )
 
         return RechunkResponse(
             success=True,
             message="Summaries regenerated successfully",
             chunks_created=2,  # light and medium summaries
-            total_tokens=summaries["original_tokens"],
+            total_tokens=summaries.original_tokens,
         )
 
     except HTTPException:

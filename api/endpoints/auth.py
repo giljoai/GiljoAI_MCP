@@ -232,12 +232,11 @@ async def login(
     # Service raises AuthenticationError on failure (0480 migration)
     auth_result = await auth_service.authenticate_user(login_data.username, login_data.password)
 
-    # Service now returns data directly, exceptions handle errors
-    user_data = auth_result["user"]
-    token = auth_result["token"]
+    # Service now returns AuthResult with flat attributes (no nested "user" dict)
+    token = auth_result.token
 
     # Update last login timestamp
-    await auth_service.update_last_login(user_data["id"], datetime.now(timezone.utc))
+    await auth_service.update_last_login(auth_result.user_id, datetime.now(timezone.utc))
 
     # v3.0 Unified (Handover 0034): No more default admin/admin password
     # Fresh installs go directly to "Create Admin Account" page
@@ -319,15 +318,15 @@ async def login(
     )
 
     logger.info(
-        f"User logged in successfully: {user_data['username']} (role: {user_data['role']}) (password_change_required: {password_change_required})"
+        f"User logged in successfully: {auth_result.username} (role: {auth_result.role}) (password_change_required: {password_change_required})"
     )
 
     # v3.0 Unified: Include password change requirement in response for frontend handling
     response_data = {
         "message": "Login successful",
-        "username": user_data["username"],
-        "role": user_data["role"],
-        "tenant_key": user_data["tenant_key"],
+        "username": auth_result.username,
+        "role": auth_result.role,
+        "tenant_key": auth_result.tenant_key,
     }
 
     if password_change_required:
@@ -471,14 +470,14 @@ async def list_api_keys(
 
     return [
         APIKeyResponse(
-            id=key["id"],
-            name=key["name"],
-            key_prefix=key["key_prefix"],
-            permissions=key["permissions"],
-            is_active=key["is_active"],
-            created_at=key["created_at"],
-            last_used=key["last_used"],
-            revoked_at=key["revoked_at"],
+            id=key.id,
+            name=key.name,
+            key_prefix=key.key_prefix,
+            permissions=key.permissions,
+            is_active=key.is_active,
+            created_at=key.created_at,
+            last_used=key.last_used,
+            revoked_at=key.revoked_at,
         )
         for key in keys
     ]
@@ -512,15 +511,13 @@ async def create_api_key(
         permissions=request.permissions,
     )
 
-    logger.info(
-        f"API key created: {key_data['name']} (user: {current_user.username}, prefix: {key_data['key_prefix']})"
-    )
+    logger.info(f"API key created: {key_data.name} (user: {current_user.username}, prefix: {key_data.key_prefix})")
 
     return APIKeyCreateResponse(
-        id=key_data["id"],
-        name=key_data["name"],
-        api_key=key_data["api_key"],  # Plaintext key - only shown once!
-        key_prefix=key_data["key_prefix"],
+        id=key_data.id,
+        name=key_data.name,
+        api_key=key_data.api_key,  # Plaintext key - only shown once!
+        key_prefix=key_data.key_prefix,
         message="API key created successfully. Store this key securely - it will not be shown again!",
     )
 
@@ -557,8 +554,8 @@ async def revoke_api_key(
     keys = await auth_service.list_api_keys(str(current_user.id), include_revoked=True)
     key_name = "Unknown"
     for key in keys:
-        if key["id"] == str(key_id):
-            key_name = key["name"]
+        if key.id == str(key_id):
+            key_name = key.name
             break
 
     return APIKeyRevokeResponse(id=str(key_id), name=key_name, message="API key revoked successfully")
@@ -608,16 +605,14 @@ async def register_user(
         requesting_admin_id=str(current_user.id),
     )
 
-    logger.info(
-        f"User registered: {user_data['username']} (role: {user_data['role']}, by admin: {current_user.username})"
-    )
+    logger.info(f"User registered: {user_data.username} (role: {user_data.role}, by admin: {current_user.username})")
 
     return RegisterUserResponse(
-        id=user_data["id"],
-        username=user_data["username"],
-        email=user_data["email"],
-        role=user_data["role"],
-        tenant_key=user_data["tenant_key"],
+        id=user_data.id,
+        username=user_data.username,
+        email=user_data.email,
+        role=user_data.role,
+        tenant_key=user_data.tenant_key,
         message="User registered successfully",
     )
 
@@ -676,8 +671,8 @@ async def create_first_admin_user(
             org_name=request_body.workspace_name,  # Handover 0424h
         )
 
-        token = admin_data["token"]
-        tenant_key = admin_data["tenant_key"]
+        token = admin_data.token
+        tenant_key = admin_data.tenant_key
 
         # Seed default agent templates for this tenant (Handover 0041 Phase 2)
         # CRITICAL: Templates are seeded with the user's tenant_key (not default_tenant_key)
@@ -772,18 +767,18 @@ async def create_first_admin_user(
 
         logger.info(
             f"[SETUP] First administrator account created successfully - "
-            f"username: {admin_data['username']}, tenant: {tenant_key[:12]}..., "
+            f"username: {admin_data.username}, tenant: {tenant_key[:12]}..., "
             f"client_ip: {client_ip}. Endpoint now DISABLED for security."
         )
 
         return RegisterUserResponse(
-            id=admin_data["id"],
-            username=admin_data["username"],
-            email=admin_data["email"],
-            full_name=admin_data["full_name"],
-            role=admin_data["role"],
-            tenant_key=admin_data["tenant_key"],
-            is_active=admin_data["is_active"],
+            id=admin_data.user_id,
+            username=admin_data.username,
+            email=admin_data.email,
+            full_name=admin_data.full_name,
+            role=admin_data.role,
+            tenant_key=admin_data.tenant_key,
+            is_active=admin_data.is_active,
             message="Administrator account created successfully. Redirecting to dashboard...",
         )
 
