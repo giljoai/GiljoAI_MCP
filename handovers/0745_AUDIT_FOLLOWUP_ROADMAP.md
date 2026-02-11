@@ -25,7 +25,7 @@
 | 0745a | Database Migration & P0 Fixes | NOT STARTED | -- | -- |
 | 0745b | Dependency Security & Cleanup | NOT STARTED | -- | -- |
 | 0745c | Backend Dead Code Removal | NOT STARTED | -- | -- |
-| 0745d | Frontend Cleanup | NOT STARTED | -- | -- |
+| 0745d | Frontend Cleanup | COMPLETED | feature/0745d-frontend-cleanup | 2026-02-10 |
 | 0745e | Architecture Polish | NOT STARTED | -- | -- |
 | 0745f | Documentation Sync | NOT STARTED | -- | -- |
 
@@ -333,6 +333,37 @@ TESTING: Light. Verify frontend builds after each phase. Run: cd frontend/ && np
 When done, update the original handover file with a completion summary.
 Count total lines/files removed and the Pinia store consolidation result.
 ```
+
+### Completion Summary (2026-02-10)
+
+**Branch**: `feature/0745d-frontend-cleanup`
+**Build**: All 4 phases verified with `npm run build` (0 errors)
+
+**Phase 1 - Dead components/files deleted (17 files, ~1,500 lines)**:
+- 7 unused Vue components: `OrchestratorLaunchButton.vue`, `ProductVisionPanel.vue`, `LaunchPromptIcons.vue`, `AgentExecutionModal.vue`, `StatusBadge.integration-example.vue`, `UsersView.vue`, `ApiKeysView.vue`
+- 1 stub view: `ProjectDetailView.vue` (not registered in router, contrary to findings)
+- 4 orphaned utilities: `configTemplates.js`, `pathDetection.js`, `integrations/index.ts`, `integrations/registry.ts`
+- 5 orphan test files: `configTemplates.spec.js`, `pathDetection.spec.js`, `registry.spec.ts`, `VisionSummarizationCard.spec.js`, `AIToolSetup.spec.js`
+- 2 empty directories removed: `src/integrations/`, `tests/unit/integrations/`
+
+**Phase 2 - Dead API definitions removed (12 definitions + 5 dead store functions)**:
+- Removed from `api.js`: `context.getSection`, `settings.getProduct`, `session.info`, `session.stats`, `agentJobs.terminate/hierarchy/metrics`, `orchestrator.launch/getWorkflowStatus/getMetrics/createMissions/spawnTeam`
+- Removed 3 dead functions from `stores/agents.js`: `decommissionAgent`, `fetchAgentTree`, `fetchAgentMetrics`
+- Removed 2 dead functions from `stores/settings.js`: `loadProductInfo`, `loadSessionInfo`
+
+**Phase 3 - Pinia store consolidation (BUG FIX)**:
+- Merged `agentJobs.js` (221 lines, Pinia ID `'agentJobs'`) into `agentJobsStore.js` (525 lines, Pinia ID `'agentJobsDomain'`)
+- Updated `AgentCardGrid.vue`: `sortedAgents` -> `sortedJobs`, `updateAgent` -> `upsertJob`, `setAgents` -> `setJobs`
+- Updated `stores/index.js` barrel export to `./agentJobsStore`
+- Deleted `agentJobs.js` (221 lines)
+- **Data sync fix**: All components now read from the same Pinia store instance that WebSocket events write to
+
+**Phase 4 - Security and polish**:
+- Installed `dompurify@3.3.1`
+- Added `DOMPurify.sanitize()` to v-html in `MessageItem.vue` and `BroadcastPanel.vue`
+- Wired up `useToast()` in `TemplateManager.vue` (3 TODOs replaced with toast calls)
+
+**Totals**: 18 files deleted, ~8 files modified, ~1,750+ lines of dead code removed, 1 data sync bug fixed, 2 XSS surfaces sanitized.
 
 ---
 
