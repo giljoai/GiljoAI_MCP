@@ -10,6 +10,7 @@ from typing import Any, ClassVar
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.models.settings import Settings
 
 
@@ -49,7 +50,7 @@ class SettingsService:
             ValueError if category invalid
         """
         if category not in self.VALID_CATEGORIES:
-            raise ValueError(f"Invalid category: {category}. Must be one of {self.VALID_CATEGORIES}")
+            raise ValidationError(f"Invalid category: {category}. Must be one of {self.VALID_CATEGORIES}")
 
         stmt = select(Settings).where(and_(Settings.tenant_key == self.tenant_key, Settings.category == category))
         result = await self.session.execute(stmt)
@@ -75,7 +76,7 @@ class SettingsService:
             ValueError if category invalid
         """
         if category not in self.VALID_CATEGORIES:
-            raise ValueError(f"Invalid category: {category}. Must be one of {self.VALID_CATEGORIES}")
+            raise ValidationError(f"Invalid category: {category}. Must be one of {self.VALID_CATEGORIES}")
 
         stmt = select(Settings).where(and_(Settings.tenant_key == self.tenant_key, Settings.category == category))
         result = await self.session.execute(stmt)

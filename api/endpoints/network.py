@@ -61,47 +61,40 @@ async def detect_ip():
     Raises:
         HTTPException: If network detection fails
     """
-    try:
-        from installer.core.network import NetworkManager
+    from installer.core.network import NetworkManager
 
-        # Create NetworkManager with minimal settings
-        settings = {
-            "mode": "server",  # Use server mode for network detection
-            "bind": "0.0.0.0",
-        }
+    # Create NetworkManager with minimal settings
+    settings = {
+        "mode": "server",  # Use server mode for network detection
+        "bind": "0.0.0.0",
+    }
 
-        network_manager = NetworkManager(settings)
+    network_manager = NetworkManager(settings)
 
-        # Get network information
-        network_info = network_manager.get_network_info()
+    # Get network information
+    network_info = network_manager.get_network_info()
 
-        logger.debug(f"Network info from NetworkManager: {network_info}")
+    logger.debug(f"Network info from NetworkManager: {network_info}")
 
-        # Get filtered local IPs (NetworkManager already filters out virtual adapters)
-        local_ips = network_info.get("local_ips", [])
+    # Get filtered local IPs (NetworkManager already filters out virtual adapters)
+    local_ips = network_info.get("local_ips", [])
 
-        # Select primary IP (first real network interface)
-        # NetworkManager filters out virtual adapters (Docker, Hyper-V, WSL, etc.)
-        # based on interface names, so the first IP should be the real network
-        primary_ip = local_ips[0] if local_ips else "127.0.0.1"
+    # Select primary IP (first real network interface)
+    # NetworkManager filters out virtual adapters (Docker, Hyper-V, WSL, etc.)
+    # based on interface names, so the first IP should be the real network
+    primary_ip = local_ips[0] if local_ips else "127.0.0.1"
 
-        logger.debug(f"Detected IPs: {local_ips}, selected primary: {primary_ip}")
+    logger.debug(f"Detected IPs: {local_ips}, selected primary: {primary_ip}")
 
-        # Get hostname
-        hostname = network_info.get("hostname", socket.gethostname())
+    # Get hostname
+    hostname = network_info.get("hostname", socket.gethostname())
 
-        # Get platform
-        platform = network_info.get("platform", "Unknown")
+    # Get platform
+    platform = network_info.get("platform", "Unknown")
 
-        logger.info(f"Network detection successful: primary_ip={primary_ip}, hostname={hostname}, ips={len(local_ips)}")
+    logger.info(f"Network detection successful: primary_ip={primary_ip}, hostname={hostname}, ips={len(local_ips)}")
 
-        return NetworkDetectionResponse(
-            primary_ip=primary_ip, hostname=hostname, local_ips=local_ips, platform=platform
-        )
-
-    except Exception as e:
-        logger.error(f"Network detection failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to detect network configuration: {e}") from e
+    return NetworkDetectionResponse(primary_ip=primary_ip, hostname=hostname, local_ips=local_ips, platform=platform)
 
 
 @router.get("/adapters", response_model=NetworkAdaptersResponse)
@@ -130,88 +123,84 @@ async def get_network_adapters():
     """
     try:
         import psutil
-
-        adapters = []
-        virtual_patterns = [
-            "docker",
-            "veth",
-            "br-",
-            "vmnet",
-            "vboxnet",
-            "virbr",
-            "tun",
-            "tap",
-            "vEthernet",
-            "Hyper-V",
-            "WSL",
-        ]
-        loopback_patterns = ["lo", "Loopback"]
-
-        logger.debug("Detecting network adapters using psutil")
-
-        # Get all network interfaces with their addresses
-        interfaces = psutil.net_if_addrs()
-        interface_stats = psutil.net_if_stats()
-
-        for interface_name, addresses in interfaces.items():
-            # Check if interface is virtual
-            is_virtual = any(pattern.lower() in interface_name.lower() for pattern in virtual_patterns)
-
-            # Check if interface is loopback
-            is_loopback = any(pattern.lower() in interface_name.lower() for pattern in loopback_patterns)
-
-            # Get interface stats (speed, is_up)
-            stats = interface_stats.get(interface_name)
-            is_active = stats.isup if stats else False
-
-            # Process each address on this interface
-            for addr in addresses:
-                # Only process IPv4 addresses (family 2 = AF_INET)
-                if addr.family == 2:
-                    ip = addr.address
-
-                    # Skip loopback IPs (127.x.x.x)
-                    if ip.startswith("127."):
-                        logger.debug(f"Skipping loopback IP: {interface_name} -> {ip}")
-                        continue
-
-                    # Create adapter object
-                    adapter = NetworkAdapter(
-                        name=interface_name,
-                        interface_id=interface_name,
-                        ip_address=ip,
-                        is_active=is_active,
-                        is_virtual=is_virtual,
-                        is_loopback=is_loopback,
-                    )
-
-                    adapters.append(adapter)
-                    logger.debug(
-                        f"Found adapter: {interface_name} -> {ip} "
-                        f"(active={is_active}, virtual={is_virtual}, loopback={is_loopback})"
-                    )
-
-        # Select recommended adapter
-        recommended = _select_recommended_adapter(adapters)
-
-        if recommended:
-            logger.info(f"Recommended adapter: {recommended.interface_id} ({recommended.ip_address})")
-        else:
-            logger.warning("No suitable adapter found for recommendation")
-
-        logger.info(f"Detected {len(adapters)} network adapters")
-
-        return NetworkAdaptersResponse(adapters=adapters, recommended=recommended)
-
     except ImportError as e:
         logger.exception("psutil library not available")
         raise HTTPException(
             status_code=500,
             detail="Network adapter detection requires psutil library. Install with: pip install psutil",
         ) from e
-    except Exception as e:
-        logger.error(f"Network adapter detection failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to detect network adapters: {e}") from e
+
+    adapters = []
+    virtual_patterns = [
+        "docker",
+        "veth",
+        "br-",
+        "vmnet",
+        "vboxnet",
+        "virbr",
+        "tun",
+        "tap",
+        "vEthernet",
+        "Hyper-V",
+        "WSL",
+    ]
+    loopback_patterns = ["lo", "Loopback"]
+
+    logger.debug("Detecting network adapters using psutil")
+
+    # Get all network interfaces with their addresses
+    interfaces = psutil.net_if_addrs()
+    interface_stats = psutil.net_if_stats()
+
+    for interface_name, addresses in interfaces.items():
+        # Check if interface is virtual
+        is_virtual = any(pattern.lower() in interface_name.lower() for pattern in virtual_patterns)
+
+        # Check if interface is loopback
+        is_loopback = any(pattern.lower() in interface_name.lower() for pattern in loopback_patterns)
+
+        # Get interface stats (speed, is_up)
+        stats = interface_stats.get(interface_name)
+        is_active = stats.isup if stats else False
+
+        # Process each address on this interface
+        for addr in addresses:
+            # Only process IPv4 addresses (family 2 = AF_INET)
+            if addr.family == 2:
+                ip = addr.address
+
+                # Skip loopback IPs (127.x.x.x)
+                if ip.startswith("127."):
+                    logger.debug(f"Skipping loopback IP: {interface_name} -> {ip}")
+                    continue
+
+                # Create adapter object
+                adapter = NetworkAdapter(
+                    name=interface_name,
+                    interface_id=interface_name,
+                    ip_address=ip,
+                    is_active=is_active,
+                    is_virtual=is_virtual,
+                    is_loopback=is_loopback,
+                )
+
+                adapters.append(adapter)
+                logger.debug(
+                    f"Found adapter: {interface_name} -> {ip} "
+                    f"(active={is_active}, virtual={is_virtual}, loopback={is_loopback})"
+                )
+
+    # Select recommended adapter
+    recommended = _select_recommended_adapter(adapters)
+
+    if recommended:
+        logger.info(f"Recommended adapter: {recommended.interface_id} ({recommended.ip_address})")
+    else:
+        logger.warning("No suitable adapter found for recommendation")
+
+    logger.info(f"Detected {len(adapters)} network adapters")
+
+    return NetworkAdaptersResponse(adapters=adapters, recommended=recommended)
 
 
 def _select_recommended_adapter(adapters: list[NetworkAdapter]) -> Optional[NetworkAdapter]:

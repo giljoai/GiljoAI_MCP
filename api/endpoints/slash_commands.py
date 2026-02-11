@@ -50,31 +50,23 @@ async def execute_slash_command(request: SlashCommandRequest):
         SlashCommandResponse with success status and result data
 
     Raises:
-        HTTPException: 404 if command not found, 500 if execution fails
+        HTTPException: 404 if command not found
     """
     handler = get_slash_command(request.command)
 
     if not handler:
         raise HTTPException(status_code=404, detail=f"Slash command /{request.command} not found")
 
-    try:
-        # Import here to avoid circular dependency
-        from api.app import state
+    # Import here to avoid circular dependency
+    from api.app import state
 
-        # Execute handler with async database session
-        async with state.db_manager.get_session_async() as session:
-            result = await handler(
-                db_session=session,
-                tenant_key=request.tenant_key,
-                project_id=request.project_id,
-                **request.arguments,
-            )
+    # Execute handler with async database session
+    async with state.db_manager.get_session_async() as session:
+        result = await handler(
+            db_session=session,
+            tenant_key=request.tenant_key,
+            project_id=request.project_id,
+            **request.arguments,
+        )
 
-        return SlashCommandResponse(**result)
-
-    except Exception as e:
-        logger.error(f"Failed to execute slash command /{request.command}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to execute slash command: {e!s}",
-        ) from e
+    return SlashCommandResponse(**result)

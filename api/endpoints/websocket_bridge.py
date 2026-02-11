@@ -81,56 +81,42 @@ async def emit_websocket_event(
             )
         ```
     """
-    try:
-        # Validate required fields
-        if not request.event_type or not request.tenant_key:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="event_type and tenant_key are required"
-            )
+    # Validate required fields
+    if not request.event_type or not request.tenant_key:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="event_type and tenant_key are required")
 
-        # Check if WebSocket manager is available
-        if not ws_dep.manager:
-            logger.warning(
-                "WebSocket manager not available for broadcast",
-                extra={"event_type": request.event_type, "tenant_key": request.tenant_key},
-            )
-            return WebSocketEventResponse(
-                success=False,
-                event_type=request.event_type,
-                clients_notified=0,
-                message="WebSocket manager not available",
-            )
-
-        clients_notified = await ws_dep.broadcast_to_tenant(
-            tenant_key=request.tenant_key,
-            event_type=request.event_type,
-            data=request.data or {},
-            schema_version="1.0",
+    # Check if WebSocket manager is available
+    if not ws_dep.manager:
+        logger.warning(
+            "WebSocket manager not available for broadcast",
+            extra={"event_type": request.event_type, "tenant_key": request.tenant_key},
         )
-
-        logger.info(
-            f"WebSocket event emitted: {request.event_type} to {clients_notified} client(s)",
-            extra={
-                "event_type": request.event_type,
-                "tenant_key": request.tenant_key,
-                "clients_notified": clients_notified,
-            },
-        )
-
         return WebSocketEventResponse(
-            success=True,
+            success=False,
             event_type=request.event_type,
-            clients_notified=clients_notified,
-            message=f"Event broadcasted to {clients_notified} client(s)",
+            clients_notified=0,
+            message="WebSocket manager not available",
         )
 
-    except Exception as e:
-        logger.error(
-            f"Failed to emit WebSocket event: {e}",
-            extra={"event_type": request.event_type, "error": str(e)},
-            exc_info=True,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to emit WebSocket event: {e!s}",
-        ) from e
+    clients_notified = await ws_dep.broadcast_to_tenant(
+        tenant_key=request.tenant_key,
+        event_type=request.event_type,
+        data=request.data or {},
+        schema_version="1.0",
+    )
+
+    logger.info(
+        f"WebSocket event emitted: {request.event_type} to {clients_notified} client(s)",
+        extra={
+            "event_type": request.event_type,
+            "tenant_key": request.tenant_key,
+            "clients_notified": clients_notified,
+        },
+    )
+
+    return WebSocketEventResponse(
+        success=True,
+        event_type=request.event_type,
+        clients_notified=clients_notified,
+        message=f"Event broadcasted to {clients_notified} client(s)",
+    )
