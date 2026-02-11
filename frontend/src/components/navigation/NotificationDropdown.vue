@@ -194,10 +194,7 @@ const handleNotificationClick = async (notification) => {
   }
 
   // Optionally handle navigation or action based on notification type
-  if (notification.action_url) {
-    // Router navigation could be added here if needed
-    console.log('[NotificationDropdown] Notification action:', notification.action_url)
-  }
+  // Optionally handle navigation based on notification.action_url
 }
 
 // Mark all notifications as read
@@ -211,38 +208,27 @@ const handleMarkAllRead = async () => {
 
 // WebSocket event handlers
 const handleNewNotification = (payload) => {
-  console.log('[NotificationDropdown] New notification received:', payload)
   notificationStore.addNotification(payload)
 }
 
 // Lifecycle hooks
 // Note: agent:health_alert events are now handled by websocketEventRouter.js (Handover 0424)
 onMounted(async () => {
-  console.log('[NotificationDropdown] Component mounted')
-
   // Subscribe to WebSocket events
   // Note: agent:health_alert is handled by websocketEventRouter.js (Handover 0424)
   try {
     unsubscribeNotification = wsStore.on('notification:new', handleNewNotification)
-    console.log('[NotificationDropdown] Subscribed to notification events')
   } catch (error) {
     console.warn('[NotificationDropdown] Failed to subscribe to events:', error)
   }
-
-  // Note: No need to fetch initial notifications since the store
-  // starts empty and will be populated via WebSocket events
-  console.log('[NotificationDropdown] Initial notifications:', notifications.value.length)
 })
 
 onUnmounted(() => {
-  console.log('[NotificationDropdown] Component unmounting')
-
   // Cleanup WebSocket subscriptions
   try {
     if (typeof unsubscribeNotification === 'function') {
       unsubscribeNotification()
     }
-    console.log('[NotificationDropdown] Unsubscribed from notification events')
   } catch (error) {
     console.warn('[NotificationDropdown] Error during cleanup:', error)
   }

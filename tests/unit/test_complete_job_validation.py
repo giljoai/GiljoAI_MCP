@@ -230,7 +230,8 @@ async def test_report_error_sets_blocked_not_failed(mock_db_manager):
         error="Need input from user",
     )
 
-    assert result["status"] == "success"
+    assert result["job_id"] == "job-123"
+    assert result["message"] == "Error reported"
     assert execution.status == "blocked"
     assert execution.block_reason == "Need input from user"
     assert execution.failure_reason is None

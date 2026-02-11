@@ -427,7 +427,7 @@ async def main():
 
     # Get database configuration
     config = get_config()
-    db_url = config.get_database_url()
+    db_url = config.database.get_connection_string()
 
     # Create database manager
     db_manager = DatabaseManager(db_url, is_async=True)

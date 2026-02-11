@@ -86,10 +86,10 @@ async def main():
         mission="Build a simple REST API with 3 endpoints"
     )
 
-    # Execute complete staging workflow
+    # Execute complete staging workflow (raises OrchestrationError on failure)
     result = await simulator.execute_staging()
 
-    print(f"Success: {result['success']}")
+    print(f"Staging Complete: {result['staging_complete']}")
     print(f"Duration: {result['duration_ms']}ms")
     print(f"Agents Spawned: {result['spawned_agents_count']}")
     print(f"Tasks Completed: {len(result['tasks_completed'])}")
@@ -118,16 +118,16 @@ async def test_orchestrator_workflow(db_session, test_project):
         mission="Build authentication system"
     )
 
-    # Execute staging
+    # Execute staging (raises OrchestrationError on failure)
     result = await simulator.execute_staging()
 
     # Verify results
-    assert result["success"] is True
+    assert result["staging_complete"] is True
     assert result["spawned_agents_count"] == 3
 
     # Verify database state
     jobs = await db_session.execute(
-        select(MCPAgentJob).where(MCPAgentJob.project_id == test_project.id)
+        select(AgentJob).where(AgentJob.project_id == test_project.id)
     )
     agent_jobs = jobs.scalars().all()
     assert len(agent_jobs) == 3
@@ -385,7 +385,7 @@ async def test_with_real_mcp(simulator):
     # Requires MCP server running on localhost:7272
     result = await simulator.execute_staging()
 
-    assert result["success"] is True
+    assert result["staging_complete"] is True
 ```
 
 ### 3. Verify Database State Changes
@@ -396,9 +396,9 @@ async def test_database_state(db_session, simulator):
     """Verify database reflects staging results"""
     await simulator.execute_staging()
 
-    # Verify MCPAgentJob records created
+    # Verify AgentJob records created
     jobs = await db_session.execute(
-        select(MCPAgentJob).where(MCPAgentJob.project_id == simulator.project_id)
+        select(AgentJob).where(AgentJob.project_id == simulator.project_id)
     )
     assert jobs.scalar_one_or_none() is not None
 ```

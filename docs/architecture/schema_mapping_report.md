@@ -148,7 +148,7 @@ All critical tables and columns are present in the database and match the ORM mo
 **Decommissioning (Handover 0113):**
 - **decommissioned_at (timestamptz, nullable)** - PRESENT
 
-**ORM Model Match:** VERIFIED - All fields in MCPAgentJob model match database
+**ORM Model Match:** VERIFIED - All fields in AgentJob/AgentExecution models match database
 
 **Indexes:**
 - mcp_agent_jobs_pkey (PRIMARY KEY on id)
@@ -582,7 +582,7 @@ All expected columns from recent handovers are present:
 All ORM models match their corresponding database tables:
 
 ### Verified Model Mappings
-1. **MCPAgentJob (agents.py)** <-> **mcp_agent_jobs**: 34/34 columns match
+1. **AgentJob + AgentExecution (models.py)** <-> **mcp_agent_jobs**: 34/34 columns match
 2. **Project (projects.py)** <-> **projects**: 22/22 columns match
 3. **Product (products.py)** <-> **products**: 11/11 columns match
 4. **AgentTemplate (templates.py)** <-> **agent_templates**: 30/30 columns match

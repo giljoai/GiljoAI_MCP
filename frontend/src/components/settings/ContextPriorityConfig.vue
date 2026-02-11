@@ -538,7 +538,6 @@ watch(() => props.gitIntegrationEnabled, (enabled) => {
     config.value.git_history.enabled = false
     config.value.git_history.priority = 4  // EXCLUDED
     saveConfig()
-    console.log('[CONTEXT PRIORITY CONFIG] Git history forced OFF - Git integration disabled')
   }
 }, { immediate: true })
 
@@ -547,7 +546,6 @@ async function fetchVisionStats() {
   try {
     const response = await axios.get('/api/v1/products/active/vision-stats')
     visionStats.value = response.data
-    console.log('[CONTEXT PRIORITY CONFIG] Vision stats loaded:', visionStats.value)
   } catch (error) {
     console.warn('[CONTEXT PRIORITY CONFIG] Failed to fetch vision stats:', error)
     // Gracefully handle error - use null and formatOptions will show defaults
@@ -611,8 +609,7 @@ async function fetchConfig() {
         config.value.agent_templates.depth = depthData.agent_templates
       }
 
-      console.log('[CONTEXT PRIORITY CONFIG] Field priorities and depth config loaded from server')
-    } catch (depthError) {
+      } catch (depthError) {
       // Depth endpoint is optional - continue with defaults if it fails
       console.warn('[CONTEXT PRIORITY CONFIG] Depth config not available, using defaults:', depthError)
     }
@@ -642,7 +639,6 @@ async function saveConfig() {
       version: '2.0',
       priorities: convertToBackendFormat(config.value),
     })
-    console.log('[CONTEXT PRIORITY CONFIG] Field priorities saved successfully')
 
     // Save depth config to context/depth endpoint (only 4 fields with depth controls)
     try {
@@ -654,7 +650,6 @@ async function saveConfig() {
           agent_templates: config.value.agent_templates?.depth || 'type_only',  // Handover 0347d
         }
       })
-      console.log('[CONTEXT PRIORITY CONFIG] Depth config saved successfully')
     } catch (depthError) {
       // Log depth save error but don't fail the overall save
       console.warn('[CONTEXT PRIORITY CONFIG] Warning: Depth config save failed:', depthError)
@@ -688,7 +683,6 @@ function resetToDefaults() {
 
   // Persist to backend
   saveConfig()
-  console.log('[CONTEXT PRIORITY CONFIG] Reset to defaults')
 }
 
 function convertToBackendFormat(localConfig: Record<string, ContextConfig>): Record<string, number> {
