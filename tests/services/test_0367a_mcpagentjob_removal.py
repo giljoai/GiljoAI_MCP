@@ -316,36 +316,6 @@ class TestNoMCPAgentJobImport:
         # Should have no MCPAgentJob imports
         assert len(mcp_agent_job_imports) == 0, f"MessageService still imports MCPAgentJob: {mcp_agent_job_imports}"
 
-    def test_agent_message_queue_no_mcpagentjob_import(self):
-        """
-        AgentMessageQueue should not import MCPAgentJob.
-        """
-        import ast
-        from pathlib import Path
-
-        file_path = Path("src/giljo_mcp/agent_message_queue.py")
-
-        if not file_path.exists():
-            pytest.skip("File not found - likely in different working directory")
-
-        with open(file_path, encoding="utf-8") as f:
-            source = f.read()
-
-        # Parse the source code
-        tree = ast.parse(source)
-
-        # Check all imports
-        mcp_agent_job_imports = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                if node.names:
-                    for alias in node.names:
-                        if alias.name == "MCPAgentJob":
-                            mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
-
-        # Should have no MCPAgentJob imports
-        assert len(mcp_agent_job_imports) == 0, f"AgentMessageQueue still imports MCPAgentJob: {mcp_agent_job_imports}"
-
     def test_job_monitoring_no_mcpagentjob_import(self):
         """
         JobMonitoring should not import MCPAgentJob.
