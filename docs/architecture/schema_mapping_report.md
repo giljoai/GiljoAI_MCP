@@ -128,7 +128,6 @@ All critical tables and columns are present in the database and match the ORM mo
 - agent_name (varchar(255), nullable)
 
 **Orchestrator Succession Fields (Handover 0080):**
-- **instance_number (integer, NOT NULL)** - PRESENT - Sequential instance (1, 2, 3...)
 - **handover_to (varchar(36), nullable)** - PRESENT - UUID of successor job
 - **handover_summary (jsonb, nullable)** - PRESENT - Compressed state transfer
 - **handover_context_refs (json, nullable)** - PRESENT - Context chunk IDs
@@ -161,7 +160,6 @@ All critical tables and columns are present in the database and match the ORM mo
 - idx_mcp_agent_jobs_tenant_tool (tenant_key, tool_type)
 - idx_mcp_agent_jobs_tenant_type (tenant_key, agent_type)
 - idx_agent_jobs_handover (handover_to) - Succession support
-- idx_agent_jobs_instance (project_id, agent_type, instance_number) - Instance tracking
 - ix_mcp_agent_jobs_project_id (project_id)
 - ix_mcp_agent_jobs_tenant_key (tenant_key)
 
@@ -535,7 +533,6 @@ All expected columns from recent handovers are present:
 - user_instructions: PRESENT
 
 ### mcp_agent_jobs
-- instance_number: PRESENT
 - spawned_by: PRESENT
 - handover_to: PRESENT
 - handover_summary: PRESENT
@@ -668,7 +665,6 @@ Based on schema analysis, ensure test coverage for:
 - Test recovery UI workflows
 
 ### Orchestrator Succession
-- Verify instance_number uniqueness per project
 - Test handover_summary compression
 - Validate context_used / context_budget calculations
 
