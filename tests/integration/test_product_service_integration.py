@@ -1,5 +1,5 @@
 """
-Integration tests for ProductService (Handover 0603)
+Integration tests for ProductService (Handover 0603, updated 0731b)
 
 These tests use real database connections to verify:
 - Multi-tenant isolation (zero cross-tenant leakage)
@@ -8,6 +8,9 @@ These tests use real database connections to verify:
 - Product-project cascade behavior
 - Vision document integration
 - Full CRUD workflows
+
+Handover 0731b: Updated assertions for typed returns (Product ORM,
+Pydantic models) instead of dict[str, Any] wrappers.
 
 Target: Comprehensive integration coverage
 """
@@ -18,6 +21,12 @@ import pytest
 
 from src.giljo_mcp.models.products import Product, VisionDocument
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.schemas.service_responses import (
+    CascadeImpact,
+    DeleteResult,
+    ProductStatistics,
+    VisionUploadResult,
+)
 from src.giljo_mcp.services.product_service import ProductService
 
 
@@ -33,23 +42,27 @@ class TestMultiTenantIsolation:
         service1 = ProductService(db_manager, tenant1_key)
         service2 = ProductService(db_manager, tenant2_key)
 
-        # Create products in different tenants (exception-based: success is implicit)
+        # Create products in different tenants (0731b: returns Product ORM model)
         result1 = await service1.create_product(name="Tenant1 Product", description="Product for tenant 1")
         result2 = await service2.create_product(name="Tenant2 Product", description="Product for tenant 2")
 
-        # Verify creation returned expected data
-        assert "product_id" in result1
-        assert "product_id" in result2
+        # Verify creation returned Product ORM models
+        assert isinstance(result1, Product)
+        assert isinstance(result2, Product)
+        assert result1.id is not None
+        assert result2.id is not None
 
-        # Verify tenant1 can only see their product
+        # Verify tenant1 can only see their product (0731b: returns list[Product])
         list1 = await service1.list_products(include_inactive=True)
-        assert len(list1["products"]) == 1
-        assert list1["products"][0]["name"] == "Tenant1 Product"
+        assert isinstance(list1, list)
+        assert len(list1) == 1
+        assert list1[0].name == "Tenant1 Product"
 
         # Verify tenant2 can only see their product
         list2 = await service2.list_products(include_inactive=True)
-        assert len(list2["products"]) == 1
-        assert list2["products"][0]["name"] == "Tenant2 Product"
+        assert isinstance(list2, list)
+        assert len(list2) == 1
+        assert list2[0].name == "Tenant2 Product"
 
     async def test_get_product_cross_tenant_forbidden(self, db_manager):
         """Test that tenant cannot access another tenant's product"""
@@ -61,9 +74,9 @@ class TestMultiTenantIsolation:
         service1 = ProductService(db_manager, tenant1_key)
         service2 = ProductService(db_manager, tenant2_key)
 
-        # Create product in tenant1
+        # Create product in tenant1 (0731b: returns Product ORM model)
         create_result = await service1.create_product(name="Tenant1 Secret Product")
-        product_id = create_result["product_id"]
+        product_id = str(create_result.id)
 
         # Try to access from tenant2 - should raise exception
         with pytest.raises(ResourceNotFoundError) as exc_info:
@@ -81,16 +94,16 @@ class TestMultiTenantIsolation:
         service2 = ProductService(db_manager, tenant2_key)
 
         create_result = await service1.create_product(name="Protected Product")
-        product_id = create_result["product_id"]
+        product_id = str(create_result.id)
 
         # Try to update from tenant2 - should raise exception
         with pytest.raises(ResourceNotFoundError) as exc_info:
             await service2.update_product(product_id=product_id, name="Hacked Name")
         assert "not found" in str(exc_info.value).lower()
 
-        # Verify name unchanged
+        # Verify name unchanged (0731b: returns Product ORM model)
         get_result = await service1.get_product(product_id)
-        assert get_result["product"]["name"] == "Protected Product"
+        assert get_result.name == "Protected Product"
 
     async def test_delete_product_cross_tenant_forbidden(self, db_manager):
         """Test that tenant cannot delete another tenant's product"""
@@ -103,15 +116,15 @@ class TestMultiTenantIsolation:
         service2 = ProductService(db_manager, tenant2_key)
 
         create_result = await service1.create_product(name="Protected Product")
-        product_id = create_result["product_id"]
+        product_id = str(create_result.id)
 
         # Try to delete from tenant2 - should raise exception
         with pytest.raises(ResourceNotFoundError):
             await service2.delete_product(product_id)
 
-        # Verify product still exists in tenant1 (exception-based: success is implicit)
+        # Verify product still exists in tenant1 (0731b: returns Product ORM model)
         get_result = await service1.get_product(product_id)
-        assert get_result["product"]["name"] == "Protected Product"
+        assert get_result.name == "Protected Product"
 
     async def test_activate_product_tenant_isolation(self, db_manager):
         """Test that activating product in one tenant doesn't affect others"""
@@ -121,30 +134,32 @@ class TestMultiTenantIsolation:
         service1 = ProductService(db_manager, tenant1_key)
         service2 = ProductService(db_manager, tenant2_key)
 
-        # Create products in both tenants
+        # Create products in both tenants (0731b: returns Product ORM model)
         create1 = await service1.create_product(name="Tenant1 Product A")
         create2 = await service1.create_product(name="Tenant1 Product B")
         create3 = await service2.create_product(name="Tenant2 Product")
 
         # Activate products in both tenants
-        await service1.activate_product(create1["product_id"])
-        await service2.activate_product(create3["product_id"])
+        await service1.activate_product(str(create1.id))
+        await service2.activate_product(str(create3.id))
 
-        # Verify tenant1 has one active product
+        # Verify tenant1 has one active product (0731b: returns Optional[Product])
         active1 = await service1.get_active_product()
-        assert active1["product"]["name"] == "Tenant1 Product A"
+        assert active1 is not None
+        assert active1.name == "Tenant1 Product A"
 
         # Verify tenant2 has one active product
         active2 = await service2.get_active_product()
-        assert active2["product"]["name"] == "Tenant2 Product"
+        assert active2 is not None
+        assert active2.name == "Tenant2 Product"
 
-        # Activate second product in tenant1
-        activate_result = await service1.activate_product(create2["product_id"])
-        assert activate_result["deactivated_count"] == 1
+        # Activate second product in tenant1 (0731b: returns Product)
+        await service1.activate_product(str(create2.id))
 
         # Verify tenant2 product still active (not affected)
         active2_check = await service2.get_active_product()
-        assert active2_check["product"]["name"] == "Tenant2 Product"
+        assert active2_check is not None
+        assert active2_check.name == "Tenant2 Product"
 
 
 @pytest.mark.asyncio
@@ -156,40 +171,41 @@ class TestSingleActiveProductConstraint:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create three products
+        # Create three products (0731b: returns Product ORM model)
         create1 = await service.create_product(name="Product A")
         create2 = await service.create_product(name="Product B")
         create3 = await service.create_product(name="Product C")
 
-        # Activate first product (exception-based: success is implicit)
-        activate1 = await service.activate_product(create1["product_id"])
-        assert activate1["product"]["is_active"] is True
+        # Activate first product (0731b: returns Product ORM model)
+        activate1 = await service.activate_product(str(create1.id))
+        assert activate1.is_active is True
 
-        # Verify only one active
+        # Verify only one active (0731b: returns Optional[Product])
         active = await service.get_active_product()
-        assert active["product"]["name"] == "Product A"
+        assert active is not None
+        assert active.name == "Product A"
 
         # Activate second product
-        activate2 = await service.activate_product(create2["product_id"])
-        assert activate2["product"]["is_active"] is True
-        assert activate2["deactivated_count"] == 1
+        activate2 = await service.activate_product(str(create2.id))
+        assert activate2.is_active is True
 
         # Verify only Product B is active
         active = await service.get_active_product()
-        assert active["product"]["name"] == "Product B"
+        assert active is not None
+        assert active.name == "Product B"
 
-        # Verify Product A is deactivated
-        get_a = await service.get_product(create1["product_id"])
-        assert get_a["product"]["is_active"] is False
+        # Verify Product A is deactivated (0731b: returns Product ORM model)
+        get_a = await service.get_product(str(create1.id))
+        assert get_a.is_active is False
 
         # Activate third product
-        activate3 = await service.activate_product(create3["product_id"])
-        assert activate3["product"]["is_active"] is True
-        assert activate3["deactivated_count"] == 1
+        activate3 = await service.activate_product(str(create3.id))
+        assert activate3.is_active is True
 
         # Verify only Product C is active
         active = await service.get_active_product()
-        assert active["product"]["name"] == "Product C"
+        assert active is not None
+        assert active.name == "Product C"
 
     async def test_activate_already_active_product(self, db_manager):
         """Test activating an already active product is idempotent"""
@@ -197,16 +213,15 @@ class TestSingleActiveProductConstraint:
         service = ProductService(db_manager, tenant_key)
 
         create_result = await service.create_product(name="Single Product")
-        product_id = create_result["product_id"]
+        product_id = str(create_result.id)
 
-        # Activate once (exception-based: success is implicit)
+        # Activate once (0731b: returns Product ORM model)
         activate1 = await service.activate_product(product_id)
-        assert activate1["product"]["is_active"] is True
+        assert activate1.is_active is True
 
         # Activate again
         activate2 = await service.activate_product(product_id)
-        assert activate2["product"]["is_active"] is True
-        assert activate2["deactivated_count"] == 0
+        assert activate2.is_active is True
 
     async def test_deactivate_product_no_active_product(self, db_manager):
         """Test that deactivating leaves no active product"""
@@ -214,16 +229,16 @@ class TestSingleActiveProductConstraint:
         service = ProductService(db_manager, tenant_key)
 
         create_result = await service.create_product(name="Temporary Active")
-        product_id = create_result["product_id"]
+        product_id = str(create_result.id)
 
-        # Activate then deactivate (exception-based: success is implicit)
+        # Activate then deactivate (0731b: returns Product ORM model)
         await service.activate_product(product_id)
         deactivate_result = await service.deactivate_product(product_id)
-        assert deactivate_result["product"]["is_active"] is False
+        assert deactivate_result.is_active is False
 
-        # Verify no active product
+        # Verify no active product (0731b: returns None)
         active = await service.get_active_product()
-        assert active["product"] is None
+        assert active is None
 
 
 @pytest.mark.asyncio
@@ -231,77 +246,79 @@ class TestProductCRUDWorkflows:
     """Integration tests for complete CRUD workflows"""
 
     async def test_full_product_lifecycle(self, db_manager):
-        """Test complete product lifecycle: create → update → activate → deactivate → delete → restore"""
+        """Test complete product lifecycle: create -> update -> activate -> deactivate -> delete -> restore"""
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # 1. Create product (exception-based: success is implicit)
+        # 1. Create product (0731b: returns Product ORM model)
         create_result = await service.create_product(
             name="Lifecycle Product",
             description="Testing full lifecycle",
             project_path="/projects/lifecycle",
             config_data={"version": "1.0"},
         )
-        assert "product_id" in create_result
-        product_id = create_result["product_id"]
+        assert isinstance(create_result, Product)
+        product_id = str(create_result.id)
 
-        # 2. Update product
+        # 2. Update product (0731b: returns Product ORM model)
         update_result = await service.update_product(
             product_id=product_id,
             description="Updated description",
             config_data={"version": "2.0", "feature": "enabled"},
         )
-        assert update_result["product"]["description"] == "Updated description"
+        assert update_result.description == "Updated description"
 
-        # 3. Activate product
+        # 3. Activate product (0731b: returns Product ORM model)
         activate_result = await service.activate_product(product_id)
-        assert activate_result["product"]["is_active"] is True
+        assert activate_result.is_active is True
 
         # 4. Deactivate product
         deactivate_result = await service.deactivate_product(product_id)
-        assert deactivate_result["product"]["is_active"] is False
+        assert deactivate_result.is_active is False
 
-        # 5. Soft delete product
+        # 5. Soft delete product (0731b: returns DeleteResult Pydantic model)
         delete_result = await service.delete_product(product_id)
-        assert "deleted_at" in delete_result
+        assert isinstance(delete_result, DeleteResult)
+        assert delete_result.deleted is True
+        assert delete_result.deleted_at is not None
 
-        # Verify not in regular list (even with include_inactive)
+        # Verify not in regular list (even with include_inactive) (0731b: returns list[Product])
         list_result = await service.list_products(include_inactive=True)
-        assert len(list_result["products"]) == 0
+        assert len(list_result) == 0
 
-        # Verify in deleted list
+        # Verify in deleted list (0731b: returns list[Product])
         deleted_list = await service.list_deleted_products()
-        assert len(deleted_list["products"]) >= 1
-        assert any(p["id"] == product_id for p in deleted_list["products"])
+        assert len(deleted_list) >= 1
+        assert any(str(p.id) == product_id for p in deleted_list)
 
-        # 6. Restore product (exception-based: success is implicit)
+        # 6. Restore product (0731b: returns Product ORM model)
         restore_result = await service.restore_product(product_id)
-        assert "product" in restore_result
+        assert isinstance(restore_result, Product)
 
-        # Verify back in regular list
+        # Verify back in regular list (0731b: returns list[Product])
         list_result = await service.list_products(include_inactive=True)
-        assert len(list_result["products"]) == 1
-        assert list_result["products"][0]["name"] == "Lifecycle Product"
+        assert len(list_result) == 1
+        assert list_result[0].name == "Lifecycle Product"
 
     async def test_create_multiple_products_and_list(self, db_manager):
         """Test creating multiple products and listing them"""
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create five products (exception-based: success is implicit)
+        # Create five products (0731b: returns Product ORM model)
         products = []
         for i in range(5):
             result = await service.create_product(name=f"Product {i + 1}", description=f"Description {i + 1}")
-            assert "product_id" in result
-            products.append(result["product_id"])
+            assert isinstance(result, Product)
+            products.append(str(result.id))
 
-        # List all products (including inactive since new products start inactive)
+        # List all products (0731b: returns list[Product])
         list_result = await service.list_products(include_inactive=True)
-        assert "products" in list_result
-        assert len(list_result["products"]) == 5
+        assert isinstance(list_result, list)
+        assert len(list_result) == 5
 
         # Verify all names present
-        names = [p["name"] for p in list_result["products"]]
+        names = [p.name for p in list_result]
         for i in range(5):
             assert f"Product {i + 1}" in names
 
@@ -312,36 +329,36 @@ class TestProductCRUDWorkflows:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create first product (exception-based: success is implicit)
+        # Create first product (0731b: returns Product ORM model)
         create1 = await service.create_product(name="Unique Product")
-        assert "product_id" in create1
+        assert isinstance(create1, Product)
 
         # Try to create second with same name - should raise ValidationError
         with pytest.raises(ValidationError) as exc_info:
             await service.create_product(name="Unique Product")
         assert "already exists" in str(exc_info.value)
 
-        # Verify only one product exists
+        # Verify only one product exists (0731b: returns list[Product])
         list_result = await service.list_products(include_inactive=True)
-        assert len(list_result["products"]) == 1
+        assert len(list_result) == 1
 
     async def test_soft_delete_allows_name_reuse(self, db_manager):
         """Test that soft-deleted products allow name reuse"""
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create product (exception-based: success is implicit)
+        # Create product (0731b: returns Product ORM model)
         create1 = await service.create_product(name="Reusable Name")
-        assert "product_id" in create1
-        product1_id = create1["product_id"]
+        assert isinstance(create1, Product)
+        product1_id = str(create1.id)
 
         # Soft delete
         await service.delete_product(product1_id)
 
         # Create new product with same name - should succeed
         create2 = await service.create_product(name="Reusable Name")
-        assert "product_id" in create2
-        assert create2["product_id"] != product1_id
+        assert isinstance(create2, Product)
+        assert str(create2.id) != product1_id
 
 
 @pytest.mark.asyncio
@@ -353,9 +370,9 @@ class TestProductProjectCascade:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create product
+        # Create product (0731b: returns Product ORM model)
         product_result = await service.create_product(name="Product with Projects")
-        product_id = product_result["product_id"]
+        product_id = str(product_result.id)
 
         # Create related projects
         async with db_manager.get_session_async() as session:
@@ -372,19 +389,19 @@ class TestProductProjectCascade:
                 session.add(project)
             await session.commit()
 
-        # Get cascade impact (exception-based: success is implicit)
+        # Get cascade impact (0731b: returns CascadeImpact Pydantic model)
         impact_result = await service.get_cascade_impact(product_id)
-        assert "impact" in impact_result
-        assert impact_result["impact"]["total_projects"] == 3
+        assert isinstance(impact_result, CascadeImpact)
+        assert impact_result.total_projects == 3
 
     async def test_delete_product_with_projects(self, db_manager):
         """Test deleting product with related projects"""
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create product
+        # Create product (0731b: returns Product ORM model)
         product_result = await service.create_product(name="Product to Delete")
-        product_id = product_result["product_id"]
+        product_id = str(product_result.id)
 
         # Create related project
         async with db_manager.get_session_async() as session:
@@ -400,9 +417,11 @@ class TestProductProjectCascade:
             session.add(project)
             await session.commit()
 
-        # Delete product (soft delete) - exception-based: success is implicit
+        # Delete product (0731b: returns DeleteResult Pydantic model)
         delete_result = await service.delete_product(product_id)
-        assert "deleted_at" in delete_result
+        assert isinstance(delete_result, DeleteResult)
+        assert delete_result.deleted is True
+        assert delete_result.deleted_at is not None
 
         # Verify product is soft-deleted (should raise ResourceNotFoundError)
         from src.giljo_mcp.exceptions import ResourceNotFoundError
@@ -423,32 +442,32 @@ class TestProductStatisticsIntegration:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create product
+        # Create product (0731b: returns Product ORM model)
         product_result = await service.create_product(name="Stats Product")
-        product_id = product_result["product_id"]
+        product_id = str(product_result.id)
 
-        # Get statistics (exception-based: success is implicit)
+        # Get statistics (0731b: returns ProductStatistics Pydantic model)
         stats_result = await service.get_product_statistics(product_id)
-        assert "statistics" in stats_result
-        assert "project_count" in stats_result["statistics"]
-        assert "vision_documents_count" in stats_result["statistics"]  # Plural form
-        assert stats_result["statistics"]["product_id"] == product_id
+        assert isinstance(stats_result, ProductStatistics)
+        assert stats_result.project_count >= 0
+        assert stats_result.vision_documents_count >= 0
+        assert stats_result.product_id == product_id
 
     async def test_get_product_with_metrics_flag(self, db_manager):
-        """Test get_product with include_statistics flag"""
+        """Test get_product returns Product ORM model regardless of metrics flag"""
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
         product_result = await service.create_product(name="Metrics Product")
-        product_id = product_result["product_id"]
+        product_id = str(product_result.id)
 
-        # Get with metrics (exception-based: success is implicit)
-        get_result = await service.get_product(product_id, include_metrics=True)
-        # Should include product and potentially metric fields
-        assert "product" in get_result
+        # Get product (0731b: returns Product ORM model, metrics via separate call)
+        get_result = await service.get_product(product_id)
+        assert isinstance(get_result, Product)
+        assert get_result.name == "Metrics Product"
 
     async def test_list_products_with_metrics(self, db_manager):
-        """Test list_products with metrics included"""
+        """Test list_products returns list[Product]"""
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
@@ -456,15 +475,16 @@ class TestProductStatisticsIntegration:
         await service.create_product(name="Product A")
         await service.create_product(name="Product B")
 
-        # List with metrics and include inactive (new products start inactive)
-        list_result = await service.list_products(include_inactive=True, include_metrics=True)
-        assert "products" in list_result
-        assert len(list_result["products"]) == 2
+        # List products (0731b: returns list[Product])
+        list_result = await service.list_products(include_inactive=True)
+        assert isinstance(list_result, list)
+        assert len(list_result) == 2
 
-        # Products should include metric information
-        for product in list_result["products"]:
-            assert "id" in product
-            assert "name" in product
+        # Products are Product ORM models
+        for product in list_result:
+            assert isinstance(product, Product)
+            assert product.id is not None
+            assert product.name is not None
 
 
 @pytest.mark.asyncio
@@ -476,38 +496,38 @@ class TestConfigDataPersistence:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create product with config_data
+        # Create product with config_data (0731b: returns Product ORM model)
         initial_config = {"api_key": "test-key-123", "settings": {"debug": True, "timeout": 30}}
         create_result = await service.create_product(name="Config Test Product", config_data=initial_config)
-        product_id = create_result["product_id"]
+        product_id = str(create_result.id)
 
         # Update product (without changing config_data)
         await service.update_product(product_id=product_id, description="Updated description")
 
-        # Verify config_data preserved
+        # Verify config_data preserved (0731b: returns Product ORM model)
         get_result = await service.get_product(product_id)
-        assert get_result["product"]["config_data"]["api_key"] == "test-key-123"
-        assert get_result["product"]["config_data"]["settings"]["debug"] is True
+        assert get_result.config_data["api_key"] == "test-key-123"
+        assert get_result.config_data["settings"]["debug"] is True
 
     async def test_config_data_update_merging(self, db_manager):
         """Test updating config_data merges correctly"""
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create product with initial config
+        # Create product with initial config (0731b: returns Product ORM model)
         create_result = await service.create_product(
             name="Config Merge Product", config_data={"field1": "value1", "field2": "value2"}
         )
-        product_id = create_result["product_id"]
+        product_id = str(create_result.id)
 
-        # Update with new config_data (exception-based: success is implicit)
+        # Update with new config_data (0731b: returns Product ORM model)
         new_config = {"field2": "updated", "field3": "new"}
         update_result = await service.update_product(product_id=product_id, config_data=new_config)
-        assert "product" in update_result
+        assert isinstance(update_result, Product)
 
-        # Verify config updated
+        # Verify config updated (0731b: returns Product ORM model)
         get_result = await service.get_product(product_id)
-        config = get_result["product"]["config_data"]
+        config = get_result.config_data
         assert config["field2"] == "updated"
         assert config["field3"] == "new"
 
@@ -521,19 +541,19 @@ class TestVisionDocumentIntegration:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create product
+        # Create product (0731b: returns Product ORM model)
         product_result = await service.create_product(name="Vision Product")
-        product_id = product_result["product_id"]
+        product_id = str(product_result.id)
 
-        # Upload vision document
+        # Upload vision document (0731b: returns VisionUploadResult Pydantic model)
         upload_result = await service.upload_vision_document(
             product_id=product_id,
             content="# Product Vision\n\nThis is our product vision statement.",
             filename="product_vision.md",
         )
 
-        # Exception-based: success is implicit
-        assert "document_id" in upload_result
+        assert isinstance(upload_result, VisionUploadResult)
+        assert upload_result.document_id is not None
 
         # Verify vision document created
         async with db_manager.get_session_async() as session:
@@ -568,8 +588,9 @@ class TestDatabaseTransactions:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
+        # 0731b: returns Product ORM model
         create_result = await service.create_product(name="Transaction Test")
-        product_id = create_result["product_id"]
+        product_id = str(create_result.id)
 
         # Verify product exists in new session
         async with db_manager.get_session_async() as session:
@@ -586,9 +607,9 @@ class TestDatabaseTransactions:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create product
+        # Create product (0731b: returns Product ORM model)
         create_result = await service.create_product(name="Original Name")
-        product_id = create_result["product_id"]
+        product_id = str(create_result.id)
 
         # Update product
         await service.update_product(product_id=product_id, name="Updated Name")
@@ -607,9 +628,9 @@ class TestDatabaseTransactions:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create and delete product
+        # Create and delete product (0731b: returns Product ORM model)
         create_result = await service.create_product(name="To Delete")
-        product_id = create_result["product_id"]
+        product_id = str(create_result.id)
         await service.delete_product(product_id)
 
         # Verify soft delete persisted in new session
