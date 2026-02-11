@@ -1,7 +1,7 @@
 """
 Tests for AuthService Organization Integration (Handover 0424g).
 
-This test suite follows TDD discipline (Red → Green → Refactor):
+This test suite follows TDD discipline (Red -> Green -> Refactor):
 1. Tests written FIRST (this file) - RED PHASE
 2. All tests must FAIL initially
 3. Implementation makes tests pass - GREEN PHASE
@@ -13,6 +13,8 @@ Test Coverage (Handover 0424g):
 - _register_user_impl accepts org_id parameter
 - create_user_in_org creates users within admin's organization
 - Permission checks for create_user_in_org (owner/admin only)
+
+Handover 0731c: Updated for typed service returns (AuthResult, UserInfo).
 """
 
 from datetime import datetime, timezone
@@ -24,9 +26,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.exceptions import AuthorizationError
-from src.giljo_mcp.models import Task  # For FK cleanup
+from src.giljo_mcp.models import Task  # noqa: F401 - For FK cleanup
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.organizations import Organization, OrgMembership
+from src.giljo_mcp.schemas.service_responses import AuthResult, UserInfo
 from src.giljo_mcp.services.auth_service import AuthService
 
 
@@ -126,7 +129,7 @@ async def test_member_user(db_session, test_org):
     return member, password
 
 
-# RED PHASE: Tests written first (expected to FAIL)
+# Tests updated for typed returns (Handover 0731c)
 
 
 @pytest.mark.asyncio
@@ -181,7 +184,7 @@ async def test_create_first_admin_sets_org_id(auth_service, db_session):
     if count_result.scalar_one_or_none() is not None:
         pytest.skip("Test requires empty database (existing users have FK references)")
 
-    # Create first admin
+    # Create first admin - returns AuthResult (typed)
     result = await auth_service._create_first_admin_impl(
         session=db_session,
         username="firstadmin",
@@ -190,8 +193,9 @@ async def test_create_first_admin_sets_org_id(auth_service, db_session):
         full_name="First Administrator",
     )
 
-    # Verify user created with org_id set
-    user_id = result["id"]
+    # Typed return: AuthResult with attribute access
+    assert isinstance(result, AuthResult)
+    user_id = result.user_id
     stmt = select(User).where(User.id == user_id).options(selectinload(User.organization))
     user_result = await db_session.execute(stmt)
     user = user_result.scalar_one()
@@ -230,7 +234,7 @@ async def test_register_user_sets_org_id(auth_service, db_session, test_admin_us
     """
     admin, _ = test_admin_user
 
-    # Register user with org_id
+    # Register user with org_id - returns UserInfo (typed)
     result = await auth_service._register_user_impl(
         session=db_session,
         username="newuser",
@@ -242,8 +246,9 @@ async def test_register_user_sets_org_id(auth_service, db_session, test_admin_us
         org_role="member",
     )
 
-    # Verify user created with org_id set
-    user_id = result["id"]
+    # Typed return: UserInfo with attribute access
+    assert isinstance(result, UserInfo)
+    user_id = result.id
     stmt = select(User).where(User.id == user_id)
     user_result = await db_session.execute(stmt)
     user = user_result.scalar_one()
@@ -273,7 +278,7 @@ async def test_create_user_in_org_by_admin(auth_service, db_session, test_admin_
     """
     admin, _ = test_admin_user
 
-    # Admin creates new user in their organization
+    # Admin creates new user in their organization - returns UserInfo (typed)
     result = await auth_service.create_user_in_org(
         session=db_session,
         admin_user_id=admin.id,
@@ -283,11 +288,12 @@ async def test_create_user_in_org_by_admin(auth_service, db_session, test_admin_
         initial_password="OrgUser1234!@#$",
     )
 
-    # Verify user created with admin's org_id
-    assert result["username"] == "orguser"
-    assert result["email"] == "orguser@example.com"
+    # Typed return: UserInfo with attribute access
+    assert isinstance(result, UserInfo)
+    assert result.username == "orguser"
+    assert result.email == "orguser@example.com"
 
-    user_id = result["id"]
+    user_id = result.id
     stmt = select(User).where(User.id == user_id)
     user_result = await db_session.execute(stmt)
     user = user_result.scalar_one()
@@ -312,7 +318,7 @@ async def test_create_user_in_org_requires_admin_role(auth_service, db_session, 
 
     Expected behavior (Handover 0424g):
     - Member users cannot create users
-    - Raises PermissionDeniedError for non-admin roles
+    - Raises AuthorizationError for non-admin roles
     """
     member, _ = test_member_user
 
