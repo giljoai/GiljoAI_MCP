@@ -28,6 +28,7 @@ from src.giljo_mcp.exceptions import ResourceNotFoundError
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.schemas.service_responses import MessageListResult
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -129,10 +130,9 @@ async def test_get_messages_nonexistent_agent_returns_empty(
     # Call get_messages for nonexistent agent
     result = await message_service.get_messages(agent_name="nonexistent-agent")
 
-    # Verify empty result structure
-    assert isinstance(result, dict)
-    assert "messages" in result
-    assert result["messages"] == []
+    # Handover 0731c: Returns MessageListResult typed model
+    assert isinstance(result, MessageListResult)
+    assert result.messages == []
 
 
 @pytest.mark.asyncio
@@ -152,10 +152,9 @@ async def test_list_messages_nonexistent_project_returns_empty(
         tenant_key="nonexistent-tenant",
     )
 
-    # Handover 0464: Returns empty list when project doesn't exist
-    assert isinstance(result, dict)
-    assert "messages" in result
-    assert result["messages"] == []
+    # Handover 0731c: Returns MessageListResult typed model
+    assert isinstance(result, MessageListResult)
+    assert result.messages == []
 
 
 @pytest.mark.asyncio
@@ -176,10 +175,9 @@ async def test_list_messages_empty_project_returns_empty(
         tenant_key=empty_project.tenant_key,
     )
 
-    # Verify empty result structure
-    assert isinstance(result, dict)
-    assert "messages" in result
-    assert result["messages"] == []
+    # Handover 0731c: Returns MessageListResult typed model
+    assert isinstance(result, MessageListResult)
+    assert result.messages == []
 
 
 @pytest.mark.asyncio
@@ -255,9 +253,9 @@ class TestEmptyStateBoundaryConditions:
             limit=0,
         )
 
-        assert isinstance(result, dict)
-        assert "messages" in result
-        assert result["messages"] == []
+        # Handover 0731c: Returns MessageListResult typed model
+        assert isinstance(result, MessageListResult)
+        assert result.messages == []
 
     @pytest.mark.asyncio
     async def test_get_messages_with_filters_empty_returns_empty(
@@ -275,6 +273,6 @@ class TestEmptyStateBoundaryConditions:
             status="pending",
         )
 
-        assert isinstance(result, dict)
-        assert "messages" in result
-        assert result["messages"] == []
+        # Handover 0731c: Returns MessageListResult typed model
+        assert isinstance(result, MessageListResult)
+        assert result.messages == []

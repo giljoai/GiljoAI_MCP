@@ -27,6 +27,7 @@ from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 
 # Import models using modular imports
+from src.giljo_mcp.schemas.service_responses import SendMessageResult
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -308,19 +309,19 @@ async def test_staging_orchestrator_broadcast_includes_directive(
         tenant_key=test_tenant_key,
     )
 
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    # Assert response contains staging_directive
-    assert "message_id" in result, f"Expected message_id in result, got {result}"
-    assert "staging_directive" in result, "Response should include staging_directive for staging orchestrator broadcast"
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
+    assert result.message_id is not None
+    assert result.staging_directive is not None, "Response should include staging_directive for staging orchestrator broadcast"
 
-    # Verify directive structure
-    directive = result["staging_directive"]
-    assert directive["status"] == "STAGING_SESSION_COMPLETE"
-    assert directive["action"] == "STOP"
-    assert "STAGING IS COMPLETE" in directive["message"]
-    assert "Do NOT proceed to implementation" in directive["message"]
-    assert directive["implementation_gate"] == "LOCKED"
-    assert "next_step" in directive
+    # Verify directive structure (typed StagingDirective model)
+    directive = result.staging_directive
+    assert directive.status == "STAGING_SESSION_COMPLETE"
+    assert directive.action == "STOP"
+    assert "STAGING IS COMPLETE" in directive.message
+    assert "Do NOT proceed to implementation" in directive.message
+    assert directive.implementation_gate == "LOCKED"
+    assert directive.next_step is not None
 
 
 @pytest.mark.asyncio
@@ -353,10 +354,10 @@ async def test_regular_agent_broadcast_no_directive(
         tenant_key=test_tenant_key,
     )
 
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    # Assert response does NOT contain staging_directive
-    assert "message_id" in result, f"Expected message_id in result, got {result}"
-    assert "staging_directive" not in result, "Regular agent broadcasts should not include staging_directive"
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
+    assert result.message_id is not None
+    assert result.staging_directive is None, "Regular agent broadcasts should not include staging_directive"
 
 
 @pytest.mark.asyncio
@@ -389,10 +390,10 @@ async def test_implementation_orchestrator_broadcast_no_directive(
         tenant_key=test_tenant_key,
     )
 
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    # Assert response does NOT contain staging_directive
-    assert "message_id" in result, f"Expected message_id in result, got {result}"
-    assert "staging_directive" not in result, (
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
+    assert result.message_id is not None
+    assert result.staging_directive is None, (
         "Implementation orchestrator broadcasts should not include staging_directive"
     )
 
@@ -426,27 +427,19 @@ async def test_staging_directive_has_required_fields(
         tenant_key=test_tenant_key,
     )
 
-    # Assert directive has all required fields
-    assert "staging_directive" in result
-    directive = result["staging_directive"]
+    # Handover 0731c: Assert directive has all required fields (typed model)
+    assert isinstance(result, SendMessageResult)
+    assert result.staging_directive is not None
+    directive = result.staging_directive
 
-    # Required fields
-    assert "status" in directive
-    assert directive["status"] == "STAGING_SESSION_COMPLETE"
-
-    assert "action" in directive
-    assert directive["action"] == "STOP"
-
-    assert "message" in directive
-    assert isinstance(directive["message"], str)
-    assert len(directive["message"]) > 0
-    assert "STAGING IS COMPLETE" in directive["message"]
-
-    assert "implementation_gate" in directive
-    assert directive["implementation_gate"] == "LOCKED"
-
-    assert "next_step" in directive
-    assert isinstance(directive["next_step"], str)
+    # Required fields (typed StagingDirective model)
+    assert directive.status == "STAGING_SESSION_COMPLETE"
+    assert directive.action == "STOP"
+    assert isinstance(directive.message, str)
+    assert len(directive.message) > 0
+    assert "STAGING IS COMPLETE" in directive.message
+    assert directive.implementation_gate == "LOCKED"
+    assert isinstance(directive.next_step, str)
 
 
 @pytest.mark.asyncio
@@ -479,7 +472,7 @@ async def test_direct_message_no_directive(
         tenant_key=test_tenant_key,
     )
 
-    # Handover 0730: send_message returns dict directly (no success wrapper)
-    # Assert response does NOT contain staging_directive
-    assert "message_id" in result, f"Expected message_id in result, got {result}"
-    assert "staging_directive" not in result, "Direct messages should not include staging_directive (only broadcasts)"
+    # Handover 0731c: send_message returns SendMessageResult typed model
+    assert isinstance(result, SendMessageResult)
+    assert result.message_id is not None
+    assert result.staging_directive is None, "Direct messages should not include staging_directive (only broadcasts)"
