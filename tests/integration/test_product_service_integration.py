@@ -573,9 +573,7 @@ class TestVisionDocumentIntegration:
 
         # Should raise ResourceNotFoundError for non-existent product
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await service.upload_vision_document(
-                product_id=str(uuid4()), content="# Vision", filename="vision.md"
-            )
+            await service.upload_vision_document(product_id=str(uuid4()), content="# Vision", filename="vision.md")
         assert "not found" in str(exc_info.value).lower()
 
 

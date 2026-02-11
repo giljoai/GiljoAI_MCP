@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from src.giljo_mcp.exceptions import ResourceNotFoundError
 from src.giljo_mcp.models.products import Product
 
 
@@ -78,8 +79,8 @@ async def test_update_quality_standards_multi_tenant_isolation(mock_db_manager):
 
     service = ProductService(db_manager, tenant_key="test-tenant")
 
-    # Should raise ValueError (wrong tenant)
-    with pytest.raises(ValueError, match="Product .* not found"):
+    # Should raise ResourceNotFoundError (wrong tenant)
+    with pytest.raises(ResourceNotFoundError, match=r"Product .* not found"):
         await service.update_quality_standards(
             product_id="test-product-id",
             quality_standards="Standards here",
@@ -98,7 +99,7 @@ async def test_update_quality_standards_product_not_found(mock_db_manager):
 
     service = ProductService(db_manager, tenant_key="test-tenant")
 
-    with pytest.raises(ValueError, match="Product .* not found"):
+    with pytest.raises(ResourceNotFoundError, match=r"Product .* not found"):
         await service.update_quality_standards(
             product_id="nonexistent-id", quality_standards="Standards", tenant_key="test-tenant"
         )
