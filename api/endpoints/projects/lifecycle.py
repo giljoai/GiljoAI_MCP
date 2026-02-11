@@ -76,20 +76,20 @@ async def activate_project(
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
-        id=proj.get("id"),
-        alias=proj.get("alias", ""),
-        name=proj.get("name"),
-        description=proj.get("description"),
-        mission=proj.get("mission", ""),
-        status=proj.get("status"),
-        product_id=proj.get("product_id"),
-        created_at=proj.get("created_at"),
-        updated_at=proj.get("updated_at"),
-        completed_at=proj.get("completed_at"),
+        id=proj.id,
+        alias=proj.alias or "",
+        name=proj.name,
+        description=proj.description,
+        mission=proj.mission or "",
+        status=proj.status,
+        product_id=proj.product_id,
+        created_at=proj.created_at,
+        updated_at=proj.updated_at,
+        completed_at=proj.completed_at,
         context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.get("context_used", 0),
-        agent_count=proj.get("agent_count", 0),
-        message_count=proj.get("message_count", 0),
+        context_used=proj.context_used,
+        agent_count=proj.agent_count,
+        message_count=proj.message_count,
         agents=[],
     )
 
@@ -130,20 +130,20 @@ async def deactivate_project(
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
-        id=proj.get("id"),
-        alias=proj.get("alias", ""),
-        name=proj.get("name"),
-        description=proj.get("description"),
-        mission=proj.get("mission", ""),
-        status=proj.get("status"),
-        product_id=proj.get("product_id"),
-        created_at=proj.get("created_at"),
-        updated_at=proj.get("updated_at"),
-        completed_at=proj.get("completed_at"),
+        id=proj.id,
+        alias=proj.alias or "",
+        name=proj.name,
+        description=proj.description,
+        mission=proj.mission or "",
+        status=proj.status,
+        product_id=proj.product_id,
+        created_at=proj.created_at,
+        updated_at=proj.updated_at,
+        completed_at=proj.completed_at,
         context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.get("context_used", 0),
-        agent_count=proj.get("agent_count", 0),
-        message_count=proj.get("message_count", 0),
+        context_used=proj.context_used,
+        agent_count=proj.agent_count,
+        message_count=proj.message_count,
         agents=[],
     )
 
@@ -182,20 +182,20 @@ async def cancel_project(
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
-        id=proj.get("id"),
-        alias=proj.get("alias", ""),
-        name=proj.get("name"),
-        description=proj.get("description"),
-        mission=proj.get("mission", ""),
-        status=proj.get("status"),
-        product_id=proj.get("product_id"),
-        created_at=proj.get("created_at"),
-        updated_at=proj.get("updated_at"),
-        completed_at=proj.get("completed_at"),
+        id=proj.id,
+        alias=proj.alias or "",
+        name=proj.name,
+        description=proj.description,
+        mission=proj.mission or "",
+        status=proj.status,
+        product_id=proj.product_id,
+        created_at=proj.created_at,
+        updated_at=proj.updated_at,
+        completed_at=proj.completed_at,
         context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.get("context_used", 0),
-        agent_count=proj.get("agent_count", 0),
-        message_count=proj.get("message_count", 0),
+        context_used=proj.context_used,
+        agent_count=proj.agent_count,
+        message_count=proj.message_count,
         agents=[],
     )
 
@@ -232,20 +232,20 @@ async def restore_project(
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
-        id=proj.get("id"),
-        alias=proj.get("alias", ""),
-        name=proj.get("name"),
-        description=proj.get("description"),
-        mission=proj.get("mission", ""),
-        status=proj.get("status"),
-        product_id=proj.get("product_id"),
-        created_at=proj.get("created_at"),
-        updated_at=proj.get("updated_at"),
-        completed_at=proj.get("completed_at"),
+        id=proj.id,
+        alias=proj.alias or "",
+        name=proj.name,
+        description=proj.description,
+        mission=proj.mission or "",
+        status=proj.status,
+        product_id=proj.product_id,
+        created_at=proj.created_at,
+        updated_at=proj.updated_at,
+        completed_at=proj.completed_at,
         context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.get("context_used", 0),
-        agent_count=proj.get("agent_count", 0),
-        message_count=proj.get("message_count", 0),
+        context_used=proj.context_used,
+        agent_count=proj.agent_count,
+        message_count=proj.message_count,
         agents=[],
     )
 
@@ -287,20 +287,20 @@ async def cancel_project_staging(
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
-        id=proj.get("id"),
-        alias=proj.get("alias", ""),
-        name=proj.get("name"),
-        description=proj.get("description"),
-        mission=proj.get("mission", ""),
-        status=proj.get("status"),
-        product_id=proj.get("product_id"),
-        created_at=proj.get("created_at"),
-        updated_at=proj.get("updated_at"),
-        completed_at=proj.get("completed_at"),
+        id=proj.id,
+        alias=proj.alias or "",
+        name=proj.name,
+        description=proj.description,
+        mission=proj.mission or "",
+        status=proj.status,
+        product_id=proj.product_id,
+        created_at=proj.created_at,
+        updated_at=proj.updated_at,
+        completed_at=proj.completed_at,
         context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.get("context_used", 0),
-        agent_count=proj.get("agent_count", 0),
-        message_count=proj.get("message_count", 0),
+        context_used=proj.context_used,
+        agent_count=proj.agent_count,
+        message_count=proj.message_count,
         agents=[],
     )
 
@@ -318,10 +318,11 @@ async def purge_all_deleted_projects(
     # Service raises exceptions on error
     result = await project_service.purge_all_deleted_projects()
 
-    projects = [PurgedProject(**proj) for proj in result.get("projects", [])]
+    # 0731d: ProjectService returns ProjectPurgeResult typed model
+    projects = [PurgedProject(**proj) for proj in result.projects]
     return ProjectPurgeResponse(
         success=True,
-        purged_count=result.get("purged_count", 0),
+        purged_count=result.purged_count,
         projects=projects,
         message="Deleted projects purged successfully",
     )
@@ -344,11 +345,11 @@ async def purge_deleted_project(
     # Use nuclear delete for immediate permanent deletion (raises exceptions on error)
     result = await project_service.nuclear_delete_project(project_id)
 
-    # Format response to match PurgeResponse model
+    # 0731d: ProjectService returns NuclearDeleteResult typed model
     project_info = {
         "id": project_id,
-        "name": result.get("project_name", "Unknown"),
-        "tenant_key": result.get("tenant_key", ""),
+        "name": result.project_name,
+        "tenant_key": "",
         "deleted_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -356,7 +357,7 @@ async def purge_deleted_project(
         success=True,
         purged_count=1,
         projects=[PurgedProject(**project_info)],
-        message=f"Project permanently deleted. Removed: {result.get('deleted_counts', {})}",
+        message=f"Project permanently deleted. Removed: {result.deleted_counts}",
     )
 
 
@@ -389,7 +390,7 @@ async def archive_project(
 
     # Get project first to validate (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
-    current_status = proj.get("status", "")
+    current_status = proj.status
 
     # Only deactivate if not already inactive/completed
     if current_status not in ("inactive", "completed", "archived"):
@@ -406,20 +407,20 @@ async def archive_project(
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     return ProjectResponse(
-        id=proj.get("id"),
-        alias=proj.get("alias", ""),
-        name=proj.get("name"),
-        description=proj.get("description"),
-        mission=proj.get("mission", ""),
-        status=proj.get("status"),
-        product_id=proj.get("product_id"),
-        created_at=proj.get("created_at"),
-        updated_at=proj.get("updated_at"),
-        completed_at=proj.get("completed_at"),
+        id=proj.id,
+        alias=proj.alias or "",
+        name=proj.name,
+        description=proj.description,
+        mission=proj.mission or "",
+        status=proj.status,
+        product_id=proj.product_id,
+        created_at=proj.created_at,
+        updated_at=proj.updated_at,
+        completed_at=proj.completed_at,
         context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.get("context_used", 0),
-        agent_count=proj.get("agent_count", 0),
-        message_count=proj.get("message_count", 0),
+        context_used=proj.context_used,
+        agent_count=proj.agent_count,
+        message_count=proj.message_count,
         agents=[],
     )
 
@@ -441,10 +442,11 @@ async def delete_project(
     # Service raises exceptions on error
     result = await project_service.delete_project(project_id)
 
+    # 0731d: ProjectService returns SoftDeleteResult typed model
     return ProjectDeleteResponse(
         success=True,
-        message=result.get("message", "Project deleted successfully"),
-        deleted_at=result.get("deleted_at"),
+        message=result.message,
+        deleted_at=result.deleted_at,
     )
 
 
@@ -483,7 +485,13 @@ async def launch_project(
 
     logger.info(f"Launched project {project_id}")
 
-    return ProjectLaunchResponse(**launch_data)
+    # 0731d: ProjectService returns ProjectLaunchResult typed model
+    return ProjectLaunchResponse(
+        project_id=launch_data.project_id,
+        orchestrator_job_id=launch_data.orchestrator_job_id,
+        launch_prompt=launch_data.launch_prompt,
+        status=launch_data.status,
+    )
 
 
 @router.post("/{project_id}/continue", response_model=ProjectLaunchResponse)
@@ -524,4 +532,10 @@ async def continue_project(
 
     logger.info(f"Launched new orchestrator for project {project_id}")
 
-    return ProjectLaunchResponse(**launch_data)
+    # 0731d: ProjectService returns ProjectLaunchResult typed model
+    return ProjectLaunchResponse(
+        project_id=launch_data.project_id,
+        orchestrator_job_id=launch_data.orchestrator_job_id,
+        launch_prompt=launch_data.launch_prompt,
+        status=launch_data.status,
+    )

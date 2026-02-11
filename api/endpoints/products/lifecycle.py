@@ -3,6 +3,9 @@ Product Lifecycle Endpoints - Handover 0127b
 
 Handles product activation, deactivation, restore, and deletion operations
 using ProductService.
+
+Handover 0731d: Updated for typed ProductService returns (Product ORM models,
+DeleteResult, CascadeImpact, ProductStatistics instead of dicts).
 """
 
 import logging
@@ -30,6 +33,50 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _build_product_response(product, stats=None, override_active=None) -> ProductResponse:
+    """
+    Build a ProductResponse from a Product ORM model and optional ProductStatistics.
+
+    Args:
+        product: Product ORM model
+        stats: Optional ProductStatistics for metrics fields
+        override_active: Optional bool to override product.is_active in response
+
+    Returns:
+        ProductResponse Pydantic model
+    """
+    config_data = product.config_data or None
+    has_config_data = bool(config_data)
+
+    # Handover 0412: Ensure product_memory is never None
+    pm = product.product_memory
+    if pm is None:
+        pm = {"github": {}, "sequential_history": [], "context": {}}
+
+    is_active = override_active if override_active is not None else product.is_active
+
+    return ProductResponse(
+        id=str(product.id),
+        name=product.name,
+        description=product.description,
+        vision_path=None,
+        project_path=product.project_path,
+        created_at=product.created_at,
+        updated_at=product.updated_at,
+        project_count=stats.project_count if stats else 0,
+        task_count=stats.task_count if stats else 0,
+        has_vision=stats.has_vision if stats else False,
+        unresolved_tasks=stats.unresolved_tasks if stats else 0,
+        unfinished_projects=stats.unfinished_projects if stats else 0,
+        vision_documents_count=stats.vision_documents_count if stats else 0,
+        config_data=config_data,
+        has_config_data=has_config_data,
+        is_active=is_active,
+        product_memory=pm,
+        target_platforms=product.target_platforms or ["all"],
+    )
+
+
 @router.post("/{product_id}/activate", response_model=ProductActivationResponse)
 async def activate_product(
     product_id: str,
@@ -46,48 +93,30 @@ async def activate_product(
 
     try:
         # Get currently active product (if any) before activation
-        active_result = await service.get_active_product()
+        active_product = await service.get_active_product()
         previous_active_id = None
-        if active_result.get("product"):
-            previous_active_id = active_result["product"]["id"]
+        if active_product:
+            previous_active_id = str(active_product.id)
 
         # Activate new product
         await service.activate_product(product_id)
 
-        # Get full product details with metrics
-        product_result = await service.get_product(product_id, include_metrics=True)
-
-        product_data = product_result["product"]
+        # Get full product details and statistics
+        product = await service.get_product(product_id)
+        stats = await service.get_product_statistics(str(product.id))
 
         # Build ProductResponse
-        product_response = ProductResponse(
-            id=product_data["id"],
-            name=product_data["name"],
-            description=product_data["description"],
-            vision_path=product_data.get("vision_path"),
-            project_path=product_data.get("project_path"),
-            created_at=product_data.get("created_at"),
-            updated_at=product_data.get("updated_at"),
-            project_count=product_data.get("project_count", 0),
-            task_count=product_data.get("task_count", 0),
-            has_vision=product_data.get("has_vision", False),
-            unresolved_tasks=product_data.get("unresolved_tasks", 0),
-            unfinished_projects=product_data.get("unfinished_projects", 0),
-            vision_documents_count=product_data.get("vision_documents_count", 0),
-            config_data=product_data.get("config_data"),
-            has_config_data=product_data.get("has_config_data", False),
-            is_active=True,
-        )
+        product_response = _build_product_response(product, stats, override_active=True)
 
         # TODO: Query for deactivated projects when ProjectService integration is complete
         # For now, return empty list as projects will be handled in future handover
         deactivated_projects = []
 
         return ProductActivationResponse(
-            product_id=product_data["id"],
+            product_id=str(product.id),
             previous_active_product_id=previous_active_id,
             product=product_response,
-            message=f"Product '{product_data['name']}' activated successfully",
+            message=f"Product '{product.name}' activated successfully",
             deactivated_projects=deactivated_projects,
         )
 
@@ -125,30 +154,11 @@ async def deactivate_product(
     try:
         await service.deactivate_product(product_id)
 
-        # Get full product details
-        product_result = await service.get_product(product_id, include_metrics=True)
+        # Get full product details and statistics
+        product = await service.get_product(product_id)
+        stats = await service.get_product_statistics(str(product.id))
 
-        product_data = product_result["product"]
-
-        return ProductResponse(
-            id=product_data["id"],
-            name=product_data["name"],
-            description=product_data["description"],
-            vision_path=product_data.get("vision_path"),
-            project_path=product_data.get("project_path"),
-            created_at=product_data.get("created_at"),
-            updated_at=product_data.get("updated_at"),
-            project_count=product_data.get("project_count", 0),
-            task_count=product_data.get("task_count", 0),
-            has_vision=product_data.get("has_vision", False),
-            unresolved_tasks=product_data.get("unresolved_tasks", 0),
-            unfinished_projects=product_data.get("unfinished_projects", 0),
-            vision_documents_count=product_data.get("vision_documents_count", 0),
-            config_data=product_data.get("config_data"),
-            has_config_data=product_data.get("has_config_data", False),
-            is_active=product_data.get("is_active", False),
-            product_memory=product_data.get("product_memory"),  # Handover 0412: 360 Memory
-        )
+        return _build_product_response(product, stats)
     finally:
         # Publish WS event via EventBus (tenant-scoped)
         try:
@@ -182,17 +192,17 @@ async def delete_product(
     logger.info(f"User {current_user.username} deleting product {product_id}")
 
     # Get product state before deletion for response
-    product_result = await service.get_product(product_id)
-    was_active = product_result.get("product", {}).get("is_active", False)
+    product = await service.get_product(product_id)
+    was_active = product.is_active
 
-    result = await service.delete_product(product_id)
+    await service.delete_product(product_id)
 
     # Get remaining products count
-    products_result = await service.list_products()
-    remaining_count = len(products_result.get("products", []))
+    remaining_products = await service.list_products()
+    remaining_count = len(remaining_products)
 
     return ProductDeleteResponse(
-        message=result["message"],
+        message="Product soft-deleted successfully",
         deleted_product_id=product_id,
         was_active=was_active,
         remaining_products_count=remaining_count,
@@ -215,30 +225,11 @@ async def restore_product(
 
     await service.restore_product(product_id)
 
-    # Get full product details
-    product_result = await service.get_product(product_id, include_metrics=True)
+    # Get full product details and statistics
+    product = await service.get_product(product_id)
+    stats = await service.get_product_statistics(str(product.id))
 
-    product_data = product_result["product"]
-
-    return ProductResponse(
-        id=product_data["id"],
-        name=product_data["name"],
-        description=product_data["description"],
-        vision_path=product_data.get("vision_path"),
-        project_path=product_data.get("project_path"),
-        created_at=product_data.get("created_at"),
-        updated_at=product_data.get("updated_at"),
-        project_count=product_data.get("project_count", 0),
-        task_count=product_data.get("task_count", 0),
-        has_vision=product_data.get("has_vision", False),
-        unresolved_tasks=product_data.get("unresolved_tasks", 0),
-        unfinished_projects=product_data.get("unfinished_projects", 0),
-        vision_documents_count=product_data.get("vision_documents_count", 0),
-        config_data=product_data.get("config_data"),
-        has_config_data=product_data.get("has_config_data", False),
-        is_active=product_data.get("is_active", False),
-        product_memory=product_data.get("product_memory"),  # Handover 0412: 360 Memory
-    )
+    return _build_product_response(product, stats)
 
 
 @router.get("/{product_id}/cascade-impact", response_model=CascadeImpact)
@@ -254,17 +245,15 @@ async def get_cascade_impact(
     """
     logger.debug(f"User {current_user.username} checking cascade impact for product {product_id}")
 
-    result = await service.get_cascade_impact(product_id)
-
-    impact_data = result["impact"]
+    impact = await service.get_cascade_impact(product_id)
 
     return CascadeImpact(
-        product_id=impact_data["product_id"],
-        product_name=impact_data["product_name"],
-        total_projects=impact_data["total_projects"],
-        total_tasks=impact_data["total_tasks"],
-        total_vision_documents=impact_data["total_vision_documents"],
-        warning=impact_data["warning"],
+        product_id=impact.product_id,
+        product_name=impact.product_name,
+        total_projects=impact.total_projects,
+        total_tasks=impact.total_tasks,
+        total_vision_documents=impact.total_vision_documents,
+        warning=impact.warning,
     )
 
 
@@ -280,33 +269,16 @@ async def refresh_active_product(
     """
     logger.debug(f"User {current_user.username} refreshing active product")
 
-    result = await service.get_active_product()
+    product = await service.get_active_product()
 
-    product_data = result.get("product")
-
-    if not product_data:
+    if not product:
         return ActiveProductRefreshResponse(has_active_product=False, product=None)
+
+    stats = await service.get_product_statistics(str(product.id))
 
     return ActiveProductRefreshResponse(
         has_active_product=True,
-        product=ProductResponse(
-            id=product_data["id"],
-            name=product_data["name"],
-            description=product_data["description"],
-            vision_path=product_data.get("vision_path"),
-            project_path=product_data.get("project_path"),
-            created_at=product_data.get("created_at"),
-            updated_at=product_data.get("updated_at"),
-            project_count=product_data.get("project_count", 0),
-            task_count=product_data.get("task_count", 0),
-            has_vision=product_data.get("has_vision", False),
-            unresolved_tasks=product_data.get("unresolved_tasks", 0),
-            unfinished_projects=product_data.get("unfinished_projects", 0),
-            vision_documents_count=product_data.get("vision_documents_count", 0),
-            config_data=product_data.get("config_data"),
-            has_config_data=product_data.get("has_config_data", False),
-            is_active=True,
-        ),
+        product=_build_product_response(product, stats, override_active=True),
     )
 
 
@@ -328,15 +300,13 @@ async def get_vision_document_stats(
     logger.debug(f"User {current_user.username} requesting vision stats for active product")
 
     # Get active product
-    result = await service.get_active_product()
+    product = await service.get_active_product()
 
-    product_data = result.get("product")
-
-    if not product_data:
+    if not product:
         raise HTTPException(status_code=404, detail="No active product found")
 
-    product_id = product_data["id"]
-    product_name = product_data["name"]
+    product_id = str(product.id)
+    product_name = product.name
 
     # Query for active vision documents
     from sqlalchemy import and_, select

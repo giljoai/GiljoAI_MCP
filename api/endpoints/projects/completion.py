@@ -51,10 +51,15 @@ async def can_close_project(
     """
     logger.info(f"User {current_user.username} checking can-close for project {project_id}")
 
-    # Service raises exceptions on error
-    data = await project_service.can_close_project(project_id=project_id, tenant_key=current_user.tenant_key)
+    # Service raises exceptions on error, returns CanCloseResult typed model
+    result = await project_service.can_close_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    return ProjectCanCloseResponse(**data)
+    return ProjectCanCloseResponse(
+        can_close=result.can_close,
+        summary=result.summary,
+        all_agents_finished=result.all_agents_finished,
+        agent_statuses=result.agent_statuses,
+    )
 
 
 @router.post(
@@ -73,10 +78,15 @@ async def generate_closeout_prompt(
     """
     logger.info(f"User {current_user.username} generating closeout prompt for project {project_id}")
 
-    # Service raises exceptions on error
-    data = await project_service.generate_closeout_prompt(project_id=project_id, tenant_key=current_user.tenant_key)
+    # Service raises exceptions on error, returns CloseoutPromptResult typed model
+    result = await project_service.generate_closeout_prompt(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    return ProjectCloseoutPromptResponse(**data)
+    return ProjectCloseoutPromptResponse(
+        prompt=result.prompt,
+        checklist=result.checklist,
+        project_name=result.project_name,
+        agent_summary=result.agent_summary,
+    )
 
 
 @router.post(
@@ -114,9 +124,9 @@ async def complete_project(
     return ProjectCompleteResponse(
         success=True,
         completed_at=datetime.now(timezone.utc).isoformat(),
-        memory_updated=result.get("memory_updated", False),
-        sequence_number=result.get("sequence_number", 0),
-        git_commits_count=result.get("git_commits_count", 0),
+        memory_updated=result.memory_updated,
+        sequence_number=result.sequence_number,
+        git_commits_count=result.git_commits_count,
     )
 
 
@@ -137,10 +147,18 @@ async def get_project_closeout_data(
     """
     logger.info(f"User {current_user.username} fetching closeout data for project {project_id}")
 
-    # Service raises exceptions on error
-    data = await project_service.get_closeout_data(project_id=project_id)
+    # Service raises exceptions on error, returns CloseoutData typed model
+    result = await project_service.get_closeout_data(project_id=project_id)
 
-    return ProjectCloseoutDataResponse(**data)
+    return ProjectCloseoutDataResponse(
+        project_id=result.project_id,
+        project_name=result.project_name,
+        agent_count=result.agent_count,
+        completed_agents=result.completed_agents,
+        failed_agents=result.failed_agents,
+        all_agents_complete=result.all_agents_complete,
+        has_failed_agents=result.has_failed_agents,
+    )
 
 
 @router.post("/{project_id}/close-out", response_model=ProjectCloseOutResponse)
@@ -173,10 +191,10 @@ async def close_out_project(
 
     return ProjectCloseOutResponse(
         success=True,
-        message=result["message"],
-        agents_decommissioned=result["agents_decommissioned"],
-        decommissioned_agent_ids=result["decommissioned_agent_ids"],
-        project_status=result["project_status"],
+        message=result.message,
+        agents_decommissioned=result.agents_decommissioned,
+        decommissioned_agent_ids=result.decommissioned_agent_ids,
+        project_status=result.project_status,
     )
 
 
@@ -210,8 +228,8 @@ async def continue_working(
 
     return ContinueWorkingResponse(
         success=True,
-        message=result["message"],
-        agents_resumed=result["agents_resumed"],
-        resumed_agent_ids=result["resumed_agent_ids"],
-        project_status=result["project_status"],
+        message=result.message,
+        agents_resumed=result.agents_resumed,
+        resumed_agent_ids=result.resumed_agent_ids,
+        project_status=result.project_status,
     )

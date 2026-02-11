@@ -6,6 +6,9 @@ Settings stored in product_memory.git_integration field.
 
 This is the NEW simplified implementation (Handover 013B).
 For legacy GitHub integration, see github.py.
+
+Handover 0731d: Updated for typed ProductService returns (Product ORM model
+instead of dict wrapper, update_git_integration returns settings dict directly).
 """
 
 import logging
@@ -62,15 +65,15 @@ async def update_git_integration(
         f"enabled={settings.enabled}, commit_limit={settings.commit_limit}"
     )
 
-    result = await service.update_git_integration(
+    # Handover 0731d: update_git_integration now returns the settings dict directly
+    # (no {"settings": ...} wrapper)
+    git_settings = await service.update_git_integration(
         product_id=product_id,
         enabled=settings.enabled,
         commit_limit=settings.commit_limit,
         default_branch=settings.default_branch,
     )
 
-    # Build response from returned settings
-    git_settings = result["settings"]
     return GitIntegrationResponse(
         enabled=git_settings["enabled"],
         commit_limit=git_settings.get("commit_limit", 20),
@@ -99,11 +102,11 @@ async def get_git_integration(
     """
     logger.info(f"User {current_user.username} retrieving git integration for product {product_id}")
 
-    result = await service.get_product(product_id, include_metrics=False)
+    # Handover 0731d: get_product now returns Product ORM model directly (no dict wrapper)
+    product = await service.get_product(product_id)
 
     # Extract git integration settings from product_memory
-    product_data = result["product"]
-    product_memory = product_data.get("product_memory", {})
+    product_memory = product.product_memory or {}
     git_integration = product_memory.get("git_integration", {})
 
     # Return settings with defaults if not configured
