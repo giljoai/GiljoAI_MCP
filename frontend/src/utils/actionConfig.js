@@ -3,7 +3,7 @@
  * Defines icons, colors, tooltips, and availability rules for all job actions
  */
 
-export const ACTION_CONFIG = {
+const ACTION_CONFIG = {
   launch: {
     icon: 'mdi-rocket-launch',
     color: 'primary',
@@ -120,56 +120,4 @@ function shouldShowHandOverAction(job) {
  */
 export function getActionConfig(actionName) {
   return ACTION_CONFIG[actionName] || null
-}
-
-/**
- * Check if action requires confirmation
- * @param {String} actionName - Name of the action
- * @returns {Boolean}
- */
-export function actionRequiresConfirmation(actionName) {
-  const config = getActionConfig(actionName)
-  return config?.confirmation || false
-}
-
-/**
- * Get reason why action is disabled (for tooltips)
- * @param {String} actionName - Name of the action
- * @param {Object} job - Job object
- * @param {Boolean} claudeCodeCliMode - Whether Claude Code CLI mode is enabled
- * @returns {String} Reason or empty string if action is available
- */
-export function getDisabledReason(actionName, job, claudeCodeCliMode = false) {
-  const config = getActionConfig(actionName)
-  if (!config) return 'Action not found'
-
-  // Check terminal states
-  if (config.excludeTerminalStates) {
-    const terminalStates = ['complete', 'failed', 'cancelled', 'decommissioned', 'handed_over']
-    if (terminalStates.includes(job.status)) {
-      return `Job is ${job.status}`
-    }
-  }
-
-  // Launch action specific checks
-  if (actionName === 'launch') {
-    if (claudeCodeCliMode && job.agent_display_name !== 'orchestrator') {
-      return 'Only orchestrator can be launched in Claude Code CLI mode'
-    }
-    return ''
-  }
-
-  // Hand over action specific checks
-  // Handover 0506: Removed context threshold - user decides when to hand over
-  if (actionName === 'handOver') {
-    if (job.agent_display_name !== 'orchestrator') {
-      return 'Only orchestrator can initiate handover'
-    }
-    if (job.status !== 'working') {
-      return 'Orchestrator must be working to initiate handover'
-    }
-    return ''
-  }
-
-  return ''
 }

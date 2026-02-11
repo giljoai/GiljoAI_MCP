@@ -6,7 +6,7 @@
  */
 
 // JobsTab-specific status configuration (Handover 0243c)
-export const statusConfig = {
+const statusConfig = {
   waiting: {
     label: 'Waiting.',
     color: '#ffd700', // Yellow
@@ -86,17 +86,8 @@ export const isStatusItalic = (status) => {
   return statusConfig[status]?.italic || false
 }
 
-/**
- * Get Vuetify chip color for status
- * @param {string} status - Agent status value
- * @returns {string} Vuetify color name
- */
-export const getStatusChipColor = (status) => {
-  return statusConfig[status]?.chipColor || 'default'
-}
-
 // Legacy status config for other components
-export const STATUS_CONFIG = {
+const STATUS_CONFIG = {
   waiting: {
     icon: 'mdi-clock-outline',
     color: 'grey',
@@ -148,7 +139,7 @@ export const STATUS_CONFIG = {
   },
 }
 
-export const HEALTH_CONFIG = {
+const HEALTH_CONFIG = {
   healthy: {
     icon: null,
     color: 'success',
@@ -186,7 +177,7 @@ export const HEALTH_CONFIG = {
   },
 }
 
-export const STALENESS_THRESHOLD = 10 // minutes
+const STALENESS_THRESHOLD = 10 // minutes
 
 export function getStatusConfig(status) {
   return STATUS_CONFIG[status] || STATUS_CONFIG.waiting
