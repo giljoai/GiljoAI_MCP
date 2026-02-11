@@ -99,32 +99,22 @@ async def get_workflow_status(
     Raises:
         HTTPException 404: Project not found
     """
-    from src.giljo_mcp.exceptions import DatabaseError, ResourceNotFoundError
-
     logger.debug(f"User {current_user.username} getting workflow status for project {project_id}")
 
-    try:
-        # Get workflow status via OrchestrationService
-        result = await orchestration_service.get_workflow_status(
-            project_id=project_id, tenant_key=current_user.tenant_key
-        )
+    # Get workflow status via OrchestrationService
+    result = await orchestration_service.get_workflow_status(project_id=project_id, tenant_key=current_user.tenant_key)
 
-        logger.info(f"Retrieved workflow status for project {project_id}")
+    logger.info(f"Retrieved workflow status for project {project_id}")
 
-        return WorkflowStatusResponse(
-            project_id=project_id,
-            status=result.get("current_stage", "unknown"),
-            agent_count=result.get("total_agents", 0),
-            completed_count=result.get("completed_agents", 0),
-            failed_count=result.get("failed_agents", 0),
-            active_count=result.get("active_agents", 0),
-            progress_percent=int(result.get("progress_percent", 0)),
-        )
-    except ResourceNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message) from e
-    except DatabaseError as e:
-        logger.exception("Database error getting workflow status")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=e.message) from e
+    return WorkflowStatusResponse(
+        project_id=project_id,
+        status=result.get("current_stage", "unknown"),
+        agent_count=result.get("total_agents", 0),
+        completed_count=result.get("completed_agents", 0),
+        failed_count=result.get("failed_agents", 0),
+        active_count=result.get("active_agents", 0),
+        progress_percent=int(result.get("progress_percent", 0)),
+    )
 
 
 # ============================================================================
