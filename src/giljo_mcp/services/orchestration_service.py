@@ -54,7 +54,6 @@ from src.giljo_mcp.models import (
     ProductMemoryEntry,
     Project,
 )
-from src.giljo_mcp.optimization import SerenaOptimizer
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.workflow_engine import WorkflowEngine
 
@@ -428,7 +427,6 @@ class OrchestrationService:
         self._agent_selector = None
         self._workflow_engine = None
         self._template_generator = None
-        self.serena_optimizer = None  # Initialize lazily per tenant
 
     @property
     def mission_planner(self):
@@ -2357,25 +2355,6 @@ report_error(
 )
 ```
 """
-
-    def _get_serena_optimizer_internal(self, tenant_key: str) -> Optional[SerenaOptimizer]:
-        """
-        Get or initialize Serena optimizer for tenant.
-
-        Args:
-            tenant_key: Tenant key for isolation
-
-        Returns:
-            SerenaOptimizer instance or None if initialization fails
-        """
-        if self.serena_optimizer is None:
-            try:
-                self.serena_optimizer = SerenaOptimizer(tenant_key=tenant_key)
-                self._logger.info(f"Initialized Serena optimizer for tenant {tenant_key}")
-            except (ImportError, ValueError, AttributeError) as e:
-                self._logger.warning(f"Failed to initialize Serena optimizer: {e}")
-                return None
-        return self.serena_optimizer
 
     async def generate_mission_plan(
         self, product: "Product", project_description: str, user_id: Optional[str] = None
