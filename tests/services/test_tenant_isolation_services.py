@@ -251,8 +251,8 @@ async def test_message_service_same_tenant_succeeds(db_session, two_tenant_servi
         tenant_key=tenant_a,
     )
 
-    # Should succeed for same-tenant
-    assert result.get("success") is True or result.get("message_id") is not None, "Same-tenant message send failed!"
+    # Should succeed for same-tenant - typed SendMessageResult return
+    assert result.message_id is not None, "Same-tenant message send failed!"
 
 
 # ============================================================================
