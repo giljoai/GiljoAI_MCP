@@ -11,9 +11,9 @@
       "session_id": "0731a",
       "title": "Pydantic Response Models + Design Validation",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-02-11T12:00:00Z",
+      "completed_at": "2026-02-11T13:30:00Z",
       "planned_tasks": [
         "Validate existing design doc (docs/architecture/service_response_models.md) against current codebase",
         "Create Pydantic response model classes in src/giljo_mcp/schemas/service_responses.py",
@@ -21,19 +21,34 @@
         "Write unit tests for all response models (validation, serialization)",
         "Commit response model classes"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Validated design doc - found significant discrepancies (OrgService, AgentJobManager, ContextService already migrated; counts stale)",
+        "Created 27 Pydantic response models in src/giljo_mcp/schemas/service_responses.py",
+        "Created 4 shared types (DeleteResult, OperationResult, TransferResult, PaginatedResult[T])",
+        "Created 6 product models, 4 task models, 3 message models, 6 orchestration models, 1 template, 1 consolidation, 2 auth models",
+        "Wrote 156 tests (TDD - tests first) in tests/schemas/test_service_responses.py - all passing",
+        "Exported all 27 models from src/giljo_mcp/schemas/__init__.py",
+        "Committed as 2 commits: test(0731) then feat(0731)"
+      ],
+      "deviations": [
+        "Design doc is significantly stale: OrgService (33 claimed dict wrappers, actually 0 - fully migrated), AgentJobManager (4 claimed, actually 0), ContextService (4 claimed, actually 0 - uses dataclasses)",
+        "The {success: True} wrapper pattern is already eliminated - remaining issue is bare dict[str, Any] returns",
+        "ConsolidationService class is actually named ConsolidatedVisionService in codebase",
+        "ProjectService has 25+ methods (doc lists 8), OrchestrationService has 18+ (doc lists 6), TemplateService has 20+ (doc lists 4)",
+        "AuthService, SettingsService, ConfigService methods missing from design doc entirely",
+        "Made 2 commits (TDD-style: failing tests then implementation) instead of 1 as handover suggested"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "notes_for_next": "CRITICAL for 0731b: (1) OrgService is ALREADY migrated to domain model returns - skip it or just verify. (2) AgentJobManager returns tuples/primitives, not dicts - skip or convert to SpawnResult etc. (3) Focus effort on UserService and ProductService which still return bare dict[str, Any]. (4) Import models from src.giljo_mcp.schemas.service_responses. (5) All 12 required exception classes exist in src/giljo_mcp/exceptions.py. (6) Design doc counts are wrong - actual dict[str, Any] returns are ~100+ methods across remaining services. (7) Existing Pydantic schemas in api/schemas/ (task.py, agent_job.py) and src/giljo_mcp/models/schemas.py (ProjectResponse) should be reused where appropriate.",
+      "summary": "Created 27 Pydantic response models with 156 TDD tests (all passing). Design doc validation revealed 3 services already migrated (OrgService, AgentJobManager, ContextService) and significant method count discrepancies. Models cover shared result types plus service-specific responses for Product, Task, Message, Orchestration, Template, Consolidation, and Auth services."
     },
     {
       "session_id": "0731b",
-      "title": "Tier 1 Service Refactoring (69 methods)",
+      "title": "Tier 1 Service Refactoring - UserService + ProductService",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-02-11T14:00:00Z",
+      "completed_at": "2026-02-11T16:30:00Z",
       "planned_tasks": [
         "Refactor OrgService (33 dict wrappers -> typed returns + exceptions)",
         "Refactor UserService (19 dict wrappers -> typed returns + exceptions)",
@@ -42,11 +57,26 @@
         "Write new tests for exception paths",
         "Commit after each service"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Verified OrgService already fully migrated (0 dict wrappers, returns domain models + exceptions)",
+        "UserService: Refactored 5 methods (list_users, get_user, create_user, update_user, change_role) from dict[str, Any] to User ORM model returns. Removed 44 lines of dict construction code. TDD: tests updated first (7 failures confirmed), then implementation. 41 tests passing.",
+        "ProductService: Refactored 16 methods from dict[str, Any] to typed returns (Product ORM, DeleteResult, ProductStatistics, CascadeImpact, VisionUploadResult, PurgeResult). Removed ~155 lines of dict construction. Updated ProductStatistics/CascadeImpact/VisionUploadResult Pydantic models to match actual field names. TDD workflow with 91 tests passing.",
+        "Fixed 4 tests in test_product_activation_flow.py broken by get_active_product return type change",
+        "Full service suite: 519 passed, 12 failed (all pre-existing), 29 skipped, 0 new regressions",
+        "Ruff lint: all 3 service files clean",
+        "5 commits total: 2 UserService TDD, 2 ProductService TDD, 1 activation flow fix"
+      ],
+      "deviations": [
+        "OrgService had 0 dict wrappers (not 33 as planned) - confirmed 0731a finding, skipped with verification only",
+        "UserService had 5 dict wrappers (not 19 as planned) - 13 methods already returned proper types (bool, None, str, config dicts)",
+        "ProductService had 16 dict wrappers (close to planned 17) - validate_project_path already returned bool",
+        "Pydantic models ProductStatistics, CascadeImpact, VisionUploadResult had field name mismatches with actual service output - updated to match",
+        "No new UserService Pydantic models created - methods return User ORM directly instead (simpler, avoids duplication)",
+        "get_product and list_products no longer embed metrics in return - callers use get_product_statistics separately"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "notes_for_next": "CRITICAL for 0731c/0731d: (1) API endpoint files needing updates for new return types: api/endpoints/users.py (UserService callers), api/endpoints/projects/lifecycle.py (ProductService callers), api/endpoints/context.py, api/endpoints/agent_management.py, api/endpoints/settings.py, api/startup/background_tasks.py (purge_expired). (2) UserService methods now return User ORM models - endpoints must serialize to dict for JSON responses. (3) ProductService get_product no longer embeds metrics - endpoints needing metrics must call get_product_statistics separately. (4) ProductService get_active_product returns Optional[Product] (None instead of dict with message). (5) ProductService delete_product returns DeleteResult pydantic model. (6) ProductStatistics/CascadeImpact/VisionUploadResult models updated in service_responses.py with corrected field names. (7) 12 pre-existing test failures in consolidation_service, orchestration_consolidation, project_service_exceptions, vision_summarizer_multi_level - NOT caused by 0731b changes.",
+      "summary": "Refactored UserService (5 methods) and ProductService (16 methods) from dict[str, Any] returns to typed returns (ORM models + Pydantic models). OrgService verified as already migrated. Total: 21 dict wrappers eliminated across 2 services, ~199 lines of dict construction removed, 0 new test regressions. TDD workflow followed for both services."
     },
     {
       "session_id": "0731c",
