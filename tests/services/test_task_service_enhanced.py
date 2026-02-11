@@ -1,10 +1,11 @@
 """
 Test suite for TaskService Enhancement - TDD Handover 0322 Phase 3
+Updated for typed returns (Handover 0731c).
 
 This test suite covers the 5 new TaskService methods + 2 permission helpers:
 - get_task (single task retrieval by ID)
 - delete_task (soft/hard delete with permission checks)
-- convert_to_project (task → project conversion with subtask handling)
+- convert_to_project (task -> project conversion with subtask handling)
 - change_status (status change with automatic timestamp updates)
 - get_summary (task statistics aggregation)
 - can_modify_task (permission helper)
@@ -27,6 +28,7 @@ from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Task
+from src.giljo_mcp.schemas.service_responses import ConversionResult, TaskUpdateResult
 from src.giljo_mcp.services.task_service import TaskService
 
 
@@ -221,25 +223,20 @@ async def task_service(db_manager, db_session, test_tenant_key):
 
 
 # ============================================================================
-# TEST: get_task
+# TEST: get_task - Now returns Task ORM model directly (0731c)
 # ============================================================================
 
 
 @pytest.mark.asyncio
 async def test_get_task_success(task_service, test_task):
-    """Test successful single task retrieval by ID"""
-    # Debug: check tenant keys match
-    service_tenant = task_service.tenant_manager.get_current_tenant()
-    print(f"DEBUG: service tenant_key = {service_tenant}")
-    print(f"DEBUG: test_task tenant_key = {test_task.tenant_key}")
-    print(f"DEBUG: test_task.id = {test_task.id}")
+    """Test successful single task retrieval by ID - returns Task ORM model"""
+    result = await task_service.get_task(task_id=str(test_task.id))
 
-    # Service now returns task data dict directly (no success wrapper)
-    task_data = await task_service.get_task(task_id=str(test_task.id))
-
-    assert task_data["id"] == str(test_task.id)
-    assert task_data["title"] == "Test Task"
-    assert task_data["status"] == "waiting"  # Initial status is 'waiting' as set in fixture
+    # 0731c: get_task now returns Task ORM model directly
+    assert isinstance(result, Task)
+    assert str(result.id) == str(test_task.id)
+    assert result.title == "Test Task"
+    assert result.status == "waiting"
 
 
 @pytest.mark.asyncio
@@ -264,14 +261,13 @@ async def test_get_task_tenant_isolation(task_service, other_tenant_task):
 
 
 # ============================================================================
-# TEST: delete_task
+# TEST: delete_task - Returns None (unchanged, already correct)
 # ============================================================================
 
 
 @pytest.mark.asyncio
 async def test_delete_task_success_as_creator(task_service, test_task, test_user, db_session):
     """Test successful task deletion by creator"""
-    # Service now returns None on successful deletion
     result = await task_service.delete_task(task_id=str(test_task.id), user_id=str(test_user.id))
     assert result is None
 
@@ -285,7 +281,6 @@ async def test_delete_task_success_as_creator(task_service, test_task, test_user
 @pytest.mark.asyncio
 async def test_delete_task_success_as_admin(task_service, test_task, admin_user, db_session):
     """Test successful task deletion by admin"""
-    # Service now returns None on successful deletion
     result = await task_service.delete_task(task_id=str(test_task.id), user_id=str(admin_user.id))
     assert result is None
 
@@ -319,13 +314,13 @@ async def test_delete_task_permission_denied(task_service, test_task, db_session
 
 
 # ============================================================================
-# TEST: convert_to_project
+# TEST: convert_to_project - Now returns ConversionResult (0731c)
 # ============================================================================
 
 
 @pytest.mark.asyncio
 async def test_convert_to_project_basic(task_service, test_task, test_user, db_session, test_product):
-    """Test basic task → project conversion"""
+    """Test basic task -> project conversion returns ConversionResult"""
     result = await task_service.convert_to_project(
         task_id=str(test_task.id),
         project_name="New Project from Task",
@@ -334,12 +329,14 @@ async def test_convert_to_project_basic(task_service, test_task, test_user, db_s
         user_id=str(test_user.id),
     )
 
-    # Service now returns data dict directly
-    assert "project_id" in result
+    # 0731c: convert_to_project now returns ConversionResult
+    assert isinstance(result, ConversionResult)
+    assert result.task_id == str(test_task.id)
+    assert result.project_id is not None
+    assert result.project_name == "New Project from Task"
 
     # Verify project was created
-    project_id = result["project_id"]
-    stmt = select(Project).where(Project.id == project_id)
+    stmt = select(Project).where(Project.id == result.project_id)
     db_result = await db_session.execute(stmt)
     new_project = db_result.scalar_one_or_none()
 
@@ -352,7 +349,7 @@ async def test_convert_to_project_basic(task_service, test_task, test_user, db_s
 async def test_convert_to_project_with_subtasks(
     task_service, test_task, test_user, db_session, test_tenant_key, test_product, test_project
 ):
-    """Test task → project conversion with subtask handling"""
+    """Test task -> project conversion with subtask handling returns ConversionResult"""
     # Create subtasks
     subtask1 = Task(
         id=str(uuid4()),
@@ -389,11 +386,10 @@ async def test_convert_to_project_with_subtasks(
         user_id=str(test_user.id),
     )
 
-    # Service now returns data dict directly
-    assert "project_id" in result
-
-    # Verify subtasks were handled (implementation-dependent)
-    # Could be: converted to tasks in new project, included in description, etc.
+    # 0731c: convert_to_project now returns ConversionResult
+    assert isinstance(result, ConversionResult)
+    assert result.project_id is not None
+    assert result.project_name == "Project with Subtasks"
 
 
 @pytest.mark.asyncio
@@ -425,19 +421,20 @@ async def test_convert_to_project_permission_denied(task_service, test_task, db_
 
 
 # ============================================================================
-# TEST: change_status
+# TEST: change_status - Now returns Task ORM model directly (0731c)
 # ============================================================================
 
 
 @pytest.mark.asyncio
 async def test_change_status_to_in_progress(task_service, test_task, db_session):
-    """Test status change to 'in_progress' sets started_at"""
+    """Test status change to 'in_progress' sets started_at - returns Task"""
     assert test_task.started_at is None  # Initially None
 
     result = await task_service.change_status(task_id=str(test_task.id), new_status="in_progress")
 
-    # Service now returns task data dict directly
-    assert result["status"] == "in_progress"
+    # 0731c: change_status now returns Task ORM model directly
+    assert isinstance(result, Task)
+    assert result.status == "in_progress"
 
     # Verify started_at was set
     await db_session.refresh(test_task)
@@ -446,13 +443,14 @@ async def test_change_status_to_in_progress(task_service, test_task, db_session)
 
 @pytest.mark.asyncio
 async def test_change_status_to_completed(task_service, test_task, db_session):
-    """Test status change to 'completed' sets completed_at"""
+    """Test status change to 'completed' sets completed_at - returns Task"""
     assert test_task.completed_at is None  # Initially None
 
     result = await task_service.change_status(task_id=str(test_task.id), new_status="completed")
 
-    # Service now returns task data dict directly
-    assert result["status"] == "completed"
+    # 0731c: change_status now returns Task ORM model directly
+    assert isinstance(result, Task)
+    assert result.status == "completed"
 
     # Verify completed_at was set
     await db_session.refresh(test_task)
@@ -461,13 +459,14 @@ async def test_change_status_to_completed(task_service, test_task, db_session):
 
 @pytest.mark.asyncio
 async def test_change_status_to_cancelled(task_service, test_task, db_session):
-    """Test status change to 'cancelled' sets completed_at"""
+    """Test status change to 'cancelled' sets completed_at - returns Task"""
     assert test_task.completed_at is None
 
     result = await task_service.change_status(task_id=str(test_task.id), new_status="cancelled")
 
-    # Service now returns task data dict directly
-    assert result["status"] == "cancelled"
+    # 0731c: change_status now returns Task ORM model directly
+    assert isinstance(result, Task)
+    assert result.status == "cancelled"
 
     # Verify completed_at was set
     await db_session.refresh(test_task)
@@ -476,16 +475,16 @@ async def test_change_status_to_cancelled(task_service, test_task, db_session):
 
 @pytest.mark.asyncio
 async def test_change_status_invalid(task_service, test_task):
-    """Test invalid status handling"""
+    """Test invalid status handling - returns Task with whatever status was set"""
     result = await task_service.change_status(task_id=str(test_task.id), new_status="invalid_status_xyz")
 
-    # Service accepts any status (validation should be at schema level)
-    # For now, expect it to succeed
-    assert result["status"] == "invalid_status_xyz"
+    # 0731c: change_status now returns Task ORM model directly
+    assert isinstance(result, Task)
+    assert result.status == "invalid_status_xyz"
 
 
 # ============================================================================
-# TEST: get_summary
+# TEST: get_summary - Now returns dict (summary structure unchanged)
 # ============================================================================
 
 
@@ -520,9 +519,11 @@ async def test_get_summary_all_products(
 
     summary = await task_service.get_summary(product_id=None)
 
-    # Verify summary structure (implementation-dependent)
+    # get_summary still returns dict with summary structure
     assert summary is not None
-    # Should contain grouped counts by status
+    assert "summary" in summary
+    assert "total_products" in summary
+    assert "total_tasks" in summary
 
 
 @pytest.mark.asyncio
@@ -549,10 +550,104 @@ async def test_get_summary_filtered_by_product(
 
     # Verify summary was returned
     assert summary is not None
+    assert "summary" in summary
 
 
 # ============================================================================
-# TEST: Permission Helpers
+# TEST: list_tasks - Now returns list[Task] directly (0731c)
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_returns_task_list(task_service, test_task):
+    """Test list_tasks returns list of Task ORM models"""
+    result = await task_service.list_tasks()
+
+    # 0731c: list_tasks now returns list[Task] directly
+    assert isinstance(result, list)
+    assert len(result) >= 1
+    assert all(isinstance(t, Task) for t in result)
+
+    # Verify our test task is in the list
+    task_ids = [str(t.id) for t in result]
+    assert str(test_task.id) in task_ids
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_empty(task_service):
+    """Test list_tasks returns empty list when no tasks exist"""
+    result = await task_service.list_tasks()
+
+    # 0731c: list_tasks now returns list[Task] directly
+    assert isinstance(result, list)
+    assert len(result) == 0
+
+
+# ============================================================================
+# TEST: update_task - Now returns TaskUpdateResult (0731c)
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_update_task_returns_typed_result(task_service, test_task):
+    """Test update_task returns TaskUpdateResult"""
+    result = await task_service.update_task(
+        task_id=str(test_task.id), status="in_progress", priority="high"
+    )
+
+    # 0731c: update_task now returns TaskUpdateResult
+    assert isinstance(result, TaskUpdateResult)
+    assert result.task_id == str(test_task.id)
+    assert "status" in result.updated_fields
+    assert "priority" in result.updated_fields
+
+
+@pytest.mark.asyncio
+async def test_assign_task_returns_typed_result(task_service, test_task):
+    """Test assign_task returns TaskUpdateResult (delegates to update_task)"""
+    result = await task_service.assign_task(task_id=str(test_task.id), agent_name="impl-1")
+
+    # 0731c: assign_task delegates to update_task, returns TaskUpdateResult
+    # Note: assigned_to field was removed in Handover 0076, only status gets updated
+    assert isinstance(result, TaskUpdateResult)
+    assert result.task_id == str(test_task.id)
+    assert "status" in result.updated_fields
+
+
+@pytest.mark.asyncio
+async def test_complete_task_returns_typed_result(task_service, test_task):
+    """Test complete_task returns TaskUpdateResult (delegates to update_task)"""
+    result = await task_service.complete_task(task_id=str(test_task.id))
+
+    # 0731c: complete_task delegates to update_task, returns TaskUpdateResult
+    assert isinstance(result, TaskUpdateResult)
+    assert result.task_id == str(test_task.id)
+    assert "status" in result.updated_fields
+
+
+# ============================================================================
+# TEST: create_task - Now returns str (task_id) matching log_task (0731c)
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_create_task_returns_task_id(task_service, test_product, test_tenant_key):
+    """Test create_task returns task_id string (delegates to log_task)"""
+    result = await task_service.create_task(
+        title="New Task",
+        description="A new task description",
+        priority="high",
+        product_id=test_product.id,
+        tenant_key=test_tenant_key,
+    )
+
+    # 0731c: create_task delegates to log_task, returns str (task_id)
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+# ============================================================================
+# TEST: Permission Helpers (unchanged - already return bool)
 # ============================================================================
 
 
