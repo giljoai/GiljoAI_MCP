@@ -48,9 +48,9 @@ async def test_update_execution_mode_allowed_before_staging(
     service = ProjectService(db_manager, tenant_manager, test_session=db_session)
     result = await service.update_project(project.id, {"execution_mode": "autonomous"})
 
-    # Handover 0730: Returns project dict directly (no success wrapper)
-    assert result["execution_mode"] == "autonomous"
-    assert result["id"] == project.id
+    # Handover 0731c: Returns ProjectData model (typed returns)
+    assert result.execution_mode == "autonomous"
+    assert result.id == project.id
 
 
 @pytest.mark.asyncio
@@ -127,10 +127,10 @@ async def test_update_other_fields_still_allowed_after_staging(
         },
     )
 
-    # Handover 0730: Returns project dict directly (no success wrapper)
-    assert result["name"] == "Updated Name"
-    assert result["description"] == "Updated description"
-    assert result["execution_mode"] == "interactive"  # Should remain unchanged
+    # Handover 0731c: Returns ProjectData model (typed returns)
+    assert result.name == "Updated Name"
+    assert result.description == "Updated description"
+    assert result.execution_mode == "interactive"  # Should remain unchanged
 
 
 @pytest.mark.asyncio
@@ -162,5 +162,5 @@ async def test_execution_mode_unlocked_with_whitespace_only_mission(
     service = ProjectService(db_manager, tenant_manager, test_session=db_session)
     result = await service.update_project(project.id, {"execution_mode": "autonomous"})
 
-    # Handover 0730: Returns project dict directly (no success wrapper)
-    assert result["execution_mode"] == "autonomous"
+    # Handover 0731c: Returns ProjectData model (typed returns)
+    assert result.execution_mode == "autonomous"
