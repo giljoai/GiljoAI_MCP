@@ -4,10 +4,10 @@ Updated Handover 0730b: Migrated from dict wrappers to exception-based error han
 """
 
 import hashlib
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
-import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -17,7 +17,7 @@ from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class ConsolidatedVisionService:
