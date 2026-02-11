@@ -78,7 +78,7 @@ BaseGiljoError (500)
 
 ### Missing Exception: AlreadyExistsError (409)
 
-**Current State:** Services return `{"success": False, "error": "... already exists"}` for duplicate resources.
+**Current State:** Services raise `ValidationError` for duplicate resources, but a more specific `AlreadyExistsError` would improve clarity.
 
 **Proposed Addition:**
 ```python
@@ -219,9 +219,11 @@ class ProjectStateError(OrchestrationError):
 
 ## Migration Pattern
 
-### Current Pattern (Dict Wrapper)
+### Legacy Pattern (Removed in 0730 series)
 
+The dict wrapper pattern below was used prior to the 0730 exception-based migration and has been fully removed:
 ```python
+# REMOVED - Do not use this pattern
 async def get_organization(self, org_id: str) -> dict[str, Any]:
     try:
         org = await self.session.get(Organization, org_id)
@@ -232,7 +234,7 @@ async def get_organization(self, org_id: str) -> dict[str, Any]:
         return {"success": False, "error": str(e)}
 ```
 
-### Target Pattern (Exception-Based)
+### Current Pattern (Exception-Based)
 
 ```python
 async def get_organization(self, org_id: str) -> Organization:

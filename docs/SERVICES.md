@@ -78,13 +78,13 @@ When messages are sent/received/acknowledged, counter columns are updated:
 - `send_message()` → Increments sender's `messages_sent_count`, recipient's `messages_waiting_count`
 - `acknowledge_message()` → Decrements `messages_waiting_count`, increments `messages_read_count`
 
-#### DEPRECATED: JSONB Messages Array
+#### REMOVED: JSONB Messages Array (Handover 0700c)
 
-The `AgentExecution.messages` JSONB column is deprecated as of v3.2 (Handover 0387i).
-- Do NOT write to this column
-- Do NOT read from this column
-- Use counter columns instead
-- Column will be removed in v4.0
+The `AgentExecution.messages` JSONB column was removed in Handover 0700c.
+Message counts are tracked exclusively via counter columns:
+- `messages_sent_count` - Outbound messages sent
+- `messages_waiting_count` - Inbound messages pending read
+- `messages_read_count` - Inbound messages acknowledged
 
 ---
 
@@ -237,7 +237,7 @@ if status['percentage_used'] >= 0.9:
 2. User monitors context via dashboard
 3. User triggers succession via /gil_handover or UI "Hand Over" button
 4. Generate handover summary (<10K tokens via mission condensation)
-5. Spawn successor orchestrator (instance_number++)
+5. Spawn successor orchestrator
 6. Transfer active jobs to successor
 7. Update UI timeline (SuccessionTimeline.vue)
 ```
@@ -245,7 +245,6 @@ if status['percentage_used'] >= 0.9:
 **Database Fields**:
 - `context_used` (INTEGER) - Current token usage
 - `context_budget` (INTEGER) - Maximum tokens (default: 200,000)
-- `instance_number` (INTEGER) - Orchestrator instance in succession chain
 - `spawned_by` (FK) - Parent orchestrator ID (lineage tracking)
 - `handover_to` (FK) - Successor orchestrator ID
 - `handover_summary` (TEXT) - Condensed context for successor
@@ -555,22 +554,18 @@ async def get_products(self):
 **Raw SQLAlchemy Pattern** (for advanced use cases):
 ```python
 # Direct database queries also require tenant_key filtering
-> **Migration Note (Handover 0366a - Dec 2025)**
->
-> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
-> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
->
-> **Key Changes:**
-> - `job_id` = The work to be done (persists across succession)
-> - `agent_id` = The executor doing the work (changes on succession)
->
-> See Handover 0366 series for migration details. Will be removed in v4.0.
+from src.giljo_mcp.models import AgentJob, AgentExecution
 
-from src.giljo_mcp.models import MCPAgentJob
+# Query jobs (work orders)
+jobs = session.query(AgentJob).filter(
+    AgentJob.tenant_key == tenant_key,
+    AgentJob.agent_type == "implementer"
+).all()
 
-jobs = session.query(MCPAgentJob).filter(
-    MCPAgentJob.tenant_key == tenant_key,
-    MCPAgentJob.agent_type == "implementer"
+# Query executions (active agent instances)
+executions = session.query(AgentExecution).filter(
+    AgentExecution.tenant_key == tenant_key,
+    AgentExecution.status == "active"
 ).all()
 ```
 **When to use**: Database migrations, complex queries, performance optimization.
