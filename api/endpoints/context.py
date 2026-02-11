@@ -173,81 +173,77 @@ async def chunk_vision_document(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        async with state.db_manager.get_session_async() as db:
-            stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
-            result = await db.execute(stmt)
-            product = result.scalar_one_or_none()
+    async with state.db_manager.get_session_async() as db:
+        stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
+        result = await db.execute(stmt)
+        product = result.scalar_one_or_none()
 
-            if not product:
-                raise HTTPException(status_code=404, detail="Product not found")
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
 
-            content = None
-            original_size = 0
-            vision_doc_id = None
+        content = None
+        original_size = 0
+        vision_doc_id = None
 
-            # Get content from VisionDocument relationship
-            if product.primary_vision_text:
-                content = product.primary_vision_text
+        # Get content from VisionDocument relationship
+        if product.primary_vision_text:
+            content = product.primary_vision_text
+            original_size = len(content)
+            # Get the vision document ID for later update
+            if product.vision_documents:
+                vision_doc_id = product.vision_documents[0].id
+        elif product.primary_vision_path:
+            from pathlib import Path
+
+            import aiofiles
+
+            vision_path = Path(product.primary_vision_path)
+            if not vision_path.exists():
+                raise HTTPException(status_code=404, detail="Vision document file not found")
+
+            async with aiofiles.open(vision_path, encoding="utf-8") as f:
+                content = await f.read()
                 original_size = len(content)
-                # Get the vision document ID for later update
-                if product.vision_documents:
-                    vision_doc_id = product.vision_documents[0].id
-            elif product.primary_vision_path:
-                from pathlib import Path
+            # Get the vision document ID for later update
+            if product.vision_documents:
+                vision_doc_id = product.vision_documents[0].id
+        else:
+            raise HTTPException(status_code=404, detail="No vision document available for this product")
 
-                import aiofiles
-
-                vision_path = Path(product.primary_vision_path)
-                if not vision_path.exists():
-                    raise HTTPException(status_code=404, detail="Vision document file not found")
-
-                async with aiofiles.open(vision_path, encoding="utf-8") as f:
-                    content = await f.read()
-                    original_size = len(content)
-                # Get the vision document ID for later update
-                if product.vision_documents:
-                    vision_doc_id = product.vision_documents[0].id
-            else:
-                raise HTTPException(status_code=404, detail="No vision document available for this product")
-
-            if product.vision_is_chunked and not request.force_rechunk:
-                return ChunkVisionResponse(
-                    success=False,
-                    product_id=product_id,
-                    chunks_created=0,
-                    total_tokens=0,
-                    original_size=original_size,
-                    message="Vision document already chunked. Use force_rechunk=true to rechunk.",
-                )
-
-            cms = ContextManagementSystem(state.db_manager)
-            result = cms.process_vision_document(tenant_key, product_id, content)
-
-            # Mark vision document as chunked
-            if vision_doc_id:
-                from src.giljo_mcp.models.products import VisionDocument
-
-                stmt = select(VisionDocument).where(VisionDocument.id == vision_doc_id)
-                vision_result = await db.execute(stmt)
-                vision_doc = vision_result.scalar_one_or_none()
-                if vision_doc:
-                    vision_doc.chunked = True
-                    vision_doc.chunk_count = result["chunks_created"]
-            await db.commit()
-
+        if product.vision_is_chunked and not request.force_rechunk:
             return ChunkVisionResponse(
-                success=True,
+                success=False,
                 product_id=product_id,
-                chunks_created=result["chunks_created"],
-                total_tokens=result["total_tokens"],
+                chunks_created=0,
+                total_tokens=0,
                 original_size=original_size,
-                reduction_percentage=None,
-                message="Vision document chunked and indexed successfully",
+                message="Vision document already chunked. Use force_rechunk=true to rechunk.",
             )
 
-    except (ValueError, KeyError, RuntimeError) as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        cms = ContextManagementSystem(state.db_manager)
+        result = cms.process_vision_document(tenant_key, product_id, content)
+
+        # Mark vision document as chunked
+        if vision_doc_id:
+            from src.giljo_mcp.models.products import VisionDocument
+
+            stmt = select(VisionDocument).where(VisionDocument.id == vision_doc_id)
+            vision_result = await db.execute(stmt)
+            vision_doc = vision_result.scalar_one_or_none()
+            if vision_doc:
+                vision_doc.chunked = True
+                vision_doc.chunk_count = result["chunks_created"]
+        await db.commit()
+
+        return ChunkVisionResponse(
+            success=True,
+            product_id=product_id,
+            chunks_created=result["chunks_created"],
+            total_tokens=result["total_tokens"],
+            original_size=original_size,
+            reduction_percentage=None,
+            message="Vision document chunked and indexed successfully",
+        )
 
 
 @router.get("/search", response_model=SearchContextResponse)
@@ -271,35 +267,31 @@ async def search_context(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        cms = ContextManagementSystem(state.db_manager)
+    cms = ContextManagementSystem(state.db_manager)
 
-        if product_id:
-            chunks = cms.loader.load_relevant_chunks(
-                tenant_key=tenant_key, product_id=product_id, query=query, max_tokens=100000
-            )[:limit]
-        else:
-            chunks = cms.indexer.search_chunks(tenant_key, query, limit)
+    if product_id:
+        chunks = cms.loader.load_relevant_chunks(
+            tenant_key=tenant_key, product_id=product_id, query=query, max_tokens=100000
+        )[:limit]
+    else:
+        chunks = cms.indexer.search_chunks(tenant_key, query, limit)
 
-        total_tokens = sum(c.get("tokens", 0) for c in chunks)
+    total_tokens = sum(c.get("tokens", 0) for c in chunks)
 
-        context_chunks = [
-            ContextChunk(
-                chunk_id=str(c.get("id", c.get("chunk_id", ""))),
-                content=c.get("content", ""),
-                tokens=c.get("tokens", 0),
-                chunk_number=c.get("chunk_number", 0),
-                relevance_score=c.get("relevance_score"),
-            )
-            for c in chunks
-        ]
-
-        return SearchContextResponse(
-            query=query, chunks=context_chunks, total_chunks=len(context_chunks), total_tokens=total_tokens
+    context_chunks = [
+        ContextChunk(
+            chunk_id=str(c.get("id", c.get("chunk_id", ""))),
+            content=c.get("content", ""),
+            tokens=c.get("tokens", 0),
+            chunk_number=c.get("chunk_number", 0),
+            relevance_score=c.get("relevance_score"),
         )
+        for c in chunks
+    ]
 
-    except (ValueError, KeyError, RuntimeError) as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return SearchContextResponse(
+        query=query, chunks=context_chunks, total_chunks=len(context_chunks), total_tokens=total_tokens
+    )
 
 
 @router.post("/load-for-agent", response_model=LoadContextResponse)
@@ -321,39 +313,35 @@ async def load_context_for_agent(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        cms = ContextManagementSystem(state.db_manager)
+    cms = ContextManagementSystem(state.db_manager)
 
-        result = cms.load_context_for_agent(
-            tenant_key=tenant_key,
-            product_id=request.product_id,
-            query=request.mission,
-            role=request.agent_display_name,
-            max_tokens=request.max_tokens,
+    result = cms.load_context_for_agent(
+        tenant_key=tenant_key,
+        product_id=request.product_id,
+        query=request.mission,
+        role=request.agent_display_name,
+        max_tokens=request.max_tokens,
+    )
+
+    context_chunks = [
+        ContextChunk(
+            chunk_id=str(c.get("id", c.get("chunk_id", ""))),
+            content=c.get("content", ""),
+            tokens=c.get("tokens", 0),
+            chunk_number=c.get("chunk_number", 0),
+            relevance_score=c.get("relevance_score"),
         )
+        for c in result["chunks"]
+    ]
 
-        context_chunks = [
-            ContextChunk(
-                chunk_id=str(c.get("id", c.get("chunk_id", ""))),
-                content=c.get("content", ""),
-                tokens=c.get("tokens", 0),
-                chunk_number=c.get("chunk_number", 0),
-                relevance_score=c.get("relevance_score"),
-            )
-            for c in result["chunks"]
-        ]
-
-        return LoadContextResponse(
-            agent_display_name=request.agent_display_name,
-            chunks=context_chunks,
-            total_chunks=result["total_chunks"],
-            total_tokens=result["total_tokens"],
-            average_relevance=result["average_relevance"],
-            reduction_percentage=None,
-        )
-
-    except (ValueError, KeyError, RuntimeError) as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return LoadContextResponse(
+        agent_display_name=request.agent_display_name,
+        chunks=context_chunks,
+        total_chunks=result["total_chunks"],
+        total_tokens=result["total_tokens"],
+        average_relevance=result["average_relevance"],
+        reduction_percentage=None,
+    )
 
 
 @router.get("/products/{product_id}/token-stats", response_model=TokenStatsResponse)
@@ -375,35 +363,31 @@ async def get_token_stats(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        cms = ContextManagementSystem(state.db_manager)
+    cms = ContextManagementSystem(state.db_manager)
 
-        stats = cms.get_token_reduction_stats(tenant_key, product_id)
+    stats = cms.get_token_reduction_stats(tenant_key, product_id)
 
-        if not stats:
-            chunks = cms.get_all_chunks(tenant_key, product_id)
-            if not chunks:
-                raise HTTPException(status_code=404, detail="No chunks found for this product")
+    if not stats:
+        chunks = cms.get_all_chunks(tenant_key, product_id)
+        if not chunks:
+            raise HTTPException(status_code=404, detail="No chunks found for this product")
 
-            total_tokens = sum(c.tokens for c in chunks)
-            return TokenStatsResponse(
-                product_id=product_id,
-                original_tokens=total_tokens,
-                condensed_tokens=total_tokens,
-                reduction_percentage=0.0,
-                chunks_count=len(chunks),
-            )
-
+        total_tokens = sum(c.tokens for c in chunks)
         return TokenStatsResponse(
             product_id=product_id,
-            original_tokens=stats.get("original_tokens", 0),
-            condensed_tokens=stats.get("condensed_tokens", 0),
-            reduction_percentage=stats.get("reduction_percentage", 0.0),
-            chunks_count=stats.get("chunks_count", 0),
+            original_tokens=total_tokens,
+            condensed_tokens=total_tokens,
+            reduction_percentage=0.0,
+            chunks_count=len(chunks),
         )
 
-    except (ValueError, KeyError, RuntimeError) as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return TokenStatsResponse(
+        product_id=product_id,
+        original_tokens=stats.get("original_tokens", 0),
+        condensed_tokens=stats.get("condensed_tokens", 0),
+        reduction_percentage=stats.get("reduction_percentage", 0.0),
+        chunks_count=stats.get("chunks_count", 0),
+    )
 
 
 @router.get("/health", response_model=HealthCheckResponse)
