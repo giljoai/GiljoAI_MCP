@@ -10,7 +10,7 @@ For legacy GitHub integration, see github.py.
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
@@ -62,27 +62,20 @@ async def update_git_integration(
         f"enabled={settings.enabled}, commit_limit={settings.commit_limit}"
     )
 
-    try:
-        result = await service.update_git_integration(
-            product_id=product_id,
-            enabled=settings.enabled,
-            commit_limit=settings.commit_limit,
-            default_branch=settings.default_branch,
-        )
+    result = await service.update_git_integration(
+        product_id=product_id,
+        enabled=settings.enabled,
+        commit_limit=settings.commit_limit,
+        default_branch=settings.default_branch,
+    )
 
-        # Build response from returned settings
-        git_settings = result["settings"]
-        return GitIntegrationResponse(
-            enabled=git_settings["enabled"],
-            commit_limit=git_settings.get("commit_limit", 20),
-            default_branch=git_settings.get("default_branch", "main"),
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Failed to update git integration")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}")
+    # Build response from returned settings
+    git_settings = result["settings"]
+    return GitIntegrationResponse(
+        enabled=git_settings["enabled"],
+        commit_limit=git_settings.get("commit_limit", 20),
+        default_branch=git_settings.get("default_branch", "main"),
+    )
 
 
 @router.get("/{product_id}/git-integration", response_model=GitIntegrationResponse)
@@ -106,23 +99,16 @@ async def get_git_integration(
     """
     logger.info(f"User {current_user.username} retrieving git integration for product {product_id}")
 
-    try:
-        result = await service.get_product(product_id, include_metrics=False)
+    result = await service.get_product(product_id, include_metrics=False)
 
-        # Extract git integration settings from product_memory
-        product_data = result["product"]
-        product_memory = product_data.get("product_memory", {})
-        git_integration = product_memory.get("git_integration", {})
+    # Extract git integration settings from product_memory
+    product_data = result["product"]
+    product_memory = product_data.get("product_memory", {})
+    git_integration = product_memory.get("git_integration", {})
 
-        # Return settings with defaults if not configured
-        return GitIntegrationResponse(
-            enabled=git_integration.get("enabled", False),
-            commit_limit=git_integration.get("commit_limit", 20),
-            default_branch=git_integration.get("default_branch", "main"),
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Failed to get git integration")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}")
+    # Return settings with defaults if not configured
+    return GitIntegrationResponse(
+        enabled=git_integration.get("enabled", False),
+        commit_limit=git_integration.get("commit_limit", 20),
+        default_branch=git_integration.get("default_branch", "main"),
+    )
