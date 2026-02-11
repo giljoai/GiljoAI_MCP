@@ -68,9 +68,7 @@ async def activate_project(
     logger.info(f"User {current_user.username} activating project {project_id} (force={force})")
 
     # Activate via ProjectService (raises exceptions on error - Handover 0730b)
-    activated_project = await project_service.activate_project(
-        project_id=project_id, force=force, tenant_key=current_user.tenant_key
-    )
+    await project_service.activate_project(project_id=project_id, force=force, tenant_key=current_user.tenant_key)
 
     logger.info(f"Activated project {project_id}")
 
@@ -124,9 +122,7 @@ async def deactivate_project(
     logger.info(f"User {current_user.username} deactivating project {project_id}")
 
     # Deactivate via ProjectService (raises exceptions on error - Handover 0730b)
-    deactivated_project = await project_service.deactivate_project(
-        project_id=project_id, tenant_key=current_user.tenant_key, reason=reason
-    )
+    await project_service.deactivate_project(project_id=project_id, tenant_key=current_user.tenant_key, reason=reason)
 
     logger.info(f"Deactivated project {project_id}")
 
