@@ -219,7 +219,6 @@ export const EVENT_MAP = {
         staged: true, // Mark as staged
       })
 
-      console.log('[WS] orchestrator:prompt_generated - Updated orchestrator', payload.orchestrator_id)
     },
   },
 
@@ -241,7 +240,6 @@ export const EVENT_MAP = {
         })
       }
 
-      console.log('[WS] orchestrator:context_reset - Context reset for', payload.agent_id || payload.job_id)
     },
   },
 

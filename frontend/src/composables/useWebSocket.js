@@ -225,8 +225,6 @@ export function useWebSocketV2() {
       }
     })
     componentHandlers.length = 0
-
-    console.log('[useWebSocketV2] Component cleanup complete')
   })
 
   // ============================================
