@@ -15,6 +15,7 @@ import pytest
 
 from src.giljo_mcp.models import Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.schemas.service_responses import SendMessageResult
 from src.giljo_mcp.services.message_service import MessageService
 
 
@@ -105,10 +106,9 @@ async def test_message_service_websocket_injection(db_session, db_manager, tenan
         tenant_key=tenant_key,
     )
 
-    # Handover 0730: Assert message was sent successfully (exception-based pattern)
-    # Success is indicated by NOT raising an exception and having a message_id
-    assert "message_id" in result
-    assert result["message_id"] is not None  # Should have recipients now
+    # Handover 0731c: Assert message was sent successfully (typed model)
+    assert isinstance(result, SendMessageResult)
+    assert result.message_id is not None  # Should have recipients now
 
     # CRITICAL ASSERTION: WebSocket broadcast MUST be called
     mock_ws_manager.broadcast_message_sent.assert_called_once()
@@ -172,8 +172,7 @@ async def test_message_service_without_websocket_manager(db_session, db_manager,
         from_agent="test_agent",
     )
 
-    # Handover 0730: Assert message was sent successfully (exception-based pattern)
-    # Success is indicated by NOT raising an exception and having a message_id
-    assert "message_id" in result
+    # Handover 0731c: Assert message was sent successfully (typed model)
+    assert isinstance(result, SendMessageResult)
     # message_id may be None if no recipients were found (empty project broadcast)
     # but for this test we expect graceful degradation without crash

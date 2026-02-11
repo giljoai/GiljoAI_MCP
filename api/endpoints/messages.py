@@ -71,8 +71,8 @@ async def send_message(
         tenant_key=current_user.tenant_key,  # Handover 0733: Enforce tenant isolation
     )
 
-    # Handover 0730b: Service returns direct response (no "data" wrapper)
-    message_id = result.get("message_id")
+    # Handover 0731c: Service returns SendMessageResult typed model
+    message_id = result.message_id
 
     response = MessageResponse(
         id=message_id,
@@ -129,11 +129,11 @@ async def send_message_from_ui(
         tenant_key=current_user.tenant_key,  # Handover 0405: Required for broadcast fan-out
     )
 
-    # Handover 0730b: Service returns direct response (no "data" wrapper)
+    # Handover 0731c: Service returns SendMessageResult typed model
     return {
         "success": True,
-        "message_id": result.get("message_id"),
-        "to_agents": result.get("to_agents", payload.to_agents),
+        "message_id": result.message_id,
+        "to_agents": result.to_agents or payload.to_agents,
     }
 
 
@@ -166,7 +166,7 @@ async def list_messages(
 
     messages = []
 
-    for msg in messages_data.get("messages", []):
+    for msg in messages_data.messages:
         # Apply agent_name filter if provided
         if agent_name and msg.get("from_agent") != agent_name and msg.get("to_agent") != agent_name:
             continue
@@ -213,7 +213,7 @@ async def get_messages(
     result = await message_service.get_messages(agent_name=agent_name, project_id=project_id, status="pending")
 
     messages = []
-    for msg in result.get("messages", []):
+    for msg in result.messages:
         # Parse created timestamp
         created_str = msg.get("created")
         if created_str:
@@ -294,9 +294,9 @@ async def broadcast_message(
         from_agent=broadcast.from_agent or "user",
     )
 
-    # Handover 0730b: Service returns direct response (no "data" wrapper)
-    message_id = message_result.get("message_id")
-    agent_names = message_result.get("to_agents", [])
+    # Handover 0731c: Service returns SendMessageResult typed model
+    message_id = message_result.message_id
+    agent_names = message_result.to_agents
 
     # Broadcast WebSocket notification
     if state.websocket_manager:
