@@ -197,7 +197,7 @@ class ProjectService:
         """
         # SECURITY FIX: Require tenant_key (Handover 0424 Phase 0)
         if not tenant_key:
-            raise ValueError("tenant_key is required for security (Handover 0424 Phase 0)")
+            raise ValidationError("tenant_key is required for security (Handover 0424 Phase 0)")
 
         try:
             async with self._get_session() as session:

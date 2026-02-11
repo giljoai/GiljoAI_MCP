@@ -540,7 +540,11 @@ class ProductService:
                     f"Product {product_id} not found or wrong tenant",
                     extra={"product_id": product_id, "tenant_key": tenant_key, "operation": "update_quality_standards"},
                 )
-                raise ValueError(f"Product {product_id} not found")
+                raise ResourceNotFoundError(
+                    message=f"Product {product_id} not found",
+                    error_code="PRODUCT_NOT_FOUND",
+                    context={"product_id": product_id},
+                )
 
             # Update quality_standards field
             old_value = product.quality_standards
@@ -1401,18 +1405,16 @@ class ProductService:
             project_path: File system path to validate
 
         Returns:
-            True if valid, raises HTTPException if invalid
+            True if valid, raises ValidationError if invalid
 
         Raises:
-            HTTPException: If path is invalid, doesn't exist, isn't a directory, or isn't writable
+            ValidationError: If path is invalid, doesn't exist, isn't a directory, or isn't writable
 
         Example:
             >>> ProductService.validate_project_path("/path/to/project")
             True
         """
         from pathlib import Path
-
-        from fastapi import HTTPException
 
         if not project_path:
             return True  # Optional field
@@ -1424,11 +1426,11 @@ class ProductService:
             # Check if path exists and is a directory
             if not path.exists():
                 logger.warning(f"Project path validation failed - does not exist: {path}")
-                raise HTTPException(status_code=400, detail="Project path does not exist")
+                raise ValidationError("Project path does not exist")
 
             if not path.is_dir():
                 logger.warning(f"Project path validation failed - not a directory: {path}")
-                raise HTTPException(status_code=400, detail="Project path is not a directory")
+                raise ValidationError("Project path is not a directory")
 
             # Check if path is writable (for .claude/agents creation)
             try:
@@ -1437,15 +1439,15 @@ class ProductService:
                 test_dir.rmdir()
             except (PermissionError, OSError) as e:
                 logger.warning(f"Project path validation failed - not writable: {path}")
-                raise HTTPException(status_code=400, detail="Project path is not writable") from e
+                raise ValidationError("Project path is not writable") from e
 
             return True
 
-        except HTTPException:
+        except ValidationError:
             raise
         except Exception as e:
             logger.warning(f"Project path validation failed - invalid path: {project_path}, error: {e}")
-            raise HTTPException(status_code=400, detail="Invalid project path") from e
+            raise ValidationError("Invalid project path") from e
 
     # ============================================================================
     # WebSocket Event Emission (Handover 0139a)
