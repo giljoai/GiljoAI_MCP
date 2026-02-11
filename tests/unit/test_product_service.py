@@ -25,7 +25,6 @@ from src.giljo_mcp.schemas.service_responses import (
     CascadeImpact,
     DeleteResult,
     ProductStatistics,
-    PurgeResult,
     VisionUploadResult,
 )
 from src.giljo_mcp.services.product_service import ProductService
@@ -115,25 +114,18 @@ class TestProductServiceCRUD:
         product.created_at = datetime.now(timezone.utc)
         product.updated_at = datetime.now(timezone.utc)
         product.primary_vision_path = None
-        product.product_memory = {"git_integration": {}, "sequential_history": [], "context": {}}
+        product.product_memory = {"git_integration": {}, "github": {}, "context": {}}
 
-        # Mock execute calls: 1) get product, 2) get product memory entries
-        execute_mock = AsyncMock()
-        execute_mock.side_effect = [
-            # First call: get product
-            Mock(scalar_one_or_none=Mock(return_value=product)),
-            # Second call: get product memory entries (empty list)
-            Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[])))),
-        ]
-        session.execute = execute_mock
+        # Mock execute: get product (0731b: no longer builds product_memory dict)
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
         # Act
-        result = await service.get_product("test-id", include_metrics=False)
+        result = await service.get_product("test-id")
 
         # Assert - returns Product ORM model (0731b typed returns)
-        assert isinstance(result, Product)
+        assert result is product
         assert result.id == "test-id"
         assert result.name == "Test Product"
 
@@ -171,6 +163,7 @@ class TestProductServiceCRUD:
         product1.config_data = {}
         product1.created_at = datetime.now(timezone.utc)
         product1.updated_at = None
+        product1.product_memory = {"github": {}, "context": {}}
 
         session.execute = AsyncMock(
             return_value=Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=[product1]))))
@@ -179,7 +172,7 @@ class TestProductServiceCRUD:
         service = ProductService(db_manager, "test-tenant")
 
         # Act
-        result = await service.list_products(include_metrics=False)
+        result = await service.list_products()
 
         # Assert - returns list[Product] (0731b typed returns)
         assert isinstance(result, list)
@@ -209,7 +202,7 @@ class TestProductServiceCRUD:
         result = await service.update_product("test-id", name="New Name", description="New Description")
 
         # Assert - returns Product ORM model (0731b typed returns)
-        assert isinstance(result, Product)
+        assert result is product
         assert result.name == "New Name"
         session.commit.assert_awaited_once()
 
@@ -253,7 +246,7 @@ class TestProductServiceLifecycle:
         result = await service.activate_product("test-id")
 
         # Assert - returns Product ORM model (0731b typed returns)
-        assert isinstance(result, Product)
+        assert result is product
         assert result.is_active is True
         session.commit.assert_awaited_once()
 
@@ -278,7 +271,7 @@ class TestProductServiceLifecycle:
         result = await service.deactivate_product("test-id")
 
         # Assert - returns Product ORM model (0731b typed returns)
-        assert isinstance(result, Product)
+        assert result is product
         assert product.is_active is False
         session.commit.assert_awaited_once()
 
@@ -329,7 +322,7 @@ class TestProductServiceLifecycle:
         result = await service.restore_product("test-id")
 
         # Assert - returns Product ORM model (0731b typed returns)
-        assert isinstance(result, Product)
+        assert result is product
         assert product.deleted_at is None
         session.commit.assert_awaited_once()
 
@@ -459,17 +452,8 @@ class TestProductServiceMetrics:
         product.project_path = "/test"
         product.config_data = {}
 
-        # Mock execute calls
-        call_count = [0]
-
-        async def mock_execute(*args, **kwargs):
-            call_count[0] += 1
-            if call_count[0] == 1:  # First call: get active product
-                return Mock(scalar_one_or_none=Mock(return_value=product))
-            # Subsequent calls: metrics
-            return Mock(scalar=Mock(return_value=0))
-
-        session.execute = mock_execute
+        # Mock execute: get active product (0731b: no longer builds metrics dict)
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=product)))
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -477,7 +461,7 @@ class TestProductServiceMetrics:
         result = await service.get_active_product()
 
         # Assert - returns Product ORM model (0731b typed returns)
-        assert isinstance(result, Product)
+        assert result is product
         assert result.id == "active-id"
         assert result.name == "Active Product"
 
@@ -517,10 +501,10 @@ class TestProductServiceErrorHandling:
 
         service = ProductService(db_manager, "test-tenant")
 
-        # Act & Assert - should raise BaseGiljoException
-        from src.giljo_mcp.exceptions import BaseGiljoException
+        # Act & Assert - should raise BaseGiljoError
+        from src.giljo_mcp.exceptions import BaseGiljoError
 
-        with pytest.raises(BaseGiljoException) as exc_info:
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.create_product(name="Test", description="Test")
         assert "Database error" in str(exc_info.value)
 
@@ -880,7 +864,7 @@ class TestProductServiceProductMemory:
         result = await service.update_product(product_id=product_id, product_memory=updated_memory)
 
         # ASSERT - returns Product ORM model (0731b typed returns)
-        assert isinstance(result, Product)
+        assert result is existing_product
         # Verify the mock object was updated
         assert existing_product.product_memory == updated_memory
         assert existing_product.product_memory["git_integration"]["enabled"] is True
@@ -999,7 +983,7 @@ class TestProductServiceTargetPlatforms:
         THEN: Validation error is raised
         """
         # ARRANGE
-        db_manager, session = mock_db_manager
+        db_manager, _session = mock_db_manager
 
         service = ProductService(db_manager, "test-tenant")
 
@@ -1022,7 +1006,7 @@ class TestProductServiceTargetPlatforms:
         THEN: Validation error is raised
         """
         # ARRANGE
-        db_manager, session = mock_db_manager
+        db_manager, _session = mock_db_manager
 
         service = ProductService(db_manager, "test-tenant")
 
