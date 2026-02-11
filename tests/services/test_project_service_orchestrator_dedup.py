@@ -1,6 +1,7 @@
 """
 Tests for orchestrator deduplication on project reactivation (Handover 0485 - Bug B)
 Updated 0730d: Exception-based error handling patterns (no success wrappers).
+Updated 0731c: Typed returns - launch_project returns ProjectLaunchResult.
 
 Verifies that when a project is reactivated, the system does NOT create duplicate
 orchestrators if one already exists in a non-failed state (complete, blocked, etc.).
@@ -17,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentExecution, AgentJob, Product, Project, User
 from src.giljo_mcp.models.organizations import Organization
+from src.giljo_mcp.schemas.service_responses import ProjectLaunchResult
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -384,7 +386,7 @@ class TestOrchestratorDeduplication:
         project_service = create_project_service(db_session, test_user.tenant_key)
 
         # Call launch_project
-        # 0730d: launch_project returns dict directly (no success wrapper)
+        # 0731c: launch_project returns ProjectLaunchResult typed model
         result = await project_service.launch_project(
             project_id=project.id,
             user_id=str(test_user.id),
@@ -392,8 +394,9 @@ class TestOrchestratorDeduplication:
             websocket_manager=None,
         )
 
-        # ASSERT: Should reuse existing orchestrator (NOT create new one)
-        assert result["orchestrator_job_id"] == existing_job_id
+        # ASSERT: Should return typed ProjectLaunchResult and reuse existing orchestrator
+        assert isinstance(result, ProjectLaunchResult)
+        assert result.orchestrator_job_id == existing_job_id
 
         # ASSERT: Should still have only ONE orchestrator
         stmt = (
