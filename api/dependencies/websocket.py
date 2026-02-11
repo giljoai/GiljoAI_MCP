@@ -134,32 +134,6 @@ class WebSocketDependency:
             exclude_client=exclude_client,
         )
 
-    async def send_to_project(
-        self, tenant_key: str, project_id: str, event_type: str, data: dict[str, Any], schema_version: str = "1.0"
-    ) -> int:
-        """
-        Broadcast event to all clients watching a specific project.
-
-        This is a specialized broadcast that includes project_id
-        in the data payload for client-side filtering.
-
-        Args:
-            tenant_key: Tenant identifier
-            project_id: Project identifier
-            event_type: Event type (e.g., "agent:created")
-            data: Event payload
-            schema_version: Event schema version
-
-        Returns:
-            Number of clients that received the message
-        """
-        # Ensure project_id is in data
-        data_with_project = {**data, "project_id": project_id}
-
-        return await self.broadcast_to_tenant(
-            tenant_key=tenant_key, event_type=event_type, data=data_with_project, schema_version=schema_version
-        )
-
     def is_available(self) -> bool:
         """
         Check if WebSocket functionality is available.

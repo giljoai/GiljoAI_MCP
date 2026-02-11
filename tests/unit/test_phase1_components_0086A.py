@@ -352,11 +352,6 @@ class TestWebSocketDependencyMocked:
 
         ws_path = Path(__file__).parent.parent.parent / "api" / "dependencies" / "websocket.py"
 
-        # Patch WebSocket manager import before loading module
-        mock_manager = MagicMock()
-        sys.modules["api.websocket_service"] = MagicMock()
-        sys.modules["api.websocket_service"].WebSocketService = mock_manager
-
         spec = importlib.util.spec_from_file_location("ws_dep", ws_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)

@@ -13,39 +13,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-def test_path_normalizer_module_exists():
-    """Test that PathNormalizer module exists at correct location"""
-    from src.giljo_mcp.utils.path_normalizer import PathNormalizer
-
-    assert PathNormalizer is not None
-
-
-def test_path_normalizer_class_name():
-    """Test that class is named PathNormalizer (not PathResolver)"""
-    from src.giljo_mcp.utils.path_normalizer import PathNormalizer
-
-    assert PathNormalizer.__name__ == "PathNormalizer"
-
-
-def test_path_normalizer_convenience_functions():
-    """Test that convenience functions exist and work"""
-    from src.giljo_mcp.utils.path_normalizer import join_paths, normalize_path, resolve_relative_path
-
-    # Test normalize_path
-    result = normalize_path(r"C:\Windows\System32")
-    assert result == "C:/Windows/System32"
-    assert "\\" not in result
-
-    # Test join_paths
-    result = join_paths("base", "subdir", "file.txt")
-    assert "base" in result
-    assert "/" in result or result == "base/subdir/file.txt"
-
-    # Test resolve_relative_path
-    result = resolve_relative_path("base/dir", "file.txt")
-    assert "file.txt" in result
-
-
 def test_discovery_path_resolver_still_exists():
     """Test that discovery.PathResolver is unchanged"""
     from src.giljo_mcp.discovery import PathResolver
@@ -87,31 +54,6 @@ def test_test_api_integration_fix_deleted():
     """Test that test_api_integration_fix.py is deleted"""
     test_path = Path(__file__).parent.parent / "tests" / "test_api_integration_fix.py"
     assert not test_path.exists(), "test_api_integration_fix.py should be deleted"
-
-
-def test_path_normalizer_normalization():
-    """Test PathNormalizer normalizes paths correctly"""
-    from src.giljo_mcp.utils.path_normalizer import PathNormalizer
-
-    test_cases = [
-        (r"C:\Users\test\Documents", "C:/Users/test/Documents"),
-        (r"F:\GiljoAI_MCP\src\module.py", "F:/GiljoAI_MCP/src/module.py"),
-        (r".\relative\path", "./relative/path"),
-        (r"..\parent\dir", "../parent/dir"),
-    ]
-
-    for windows_path, expected in test_cases:
-        result = PathNormalizer.normalize(windows_path)
-        assert result == expected, f"Expected {expected}, got {result}"
-
-
-def test_path_normalizer_joining():
-    """Test PathNormalizer joins paths correctly"""
-    from src.giljo_mcp.utils.path_normalizer import PathNormalizer
-
-    result = PathNormalizer.join("base", "dir", "file.txt")
-    assert "/" in result
-    assert "\\" not in result
 
 
 if __name__ == "__main__":
