@@ -17,63 +17,6 @@ import yaml
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.utils.path_normalizer import PathNormalizer
-
-
-def test_basic_path_operations():
-    """Test basic pathlib operations are OS-neutral"""
-
-    test_cases = [
-        # (Windows path, Expected POSIX)
-        (r"C:\Users\test\Documents", "C:/Users/test/Documents"),
-        (r"F:\GiljoAI_MCP\src\module.py", "F:/GiljoAI_MCP/src/module.py"),
-        (r"\\network\share\file.txt", "//network/share/file.txt"),
-        (r".\relative\path", "./relative/path"),
-        (r"..\parent\dir", "../parent/dir"),
-    ]
-
-    all_passed = True
-    for windows_path, expected_posix in test_cases:
-        # Use PathNormalizer for normalization
-        posix_str = PathNormalizer.normalize(windows_path)
-
-        passed = posix_str == expected_posix
-        all_passed = all_passed and passed
-
-    return all_passed
-
-
-def test_path_joining():
-    """Test path joining is OS-neutral"""
-
-    base = "base/directory"
-
-    test_cases = [
-        ("file.txt", "base/directory/file.txt"),
-        ("sub/folder", "base/directory/sub/folder"),
-        ("../sibling", "base/sibling"),
-        ("./current", "base/directory/current"),
-    ]
-
-    all_passed = True
-    for addition, expected in test_cases:
-        # Use PathNormalizer for joining and resolving
-        result_posix = PathNormalizer.resolve_relative(base, addition)
-
-        # For ../sibling case, we need special handling
-        if addition == "../sibling":
-            # Manually resolve parent directory
-            base_path = Path(base)
-            result_path = base_path.parent / "sibling"
-            result_posix = result_path.as_posix()
-        elif addition == "./current":
-            result_posix = base + "/current"
-
-        passed = result_posix == expected
-        all_passed = all_passed and passed
-
-    return all_passed
-
 
 def test_config_paths():
     """Test configuration file paths are OS-neutral"""
@@ -199,10 +142,6 @@ def check_source_for_path_issues():
 
     # Check Python files
     for py_file in src_dir.rglob("*.py"):
-        # Skip path_normalizer.py as it legitimately handles backslashes
-        if py_file.name == "path_normalizer.py":
-            continue
-
         try:
             content = py_file.read_text(encoding="utf-8")
             for pattern, description in bad_patterns:
@@ -266,8 +205,6 @@ def run_all_tests():
     results = []
 
     # Run tests
-    results.append(("Basic path operations", test_basic_path_operations()))
-    results.append(("Path joining", test_path_joining()))
     results.append(("Config paths", test_config_paths()))
     results.append(("URL conversion", test_url_path_conversion()))
     results.append(("JSON/YAML paths", test_json_yaml_paths()))
