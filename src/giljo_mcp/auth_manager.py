@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -126,75 +126,6 @@ class AuthManager:
         logger.info(f"Generated and encrypted API key for '{name}'")
         return api_key
 
-    def get_or_create_api_key(self, name: str, permissions: Optional[list[str]] = None) -> str:
-        """
-        Get an existing API key by name or create a new one if it doesn't exist.
-
-        This method provides idempotent behavior for API key generation:
-        - If an active key with the given name exists, return it
-        - If a revoked key with the given name exists, create new key with timestamped name
-        - If no key exists, create a new one
-
-        This ensures that re-running the setup wizard doesn't create duplicate keys
-        and that the API key modal always appears with a valid key for LAN mode.
-
-        Args:
-            name: Name/description for the API key
-            permissions: Optional list of permissions (default: ["*"])
-
-        Returns:
-            API key string (either existing or newly created)
-        """
-        # Load API keys from encrypted file if not in memory
-        if not self.api_keys:
-            api_keys_file = Path.home() / ".giljo-mcp" / "api_keys.json"
-            if api_keys_file.exists():
-                try:
-                    # Decrypt and load keys
-                    encrypted_data = api_keys_file.read_bytes()
-                    decrypted_data = self.cipher.decrypt(encrypted_data)
-                    self.api_keys = json.loads(decrypted_data.decode())
-                    logger.debug("Loaded API keys from encrypted storage")
-                except (InvalidToken, OSError, json.JSONDecodeError, ValueError) as e:
-                    logger.warning(f"Could not decrypt API keys (might be unencrypted): {e}")
-                    # Try reading as plaintext for migration
-                    try:
-                        self.api_keys = json.loads(api_keys_file.read_text())
-                        logger.info("Loaded plaintext API keys - will encrypt on next save")
-                    except (OSError, json.JSONDecodeError, ValueError):
-                        logger.exception("Could not load API keys from file")
-                        self.api_keys = {}
-
-        # Check if an active key with this name already exists
-        for api_key, key_info in self.api_keys.items():
-            if key_info.get("name") == name and key_info.get("active", True):
-                # Found an active key with matching name - return it (idempotent)
-                key_prefix = api_key[:10] + "..."
-                logger.info(f"Reusing existing active API key '{name}' (prefix: {key_prefix})")
-                return api_key
-
-        # Check if a revoked key with this name exists
-        revoked_key_exists = any(
-            key_info.get("name") == name and not key_info.get("active", True) for key_info in self.api_keys.values()
-        )
-
-        if revoked_key_exists:
-            # Create new key with timestamped name to avoid collision
-            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-            timestamped_name = f"{name} ({timestamp})"
-            logger.info(f"Revoked key exists with name '{name}', creating new key with name '{timestamped_name}'")
-            api_key = self.generate_api_key(name=timestamped_name, permissions=permissions)
-        else:
-            # No key exists - create new one
-            logger.info(f"No existing key found for '{name}', creating new API key")
-            api_key = self.generate_api_key(name=name, permissions=permissions)
-
-        # Log key prefix for debugging (never log full key)
-        key_prefix = api_key[:10] + "..."
-        logger.info(f"API key created/retrieved for '{name}' (prefix: {key_prefix})")
-
-        return api_key
-
     def validate_api_key(self, api_key: str) -> Optional[dict[str, Any]]:
         """Validate an API key for LAN mode"""
         # Load API keys from encrypted file if not in memory
@@ -222,92 +153,6 @@ class AuthManager:
                 return key_info
 
         return None
-
-    def store_admin_account(self, username: str, password: str, tenant_key: str = "default") -> None:
-        """
-        Hash password and store admin account in encrypted format.
-
-        Args:
-            username: Admin username
-            password: Plain text password (will be hashed)
-            tenant_key: Tenant key for multi-tenant isolation
-
-        Note:
-            Password is hashed using bcrypt before storage.
-            Data is encrypted using Fernet cipher before writing to disk.
-        """
-        from passlib.hash import bcrypt
-
-        # Hash the password using bcrypt
-        password_hash = bcrypt.hash(password)
-
-        admin_data = {
-            "username": username,
-            "password_hash": password_hash,
-            "tenant_key": tenant_key,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-
-        # Store in encrypted file
-        admin_file = Path.home() / ".giljo-mcp" / "admin_account.json"
-        admin_file.parent.mkdir(parents=True, exist_ok=True)
-
-        # Encrypt and save
-        plaintext_data = json.dumps(admin_data, indent=2).encode()
-        encrypted_data = self.cipher.encrypt(plaintext_data)
-        admin_file.write_bytes(encrypted_data)
-
-        logger.info(f"Stored encrypted admin account for user '{username}'")
-
-    def validate_admin_credentials(self, username: str, password: str) -> bool:
-        """
-        Validate admin credentials against stored account.
-
-        Args:
-            username: Admin username
-            password: Plain text password to validate
-
-        Returns:
-            True if credentials are valid, False otherwise
-        """
-        from passlib.hash import bcrypt
-
-        admin_file = Path.home() / ".giljo-mcp" / "admin_account.json"
-
-        if not admin_file.exists():
-            logger.warning("No admin account configured")
-            return False
-
-        try:
-            # Decrypt admin account
-            encrypted_data = admin_file.read_bytes()
-            decrypted_data = self.cipher.decrypt(encrypted_data)
-            admin_data = json.loads(decrypted_data.decode())
-
-            # Check username matches
-            if admin_data.get("username") != username:
-                return False
-
-            # Verify password hash
-            password_hash = admin_data.get("password_hash")
-            return bcrypt.checkpw(password.encode(), password_hash.encode())
-
-        except (InvalidToken, OSError, json.JSONDecodeError, ValueError, AttributeError):
-            logger.exception("Failed to validate admin credentials")
-            return False
-
-    def generate_jwt_token(self, user_id: str, tenant_key: Optional[str] = None, expires_in: int = 3600) -> str:
-        """Generate JWT token for WAN mode"""
-        payload = {
-            "user_id": user_id,
-            "tenant_key": tenant_key,
-            "iat": datetime.now(timezone.utc),
-            "exp": datetime.now(timezone.utc) + timedelta(seconds=expires_in),
-        }
-
-        token = jwt.encode(payload, self.jwt_secret, algorithm="HS256")
-        logger.info(f"Generated JWT token for user '{user_id}'")
-        return token
 
     def validate_jwt_token(self, token: str) -> Optional[dict[str, Any]]:
         """Validate JWT token for WAN mode"""
@@ -512,38 +357,3 @@ class AuthManager:
                 logger.debug(f"No user object found for API key: {e}")
 
         return result
-
-
-def create_auth_middleware(auth_manager: AuthManager):
-    """
-    Create FastMCP middleware for authentication
-
-    Note: FastMCP middleware integration depends on the framework's support.
-    This is a placeholder that shows the authentication logic.
-    """
-
-    async def auth_middleware(request, call_next):
-        """Middleware to check authentication before processing requests"""
-
-        # Skip auth for health check endpoints
-        if request.url.path in ["/health", "/ready"]:
-            return await call_next(request)
-
-        # Extract authentication credentials
-        authorization = request.headers.get("Authorization")
-        api_key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
-
-        # Authenticate the request
-        auth_result = await auth_manager.authenticate_request(authorization=authorization, api_key=api_key)
-
-        if not auth_result["authenticated"]:
-            # Return authentication error
-            return {"error": auth_result["error"], "status": 401}
-
-        # Attach auth info to request for downstream use
-        request.state.auth = auth_result
-
-        # Continue processing
-        return await call_next(request)
-
-    return auth_middleware

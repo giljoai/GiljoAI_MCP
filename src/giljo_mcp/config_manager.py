@@ -804,12 +804,6 @@ class ConfigManager:
         config = cls(config_path=path, auto_reload=False)
         return config
 
-    def ensure_directories_exist(self):
-        """Ensure all required directories exist."""
-        self.get_data_dir()  # Creates directory
-        self.get_config_dir()  # Creates directory
-        self.get_log_dir()  # Creates directory
-
     def __enter__(self):
         """Context manager entry."""
         return self
@@ -880,90 +874,6 @@ def get_config() -> ConfigManager:
 def set_config(config: ConfigManager):
     """Set the global configuration manager instance."""
     _ConfigManagerHolder.set_instance(config)
-
-
-def generate_sample_config(path: Optional[Path] = None) -> Path:
-    """
-    Generate a sample config.yaml file with all available options.
-
-    Args:
-        path: Optional path for the config file. Defaults to ./config.yaml
-
-    Returns:
-        Path to the generated config file
-    """
-    config_path = path or Path("./config.yaml")
-
-    sample_config = {
-        "version": "3.0.0",
-        "server": {
-            "debug": False,
-            "mcp": {"host": "0.0.0.0", "port": 6001, "transport": "http"},
-            "api": {"host": "0.0.0.0", "port": 6002, "cors_enabled": True},
-            "websocket": {"enabled": True, "port": 6003},
-            "dashboard": {
-                "enabled": True,
-                "host": "0.0.0.0",
-                "port": 7274,
-                "dev_server_port": 5173,
-            },
-        },
-        "database": {
-            "type": "postgresql",  # PostgreSQL only
-            "postgresql": {
-                "host": "localhost",
-                "port": 5432,
-                "database": "giljo_mcp_db",
-                "user": "postgres",
-                "password": "",  # Use DB_PASSWORD env var
-                "pool_size": 10,
-            },
-        },
-        "logging": {
-            "level": "INFO",
-            "file": "./logs/giljo_mcp.log",
-            "max_size": "10MB",
-            "max_files": 5,
-        },
-        "session": {"timeout": 3600, "max_concurrent": 10, "cleanup_interval": 300},
-        "agents": {
-            "max_per_project": 20,
-            "context_limit": 150000,
-            "handoff_threshold": 140000,
-        },
-        "messages": {
-            "max_queue_size": 1000,
-            "batch_size": 10,
-            "retry_attempts": 3,
-            "retry_delay": 1.0,
-        },
-        "features": {
-            "vision_chunking": True,
-            "multi_tenant": True,
-            "websocket_updates": True,
-            "auto_handoff": True,
-            "dynamic_discovery": True,
-            "authentication": True,
-            "auto_login_localhost": True,
-            "firewall_configured": False,
-        },
-        "deployment_context": "localhost",  # Informational only: localhost|lan|wan
-    }
-
-    # Add helpful comments
-    config_content = """# GiljoAI MCP Configuration
-# This file configures all aspects of the GiljoAI MCP system
-# Environment variables can override any setting using the format:
-# GILJO_MCP_<SECTION>_<KEY> (e.g., GILJO_MCP_SERVER_MODE=lan)
-
-"""
-
-    # Write YAML with comments
-    with open(config_path, "w", encoding="utf-8") as f:
-        f.write(config_content)
-        yaml.dump(sample_config, f, default_flow_style=False, sort_keys=False)
-
-    return config_path
 
 
 # ========================================
