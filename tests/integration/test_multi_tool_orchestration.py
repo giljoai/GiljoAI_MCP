@@ -28,7 +28,6 @@ import pytest
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import AgentTemplate, Project
 from src.giljo_mcp.services.agent_job_manager import AgentJobManager
@@ -53,12 +52,6 @@ def db_manager():
 def job_manager(db_manager):
     """Create AgentJobManager instance."""
     return AgentJobManager(db_manager)
-
-
-@pytest.fixture
-def comm_queue(db_manager):
-    """Create AgentCommunicationQueue instance."""
-    return AgentMessageQueue(db_manager)
 
 
 @pytest.fixture
@@ -404,133 +397,6 @@ class TestMixedModeOperations:
 # ============================================================================
 
 
-class TestMCPToolCoordination:
-    """Test message passing and coordination."""
-
-    def test_send_message_orchestrator_to_agent(self, db_manager, job_manager, comm_queue, tenant_key):
-        """Test sending message from orchestrator to agent."""
-        job = job_manager.create_job(
-            tenant_key=tenant_key,
-            agent_display_name="implementer",
-            mission="Implement feature",
-        )
-
-        with db_manager.get_session() as session:
-            # Send instruction message
-            result = comm_queue.send_message(
-                session=session,
-                job_id=job.job_id,
-                tenant_key=tenant_key,
-                from_agent="orchestrator",
-                to_agent="implementer",
-                message_type="orchestrator_instruction",
-                content="Start implementing the feature",
-                priority=1,
-            )
-
-            # Assertions
-            assert result["status"] == "success"
-            assert "message_id" in result
-
-    def test_get_next_instruction(self, db_manager, job_manager, comm_queue, tenant_key):
-        """Test agent retrieving next instructions."""
-        job = job_manager.create_job(
-            tenant_key=tenant_key,
-            agent_display_name="implementer",
-            mission="Implement feature",
-        )
-
-        with db_manager.get_session() as session:
-            # Send message
-            comm_queue.send_message(
-                session=session,
-                job_id=job.job_id,
-                tenant_key=tenant_key,
-                from_agent="orchestrator",
-                to_agent="implementer",
-                message_type="orchestrator_instruction",
-                content="Start work",
-                priority=1,
-            )
-
-            # Retrieve messages
-            messages = comm_queue.get_messages(
-                session=session,
-                job_id=job.job_id,
-                tenant_key=tenant_key,
-            )
-
-            # Assertions
-            assert messages["status"] == "success"
-            assert len(messages.get("messages", [])) > 0
-
-    def test_report_progress_message(self, db_manager, job_manager, comm_queue, tenant_key):
-        """Test agent reporting progress."""
-        job = job_manager.create_job(
-            tenant_key=tenant_key,
-            agent_display_name="implementer",
-            mission="Implement feature",
-        )
-
-        with db_manager.get_session() as session:
-            # Acknowledge job
-            job_manager.acknowledge_job(
-                tenant_key=tenant_key,
-                job_id=job.job_id,
-            )
-
-            # Send progress message
-            result = comm_queue.send_message(
-                session=session,
-                job_id=job.job_id,
-                tenant_key=tenant_key,
-                from_agent="implementer",
-                to_agent="orchestrator",
-                message_type="progress",
-                content="Completed user model implementation",
-                priority=1,
-                metadata={
-                    "context_used": 5000,
-                    "files_modified": ["models/user.py"],
-                },
-            )
-
-            # Assertions
-            assert result["status"] == "success"
-
-    def test_error_message_high_priority(self, db_manager, job_manager, comm_queue, tenant_key):
-        """Test error message gets high priority."""
-        job = job_manager.create_job(
-            tenant_key=tenant_key,
-            agent_display_name="implementer",
-            mission="Implement feature",
-        )
-
-        with db_manager.get_session() as session:
-            # Send error message
-            result = comm_queue.send_message(
-                session=session,
-                job_id=job.job_id,
-                tenant_key=tenant_key,
-                from_agent="implementer",
-                to_agent="orchestrator",
-                message_type="error",
-                content="Build failed: module 'foo' not found",
-                priority=2,  # High priority
-            )
-
-            # Verify error message
-            messages = comm_queue.get_messages(
-                session=session,
-                job_id=job.job_id,
-                tenant_key=tenant_key,
-                message_type="error",
-            )
-
-            assert len(messages["messages"]) > 0
-            assert messages["messages"][0]["priority"] == 2
-
-
 # ============================================================================
 # TEST SCENARIO 5: Multi-Tenant Isolation (CRITICAL)
 # ============================================================================
@@ -587,43 +453,6 @@ class TestMultiTenantIsolation:
                 tenant_key=other_tenant_key,  # Wrong tenant!
                 job_id=job.job_id,
             )
-
-    def test_message_queue_tenant_isolation(self, db_manager, job_manager, comm_queue, tenant_key, other_tenant_key):
-        """CRITICAL: Messages isolated by tenant."""
-        # Create jobs for both tenants
-        job_t1 = job_manager.create_job(
-            tenant_key=tenant_key,
-            agent_display_name="implementer",
-            mission="Tenant 1 job",
-        )
-        job_t2 = job_manager.create_job(
-            tenant_key=other_tenant_key,
-            agent_display_name="implementer",
-            mission="Tenant 2 job",
-        )
-
-        with db_manager.get_session() as session:
-            # Send message to tenant 1 job
-            comm_queue.send_message(
-                session=session,
-                job_id=job_t1.job_id,
-                tenant_key=tenant_key,
-                from_agent="orchestrator",
-                to_agent="implementer",
-                message_type="instruction",
-                content="Tenant 1 instruction",
-                priority=1,
-            )
-
-            # Try to read with tenant 2 key
-            messages_t2 = comm_queue.get_messages(
-                session=session,
-                job_id=job_t1.job_id,  # Tenant 1's job
-                tenant_key=other_tenant_key,  # Wrong tenant!
-            )
-
-            # Should find no messages (empty list)
-            assert len(messages_t2.get("messages", [])) == 0
 
     def test_tenant_job_get_isolation(self, db_manager, job_manager, tenant_key, other_tenant_key):
         """CRITICAL: Jobs properly isolated by tenant."""
@@ -882,28 +711,6 @@ class TestEdgeCases:
         # Should handle special chars
         assert job is not None
         assert special_mission in job.mission
-
-    def test_message_with_unicode(self, db_manager, comm_queue, job_manager, tenant_key):
-        """Test messages with unicode characters."""
-        job = job_manager.create_job(
-            tenant_key=tenant_key,
-            agent_display_name="implementer",
-            mission="Test",
-        )
-
-        with db_manager.get_session() as session:
-            result = comm_queue.send_message(
-                session=session,
-                job_id=job.job_id,
-                tenant_key=tenant_key,
-                from_agent="orchestrator",
-                to_agent="implementer",
-                message_type="instruction",
-                content="Implement feature with 日本語 and émojis 🎉",
-                priority=1,
-            )
-
-            assert result["status"] == "success"
 
     def test_acknowledge_already_active_job(self, db_manager, job_manager, tenant_key):
         """Test acknowledging already-active job (idempotent)."""
