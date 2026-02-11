@@ -283,16 +283,6 @@ async def test_report_progress_fallback_emits_message_new_event(
     # Force fallback path by ensuring MessageService is unavailable
     orchestration_service._message_service = None
 
-    # Stub AgentMessageQueue send_message to avoid hitting real DB logic
-    class _FakeQueue:
-        def __init__(self, _db_manager):
-            pass
-
-        async def send_message(self, **_kwargs):
-            return {"status": "success"}
-
-    monkeypatch.setattr("src.giljo_mcp.agent_message_queue.AgentMessageQueue", _FakeQueue)
-
     result = await orchestration_service.report_progress(
         job_id=job_id,
         progress={"percent": 50, "message": "Half done"},

@@ -9,7 +9,6 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
-from src.giljo_mcp.agent_message_queue import AgentMessageQueue
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.services.message_service import MessageService
@@ -83,53 +82,6 @@ async def test_send_message_flow_multi_recipient(db_manager, db_session, test_pr
         assert "implementer-1" in msg.to_agents
         assert "implementer-2" in msg.to_agents
         assert "analyzer-1" in msg.to_agents
-
-
-@pytest.mark.asyncio
-async def test_receive_messages_flow(db_manager, db_session, test_project, test_agent_jobs):
-    """
-    Test message retrieval flow.
-
-    Migration Note (0367d): test_agent_jobs now returns list of tuples [(job, execution), ...].
-    """
-    tenant_manager = TenantManager()
-    tenant_manager.set_current_tenant(test_project.tenant_key)
-
-    # Unpack first job and execution
-    first_job, first_execution = test_agent_jobs[0]
-
-    # Create a test message
-    message = Message(
-        id=str(uuid4()),
-        tenant_key=test_project.tenant_key,
-        project_id=test_project.id,
-        to_agents=["test-implementer"],
-        content="Test message content",
-        message_type="direct",
-        priority="normal",
-        status="waiting",
-        created_at=datetime.now(timezone.utc),
-        meta_data={"_job_id": first_job.job_id},
-    )
-    db_session.add(message)
-    await db_session.commit()
-    await db_session.refresh(message)
-
-    # Retrieve messages using AgentMessageQueue
-    queue = AgentMessageQueue(db_manager)
-
-    async with db_manager.get_session_async() as session:
-        result = await queue.get_messages(
-            session=session,
-            job_id=first_job.job_id,
-            tenant_key=test_project.tenant_key,
-            to_agent="test-implementer",
-            unread_only=True,
-        )
-
-    assert result["status"] == "success"
-    assert len(result["messages"]) > 0
-    assert result["messages"][0]["content"] == "Test message content"
 
 
 @pytest.mark.asyncio
@@ -315,44 +267,6 @@ async def test_message_multi_tenant_isolation(db_manager, db_session):
         assert len(tenant2_messages) == 1
         assert tenant2_messages[0].content == "Message for tenant 2"
         assert tenant2_messages[0].id == message2.id
-
-
-@pytest.mark.asyncio
-async def test_message_priority_ordering(db_manager, db_session, test_project):
-    """Test that messages are retrieved in priority order"""
-
-    # Create messages with different priorities
-    priorities = ["low", "normal", "high", "critical"]
-    messages = []
-
-    for priority in priorities:
-        message = Message(
-            id=str(uuid4()),
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            to_agents=["test-agent"],
-            content=f"Message with {priority} priority",
-            priority=priority,
-            status="waiting",
-        )
-        db_session.add(message)
-        messages.append(message)
-
-    await db_session.commit()
-
-    # Query messages - should be ordered by priority
-    queue = AgentMessageQueue(db_manager)
-    async with db_manager.get_session_async() as session:
-        # The queue should return highest priority first
-        result = await queue.get_messages(
-            session=session, job_id=None, tenant_key=test_project.tenant_key, to_agent="test-agent", unread_only=True
-        )
-
-    assert result["status"] == "success"
-    retrieved_messages = result["messages"]
-
-    # Verify critical priority is first
-    assert retrieved_messages[0]["priority"] == "critical"
 
 
 @pytest.mark.asyncio
