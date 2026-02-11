@@ -15,6 +15,7 @@ from uuid import uuid4
 import pytest
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.schemas.service_responses import MissionResponse
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 
@@ -128,10 +129,11 @@ class TestGetAgentMissionFullProtocol:
 
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
-        # Verify full_protocol field exists
-        assert "full_protocol" in response, "Response must include full_protocol field"
-        assert isinstance(response["full_protocol"], str)
-        assert len(response["full_protocol"]) > 0
+        # Handover 0731c: Returns MissionResponse typed model
+        assert isinstance(response, MissionResponse)
+        assert response.full_protocol is not None, "Response must include full_protocol field"
+        assert isinstance(response.full_protocol, str)
+        assert len(response.full_protocol) > 0
 
     @pytest.mark.asyncio
     async def test_full_protocol_contains_five_phases(self, orchestration_service, mock_db_manager, mock_agent_job):
@@ -153,7 +155,7 @@ class TestGetAgentMissionFullProtocol:
 
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
-        protocol = response["full_protocol"]
+        protocol = response.full_protocol
 
         # Verify all 5 phases are present (Handover 0359: consolidated from 6 to 5)
         assert "Phase 1" in protocol or "STARTUP" in protocol.upper(), "Protocol must include Phase 1 (Startup)"
@@ -182,7 +184,7 @@ class TestGetAgentMissionFullProtocol:
 
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
-        protocol = response["full_protocol"]
+        protocol = response.full_protocol
 
         # Verify MCP tool references
         assert "report_progress" in protocol.lower(), "Protocol must reference report_progress tool"
@@ -209,7 +211,7 @@ class TestGetAgentMissionFullProtocol:
 
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
-        protocol = response["full_protocol"]
+        protocol = response.full_protocol
 
         # Protocol should include job ID for proper MCP tool calls
         assert job.job_id in protocol, "Protocol must include job_id for MCP tool calls"
@@ -236,18 +238,18 @@ class TestGetAgentMissionFullProtocol:
 
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
-        # Verify all existing fields are still present
-        # Handover 0730b: No success wrapper - service returns dict directly
-        assert "job_id" in response
-        assert "agent_name" in response
-        assert "agent_display_name" in response
-        assert "mission" in response
-        assert "project_id" in response
-        assert "estimated_tokens" in response
-        assert "thin_client" in response
-        assert "status" in response
-        # NEW field
-        assert "full_protocol" in response
+        # Verify all existing fields are still present as attributes
+        # Handover 0731c: Returns MissionResponse typed model
+        assert isinstance(response, MissionResponse)
+        assert response.job_id is not None
+        assert response.agent_name is not None
+        assert response.agent_display_name is not None
+        assert response.mission is not None
+        assert response.project_id is not None
+        assert response.estimated_tokens is not None
+        assert response.thin_client is True
+        assert response.status is not None
+        assert response.full_protocol is not None
 
     @pytest.mark.asyncio
     async def test_protocol_includes_message_handling_instructions(
@@ -272,9 +274,9 @@ class TestGetAgentMissionFullProtocol:
 
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
-        # Handover 0730b: No success wrapper - service returns dict directly
-        assert "full_protocol" in response
-        protocol = response.get("full_protocol", "")
+        # Handover 0731c: Returns MissionResponse typed model
+        assert isinstance(response, MissionResponse)
+        protocol = response.full_protocol or ""
 
         # Verify message handling instructions present (Issue 0361-5)
         assert "MESSAGE HANDLING" in protocol
@@ -313,7 +315,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
 
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
-        protocol = response.get("full_protocol", "")
+        protocol = response.full_protocol or ""
 
         # Extract Phase 2 section
         phase2_start = protocol.find("### Phase 2")
@@ -357,7 +359,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
 
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
-        protocol = response.get("full_protocol", "")
+        protocol = response.full_protocol or ""
 
         # Extract Phase 3 section
         phase3_start = protocol.find("### Phase 3")
@@ -405,7 +407,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
 
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
-        protocol = response.get("full_protocol", "")
+        protocol = response.full_protocol or ""
 
         # Extract Phase 4 section
         phase4_start = protocol.find("### Phase 4")
@@ -450,7 +452,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
 
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
-        protocol = response.get("full_protocol", "")
+        protocol = response.full_protocol or ""
 
         # BEHAVIOR: Protocol should have guidance section about when to check messages
         guidance_indicators = ["when to check", "message checking", "check messages in each phase", "across phases"]
