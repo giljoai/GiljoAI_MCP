@@ -1,11 +1,12 @@
 """
 Unit tests for ConsolidatedVisionService - Handover 0377 Phase 2
 
-Tests written FIRST following strict TDD discipline (RED → GREEN → REFACTOR).
+Tests written FIRST following strict TDD discipline (RED -> GREEN -> REFACTOR).
 
 Purpose: Test consolidation of multiple vision documents into unified light/medium summaries.
 
 Updated Handover 0730b: Migrated from dict wrappers to exception-based error handling.
+Updated Handover 0731: Migrated from dict returns to typed ConsolidationResult.
 """
 
 import hashlib
@@ -15,6 +16,11 @@ import pytest
 
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models.products import Product, VisionDocument
+from src.giljo_mcp.schemas.service_responses import (
+    ConsolidationResult,
+    MultiLevelSummaryLevel,
+    SummarizeMultiLevelResult,
+)
 
 
 @pytest.fixture
@@ -42,6 +48,7 @@ async def test_consolidate_single_document_returns_unified_summary(mock_db_manag
 
     # Create product with one vision document
     doc = MagicMock(spec=VisionDocument)
+    doc.id = "doc-1"
     doc.document_name = "Product Vision"
     doc.vision_document = "This is the product vision. " * 100  # ~600 chars
     doc.is_active = True
@@ -58,14 +65,14 @@ async def test_consolidate_single_document_returns_unified_summary(mock_db_manag
     mock_result.scalar_one_or_none.return_value = product
     session.execute.return_value = mock_result
 
-    # Mock VisionDocumentSummarizer
+    # Mock VisionDocumentSummarizer (returns typed SummarizeMultiLevelResult - Handover 0731)
     mock_summarizer = MagicMock()
-    mock_summarizer.summarize_multi_level.return_value = {
-        "light": {"summary": "Light summary of vision", "tokens": 50, "sentences": 2},
-        "medium": {"summary": "Medium summary of vision with more detail", "tokens": 100, "sentences": 4},
-        "original_tokens": 150,
-        "processing_time_ms": 100,
-    }
+    mock_summarizer.summarize_multi_level.return_value = SummarizeMultiLevelResult(
+        light=MultiLevelSummaryLevel(summary="Light summary of vision", tokens=50, sentences=2),
+        medium=MultiLevelSummaryLevel(summary="Medium summary of vision with more detail", tokens=100, sentences=4),
+        original_tokens=150,
+        processing_time_ms=100,
+    )
 
     service = ConsolidatedVisionService()
     service.summarizer = mock_summarizer
@@ -74,15 +81,14 @@ async def test_consolidate_single_document_returns_unified_summary(mock_db_manag
         product_id="test-product-id", session=session, tenant_key="test-tenant", force=False
     )
 
-    # Verify result structure (exception-based - returns ConsolidationResult dict)
-    assert "light" in result
-    assert result["light"]["summary"] == "Light summary of vision"
-    assert result["light"]["tokens"] == 50
-    assert "medium" in result
-    assert result["medium"]["summary"] == "Medium summary of vision with more detail"
-    assert result["medium"]["tokens"] == 100
-    assert "hash" in result
-    assert len(result["source_docs"]) == 1
+    # Verify typed ConsolidationResult (Handover 0731)
+    assert isinstance(result, ConsolidationResult)
+    assert result.light.summary == "Light summary of vision"
+    assert result.light.tokens == 50
+    assert result.medium.summary == "Medium summary of vision with more detail"
+    assert result.medium.tokens == 100
+    assert result.hash != ""
+    assert len(result.source_docs) == 1
 
     # Verify product fields updated
     assert product.consolidated_vision_light == "Light summary of vision"
@@ -107,6 +113,7 @@ async def test_consolidate_five_documents_returns_unified_summary(mock_db_manage
     docs = []
     for i in range(5):
         doc = MagicMock(spec=VisionDocument)
+        doc.id = f"doc-{i + 1}"
         doc.document_name = f"Chapter {i + 1}"
         doc.vision_document = f"Content of chapter {i + 1}. " * 50
         doc.is_active = True
@@ -123,14 +130,14 @@ async def test_consolidate_five_documents_returns_unified_summary(mock_db_manage
     mock_result.scalar_one_or_none.return_value = product
     session.execute.return_value = mock_result
 
-    # Mock summarizer
+    # Mock summarizer (returns typed SummarizeMultiLevelResult - Handover 0731)
     mock_summarizer = MagicMock()
-    mock_summarizer.summarize_multi_level.return_value = {
-        "light": {"summary": "Light summary of all 5 chapters", "tokens": 200, "sentences": 10},
-        "medium": {"summary": "Medium summary of all 5 chapters with more detail", "tokens": 400, "sentences": 20},
-        "original_tokens": 600,
-        "processing_time_ms": 200,
-    }
+    mock_summarizer.summarize_multi_level.return_value = SummarizeMultiLevelResult(
+        light=MultiLevelSummaryLevel(summary="Light summary of all 5 chapters", tokens=200, sentences=10),
+        medium=MultiLevelSummaryLevel(summary="Medium summary of all 5 chapters with more detail", tokens=400, sentences=20),
+        original_tokens=600,
+        processing_time_ms=200,
+    )
 
     service = ConsolidatedVisionService()
     service.summarizer = mock_summarizer
@@ -139,10 +146,11 @@ async def test_consolidate_five_documents_returns_unified_summary(mock_db_manage
         product_id="test-product-id", session=session, tenant_key="test-tenant", force=False
     )
 
-    # Exception-based - no "success" key, returns data directly
-    assert len(result["source_docs"]) == 5
-    assert result["light"]["tokens"] == 200
-    assert result["medium"]["tokens"] == 400
+    # Typed ConsolidationResult (Handover 0731)
+    assert isinstance(result, ConsolidationResult)
+    assert len(result.source_docs) == 5
+    assert result.light.tokens == 200
+    assert result.medium.tokens == 400
 
 
 @pytest.mark.asyncio
@@ -300,6 +308,7 @@ async def test_consolidate_force_regenerates(mock_db_manager):
     db_manager, session = mock_db_manager
 
     doc = MagicMock(spec=VisionDocument)
+    doc.id = "doc-force"
     doc.document_name = "Vision"
     doc.vision_document = "Unchanged content"
     doc.is_active = True
@@ -319,14 +328,14 @@ async def test_consolidate_force_regenerates(mock_db_manager):
     mock_result.scalar_one_or_none.return_value = product
     session.execute.return_value = mock_result
 
-    # Mock summarizer
+    # Mock summarizer (returns typed SummarizeMultiLevelResult - Handover 0731)
     mock_summarizer = MagicMock()
-    mock_summarizer.summarize_multi_level.return_value = {
-        "light": {"summary": "Forced light", "tokens": 25, "sentences": 1},
-        "medium": {"summary": "Forced medium", "tokens": 50, "sentences": 2},
-        "original_tokens": 100,
-        "processing_time_ms": 50,
-    }
+    mock_summarizer.summarize_multi_level.return_value = SummarizeMultiLevelResult(
+        light=MultiLevelSummaryLevel(summary="Forced light", tokens=25, sentences=1),
+        medium=MultiLevelSummaryLevel(summary="Forced medium", tokens=50, sentences=2),
+        original_tokens=100,
+        processing_time_ms=50,
+    )
 
     service = ConsolidatedVisionService()
     service.summarizer = mock_summarizer
@@ -338,8 +347,9 @@ async def test_consolidate_force_regenerates(mock_db_manager):
         force=True,  # FORCE regeneration
     )
 
-    # Verify regeneration happened despite matching hash (exception-based - no "success" key)
-    assert result["light"]["summary"] == "Forced light"
+    # Verify regeneration happened despite matching hash (typed return - Handover 0731)
+    assert isinstance(result, ConsolidationResult)
+    assert result.light.summary == "Forced light"
     assert session.commit.called
 
 
