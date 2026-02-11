@@ -23,11 +23,11 @@
 | Handover | Theme | Status | Branch | Completed |
 |----------|-------|--------|--------|-----------|
 | 0745a | Database Migration & P0 Fixes | COMPLETED | feature/0745-security-data-integrity | 2026-02-10 |
-| 0745b | Dependency Security & Cleanup | NOT STARTED | -- | -- |
-| 0745c | Backend Dead Code Removal | NOT STARTED | -- | -- |
-| 0745d | Frontend Cleanup | NOT STARTED | -- | -- |
-| 0745e | Architecture Polish | NOT STARTED | -- | -- |
-| 0745f | Documentation Sync | NOT STARTED | -- | -- |
+| 0745b | Dependency Security & Cleanup | COMPLETED | feature/0745b-dependency-security | 2026-02-10 |
+| 0745c | Backend Dead Code Removal | COMPLETED | feature/0745c-backend-dead-code | 2026-02-10 |
+| 0745d | Frontend Cleanup | COMPLETED | feature/0745d-frontend-cleanup | 2026-02-10 |
+| 0745e | Architecture Polish | COMPLETED | feature/0745e-architecture-polish | 2026-02-10 |
+| 0745f | Documentation Sync | COMPLETED | feature/0745f-documentation-sync | 2026-02-10 |
 
 ---
 
