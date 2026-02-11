@@ -1,3 +1,4 @@
+# ruff: noqa: A005
 """
 Statistics and monitoring API endpoints
 
@@ -156,67 +157,63 @@ async def get_system_statistics(request: Request):
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        stats_repo = StatisticsRepository(state.db_manager)
-        async with state.db_manager.get_session_async() as session:
-            total_projects = await stats_repo.count_total_projects(session, tenant_key)
-            logger.info(f"[STATS DEBUG] total_projects: {total_projects}")
+    stats_repo = StatisticsRepository(state.db_manager)
+    async with state.db_manager.get_session_async() as session:
+        total_projects = await stats_repo.count_total_projects(session, tenant_key)
+        logger.info(f"[STATS DEBUG] total_projects: {total_projects}")
 
-            active_projects = await stats_repo.count_projects_by_status(session, tenant_key, "active")
-            logger.info(f"[STATS DEBUG] active_projects: {active_projects}")
+        active_projects = await stats_repo.count_projects_by_status(session, tenant_key, "active")
+        logger.info(f"[STATS DEBUG] active_projects: {active_projects}")
 
-            completed_projects = await stats_repo.count_projects_by_status(session, tenant_key, "completed")
-            logger.info(f"[STATS DEBUG] completed_projects: {completed_projects}")
+        completed_projects = await stats_repo.count_projects_by_status(session, tenant_key, "completed")
+        logger.info(f"[STATS DEBUG] completed_projects: {completed_projects}")
 
-            total_agents = await stats_repo.count_total_agents(session, tenant_key)
-            logger.info(f"[STATS DEBUG] total_agents: {total_agents}")
+        total_agents = await stats_repo.count_total_agents(session, tenant_key)
+        logger.info(f"[STATS DEBUG] total_agents: {total_agents}")
 
-            active_agents = await stats_repo.count_active_agents(session, tenant_key)
-            logger.info(f"[STATS DEBUG] active_agents: {active_agents}")
+        active_agents = await stats_repo.count_active_agents(session, tenant_key)
+        logger.info(f"[STATS DEBUG] active_agents: {active_agents}")
 
-            total_messages = await stats_repo.count_total_messages(session, tenant_key)
-            logger.info(f"[STATS DEBUG] total_messages: {total_messages}")
+        total_messages = await stats_repo.count_total_messages(session, tenant_key)
+        logger.info(f"[STATS DEBUG] total_messages: {total_messages}")
 
-            pending_messages = await stats_repo.count_messages_by_status(session, tenant_key, "pending")
-            logger.info(f"[STATS DEBUG] pending_messages: {pending_messages}")
+        pending_messages = await stats_repo.count_messages_by_status(session, tenant_key, "pending")
+        logger.info(f"[STATS DEBUG] pending_messages: {pending_messages}")
 
-            total_tasks = await stats_repo.count_total_tasks(session, tenant_key)
-            logger.info(f"[STATS DEBUG] total_tasks: {total_tasks}")
+        total_tasks = await stats_repo.count_total_tasks(session, tenant_key)
+        logger.info(f"[STATS DEBUG] total_tasks: {total_tasks}")
 
-            completed_tasks = await stats_repo.count_completed_tasks(session, tenant_key)
-            logger.info(f"[STATS DEBUG] completed_tasks: {completed_tasks}")
+        completed_tasks = await stats_repo.count_completed_tasks(session, tenant_key)
+        logger.info(f"[STATS DEBUG] completed_tasks: {completed_tasks}")
 
-            avg_context, peak_context = await stats_repo.get_project_context_stats(session, tenant_key)
+        avg_context, peak_context = await stats_repo.get_project_context_stats(session, tenant_key)
 
-            db_size = 0
+        db_size = 0
 
-            uptime = (datetime.now(timezone.utc) - startup_time).total_seconds()
+        uptime = (datetime.now(timezone.utc) - startup_time).total_seconds()
 
-            total_agents_spawned = await stats_repo.count_total_agents(session, tenant_key)
+        total_agents_spawned = await stats_repo.count_total_agents(session, tenant_key)
 
-            total_jobs_completed = await stats_repo.count_completed_agents(session, tenant_key)
+        total_jobs_completed = await stats_repo.count_completed_agents(session, tenant_key)
 
-            return SystemStatsResponse(
-                total_projects=total_projects,
-                active_projects=active_projects,
-                completed_projects=completed_projects,
-                projects_finished=completed_projects,
-                total_agents=total_agents,
-                active_agents=active_agents,
-                total_messages=total_messages,
-                pending_messages=pending_messages,
-                total_tasks=total_tasks,
-                completed_tasks=completed_tasks,
-                average_context_usage=avg_context,
-                peak_context_usage=peak_context,
-                database_size_mb=db_size,
-                uptime_seconds=uptime,
-                total_agents_spawned=total_agents_spawned,
-                total_jobs_completed=total_jobs_completed,
-            )
-
-    except (RuntimeError, OSError) as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        return SystemStatsResponse(
+            total_projects=total_projects,
+            active_projects=active_projects,
+            completed_projects=completed_projects,
+            projects_finished=completed_projects,
+            total_agents=total_agents,
+            active_agents=active_agents,
+            total_messages=total_messages,
+            pending_messages=pending_messages,
+            total_tasks=total_tasks,
+            completed_tasks=completed_tasks,
+            average_context_usage=avg_context,
+            peak_context_usage=peak_context,
+            database_size_mb=db_size,
+            uptime_seconds=uptime,
+            total_agents_spawned=total_agents_spawned,
+            total_jobs_completed=total_jobs_completed,
+        )
 
 
 @router.get("/projects", response_model=list[ProjectStatsResponse])
@@ -237,56 +234,50 @@ async def get_project_statistics(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        stats_repo = StatisticsRepository(state.db_manager)
-        async with state.db_manager.get_session_async() as session:
-            projects = await stats_repo.get_projects_with_pagination(
-                session, tenant_key, status=status, limit=limit, offset=offset
+    stats_repo = StatisticsRepository(state.db_manager)
+    async with state.db_manager.get_session_async() as session:
+        projects = await stats_repo.get_projects_with_pagination(
+            session, tenant_key, status=status, limit=limit, offset=offset
+        )
+
+        stats = []
+        for project in projects:
+            agent_count = await stats_repo.count_agents_for_project(session, tenant_key, project.id)
+
+            message_count = await stats_repo.count_messages_for_project(session, tenant_key, project.id)
+
+            task_count = await stats_repo.count_tasks_for_project(session, tenant_key, project.id)
+
+            completed_task_count = await stats_repo.count_completed_tasks_for_project(session, tenant_key, project.id)
+
+            last_message = await stats_repo.get_last_activity_for_project(session, tenant_key, project.id)
+
+            # Calculate duration
+            end_time = project.updated_at if project.status == "completed" else datetime.now(timezone.utc)
+            duration = (end_time - project.created_at).total_seconds()
+
+            # Calculate context usage (hardcoded default budget)
+            context_budget = 150000  # Hardcoded default (Project.context_budget removed)
+            context_percent = (project.context_used / context_budget * 100) if context_budget > 0 else 0
+
+            stats.append(
+                ProjectStatsResponse(
+                    project_id=str(project.id),
+                    name=project.name,
+                    status=project.status,
+                    duration_seconds=duration,
+                    agent_count=agent_count,
+                    message_count=message_count,
+                    task_count=task_count,
+                    completed_tasks=completed_task_count,
+                    context_used=project.context_used,
+                    context_budget=context_budget,
+                    context_usage_percent=context_percent,
+                    last_activity=last_message or project.updated_at,
+                )
             )
 
-            stats = []
-            for project in projects:
-                agent_count = await stats_repo.count_agents_for_project(session, tenant_key, project.id)
-
-                message_count = await stats_repo.count_messages_for_project(session, tenant_key, project.id)
-
-                task_count = await stats_repo.count_tasks_for_project(session, tenant_key, project.id)
-
-                completed_task_count = await stats_repo.count_completed_tasks_for_project(
-                    session, tenant_key, project.id
-                )
-
-                last_message = await stats_repo.get_last_activity_for_project(session, tenant_key, project.id)
-
-                # Calculate duration
-                end_time = project.updated_at if project.status == "completed" else datetime.now(timezone.utc)
-                duration = (end_time - project.created_at).total_seconds()
-
-                # Calculate context usage (hardcoded default budget)
-                context_budget = 150000  # Hardcoded default (Project.context_budget removed)
-                context_percent = (project.context_used / context_budget * 100) if context_budget > 0 else 0
-
-                stats.append(
-                    ProjectStatsResponse(
-                        project_id=str(project.id),
-                        name=project.name,
-                        status=project.status,
-                        duration_seconds=duration,
-                        agent_count=agent_count,
-                        message_count=message_count,
-                        task_count=task_count,
-                        completed_tasks=completed_task_count,
-                        context_used=project.context_used,
-                        context_budget=context_budget,
-                        context_usage_percent=context_percent,
-                        last_activity=last_message or project.updated_at,
-                    )
-                )
-
-            return stats
-
-    except (RuntimeError, OSError) as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        return stats
 
 
 @router.get("/project/{project_id}", response_model=ProjectStatsResponse)
@@ -317,59 +308,51 @@ async def get_agent_statistics(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        stats_repo = StatisticsRepository(state.db_manager)
-        async with state.db_manager.get_session_async() as session:
-            agent_executions = await stats_repo.get_agent_executions_with_filters(
-                session, tenant_key, project_id=project_id, status=status, limit=limit
+    stats_repo = StatisticsRepository(state.db_manager)
+    async with state.db_manager.get_session_async() as session:
+        agent_executions = await stats_repo.get_agent_executions_with_filters(
+            session, tenant_key, project_id=project_id, status=status, limit=limit
+        )
+
+        stats = []
+        for agent_execution in agent_executions:
+            sent_count = await stats_repo.count_messages_sent_by_agent(session, tenant_key, agent_execution.agent_name)
+
+            received_count = await stats_repo.count_messages_received_by_agent(
+                session, tenant_key, agent_execution.agent_name
             )
 
-            stats = []
-            for agent_execution in agent_executions:
-                sent_count = await stats_repo.count_messages_sent_by_agent(
-                    session, tenant_key, agent_execution.agent_name
+            task_count = agent_execution.messages_sent_count
+            completed_count = agent_execution.messages_read_count
+
+            avg_response_time = 30.0
+
+            last_sent = await stats_repo.get_last_message_sent_by_agent(session, tenant_key, agent_execution.agent_name)
+
+            agent_job = await stats_repo.get_agent_job_by_job_id(session, tenant_key, agent_execution.job_id)
+
+            created_ts = agent_execution.started_at or (
+                agent_execution.job.created_at if agent_job else agent_execution.started_at
+            )
+
+            stats.append(
+                AgentStatsResponse(
+                    agent_id=str(agent_execution.agent_id),
+                    name=agent_execution.agent_name,
+                    role=agent_execution.agent_display_name,
+                    status=agent_execution.status,
+                    project_id=str(agent_job.project_id) if agent_job else "unknown",
+                    created_at=created_ts,
+                    messages_sent=sent_count,
+                    messages_received=received_count,
+                    tasks_assigned=task_count,
+                    tasks_completed=completed_count,
+                    average_response_time_seconds=avg_response_time,
+                    last_activity=last_sent or created_ts,
                 )
+            )
 
-                received_count = await stats_repo.count_messages_received_by_agent(
-                    session, tenant_key, agent_execution.agent_name
-                )
-
-                task_count = agent_execution.messages_sent_count
-                completed_count = agent_execution.messages_read_count
-
-                avg_response_time = 30.0
-
-                last_sent = await stats_repo.get_last_message_sent_by_agent(
-                    session, tenant_key, agent_execution.agent_name
-                )
-
-                agent_job = await stats_repo.get_agent_job_by_job_id(session, tenant_key, agent_execution.job_id)
-
-                created_ts = agent_execution.started_at or (
-                    agent_execution.job.created_at if agent_job else agent_execution.started_at
-                )
-
-                stats.append(
-                    AgentStatsResponse(
-                        agent_id=str(agent_execution.agent_id),
-                        name=agent_execution.agent_name,
-                        role=agent_execution.agent_display_name,
-                        status=agent_execution.status,
-                        project_id=str(agent_job.project_id) if agent_job else "unknown",
-                        created_at=created_ts,
-                        messages_sent=sent_count,
-                        messages_received=received_count,
-                        tasks_assigned=task_count,
-                        tasks_completed=completed_count,
-                        average_response_time_seconds=avg_response_time,
-                        last_activity=last_sent or created_ts,
-                    )
-                )
-
-            return stats
-
-    except (RuntimeError, OSError) as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        return stats
 
 
 @router.get("/messages", response_model=MessageStatsResponse)
@@ -389,61 +372,55 @@ async def get_message_statistics(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        stats_repo = StatisticsRepository(state.db_manager)
-        async with state.db_manager.get_session_async() as session:
-            now = datetime.now(timezone.utc)
-            if time_range == "1h":
-                since = now - timedelta(hours=1)
-            elif time_range == "24h":
-                since = now - timedelta(days=1)
-            elif time_range == "7d":
-                since = now - timedelta(days=7)
-            elif time_range == "30d":
-                since = now - timedelta(days=30)
-            else:
-                since = None
+    stats_repo = StatisticsRepository(state.db_manager)
+    async with state.db_manager.get_session_async() as session:
+        now = datetime.now(timezone.utc)
+        if time_range == "1h":
+            since = now - timedelta(hours=1)
+        elif time_range == "24h":
+            since = now - timedelta(days=1)
+        elif time_range == "7d":
+            since = now - timedelta(days=7)
+        elif time_range == "30d":
+            since = now - timedelta(days=30)
+        else:
+            since = None
 
-            total = await stats_repo.count_messages_with_filters(
-                session, tenant_key, project_id=project_id, since=since
-            )
+        total = await stats_repo.count_messages_with_filters(session, tenant_key, project_id=project_id, since=since)
 
-            pending = await stats_repo.count_messages_by_status_with_filters(
-                session, tenant_key, status="pending", project_id=project_id, since=since
-            )
+        pending = await stats_repo.count_messages_by_status_with_filters(
+            session, tenant_key, status="pending", project_id=project_id, since=since
+        )
 
-            acknowledged = await stats_repo.count_messages_by_status_with_filters(
-                session, tenant_key, status="acknowledged", project_id=project_id, since=since
-            )
+        acknowledged = await stats_repo.count_messages_by_status_with_filters(
+            session, tenant_key, status="acknowledged", project_id=project_id, since=since
+        )
 
-            completed = await stats_repo.count_messages_by_status_with_filters(
-                session, tenant_key, status="completed", project_id=project_id, since=since
-            )
+        completed = await stats_repo.count_messages_by_status_with_filters(
+            session, tenant_key, status="completed", project_id=project_id, since=since
+        )
 
-            failed = await stats_repo.count_messages_by_status_with_filters(
-                session, tenant_key, status="failed", project_id=project_id, since=since
-            )
+        failed = await stats_repo.count_messages_by_status_with_filters(
+            session, tenant_key, status="failed", project_id=project_id, since=since
+        )
 
-            avg_processing_time = 45.0
+        avg_processing_time = 45.0
 
-            hours_in_range = max((now - since).total_seconds() / 3600, 1) if since else 24
-            messages_per_hour = total / hours_in_range
+        hours_in_range = max((now - since).total_seconds() / 3600, 1) if since else 24
+        messages_per_hour = total / hours_in_range
 
-            peak_hour_messages = int(messages_per_hour * 1.5)
+        peak_hour_messages = int(messages_per_hour * 1.5)
 
-            return MessageStatsResponse(
-                total_messages=total,
-                pending_messages=pending,
-                acknowledged_messages=acknowledged,
-                completed_messages=completed,
-                failed_messages=failed,
-                average_processing_time_seconds=avg_processing_time,
-                messages_per_hour=messages_per_hour,
-                peak_hour_messages=peak_hour_messages,
-            )
-
-    except (RuntimeError, OSError) as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        return MessageStatsResponse(
+            total_messages=total,
+            pending_messages=pending,
+            acknowledged_messages=acknowledged,
+            completed_messages=completed,
+            failed_messages=failed,
+            average_processing_time_seconds=avg_processing_time,
+            messages_per_hour=messages_per_hour,
+            peak_hour_messages=peak_hour_messages,
+        )
 
 
 @router.get("/performance", response_model=PerformanceMetricsResponse)
@@ -455,58 +432,54 @@ async def get_performance_metrics():
 
     from api.app import state
 
-    try:
-        # Measure API response time
-        start_time = time.time()
+    # Measure API response time
+    start_time = time.time()
 
-        # Get memory usage
-        process = psutil.Process()
-        memory_mb = process.memory_info().rss / (1024 * 1024)
+    # Get memory usage
+    process = psutil.Process()
+    memory_mb = process.memory_info().rss / (1024 * 1024)
 
-        # Get CPU usage
-        cpu_percent = psutil.cpu_percent(interval=0.1)
+    # Get CPU usage
+    cpu_percent = psutil.cpu_percent(interval=0.1)
 
-        # Get disk usage
-        disk_usage = psutil.disk_usage("/")
-        disk_percent = disk_usage.percent
+    # Get disk usage
+    disk_usage = psutil.disk_usage("/")
+    disk_percent = disk_usage.percent
 
-        # Count WebSocket connections
-        websocket_connections = len(state.connections) if state.connections else 0
+    # Count WebSocket connections
+    websocket_connections = len(state.connections) if state.connections else 0
 
-        # Count active sessions (simplified)
-        active_sessions = 1  # Current session
+    # Count active sessions (simplified)
+    active_sessions = 1  # Current session
 
-        # Calculate error rate (simplified)
-        error_rate = 0.1  # 0.1% error rate
+    # Calculate error rate (simplified)
+    error_rate = 0.1  # 0.1% error rate
 
-        db_query_time = 0
-        if state.db_manager:
-            stats_repo = StatisticsRepository(state.db_manager)
-            db_start = time.time()
-            try:
-                async with state.db_manager.get_session_async() as session:
-                    await stats_repo.execute_health_check(session)
-                db_query_time = (time.time() - db_start) * 1000
-            except Exception:
-                logger.exception("Database health check failed")
-                db_query_time = -1
+    db_query_time = 0
+    if state.db_manager:
+        stats_repo = StatisticsRepository(state.db_manager)
+        db_start = time.time()
+        try:
+            async with state.db_manager.get_session_async() as session:
+                await stats_repo.execute_health_check(session)
+            db_query_time = (time.time() - db_start) * 1000
+        except Exception:
+            logger.exception("Database health check failed")
+            db_query_time = -1
 
-        # Calculate API response time
-        api_response_time = (time.time() - start_time) * 1000
+    # Calculate API response time
+    api_response_time = (time.time() - start_time) * 1000
 
-        return PerformanceMetricsResponse(
-            api_response_time_ms=api_response_time,
-            database_query_time_ms=db_query_time,
-            websocket_connections=websocket_connections,
-            active_sessions=active_sessions,
-            memory_usage_mb=memory_mb,
-            cpu_usage_percent=cpu_percent,
-            disk_usage_percent=disk_percent,
-            error_rate_percent=error_rate,
-        )
-
-    except (RuntimeError, OSError) as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return PerformanceMetricsResponse(
+        api_response_time_ms=api_response_time,
+        database_query_time_ms=db_query_time,
+        websocket_connections=websocket_connections,
+        active_sessions=active_sessions,
+        memory_usage_mb=memory_mb,
+        cpu_usage_percent=cpu_percent,
+        disk_usage_percent=disk_percent,
+        error_rate_percent=error_rate,
+    )
 
 
 @router.get("/timeseries/{metric}", response_model=TimeSeriesResponse)
@@ -525,47 +498,43 @@ async def get_timeseries_data(
     if metric not in valid_metrics:
         raise HTTPException(status_code=400, detail=f"Invalid metric. Choose from: {valid_metrics}")
 
-    try:
-        # Generate sample time series data
-        now = datetime.now(timezone.utc)
-        data_points = []
+    # Generate sample time series data
+    now = datetime.now(timezone.utc)
+    data_points = []
 
-        if period == "1h":
-            points = 12  # 5-minute intervals
-            interval = timedelta(minutes=5)
-        elif period == "24h":
-            points = 24  # Hourly
-            interval = timedelta(hours=1)
-        elif period == "7d":
-            points = 7  # Daily
-            interval = timedelta(days=1)
-        else:
-            points = 24
-            interval = timedelta(hours=1)
+    if period == "1h":
+        points = 12  # 5-minute intervals
+        interval = timedelta(minutes=5)
+    elif period == "24h":
+        points = 24  # Hourly
+        interval = timedelta(hours=1)
+    elif period == "7d":
+        points = 7  # Daily
+        interval = timedelta(days=1)
+    else:
+        points = 24
+        interval = timedelta(hours=1)
 
-        # Generate data points (simplified - in production, query actual data)
-        import random
+    # Generate data points (simplified - in production, query actual data)
+    import random
 
-        for i in range(points):
-            timestamp = now - (interval * (points - i - 1))
+    for i in range(points):
+        timestamp = now - (interval * (points - i - 1))
 
-            if metric == "messages":
-                value = random.randint(10, 100)
-            elif metric == "agents":
-                value = random.randint(1, 10)
-            elif metric == "tasks":
-                value = random.randint(5, 50)
-            elif metric == "context_usage":
-                value = random.randint(1000, 150000)
-            else:  # errors
-                value = random.randint(0, 5)
+        if metric == "messages":
+            value = random.randint(10, 100)
+        elif metric == "agents":
+            value = random.randint(1, 10)
+        elif metric == "tasks":
+            value = random.randint(5, 50)
+        elif metric == "context_usage":
+            value = random.randint(1000, 150000)
+        else:  # errors
+            value = random.randint(0, 5)
 
-            data_points.append(TimeSeriesDataPoint(timestamp=timestamp, value=float(value)))
+        data_points.append(TimeSeriesDataPoint(timestamp=timestamp, value=float(value)))
 
-        return TimeSeriesResponse(metric=metric, period=period, data_points=data_points)
-
-    except (RuntimeError, OSError) as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return TimeSeriesResponse(metric=metric, period=period, data_points=data_points)
 
 
 @router.get("/health/detailed")
