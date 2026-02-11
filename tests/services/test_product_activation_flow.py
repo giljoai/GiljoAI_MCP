@@ -88,11 +88,11 @@ async def test_get_active_product_returns_vision_path_without_lazy_load_error(mo
     # Call get_active_product - should NOT raise MissingGreenlet error
     result = await service.get_active_product()
 
-    # Verify success (0730d: no success wrapper, check product directly)
-    assert result["product"] is not None
-    assert result["product"]["id"] == "test-product-id"
-    assert result["product"]["name"] == "Test Product"
-    assert result["product"]["vision_path"] == "/path/to/vision.md"
+    # Verify success (0731b: returns Product ORM model directly, or None)
+    assert result is not None
+    assert result.id == "test-product-id"
+    assert result.name == "Test Product"
+    assert result.primary_vision_path == "/path/to/vision.md"
 
 
 @pytest.mark.asyncio
@@ -113,9 +113,8 @@ async def test_get_active_product_no_active_product(mock_db_manager):
 
     result = await service.get_active_product()
 
-    # 0730d: No success wrapper, check product is None
-    assert result["product"] is None
-    assert "No active product" in result.get("message", "")
+    # 0731b: Returns None when no active product
+    assert result is None
 
 
 @pytest.mark.asyncio
@@ -144,8 +143,8 @@ async def test_get_active_product_multi_tenant_isolation(mock_db_manager):
 
     # The query should have been built with tenant filter
     # In a real integration test, we'd verify the actual SQL
-    # 0730d: No success wrapper, just verify product is None (tenant isolation works)
-    assert result["product"] is None
+    # 0731b: Returns None when no active product (tenant isolation works)
+    assert result is None
 
 
 @pytest.mark.asyncio
@@ -207,5 +206,5 @@ async def test_get_active_product_with_empty_vision_documents(mock_db_manager):
 
     result = await service.get_active_product()
 
-    # 0730d: No success wrapper
-    assert result["product"]["vision_path"] == ""
+    # 0731b: Returns Product ORM model directly
+    assert result.primary_vision_path == ""
