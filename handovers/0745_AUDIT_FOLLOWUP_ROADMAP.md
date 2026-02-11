@@ -24,7 +24,7 @@
 |----------|-------|--------|--------|-----------|
 | 0745a | Database Migration & P0 Fixes | NOT STARTED | -- | -- |
 | 0745b | Dependency Security & Cleanup | NOT STARTED | -- | -- |
-| 0745c | Backend Dead Code Removal | NOT STARTED | -- | -- |
+| 0745c | Backend Dead Code Removal | COMPLETED | feature/0745c-backend-dead-code | 2026-02-10 |
 | 0745d | Frontend Cleanup | NOT STARTED | -- | -- |
 | 0745e | Architecture Polish | NOT STARTED | -- | -- |
 | 0745f | Documentation Sync | NOT STARTED | -- | -- |
@@ -249,6 +249,34 @@ TESTING: Light. Run existing suite after each phase. No new tests.
 When done, update the original handover file with a completion summary.
 Count total lines removed and files deleted in the summary.
 ```
+
+### Completion Summary (2026-02-10)
+
+**Branch**: `feature/0745c-backend-dead-code`
+**Test results**: 493 passed, 31 skipped, 1 pre-existing failure (unrelated `mcp_agent_jobs` table test)
+
+**Phase 1 - Orphan modules deleted (8 files, ~2,345 lines)**:
+- Deleted 5 orphan modules: `agent_message_queue.py`, `agent_coordination_external.py`, `path_normalizer.py`, `websocket_service.py`, `mcp_http_temp.py`
+- Deleted 2 orphan test files: `test_agent_communication_queue.py`, `test_agent_coordination_external.py`
+- Edited 7 test files to remove references to deleted modules
+
+**Phase 2 - Dead WebSocket methods (12 methods, ~293 lines)**:
+- Removed 12 dead broadcast methods from `api/websocket.py` (11) and `api/dependencies/websocket.py` (1)
+- All 12 verified zero production callers. Zero false positives.
+
+**Phase 3 - Print statements**: No action needed. All `print()` in `src/giljo_mcp/` are in docstrings, CLI utilities, or `__main__` blocks.
+
+**Phase 4 - Dead functions + lint (30+ functions, ~1,700 lines)**:
+- `auth_manager.py`: Removed 5 dead functions
+- `config_manager.py`: Removed 2 dead functions (kept `get_database_url`, `save_to_file` - used by scripts/)
+- `setup/state_manager.py`: Removed 10 dead methods
+- `discovery.py`: Removed 13 dead methods (5 named + 8 transitively dead helpers)
+- `optimization/` directory: Deleted entirely (3 files, ~831 lines)
+- `lifecycle.py`: Fixed 2 lint issues (unused variable assignments)
+- Cleaned up `orchestration_service.py` import of dead `SerenaOptimizer`
+- Deleted `test_serena_optimizer.py` (606 lines, tested deleted module)
+
+**Totals**: ~11 files deleted, ~25 files modified, ~4,300+ lines removed. Zero false positives encountered.
 
 ---
 
