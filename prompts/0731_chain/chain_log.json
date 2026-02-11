@@ -1,0 +1,98 @@
+{
+  "chain_id": "0731",
+  "chain_name": "Typed Service Returns - Dict Wrapper Elimination",
+  "created_at": "2026-02-11",
+  "total_sessions": 4,
+  "branch": "feature/0731-typed-service-returns",
+  "parent_commit": "549fbd25",
+  "design_reference": "docs/architecture/service_response_models.md",
+  "sessions": [
+    {
+      "session_id": "0731a",
+      "title": "Pydantic Response Models + Design Validation",
+      "color": "#4CAF50",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Validate existing design doc (docs/architecture/service_response_models.md) against current codebase",
+        "Create Pydantic response model classes in src/giljo_mcp/schemas/service_responses.py",
+        "Create shared result types (DeleteResult, TransferResult, ListResult)",
+        "Write unit tests for all response models (validation, serialization)",
+        "Commit response model classes"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0731b",
+      "title": "Tier 1 Service Refactoring (69 methods)",
+      "color": "#2196F3",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Refactor OrgService (33 dict wrappers -> typed returns + exceptions)",
+        "Refactor UserService (19 dict wrappers -> typed returns + exceptions)",
+        "Refactor ProductService (17 dict wrappers -> typed returns + exceptions)",
+        "Update all existing service tests for new return types",
+        "Write new tests for exception paths",
+        "Commit after each service"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0731c",
+      "title": "Tier 2+3 Service Refactoring (52 methods)",
+      "color": "#9C27B0",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Refactor TaskService (13 dict wrappers)",
+        "Refactor ProjectService (25 dict wrappers)",
+        "Refactor MessageService (8 dict wrappers)",
+        "Refactor OrchestrationService (16 dict wrappers)",
+        "Refactor remaining services: AuthService(9), TemplateService(4), SettingsService(2), ConfigService(2), VisionSummarizer(2), ConsolidationService(1)",
+        "Update all service tests",
+        "Commit after each service"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0731d",
+      "title": "API Endpoint Updates + Final Validation",
+      "color": "#FF9800",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Remove dict-checking patterns from all API endpoints",
+        "Update endpoints to use typed service returns directly",
+        "Remove raise_for_service_result utility if present",
+        "Run comprehensive pytest suite",
+        "Verify frontend build passes",
+        "Write completion report",
+        "Commit and report merge readiness"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    }
+  ],
+  "chain_summary": null,
+  "final_status": "in_progress"
+}
