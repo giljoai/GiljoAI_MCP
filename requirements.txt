@@ -9,7 +9,6 @@
 fastapi>=0.100.0            # REST API and WebSockets
 uvicorn[standard]>=0.23.0   # ASGI server with production extras
 pydantic>=2.0.0             # Data validation and serialization
-pydantic-settings>=2.0.0    # Settings management from env/files
 
 # Database (PostgreSQL Only - Required)
 sqlalchemy>=2.0.0           # ORM with async support
@@ -26,7 +25,7 @@ PyJWT>=2.8.0                      # JWT token handling (using PyJWT instead of p
 email-validator>=2.1.0            # Required by Pydantic EmailStr (auth.py, users.py)
 
 # MCP SDK (Model Context Protocol)
-mcp==1.12.3                 # MCP SDK (pinned for serena-agent compatibility)
+mcp>=1.23.0                 # MCP SDK (upgraded from 1.12.3 for CVE-2025-66416 DNS rebinding fix)
 
 # Core Utilities
 python-dotenv>=1.0.0        # Environment variable loading
