@@ -188,10 +188,9 @@ OrchestratorSimulator(
 
 Execute complete 7-task staging workflow.
 
-**Returns**:
+**Returns** (on success - raises `OrchestrationError` on failure):
 ```python
 {
-    "success": True,
     "staging_complete": True,
     "duration_ms": 15234,
     "tasks_completed": [
@@ -313,15 +312,16 @@ except Exception as e:
 
 ### Graceful Degradation
 
-If a task fails, `execute_staging()` returns:
+If a task fails, `execute_staging()` raises an `OrchestrationError` with context:
 ```python
-{
-    "success": False,
-    "staging_complete": False,
-    "error": "Error message here",
-    "staging_result": {...},  # Partial results
-    "spawned_agents": [...]   # Agents spawned before failure
-}
+# Exception contains partial results
+raise OrchestrationError(
+    message="Staging failed at task: agent_discovery",
+    context={
+        "staging_result": {...},  # Partial results
+        "spawned_agents": [...]   # Agents spawned before failure
+    }
+)
 ```
 
 ---
@@ -369,7 +369,7 @@ from unittest.mock import patch
 async def test_with_mocks(simulator):
     """Mock MCP calls for fast unit tests"""
     with patch("tests.fixtures.orchestrator_simulator.OrchestratorSimulator._call_mcp_tool") as mock_call:
-        mock_call.return_value = {"success": True}
+        mock_call.return_value = {"tools": ["fetch_context", "get_available_agents"]}
 
         await simulator.task2_mcp_health_check()
 
@@ -436,7 +436,7 @@ async def test_mcp_failure(simulator):
 **Solution**:
 1. Verify agent templates seeded in database
 2. Check tenant_key matches between simulator and database
-3. Mock response should include `"success": True` and `"agents": [...]`
+3. Mock response should include `"agents": [...]`
 
 ### Issue: "Mission token budget exceeded"
 

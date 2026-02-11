@@ -93,7 +93,7 @@ python startup.py --verbose    # Detailed logging
 4. **Dashboard Launch**: Opens browser directly to dashboard
 5. **Authentication**: Standard login required for all connections
 
-**For complete details**, see [Startup Simplification Guide](docs/guides/STARTUP_SIMPLIFICATION.md)
+**For complete details**, see [Installation Flow](docs/INSTALLATION_FLOW_PROCESS.md)
 
 ### Architecture (v3.0)
 
@@ -106,7 +106,7 @@ GiljoAI MCP v3.0 uses a **unified architecture** with no deployment modes:
 | **Auth**       | Always enabled                          | JWT authentication for all connections      |
 | **Network**    | Firewall controls access                | Localhost-only by default, configurable for LAN/WAN |
 
-**No deployment modes** - one codebase, all contexts. See [v3.0 Architecture](docs/VERIFICATION_OCT9.md) for details.
+**No deployment modes** - one codebase, all contexts. See [Server Architecture](docs/SERVER_ARCHITECTURE_TECH_STACK.md) for details.
 
 ### Next Steps
 
