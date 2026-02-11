@@ -1,5 +1,5 @@
 """
-Unit tests for ProductService (Handover 0127b)
+Unit tests for ProductService (Handover 0127b, updated 0731b)
 
 Tests cover:
 - CRUD operations (create, get, list, update)
@@ -7,6 +7,9 @@ Tests cover:
 - Metrics and statistics
 - Cascade impact analysis
 - Error handling and edge cases
+
+Handover 0731b: Updated assertions for typed returns (Product ORM,
+Pydantic models) instead of dict[str, Any] wrappers.
 
 Target: >80% line coverage
 """
@@ -18,6 +21,13 @@ from uuid import uuid4
 import pytest
 
 from src.giljo_mcp.models import Product
+from src.giljo_mcp.schemas.service_responses import (
+    CascadeImpact,
+    DeleteResult,
+    ProductStatistics,
+    PurgeResult,
+    VisionUploadResult,
+)
 from src.giljo_mcp.services.product_service import ProductService
 
 
@@ -62,10 +72,10 @@ class TestProductServiceCRUD:
             name="Test Product", description="Test description", project_path="/test/path"
         )
 
-        # Assert - expect dict without "success" wrapper
-        assert "product_id" in result
-        assert result["name"] == "Test Product"
-        assert result["description"] == "Test description"
+        # Assert - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
+        assert result.name == "Test Product"
+        assert result.description == "Test description"
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -122,10 +132,10 @@ class TestProductServiceCRUD:
         # Act
         result = await service.get_product("test-id", include_metrics=False)
 
-        # Assert
-        assert result["success"] is True
-        assert result["product"]["id"] == "test-id"
-        assert result["product"]["name"] == "Test Product"
+        # Assert - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
+        assert result.id == "test-id"
+        assert result.name == "Test Product"
 
     @pytest.mark.asyncio
     async def test_get_product_not_found(self, mock_db_manager):
@@ -171,10 +181,10 @@ class TestProductServiceCRUD:
         # Act
         result = await service.list_products(include_metrics=False)
 
-        # Assert
-        assert result["success"] is True
-        assert len(result["products"]) == 1
-        assert result["products"][0]["name"] == "Product 1"
+        # Assert - returns list[Product] (0731b typed returns)
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].name == "Product 1"
 
     @pytest.mark.asyncio
     async def test_update_product_success(self, mock_db_manager):
@@ -198,9 +208,9 @@ class TestProductServiceCRUD:
         # Act
         result = await service.update_product("test-id", name="New Name", description="New Description")
 
-        # Assert
-        assert result["success"] is True
-        assert result["product"]["name"] == "New Name"
+        # Assert - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
+        assert result.name == "New Name"
         session.commit.assert_awaited_once()
 
 
@@ -242,10 +252,9 @@ class TestProductServiceLifecycle:
         # Act
         result = await service.activate_product("test-id")
 
-        # Assert
-        assert result["success"] is True
-        assert result["product"]["is_active"] is True
-        assert result["deactivated_count"] == 1
+        # Assert - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
+        assert result.is_active is True
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -268,8 +277,8 @@ class TestProductServiceLifecycle:
         # Act
         result = await service.deactivate_product("test-id")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
         assert product.is_active is False
         session.commit.assert_awaited_once()
 
@@ -292,8 +301,9 @@ class TestProductServiceLifecycle:
         # Act
         result = await service.delete_product("test-id")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - returns DeleteResult Pydantic model (0731b typed returns)
+        assert isinstance(result, DeleteResult)
+        assert result.deleted is True
         assert product.deleted_at is not None
         assert product.is_active is False
         session.commit.assert_awaited_once()
@@ -318,8 +328,8 @@ class TestProductServiceLifecycle:
         # Act
         result = await service.restore_product("test-id")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
         assert product.deleted_at is None
         session.commit.assert_awaited_once()
 
@@ -353,12 +363,11 @@ class TestProductServiceLifecycle:
         # Act
         result = await service.list_deleted_products()
 
-        # Assert
-        assert result["success"] is True
-        assert len(result["products"]) == 1
-        assert "days_until_purge" in result["products"][0]
-        assert result["products"][0]["project_count"] == 2
-        assert result["products"][0]["vision_documents_count"] == 1
+        # Assert - returns list[Product] (0731b typed returns)
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].id == "deleted-id"
+        assert result[0].name == "Deleted Product"
 
 
 class TestProductServiceMetrics:
@@ -394,10 +403,10 @@ class TestProductServiceMetrics:
         # Act
         result = await service.get_product_statistics("test-id")
 
-        # Assert
-        assert result["success"] is True
-        assert result["statistics"]["product_id"] == "test-id"
-        assert result["statistics"]["name"] == "Test Product"
+        # Assert - returns ProductStatistics Pydantic model (0731b typed returns)
+        assert isinstance(result, ProductStatistics)
+        assert result.product_id == "test-id"
+        assert result.name == "Test Product"
 
     @pytest.mark.asyncio
     async def test_get_cascade_impact(self, mock_db_manager):
@@ -428,14 +437,14 @@ class TestProductServiceMetrics:
         # Act
         result = await service.get_cascade_impact("test-id")
 
-        # Assert
-        assert result["success"] is True
-        assert result["impact"]["product_id"] == "test-id"
-        assert result["impact"]["product_name"] == "Test Product"
-        assert result["impact"]["total_projects"] == 5
-        assert result["impact"]["total_tasks"] == 10
-        assert result["impact"]["total_vision_documents"] == 3
-        assert "warning" in result["impact"]
+        # Assert - returns CascadeImpact Pydantic model (0731b typed returns)
+        assert isinstance(result, CascadeImpact)
+        assert result.product_id == "test-id"
+        assert result.product_name == "Test Product"
+        assert result.total_projects == 5
+        assert result.total_tasks == 10
+        assert result.total_vision_documents == 3
+        assert result.warning != ""
 
     @pytest.mark.asyncio
     async def test_get_active_product_found(self, mock_db_manager):
@@ -467,10 +476,10 @@ class TestProductServiceMetrics:
         # Act
         result = await service.get_active_product()
 
-        # Assert
-        assert result["success"] is True
-        assert result["product"]["id"] == "active-id"
-        assert result["product"]["name"] == "Active Product"
+        # Assert - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
+        assert result.id == "active-id"
+        assert result.name == "Active Product"
 
     @pytest.mark.asyncio
     async def test_get_active_product_none(self, mock_db_manager):
@@ -485,10 +494,8 @@ class TestProductServiceMetrics:
         # Act
         result = await service.get_active_product()
 
-        # Assert
-        assert result["success"] is True
-        assert result["product"] is None
-        assert "No active product" in result["message"]
+        # Assert - returns None when no active product (0731b typed returns)
+        assert result is None
 
 
 class TestProductServiceErrorHandling:
@@ -567,9 +574,9 @@ class TestProductServiceConfigData:
             name="Test Product", description="Product with config", config_data=config
         )
 
-        # Assert
-        assert result["success"] is True
-        assert "product_id" in result
+        # Assert - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
+        assert result.name == "Test Product"
         session.commit.assert_awaited_once()
 
         # Verify config_data was passed to Product constructor
@@ -596,8 +603,8 @@ class TestProductServiceConfigData:
         # Act
         result = await service.create_product(name="Test Product No Config")
 
-        # Assert
-        assert result["success"] is True
+        # Assert - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -622,8 +629,8 @@ class TestProductServiceConfigData:
         updated_config = {"version": "2.0", "new_field": "value"}
         result = await service.update_product(product_id=existing_product.id, config_data=updated_config)
 
-        # Assert
-        assert result["success"] is True
+        # Assert - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
         assert existing_product.config_data == updated_config
         session.commit.assert_awaited_once()
 
@@ -675,11 +682,11 @@ class TestProductServiceVisionUpload:
                     filename="vision.md",
                 )
 
-        # Assert
-        assert result["success"] is True
-        assert result["document_name"] == "vision.md"
-        assert result["chunks_created"] >= 1
-        assert result["total_tokens"] > 0
+        # Assert - returns VisionUploadResult Pydantic model (0731b typed returns)
+        assert isinstance(result, VisionUploadResult)
+        assert result.document_name == "vision.md"
+        assert result.chunks_created >= 1
+        assert result.total_tokens > 0
 
     @pytest.mark.asyncio
     async def test_upload_vision_product_not_found(self, mock_db_manager):
@@ -731,9 +738,9 @@ class TestProductServiceVisionUpload:
                 auto_chunk=False,
             )
 
-        # Assert
-        assert result["success"] is True
-        assert result["chunks_created"] == 0  # No chunking when disabled
+        # Assert - returns VisionUploadResult Pydantic model (0731b typed returns)
+        assert isinstance(result, VisionUploadResult)
+        assert result.chunks_created == 0  # No chunking when disabled
 
 
 class TestProductServiceProductMemory:
@@ -781,14 +788,13 @@ class TestProductServiceProductMemory:
             product_memory=custom_memory,
         )
 
-        # ASSERT
-        assert result is not None
-        assert "product_memory" in result
-        # Note: sequential_history comes from table, so it will be empty for new product
-        assert result["product_memory"]["git_integration"]["enabled"] is True
-        assert result["product_memory"]["git_integration"]["commit_limit"] == 20
-        assert result["product_memory"]["sequential_history"] == []  # Empty for new product
-        assert result["product_memory"]["context"]["token_count"] == 5000
+        # ASSERT - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
+        assert result.name == "Custom Memory Product"
+        # product_memory is persisted on the ORM model as JSONB
+        assert result.product_memory is not None
+        assert result.product_memory["git_integration"]["enabled"] is True
+        assert result.product_memory["git_integration"]["commit_limit"] == 20
 
     @pytest.mark.asyncio
     async def test_create_product_without_product_memory(self, mock_db_manager):
@@ -821,11 +827,11 @@ class TestProductServiceProductMemory:
             # Note: No product_memory parameter provided
         )
 
-        # ASSERT
-        assert result is not None
-        assert "product_memory" in result
-        # Default structure matches ProductService implementation
-        assert result["product_memory"] == {"git_integration": {}, "sequential_history": [], "context": {}}
+        # ASSERT - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
+        assert result.name == "Default Memory Product"
+        # Default product_memory JSONB is set on the ORM model
+        assert result.product_memory is not None
 
     @pytest.mark.asyncio
     async def test_update_product_product_memory(self, mock_db_manager):
@@ -873,8 +879,8 @@ class TestProductServiceProductMemory:
         # ACT
         result = await service.update_product(product_id=product_id, product_memory=updated_memory)
 
-        # ASSERT
-        assert result is not None
+        # ASSERT - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
         # Verify the mock object was updated
         assert existing_product.product_memory == updated_memory
         assert existing_product.product_memory["git_integration"]["enabled"] is True
@@ -916,9 +922,8 @@ class TestProductServiceTargetPlatforms:
         # ACT
         result = await service.create_product(name="Test Product", description="Testing default target_platforms")
 
-        # ASSERT
-        assert result["success"] is True
-        assert "product_id" in result
+        # ASSERT - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
         # Verify default value was set
         session.add.assert_called_once()
 
@@ -948,8 +953,8 @@ class TestProductServiceTargetPlatforms:
             name="Windows Product", description="Windows-only product", target_platforms=["windows"]
         )
 
-        # ASSERT
-        assert result["success"] is True
+        # ASSERT - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -980,8 +985,8 @@ class TestProductServiceTargetPlatforms:
             target_platforms=["windows", "linux", "macos"],
         )
 
-        # ASSERT
-        assert result["success"] is True
+        # ASSERT - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -1060,7 +1065,7 @@ class TestProductServiceTargetPlatforms:
         # ACT
         result = await service.update_product(product_id=product_id, target_platforms=["linux", "macos"])
 
-        # ASSERT
-        assert result["success"] is True
+        # ASSERT - returns Product ORM model (0731b typed returns)
+        assert isinstance(result, Product)
         assert existing_product.target_platforms == ["linux", "macos"]
         session.commit.assert_awaited_once()

@@ -2,7 +2,10 @@
 Unit tests for ProductService.update_quality_standards method.
 
 Handover 0316: Phase 5 - Service Layer Updates
-Tests written FIRST following TDD discipline (RED → GREEN → REFACTOR).
+Tests written FIRST following TDD discipline (RED -> GREEN -> REFACTOR).
+
+Handover 0731b: Updated assertions for typed returns (Product ORM model)
+instead of dict[str, Any] wrappers.
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -54,8 +57,9 @@ async def test_update_quality_standards_success(mock_db_manager):
     # Verify product updated
     assert mock_product.quality_standards == "80% coverage, zero critical bugs"
     assert session.commit.called
-    assert result["product_id"] == "test-product-id"
-    assert result["quality_standards"] == "80% coverage, zero critical bugs"
+    # 0731b: Returns Product ORM model
+    assert isinstance(result, Product)
+    assert result.quality_standards == "80% coverage, zero critical bugs"
 
 
 @pytest.mark.asyncio
@@ -158,4 +162,6 @@ async def test_update_quality_standards_updates_existing_value(mock_db_manager):
 
     # Verify old value replaced
     assert mock_product.quality_standards == "New standards: 90% coverage, TDD required"
-    assert result["quality_standards"] == "New standards: 90% coverage, TDD required"
+    # 0731b: Returns Product ORM model
+    assert isinstance(result, Product)
+    assert result.quality_standards == "New standards: 90% coverage, TDD required"
