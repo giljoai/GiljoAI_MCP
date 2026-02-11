@@ -49,7 +49,6 @@ export function useNotificationReminder() {
   function checkAndRemind() {
     // Skip if reminders are disabled
     if (!isReminderEnabled()) {
-      console.log('[NotificationReminder] Reminders disabled in settings')
       return
     }
 
@@ -70,7 +69,6 @@ export function useNotificationReminder() {
       })
 
       lastReminderAt.value = new Date().toISOString()
-      console.log('[NotificationReminder] Reminder shown:', message)
     }
   }
 
@@ -79,7 +77,6 @@ export function useNotificationReminder() {
    */
   function start() {
     if (intervalId.value) {
-      console.log('[NotificationReminder] Already running')
       return
     }
 
@@ -91,8 +88,6 @@ export function useNotificationReminder() {
     // Set up periodic check
     intervalId.value = setInterval(checkAndRemind, REMINDER_INTERVAL)
     isActive.value = true
-
-    console.log('[NotificationReminder] Started with interval:', REMINDER_INTERVAL, 'ms')
   }
 
   /**
@@ -104,7 +99,6 @@ export function useNotificationReminder() {
       intervalId.value = null
     }
     isActive.value = false
-    console.log('[NotificationReminder] Stopped')
   }
 
   /**

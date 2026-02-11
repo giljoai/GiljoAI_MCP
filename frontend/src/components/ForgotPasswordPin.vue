@@ -351,8 +351,6 @@ async function handleVerifyPin() {
     // Since the API endpoint combines both operations, we'll proceed to stage 2
     stage.value = 'reset'
     error.value = ''
-
-    console.log('[ForgotPassword] PIN verification stage completed, proceeding to password reset')
   } catch (err) {
     console.error('[ForgotPassword] PIN verification failed:', err)
 
@@ -391,8 +389,6 @@ async function handleResetPassword() {
       new_password: newPassword.value,
       confirm_password: confirmPassword.value,
     })
-
-    console.log('[ForgotPassword] Password reset successful')
 
     // Show success message
     success.value = 'Password reset successfully! You can now log in with your new password.'

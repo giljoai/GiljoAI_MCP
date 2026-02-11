@@ -134,7 +134,6 @@ const copyConfig = () => {
   }
 }`
   navigator.clipboard.writeText(config)
-  console.log('[INTEGRATIONS] Gemini configuration copied to clipboard')
 }
 
 const downloadInstructions = () => {
@@ -204,6 +203,5 @@ Visit your GiljoAI dashboard for additional configuration help.`
   a.download = 'gemini-cli-giljo-mcp-setup.txt'
   a.click()
   URL.revokeObjectURL(url)
-  console.log('[INTEGRATIONS] Gemini setup instructions downloaded')
 }
 </script>

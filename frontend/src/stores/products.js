@@ -253,7 +253,6 @@ export const useProductStore = defineStore('products', () => {
     try {
       const authToken = localStorage.getItem('auth_token')
       if (!authToken) {
-        console.log('[PRODUCTS] No auth token - skipping product initialization')
         return
       }
 
@@ -262,7 +261,6 @@ export const useProductStore = defineStore('products', () => {
         const setupStatus = response.data
 
         if (setupStatus.default_password_active || !setupStatus.database_initialized) {
-          console.log('[PRODUCTS] Setup incomplete - skipping product initialization')
           localStorage.removeItem('currentProductId')
           return
         }
@@ -330,7 +328,6 @@ export const useProductStore = defineStore('products', () => {
         currentProduct.value.product_memory = nextMemory
       }
 
-      console.log('[PRODUCTS] Product memory updated for product:', payload.product_id)
     }
   }
 
@@ -370,7 +367,6 @@ export const useProductStore = defineStore('products', () => {
         currentProduct.value.product_memory.sequential_history.push(learning)
       }
 
-      console.log('[PRODUCTS] Learning added to product:', payload.product_id)
     }
   }
 
