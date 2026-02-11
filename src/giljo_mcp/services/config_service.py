@@ -1,4 +1,11 @@
-"""Configuration service for centralized config.yaml management."""
+"""Configuration service for centralized config.yaml management.
+
+Updated Handover 0731: Reviewed for typed returns - dict[str, Any] retained because
+config values are read from YAML files with dynamic, deployment-specific schemas.
+Both get_serena_config() and _read_config() return raw YAML data whose structure
+varies based on installation and feature flags. No fixed Pydantic model can represent
+the full range of possible configurations.
+"""
 
 import logging
 import threading
@@ -41,7 +48,9 @@ class ConfigService:
             use_cache: Whether to use cached config
 
         Returns:
-            Serena config dict with keys: enabled, installed, registered
+            dict[str, Any] - Serena config with keys: enabled, installed, registered.
+            Intentionally returns dict because YAML config structure varies by
+            deployment and feature flags (not a fixed schema).
         """
         if use_cache and self._is_cache_valid():
             return self._cache.get("serena_mcp", {})
@@ -62,7 +71,7 @@ class ConfigService:
         return (time.time() - self._last_read) < self._cache_ttl
 
     def _read_config(self) -> dict[str, Any]:
-        """Read config.yaml."""
+        """Read config.yaml. Returns raw YAML data as dict (dynamic structure)."""
         if not self.config_path.exists():
             logger.warning(f"Config file not found: {self.config_path}")
             return {}
