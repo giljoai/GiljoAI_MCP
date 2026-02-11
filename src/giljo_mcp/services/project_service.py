@@ -40,6 +40,26 @@ from src.giljo_mcp.exceptions import (
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Message, Task
+from src.giljo_mcp.schemas.service_responses import (
+    ActiveProjectDetail,
+    CanCloseResult,
+    CloseoutData,
+    CloseoutPromptResult,
+    NuclearDeleteResult,
+    OperationResult,
+    ProjectCloseOutResult,
+    ProjectCompleteResult,
+    ProjectData,
+    ProjectDetail,
+    ProjectLaunchResult,
+    ProjectListItem,
+    ProjectMissionUpdateResult,
+    ProjectPurgeResult,
+    ProjectResumeResult,
+    ProjectSummaryResult,
+    ProjectSwitchResult,
+    SoftDeleteResult,
+)
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -174,7 +194,7 @@ class ProjectService:
                 message=f"Failed to create project: {e!s}", context={"name": name, "tenant_key": tenant_key}
             ) from e
 
-    async def get_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
+    async def get_project(self, project_id: str, tenant_key: str) -> ProjectDetail:
         """
         Get a specific project by ID with associated agent jobs.
 
@@ -183,17 +203,17 @@ class ProjectService:
             tenant_key: REQUIRED - Tenant key for multi-tenant isolation (Handover 0424 Phase 0)
 
         Returns:
-            Dict with project details (including agents)
+            ProjectDetail: Typed project details (including agents)
 
         Raises:
-            ValueError: If tenant_key is None or empty (security requirement)
+            ValidationError: If tenant_key is None or empty (security requirement)
             ResourceNotFoundError: When project not found
             BaseGiljoError: When operation fails
 
         Example:
             >>> result = await service.get_project("abc-123", tenant_key="tenant-abc")
-            >>> print(result["name"])
-            >>> print(f"Agents: {len(result['agents'])}")
+            >>> print(result.name)
+            >>> print(f"Agents: {len(result.agents)}")
         """
         # SECURITY FIX: Require tenant_key (Handover 0424 Phase 0)
         if not tenant_key:
@@ -242,26 +262,26 @@ class ProjectService:
 
                 self._logger.info(f"Retrieved project {project.name} with {len(agent_dicts)} agents")
 
-                return {
-                    "id": str(project.id),
-                    "alias": project.alias,  # Include alias for consistency
-                    "name": project.name,
-                    "mission": project.mission,
-                    "description": project.description,
-                    "status": project.status,
-                    "staging_status": project.staging_status,
-                    "product_id": project.product_id,
-                    "tenant_key": project.tenant_key,
-                    "context_budget": 150000,  # Hardcoded default (Project.context_budget removed, using AgentExecution default)
-                    "context_used": project.context_used,
-                    "execution_mode": project.execution_mode,  # Handover 0260
-                    "created_at": project.created_at.isoformat() if project.created_at else None,
-                    "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                    "completed_at": project.completed_at.isoformat() if project.completed_at else None,
-                    "agents": agent_dicts,  # Production-grade: Include agents in response
-                    "agent_count": len(agent_dicts),
-                    "message_count": 0,  # Placeholder for consistency with ProjectResponse
-                }
+                return ProjectDetail(
+                    id=str(project.id),
+                    alias=project.alias,
+                    name=project.name,
+                    mission=project.mission,
+                    description=project.description,
+                    status=project.status,
+                    staging_status=project.staging_status,
+                    product_id=project.product_id,
+                    tenant_key=project.tenant_key,
+                    context_budget=150000,
+                    context_used=project.context_used,
+                    execution_mode=project.execution_mode,
+                    created_at=project.created_at.isoformat() if project.created_at else None,
+                    updated_at=project.updated_at.isoformat() if project.updated_at else None,
+                    completed_at=project.completed_at.isoformat() if project.completed_at else None,
+                    agents=agent_dicts,
+                    agent_count=len(agent_dicts),
+                    message_count=0,
+                )
 
         except (ValueError, ResourceNotFoundError):
             # Re-raise our custom exceptions
@@ -272,7 +292,7 @@ class ProjectService:
                 message=f"Failed to get project: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
             ) from e
 
-    async def get_active_project(self) -> dict[str, Any | None]:
+    async def get_active_project(self) -> ActiveProjectDetail | None:
         """
         Get the currently active project for the current tenant.
 
@@ -331,23 +351,23 @@ class ProjectService:
 
                 self._logger.info(f"Found active project: {project.name} (ID: {project.id})")
 
-                return {
-                    "id": str(project.id),
-                    "alias": project.alias or "",
-                    "name": project.name,
-                    "mission": project.mission or "",
-                    "description": project.description,
-                    "status": project.status,
-                    "product_id": project.product_id,
-                    "created_at": project.created_at.isoformat() if project.created_at else None,
-                    "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                    "completed_at": project.completed_at.isoformat() if project.completed_at else None,
-                    "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
-                    "context_budget": 150000,  # Hardcoded default (Project.context_budget removed, using AgentExecution default)
-                    "context_used": project.context_used or 0,
-                    "agent_count": agent_count,
-                    "message_count": message_count,
-                }
+                return ActiveProjectDetail(
+                    id=str(project.id),
+                    alias=project.alias or "",
+                    name=project.name,
+                    mission=project.mission or "",
+                    description=project.description,
+                    status=project.status,
+                    product_id=project.product_id,
+                    created_at=project.created_at.isoformat() if project.created_at else None,
+                    updated_at=project.updated_at.isoformat() if project.updated_at else None,
+                    completed_at=project.completed_at.isoformat() if project.completed_at else None,
+                    deleted_at=project.deleted_at.isoformat() if project.deleted_at else None,
+                    context_budget=150000,
+                    context_used=project.context_used or 0,
+                    agent_count=agent_count,
+                    message_count=message_count,
+                )
 
         except ValidationError:
             # Re-raise our custom exceptions
@@ -356,7 +376,7 @@ class ProjectService:
             self._logger.exception("Failed to get active project")
             raise BaseGiljoError(message=f"Failed to get active project: {e!s}", context={}) from e
 
-    async def list_projects(self, status: str | None = None, tenant_key: str | None = None) -> list[dict[str, Any]]:
+    async def list_projects(self, status: str | None = None, tenant_key: str | None = None) -> list[ProjectListItem]:
         """
         List all projects with optional filters.
 
@@ -403,22 +423,22 @@ class ProjectService:
                 # For list view, we include basic metrics
                 # (agent_count and message_count would require additional queries)
                 project_list = [
-                    {
-                        "id": str(project.id),
-                        "name": project.name,
-                        "mission": project.mission,
-                        "description": project.description,
-                        "status": project.status,
-                        "staging_status": project.staging_status,
-                        "tenant_key": project.tenant_key,
-                        "product_id": project.product_id,
-                        "created_at": project.created_at.isoformat(),
-                        "updated_at": (
+                    ProjectListItem(
+                        id=str(project.id),
+                        name=project.name,
+                        mission=project.mission,
+                        description=project.description,
+                        status=project.status,
+                        staging_status=project.staging_status,
+                        tenant_key=project.tenant_key,
+                        product_id=project.product_id,
+                        created_at=project.created_at.isoformat(),
+                        updated_at=(
                             project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat()
                         ),
-                        "context_budget": 150000,  # Hardcoded default (Project.context_budget removed, using AgentExecution default)
-                        "context_used": project.context_used,
-                    }
+                        context_budget=150000,
+                        context_used=project.context_used,
+                    )
                     for project in projects
                 ]
 
@@ -433,7 +453,7 @@ class ProjectService:
 
     async def update_project_mission(
         self, project_id: str, mission: str, tenant_key: str | None = None
-    ) -> dict[str, Any]:
+    ) -> ProjectMissionUpdateResult:
         """
         Update the mission field after orchestrator analysis.
 
@@ -500,7 +520,10 @@ class ProjectService:
                 if project:
                     await self._broadcast_mission_update(project_id, mission, project.tenant_key)
 
-                return {"message": "Mission updated successfully", "project_id": project_id}
+                return ProjectMissionUpdateResult(
+                    message="Mission updated successfully",
+                    project_id=project_id,
+                )
 
         except ResourceNotFoundError:
             # Re-raise our custom exceptions
@@ -523,7 +546,7 @@ class ProjectService:
         decisions_made: list[str],
         tenant_key: str | None = None,
         db_session: Any | None = None,
-    ) -> dict[str, Any]:
+    ) -> ProjectCompleteResult:
         """
         Mark a project as completed and trigger 360 memory update.
 
@@ -535,7 +558,7 @@ class ProjectService:
             db_session: Optional database session (for transaction management)
 
         Returns:
-            Dict with success status and memory update metadata
+            ProjectCompleteResult: Completion result with memory update metadata
 
         Raises:
             ValidationError: When tenant not set or summary missing
@@ -594,7 +617,7 @@ class ProjectService:
         key_outcomes: list[str],
         decisions_made: list[str],
         commit: bool,
-    ) -> dict[str, Any]:
+    ) -> ProjectCompleteResult:
         """
         Complete project within provided session context.
 
@@ -665,12 +688,12 @@ class ProjectService:
             tenant_key=tenant_key,
         )
 
-        return {
-            "message": f"Project {project_id} completed successfully",
-            "memory_updated": memory_updated,
-            "sequence_number": sequence_number,
-            "git_commits_count": git_commits_count,
-        }
+        return ProjectCompleteResult(
+            message=f"Project {project_id} completed successfully",
+            memory_updated=memory_updated,
+            sequence_number=sequence_number,
+            git_commits_count=git_commits_count,
+        )
 
     async def cancel_project(self, project_id: str, tenant_key: str, reason: str | None = None) -> None:
         """
@@ -731,7 +754,7 @@ class ProjectService:
             self._logger.exception("Failed to cancel project")
             raise BaseGiljoError(message=f"Failed to cancel project: {e!s}", context={"project_id": project_id}) from e
 
-    async def close_out_project(self, project_id: str, tenant_key: str) -> dict[str, Any]:
+    async def close_out_project(self, project_id: str, tenant_key: str) -> ProjectCloseOutResult:
         """
         Close out project and decommission agents (Handover 0113).
 
@@ -807,12 +830,12 @@ class ProjectService:
                     f"Closed out project {project_id} with {len(decommissioned_ids)} agents decommissioned"
                 )
 
-                return {
-                    "message": "Project closed out successfully",
-                    "agents_decommissioned": len(decommissioned_ids),
-                    "decommissioned_agent_ids": decommissioned_ids,
-                    "project_status": "completed",
-                }
+                return ProjectCloseOutResult(
+                    message="Project closed out successfully",
+                    agents_decommissioned=len(decommissioned_ids),
+                    decommissioned_agent_ids=decommissioned_ids,
+                    project_status="completed",
+                )
 
         except ResourceNotFoundError:
             # Re-raise our custom exceptions
@@ -824,7 +847,7 @@ class ProjectService:
                 context={"project_id": project_id, "tenant_key": tenant_key},
             ) from e
 
-    async def continue_working(self, project_id: str, tenant_key: str) -> dict[str, Any]:
+    async def continue_working(self, project_id: str, tenant_key: str) -> ProjectResumeResult:
         """
         Resume work on a completed project (Handover 0113).
 
@@ -905,12 +928,12 @@ class ProjectService:
 
                 self._logger.info(f"Resumed project {project_id} with {len(resumed_ids)} agents resumed")
 
-                return {
-                    "message": "Project resumed successfully",
-                    "agents_resumed": len(resumed_ids),
-                    "resumed_agent_ids": resumed_ids,
-                    "project_status": "inactive",
-                }
+                return ProjectResumeResult(
+                    message="Project resumed successfully",
+                    agents_resumed=len(resumed_ids),
+                    resumed_agent_ids=resumed_ids,
+                    project_status="inactive",
+                )
 
         except (ResourceNotFoundError, ProjectStateError):
             # Re-raise our custom exceptions
@@ -1058,7 +1081,7 @@ class ProjectService:
         session: AsyncSession,
         project: Project,
         websocket_manager: Any | None = None,
-    ) -> dict[str, Any | None]:
+    ) -> dict[str, str] | None:
         """
         Ensure an orchestrator fixture exists for the activated project (Handover 0431).
 
@@ -1257,7 +1280,7 @@ class ProjectService:
 
             return project
 
-    async def cancel_staging(self, project_id: str, websocket_manager: Any | None = None) -> dict[str, Any]:
+    async def cancel_staging(self, project_id: str, websocket_manager: Any | None = None) -> ProjectData:
         """
         Cancel a project in staging state.
 
@@ -1324,21 +1347,21 @@ class ProjectService:
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
-            return {
-                "id": project.id,
-                "name": project.name,
-                "status": project.status,
-                "mission": project.mission,
-                "description": project.description,
-                "meta_data": project.meta_data or {},
-                "created_at": project.created_at.isoformat() if project.created_at else None,
-                "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                "activated_at": project.activated_at.isoformat() if project.activated_at else None,
-                "completed_at": project.completed_at.isoformat() if project.completed_at else None,
-                "product_id": project.product_id,
-            }
+            return ProjectData(
+                id=project.id,
+                name=project.name,
+                status=project.status,
+                mission=project.mission,
+                description=project.description,
+                meta_data=project.meta_data or {},
+                created_at=project.created_at.isoformat() if project.created_at else None,
+                updated_at=project.updated_at.isoformat() if project.updated_at else None,
+                activated_at=project.activated_at.isoformat() if project.activated_at else None,
+                completed_at=project.completed_at.isoformat() if project.completed_at else None,
+                product_id=project.product_id,
+            )
 
-    async def get_project_summary(self, project_id: str) -> dict[str, Any]:
+    async def get_project_summary(self, project_id: str) -> ProjectSummaryResult:
         """
         Generate project summary with metrics and status.
 
@@ -1441,25 +1464,25 @@ class ProjectService:
                     product_name = product.name
 
             # Build summary response
-            return {
-                "id": project.id,
-                "name": project.name,
-                "status": project.status,
-                "mission": project.mission,
-                "total_jobs": total_jobs,
-                "completed_jobs": completed_jobs,
-                "failed_jobs": failed_jobs,
-                "active_jobs": active_jobs,
-                "pending_jobs": pending_jobs,
-                "completion_percentage": completion_percentage,
-                "created_at": project.created_at.isoformat() if project.created_at else None,
-                "activated_at": project.activated_at.isoformat() if project.activated_at else None,
-                "last_activity_at": last_activity_at.isoformat() if last_activity_at else None,
-                "product_id": project.product_id or "",
-                "product_name": product_name,
-            }
+            return ProjectSummaryResult(
+                id=project.id,
+                name=project.name,
+                status=project.status,
+                mission=project.mission,
+                total_jobs=total_jobs,
+                completed_jobs=completed_jobs,
+                failed_jobs=failed_jobs,
+                active_jobs=active_jobs,
+                pending_jobs=pending_jobs,
+                completion_percentage=completion_percentage,
+                created_at=project.created_at.isoformat() if project.created_at else None,
+                activated_at=project.activated_at.isoformat() if project.activated_at else None,
+                last_activity_at=last_activity_at.isoformat() if last_activity_at else None,
+                product_id=project.product_id or "",
+                product_name=product_name,
+            )
 
-    async def get_closeout_data(self, project_id: str, db_session: Any | None = None) -> dict[str, Any]:
+    async def get_closeout_data(self, project_id: str, db_session: Any | None = None) -> CloseoutData:
         """
         Generate dynamic closeout checklist and prompt for project completion.
 
@@ -1481,7 +1504,7 @@ class ProjectService:
 
     async def can_close_project(
         self, project_id: str, tenant_key: str | None = None, db_session: Any | None = None
-    ) -> dict[str, Any]:
+    ) -> CanCloseResult:
         """
         Determine whether a project can be closed based on agent status.
 
@@ -1505,7 +1528,7 @@ class ProjectService:
 
     async def generate_closeout_prompt(
         self, project_id: str, tenant_key: str | None = None, db_session: Any | None = None
-    ) -> dict[str, Any]:
+    ) -> CloseoutPromptResult:
         """
         Generate closeout prompt with checklist and agent summary.
 
@@ -1527,7 +1550,7 @@ class ProjectService:
         async with self._get_session() as session:
             return await self._build_closeout_prompt(project_id, tenant_key, session)
 
-    async def _build_closeout_data(self, project_id: str, tenant_key: str, session: Any) -> dict[str, Any]:
+    async def _build_closeout_data(self, project_id: str, tenant_key: str, session: Any) -> CloseoutData:
         """
         Internal helper to build closeout data using provided session.
 
@@ -1551,17 +1574,17 @@ class ProjectService:
         all_agents_complete = total_agents > 0 and completed_agents == total_agents and active_agents == 0
         has_failed_agents = failed_agents > 0
 
-        return {
-            "project_id": project_id,
-            "project_name": project.name,
-            "agent_count": total_agents,
-            "completed_agents": completed_agents,
-            "failed_agents": failed_agents,
-            "all_agents_complete": all_agents_complete,
-            "has_failed_agents": has_failed_agents,
-        }
+        return CloseoutData(
+            project_id=project_id,
+            project_name=project.name,
+            agent_count=total_agents,
+            completed_agents=completed_agents,
+            failed_agents=failed_agents,
+            all_agents_complete=all_agents_complete,
+            has_failed_agents=has_failed_agents,
+        )
 
-    async def _build_can_close_response(self, project_id: str, tenant_key: str, session: Any) -> dict[str, Any]:
+    async def _build_can_close_response(self, project_id: str, tenant_key: str, session: Any) -> CanCloseResult:
         """
         Build readiness response for can-close endpoint.
 
@@ -1586,19 +1609,19 @@ class ProjectService:
             summary_parts.append(f"{status_counts['blocked']} blocked agents")
             summary = ", ".join(summary_parts)
 
-        return {
-            "can_close": all_agents_finished,
-            "summary": summary,
-            "all_agents_finished": all_agents_finished,
-            "agent_statuses": {
+        return CanCloseResult(
+            can_close=all_agents_finished,
+            summary=summary,
+            all_agents_finished=all_agents_finished,
+            agent_statuses={
                 "complete": status_counts["completed"],
                 "failed": status_counts["failed"],
                 "active": status_counts["active"],
                 "blocked": status_counts["blocked"],
             },
-        }
+        )
 
-    async def _build_closeout_prompt(self, project_id: str, tenant_key: str, session: Any) -> dict[str, Any]:
+    async def _build_closeout_prompt(self, project_id: str, tenant_key: str, session: Any) -> CloseoutPromptResult:
         """
         Build a bash closeout prompt and checklist for the project.
 
@@ -1657,12 +1680,12 @@ class ProjectService:
         project.closeout_prompt = prompt
         await session.commit()
 
-        return {
-            "prompt": prompt,
-            "checklist": checklist,
-            "project_name": project.name,
-            "agent_summary": agent_summary,
-        }
+        return CloseoutPromptResult(
+            prompt=prompt,
+            checklist=checklist,
+            project_name=project.name,
+            agent_summary=agent_summary,
+        )
 
     async def _aggregate_agent_statuses(self, project_id: str, tenant_key: str, session: Any) -> dict[str, Any]:
         """
@@ -1720,7 +1743,7 @@ class ProjectService:
 
     async def update_project(
         self, project_id: str, updates: dict[str, Any], websocket_manager: Any | None = None
-    ) -> dict[str, Any]:
+    ) -> ProjectData:
         """
         Update project fields.
 
@@ -1797,20 +1820,20 @@ class ProjectService:
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
-            return {
-                "id": project.id,
-                "name": project.name,
-                "status": project.status,
-                "mission": project.mission,
-                "description": project.description,
-                "execution_mode": project.execution_mode,  # Handover 0260
-                "meta_data": project.meta_data or {},
-                "created_at": project.created_at.isoformat() if project.created_at else None,
-                "updated_at": project.updated_at.isoformat() if project.updated_at else None,
-                "activated_at": project.activated_at.isoformat() if project.activated_at else None,
-                "completed_at": project.completed_at.isoformat() if project.completed_at else None,
-                "product_id": project.product_id,
-            }
+            return ProjectData(
+                id=project.id,
+                name=project.name,
+                status=project.status,
+                mission=project.mission,
+                description=project.description,
+                execution_mode=project.execution_mode,
+                meta_data=project.meta_data or {},
+                created_at=project.created_at.isoformat() if project.created_at else None,
+                updated_at=project.updated_at.isoformat() if project.updated_at else None,
+                activated_at=project.activated_at.isoformat() if project.activated_at else None,
+                completed_at=project.completed_at.isoformat() if project.completed_at else None,
+                product_id=project.product_id,
+            )
 
     async def launch_project(
         self,
@@ -1818,7 +1841,7 @@ class ProjectService:
         user_id: str | None = None,
         launch_config: dict[str, Any | None] = None,
         websocket_manager: Any | None = None,
-    ) -> dict[str, Any]:
+    ) -> ProjectLaunchResult:
         """
         Launch project orchestrator.
 
@@ -1922,10 +1945,10 @@ class ProjectService:
                 )
 
                 # Return existing orchestrator info (do NOT create new one)
-                return {
-                    "project_id": project.id,
-                    "orchestrator_job_id": existing_orchestrator.job_id,
-                    "launch_prompt": f"""Launch orchestrator for project: {project.name}
+                return ProjectLaunchResult(
+                    project_id=project.id,
+                    orchestrator_job_id=existing_orchestrator.job_id,
+                    launch_prompt=f"""Launch orchestrator for project: {project.name}
 
 Project ID: {project.id}
 Mission: {project.mission}
@@ -1933,9 +1956,9 @@ Orchestrator Job ID: {existing_orchestrator.job_id}
 
 This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool to fetch full mission details.
 """,
-                    "status": project.status,
-                    "staging_status": project.staging_status,
-                }
+                    status=project.status,
+                    staging_status=project.staging_status,
+                )
 
             # No existing orchestrator found - create new one
 
@@ -2007,15 +2030,15 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
-            return {
-                "project_id": project.id,
-                "orchestrator_job_id": orchestrator_job_id,
-                "launch_prompt": launch_prompt,
-                "status": project.status,
-                "staging_status": project.staging_status,
-            }
+            return ProjectLaunchResult(
+                project_id=project.id,
+                orchestrator_job_id=orchestrator_job_id,
+                launch_prompt=launch_prompt,
+                status=project.status,
+                staging_status=project.staging_status,
+            )
 
-    async def restore_project(self, project_id: str) -> dict[str, Any]:
+    async def restore_project(self, project_id: str) -> OperationResult:
         """
         Restore a completed, cancelled, or soft-deleted project to inactive status.
 
@@ -2051,15 +2074,15 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
             self._logger.info(f"Restored project {project_id}")
 
-            return {
-                "message": f"Project {project_id} restored successfully",
-            }
+            return OperationResult(
+                message=f"Project {project_id} restored successfully",
+            )
 
     # ============================================================================
     # State & Metrics
     # ============================================================================
 
-    async def switch_project(self, project_id: str, tenant_key: str | None = None) -> dict[str, Any]:
+    async def switch_project(self, project_id: str, tenant_key: str | None = None) -> ProjectSwitchResult:
         """
         Switch to a different project context.
 
@@ -2107,19 +2130,21 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
             self._logger.info(f"Switched to project '{project.name}' (ID: {project_id})")
 
-            return {
-                "project_id": str(project.id),
-                "name": project.name,
-                "mission": project.mission,
-                "tenant_key": project.tenant_key,
-                "context_usage": f"{project.context_used}/150000",  # Hardcoded default (Project.context_budget removed)
-            }
+            return ProjectSwitchResult(
+                project_id=str(project.id),
+                name=project.name,
+                mission=project.mission,
+                tenant_key=project.tenant_key,
+                context_usage=f"{project.context_used}/150000",
+            )
 
     # ============================================================================
     # Maintenance & Cleanup Methods
     # ============================================================================
 
-    async def nuclear_delete_project(self, project_id: str, websocket_manager: Any | None = None) -> dict[str, Any]:
+    async def nuclear_delete_project(
+        self, project_id: str, websocket_manager: Any | None = None
+    ) -> NuclearDeleteResult:
         """
         Immediately and permanently delete a project and ALL related data (nuclear delete).
 
@@ -2321,11 +2346,11 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
-            return {
-                "message": f"Project '{project_name}' permanently deleted",
-                "deleted_counts": deleted_counts,
-                "project_name": project_name,
-            }
+            return NuclearDeleteResult(
+                message=f"Project '{project_name}' permanently deleted",
+                deleted_counts=deleted_counts,
+                project_name=project_name,
+            )
 
     async def _purge_project_records(self, session: AsyncSession, project: Project) -> dict[str, Any]:
         """Cascade delete a soft-deleted project and its child records."""
@@ -2369,7 +2394,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         await session.delete(project)
         return project_info
 
-    async def delete_project(self, project_id: str) -> dict[str, Any]:
+    async def delete_project(self, project_id: str) -> SoftDeleteResult:
         """
         Soft delete a project.
 
@@ -2442,13 +2467,13 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 f"Cancelled {cancelled_jobs_count} agent jobs."
             )
 
-            return {
-                "message": "Project deleted successfully",
-                "deleted_at": project.deleted_at.isoformat() if project.deleted_at else None,
-                "cancelled_jobs": cancelled_jobs_count,
-            }
+            return SoftDeleteResult(
+                message="Project deleted successfully",
+                deleted_at=project.deleted_at.isoformat() if project.deleted_at else None,
+                cancelled_jobs=cancelled_jobs_count,
+            )
 
-    async def purge_deleted_project(self, project_id: str) -> dict[str, Any]:
+    async def purge_deleted_project(self, project_id: str) -> ProjectPurgeResult:
         """
         Nuclear delete a specific soft-deleted project for the current tenant.
 
@@ -2468,16 +2493,16 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         # Format response to match expected purge response structure
         project_info = {
             "id": project_id,
-            "name": result.get("project_name", "Unknown"),
-            "tenant_key": result.get("tenant_key", ""),
+            "name": result.project_name,
+            "tenant_key": "",
             "deleted_at": datetime.now(timezone.utc).isoformat(),
         }
 
         self._logger.info("[Nuclear Purge] Manually purged project %s via trash icon", project_id)
 
-        return {"purged_count": 1, "projects": [project_info]}
+        return ProjectPurgeResult(purged_count=1, projects=[project_info])
 
-    async def purge_all_deleted_projects(self) -> dict[str, Any]:
+    async def purge_all_deleted_projects(self) -> ProjectPurgeResult:
         """
         Nuclear delete all soft-deleted projects for the current tenant.
 
@@ -2502,13 +2527,13 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             deleted_projects = result.scalars().all()
 
             if not deleted_projects:
-                return {"purged_count": 0, "projects": []}
+                return ProjectPurgeResult(purged_count=0, projects=[])
 
         # Use nuclear delete for each project
         purged_projects = []
         for project in deleted_projects:
             try:
-                result = await self.nuclear_delete_project(project.id)
+                await self.nuclear_delete_project(project.id)
                 purged_projects.append(
                     {
                         "id": project.id,
@@ -2526,9 +2551,9 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             tenant_key,
         )
 
-        return {"purged_count": len(purged_projects), "projects": purged_projects}
+        return ProjectPurgeResult(purged_count=len(purged_projects), projects=purged_projects)
 
-    async def purge_expired_deleted_projects(self, days_before_purge: int = 10) -> dict[str, Any]:
+    async def purge_expired_deleted_projects(self, days_before_purge: int = 10) -> ProjectPurgeResult:
         """
         Nuclear delete projects deleted more than specified days ago.
 
@@ -2584,13 +2609,13 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 self._logger.info(
                     f"[Nuclear Purge] No expired deleted projects to purge (cutoff: {days_before_purge} days)"
                 )
-                return {"purged_count": 0, "projects": []}
+                return ProjectPurgeResult(purged_count=0, projects=[])
 
         # Use nuclear delete for each expired project
         purged_projects = []
         for project in expired_projects:
             try:
-                result = await self.nuclear_delete_project(project.id)
+                await self.nuclear_delete_project(project.id)
                 purged_projects.append(
                     {
                         "id": project.id,
@@ -2608,7 +2633,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
         self._logger.info(f"[Nuclear Purge] Successfully purged {len(purged_projects)} expired deleted projects")
 
-        return {"purged_count": len(purged_projects), "projects": purged_projects}
+        return ProjectPurgeResult(purged_count=len(purged_projects), projects=purged_projects)
 
     # ============================================================================
     # Private Helper Methods
