@@ -1008,7 +1008,7 @@ class TestConsolidationResult:
 
 
 class TestAuthResult:
-    """Tests for AuthResult model."""
+    """Tests for AuthResult model (Handover 0731c: enhanced with profile fields)."""
 
     def test_creation_with_required_fields(self):
         result = AuthResult(
@@ -1022,6 +1022,12 @@ class TestAuthResult:
         assert result.token == "jwt-token-here"
         assert result.tenant_key == "tenant-abc"
         assert result.role == "user"
+        # Optional fields default to None/True
+        assert result.email is None
+        assert result.full_name is None
+        assert result.is_active is True
+        assert result.created_at is None
+        assert result.last_login is None
 
     def test_creation_with_admin_role(self):
         result = AuthResult(
@@ -1032,6 +1038,24 @@ class TestAuthResult:
             role="admin",
         )
         assert result.role == "admin"
+
+    def test_creation_with_profile_fields(self):
+        result = AuthResult(
+            user_id="u1",
+            username="admin",
+            token="t",
+            tenant_key="tk",
+            email="admin@example.com",
+            full_name="Admin User",
+            is_active=True,
+            created_at="2026-01-01T00:00:00+00:00",
+            last_login="2026-02-11T12:00:00+00:00",
+        )
+        assert result.email == "admin@example.com"
+        assert result.full_name == "Admin User"
+        assert result.is_active is True
+        assert result.created_at == "2026-01-01T00:00:00+00:00"
+        assert result.last_login == "2026-02-11T12:00:00+00:00"
 
     def test_missing_user_id_raises(self):
         with pytest.raises(ValidationError):
@@ -1057,45 +1081,52 @@ class TestAuthResult:
         assert dumped["token"] == "t"
         assert dumped["tenant_key"] == "k"
         assert dumped["role"] == "user"
+        assert dumped["email"] is None
+        assert dumped["full_name"] is None
+        assert dumped["is_active"] is True
 
     def test_from_attributes_config(self):
         assert AuthResult.model_config.get("from_attributes") is True
 
 
 class TestSetupState:
-    """Tests for SetupState model."""
+    """Tests for SetupState/SetupStateInfo model (Handover 0731c: renamed with new fields)."""
 
-    def test_creation_defaults(self):
-        state = SetupState()
-        assert state.is_configured is False
-        assert state.has_admin is False
-        assert state.has_database is False
+    def test_creation_with_tenant_key(self):
+        state = SetupState(tenant_key="test_tenant")
+        assert state.first_admin_created is False
+        assert state.database_initialized is False
+        assert state.tenant_key == "test_tenant"
 
     def test_creation_fully_configured(self):
         state = SetupState(
-            is_configured=True,
-            has_admin=True,
-            has_database=True,
+            first_admin_created=True,
+            database_initialized=True,
+            tenant_key="test_tenant",
         )
-        assert state.is_configured is True
-        assert state.has_admin is True
-        assert state.has_database is True
+        assert state.first_admin_created is True
+        assert state.database_initialized is True
+        assert state.tenant_key == "test_tenant"
 
     def test_partial_configuration(self):
-        state = SetupState(has_database=True)
-        assert state.is_configured is False
-        assert state.has_admin is False
-        assert state.has_database is True
+        state = SetupState(database_initialized=True, tenant_key="tk")
+        assert state.first_admin_created is False
+        assert state.database_initialized is True
+        assert state.tenant_key == "tk"
 
     def test_model_dump(self):
-        state = SetupState(is_configured=True)
+        state = SetupState(first_admin_created=True, tenant_key="tk")
         dumped = state.model_dump()
-        assert dumped["is_configured"] is True
-        assert dumped["has_admin"] is False
-        assert dumped["has_database"] is False
+        assert dumped["first_admin_created"] is True
+        assert dumped["database_initialized"] is False
+        assert dumped["tenant_key"] == "tk"
 
     def test_from_attributes_config(self):
         assert SetupState.model_config.get("from_attributes") is True
+
+    def test_missing_tenant_key_raises(self):
+        with pytest.raises(ValidationError):
+            SetupState()
 
 
 # ---------------------------------------------------------------------------

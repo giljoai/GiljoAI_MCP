@@ -3,6 +3,8 @@ AuthService - Authentication and authorization service layer.
 
 Handover 0322 Phase 2: Service Layer Compliance
 Handover 0480b: Exception-based error handling (migrated from dict returns)
+Handover 0731c: Typed service returns (AuthResult, SetupStateInfo, ApiKeyInfo,
+    ApiKeyCreateResult, UserInfo) replacing dict[str, Any].
 Implements production-grade authentication operations following TDD discipline.
 
 Responsibilities:
@@ -17,12 +19,12 @@ Design Principles:
 - Dependency Injection: Accepts DatabaseManager
 - Async/Await: Full SQLAlchemy 2.0 async support
 - Error Handling: Raises typed exceptions (AuthenticationError, ValidationError, etc.)
+- Typed Returns: All public methods return Pydantic models, not raw dicts
 - Testability: Can be unit tested independently
 """
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
 from uuid import uuid4
 
 from passlib.hash import bcrypt
@@ -41,6 +43,13 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.models.auth import APIKey, User
 from src.giljo_mcp.models.config import SetupState
+from src.giljo_mcp.schemas.service_responses import (
+    ApiKeyCreateResult,
+    ApiKeyInfo,
+    AuthResult,
+    SetupStateInfo,
+    UserInfo,
+)
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -81,20 +90,17 @@ class AuthService:
     # Authentication Methods
     # ============================================================================
 
-    async def authenticate_user(self, username: str, password: str) -> dict[str, Any]:
+    async def authenticate_user(self, username: str, password: str) -> AuthResult:
         """
-        Authenticate user and return user dict + JWT token.
+        Authenticate user and return AuthResult with user profile and JWT token.
 
         Args:
             username: Username to authenticate
             password: Plaintext password to verify
 
         Returns:
-            Dict with user data and JWT token
-            {
-                "user": {...},  # User dict
-                "token": "eyJ..."  # JWT access token
-            }
+            AuthResult with user_id, username, token, tenant_key, role, and
+            optional profile fields (email, full_name, is_active, etc.)
 
         Raises:
             AuthenticationError: If credentials are invalid
@@ -103,7 +109,7 @@ class AuthService:
 
         Example:
             >>> result = await service.authenticate_user("admin", "Password123!")
-            >>> token = result["token"]
+            >>> token = result.token
         """
         try:
             # Use provided session if available (test mode)
@@ -121,8 +127,8 @@ class AuthService:
             self._logger.exception("Failed to authenticate user")
             raise BaseGiljoError(message=f"Authentication failed: {e!s}", context={"username": username}) from e
 
-    async def _authenticate_user_impl(self, session: AsyncSession, username: str, password: str) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    async def _authenticate_user_impl(self, session: AsyncSession, username: str, password: str) -> AuthResult:
+        """Implementation that uses provided session."""
         # Find user by username
         stmt = select(User).where(User.username == username)
         result = await session.execute(stmt)
@@ -156,20 +162,18 @@ class AuthService:
             extra={"username": username, "user_id": user.id, "role": user.role},
         )
 
-        # Convert user to dict for response
-        user_dict = {
-            "id": str(user.id),
-            "username": user.username,
-            "email": user.email,
-            "full_name": user.full_name,
-            "role": user.role,
-            "tenant_key": user.tenant_key,
-            "is_active": user.is_active,
-            "created_at": user.created_at.isoformat() if user.created_at else None,
-            "last_login": user.last_login.isoformat() if user.last_login else None,
-        }
-
-        return {"user": user_dict, "token": token}
+        return AuthResult(
+            user_id=str(user.id),
+            username=user.username,
+            token=token,
+            tenant_key=user.tenant_key,
+            role=user.role,
+            email=user.email,
+            full_name=user.full_name,
+            is_active=user.is_active,
+            created_at=user.created_at.isoformat() if user.created_at else None,
+            last_login=user.last_login.isoformat() if user.last_login else None,
+        )
 
     async def update_last_login(self, user_id: str, timestamp: datetime) -> None:
         """
@@ -202,7 +206,7 @@ class AuthService:
             raise BaseGiljoError(message=f"Failed to update last login: {e!s}", context={"user_id": user_id}) from e
 
     async def _update_last_login_impl(self, session: AsyncSession, user_id: str, timestamp: datetime) -> None:
-        """Implementation that uses provided session"""
+        """Implementation that uses provided session."""
         stmt = select(User).where(User.id == user_id)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -221,7 +225,7 @@ class AuthService:
     # Setup State Methods
     # ============================================================================
 
-    async def check_setup_state(self, tenant_key: str) -> dict[str, Any | None]:
+    async def check_setup_state(self, tenant_key: str) -> SetupStateInfo | None:
         """
         Check setup state for tenant.
 
@@ -229,18 +233,16 @@ class AuthService:
             tenant_key: Tenant key
 
         Returns:
-            Setup state data or None if not found
-            {
-                "first_admin_created": bool,
-                "database_initialized": bool,
-                ...
-            }
+            SetupStateInfo with first_admin_created, database_initialized,
+            and tenant_key fields, or None if no setup state exists.
 
         Raises:
             BaseGiljoError: For errors
 
         Example:
             >>> state = await service.check_setup_state("test_tenant")
+            >>> if state and state.first_admin_created:
+            ...     print("Admin exists")
         """
         try:
             # Use provided session if available (test mode)
@@ -257,8 +259,8 @@ class AuthService:
                 message=f"Failed to check setup state: {e!s}", context={"tenant_key": tenant_key}
             ) from e
 
-    async def _check_setup_state_impl(self, session: AsyncSession, tenant_key: str) -> dict[str, Any | None]:
-        """Implementation that uses provided session"""
+    async def _check_setup_state_impl(self, session: AsyncSession, tenant_key: str) -> SetupStateInfo | None:
+        """Implementation that uses provided session."""
         stmt = select(SetupState).where(SetupState.tenant_key == tenant_key)
         result = await session.execute(stmt)
         setup_state = result.scalar_one_or_none()
@@ -266,17 +268,17 @@ class AuthService:
         if not setup_state:
             return None
 
-        return {
-            "first_admin_created": setup_state.first_admin_created,
-            "database_initialized": setup_state.database_initialized,
-            "tenant_key": setup_state.tenant_key,
-        }
+        return SetupStateInfo(
+            first_admin_created=setup_state.first_admin_created,
+            database_initialized=setup_state.database_initialized,
+            tenant_key=setup_state.tenant_key,
+        )
 
     # ============================================================================
     # API Key Methods
     # ============================================================================
 
-    async def list_api_keys(self, user_id: str, include_revoked: bool = False) -> list[dict[str, Any]]:
+    async def list_api_keys(self, user_id: str, include_revoked: bool = False) -> list[ApiKeyInfo]:
         """
         List API keys for user.
 
@@ -285,17 +287,15 @@ class AuthService:
             include_revoked: Include revoked keys in results (default: False)
 
         Returns:
-            List of API keys
-            [
-                {"id": "...", "name": "...", "is_active": True, ...},
-                ...
-            ]
+            List of ApiKeyInfo models (never contains raw keys or hashes)
 
         Raises:
             BaseGiljoError: For errors
 
         Example:
             >>> keys = await service.list_api_keys(user_id, include_revoked=True)
+            >>> for key in keys:
+            ...     print(key.name, key.is_active)
         """
         try:
             # Use provided session if available (test mode)
@@ -310,10 +310,8 @@ class AuthService:
             self._logger.exception("Failed to list API keys")
             raise BaseGiljoError(message=f"Failed to list API keys: {e!s}", context={"user_id": user_id}) from e
 
-    async def _list_api_keys_impl(
-        self, session: AsyncSession, user_id: str, include_revoked: bool
-    ) -> list[dict[str, Any]]:
-        """Implementation that uses provided session"""
+    async def _list_api_keys_impl(self, session: AsyncSession, user_id: str, include_revoked: bool) -> list[ApiKeyInfo]:
+        """Implementation that uses provided session."""
         if include_revoked:
             stmt = select(APIKey).where(APIKey.user_id == user_id).order_by(APIKey.created_at.desc())
         else:
@@ -322,23 +320,23 @@ class AuthService:
         result = await session.execute(stmt)
         api_keys = result.scalars().all()
 
-        keys_list = [
-            {
-                "id": str(key.id),
-                "name": key.name,
-                "key_prefix": key.key_prefix,
-                "permissions": key.permissions or [],
-                "is_active": key.is_active,
-                "created_at": key.created_at.isoformat() if key.created_at else None,
-                "last_used": key.last_used.isoformat() if key.last_used else None,
-                "revoked_at": key.revoked_at.isoformat() if key.revoked_at else None,
-            }
+        return [
+            ApiKeyInfo(
+                id=str(key.id),
+                name=key.name,
+                key_prefix=key.key_prefix,
+                permissions=key.permissions or [],
+                is_active=key.is_active,
+                created_at=key.created_at.isoformat() if key.created_at else None,
+                last_used=key.last_used.isoformat() if key.last_used else None,
+                revoked_at=key.revoked_at.isoformat() if key.revoked_at else None,
+            )
             for key in api_keys
         ]
 
-        return keys_list
-
-    async def create_api_key(self, user_id: str, tenant_key: str, name: str, permissions: list[str]) -> dict[str, Any]:
+    async def create_api_key(
+        self, user_id: str, tenant_key: str, name: str, permissions: list[str]
+    ) -> ApiKeyCreateResult:
         """
         Create new API key for user.
 
@@ -349,21 +347,15 @@ class AuthService:
             permissions: List of permissions (e.g., ["*"] for all)
 
         Returns:
-            API key data (includes raw key ONCE)
-            {
-                "id": "...",
-                "name": "...",
-                "api_key": "gk_...",  # RAW KEY - only shown once!
-                "key_prefix": "gk_abc...",
-                "key_hash": "$2b$..."  # Hashed version for storage
-            }
+            ApiKeyCreateResult containing the raw API key (shown only once),
+            key_prefix for identification, and key_hash for storage.
 
         Raises:
             BaseGiljoError: For errors
 
         Example:
             >>> result = await service.create_api_key(user_id, tenant_key, "My Key", ["*"])
-            >>> print("Store this key:", result["api_key"])
+            >>> print("Store this key:", result.api_key)
         """
         try:
             # Use provided session if available (test mode)
@@ -382,8 +374,8 @@ class AuthService:
 
     async def _create_api_key_impl(
         self, session: AsyncSession, user_id: str, tenant_key: str, name: str, permissions: list[str]
-    ) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    ) -> ApiKeyCreateResult:
+        """Implementation that uses provided session."""
         # Generate new API key
         api_key = generate_api_key()
         key_hash = hash_api_key(api_key)
@@ -411,14 +403,14 @@ class AuthService:
             extra={"user_id": user_id, "key_name": name, "key_prefix": key_prefix},
         )
 
-        return {
-            "id": str(new_key.id),
-            "name": new_key.name,
-            "api_key": api_key,  # RAW KEY - only shown once!
-            "key_prefix": key_prefix,
-            "key_hash": key_hash,
-            "permissions": new_key.permissions,
-        }
+        return ApiKeyCreateResult(
+            id=str(new_key.id),
+            name=new_key.name,
+            api_key=api_key,  # RAW KEY - only shown once!
+            key_prefix=key_prefix,
+            key_hash=key_hash,
+            permissions=new_key.permissions,
+        )
 
     async def revoke_api_key(self, key_id: str, user_id: str) -> None:
         """
@@ -453,7 +445,7 @@ class AuthService:
             ) from e
 
     async def _revoke_api_key_impl(self, session: AsyncSession, key_id: str, user_id: str) -> None:
-        """Implementation that uses provided session"""
+        """Implementation that uses provided session."""
         stmt = select(APIKey).where(APIKey.id == key_id, APIKey.user_id == user_id)
         result = await session.execute(stmt)
         api_key = result.scalar_one_or_none()
@@ -484,7 +476,7 @@ class AuthService:
         password: str,
         role: str,
         requesting_admin_id: str,
-    ) -> dict[str, Any]:
+    ) -> UserInfo:
         """
         Register new user (admin-only operation).
 
@@ -496,14 +488,7 @@ class AuthService:
             requesting_admin_id: Admin user ID creating this user
 
         Returns:
-            New user data
-            {
-                "id": "...",
-                "username": "...",
-                "email": "...",
-                "role": "...",
-                "tenant_key": "..."  # Auto-generated per-user tenant
-            }
+            UserInfo with id, username, email, role, and tenant_key
 
         Raises:
             ValidationError: If username/email already exists
@@ -513,6 +498,7 @@ class AuthService:
             >>> user = await service.register_user(
             ...     "newuser", "new@example.com", "Password123!", "developer", admin_id
             ... )
+            >>> print(user.tenant_key)
         """
         try:
             # Use provided session if available (test mode)
@@ -541,8 +527,8 @@ class AuthService:
         requesting_admin_id: str,
         org_id: str | None = None,
         org_role: str = "member",
-    ) -> dict[str, Any]:
-        """Implementation that uses provided session"""
+    ) -> UserInfo:
+        """Implementation that uses provided session."""
         # Check for duplicate username
         stmt = select(User).where(User.username == username)
         result = await session.execute(stmt)
@@ -612,17 +598,17 @@ class AuthService:
             extra={"username": username, "role": role, "org_role": org_role, "admin_id": requesting_admin_id},
         )
 
-        return {
-            "id": str(new_user.id),
-            "username": new_user.username,
-            "email": new_user.email,
-            "role": new_user.role,
-            "tenant_key": new_user.tenant_key,
-        }
+        return UserInfo(
+            id=str(new_user.id),
+            username=new_user.username,
+            email=new_user.email,
+            role=new_user.role,
+            tenant_key=new_user.tenant_key,
+        )
 
     async def create_user_in_org(
         self, session: AsyncSession, admin_user_id: str, username: str, email: str, role: str, initial_password: str
-    ) -> dict[str, Any]:
+    ) -> UserInfo:
         """
         Create user within admin's organization (Handover 0424g).
 
@@ -638,7 +624,7 @@ class AuthService:
             initial_password: Initial password for new user
 
         Returns:
-            New user data with org_id set
+            UserInfo with the new user's id, username, email, role, and tenant_key
 
         Raises:
             AuthorizationError: If admin doesn't have owner/admin role
@@ -702,7 +688,7 @@ class AuthService:
         password: str,
         full_name: str | None,
         org_name: str | None = "My Organization",
-    ) -> dict[str, Any]:
+    ) -> AuthResult:
         """
         Create first administrator account (fresh install only).
 
@@ -714,16 +700,8 @@ class AuthService:
             org_name: Organization name (default: "My Organization") - Handover 0424h
 
         Returns:
-            User data and JWT token for immediate login
-            {
-                "id": "...",
-                "username": "...",
-                "email": "...",
-                "role": "admin",
-                "tenant_key": "...",
-                "is_active": True,
-                "token": "eyJ..."  # JWT for immediate login
-            }
+            AuthResult with user_id, username, token, tenant_key, role,
+            and profile fields for the newly created admin
 
         Raises:
             ValidationError: If admin already exists or password too weak
@@ -734,6 +712,7 @@ class AuthService:
             ...     "admin", "admin@example.com", "SecureAdmin123!@#", "Administrator",
             ...     org_name="Acme Corporation"
             ... )
+            >>> token = admin.token
         """
         try:
             # Use provided session if available (test mode)
@@ -760,8 +739,8 @@ class AuthService:
         password: str,
         full_name: str | None,
         org_name: str | None = "My Organization",
-    ) -> dict[str, Any]:
-        """Implementation that uses provided session (Handover 0424h: accepts org_name)"""
+    ) -> AuthResult:
+        """Implementation that uses provided session (Handover 0424h: accepts org_name)."""
         # Check if users already exist (must be fresh install)
         user_count_stmt = select(func.count(User.id))
         result = await session.execute(user_count_stmt)
@@ -864,16 +843,17 @@ class AuthService:
             f"First administrator account created: {username}", extra={"username": username, "tenant_key": tenant_key}
         )
 
-        return {
-            "id": str(admin_user.id),
-            "username": admin_user.username,
-            "email": admin_user.email,
-            "full_name": admin_user.full_name,
-            "role": admin_user.role,
-            "tenant_key": admin_user.tenant_key,
-            "is_active": admin_user.is_active,
-            "token": token,  # JWT for immediate login
-        }
+        return AuthResult(
+            user_id=str(admin_user.id),
+            username=admin_user.username,
+            token=token,
+            tenant_key=admin_user.tenant_key,
+            role=admin_user.role,
+            email=admin_user.email,
+            full_name=admin_user.full_name,
+            is_active=admin_user.is_active,
+            created_at=admin_user.created_at.isoformat() if admin_user.created_at else None,
+        )
 
     # ============================================================================
     # Organization Helper Methods (Handover 0424b)
