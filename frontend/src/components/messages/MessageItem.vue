@@ -64,6 +64,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import type { Message } from '@/types/message'
 
 interface Props {
@@ -175,9 +176,9 @@ const relativeTime = computed(() => {
 // Markdown rendering
 const renderedContent = computed(() => {
   try {
-    return marked(props.message.content)
+    return DOMPurify.sanitize(marked(props.message.content))
   } catch {
-    return props.message.content
+    return DOMPurify.sanitize(props.message.content)
   }
 })
 
