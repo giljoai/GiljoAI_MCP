@@ -128,46 +128,41 @@ async def list_agent_templates(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        # Build base URL from config
-        # Use external_host if available (for LAN access), otherwise localhost
-        config = state.config
-        if config:
-            host = config.get("services.external_host") or "localhost"
-            port = config.server.api_port
-        else:
-            host = "localhost"
-            port = 7272
+    # Build base URL from config
+    # Use external_host if available (for LAN access), otherwise localhost
+    config = state.config
+    if config:
+        host = config.get("services.external_host") or "localhost"
+        port = config.server.api_port
+    else:
+        host = "localhost"
+        port = 7272
 
-        base_url = f"http://{host}:{port}/api/v1/agents/templates"
+    base_url = f"http://{host}:{port}/api/v1/agents/templates"
 
-        # Initialize service and get active templates
-        template_service = TemplateService()
-        templates = await template_service.list_active_user_templates(
-            session=session,
-            tenant_key=current_user.tenant_key,
-        )
-        files = []
-        for template in templates:
-            filename = format_filename(template.role or template.name)
-            files.append(
-                TemplateFileMetadata(
-                    filename=filename,
-                    url=f"{base_url}/{filename}",
-                    role=template.role or "general",
-                    description=template.description,
-                    version=template.version,
-                    category=template.category,
-                )
+    # Initialize service and get active templates
+    template_service = TemplateService()
+    templates = await template_service.list_active_user_templates(
+        session=session,
+        tenant_key=current_user.tenant_key,
+    )
+    files = []
+    for template in templates:
+        filename = format_filename(template.role or template.name)
+        files.append(
+            TemplateFileMetadata(
+                filename=filename,
+                url=f"{base_url}/{filename}",
+                role=template.role or "general",
+                description=template.description,
+                version=template.version,
+                category=template.category,
             )
+        )
 
-        logger.info(f"Listed {len(files)} agent templates for tenant {current_user.tenant_key}")
+    logger.info(f"Listed {len(files)} agent templates for tenant {current_user.tenant_key}")
 
-        return TemplateListResponse(count=len(files), base_url=base_url, files=files)
-
-    except Exception as e:
-        logger.error(f"Failed to list agent templates: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return TemplateListResponse(count=len(files), base_url=base_url, files=files)
 
 
 @router.get("/{filename}")
@@ -206,30 +201,25 @@ async def download_agent_template(
     if role.strip().lower() in SYSTEM_MANAGED_ROLES:
         raise HTTPException(status_code=404, detail=f"Template '{filename}' not found")
 
-    try:
-        template_service = TemplateService()
-        template = await template_service.get_template_by_role(
-            session=session,
-            tenant_key=current_user.tenant_key,
-            role=role,
-        )
+    template_service = TemplateService()
+    template = await template_service.get_template_by_role(
+        session=session,
+        tenant_key=current_user.tenant_key,
+        role=role,
+    )
 
-        if not template:
-            logger.warning(f"Template not found: {filename} for tenant {current_user.tenant_key}")
-            raise HTTPException(status_code=404, detail=f"Template '{filename}' not found or inactive")
+    if not template:
+        logger.warning(f"Template not found: {filename} for tenant {current_user.tenant_key}")
+        raise HTTPException(status_code=404, detail=f"Template '{filename}' not found or inactive")
 
-        # Build complete markdown content
-        markdown_content = build_template_markdown(template)
+    # Build complete markdown content
+    markdown_content = build_template_markdown(template)
 
-        logger.info(f"Downloaded template: {filename} (tenant: {current_user.tenant_key})")
+    logger.info(f"Downloaded template: {filename} (tenant: {current_user.tenant_key})")
 
-        # Return as downloadable markdown file
-        return Response(
-            content=markdown_content,
-            media_type="text/markdown",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-        )
-
-    except Exception as e:
-        logger.error(f"Failed to download template {filename}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    # Return as downloadable markdown file
+    return Response(
+        content=markdown_content,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

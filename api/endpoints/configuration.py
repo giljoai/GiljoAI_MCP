@@ -58,39 +58,35 @@ async def get_system_configuration():
 
     Sensitive data (passwords, API keys) are masked for security.
     """
-    try:
-        # Read config.yaml directly for accurate structure
-        # __file__ is api/endpoints/configuration.py
-        # .parent = api/endpoints, .parent.parent = api, .parent.parent.parent = project root
-        config_path = Path(__file__).parent.parent.parent / "config.yaml"
+    # Read config.yaml directly for accurate structure
+    # __file__ is api/endpoints/configuration.py
+    # .parent = api/endpoints, .parent.parent = api, .parent.parent.parent = project root
+    config_path = Path(__file__).parent.parent.parent / "config.yaml"
 
-        if not config_path.exists():
-            raise HTTPException(status_code=404, detail=f"config.yaml not found at {config_path}")
+    if not config_path.exists():
+        raise HTTPException(status_code=404, detail=f"config.yaml not found at {config_path}")
 
-        with open(config_path, encoding="utf-8") as f:
-            config = yaml.safe_load(f)
+    with open(config_path, encoding="utf-8") as f:
+        config = yaml.safe_load(f)
 
-        if not config:
-            raise HTTPException(status_code=500, detail="config.yaml is empty")
+    if not config:
+        raise HTTPException(status_code=500, detail="config.yaml is empty")
 
-        # Mask sensitive data for security
-        if "database" in config and "password" in config.get("database", {}):
-            # Mask database password
-            config["database"]["password"] = "****" if config["database"]["password"] else ""
+    # Mask sensitive data for security
+    if "database" in config and "password" in config.get("database", {}):
+        # Mask database password
+        config["database"]["password"] = "****" if config["database"]["password"] else ""
 
-        if "security" in config and "api_keys" in config.get("security", {}):
-            # Mask API keys
-            api_keys = config["security"].get("api_keys", {})
-            if isinstance(api_keys, dict):
-                for key in api_keys:
-                    if isinstance(api_keys[key], str):
-                        api_keys[key] = "****"
+    if "security" in config and "api_keys" in config.get("security", {}):
+        # Mask API keys
+        api_keys = config["security"].get("api_keys", {})
+        if isinstance(api_keys, dict):
+            for key in api_keys:
+                if isinstance(api_keys[key], str):
+                    api_keys[key] = "****"
 
-        # Return the full structure (matches config.yaml format)
-        return config
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load configuration: {e!s}") from e
+    # Return the full structure (matches config.yaml format)
+    return config
 
 
 @router.get("/key/{key_path}", response_model=ConfigurationResponse)
@@ -101,23 +97,19 @@ async def get_configuration(key_path: str, default: Optional[Any] = None):
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
 
-    try:
-        # Replace URL path separator with dot notation
-        key = key_path.replace("/", ".")
-        value = state.config.get(key, default)
+    # Replace URL path separator with dot notation
+    key = key_path.replace("/", ".")
+    value = state.config.get(key, default)
 
-        if value is None and default is None:
-            raise HTTPException(status_code=404, detail=f"Configuration key '{key}' not found")
+    if value is None and default is None:
+        raise HTTPException(status_code=404, detail=f"Configuration key '{key}' not found")
 
-        # Determine source
-        source = "default"
-        if hasattr(state.config, "_sources") and key in state.config._sources:
-            source = state.config._sources[key]
+    # Determine source
+    source = "default"
+    if hasattr(state.config, "_sources") and key in state.config._sources:
+        source = state.config._sources[key]
 
-        return ConfigurationResponse(key=key, value=value, source=source, updated_at=datetime.now(timezone.utc))
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return ConfigurationResponse(key=key, value=value, source=source, updated_at=datetime.now(timezone.utc))
 
 
 @router.put("/key/{key_path}")
@@ -128,26 +120,22 @@ async def set_configuration(key_path: str, config: ConfigurationSet):
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
 
-    try:
-        # Replace URL path separator with dot notation
-        key = key_path.replace("/", ".")
+    # Replace URL path separator with dot notation
+    key = key_path.replace("/", ".")
 
-        # Validate key format
-        if not key or ".." in key:
-            raise HTTPException(status_code=400, detail="Invalid configuration key")
+    # Validate key format
+    if not key or ".." in key:
+        raise HTTPException(status_code=400, detail="Invalid configuration key")
 
-        # Set configuration value
-        state.config.set(key, config.value)
+    # Set configuration value
+    state.config.set(key, config.value)
 
-        return {
-            "success": True,
-            "key": key,
-            "value": config.value,
-            "message": "Configuration updated (runtime only)",
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return {
+        "success": True,
+        "key": key,
+        "value": config.value,
+        "message": "Configuration updated (runtime only)",
+    }
 
 
 @router.patch("/")
@@ -158,26 +146,22 @@ async def update_configurations(update: ConfigurationUpdate):
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
 
-    try:
-        updated = []
-        failed = []
+    updated = []
+    failed = []
 
-        for key, value in update.configurations.items():
-            try:
-                state.config.set(key, value)
-                updated.append(key)
-            except Exception as e:  # noqa: BLE001, PERF203 - Partial update resilience: collect failures, continue loop
-                failed.append({"key": key, "error": str(e)})
+    for key, value in update.configurations.items():
+        try:
+            state.config.set(key, value)
+            updated.append(key)
+        except Exception as e:  # noqa: BLE001, PERF203 - Partial update resilience: collect failures, continue loop
+            failed.append({"key": key, "error": str(e)})
 
-        return {
-            "success": len(failed) == 0,
-            "updated": updated,
-            "failed": failed,
-            "message": f"Updated {len(updated)} configurations",
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return {
+        "success": len(failed) == 0,
+        "updated": updated,
+        "failed": failed,
+        "message": f"Updated {len(updated)} configurations",
+    }
 
 
 @router.post("/reload")
@@ -188,14 +172,10 @@ async def reload_configuration():
     if not state.config:
         raise HTTPException(status_code=503, detail="Configuration manager not available")
 
-    try:
-        # Reload configuration
-        state.config.reload()
+    # Reload configuration
+    state.config.reload()
 
-        return {"success": True, "message": "Configuration reloaded successfully"}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return {"success": True, "message": "Configuration reloaded successfully"}
 
 
 @router.get("/tenants", response_model=list[str])
@@ -206,17 +186,13 @@ async def list_tenant_configurations():
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        async with state.db_manager.get_session_async() as session:
-            from src.giljo_mcp.repositories import ConfigurationRepository
+    async with state.db_manager.get_session_async() as session:
+        from src.giljo_mcp.repositories import ConfigurationRepository
 
-            repo = ConfigurationRepository(state.db_manager)
-            tenants = await repo.list_tenant_keys(session)
+        repo = ConfigurationRepository(state.db_manager)
+        tenants = await repo.list_tenant_keys(session)
 
-            return tenants
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        return tenants
 
 
 @router.get("/tenant/{tenant_key}", response_model=dict[str, Any])
@@ -227,24 +203,20 @@ async def get_tenant_configuration(tenant_key: str):
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        async with state.db_manager.get_session_async() as session:
-            from src.giljo_mcp.repositories import ConfigurationRepository
+    async with state.db_manager.get_session_async() as session:
+        from src.giljo_mcp.repositories import ConfigurationRepository
 
-            repo = ConfigurationRepository(state.db_manager)
-            configs = await repo.get_tenant_configurations(session, tenant_key)
+        repo = ConfigurationRepository(state.db_manager)
+        configs = await repo.get_tenant_configurations(session, tenant_key)
 
-            if not configs:
-                raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
+        if not configs:
+            raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
 
-            tenant_config = {}
-            for config in configs:
-                tenant_config[config.key] = json.loads(config.value) if config.value else None
+        tenant_config = {}
+        for config in configs:
+            tenant_config[config.key] = json.loads(config.value) if config.value else None
 
-            return tenant_config
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        return tenant_config
 
 
 @router.put("/tenant/{tenant_key}")
@@ -258,36 +230,32 @@ async def set_tenant_configuration(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        async with state.db_manager.get_session_async() as session:
-            from src.giljo_mcp.models import Configuration
-            from src.giljo_mcp.repositories import ConfigurationRepository
+    async with state.db_manager.get_session_async() as session:
+        from src.giljo_mcp.models import Configuration
+        from src.giljo_mcp.repositories import ConfigurationRepository
 
-            repo = ConfigurationRepository(state.db_manager)
+        repo = ConfigurationRepository(state.db_manager)
 
-            for key, value in configurations.items():
-                config = await repo.get_configuration_by_key(session, tenant_key, key)
+        for key, value in configurations.items():
+            config = await repo.get_configuration_by_key(session, tenant_key, key)
 
-                if config:
-                    config.value = json.dumps(value) if value is not None else None
-                    config.updated_at = datetime.now(timezone.utc)
-                else:
-                    config = Configuration(
-                        tenant_key=tenant_key, key=key, value=json.dumps(value) if value is not None else None
-                    )
-                    session.add(config)
+            if config:
+                config.value = json.dumps(value) if value is not None else None
+                config.updated_at = datetime.now(timezone.utc)
+            else:
+                config = Configuration(
+                    tenant_key=tenant_key, key=key, value=json.dumps(value) if value is not None else None
+                )
+                session.add(config)
 
-            await session.commit()
+        await session.commit()
 
-            return {
-                "success": True,
-                "tenant_key": tenant_key,
-                "configurations_updated": len(configurations),
-                "message": f"Tenant configuration updated for '{tenant_key}'",
-            }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        return {
+            "success": True,
+            "tenant_key": tenant_key,
+            "configurations_updated": len(configurations),
+            "message": f"Tenant configuration updated for '{tenant_key}'",
+        }
 
 
 @router.delete("/tenant/{tenant_key}")
@@ -298,27 +266,23 @@ async def delete_tenant_configuration(tenant_key: str):
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    try:
-        async with state.db_manager.get_session_async() as session:
-            from src.giljo_mcp.repositories import ConfigurationRepository
+    async with state.db_manager.get_session_async() as session:
+        from src.giljo_mcp.repositories import ConfigurationRepository
 
-            repo = ConfigurationRepository(state.db_manager)
-            deleted_count = await repo.delete_tenant_configurations(session, tenant_key)
+        repo = ConfigurationRepository(state.db_manager)
+        deleted_count = await repo.delete_tenant_configurations(session, tenant_key)
 
-            await session.commit()
+        await session.commit()
 
-            if deleted_count == 0:
-                raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
+        if deleted_count == 0:
+            raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
 
-            return {
-                "success": True,
-                "tenant_key": tenant_key,
-                "configurations_deleted": deleted_count,
-                "message": f"Deleted {deleted_count} configurations for tenant '{tenant_key}'",
-            }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        return {
+            "success": True,
+            "tenant_key": tenant_key,
+            "configurations_deleted": deleted_count,
+            "message": f"Deleted {deleted_count} configurations for tenant '{tenant_key}'",
+        }
 
 
 # Database-specific endpoints
@@ -343,31 +307,27 @@ class DatabasePasswordUpdate(BaseModel):
 @router.get("/database", response_model=DatabaseConfigResponse)
 async def get_database_configuration():
     """Get database configuration (password masked) - reads from .env file"""
-    try:
-        # Read directly from .env file
-        from dotenv import dotenv_values
+    # Read directly from .env file
+    from dotenv import dotenv_values
 
-        env_path = Path.cwd() / ".env"
+    env_path = Path.cwd() / ".env"
 
-        if not env_path.exists():
-            raise HTTPException(status_code=404, detail=".env file not found")
+    if not env_path.exists():
+        raise HTTPException(status_code=404, detail=".env file not found")
 
-        env_vars = dotenv_values(env_path)
+    env_vars = dotenv_values(env_path)
 
-        # Get database config (these should match what installer created)
-        host = env_vars.get("DB_HOST", "localhost")
-        port = int(env_vars.get("DB_PORT", "5432"))
-        name = env_vars.get("DB_NAME", "giljo_mcp")
-        user = env_vars.get("DB_USER", "giljo_user")
-        password = env_vars.get("DB_PASSWORD", "")
+    # Get database config (these should match what installer created)
+    host = env_vars.get("DB_HOST", "localhost")
+    port = int(env_vars.get("DB_PORT", "5432"))
+    name = env_vars.get("DB_NAME", "giljo_mcp")
+    user = env_vars.get("DB_USER", "giljo_user")
+    password = env_vars.get("DB_PASSWORD", "")
 
-        # Mask password (show actual length for reference)
-        password_masked = "*" * len(password) if password else "****"
+    # Mask password (show actual length for reference)
+    password_masked = "*" * len(password) if password else "****"
 
-        return DatabaseConfigResponse(host=host, port=port, name=name, user=user, password_masked=password_masked)
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read database configuration: {e!s}") from e
+    return DatabaseConfigResponse(host=host, port=port, name=name, user=user, password_masked=password_masked)
 
 
 @router.post("/database/password")
@@ -517,51 +477,47 @@ async def get_frontend_configuration():
         and the frontend connects via the configured external_host (set during installation).
         OS firewall controls network access (defense in depth).
     """
-    try:
-        # Read config.yaml directly
-        config_path = Path(__file__).parent.parent.parent / "config.yaml"
+    # Read config.yaml directly
+    config_path = Path(__file__).parent.parent.parent / "config.yaml"
 
-        if not config_path.exists():
-            raise HTTPException(status_code=404, detail=f"config.yaml not found at {config_path}")
+    if not config_path.exists():
+        raise HTTPException(status_code=404, detail=f"config.yaml not found at {config_path}")
 
-        with open(config_path, encoding="utf-8") as f:
-            config = yaml.safe_load(f)
+    with open(config_path, encoding="utf-8") as f:
+        config = yaml.safe_load(f)
 
-        if not config:
-            raise HTTPException(status_code=500, detail="config.yaml is empty")
+    if not config:
+        raise HTTPException(status_code=500, detail="config.yaml is empty")
 
-        # Extract frontend-needed configuration
-        api_port = config.get("services", {}).get("api", {}).get("port", 7272)
-        api_keys_required = config.get("features", {}).get("api_keys_required", False)
+    # Extract frontend-needed configuration
+    api_port = config.get("services", {}).get("api", {}).get("port", 7272)
+    api_keys_required = config.get("features", {}).get("api_keys_required", False)
 
-        # Get external host configuration (from install.py network configuration)
-        # This is what the frontend should use to connect to the API
-        external_host = config.get("services", {}).get("external_host", "localhost")
+    # Get external host configuration (from install.py network configuration)
+    # This is what the frontend should use to connect to the API
+    external_host = config.get("services", {}).get("external_host", "localhost")
 
-        # Use external_host for frontend connections
-        # This was configured during installation based on user's network selection
-        frontend_host = external_host
+    # Use external_host for frontend connections
+    # This was configured during installation based on user's network selection
+    frontend_host = external_host
 
-        # Build WebSocket URL (use ws:// for http, wss:// for https)
-        ws_protocol = "wss" if config.get("features", {}).get("ssl_enabled", False) else "ws"
-        ws_url = f"{ws_protocol}://{frontend_host}:{api_port}"
+    # Build WebSocket URL (use ws:// for http, wss:// for https)
+    ws_protocol = "wss" if config.get("features", {}).get("ssl_enabled", False) else "ws"
+    ws_url = f"{ws_protocol}://{frontend_host}:{api_port}"
 
-        # v3.0 Unified Architecture: No 'mode' field in response
-        return {
-            "api": {
-                "host": frontend_host,  # Frontend connection host (external_host from config)
-                "port": api_port,
-            },
-            "websocket": {
-                "url": ws_url,
-            },
-            "security": {
-                "api_keys_required": api_keys_required,
-            },
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load frontend configuration: {e!s}") from e
+    # v3.0 Unified Architecture: No 'mode' field in response
+    return {
+        "api": {
+            "host": frontend_host,  # Frontend connection host (external_host from config)
+            "port": api_port,
+        },
+        "websocket": {
+            "url": ws_url,
+        },
+        "security": {
+            "api_keys_required": api_keys_required,
+        },
+    }
 
 
 @router.get("/health/database")

@@ -61,14 +61,10 @@ async def get_serena_settings():
 
     Returns only use_in_prompts toggle (advanced settings removed in Handover 0277).
     """
-    try:
-        config = read_config()
-        serena = config.get("features", {}).get("serena_mcp", {})
+    config = read_config()
+    serena = config.get("features", {}).get("serena_mcp", {})
 
-        return {"use_in_prompts": bool(serena.get("use_in_prompts", False))}
-    except (OSError, ValueError) as e:
-        logger.exception("Failed to get Serena settings")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return {"use_in_prompts": bool(serena.get("use_in_prompts", False))}
 
 
 @router.post("/toggle")
@@ -78,43 +74,34 @@ async def toggle_serena(request: SerenaToggleRequest):
 
     Accepts only use_in_prompts boolean (advanced settings removed in Handover 0277).
     """
-    try:
-        config = read_config()
+    config = read_config()
 
-        # Ensure features section exists
-        if "features" not in config:
-            config["features"] = {}
-        if "serena_mcp" not in config["features"]:
-            config["features"]["serena_mcp"] = {}
+    # Ensure features section exists
+    if "features" not in config:
+        config["features"] = {}
+    if "serena_mcp" not in config["features"]:
+        config["features"]["serena_mcp"] = {}
 
-        # Update flag
-        config["features"]["serena_mcp"]["use_in_prompts"] = request.use_in_prompts
+    # Update flag
+    config["features"]["serena_mcp"]["use_in_prompts"] = request.use_in_prompts
 
-        write_config(config)
+    write_config(config)
 
-        logger.info(f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}")
+    logger.info(f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}")
 
-        # Return format expected by frontend (success, enabled, message)
-        return {
-            "success": True,
-            "enabled": request.use_in_prompts,
-            "use_in_prompts": request.use_in_prompts,  # Keep for backwards compatibility
-            "message": f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}",
-        }
-
-    except (OSError, ValueError) as e:
-        logger.exception("Failed to toggle Serena")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    # Return format expected by frontend (success, enabled, message)
+    return {
+        "success": True,
+        "enabled": request.use_in_prompts,
+        "use_in_prompts": request.use_in_prompts,  # Keep for backwards compatibility
+        "message": f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}",
+    }
 
 
 @router.get("/status")
 async def get_serena_status():
     """Get current Serena prompt toggle status (legacy endpoint)."""
-    try:
-        config = read_config()
-        enabled = config.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+    config = read_config()
+    enabled = config.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
 
-        return {"enabled": enabled, "message": f"Serena prompts {'enabled' if enabled else 'disabled'}"}
-    except (OSError, ValueError) as e:
-        logger.exception("Failed to get Serena status")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return {"enabled": enabled, "message": f"Serena prompts {'enabled' if enabled else 'disabled'}"}
