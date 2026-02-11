@@ -13,16 +13,25 @@ Latent Semantic Analysis (LSA) algorithm from the Sumy library. Key features:
 
 Implementation follows reference from Handover 0338 with enhancements for
 production use including comprehensive error handling and metrics tracking.
+
+Updated Handover 0731: Migrated from dict returns to typed
+SummarizeSingleResult and SummarizeMultiLevelResult.
 """
 
 import time
-from typing import Any
+from typing import Optional
 
 from sumy.nlp.stemmers import Stemmer
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.summarizers.lsa import LsaSummarizer
 from sumy.utils import get_stop_words
+
+from src.giljo_mcp.schemas.service_responses import (
+    MultiLevelSummaryLevel,
+    SummarizeMultiLevelResult,
+    SummarizeSingleResult,
+)
 
 
 class VisionDocumentSummarizer:
@@ -75,7 +84,7 @@ class VisionDocumentSummarizer:
         text: str,
         target_tokens: int = 25000,
         chunk_size: int = 10000,
-    ) -> dict[str, Any]:
+    ) -> SummarizeSingleResult:
         """
         Summarize document to target token count using map-reduce LSA.
 
@@ -92,37 +101,33 @@ class VisionDocumentSummarizer:
             chunk_size: Characters per processing chunk (default: 10000)
 
         Returns:
-            Dictionary containing:
-            - summary: Summarized text
-            - original_tokens: Original document token count
-            - summary_tokens: Summary token count
-            - compression_ratio: Percentage compressed (0.0-1.0)
-            - processing_time_ms: Processing time in milliseconds
+            SummarizeSingleResult with summary, token counts, compression ratio,
+            and processing time.
         """
         start_time = time.time()
 
         # Handle empty input
         if not text or not text.strip():
-            return {
-                "summary": "",
-                "original_tokens": 0,
-                "summary_tokens": 0,
-                "compression_ratio": 0.0,
-                "processing_time_ms": 0,
-            }
+            return SummarizeSingleResult(
+                summary="",
+                original_tokens=0,
+                summary_tokens=0,
+                compression_ratio=0.0,
+                processing_time_ms=0,
+            )
 
         original_tokens = self.estimate_tokens(text)
 
         # No summarization needed if already under target
         if original_tokens <= target_tokens:
             processing_time_ms = int((time.time() - start_time) * 1000)
-            return {
-                "summary": text,
-                "original_tokens": original_tokens,
-                "summary_tokens": original_tokens,
-                "compression_ratio": 0.0,  # No compression
-                "processing_time_ms": processing_time_ms,
-            }
+            return SummarizeSingleResult(
+                summary=text,
+                original_tokens=original_tokens,
+                summary_tokens=original_tokens,
+                compression_ratio=0.0,
+                processing_time_ms=processing_time_ms,
+            )
 
         # Chunk the document (MAP phase)
         chunks = self._chunk_text(text, chunk_size)
@@ -155,13 +160,13 @@ class VisionDocumentSummarizer:
         compression_ratio = (original_tokens - summary_tokens) / original_tokens if original_tokens > 0 else 0.0
         processing_time_ms = int((time.time() - start_time) * 1000)
 
-        return {
-            "summary": combined,
-            "original_tokens": original_tokens,
-            "summary_tokens": summary_tokens,
-            "compression_ratio": compression_ratio,
-            "processing_time_ms": processing_time_ms,
-        }
+        return SummarizeSingleResult(
+            summary=combined,
+            original_tokens=original_tokens,
+            summary_tokens=summary_tokens,
+            compression_ratio=compression_ratio,
+            processing_time_ms=processing_time_ms,
+        )
 
     def _chunk_text(self, text: str, chunk_size: int) -> list:
         """
@@ -223,7 +228,7 @@ class VisionDocumentSummarizer:
             # Better to be slightly over target than lose content
             return text
 
-    def summarize_multi_level(self, text: str, levels: dict[str, float] = None) -> dict[str, Any]:
+    def summarize_multi_level(self, text: str, levels: Optional[dict[str, float]] = None) -> SummarizeMultiLevelResult:
         """
         Generate 2 summary levels based on percentage of original content.
 
@@ -245,27 +250,14 @@ class VisionDocumentSummarizer:
                    Values represent RETENTION ratio (0.33 = keep 33%)
 
         Returns:
-            Dictionary containing:
-            {
-                "light": {
-                    "summary": str,
-                    "tokens": int,
-                    "sentences": int
-                },
-                "medium": {
-                    "summary": str,
-                    "tokens": int,
-                    "sentences": int
-                },
-                "original_tokens": int,
-                "processing_time_ms": int
-            }
+            SummarizeMultiLevelResult with light/medium summaries, original_tokens,
+            and processing_time_ms.
 
         Example:
             >>> summarizer = VisionDocumentSummarizer()
             >>> result = summarizer.summarize_multi_level(large_doc)
-            >>> print(f"Light: {result['light']['tokens']} tokens (~33%)")
-            >>> print(f"Medium: {result['medium']['tokens']} tokens (~66%)")
+            >>> print(f"Light: {result.light.tokens} tokens (~33%)")
+            >>> print(f"Medium: {result.medium.tokens} tokens (~66%)")
         """
         # Default: percentage-based reduction (Handover 0246b)
         if levels is None:
@@ -275,18 +267,18 @@ class VisionDocumentSummarizer:
             }
 
         start_time = time.time()
-        results = {}
+        level_results: dict[str, MultiLevelSummaryLevel] = {}
 
         original_tokens = self.estimate_tokens(text)
 
         # Handle empty or very small documents
         if original_tokens == 0:
-            return {
-                "light": {"summary": "", "tokens": 0, "sentences": 0},
-                "medium": {"summary": "", "tokens": 0, "sentences": 0},
-                "original_tokens": 0,
-                "processing_time_ms": 0,
-            }
+            return SummarizeMultiLevelResult(
+                light=MultiLevelSummaryLevel(summary="", tokens=0, sentences=0),
+                medium=MultiLevelSummaryLevel(summary="", tokens=0, sentences=0),
+                original_tokens=0,
+                processing_time_ms=0,
+            )
 
         # Generate summaries independently from original text
         # Process medium first (larger), then light (smaller)
@@ -301,16 +293,18 @@ class VisionDocumentSummarizer:
             summary_result = self.summarize(text, target_tokens=target_tokens)
 
             # Count sentences (split on period followed by space or end)
-            summary_text = summary_result["summary"]
+            summary_text = summary_result.summary
             sentences = [s.strip() for s in summary_text.split(".") if s.strip()]
 
-            results[level] = {
-                "summary": summary_text,
-                "tokens": summary_result["summary_tokens"],
-                "sentences": len(sentences),
-            }
+            level_results[level] = MultiLevelSummaryLevel(
+                summary=summary_text,
+                tokens=summary_result.summary_tokens,
+                sentences=len(sentences),
+            )
 
-        results["original_tokens"] = original_tokens
-        results["processing_time_ms"] = int((time.time() - start_time) * 1000)
-
-        return results
+        return SummarizeMultiLevelResult(
+            light=level_results["light"],
+            medium=level_results["medium"],
+            original_tokens=original_tokens,
+            processing_time_ms=int((time.time() - start_time) * 1000),
+        )

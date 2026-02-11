@@ -8,6 +8,10 @@ Tests cover:
 - Error handling and edge cases
 
 Target: >80% line coverage
+
+Updated Handover 0731: Migrated from dict returns to typed
+TemplateListResult, TemplateGetResult, TemplateCreateResult, TemplateUpdateResult.
+Fixed pre-existing mock setup issues (AsyncMock -> Mock for get_session_async).
 """
 
 from unittest.mock import AsyncMock, Mock
@@ -15,13 +19,25 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from src.giljo_mcp.models import AgentTemplate
+from src.giljo_mcp.schemas.service_responses import (
+    TemplateCreateResult,
+    TemplateGetResult,
+    TemplateListResult,
+    TemplateUpdateResult,
+)
 from src.giljo_mcp.services.template_service import TemplateService
 
 
-@pytest.fixture
-def mock_db_manager():
-    """Create properly configured mock database manager."""
-    db_manager = Mock()
+def _make_mock_session(**overrides):
+    """Create a properly configured mock async session.
+
+    The session is configured as an async context manager that returns itself
+    when used with ``async with``. All standard session methods (execute,
+    commit, refresh, add, delete) are set up with sensible defaults.
+
+    ``overrides`` can supply replacement mocks for any session attribute
+    (e.g. ``execute=AsyncMock(return_value=my_result)``).
+    """
     session = AsyncMock()
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
@@ -30,7 +46,26 @@ def mock_db_manager():
     session.refresh = AsyncMock()
     session.add = Mock()
     session.delete = Mock()
+
+    for key, value in overrides.items():
+        setattr(session, key, value)
+    return session
+
+
+def _make_mock_db_manager(session):
+    """Create a mock database manager that returns *session* from get_session_async."""
+    db_manager = Mock()
+    # get_session_async must be a plain Mock (NOT AsyncMock) so the caller
+    # receives the context-manager directly rather than a coroutine wrapper.
     db_manager.get_session_async = Mock(return_value=session)
+    return db_manager
+
+
+@pytest.fixture
+def mock_db_manager():
+    """Create properly configured mock database manager."""
+    session = _make_mock_session()
+    db_manager = _make_mock_db_manager(session)
     return db_manager, session
 
 
@@ -59,10 +94,11 @@ class TestTemplateServiceCRUD:
         )
 
         # Assert
-        # Handover 0730: Service returns dict directly (no success wrapper)
-        assert "template_id" in result
-        assert result["name"] == "custom-analyzer"
-        assert result["tenant_key"] == "test-tenant"
+        # Handover 0731: Service returns typed TemplateCreateResult
+        assert isinstance(result, TemplateCreateResult)
+        assert result.template_id  # Non-empty UUID string
+        assert result.name == "custom-analyzer"
+        assert result.tenant_key == "test-tenant"
         session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -87,24 +123,20 @@ class TestTemplateServiceCRUD:
     @pytest.mark.asyncio
     async def test_create_template_error_handling(self):
         """Test error handling in create_template"""
-        from src.giljo_mcp.exceptions import DatabaseError
+        from src.giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-
-        # Create a proper async context manager that raises on enter
-        session = AsyncMock()
+        session = _make_mock_session()
         session.__aenter__ = AsyncMock(side_effect=Exception("Database error"))
-        session.__aexit__ = AsyncMock(return_value=None)
-        db_manager.get_session_async = Mock(return_value=session)
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 
-        # Act & Assert - exception-based pattern (Handover 0730)
-        with pytest.raises(DatabaseError) as exc_info:
+        # Act & Assert - service wraps all unexpected exceptions as BaseGiljoError
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.create_template(name="test", content="content")
 
         assert "Database error" in str(exc_info.value)
@@ -113,16 +145,6 @@ class TestTemplateServiceCRUD:
     async def test_get_template_by_id_success(self):
         """Test successful template retrieval by ID"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
-        )
-
-        # Mock template
         mock_template = Mock(spec=AgentTemplate)
         mock_template.id = "test-id"
         mock_template.name = "orchestrator"
@@ -134,35 +156,29 @@ class TestTemplateServiceCRUD:
         mock_template.tenant_key = "test-tenant"
         mock_template.product_id = None
 
-        # Mock query result
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_template)
-        session.execute = AsyncMock(return_value=mock_result)
+        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
         result = await service.get_template(template_id="test-id")
 
-        # Assert - exception-based pattern (Handover 0730): no success wrapper
-        assert result["template"]["id"] == "test-id"
-        assert result["template"]["name"] == "orchestrator"
-        assert result["template"]["content"] == "You are an orchestrator..."
+        # Assert - Handover 0731: typed TemplateGetResult
+        assert isinstance(result, TemplateGetResult)
+        assert result.template.id == "test-id"
+        assert result.template.name == "orchestrator"
+        assert result.template.content == "You are an orchestrator..."
 
     @pytest.mark.asyncio
     async def test_get_template_by_name_success(self):
         """Test successful template retrieval by name"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
-        )
-
-        # Mock template
         mock_template = Mock(spec=AgentTemplate)
         mock_template.id = "test-id"
         mock_template.name = "analyzer"
@@ -176,15 +192,20 @@ class TestTemplateServiceCRUD:
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_template)
-        session.execute = AsyncMock(return_value=mock_result)
+        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
         result = await service.get_template(template_name="analyzer")
 
-        # Assert - exception-based pattern (Handover 0730): no success wrapper
-        assert result["template"]["name"] == "analyzer"
+        # Assert - Handover 0731: typed TemplateGetResult
+        assert isinstance(result, TemplateGetResult)
+        assert result.template.name == "analyzer"
 
     @pytest.mark.asyncio
     async def test_get_template_not_found(self):
@@ -192,18 +213,13 @@ class TestTemplateServiceCRUD:
         from src.giljo_mcp.exceptions import TemplateNotFoundError
 
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
-        )
-
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=None)
-        session.execute = AsyncMock(return_value=mock_result)
+        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 
@@ -236,16 +252,6 @@ class TestTemplateServiceCRUD:
     async def test_list_templates_success(self):
         """Test successful template listing"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
-        )
-
-        # Mock templates
         mock_template1 = Mock(spec=AgentTemplate)
         mock_template1.id = "id-1"
         mock_template1.name = "orchestrator"
@@ -270,44 +276,45 @@ class TestTemplateServiceCRUD:
 
         mock_result = Mock()
         mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[mock_template1, mock_template2])))
-        session.execute = AsyncMock(return_value=mock_result)
+        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
         result = await service.list_templates()
 
-        # Assert - exception-based pattern (Handover 0730): no success wrapper
-        assert len(result["templates"]) == 2
-        assert result["count"] == 2
-        assert result["templates"][0]["name"] == "orchestrator"
-        assert result["templates"][1]["name"] == "analyzer"
+        # Assert - Handover 0731: typed TemplateListResult
+        assert isinstance(result, TemplateListResult)
+        assert len(result.templates) == 2
+        assert result.count == 2
+        assert result.templates[0]["name"] == "orchestrator"
+        assert result.templates[1]["name"] == "analyzer"
 
     @pytest.mark.asyncio
     async def test_list_templates_empty(self):
         """Test listing templates when none exist"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
-        )
-
         mock_result = Mock()
         mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[])))
-        session.execute = AsyncMock(return_value=mock_result)
+        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
         result = await service.list_templates()
 
-        # Assert - exception-based pattern (Handover 0730): no success wrapper
-        assert len(result["templates"]) == 0
-        assert result["count"] == 0
+        # Assert - Handover 0731: typed TemplateListResult
+        assert isinstance(result, TemplateListResult)
+        assert len(result.templates) == 0
+        assert result.count == 0
 
     @pytest.mark.asyncio
     async def test_list_templates_no_tenant_context(self):
@@ -332,16 +339,6 @@ class TestTemplateServiceCRUD:
     async def test_update_template_success(self):
         """Test successful template update"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
-        )
-
-        # Mock existing template
         mock_template = Mock(spec=AgentTemplate)
         mock_template.id = "test-id"
         mock_template.name = "old-name"
@@ -353,17 +350,21 @@ class TestTemplateServiceCRUD:
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_template)
-        session.execute = AsyncMock(return_value=mock_result)
-        session.commit = AsyncMock()
+        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
         result = await service.update_template(template_id="test-id", name="new-name", content="new content")
 
-        # Assert - exception-based pattern (Handover 0730): no success wrapper
-        assert result["template_id"] == "test-id"
-        assert result["updated"] is True
+        # Assert - Handover 0731: typed TemplateUpdateResult
+        assert isinstance(result, TemplateUpdateResult)
+        assert result.template_id == "test-id"
+        assert result.updated is True
         assert mock_template.name == "new-name"
         # Note: content is stored in system_instructions
         session.commit.assert_awaited_once()
@@ -374,18 +375,13 @@ class TestTemplateServiceCRUD:
         from src.giljo_mcp.exceptions import TemplateNotFoundError
 
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
-        )
-
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=None)
-        session.execute = AsyncMock(return_value=mock_result)
+        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 
@@ -399,16 +395,6 @@ class TestTemplateServiceCRUD:
     async def test_update_template_partial_update(self):
         """Test updating only specific fields"""
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-        db_manager.get_session_async = AsyncMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
-        )
-
-        # Mock existing template
         mock_template = Mock(spec=AgentTemplate)
         mock_template.id = "test-id"
         mock_template.name = "original-name"
@@ -417,16 +403,20 @@ class TestTemplateServiceCRUD:
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_template)
-        session.execute = AsyncMock(return_value=mock_result)
-        session.commit = AsyncMock()
+        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 
         # Act - only update content
         result = await service.update_template(template_id="test-id", content="new content")
 
-        # Assert - exception-based pattern (Handover 0730): no success wrapper
-        assert result["updated"] is True
+        # Assert - Handover 0731: typed TemplateUpdateResult
+        assert isinstance(result, TemplateUpdateResult)
+        assert result.updated is True
         assert mock_template.name == "original-name"  # Unchanged
         assert mock_template.role == "original-role"  # Unchanged
 
@@ -438,24 +428,18 @@ class TestTemplateServiceTenantIsolation:
     async def test_create_template_uses_provided_tenant_key(self):
         """Test that explicit tenant_key is used"""
         # Arrange
-        db_manager = Mock()
+        session = _make_mock_session()
+        db_manager = _make_mock_db_manager(session)
         tenant_manager = Mock()
-        session = AsyncMock()
-
-        db_manager.get_session_async = AsyncMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
-        )
-
-        session.add = Mock()
-        session.commit = AsyncMock()
 
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
         result = await service.create_template(name="test", content="content", tenant_key="explicit-tenant")
 
-        # Assert - exception-based pattern (Handover 0730): no success wrapper
-        assert result["tenant_key"] == "explicit-tenant"
+        # Assert - Handover 0731: typed TemplateCreateResult
+        assert isinstance(result, TemplateCreateResult)
+        assert result.tenant_key == "explicit-tenant"
         # Verify tenant manager was NOT called
         tenant_manager.get_current_tenant.assert_not_called()
 
@@ -466,26 +450,22 @@ class TestTemplateServiceTenantIsolation:
         # The actual filtering is done by SQLAlchemy, so we just verify
         # the service constructs the correct query
 
-        db_manager = Mock()
-        tenant_manager = Mock()
-        session = AsyncMock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="tenant-1")
-        db_manager.get_session_async = AsyncMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(return_value=session), __aexit__=AsyncMock())
-        )
-
         mock_result = Mock()
         mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[])))
-        session.execute = AsyncMock(return_value=mock_result)
+        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="tenant-1")
 
         service = TemplateService(db_manager, tenant_manager)
 
         # Act
         result = await service.list_templates()
 
-        # Assert - exception-based pattern (Handover 0730): no success wrapper
-        assert "templates" in result
+        # Assert - Handover 0731: typed TemplateListResult
+        assert isinstance(result, TemplateListResult)
+        assert hasattr(result, "templates")
         # Verify execute was called (which means query was built with tenant filter)
         session.execute.assert_awaited_once()
 
@@ -496,24 +476,20 @@ class TestTemplateServiceErrorHandling:
     @pytest.mark.asyncio
     async def test_create_template_database_exception(self):
         """Test database exception handling in create"""
-        from src.giljo_mcp.exceptions import DatabaseError
+        from src.giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-
-        # Create a proper async context manager that raises on enter
-        session = AsyncMock()
+        session = _make_mock_session()
         session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
-        session.__aexit__ = AsyncMock(return_value=None)
-        db_manager.get_session_async = Mock(return_value=session)
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 
-        # Act & Assert - exception-based pattern (Handover 0730)
-        with pytest.raises(DatabaseError) as exc_info:
+        # Act & Assert - service wraps all unexpected exceptions as BaseGiljoError
+        with pytest.raises(BaseGiljoError) as exc_info:
             await service.create_template(name="test", content="content")
 
         assert "Connection lost" in str(exc_info.value)
@@ -524,16 +500,12 @@ class TestTemplateServiceErrorHandling:
         from src.giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-
-        # Create a proper async context manager that raises on enter
-        session = AsyncMock()
+        session = _make_mock_session()
         session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
-        session.__aexit__ = AsyncMock(return_value=None)
-        db_manager.get_session_async = Mock(return_value=session)
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 
@@ -549,16 +521,12 @@ class TestTemplateServiceErrorHandling:
         from src.giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-
-        # Create a proper async context manager that raises on enter
-        session = AsyncMock()
+        session = _make_mock_session()
         session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
-        session.__aexit__ = AsyncMock(return_value=None)
-        db_manager.get_session_async = Mock(return_value=session)
+        db_manager = _make_mock_db_manager(session)
+
+        tenant_manager = Mock()
+        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
 
         service = TemplateService(db_manager, tenant_manager)
 

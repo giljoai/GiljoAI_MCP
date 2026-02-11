@@ -9,10 +9,13 @@ Tests the simplified 2-level summarization system:
 These tests follow TDD Red phase - they will FAIL until implementation is complete.
 
 Coverage Target: >90%
+
+Updated Handover 0731: Migrated from dict returns to typed SummarizeMultiLevelResult.
 """
 
 import pytest
 
+from src.giljo_mcp.schemas.service_responses import SummarizeMultiLevelResult
 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
 
@@ -131,13 +134,12 @@ class TestSimplifiedSummarization:
         # Summarize with retention ratios (light=33%, medium=66%)
         result = summarizer.summarize_multi_level(original_text, levels={"light": 0.33, "medium": 0.66})
 
-        # Verify light summary exists
-        assert "light" in result, "Result should contain 'light' key"
-        assert "tokens" in result["light"], "Light summary should have token count"
+        # Verify typed SummarizeMultiLevelResult (Handover 0731)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
         # Calculate actual percentage
-        original_tokens = result["original_tokens"]
-        light_tokens = result["light"]["tokens"]
+        original_tokens = result.original_tokens
+        light_tokens = result.light.tokens
         actual_percentage = (light_tokens / original_tokens) if original_tokens > 0 else 0
 
         # Assert 33% ± 10% (23% to 43%)
@@ -164,13 +166,12 @@ class TestSimplifiedSummarization:
         # Summarize with retention ratios (light=33%, medium=66%)
         result = summarizer.summarize_multi_level(original_text, levels={"light": 0.33, "medium": 0.66})
 
-        # Verify medium summary exists
-        assert "medium" in result, "Result should contain 'medium' key"
-        assert "tokens" in result["medium"], "Medium summary should have token count"
+        # Verify typed SummarizeMultiLevelResult (Handover 0731)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
         # Calculate actual percentage
-        original_tokens = result["original_tokens"]
-        medium_tokens = result["medium"]["tokens"]
+        original_tokens = result.original_tokens
+        medium_tokens = result.medium.tokens
         actual_percentage = (medium_tokens / original_tokens) if original_tokens > 0 else 0
 
         # Assert 66% ± 10% (56% to 76%)
@@ -192,23 +193,17 @@ class TestSimplifiedSummarization:
 
         result = summarizer.summarize_multi_level(original_text)
 
-        # Verify exactly 2 summary levels present
-        summary_levels = [k for k in result.keys() if k not in ["original_tokens", "processing_time_ms"]]
+        # Verify typed SummarizeMultiLevelResult (Handover 0731)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
-        assert len(summary_levels) == 2, (
-            f"Expected exactly 2 summary levels (light, medium), got {len(summary_levels)}: {summary_levels}"
-        )
-
-        # Verify light and medium exist
-        assert "light" in result, "Result must contain 'light' level"
-        assert "medium" in result, "Result must contain 'medium' level"
-
-        # Verify heavy does NOT exist
-        assert "heavy" not in result, "Result should NOT contain 'heavy' level (removed in Handover 0246b)"
+        # Verify light and medium exist as typed attributes
+        assert isinstance(result.light.summary, str)
+        assert isinstance(result.medium.summary, str)
+        assert not hasattr(result, "heavy"), "Result should NOT contain 'heavy' level (removed in Handover 0246b)"
 
         # Verify metadata fields exist
-        assert "original_tokens" in result, "Result should include original_tokens"
-        assert "processing_time_ms" in result, "Result should include processing_time_ms"
+        assert isinstance(result.original_tokens, int)
+        assert isinstance(result.processing_time_ms, int)
 
     def test_summarize_preserves_original_wording(self):
         """
@@ -227,12 +222,16 @@ class TestSimplifiedSummarization:
 
         result = summarizer.summarize_multi_level(original_text)
 
+        # Verify typed return (Handover 0731)
+        assert isinstance(result, SummarizeMultiLevelResult)
+
         # Split original into sentences for verification
         original_sentences = [s.strip() for s in original_text.split(".") if s.strip()]
 
         # Verify both light and medium summaries are extractive
-        for level in ["light", "medium"]:
-            summary_text = result[level]["summary"]
+        for level_name in ["light", "medium"]:
+            level_result = getattr(result, level_name)
+            summary_text = level_result.summary
             summary_sentences = [s.strip() for s in summary_text.split(".") if s.strip()]
 
             # At least 80% of summary sentences should match original
@@ -252,7 +251,7 @@ class TestSimplifiedSummarization:
             match_ratio = matches / max(len(valid_summary_sentences), 1)
 
             assert match_ratio >= 0.80, (
-                f"{level.capitalize()} summary appears non-extractive: "
+                f"{level_name.capitalize()} summary appears non-extractive: "
                 f"only {match_ratio * 100:.0f}% of sentences match original. "
                 f"This indicates potential hallucination - CRITICAL FAILURE. "
                 f"Matched: {matches}/{len(valid_summary_sentences)} sentences"
@@ -272,8 +271,9 @@ class TestSimplifiedSummarization:
 
         result = summarizer.summarize_multi_level(original_text)
 
-        light_tokens = result["light"]["tokens"]
-        medium_tokens = result["medium"]["tokens"]
+        assert isinstance(result, SummarizeMultiLevelResult)
+        light_tokens = result.light.tokens
+        medium_tokens = result.medium.tokens
 
         # Medium must be longer than light
         assert medium_tokens > light_tokens, (
@@ -308,22 +308,21 @@ class TestSimplifiedSummarization:
         # Call with levels=None to use defaults
         result = summarizer.summarize_multi_level(original_text, levels=None)
 
-        # Verify only 2 levels returned
-        summary_levels = [k for k in result.keys() if k not in ["original_tokens", "processing_time_ms"]]
-        assert len(summary_levels) == 2, f"Expected 2 levels, got {len(summary_levels)}"
+        # Verify typed return (Handover 0731)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
-        # Verify light target (~5K tokens ± 20%)
-        light_tokens = result["light"]["tokens"]
+        # Verify light target (~5K tokens +- 20%)
+        light_tokens = result.light.tokens
         assert 4000 <= light_tokens <= 6000, f"Light summary has {light_tokens} tokens, expected ~5K (4K-6K range)"
 
-        # Verify medium target (~10K tokens ± 20%)
-        medium_tokens = result["medium"]["tokens"]
+        # Verify medium target (~10K tokens +- 20%)
+        medium_tokens = result.medium.tokens
         assert 8000 <= medium_tokens <= 12000, (
             f"Medium summary has {medium_tokens} tokens, expected ~10K (8K-12K range)"
         )
 
-        # Verify heavy does NOT exist in defaults
-        assert "heavy" not in result, "Default levels should NOT include 'heavy'"
+        # Verify heavy does NOT exist as attribute
+        assert not hasattr(result, "heavy"), "Default levels should NOT include 'heavy'"
 
     def test_custom_levels_without_heavy(self):
         """
@@ -341,22 +340,20 @@ class TestSimplifiedSummarization:
 
         result = summarizer.summarize_multi_level(original_text, levels=custom_levels)
 
-        # Verify only requested levels returned
-        assert "light" in result
-        assert "medium" in result
-        assert "heavy" not in result
+        # Verify typed return (Handover 0731)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
-        # Verify approximate targets (20% and 50% of original tokens ±20%)
-        original_tokens = result["original_tokens"]
+        # Verify approximate targets (20% and 50% of original tokens +-20%)
+        original_tokens = result.original_tokens
         light_expected = int(original_tokens * 0.20)
         medium_expected = int(original_tokens * 0.50)
 
-        # Allow ±30% tolerance due to extractive summarization variance
-        assert light_expected * 0.5 <= result["light"]["tokens"] <= light_expected * 1.5, (
-            f"Light summary has {result['light']['tokens']} tokens, expected ~{light_expected}"
+        # Allow +-30% tolerance due to extractive summarization variance
+        assert light_expected * 0.5 <= result.light.tokens <= light_expected * 1.5, (
+            f"Light summary has {result.light.tokens} tokens, expected ~{light_expected}"
         )
-        assert medium_expected * 0.5 <= result["medium"]["tokens"] <= medium_expected * 1.5, (
-            f"Medium summary has {result['medium']['tokens']} tokens, expected ~{medium_expected}"
+        assert medium_expected * 0.5 <= result.medium.tokens <= medium_expected * 1.5, (
+            f"Medium summary has {result.medium.tokens} tokens, expected ~{medium_expected}"
         )
 
     def test_small_document_handling(self):
@@ -372,19 +369,16 @@ class TestSimplifiedSummarization:
         small_text = generate_realistic_document(tokens=2000)
 
         result = summarizer.summarize_multi_level(small_text)
-
-        # Verify both levels exist
-        assert "light" in result
-        assert "medium" in result
+        assert isinstance(result, SummarizeMultiLevelResult)
 
         # Verify hierarchy maintained even for small docs
-        assert result["light"]["tokens"] <= result["medium"]["tokens"], (
+        assert result.light.tokens <= result.medium.tokens, (
             "Light should not be longer than medium, even for small documents"
         )
 
         # Verify summaries don't exceed original
-        assert result["light"]["tokens"] <= result["original_tokens"]
-        assert result["medium"]["tokens"] <= result["original_tokens"]
+        assert result.light.tokens <= result.original_tokens
+        assert result.medium.tokens <= result.original_tokens
 
     def test_large_document_performance(self):
         """
@@ -402,12 +396,13 @@ class TestSimplifiedSummarization:
         result = summarizer.summarize_multi_level(large_text)
         elapsed = time.time() - start
 
+        assert isinstance(result, SummarizeMultiLevelResult)
         # Should complete in <15 seconds
         assert elapsed < 15.0, f"Summarization took {elapsed:.2f}s, exceeds 15s requirement for 50K tokens"
 
         # Verify processing time is tracked
-        assert result["processing_time_ms"] > 0
-        assert result["processing_time_ms"] < 15000
+        assert result.processing_time_ms > 0
+        assert result.processing_time_ms < 15000
 
     def test_each_level_has_required_fields(self):
         """
@@ -421,23 +416,21 @@ class TestSimplifiedSummarization:
 
         result = summarizer.summarize_multi_level(text)
 
-        # Check both levels have required fields
-        for level in ["light", "medium"]:
-            assert level in result, f"Missing {level} level"
+        assert isinstance(result, SummarizeMultiLevelResult)
 
-            assert "summary" in result[level], f"{level} missing 'summary' field"
-            assert "tokens" in result[level], f"{level} missing 'tokens' field"
-            assert "sentences" in result[level], f"{level} missing 'sentences' field"
+        # Check both levels have required typed fields
+        for level_name in ["light", "medium"]:
+            level_result = getattr(result, level_name)
 
             # Verify field types
-            assert isinstance(result[level]["summary"], str), f"{level} summary should be string"
-            assert isinstance(result[level]["tokens"], int), f"{level} tokens should be int"
-            assert isinstance(result[level]["sentences"], int), f"{level} sentences should be int"
+            assert isinstance(level_result.summary, str), f"{level_name} summary should be string"
+            assert isinstance(level_result.tokens, int), f"{level_name} tokens should be int"
+            assert isinstance(level_result.sentences, int), f"{level_name} sentences should be int"
 
             # Verify non-empty
-            assert len(result[level]["summary"]) > 0, f"{level} summary should not be empty"
-            assert result[level]["tokens"] > 0, f"{level} tokens should be > 0"
-            assert result[level]["sentences"] > 0, f"{level} sentences should be > 0"
+            assert len(level_result.summary) > 0, f"{level_name} summary should not be empty"
+            assert level_result.tokens > 0, f"{level_name} tokens should be > 0"
+            assert level_result.sentences > 0, f"{level_name} sentences should be > 0"
 
     def test_empty_input_handling(self):
         """
@@ -449,14 +442,13 @@ class TestSimplifiedSummarization:
 
         # Test empty string
         result = summarizer.summarize_multi_level("")
+        assert isinstance(result, SummarizeMultiLevelResult)
 
-        assert result["original_tokens"] == 0
-        assert "light" in result
-        assert "medium" in result
+        assert result.original_tokens == 0
 
         # Summaries should be empty or minimal
-        assert result["light"]["tokens"] == 0 or result["light"]["summary"] == ""
-        assert result["medium"]["tokens"] == 0 or result["medium"]["summary"] == ""
+        assert result.light.tokens == 0 or result.light.summary == ""
+        assert result.medium.tokens == 0 or result.medium.summary == ""
 
 
 # ============================================================================
@@ -520,14 +512,11 @@ class TestEdgeCases:
         single_sentence = "This is a single sentence document for testing purposes."
 
         result = summarizer.summarize_multi_level(single_sentence)
-
-        # Should not crash
-        assert "light" in result
-        assert "medium" in result
+        assert isinstance(result, SummarizeMultiLevelResult)
 
         # Both summaries should contain something (even if same as original)
-        assert len(result["light"]["summary"]) > 0
-        assert len(result["medium"]["summary"]) > 0
+        assert len(result.light.summary) > 0
+        assert len(result.medium.summary) > 0
 
     def test_no_periods_in_text(self):
         """Text without sentence boundaries should be handled gracefully."""
@@ -537,10 +526,7 @@ class TestEdgeCases:
         no_periods = " ".join(["word"] * 1000)
 
         result = summarizer.summarize_multi_level(no_periods)
-
-        # Should not crash (though summarization may be less effective)
-        assert "light" in result
-        assert "medium" in result
+        assert isinstance(result, SummarizeMultiLevelResult)
 
     def test_unicode_content(self):
         """Unicode characters should be handled correctly."""
@@ -557,8 +543,7 @@ class TestEdgeCases:
         )  # Repeat to get reasonable token count
 
         result = summarizer.summarize_multi_level(unicode_text)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
         # Should handle Unicode without errors
-        assert "light" in result
-        assert "medium" in result
-        assert result["original_tokens"] > 0
+        assert result.original_tokens > 0

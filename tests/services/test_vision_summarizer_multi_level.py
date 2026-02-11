@@ -2,11 +2,12 @@
 Test suite for multi-level vision document summarization.
 
 Tests VisionDocumentSummarizer.summarize_multi_level() method that generates
-three compression levels (light/moderate/heavy) in a single pass.
+two compression levels (light/medium) in a single pass.
 
 Handover 0345e: Sumy Semantic Compression Levels
 
 Updated (0730-fix): Added missing fixtures for integration tests.
+Updated Handover 0731: Migrated from dict returns to typed SummarizeMultiLevelResult.
 """
 
 import time
@@ -15,6 +16,7 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
+from src.giljo_mcp.schemas.service_responses import SummarizeMultiLevelResult
 from src.giljo_mcp.services.vision_summarizer import VisionDocumentSummarizer
 
 
@@ -156,34 +158,31 @@ class TestMultiLevelSummarization:
 
         result = summarizer.summarize_multi_level(text)
 
-        assert "light" in result
-        assert "medium" in result
-        assert "full" not in result  # Full depth = original document (no summary)
-
-        # Each level should have summary, tokens, and sentences
-        for level in ["light", "medium"]:
-            assert "summary" in result[level]
-            assert "tokens" in result[level]
-            assert "sentences" in result[level]
-            assert isinstance(result[level]["summary"], str)
-            assert isinstance(result[level]["tokens"], int)
-            assert isinstance(result[level]["sentences"], int)
+        # Verify typed SummarizeMultiLevelResult (Handover 0731)
+        assert isinstance(result, SummarizeMultiLevelResult)
+        assert isinstance(result.light.summary, str)
+        assert isinstance(result.light.tokens, int)
+        assert isinstance(result.light.sentences, int)
+        assert isinstance(result.medium.summary, str)
+        assert isinstance(result.medium.tokens, int)
+        assert isinstance(result.medium.sentences, int)
 
     def test_light_medium_token_targets(self):
-        """Token counts should approximately match targets (±20% tolerance)."""
+        """Token counts should approximately match targets (+-20% tolerance)."""
         summarizer = VisionDocumentSummarizer()
         text = generate_test_document(tokens=50000)
 
         result = summarizer.summarize_multi_level(text)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
         # Light: ~33% of original (~16.5K tokens, allow 13K-20K)
-        assert 13000 <= result["light"]["tokens"] <= 20000, (
-            f"Light summary has {result['light']['tokens']} tokens, expected 13K-20K"
+        assert 13000 <= result.light.tokens <= 20000, (
+            f"Light summary has {result.light.tokens} tokens, expected 13K-20K"
         )
 
         # Medium: ~66% of original (~33K tokens, allow 26K-40K)
-        assert 26000 <= result["medium"]["tokens"] <= 40000, (
-            f"Medium summary has {result['medium']['tokens']} tokens, expected 26K-40K"
+        assert 26000 <= result.medium.tokens <= 40000, (
+            f"Medium summary has {result.medium.tokens} tokens, expected 26K-40K"
         )
 
         # NOTE: Full depth (100%) is NOT a summary - it returns the original document
@@ -194,16 +193,17 @@ class TestMultiLevelSummarization:
         text = generate_test_document(tokens=50000)
 
         result = summarizer.summarize_multi_level(text)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
         # Light should be shorter than medium
-        assert result["light"]["tokens"] < result["medium"]["tokens"], (
-            f"Light ({result['light']['tokens']}) should be < Medium ({result['medium']['tokens']})"
+        assert result.light.tokens < result.medium.tokens, (
+            f"Light ({result.light.tokens}) should be < Medium ({result.medium.tokens})"
         )
 
         # NOTE: Full depth would be the original document (not a summary)
 
     def test_multi_level_processing_time_under_15_seconds(self):
-        """Generating 3 summaries should take <15 sec for 100K tokens."""
+        """Generating 2 summaries should take <15 sec for 100K tokens."""
         summarizer = VisionDocumentSummarizer()
         text = generate_test_document(tokens=100000)
 
@@ -211,9 +211,10 @@ class TestMultiLevelSummarization:
         result = summarizer.summarize_multi_level(text)
         elapsed = time.time() - start
 
+        assert isinstance(result, SummarizeMultiLevelResult)
         assert elapsed < 15.0, f"Processing took {elapsed:.2f}s, expected <15s"
-        assert result["processing_time_ms"] < 15000, (
-            f"Reported time {result['processing_time_ms']}ms, expected <15000ms"
+        assert result.processing_time_ms < 15000, (
+            f"Reported time {result.processing_time_ms}ms, expected <15000ms"
         )
 
     def test_multi_level_includes_original_tokens_and_timing(self):
@@ -223,12 +224,11 @@ class TestMultiLevelSummarization:
 
         result = summarizer.summarize_multi_level(text)
 
-        assert "original_tokens" in result
-        assert "processing_time_ms" in result
-        assert isinstance(result["original_tokens"], int)
-        assert isinstance(result["processing_time_ms"], int)
-        assert result["original_tokens"] > 0
-        assert result["processing_time_ms"] > 0
+        assert isinstance(result, SummarizeMultiLevelResult)
+        assert isinstance(result.original_tokens, int)
+        assert isinstance(result.processing_time_ms, int)
+        assert result.original_tokens > 0
+        assert result.processing_time_ms > 0
 
     def test_custom_level_targets(self):
         """Should accept custom percentage targets per level."""
@@ -242,12 +242,13 @@ class TestMultiLevelSummarization:
         }
 
         result = summarizer.summarize_multi_level(text, levels=custom_levels)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
-        # Check custom targets are approximately met (±20% tolerance)
+        # Check custom targets are approximately met (+-20% tolerance)
         # 20% of 50K = 10K tokens
-        assert 8000 <= result["light"]["tokens"] <= 12000
+        assert 8000 <= result.light.tokens <= 12000
         # 50% of 50K = 25K tokens
-        assert 20000 <= result["medium"]["tokens"] <= 30000
+        assert 20000 <= result.medium.tokens <= 30000
 
     def test_small_document_handling(self):
         """Should handle documents smaller than target sizes gracefully."""
@@ -255,13 +256,14 @@ class TestMultiLevelSummarization:
         text = generate_test_document(tokens=3000)  # Smaller than light target
 
         result = summarizer.summarize_multi_level(text)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
         # Should still generate summaries, even if small
-        assert result["light"]["tokens"] <= result["original_tokens"]
-        assert result["medium"]["tokens"] <= result["original_tokens"]
+        assert result.light.tokens <= result.original_tokens
+        assert result.medium.tokens <= result.original_tokens
 
         # Light should be smallest
-        assert result["light"]["tokens"] <= result["medium"]["tokens"]
+        assert result.light.tokens <= result.medium.tokens
 
     def test_summaries_are_extractive_not_abstractive(self):
         """Summaries should only contain sentences from original (no hallucination)."""
@@ -269,13 +271,15 @@ class TestMultiLevelSummarization:
         text = generate_test_document(tokens=20000)
 
         result = summarizer.summarize_multi_level(text)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
         # Split original into sentences for verification
         original_sentences = [s.strip() for s in text.split(".") if s.strip()]
 
         # Check that summary sentences come from original
-        for level in ["light", "medium"]:
-            summary = result[level]["summary"]
+        for level_name in ["light", "medium"]:
+            level_result = getattr(result, level_name)
+            summary = level_result.summary
             summary_sentences = [s.strip() for s in summary.split(".") if s.strip()]
 
             # At least some sentences should match original (extractive property)
@@ -290,7 +294,7 @@ class TestMultiLevelSummarization:
 
             # At least 80% of summary sentences should come from original
             match_ratio = matches / max(len(summary_sentences), 1)
-            assert match_ratio >= 0.8, f"{level} summary appears non-extractive (only {match_ratio * 100:.0f}% matches)"
+            assert match_ratio >= 0.8, f"{level_name} summary appears non-extractive (only {match_ratio * 100:.0f}% matches)"
 
     def test_default_levels_when_none_provided(self):
         """Should use default levels (33%/66%) when levels parameter is None."""
@@ -298,12 +302,13 @@ class TestMultiLevelSummarization:
         text = generate_test_document(tokens=50000)
 
         result = summarizer.summarize_multi_level(text, levels=None)
+        assert isinstance(result, SummarizeMultiLevelResult)
 
         # Default targets: light=33% (~16.5K), medium=66% (~33K)
         # NOTE: Full (100%) is NOT a summary - it returns the original document
-        # Allow ±20% tolerance
-        assert 13000 <= result["light"]["tokens"] <= 20000
-        assert 26000 <= result["medium"]["tokens"] <= 40000
+        # Allow +-20% tolerance
+        assert 13000 <= result.light.tokens <= 20000
+        assert 26000 <= result.medium.tokens <= 40000
 
 
 @pytest.mark.asyncio

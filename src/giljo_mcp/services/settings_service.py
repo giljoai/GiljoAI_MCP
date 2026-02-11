@@ -3,6 +3,10 @@ Settings Service for GiljoAI MCP system settings management.
 
 SettingsService handles CRUD operations for tenant-scoped settings (general, network, database).
 Handover 0506: Settings endpoints implementation.
+Updated Handover 0731: Reviewed for typed returns - dict[str, Any] retained because
+settings are genuinely dynamic key-value pairs with user-configurable schemas that
+vary by category and deployment. No fixed Pydantic model can represent the full range
+of settings configurations.
 """
 
 from typing import Any, ClassVar
@@ -44,10 +48,12 @@ class SettingsService:
             category: str - Settings category ('general', 'network', 'database')
 
         Returns:
-            Dict[str, Any] - Settings data (empty dict if not found)
+            dict[str, Any] - Settings data (empty dict if not found).
+            Intentionally returns dict because settings are dynamic key-value
+            pairs with user-configurable schemas that vary by category.
 
         Raises:
-            ValueError if category invalid
+            ValidationError: if category is invalid
         """
         if category not in self.VALID_CATEGORIES:
             raise ValidationError(f"Invalid category: {category}. Must be one of {self.VALID_CATEGORIES}")
@@ -67,13 +73,15 @@ class SettingsService:
 
         Args:
             category: str - Settings category ('general', 'network', 'database')
-            settings_data: Dict[str, Any] - Settings to save
+            settings_data: dict[str, Any] - Settings to save
 
         Returns:
-            Dict[str, Any] - Updated settings data
+            dict[str, Any] - Updated settings data.
+            Intentionally returns dict because settings are dynamic key-value
+            pairs with user-configurable schemas that vary by category.
 
         Raises:
-            ValueError if category invalid
+            ValidationError: if category is invalid
         """
         if category not in self.VALID_CATEGORIES:
             raise ValidationError(f"Invalid category: {category}. Must be one of {self.VALID_CATEGORIES}")
