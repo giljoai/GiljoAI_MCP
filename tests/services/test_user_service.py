@@ -112,14 +112,18 @@ async def admin_user(db_session, test_tenant_key):
 
 @pytest.mark.asyncio
 async def test_list_users_returns_users_for_tenant(user_service, db_session, test_user, test_tenant_key):
-    """Test that list_users returns all users in tenant"""
+    """Test that list_users returns list of User ORM models for tenant"""
     users = await user_service.list_users()
 
     assert isinstance(users, list)
     assert len(users) >= 1  # At least test_user
 
-    # Verify user in list
-    usernames = [u["username"] for u in users]
+    # Verify returns User ORM instances, not dicts
+    for u in users:
+        assert isinstance(u, User)
+
+    # Verify test_user in list
+    usernames = [u.username for u in users]
     assert test_user.username in usernames
 
 
@@ -144,7 +148,10 @@ async def test_list_users_tenant_isolation(user_service, db_session, test_tenant
     users = await user_service.list_users()
 
     assert isinstance(users, list)
-    usernames = [u["username"] for u in users]
+    # Verify returns User ORM instances
+    for u in users:
+        assert isinstance(u, User)
+    usernames = [u.username for u in users]
     assert other_user.username not in usernames
 
 
@@ -167,7 +174,10 @@ async def test_list_users_includes_inactive(user_service, db_session, test_tenan
     users = await user_service.list_users()
 
     assert isinstance(users, list)
-    usernames = [u["username"] for u in users]
+    # Verify returns User ORM instances
+    for u in users:
+        assert isinstance(u, User)
+    usernames = [u.username for u in users]
     assert inactive_user.username in usernames
 
 
@@ -178,14 +188,13 @@ async def test_list_users_includes_inactive(user_service, db_session, test_tenan
 
 @pytest.mark.asyncio
 async def test_get_user_returns_user_by_id(user_service, test_user):
-    """Test that get_user retrieves user by ID"""
-    user_dict = await user_service.get_user(test_user.id)
+    """Test that get_user returns User ORM model by ID"""
+    user = await user_service.get_user(test_user.id)
 
-    assert isinstance(user_dict, dict)
-    assert user_dict["id"] == test_user.id
-    assert user_dict["username"] == test_user.username
-    assert user_dict["email"] == test_user.email
-    assert "password_hash" not in user_dict  # Password excluded  # Password excluded
+    assert isinstance(user, User)
+    assert user.id == test_user.id
+    assert user.username == test_user.username
+    assert user.email == test_user.email
 
 
 @pytest.mark.asyncio
@@ -230,20 +239,20 @@ async def test_get_user_tenant_isolation(user_service, db_session):
 
 @pytest.mark.asyncio
 async def test_create_user_success(user_service, test_tenant_key):
-    """Test successful user creation"""
+    """Test successful user creation returns User ORM model"""
     username = f"newuser_{uuid4().hex[:6]}"
     email = f"new_{uuid4().hex[:6]}@example.com"
 
-    user_dict = await user_service.create_user(
+    user = await user_service.create_user(
         username=username, email=email, full_name="New User", password="NewPassword123", role="developer"
     )
 
-    assert isinstance(user_dict, dict)
-    assert user_dict["username"] == username
-    assert user_dict["email"] == email
-    assert user_dict["role"] == "developer"
-    assert user_dict["is_active"] is True
-    assert user_dict["tenant_key"] == test_tenant_key
+    assert isinstance(user, User)
+    assert user.username == username
+    assert user.email == email
+    assert user.role == "developer"
+    assert user.is_active is True
+    assert user.tenant_key == test_tenant_key
 
 
 @pytest.mark.asyncio
@@ -280,18 +289,18 @@ async def test_create_user_duplicate_email(user_service, test_user):
 
 @pytest.mark.asyncio
 async def test_create_user_default_password(user_service):
-    """Test that create_user sets default password 'GiljoMCP'"""
+    """Test that create_user sets default password 'GiljoMCP' and returns User ORM model"""
     username = f"newuser_{uuid4().hex[:6]}"
 
-    user_dict = await user_service.create_user(
+    user = await user_service.create_user(
         username=username,
         email=f"new_{uuid4().hex[:6]}@example.com",
         role="developer",
         # No password provided - should default to "GiljoMCP"
     )
 
-    assert isinstance(user_dict, dict)
-    assert user_dict["must_change_password"] is True
+    assert isinstance(user, User)
+    assert user.must_change_password is True
 
 
 # ============================================================================
@@ -301,14 +310,14 @@ async def test_create_user_default_password(user_service):
 
 @pytest.mark.asyncio
 async def test_update_user_success(user_service, test_user):
-    """Test successful user update"""
+    """Test successful user update returns User ORM model"""
     new_email = f"updated_{uuid4().hex[:6]}@example.com"
 
-    user_dict = await user_service.update_user(user_id=test_user.id, email=new_email, full_name="Updated Name")
+    user = await user_service.update_user(user_id=test_user.id, email=new_email, full_name="Updated Name")
 
-    assert isinstance(user_dict, dict)
-    assert user_dict["email"] == new_email
-    assert user_dict["full_name"] == "Updated Name"
+    assert isinstance(user, User)
+    assert user.email == new_email
+    assert user.full_name == "Updated Name"
 
 
 @pytest.mark.asyncio
@@ -370,11 +379,11 @@ async def test_delete_user_not_found(user_service):
 
 @pytest.mark.asyncio
 async def test_change_role_success(user_service, test_user, db_session):
-    """Test successful role change"""
-    user_dict = await user_service.change_role(user_id=test_user.id, new_role="viewer")
+    """Test successful role change returns User ORM model"""
+    user = await user_service.change_role(user_id=test_user.id, new_role="viewer")
 
-    assert isinstance(user_dict, dict)
-    assert user_dict["role"] == "viewer"
+    assert isinstance(user, User)
+    assert user.role == "viewer"
 
     await db_session.refresh(test_user)
     assert test_user.role == "viewer"
