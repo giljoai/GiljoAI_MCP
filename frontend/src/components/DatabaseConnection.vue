@@ -140,6 +140,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { API_CONFIG } from '@/config/api'
 import api from '@/services/api'
+import DOMPurify from 'dompurify'
 
 /**
  * DatabaseConnection - Reusable database connection testing component
@@ -313,7 +314,7 @@ const clearTestResult = () => {
  */
 const formatTestResultMessage = (result) => {
   if (result.success) {
-    return result.message
+    return DOMPurify.sanitize(result.message)
   }
 
   let html = `<strong>${result.message}</strong>`
@@ -327,7 +328,7 @@ const formatTestResultMessage = (result) => {
     html += '</ul>'
   }
 
-  return html
+  return DOMPurify.sanitize(html)
 }
 
 /**
