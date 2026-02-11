@@ -501,18 +501,15 @@ When activating a project (PATCH status to "active"), validates:
 
 #### Agent Job Management Tables (Handover 0019)
 
-**MCPAgentJob Table** - Core agent job tracking:
+**AgentJob / AgentExecution Tables** - Agent job and execution tracking:
 
-> **Migration Note (Handover 0366a - Dec 2025)**
+> **Note (Handover 0366a - Dec 2025)**
 >
-> The `MCPAgentJob` model is **deprecated** as of v3.3.0.
-> Use `AgentJob` (work order) and `AgentExecution` (executor instance) instead.
+> The former `MCPAgentJob` model was split into two models as of v3.3.0:
+> - `AgentJob` (work order) - the task definition, persists across succession
+> - `AgentExecution` (executor instance) - the running agent, changes on succession
 >
-> **Key Changes:**
-> - `job_id` = The work to be done (persists across succession)
-> - `agent_id` = The executor doing the work (changes on succession)
->
-> See Handover 0366 series for migration details. Will be removed in v4.0.
+> The `mcp_agent_jobs` table name is retained for backward compatibility.
 ```sql
 CREATE TABLE mcp_agent_jobs (
     id VARCHAR(36) PRIMARY KEY,
@@ -834,7 +831,7 @@ Project Launch Request
              ▼
 ┌─────────────────────────────────────────────┐
 │  TASK 6: Agent Job Spawning                 │
-│  - Create MCPAgentJob records               │
+│  - Create AgentJob records                   │
 │  - Assign execution mode                    │
 │  - Set initial status to 'waiting'          │
 │  - Store staging result in database         │
@@ -897,7 +894,7 @@ Orchestrator (Claude Code)
 - Each agent runs in separate terminal/session
 - Generic unified template for all agent types
 - Mission fetched from database at runtime
-- Orchestrator coordinates via MCPAgentJob records
+- Orchestrator coordinates via AgentJob records
 - Optimized for distributed execution
 
 **Workflow**:
@@ -905,7 +902,7 @@ Orchestrator (Claude Code)
 Terminal 1 (Orchestrator)
     │
     ├─→ spawn_agent_job(type="implementer", status="waiting")
-    │   └─→ Database: MCPAgentJob record created
+    │   └─→ Database: AgentJob record created
     │
     └─→ Monitors job statuses via WebSocket
 
@@ -939,7 +936,7 @@ Terminal 3 (Tester Agent)
 
 **Mission Fetching** (by Agent at Runtime):
 ```
-- Full mission text (MCPAgentJob.mission)
+- Full mission text (AgentJob.mission)
 - Project context and requirements
 - Product information and constraints
 - Previous agent outputs (message history)
@@ -1114,7 +1111,7 @@ User Clicks "Launch Project"
 
 ### Database Schema Extensions
 
-**MCPAgentJob Table** (updated for staging):
+**AgentJob Table** (updated for staging):
 ```sql
 ALTER TABLE mcp_agent_jobs ADD COLUMN execution_mode VARCHAR(50);
 ALTER TABLE mcp_agent_jobs ADD COLUMN staging_result JSONB;
@@ -1146,7 +1143,7 @@ ALTER TABLE mcp_agent_jobs ADD COLUMN agent_version VARCHAR(20);
 }
 ```
 
-**Code Reference**: `src/giljo_mcp/models.py::MCPAgentJob`
+**Code Reference**: `src/giljo_mcp/models.py::AgentJob`
 
 **Related Documentation**:
 - Orchestrator workflow details: [ORCHESTRATOR.md](ORCHESTRATOR.md#complete-orchestrator-workflow-pipeline-v32)
@@ -1309,7 +1306,7 @@ src/giljo_mcp/
 - **`AgentJobManager`** (`src/giljo_mcp/agent_job_manager.py` - 159 lines) - Job lifecycle management
 - **`AgentCommunicationQueue`** (`src/giljo_mcp/agent_communication_queue.py`) - Agent-to-agent messaging
 - **`JobCoordinator`** (`src/giljo_mcp/job_coordinator.py` - 604 lines) - Parent-child job orchestration
-- **Database Model**: `MCPAgentJob` with JSONB message storage
+- **Database Model**: `AgentJob` + `AgentExecution` for job lifecycle and execution tracking
 - **13 REST API endpoints** for job management
 - **4 WebSocket event handlers** for real-time updates
 
@@ -1768,7 +1765,7 @@ CLIENT PC                          SERVER (F:\GiljoAI_MCP)
 
 10. Receives agent list        ←── 11. Returns agents with versions
 
-12. Spawns agent jobs              12. Creates MCPAgentJob records
+12. Spawns agent jobs              12. Creates AgentJob records
     (database records only)    ──→     in PostgreSQL
 
 13. Agent 1 starts in
@@ -2471,7 +2468,7 @@ print(f"Pool overflow: {engine.pool.overflow()}")
 *This document provides comprehensive technical details of GiljoAI MCP's server architecture and technology stack as the single source of truth for the October 13, 2025 documentation harmonization.*
 #### Task ↔ Agent Job Linking (Handover 0072)
 
-Defines explicit linkage between user tasks and `MCPAgentJob` records to ground assignments and enable status propagation.
+Defines explicit linkage between user tasks and `AgentJob` records to ground assignments and enable status propagation.
 
 Key points:
 - Tasks reference the owning project and (optionally) the agent job handling it

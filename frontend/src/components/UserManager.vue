@@ -470,7 +470,6 @@ async function loadUsers() {
   try {
     const response = await api.auth.listUsers()
     users.value = response.data
-    console.log('[UserManager] Loaded', users.value.length, 'users')
   } catch (err) {
     console.error('[UserManager] Failed to load users:', err)
   } finally {
@@ -527,7 +526,6 @@ async function saveUser() {
         role: userForm.value.role,
         is_active: userForm.value.is_active,
       })
-      console.log('[UserManager] Updated user:', userForm.value.username)
     } else {
       // Create new user
       await api.auth.register({
@@ -536,7 +534,6 @@ async function saveUser() {
         password: userForm.value.password,
         role: userForm.value.role,
       })
-      console.log('[UserManager] Created user:', userForm.value.username)
     }
 
     // Reload users list
@@ -585,7 +582,6 @@ async function changePassword() {
     await api.auth.updateUser(passwordUser.value.id, {
       password: newPassword.value,
     })
-    console.log('[UserManager] Changed password for:', passwordUser.value.username)
     closePasswordDialog()
   } catch (err) {
     console.error('[UserManager] Failed to change password:', err)
@@ -610,14 +606,10 @@ async function confirmResetPassword() {
   resettingPassword.value = true
   try {
     await api.auth.resetUserPassword(resetPasswordUser.value.id)
-    console.log('[UserManager] Reset password for:', resetPasswordUser.value.username)
 
     // Reload users list
     await loadUsers()
     closeResetPasswordDialog()
-
-    // Show success message (you can add a snackbar component if needed)
-    console.log('[UserManager] Password reset successfully to GiljoMCP')
   } catch (err) {
     console.error('[UserManager] Failed to reset password:', err)
   } finally {
@@ -643,11 +635,6 @@ async function confirmToggleStatus() {
     await api.auth.updateUser(statusUser.value.id, {
       is_active: !statusUser.value.is_active,
     })
-    console.log(
-      '[UserManager]',
-      statusUser.value.is_active ? 'Deactivated' : 'Activated',
-      statusUser.value.username,
-    )
 
     // Reload users list
     await loadUsers()

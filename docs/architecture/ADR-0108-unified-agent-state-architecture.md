@@ -21,7 +21,7 @@
 
 ## Decision
 
-Standardize on MCPAgentJob as the authoritative agent state model with 9 well-defined status states.
+[Historical] Standardize on MCPAgentJob (now AgentJob + AgentExecution) as the authoritative agent state model with 9 well-defined status states.
 
 ## Status States
 
@@ -94,7 +94,7 @@ POST /{job_id}/decommission - Permanently retire agent (NEW)
 
 Week 1: Database schema changes
 Week 2: Deploy core components
-Week 3-4: Migrate Agent model to MCPAgentJob
+Week 3-4: [Historical] Migrate Agent model to MCPAgentJob (now AgentJob + AgentExecution)
 
 ## Risk Assessment
 

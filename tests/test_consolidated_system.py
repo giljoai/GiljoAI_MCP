@@ -13,8 +13,6 @@ import pytest
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.giljo_mcp.enums import AgentRole, ProjectType
-
 # NOTE: TemplateAugmentation removed (Handover 0423 - model deleted, using dicts only)
 from src.giljo_mcp.template_manager import apply_augmentation, extract_variables, process_template
 
@@ -196,23 +194,6 @@ class TestPerformanceRequirements:
 
         avg_ms = ((end - start) / iterations) * 1000
         assert avg_ms < 0.1, f"Pipeline took {avg_ms:.4f}ms, exceeds 0.1ms target"
-
-
-class TestEnumConsolidation:
-    """Test that enums are properly consolidated"""
-
-    def test_agent_role_enum(self):
-        """Test AgentRole enum is accessible and complete"""
-        roles = [role.value for role in AgentRole]
-        assert "orchestrator" in roles
-        assert "analyzer" in roles
-        assert "implementer" in roles
-        assert "tester" in roles
-
-    def test_project_type_enum(self):
-        """Test ProjectType enum is accessible"""
-        types = [t.value for t in ProjectType]
-        assert len(types) > 0  # Should have project types
 
 
 class TestEdgeCases:

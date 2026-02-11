@@ -193,8 +193,9 @@ async def test_e2e_error_propagation(
     # Report error
     error_result = await service.report_error(job_id=job_id, error="Database connection failed during migration")
 
-    # Check for success
-    assert error_result.get("status") == "success" or error_result.get("success") is True
+    # Check return contains expected keys (no "status" wrapper per Handover 0730b)
+    assert error_result.get("job_id") == job_id
+    assert error_result.get("message") == "Error reported"
 
     # Verify execution status changed to blocked
     result = await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == agent_id))

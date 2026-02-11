@@ -19,7 +19,6 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.enums import ProjectStatus
 from src.giljo_mcp.models import Message, Project, Task, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
@@ -54,7 +53,7 @@ async def statistics_test_data(db_session: AsyncSession, test_user: User, test_p
         mission="Test mission",
         product_id=test_product.id,
         tenant_key=test_user.tenant_key,
-        status=ProjectStatus.ACTIVE.value,
+        status="active",
         context_used=50000,
         context_budget=100000,
         created_at=datetime.now(timezone.utc),
@@ -70,7 +69,7 @@ async def statistics_test_data(db_session: AsyncSession, test_user: User, test_p
             mission="Test mission",
             product_id=test_product.id,
             tenant_key=test_user.tenant_key,
-            status=ProjectStatus.COMPLETED.value,
+            status="completed",
             context_used=60000 + (i * 15000),
             context_budget=100000,
             created_at=datetime.now(timezone.utc) - timedelta(days=i + 1),
@@ -427,7 +426,7 @@ async def test_system_statistics_context_calculation(
             mission="Test mission",
             product_id=test_product.id,
             tenant_key=test_user.tenant_key,
-            status=ProjectStatus.ACTIVE.value,
+            status="active",
             context_used=context,
             context_budget=100000,
         )
@@ -471,7 +470,7 @@ async def test_system_statistics_agent_status_counting(
         mission="Test mission",
         product_id=test_product.id,
         tenant_key=test_user.tenant_key,
-        status=ProjectStatus.ACTIVE.value,
+        status="active",
         context_used=0,
         context_budget=100000,
     )
@@ -580,7 +579,7 @@ async def test_system_statistics_no_division_by_zero(
         mission="Test mission",
         product_id=test_product.id,
         tenant_key=test_user.tenant_key,
-        status=ProjectStatus.ACTIVE.value,
+        status="active",
         context_used=0,
         context_budget=100000,
     )

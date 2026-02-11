@@ -15,7 +15,6 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.enums import ProjectStatus
 from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from tests.helpers.test_db_helper import PostgreSQLTestHelper, TransactionalTestContext
@@ -39,7 +38,7 @@ class TestData:
             "name": f"Test Project {uuid.uuid4().hex[:8]}",
             "description": "Test project description for automated testing",
             "mission": "Test mission for automated testing",
-            "status": ProjectStatus.ACTIVE.value,
+            "status": "active",
             "tenant_key": tenant_key,
             "metadata": {"test": True},
         }

@@ -245,7 +245,7 @@ function handleTutorialCta() {
 onMounted(async () => {
   try {
     await productStore.fetchProducts()
-  } catch (e) {
+  } catch {
     // ignore
   }
   tutorialLaunched.value = localStorage.getItem(tutorialKey) === 'true'

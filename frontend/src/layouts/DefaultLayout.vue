@@ -53,10 +53,8 @@ useNotificationReminder()
 const loadCurrentUser = async () => {
   try {
     const response = await api.auth.me()
-    console.log('[DefaultLayout] API /auth/me response:', response)
     currentUser.value = response.data
     userStore.currentUser = response.data
-    console.log('[DefaultLayout] Current user loaded:', currentUser.value?.username)
     return true
   } catch (error) {
     console.error('[DefaultLayout] Failed to load user:', error)
@@ -70,8 +68,6 @@ const loadCurrentUser = async () => {
 }
 
 onMounted(async () => {
-  console.log('[DefaultLayout] Loading user data on mount')
-
   // CRITICAL FIX (Handover 0034): Check fresh install status FIRST
   // This prevents race condition where DefaultLayout redirects to /login
   // before router guard can redirect to /welcome
@@ -88,7 +84,6 @@ onMounted(async () => {
 
       if (setupData.is_fresh_install) {
         // Fresh install (0 users) - redirect to create admin account
-        console.log('[DefaultLayout] Fresh install detected, redirecting to /welcome')
         router.push('/welcome')
         return
       }
@@ -106,7 +101,6 @@ onMounted(async () => {
     try {
       // Connect WebSocket - browser will automatically send httpOnly access_token cookie
       await wsStore.connect()
-      console.log('[DefaultLayout] WebSocket connected with automatic cookie authentication')
 
       // Initialize the centralized router once (0379a)
       initWebsocketEventRouter({
@@ -114,14 +108,9 @@ onMounted(async () => {
           await messageStore.fetchMessages()
         },
       })
-      console.log('[DefaultLayout] WebSocket event router initialized')
 
       // Load initial data (remove legacy /api/v1/agents call)
       await Promise.all([messageStore.fetchMessages()])
-
-      // Notification reminder already initialized at top level (synchronous composable call)
-
-      console.log('[DefaultLayout] Application initialized successfully')
     } catch (error) {
       console.error('[DefaultLayout] Failed to initialize WebSocket:', error)
     }
@@ -131,13 +120,11 @@ onMounted(async () => {
 onUnmounted(() => {
   // Disconnect WebSocket
   wsStore.disconnect()
-  console.log('[DefaultLayout] Cleanup complete')
 })
 
 // Reload user after login (navigation from /login)
 router.afterEach(async (to, from) => {
   if (to.meta.layout === 'default' && from.path === '/login') {
-    console.log('[DefaultLayout] Navigated from login, reloading user')
     await loadCurrentUser()
   }
 })
