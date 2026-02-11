@@ -462,16 +462,16 @@ async with db_manager.get_session_async() as session:
 
 ```python
 # ✅ CORRECT - Filtered by tenant_key
-stmt = select(MCPAgentJob).where(
+stmt = select(AgentJob).where(
     and_(
-        MCPAgentJob.tenant_key == tenant_key,      # Isolation filter
-        MCPAgentJob.spawned_by == orchestrator_job_id,
+        AgentJob.tenant_key == tenant_key,      # Isolation filter
+        AgentJob.spawned_by == orchestrator_job_id,
     )
 )
 
 # ❌ WRONG - Missing tenant_key filter (SECURITY VULNERABILITY!)
-stmt = select(MCPAgentJob).where(
-    MCPAgentJob.spawned_by == orchestrator_job_id,
+stmt = select(AgentJob).where(
+    AgentJob.spawned_by == orchestrator_job_id,
 )
 ```
 
@@ -554,9 +554,9 @@ result = await rollback_project_staging(
 
 ```python
 # Check if orchestrator exists
-orchestrator = db.query(MCPAgentJob).filter(
-    MCPAgentJob.tenant_key == tenant_key,
-    MCPAgentJob.job_id == orchestrator_job_id,
+orchestrator = db.query(AgentJob).filter(
+    AgentJob.tenant_key == tenant_key,
+    AgentJob.job_id == orchestrator_job_id,
 ).first()
 
 if not orchestrator:

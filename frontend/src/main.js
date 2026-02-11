@@ -1,12 +1,8 @@
-console.log('[MAIN] Starting application initialization')
-
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { pinia } from './stores'
 import { initializeApiConfig } from './config/api'
-
-console.log('[MAIN] Imports loaded')
 
 // Vuetify
 import 'vuetify/styles'
@@ -19,12 +15,8 @@ import '@mdi/font/css/materialdesignicons.css'
 import '@/styles/main.scss'
 import '@/styles/global-tabs.scss'
 
-console.log('[MAIN] Vuetify imports loaded')
-
 // Theme configuration
 import { darkTheme } from './config/theme'
-
-console.log('[MAIN] Theme configuration loaded')
 
 // Create Vuetify instance with theme
 const vuetify = createVuetify({
@@ -41,45 +33,31 @@ const vuetify = createVuetify({
   },
 })
 
-console.log('[MAIN] Vuetify instance created')
-
 // Create Vue app SYNCHRONOUSLY (before async operations)
 // This ensures router guard executes for initial navigation (Handover 0034 fix)
 const app = createApp(App)
-console.log('[MAIN] Vue app created')
 
 // Register router IMMEDIATELY (synchronously)
 // CRITICAL: Router must be registered before any async operations
 // so that router.beforeEach guard can intercept initial navigation
 app.use(router)
-console.log('[MAIN] Router registered')
-
 app.use(pinia)
-console.log('[MAIN] Pinia registered')
-
 app.use(vuetify)
-console.log('[MAIN] Vuetify registered')
 
 // Always use dark theme
 localStorage.setItem('theme-preference', 'dark')
 vuetify.theme.change('dark')
 document.documentElement.setAttribute('data-theme', 'dark')
-console.log('[MAIN] Dark theme initialized')
 
 // Mount app SYNCHRONOUSLY
 app.mount('#app')
-console.log('[MAIN] App mounted to #app')
 
 // THEN do async initialization in background (non-blocking)
 async function initializeBackgroundConfig() {
   try {
-    console.log('[MAIN] Initializing API configuration from backend...')
-
     // Fetch API configuration from backend
     // This ensures WebSocket uses correct host in LAN mode
     await initializeApiConfig()
-
-    console.log('[MAIN] API configuration initialized')
   } catch (error) {
     console.warn('[MAIN] Failed to initialize API config, using fallback:', error)
     // App already mounted with fallback config, continue

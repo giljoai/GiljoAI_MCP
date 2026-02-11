@@ -39,18 +39,19 @@ class TestConfigIntegration:
         # Create a second ConfigManager instance
         manager2 = ConfigManager(config_path=config_path)
 
-        # Save config data using first manager
+        # Save config data to file manually
         config_data = {
-            "server": {"host": "localhost", "port": 6000},
-            "database": {"type": "sqlite"},
+            "server": {"api": {"host": "0.0.0.0", "port": 6000}},
+            "database": {"type": "postgresql"},
         }
-        manager1.save_to_file(config_path, config_data)
+        with open(config_path, "w") as f:
+            yaml.dump(config_data, f)
 
         # Second manager should be able to load it
         manager2.load()
 
-        assert manager2.server.host == "localhost"
-        assert manager2.server.port == 6000
+        assert manager2.server.api_host == "0.0.0.0"
+        assert manager2.server.api_port == 6000
 
     @patch.dict(
         os.environ,
@@ -345,30 +346,3 @@ class TestErrorHandling:
         with patch.dict(os.environ, {"GILJO_SERVER_PORT": "not-a-number"}), pytest.raises(ValueError):
             manager = ConfigManager()
             manager.load()
-
-    def test_permission_errors(self, temp_dir):
-        """Test handling of file permission errors."""
-        config_file = temp_dir / "readonly.yaml"
-
-        # Create read-only file
-        config_data = {"server": {"port": 6000}}
-        with open(config_file, "w") as f:
-            yaml.dump(config_data, f)
-
-        # Make file read-only (Unix-like systems)
-        if os.name != "nt":  # Not Windows
-            os.chmod(config_file, 0o444)
-
-        manager = ConfigManager(config_path=config_file)
-        manager.load()
-
-        # Try to save (should handle permission error)
-        new_path = temp_dir / "new_config.yaml"
-        try:
-            manager.save_to_file(new_path)
-            # Should succeed with new path
-            assert new_path.exists()
-        finally:
-            # Restore permissions for cleanup
-            if os.name != "nt":
-                os.chmod(config_file, 0o644)

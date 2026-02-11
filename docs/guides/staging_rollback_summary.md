@@ -120,10 +120,10 @@ result = await rollback_project_staging(
 **Enforcement**:
 ```python
 # ✅ CORRECT - Filtered by tenant_key
-stmt = select(MCPAgentJob).where(
+stmt = select(AgentJob).where(
     and_(
-        MCPAgentJob.tenant_key == tenant_key,      # Isolation
-        MCPAgentJob.spawned_by == orchestrator_job_id,
+        AgentJob.tenant_key == tenant_key,      # Isolation
+        AgentJob.spawned_by == orchestrator_job_id,
     )
 )
 ```
@@ -302,9 +302,9 @@ All operations logged with structured messages:
 
 **No schema changes required** - Uses existing fields:
 
-- `MCPAgentJob.status` → Set to 'failed' (soft delete)
-- `MCPAgentJob.completed_at` → Set to rollback timestamp
-- `MCPAgentJob.job_metadata` → Add rollback_info (JSONB)
+- `AgentJob.status` → Set to 'failed' (soft delete)
+- `AgentJob.completed_at` → Set to rollback timestamp
+- `AgentJob.job_metadata` → Add rollback_info (JSONB)
 - `Project.mission` → Clear to empty string
 
 **Indexes used**:
@@ -351,7 +351,7 @@ Potential improvements for v4.0:
 
 **Dependencies**:
 - `DatabaseManager` - Database connection and session management
-- `MCPAgentJob` model - Agent job table
+- `AgentJob` model - Agent job table
 - `Project` model - Project table with mission field
 
 **Integrates with**:
