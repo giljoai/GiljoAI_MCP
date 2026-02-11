@@ -26,7 +26,7 @@
 | 0745b | Dependency Security & Cleanup | NOT STARTED | -- | -- |
 | 0745c | Backend Dead Code Removal | NOT STARTED | -- | -- |
 | 0745d | Frontend Cleanup | NOT STARTED | -- | -- |
-| 0745e | Architecture Polish | NOT STARTED | -- | -- |
+| 0745e | Architecture Polish | COMPLETED | feature/0745e-architecture-polish | 2026-02-10 |
 | 0745f | Documentation Sync | NOT STARTED | -- | -- |
 
 ---
@@ -422,6 +422,45 @@ TESTING: Light. Run existing suite after each phase. No new tests.
 When done, update the original handover file with a completion summary.
 Count: lines removed, exception blocks removed, files touched.
 ```
+
+### Completion Summary (2026-02-10)
+
+**Branch**: `feature/0745e-architecture-polish`
+**Tests**: 493 passed, 31 skipped, 1 pre-existing failure (obsolete `mcp_agent_jobs` table test)
+
+**Phase 1 - Service layer violations fixed (5 files)**:
+- `product_service.py`: Replaced 5 HTTPException raises with ValidationError in `validate_project_path()`, removed local fastapi import. Replaced 1 bare ValueError with ResourceNotFoundError in `update_quality_standards()`.
+- `project_service.py`: Replaced 1 bare ValueError with ValidationError in `get_project()`.
+- `orchestration_service.py`: Replaced 4 bare ValueErrors (2 ResourceNotFoundError, 2 ValidationError) in `process_product_vision()`.
+- `settings_service.py`: Replaced 2 bare ValueErrors with ValidationError, added exceptions import.
+- `consolidation_service.py`: Replaced structlog with standard logging (2 lines).
+
+**Phase 2 - Redundant exception blocks removed (21 endpoint files, 60 blocks, ~383 lines)**:
+- `configuration.py`: 11 blocks, ~45 lines removed
+- `agent_management.py`: 8 blocks, ~32 lines removed
+- `statistics.py`: 6 blocks, ~24 lines removed
+- `context.py`: 4 blocks, ~16 lines removed
+- `agent_jobs/lifecycle.py`: 4 blocks, ~50 lines removed
+- `serena.py`: 3 blocks, ~12 lines removed
+- `git.py`: 3 blocks, ~13 lines removed
+- `agent_templates.py`: 2 blocks, ~11 lines removed
+- `agent_jobs/operations.py`: 2 blocks, ~30 lines removed
+- `agent_jobs/status.py`: 2 blocks, ~29 lines removed
+- `network.py`: 2 blocks, ~8 lines removed
+- `templates/crud.py`: 4 blocks, ~24 lines removed
+- `slash_commands.py`: 1 block, ~9 lines removed
+- `websocket_bridge.py`: 1 block, ~13 lines removed
+- `agent_jobs/orchestration.py`: 1 block, ~8 lines removed
+- `agent_jobs/messages.py`: 1 block, ~10 lines removed
+- `agent_jobs/simple_handover.py`: 1 block, ~7 lines removed
+- `vision_documents.py`: 1 block, ~21 lines removed
+- `prompts.py`: 1 block, ~6 lines removed
+- `downloads.py`: 1 block, ~8 lines removed
+- `claude_export.py`: 1 block (except Exception only), ~7 lines removed
+
+**Preserved (intentionally kept)**: Transaction rollback blocks (vision_documents CRUD, templates delete), health-check fallback patterns, WebSocket resilience try/except, ValueError-to-specific-status mappings (non-BaseGiljoError), database password multi-step rollback.
+
+**Totals**: 26 files touched, 60 exception blocks removed, ~383 lines of redundant code eliminated, 8 bare ValueErrors replaced with domain exceptions, 5 HTTPExceptions removed from service layer.
 
 ---
 

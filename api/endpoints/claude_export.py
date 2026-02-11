@@ -629,14 +629,7 @@ async def export_claude_code_endpoint(
         return ClaudeExportResult(**result)
 
     except ValueError as e:
-        # Path validation errors
+        # Path validation errors - ValueError is not a BaseGiljoError,
+        # so global handler would map to 500; we need 400 here
         logger.warning(f"Export path validation failed: {e}")
         raise HTTPException(status_code=400, detail=str(e)) from None
-
-    except Exception as e:
-        # Unexpected errors
-        logger.exception("Export failed")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Export failed: {e!s}",
-        ) from e

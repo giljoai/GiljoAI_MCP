@@ -62,12 +62,25 @@ async def simple_handover(
             "context_reset": True
         }
     """
-    try:
-        # Find execution (job_id could be agent_id)
+    # Find execution (job_id could be agent_id)
+    stmt = (
+        select(AgentExecution)
+        .where(
+            AgentExecution.agent_id == job_id,
+            AgentExecution.tenant_key == current_user.tenant_key,
+        )
+        .order_by(AgentExecution.started_at.desc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    execution = result.scalars().first()
+
+    # Fallback to job_id
+    if not execution:
         stmt = (
             select(AgentExecution)
             .where(
-                AgentExecution.agent_id == job_id,
+                AgentExecution.job_id == job_id,
                 AgentExecution.tenant_key == current_user.tenant_key,
             )
             .order_by(AgentExecution.started_at.desc())
@@ -76,121 +89,101 @@ async def simple_handover(
         result = await db.execute(stmt)
         execution = result.scalars().first()
 
-        # Fallback to job_id
-        if not execution:
-            stmt = (
-                select(AgentExecution)
-                .where(
-                    AgentExecution.job_id == job_id,
-                    AgentExecution.tenant_key == current_user.tenant_key,
-                )
-                .order_by(AgentExecution.started_at.desc())
-                .limit(1)
+    if not execution:
+        raise HTTPException(status_code=404, detail="Execution not found")
+
+    if execution.agent_display_name != "orchestrator":
+        raise HTTPException(status_code=400, detail="Only orchestrators can use handover")
+
+    # Get job for project_id
+    stmt = select(AgentJob).where(AgentJob.job_id == execution.job_id)
+    result = await db.execute(stmt)
+    job = result.scalars().first()
+
+    if not job:
+        raise HTTPException(status_code=500, detail="Job not found")
+
+    # Build session context for 360 Memory
+
+    # Calculate context usage percentage (avoid division by zero)
+    context_percent = (
+        int((execution.context_used / execution.context_budget) * 100) if execution.context_budget > 0 else 0
+    )
+
+    # Write to 360 Memory
+    from api.app import app
+    from src.giljo_mcp.tools.write_360_memory import write_360_memory
+
+    # Get database manager from app state (Handover 0461c fix)
+    db_manager = getattr(app.state, "db_manager", None)
+    if db_manager is None:
+        raise HTTPException(status_code=500, detail="Database manager not initialized")
+
+    memory_result = await write_360_memory(
+        project_id=str(job.project_id),
+        tenant_key=current_user.tenant_key,
+        summary=f"Session handover at {execution.context_used}/{execution.context_budget} tokens ({context_percent}% context used). Progress: {execution.progress}%. Current task: {execution.current_task or 'N/A'}.",
+        key_outcomes=[
+            f"Progress: {execution.progress}%",
+            f"Current task: {execution.current_task or 'N/A'}",
+            f"Context usage: {context_percent}%",
+        ],
+        decisions_made=["Session handover triggered by user"],
+        entry_type="session_handover",
+        author_job_id=execution.job_id,
+        db_manager=db_manager,
+        session=db,
+    )
+
+    # Check if memory write succeeded
+    if not memory_result.get("success"):
+        logger.error(f"Failed to write 360 memory: {memory_result.get('error')}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to write 360 memory: {memory_result.get('error')}",
+        )
+
+    # Reset context_used
+    old_context = execution.context_used
+    execution.context_used = 0
+    await db.commit()
+
+    # Generate continuation prompt
+    # Note: ThinClientPromptGenerator doesn't support continuation_mode parameter,
+    # so we build a simple prompt manually that instructs reading 360 Memory
+    continuation_prompt = _build_continuation_prompt(
+        project_id=str(job.project_id),
+        agent_id=execution.agent_id,
+        job_id=execution.job_id,
+    )
+
+    # Emit WebSocket event
+    try:
+        websocket_manager = getattr(app.state, "websocket_manager", None)
+        if websocket_manager:
+            await websocket_manager.broadcast_to_tenant(
+                tenant_key=current_user.tenant_key,
+                event_type="orchestrator:context_reset",
+                data={
+                    "agent_id": execution.agent_id,
+                    "job_id": execution.job_id,
+                    "project_id": str(job.project_id),
+                    "old_context_used": old_context,
+                    "new_context_used": 0,
+                    "memory_entry_created": True,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
             )
-            result = await db.execute(stmt)
-            execution = result.scalars().first()
+    except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
+        logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
-        if not execution:
-            raise HTTPException(status_code=404, detail="Execution not found")
-
-        if execution.agent_display_name != "orchestrator":
-            raise HTTPException(status_code=400, detail="Only orchestrators can use handover")
-
-        # Get job for project_id
-        stmt = select(AgentJob).where(AgentJob.job_id == execution.job_id)
-        result = await db.execute(stmt)
-        job = result.scalars().first()
-
-        if not job:
-            raise HTTPException(status_code=500, detail="Job not found")
-
-        # Build session context for 360 Memory
-
-        # Calculate context usage percentage (avoid division by zero)
-        context_percent = (
-            int((execution.context_used / execution.context_budget) * 100) if execution.context_budget > 0 else 0
-        )
-
-        # Write to 360 Memory
-        from api.app import app
-        from src.giljo_mcp.tools.write_360_memory import write_360_memory
-
-        # Get database manager from app state (Handover 0461c fix)
-        db_manager = getattr(app.state, "db_manager", None)
-        if db_manager is None:
-            raise HTTPException(status_code=500, detail="Database manager not initialized")
-
-        memory_result = await write_360_memory(
-            project_id=str(job.project_id),
-            tenant_key=current_user.tenant_key,
-            summary=f"Session handover at {execution.context_used}/{execution.context_budget} tokens ({context_percent}% context used). Progress: {execution.progress}%. Current task: {execution.current_task or 'N/A'}.",
-            key_outcomes=[
-                f"Progress: {execution.progress}%",
-                f"Current task: {execution.current_task or 'N/A'}",
-                f"Context usage: {context_percent}%",
-            ],
-            decisions_made=["Session handover triggered by user"],
-            entry_type="session_handover",
-            author_job_id=execution.job_id,
-            db_manager=db_manager,
-            session=db,
-        )
-
-        # Check if memory write succeeded
-        if not memory_result.get("success"):
-            logger.error(f"Failed to write 360 memory: {memory_result.get('error')}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to write 360 memory: {memory_result.get('error')}",
-            )
-
-        # Reset context_used
-        old_context = execution.context_used
-        execution.context_used = 0
-        await db.commit()
-
-        # Generate continuation prompt
-        # Note: ThinClientPromptGenerator doesn't support continuation_mode parameter,
-        # so we build a simple prompt manually that instructs reading 360 Memory
-        continuation_prompt = _build_continuation_prompt(
-            project_id=str(job.project_id),
-            agent_id=execution.agent_id,
-            job_id=execution.job_id,
-        )
-
-        # Emit WebSocket event
-        try:
-            websocket_manager = getattr(app.state, "websocket_manager", None)
-            if websocket_manager:
-                await websocket_manager.broadcast_to_tenant(
-                    tenant_key=current_user.tenant_key,
-                    event_type="orchestrator:context_reset",
-                    data={
-                        "agent_id": execution.agent_id,
-                        "job_id": execution.job_id,
-                        "project_id": str(job.project_id),
-                        "old_context_used": old_context,
-                        "new_context_used": 0,
-                        "memory_entry_created": True,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    },
-                )
-        except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
-            logger.warning(f"WebSocket broadcast failed: {ws_error}")
-
-        return {
-            "success": True,
-            "continuation_prompt": continuation_prompt,
-            "memory_entry_id": memory_result.get("entry_id"),
-            "context_reset": True,
-            "old_context_used": old_context,
-        }
-
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions (400, 404, etc.) without modification
-    except Exception as e:
-        logger.exception("Simple handover failed")
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return {
+        "success": True,
+        "continuation_prompt": continuation_prompt,
+        "memory_entry_id": memory_result.get("entry_id"),
+        "context_reset": True,
+        "old_context_used": old_context,
+    }
 
 
 def _build_continuation_prompt(

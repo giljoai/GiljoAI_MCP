@@ -2526,11 +2526,15 @@ report_error(
         async with self._get_session() as session:
             product = await session.get(Product, product_id)
             if not product or product.tenant_key != tenant_key:
-                raise ValueError(f"Product {product_id} not found")
+                raise ResourceNotFoundError(
+                    message=f"Product {product_id} not found",
+                    error_code="PRODUCT_NOT_FOUND",
+                    context={"product_id": product_id},
+                )
 
             # Validate product is active before processing
             if not product.is_active:
-                raise ValueError(
+                raise ValidationError(
                     f"Cannot process product vision - product '{product.name}' is not active. "
                     f"Activate the product before creating agent missions."
                 )
@@ -2542,7 +2546,7 @@ report_error(
             elif storage_type == "file" and product.primary_vision_path:
                 vision_content = Path(product.primary_vision_path).read_text(encoding="utf-8")
             else:
-                raise ValueError(f"Product {product_id} has no vision document")
+                raise ValidationError(f"Product {product_id} has no vision document")
 
         # 2. Chunk vision if needed (using new vision_documents relationship)
         if not product.vision_is_chunked:
@@ -2569,7 +2573,11 @@ report_error(
                 )
                 project = result.scalar_one_or_none()
                 if not project:
-                    raise ValueError(f"Project {project_id} not found")
+                    raise ResourceNotFoundError(
+                        message=f"Project {project_id} not found",
+                        error_code="PROJECT_NOT_FOUND",
+                        context={"project_id": project_id},
+                    )
             self._logger.info(f"Using existing project {project_id}")
         else:
             # Create new project
