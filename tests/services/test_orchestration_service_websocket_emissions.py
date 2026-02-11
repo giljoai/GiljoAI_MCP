@@ -174,9 +174,9 @@ async def test_acknowledge_job_emits_status_changed(
 
     result = await orchestration_service.acknowledge_job(job_id=job_id, agent_id="ignored", tenant_key=tenant_key)
 
-    # Handover 0730b: No success wrapper - returns dict with job and next_instructions
-    assert "job" in result
-    assert "next_instructions" in result
+    # Handover 0731c: Returns AcknowledgeJobResult typed model
+    assert result.job
+    assert result.next_instructions
     assert execution.status == "working"
     mock_websocket_manager.broadcast_to_tenant.assert_awaited()
 
@@ -232,7 +232,8 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
 
     result = await orchestration_service.complete_job(job_id=job_id, result={"ok": True}, tenant_key=tenant_key)
 
-    assert result["status"] == "success"
+    # Handover 0731c: Returns CompleteJobResult typed model
+    assert result.status == "success"
     assert execution.status == "complete"
 
     last_call = mock_websocket_manager.broadcast_to_tenant.await_args_list[-1].kwargs
@@ -289,7 +290,8 @@ async def test_report_progress_fallback_emits_message_new_event(
         tenant_key=tenant_key,
     )
 
-    assert result["status"] == "success"
+    # Handover 0731c: Returns ProgressResult typed model
+    assert result.status == "success"
     mock_websocket_manager.broadcast_to_tenant.assert_awaited()
 
     # report_progress emits job:progress_update event (not message:new)
@@ -328,7 +330,7 @@ async def test_websocket_failures_do_not_break_orchestration_calls(
 
     result = await orchestration_service.acknowledge_job(job_id=job_id, agent_id="ignored", tenant_key=tenant_key)
 
-    # Handover 0730b: No success wrapper - returns dict with job and next_instructions
-    assert "job" in result
-    assert "next_instructions" in result
+    # Handover 0731c: Returns AcknowledgeJobResult typed model
+    assert result.job
+    assert result.next_instructions
     assert execution.status == "working"

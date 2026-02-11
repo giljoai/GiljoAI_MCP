@@ -145,13 +145,14 @@ class TestGetAgentMissionImplementationGate:
         # Call get_agent_mission
         response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
+        # Handover 0731c: Returns MissionResponse typed model
         # Verify blocked response
-        assert response.get("blocked") is True, "Mission should be blocked when implementation not launched"
-        assert response.get("mission") is None, "Mission should be None when blocked"
-        assert response.get("full_protocol") is None, "Protocol should be None when blocked"
-        assert "BLOCKED" in response.get("error", ""), "Error message should indicate blocked status"
-        assert "user_instruction" in response, "Response should include user instruction"
-        assert "Implement" in response.get("user_instruction", ""), "User instruction should mention Implement button"
+        assert response.blocked is True, "Mission should be blocked when implementation not launched"
+        assert response.mission is None, "Mission should be None when blocked"
+        assert response.full_protocol is None, "Protocol should be None when blocked"
+        assert "BLOCKED" in (response.error or ""), "Error message should indicate blocked status"
+        assert response.user_instruction is not None, "Response should include user instruction"
+        assert "Implement" in (response.user_instruction or ""), "User instruction should mention Implement button"
 
     @pytest.mark.asyncio
     async def test_get_agent_mission_succeeds_when_launched(
@@ -196,12 +197,12 @@ class TestGetAgentMissionImplementationGate:
             # Call get_agent_mission
             response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
+        # Handover 0731c: Returns MissionResponse typed model
         # Verify successful response (not blocked)
-        # Exception-based pattern: success indicated by presence of job_id, not 'success' wrapper
-        assert response.get("blocked") is not True, "Mission should not be blocked when implementation launched"
-        assert response.get("mission") is not None, "Mission should be present when not blocked"
-        assert response.get("full_protocol") is not None, "Protocol should be present when not blocked"
-        assert response.get("job_id") == job.job_id, "Response should include job_id (indicates success)"
+        assert response.blocked is not True, "Mission should not be blocked when implementation launched"
+        assert response.mission is not None, "Mission should be present when not blocked"
+        assert response.full_protocol is not None, "Protocol should be present when not blocked"
+        assert response.job_id == job.job_id, "Response should include job_id (indicates success)"
 
 
 class TestAcknowledgeJobImplementationGate:
@@ -281,7 +282,7 @@ class TestAcknowledgeJobImplementationGate:
             # Call acknowledge_job
             response = await orchestration_service.acknowledge_job(job_id=job.job_id, tenant_key="tenant-test")
 
+        # Handover 0731c: Returns AcknowledgeJobResult typed model
         # Verify successful response (not blocked)
-        assert response.get("success") is not False, "Acknowledge should succeed when implementation launched"
-        assert "job" in response, "Response should include job details"
-        assert response["job"].get("status") == "working", "Job status should be working after acknowledgment"
+        assert response.job, "Response should include job details"
+        assert response.job.get("status") == "working", "Job status should be working after acknowledgment"

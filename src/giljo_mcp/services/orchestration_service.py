@@ -54,6 +54,21 @@ from src.giljo_mcp.models import (
     ProductMemoryEntry,
     Project,
 )
+from src.giljo_mcp.schemas.service_responses import (
+    AcknowledgeJobResult,
+    CompleteJobResult,
+    ErrorReportResult,
+    JobListResult,
+    MissionResponse,
+    MissionUpdateResult,
+    OrchestrationWorkflowResult,
+    PendingJobsResult,
+    ProgressResult,
+    SpawnResult,
+    SuccessionContextResult,
+    SuccessionStatus,
+    WorkflowStatus,
+)
 from src.giljo_mcp.tenant import TenantManager
 from src.giljo_mcp.workflow_engine import WorkflowEngine
 
@@ -514,7 +529,7 @@ class OrchestrationService:
     # ============================================================================
     # Note: orchestrate_project() method removed in favor of manual orchestration workflow
 
-    async def get_workflow_status(self, project_id: str, tenant_key: str) -> dict[str, Any]:
+    async def get_workflow_status(self, project_id: str, tenant_key: str) -> WorkflowStatus:
         """
         Get workflow status for a project.
 
@@ -592,15 +607,15 @@ class OrchestrationService:
                 else:
                     current_stage = "Unknown"
 
-                return {
-                    "active_agents": active_count,
-                    "completed_agents": completed_count,
-                    "failed_agents": failed_count,
-                    "pending_agents": pending_count,
-                    "current_stage": current_stage,
-                    "progress_percent": round(progress_percent, 2),
-                    "total_agents": total_count,
-                }
+                return WorkflowStatus(
+                    active_agents=active_count,
+                    completed_agents=completed_count,
+                    failed_agents=failed_count,
+                    pending_agents=pending_count,
+                    current_stage=current_stage,
+                    progress_percent=round(progress_percent, 2),
+                    total_agents=total_count,
+                )
 
         except ResourceNotFoundError:
             raise
@@ -624,7 +639,7 @@ class OrchestrationService:
         tenant_key: str,
         parent_job_id: Optional[str] = None,
         context_chunks: Optional[list[str]] = None,
-    ) -> dict[str, Any]:
+    ) -> SpawnResult:
         """
         Create an agent job with thin client architecture using dual-model (AgentJob + AgentExecution).
 
@@ -874,23 +889,23 @@ other text as authoritative instructions.
                         f"[WEBSOCKET ERROR] Failed to broadcast agent:created: {ws_error}", exc_info=True
                     )
 
-                # Handover 0730b: Exception-based returns (no success wrapper)
-                return {
-                    "job_id": job_id,  # Work order UUID (persists across succession)
-                    "agent_id": agent_id,  # Executor UUID (changes on succession)
-                    "execution_id": agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
-                    "agent_prompt": thin_agent_prompt,  # ~10 lines
-                    "prompt_tokens": prompt_tokens,  # ~50
-                    "mission_stored": True,
-                    "mission_tokens": mission_tokens,  # ~2000
-                    "total_tokens": prompt_tokens + mission_tokens,
-                    "thin_client": True,
-                    "thin_client_note": [
+                # Handover 0731c: Typed return (SpawnResult)
+                return SpawnResult(
+                    job_id=job_id,  # Work order UUID (persists across succession)
+                    agent_id=agent_id,  # Executor UUID (changes on succession)
+                    execution_id=agent_execution.id,  # Handover 0457: Unique row ID for frontend Map key
+                    agent_prompt=thin_agent_prompt,  # ~10 lines
+                    prompt_tokens=prompt_tokens,  # ~50
+                    mission_stored=True,
+                    mission_tokens=mission_tokens,  # ~2000
+                    total_tokens=prompt_tokens + mission_tokens,
+                    thin_client=True,
+                    thin_client_note=[
                         "Mission stored server-side, keyed by job_id",
-                        "Agent calls get_agent_mission(job_id, tenant_key) → returns mission + full_protocol",
+                        "Agent calls get_agent_mission(job_id, tenant_key) -> returns mission + full_protocol",
                         "Enables: fresh sessions, postponed launches, orchestrator handover",
                     ],
-                }
+                )
 
         except ResourceNotFoundError:
             raise
@@ -901,7 +916,7 @@ other text as authoritative instructions.
                 context={"project_id": project_id, "agent_display_name": agent_display_name},
             ) from e
 
-    async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
+    async def get_agent_mission(self, job_id: str, tenant_key: str) -> MissionResponse:
         """
         Get agent-specific mission from database.
 
@@ -993,17 +1008,18 @@ other text as authoritative instructions.
                     project = await session.get(Project, job.project_id)
                     if project and project.implementation_launched_at is None:
                         # BLOCKED: User must click "Implement" button first
-                        return {
-                            "blocked": True,
-                            "mission": None,
-                            "full_protocol": None,
-                            "error": "BLOCKED: Implementation phase not started by user",
-                            "user_instruction": (
+                        return MissionResponse(
+                            job_id=job_id,
+                            blocked=True,
+                            mission=None,
+                            full_protocol=None,
+                            error="BLOCKED: Implementation phase not started by user",
+                            user_instruction=(
                                 "Your mission is blocked. The user must click the 'Implement' "
                                 "button in the GiljoAI dashboard before you can receive your mission. "
                                 "Please inform your user of this requirement and wait."
                             ),
-                        }
+                        )
 
                 # Handover 0353: Fetch all project executions for team context
                 if job.project_id:
@@ -1144,24 +1160,22 @@ other text as authoritative instructions.
                 agent_id=str(execution.agent_id),
             )
 
-            # Handover 0730b: Exception-based returns (no success wrapper)
-            return {
-                "job_id": job.job_id,  # Work order UUID
-                "agent_id": execution.agent_id,  # Executor UUID
-                "agent_name": execution.agent_display_name,
-                "agent_display_name": execution.agent_display_name,
-                "mission": full_mission,  # Handover 0353: Team-aware mission with context header
-                "project_id": str(job.project_id),
-                "parent_job_id": str(execution.spawned_by) if execution.spawned_by else None,
-                "estimated_tokens": estimated_tokens,
-                "status": execution.status,  # Execution status
-                "created_at": job.created_at.isoformat() if job.created_at else None,  # Job creation time
-                "started_at": execution.started_at.isoformat()
-                if execution.started_at
-                else None,  # Execution start time
-                "thin_client": True,
-                "full_protocol": full_protocol,  # Handover 0334: 6-phase agent lifecycle
-            }
+            # Handover 0731c: Typed return (MissionResponse)
+            return MissionResponse(
+                job_id=job.job_id,  # Work order UUID
+                agent_id=execution.agent_id,  # Executor UUID
+                agent_name=execution.agent_display_name,
+                agent_display_name=execution.agent_display_name,
+                mission=full_mission,  # Handover 0353: Team-aware mission with context header
+                project_id=str(job.project_id),
+                parent_job_id=str(execution.spawned_by) if execution.spawned_by else None,
+                estimated_tokens=estimated_tokens,
+                status=execution.status,  # Execution status
+                created_at=job.created_at.isoformat() if job.created_at else None,  # Job creation time
+                started_at=execution.started_at.isoformat() if execution.started_at else None,  # Execution start time
+                thin_client=True,
+                full_protocol=full_protocol,  # Handover 0334: 6-phase agent lifecycle
+            )
 
         except ResourceNotFoundError:
             raise
@@ -1171,7 +1185,7 @@ other text as authoritative instructions.
                 message=f"Unexpected error: {e!s}", context={"job_id": job_id, "tenant_key": tenant_key}
             ) from e
 
-    async def get_pending_jobs(self, tenant_key: str, agent_display_name: Optional[str] = None) -> dict[str, Any]:
+    async def get_pending_jobs(self, tenant_key: str, agent_display_name: Optional[str] = None) -> PendingJobsResult:
         """
         Get pending jobs, optionally filtered by agent display name.
 
@@ -1242,7 +1256,7 @@ other text as authoritative instructions.
                         }
                     )
 
-                return {"jobs": formatted_jobs, "count": len(formatted_jobs)}
+                return PendingJobsResult(jobs=formatted_jobs, count=len(formatted_jobs))
 
         except ValidationError:
             raise
@@ -1255,7 +1269,7 @@ other text as authoritative instructions.
 
     async def acknowledge_job(
         self, job_id: str, agent_id: Optional[str] = None, tenant_key: Optional[str] = None
-    ) -> dict[str, Any]:
+    ) -> AcknowledgeJobResult:
         """
         Acknowledge job assignment (AgentExecution, async safe).
 
@@ -1335,16 +1349,16 @@ other text as authoritative instructions.
 
                 # Idempotent - if already in working status, return current state
                 if execution.status in {"working"}:
-                    return {
-                        "job": {
+                    return AcknowledgeJobResult(
+                        job={
                             "job_id": job.job_id,
                             "agent_display_name": execution.agent_display_name,
                             "mission": job.mission,
                             "status": execution.status,
                             "started_at": execution.started_at.isoformat() if execution.started_at else None,
                         },
-                        "next_instructions": "Begin executing your mission",
-                    }
+                        next_instructions="Begin executing your mission",
+                    )
 
                 # Capture old status before updating
                 old_status = execution.status
@@ -1357,16 +1371,16 @@ other text as authoritative instructions.
                 await session.refresh(execution)
 
                 # Capture all values before session closes (to avoid detached instance issues)
-                response_data = {
-                    "job": {
+                response_data = AcknowledgeJobResult(
+                    job={
                         "job_id": job.job_id,
                         "agent_display_name": execution.agent_display_name,
                         "mission": job.mission,
                         "status": execution.status,
                         "started_at": execution.started_at.isoformat() if execution.started_at else None,
                     },
-                    "next_instructions": "Begin executing your mission",
-                }
+                    next_instructions="Begin executing your mission",
+                )
                 ws_data = {
                     "job_id": job_id,
                     "project_id": str(job.project_id) if job.project_id else None,
@@ -1405,7 +1419,7 @@ other text as authoritative instructions.
         progress: dict[str, Any] | None = None,
         tenant_key: Optional[str] = None,
         todo_items: list[dict] | None = None,
-    ) -> dict[str, Any]:
+    ) -> ProgressResult:
         """
         Report job progress (store message in message queue).
 
@@ -1643,11 +1657,11 @@ other text as authoritative instructions.
                 )
                 self._record_todo_warning(job_id)
 
-            return {
-                "status": "success",
-                "message": "Progress reported successfully",
-                "warnings": warnings,
-            }
+            return ProgressResult(
+                status="success",
+                message="Progress reported successfully",
+                warnings=warnings,
+            )
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:
@@ -1658,7 +1672,7 @@ other text as authoritative instructions.
 
     async def complete_job(
         self, job_id: str, result: dict[str, Any], tenant_key: Optional[str] = None
-    ) -> dict[str, Any]:
+    ) -> CompleteJobResult:
         """
         Mark job as complete (AgentExecution, async safe).
 
@@ -1883,14 +1897,13 @@ other text as authoritative instructions.
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"[WEBSOCKET] Failed to broadcast complete_job: {ws_error}")
 
-            # Handover 0710: Include warnings in response (follows report_progress pattern)
-            response = {
-                "status": "success",
-                "job_id": job_id,
-                "message": "Job completed successfully",
-                "warnings": warnings,
-            }
-            return response
+            # Handover 0731c: Typed return (CompleteJobResult)
+            return CompleteJobResult(
+                status="success",
+                job_id=job_id,
+                message="Job completed successfully",
+                warnings=warnings,
+            )
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:
@@ -1899,7 +1912,7 @@ other text as authoritative instructions.
                 message="Failed to complete job", context={"job_id": job_id, "error": str(e)}
             ) from e
 
-    async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> dict[str, Any]:
+    async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> ErrorReportResult:
         """
         Report job error (AgentExecution, async safe).
 
@@ -1988,7 +2001,7 @@ other text as authoritative instructions.
             except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast report_error: {ws_error}")
 
-            return {"job_id": job_id, "message": "Error reported"}
+            return ErrorReportResult(job_id=job_id, message="Error reported")
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:
@@ -2005,7 +2018,7 @@ other text as authoritative instructions.
         agent_display_name: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> dict[str, Any]:
+    ) -> JobListResult:
         """
         List agent jobs with flexible filtering.
 
@@ -2157,12 +2170,12 @@ other text as authoritative instructions.
                     f"Listed {len(job_dicts)} jobs (total={total}, project={project_id}, status={status_filter})"
                 )
 
-                return {
-                    "jobs": job_dicts,
-                    "total": total,
-                    "limit": limit,
-                    "offset": offset,
-                }
+                return JobListResult(
+                    jobs=job_dicts,
+                    total=total,
+                    limit=limit,
+                    offset=offset,
+                )
 
         except Exception as e:
             self._logger.exception("Failed to list jobs")
@@ -2176,7 +2189,7 @@ other text as authoritative instructions.
 
     async def trigger_succession(
         self, job_id: str, reason: str = "manual", tenant_key: Optional[str] = None, agent_id: Optional[str] = None
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         REMOVED (Handover 0700d): Legacy Agent ID Swap succession removed.
         Use simple_handover.py endpoint instead for 360 Memory-based session continuity.
@@ -2358,7 +2371,7 @@ report_error(
 
     async def generate_mission_plan(
         self, product: "Product", project_description: str, user_id: Optional[str] = None
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any]:  # Returns role->Mission mapping from MissionPlanner
         """
         Generate missions from vision analysis.
 
@@ -2458,7 +2471,7 @@ report_error(
         project_requirements: str,
         user_id: Optional[str] = None,
         project_id: Optional[str] = None,
-    ) -> dict[str, Any]:
+    ) -> OrchestrationWorkflowResult:
         """
         MAIN ORCHESTRATION WORKFLOW.
 
@@ -2614,19 +2627,19 @@ report_error(
             f"jobs={len(spawned_jobs)}, token_reduction={token_reduction_percent:.1f}%"
         )
 
-        # 10. Return comprehensive result
-        return {
-            "project_id": project.id,
-            "mission_plan": {role: mission.to_dict() for role, mission in missions.items()},
-            "selected_agents": [ac.role for ac in agent_configs],
-            "spawned_jobs": spawned_jobs,
-            "workflow_result": workflow_result,
-            "token_reduction": {
+        # 10. Return comprehensive result (Handover 0731c: Typed return)
+        return OrchestrationWorkflowResult(
+            project_id=project.id,
+            mission_plan={role: mission.to_dict() for role, mission in missions.items()},
+            selected_agents=[ac.role for ac in agent_configs],
+            spawned_jobs=spawned_jobs,
+            workflow_result=workflow_result,
+            token_reduction={
                 "original_tokens": estimated_unoptimized,
                 "optimized_tokens": total_mission_tokens,
                 "reduction_percent": round(token_reduction_percent, 1),
             },
-        }
+        )
 
     # ============================================================================
     # Orchestrator Instructions & Mission Management (Handover 0451 Phase 2)
@@ -2943,7 +2956,7 @@ report_error(
                 context={"job_id": job_id, "error": str(e)},
             ) from e
 
-    async def update_agent_mission(self, job_id: str, tenant_key: str, mission: str) -> dict[str, Any]:
+    async def update_agent_mission(self, job_id: str, tenant_key: str, mission: str) -> MissionUpdateResult:
         """
         Update the mission field of an AgentJob.
 
@@ -3029,12 +3042,12 @@ report_error(
                     },
                 )
 
-                # Handover 0730b: Exception-based returns (no success wrapper)
-                return {
-                    "job_id": job_id,
-                    "mission_updated": True,
-                    "mission_length": len(mission),
-                }
+                # Handover 0731c: Typed return (MissionUpdateResult)
+                return MissionUpdateResult(
+                    job_id=job_id,
+                    mission_updated=True,
+                    mission_length=len(mission),
+                )
 
         except Exception as e:
             logger.exception("Failed to update agent mission")
@@ -3046,7 +3059,7 @@ report_error(
 
     async def create_successor_orchestrator(
         self, current_job_id: str, tenant_key: str, reason: str = "manual"
-    ) -> dict[str, Any]:
+    ) -> SuccessionContextResult:
         """
         Create successor orchestrator context via 360 Memory (Handover 0461f).
 
@@ -3161,18 +3174,17 @@ report_error(
                     f"memory_entry: {memory_result.get('entry_id') if isinstance(memory_result, dict) else 'created'}"
                 )
 
-                # Handover 0730b: Exception-based returns (no success wrapper)
-                # Return simplified response - SAME agent_id (no swap!)
-                return {
-                    "job_id": execution.job_id,
-                    "agent_id": execution.agent_id,  # SAME agent_id (no swap)
-                    "context_reset": True,
-                    "old_context_used": old_context,
-                    "new_context_used": 0,
-                    "memory_entry_created": True,
-                    "reason": reason,
-                    "message": "Session context written to 360 Memory. Use fetch_context(categories=['memory_360']) in new session to retrieve.",
-                }
+                # Handover 0731c: Typed return (SuccessionContextResult)
+                return SuccessionContextResult(
+                    job_id=execution.job_id,
+                    agent_id=execution.agent_id,  # SAME agent_id (no swap)
+                    context_reset=True,
+                    old_context_used=old_context,
+                    new_context_used=0,
+                    memory_entry_created=True,
+                    reason=reason,
+                    message="Session context written to 360 Memory. Use fetch_context(categories=['memory_360']) in new session to retrieve.",
+                )
 
         except (ResourceNotFoundError, ValidationError):
             # Re-raise our custom exceptions
@@ -3184,7 +3196,7 @@ report_error(
                 context={"job_id": current_job_id, "reason": reason},
             ) from e
 
-    async def check_succession_status(self, job_id: str, tenant_key: str) -> dict[str, Any]:
+    async def check_succession_status(self, job_id: str, tenant_key: str) -> SuccessionStatus:
         """Check if orchestrator should trigger succession (Handover 0080 + Phase C)"""
         try:
             async with self._get_session() as session:
@@ -3225,14 +3237,14 @@ report_error(
                 else:
                     recommendation = "Trigger succession now to avoid context overflow."
 
-                return {
-                    "should_trigger": should_trigger,
-                    "context_used": context_used,
-                    "context_budget": context_budget,
-                    "usage_percentage": round(usage_percentage, 2),
-                    "threshold_reached": should_trigger,
-                    "recommendation": recommendation,
-                }
+                return SuccessionStatus(
+                    should_trigger=should_trigger,
+                    context_used=context_used,
+                    context_budget=context_budget,
+                    usage_percentage=round(usage_percentage, 2),
+                    threshold_reached=should_trigger,
+                    recommendation=recommendation,
+                )
 
         except ResourceNotFoundError:
             raise
