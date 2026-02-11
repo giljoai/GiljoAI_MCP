@@ -774,10 +774,12 @@ import TemplateArchive from './TemplateArchive.vue'
 import { format } from 'date-fns'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
+import { useToast } from '@/composables/useToast'
 
 // Handover 0335: WebSocket setup for real-time export status updates
 const { on, off } = useWebSocketV2()
 const userStore = useUserStore()
+const { showToast } = useToast()
 const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
 
 // Handover 0335: Inject template export event from parent (UserSettings.vue)
@@ -1107,21 +1109,18 @@ const handleToggleActive = async (template, newValue) => {
     // Show toast notification
     if (newValue) {
       // Activation succeeded - warn about re-export
-      console.warn('[TEMPLATE MANAGER] Agent activated - re-export required')
-      // TODO: Add toast notification when toast composable is available
+      showToast({ message: 'Agent activated - re-export required', color: 'warning' })
       // Mark export as stale (for Option C badge)
       localStorage.setItem('agent_export_stale', 'true')
     } else {
       // Deactivation succeeded
-      console.info('[TEMPLATE MANAGER] Agent deactivated')
+      showToast({ message: 'Agent deactivated', color: 'info' })
       localStorage.setItem('agent_export_stale', 'true')
     }
   } catch (error) {
     // Validation failed (8-agent limit)
     const errorMsg = error.response?.data?.detail || 'Failed to update agent'
-
-    console.error('[TEMPLATE MANAGER] Cannot activate agent:', errorMsg)
-    // TODO: Add error toast when composable is available
+    showToast({ message: errorMsg, color: 'error' })
 
     // Revert toggle (template state not changed on error)
     // No need to revert as we only update on success
@@ -1282,9 +1281,7 @@ const copyPreview = async () => {
   await copyToClipboardSafe(
     previewContent.value,
     () => {
-      // Success - show toast notification
-      console.log('Preview copied to clipboard')
-      // TODO: Add toast notification when composable is available
+      showToast({ message: 'Preview copied to clipboard', color: 'success' })
     },
     (error) => {
       // Error - show error toast
