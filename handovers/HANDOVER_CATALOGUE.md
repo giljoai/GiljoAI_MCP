@@ -232,21 +232,28 @@
 > **Scope**: API layer only (pass current_user.tenant_key to service calls)
 > **Follow-up**: 0731 will do comprehensive service layer cleanup (remove fallbacks, make tenant_key required)
 
-### Typed Service Returns Series (0731) - IN PROGRESS
+### Typed Service Returns Series (0731) - COMPLETE
+| ID | Title | Status | Priority | Commit |
+|----|-------|--------|----------|--------|
+| **0731a** | **Pydantic Response Models + Design Validation** | **COMPLETE** | HIGH | (see chain log) |
+| **0731b** | **Tier 1 Service Refactor (User/Product)** | **COMPLETE** | HIGH | (see chain log) |
+| **0731c** | **Tier 2+3 Service Refactor (11 services)** | **COMPLETE** | HIGH | (see chain log) |
+| **0731d** | **API Endpoint Updates + Final Validation** | **COMPLETE** | HIGH | edeef972 |
+
+> **Status**: 100% COMPLETE (2026-02-11). Branch `feature/0731-typed-service-returns` ready for merge.
+> **Impact**: 78 files changed, +7,048/-3,159 lines, 19 commits, 60+ Pydantic models, 157 TDD tests
+> **Chain Log**: `prompts/0731_chain/chain_log.json`
+> **Completion Report**: `handovers/0731_COMPLETION_REPORT.md`
+
+### Release Packaging Sprint (0732) - DEFERRED
 | ID | Title | Status | Priority | Est. Hours |
 |----|-------|--------|----------|------------|
-| **0731a** | **Pydantic Response Models + Design Validation** | **Ready** | **HIGH** | 4-6h |
-| **0731b** | **Tier 1 Service Refactor (Org/User/Product)** | **BLOCKED** (needs 0731a) | **HIGH** | 8-12h |
-| **0731c** | **Tier 2+3 Service Refactor (11 services)** | **BLOCKED** (needs 0731b) | **HIGH** | 6-10h |
-| **0731d** | **API Endpoint Updates + Final Validation** | **BLOCKED** (needs 0731c) | **HIGH** | 4-8h |
+| **0732** | **Open Source Release Packaging** | **DEFERRED** | **MEDIUM** | 3-5h |
 
-> **Purpose**: Replace all `dict[str, Any]` service returns with typed Pydantic models and exception-based error handling
-> **Impact**: 111 dict wrapper instances across 14 services, ~45-60 endpoint consumers
-> **Branch**: `feature/0731-typed-service-returns` (from master @ 549fbd25)
-> **Design Reference**: `docs/architecture/service_response_models.md` (from 0730a)
-> **Chain Log**: `prompts/0731_chain/chain_log.json`
-> **Estimated Total**: 22-36h across 4 sequential sessions
-> **Execution**: Multi-terminal chain pattern (MULTI_TERMINAL_CHAIN_STRATEGY.md)
+> **Purpose**: Package codebase for open source release (community score 6/10 -> 8-9/10)
+> **Tasks**: GitHub issue/PR templates, README screenshots, CHANGELOG.md, fix 12 pre-existing test failures, Dockerfile + docker-compose.yml
+> **Execute When**: After remaining features implemented, before public release
+> **Depends On**: 0731 merged to master
 
 ### Post-Cleanup Audit & Scrub Series (0750) - COMPLETE
 | ID | Title | Status | Priority | Commit |
@@ -684,7 +691,7 @@ completed/reference/
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
-**0700-0750** (Code Cleanup): 0700-0708, 0730-0731 (service returns), 0745-0750 (audit+scrub)
+**0700-0750** (Code Cleanup): 0700-0708, 0730-0732 (service returns + release packaging), 0745-0750 (audit+scrub)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers in Root Folder (Needs Cleanup)
