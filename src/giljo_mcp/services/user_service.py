@@ -78,7 +78,7 @@ class UserService:
     # CRUD Operations
     # ============================================================================
 
-    async def list_users(self, include_all_tenants: bool = False) -> list[dict[str, Any]]:
+    async def list_users(self, include_all_tenants: bool = False) -> list[User]:
         """
         List all users (tenant-scoped by default).
 
@@ -86,7 +86,7 @@ class UserService:
             include_all_tenants: If True, list users from all tenants (admin only)
 
         Returns:
-            List of user dictionaries (password excluded)
+            List of User ORM model instances
 
         Raises:
             BaseGiljoError: Database operation failed
@@ -108,7 +108,7 @@ class UserService:
                 message=str(e), context={"operation": "list_users", "tenant_key": self.tenant_key}
             ) from e
 
-    async def _list_users_impl(self, session: AsyncSession, include_all_tenants: bool = False) -> list[dict[str, Any]]:
+    async def _list_users_impl(self, session: AsyncSession, include_all_tenants: bool = False) -> list[User]:
         """Implementation that uses provided session"""
         if include_all_tenants:
             # Admin cross-tenant view - see all users
@@ -117,31 +117,16 @@ class UserService:
             # Regular tenant-isolated view
             stmt = select(User).where(User.tenant_key == self.tenant_key).order_by(User.created_at)
         result = await session.execute(stmt)
-        users = result.scalars().all()
+        users = list(result.scalars().all())
 
-        user_list = [
-            {
-                "id": str(user.id),
-                "username": user.username,
-                "email": user.email,
-                "full_name": user.full_name,
-                "role": user.role,
-                "tenant_key": user.tenant_key,
-                "is_active": user.is_active,
-                "created_at": user.created_at.isoformat() if user.created_at else None,
-                "last_login": user.last_login.isoformat() if user.last_login else None,
-            }
-            for user in users
-        ]
-
-        log_msg = f"Found {len(user_list)} users" + (
+        log_msg = f"Found {len(users)} users" + (
             " (all tenants)" if include_all_tenants else f" for tenant {self.tenant_key}"
         )
         self._logger.debug(log_msg)
 
-        return user_list
+        return users
 
-    async def get_user(self, user_id: str, include_all_tenants: bool = False) -> dict[str, Any]:
+    async def get_user(self, user_id: str, include_all_tenants: bool = False) -> User:
         """
         Get a specific user by ID.
 
@@ -150,7 +135,7 @@ class UserService:
             include_all_tenants: If True, allow fetching users from any tenant (admin only)
 
         Returns:
-            User dictionary (password excluded)
+            User ORM model instance
 
         Raises:
             ResourceNotFoundError: User not found
@@ -171,13 +156,11 @@ class UserService:
             self._logger.exception("Failed to get user")
             raise BaseGiljoError(message=str(e), context={"operation": "get_user", "user_id": user_id}) from e
 
-    async def _get_user_impl(
-        self, session: AsyncSession, user_id: str, include_all_tenants: bool = False
-    ) -> dict[str, Any]:
+    async def _get_user_impl(self, session: AsyncSession, user_id: str, include_all_tenants: bool = False) -> User:
         """Implementation that uses provided session
 
         Returns:
-            User dictionary (password excluded)
+            User ORM model instance
 
         Raises:
             ResourceNotFoundError: User not found
@@ -196,17 +179,7 @@ class UserService:
 
         self._logger.info("Fetched user", extra={"user_id": user_id})
 
-        return {
-            "id": str(user.id),
-            "username": user.username,
-            "email": user.email,
-            "full_name": user.full_name,
-            "role": user.role,
-            "tenant_key": user.tenant_key,
-            "is_active": user.is_active,
-            "created_at": user.created_at.isoformat() if user.created_at else None,
-            "last_login": user.last_login.isoformat() if user.last_login else None,
-        }
+        return user
 
     async def create_user(
         self,
@@ -216,7 +189,7 @@ class UserService:
         password: str | None = None,
         role: str = "developer",
         is_active: bool = True,
-    ) -> dict[str, Any]:
+    ) -> User:
         """
         Create a new user.
 
@@ -229,7 +202,7 @@ class UserService:
             is_active: Whether user account is active
 
         Returns:
-            User dictionary (password excluded)
+            User ORM model instance
 
         Raises:
             ValidationError: Username or email already exists
@@ -261,11 +234,11 @@ class UserService:
         password: str | None,
         role: str,
         is_active: bool,
-    ) -> dict[str, Any]:
+    ) -> User:
         """Implementation that uses provided session
 
         Returns:
-            User dictionary (password excluded)
+            User ORM model instance
 
         Raises:
             ValidationError: Username or email already exists
@@ -308,19 +281,9 @@ class UserService:
 
         self._logger.info(f"Created user {user.id} for tenant {self.tenant_key}")
 
-        return {
-            "id": str(user.id),
-            "username": user.username,
-            "email": user.email,
-            "full_name": user.full_name,
-            "role": user.role,
-            "tenant_key": user.tenant_key,
-            "is_active": user.is_active,
-            "must_change_password": user.must_change_password,
-            "created_at": user.created_at.isoformat() if user.created_at else None,
-        }
+        return user
 
-    async def update_user(self, user_id: str, include_all_tenants: bool = False, **updates) -> dict[str, Any]:
+    async def update_user(self, user_id: str, include_all_tenants: bool = False, **updates) -> User:
         """
         Update a user.
 
@@ -330,7 +293,7 @@ class UserService:
             **updates: Fields to update (email, full_name, is_active)
 
         Returns:
-            User dictionary (password excluded)
+            User ORM model instance
 
         Raises:
             ResourceNotFoundError: User not found
@@ -354,11 +317,11 @@ class UserService:
 
     async def _update_user_impl(
         self, session: AsyncSession, user_id: str, updates: dict, include_all_tenants: bool = False
-    ) -> dict[str, Any]:
+    ) -> User:
         """Implementation that uses provided session
 
         Returns:
-            User dictionary (password excluded)
+            User ORM model instance
 
         Raises:
             ResourceNotFoundError: User not found
@@ -405,14 +368,7 @@ class UserService:
 
         self._logger.info(f"Updated user {user_id}")
 
-        return {
-            "id": str(user.id),
-            "username": user.username,
-            "email": user.email,
-            "full_name": user.full_name,
-            "role": user.role,
-            "is_active": user.is_active,
-        }
+        return user
 
     async def delete_user(self, user_id: str) -> None:
         """
@@ -464,7 +420,7 @@ class UserService:
     # Role Management
     # ============================================================================
 
-    async def change_role(self, user_id: str, new_role: str) -> dict[str, Any]:
+    async def change_role(self, user_id: str, new_role: str) -> User:
         """
         Change user role with admin restrictions.
 
@@ -473,7 +429,7 @@ class UserService:
             new_role: New role (admin, developer, viewer)
 
         Returns:
-            User dictionary with updated role
+            User ORM model instance with updated role
 
         Raises:
             ValidationError: Invalid role
@@ -498,11 +454,11 @@ class UserService:
                 message=str(e), context={"operation": "change_role", "user_id": user_id, "new_role": new_role}
             ) from e
 
-    async def _change_role_impl(self, session: AsyncSession, user_id: str, new_role: str) -> dict[str, Any]:
+    async def _change_role_impl(self, session: AsyncSession, user_id: str, new_role: str) -> User:
         """Implementation that uses provided session
 
         Returns:
-            User dictionary with updated role
+            User ORM model instance with updated role
 
         Raises:
             ValidationError: Invalid role
@@ -546,7 +502,7 @@ class UserService:
 
         self._logger.info(f"Changed role for user {user.username}: {old_role} -> {new_role}")
 
-        return {"id": str(user.id), "username": user.username, "role": user.role}
+        return user
 
     # ============================================================================
     # Password Management
