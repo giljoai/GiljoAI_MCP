@@ -333,17 +333,15 @@ class TestUploadWithMultiLevelSummaries:
             auto_chunk=False,  # Skip chunking for this test
         )
 
-        # Exception-based pattern (0730): Returns dict with document_id on success
-        # Raises exception on failure (no "success" key)
-        assert "document_id" in result
-        assert result["document_id"] is not None
+        # 0731c: Returns VisionUploadResult model (typed returns)
+        assert result.document_id is not None
 
         # Verify database record has all three summaries
         from sqlalchemy import select
 
         from src.giljo_mcp.models.products import VisionDocument
 
-        stmt = select(VisionDocument).where(VisionDocument.id == result["document_id"])
+        stmt = select(VisionDocument).where(VisionDocument.id == result.document_id)
         db_result = await db_session.execute(stmt)
         vision_doc = db_result.scalar_one_or_none()
 
@@ -466,7 +464,7 @@ class TestContextRetrievalWithDepth:
         )
 
         # Verify the document was created with summaries
-        stmt = select(VisionDocument).where(VisionDocument.id == upload_result["document_id"])
+        stmt = select(VisionDocument).where(VisionDocument.id == upload_result.document_id)
         result = await db_session.execute(stmt)
         vision_doc = result.scalar_one()
 

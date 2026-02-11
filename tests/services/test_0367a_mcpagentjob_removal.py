@@ -155,8 +155,8 @@ class TestOrchestrationServiceNoFallback:
             tenant_key=test_tenant_0367a,
         )
 
-        # Verify success (supports both old and new result formats)
-        assert result.get("success") is True or result.get("status") == "success"
+        # Verify success - typed return (CompleteJobResult)
+        assert result.status == "success"
 
         # Verify AgentExecution was updated
         await db_session.refresh(test_agent_execution_0367a)
