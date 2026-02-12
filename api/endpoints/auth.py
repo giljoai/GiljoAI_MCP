@@ -16,14 +16,16 @@ import re
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, Query, Request, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.endpoints.dependencies import get_auth_service
 from api.middleware.auth_rate_limiter import get_rate_limiter
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_admin
+from src.giljo_mcp.auth.jwt_manager import JWTManager
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import AuthService
@@ -37,6 +39,61 @@ router = APIRouter()
 # Protects against race condition where multiple requests check user count simultaneously
 # and both create admin accounts (Handover 0034 security fix)
 _first_admin_creation_lock = asyncio.Lock()
+
+
+def _build_cookie_params(request: Request) -> dict:
+    """Build cookie parameters for access_token cookie with secure domain validation.
+
+    Extracts the request host header and applies security checks to determine
+    the appropriate cookie domain:
+    - IP addresses: auto-allowed (no subdomain hierarchy risk)
+    - Domain names: must be in security.cookie_domain_whitelist config
+    - Unknown hosts: domain=None (fail secure)
+
+    Args:
+        request: FastAPI Request object for host header extraction.
+
+    Returns:
+        dict with keys: key, httponly, secure, samesite, path, domain, max_age.
+        Suitable for unpacking into response.set_cookie().
+    """
+    config = get_config()
+    secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)
+    allowed_domains = config.get("security", {}).get("cookie_domain_whitelist", [])
+
+    cookie_domain = None
+    if request and request.client:
+        host_header = request.headers.get("host", "")
+        if host_header:
+            host_only = host_header.split(":")[0].lower()
+
+            # IP addresses (including localhost) share cookies across ports
+            if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", host_only):
+                cookie_domain = host_only
+                logger.debug(f"Cookie domain set to IP address (safe): {host_only}")
+
+            # Domain names MUST be whitelisted (prevent header injection)
+            elif host_only in allowed_domains:
+                cookie_domain = host_only
+                logger.info(f"Cookie domain set to whitelisted domain: {host_only}")
+            else:
+                cookie_domain = None
+                logger.warning(
+                    f"Cookie domain set to None for unknown host '{host_only}' "
+                    f"(not in whitelist: {allowed_domains}). "
+                    f"Add to config.yaml security.cookie_domain_whitelist if needed."
+                )
+
+    return {
+        "key": "access_token",
+        "httponly": True,
+        "secure": secure_cookies,
+        "samesite": "lax",
+        "path": "/",
+        "domain": cookie_domain,
+        "max_age": 86400,
+    }
+
 
 # Pydantic Models for Request/Response
 
@@ -243,79 +300,9 @@ async def login(
     # This flag is always False for v3.0+ (legacy field removed in Handover 0035)
     password_change_required = False
 
-    # SECURITY: Cookie domain validation and whitelist enforcement
-    #
-    # Background: Frontend (port 7274) needs cookies set by API (port 7272)
-    # Cross-port authentication requires setting cookie domain attribute.
-    #
-    # Domain attribute behavior:
-    #   - domain=None → Strict (exact host:port match) - MOST SECURE
-    #   - domain="10.1.0.164" → Loose (all ports on that IP) - NEEDED for cross-port
-    #   - domain="example.com" → Applies to example.com AND all subdomains (*.example.com)
-    #
-    # Security considerations:
-    #   1. Host Header Injection Risk: NEVER trust user-supplied Host header blindly
-    #      Attacker can send: "Host: evil.com" and steal cookies if we set domain=evil.com
-    #
-    #   2. Defense-in-Depth Strategy:
-    #      - IP addresses: Auto-allowed (no subdomain risk, validated by regex)
-    #      - Domain names: MUST be in whitelist (prevents header injection attacks)
-    #      - localhost/127.0.0.1: Always domain=None (strictest security)
-    #      - Unknown hosts: domain=None (fail secure)
-    #
-    #   3. Additional Protections:
-    #      - CORS whitelist (separate layer of defense)
-    #      - SameSite=lax (prevents CSRF)
-    #      - httpOnly=True (prevents XSS cookie theft)
-    #      - secure=True in production (HTTPS only)
-    #
-    # Configuration: config.yaml can define allowed domains for cookie_domains setting
-
-    # Load secure cookie config BEFORE cookie domain logic (always needed)
-    config = get_config()
-    secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)
-    allowed_domains = config.get("security", {}).get("cookie_domains", [])
-
-    cookie_domain = None
-    if request and request.client:
-        # Extract host from request header (e.g., "10.1.0.164:7272" or "example.com:7272")
-        host_header = request.headers.get("host", "")
-        if host_header:
-            # Strip port if present (e.g., "10.1.0.164:7272" -> "10.1.0.164")
-            host_only = host_header.split(":")[0].lower()
-
-            # SECURITY CHECK #1: IP addresses (including localhost) share cookies across ports
-            # Localhost (127.0.0.1) treated same as network IPs for production parity
-            # Regex validates format: xxx.xxx.xxx.xxx where xxx = 1-3 digits
-            # IP addresses have no subdomain hierarchy, so domain=IP is safe
-            if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", host_only):
-                cookie_domain = host_only
-                logger.debug(f"Cookie domain set to IP address (safe): {host_only}")
-
-            # SECURITY CHECK #2: Domain names MUST be whitelisted (prevent header injection)
-            # Without whitelist, attacker could send "Host: evil.com" and steal cookies
-            elif host_only in allowed_domains:
-                cookie_domain = host_only
-                logger.info(f"Cookie domain set to whitelisted domain: {host_only}")
-            else:
-                # FAIL SECURE: Unknown domain → domain=None (strictest)
-                cookie_domain = None
-                logger.warning(
-                    f"Cookie domain set to None for unknown host '{host_only}' "
-                    f"(not in whitelist: {allowed_domains}). Add to config.yaml security.cookie_domains if needed."
-                )
-
-    # Set httpOnly cookie (session cookie - expires on browser close)
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        httponly=True,
-        secure=secure_cookies,  # Configured via config.yaml security.cookies.secure
-        samesite="lax",
-        # NO max_age - makes it a session cookie that expires on browser close
-        path="/",  # Accessible from all paths (frontend and API)
-        domain=cookie_domain,  # Set to request host for cross-port cookie sharing
-    )
+    # Set httpOnly cookie with secure domain validation
+    cookie_params = _build_cookie_params(request)
+    response.set_cookie(value=token, **cookie_params)
 
     logger.info(
         f"User logged in successfully: {auth_result.username} (role: {auth_result.role}) (password_change_required: {password_change_required})"
@@ -337,24 +324,86 @@ async def login(
 
 
 @router.post("/logout", response_model=LogoutResponse, tags=["auth"])
-async def logout(response: Response):
+async def logout(request: Request, response: Response):
     """
     Logout by clearing the JWT cookie.
 
     This endpoint clears the access_token cookie, effectively logging out the user.
+    Cookie domain/path/secure/samesite must match the values used when setting
+    the cookie, otherwise the browser will not clear it.
 
     Args:
+        request: FastAPI request (for cookie domain resolution)
         response: FastAPI response (to clear cookie)
 
     Returns:
         Logout success message
     """
-    # Clear the cookie by setting it with max_age=0
-    response.delete_cookie(key="access_token")
+    cookie_params = _build_cookie_params(request)
+    response.delete_cookie(
+        key="access_token",
+        path=cookie_params["path"],
+        domain=cookie_params["domain"],
+        secure=cookie_params["secure"],
+        samesite=cookie_params["samesite"],
+    )
 
     logger.info("User logged out successfully")
 
     return LogoutResponse(message="Logout successful")
+
+
+@router.post("/refresh", tags=["auth"])
+async def refresh_token(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Silently refresh the access token.
+
+    - If token is valid: issues new token (sliding window session extension)
+    - If token expired within grace period (1h): validates user in DB, issues new token
+    - If token beyond grace period or invalid: returns 401
+
+    Args:
+        request: FastAPI request (for cookie extraction and domain resolution)
+        response: FastAPI response (to set new cookie)
+        db: Database session (managed by FastAPI dependency injection)
+
+    Returns:
+        JSON with message and username on success
+
+    Raises:
+        HTTPException: 401 if no token, token beyond grace period, or user inactive
+    """
+    access_token = request.cookies.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="No token present")
+
+    payload = JWTManager.verify_token_allow_expired(access_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token expired beyond grace period")
+
+    user_id = payload.get("sub")
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.is_active == True)  # noqa: E712
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="User no longer active")
+
+    new_token = JWTManager.create_access_token(
+        user_id=user.id,
+        username=user.username,
+        role=user.role,
+        tenant_key=user.tenant_key,
+    )
+
+    cookie_params = _build_cookie_params(request)
+    response.set_cookie(value=new_token, **cookie_params)
+
+    logger.info(f"Token refreshed for user: {user.username}")
+    return {"message": "Token refreshed", "username": user.username}
 
 
 @router.get("/me", tags=["auth"])
@@ -400,8 +449,6 @@ async def get_me(
 
     if current_user.org_id:
         # Load organization
-        from sqlalchemy import select
-
         org_stmt = select(Organization).where(Organization.id == current_user.org_id)
         org_result = await db.execute(org_stmt)
         org = org_result.scalar_one_or_none()
@@ -692,78 +739,9 @@ async def create_first_admin_user(
             logger.warning(f"[SETUP] Template seeding failed (non-critical): {e}")
             template_count = 0
 
-        # SECURITY: Cookie domain validation and whitelist enforcement
-        #
-        # Background: Frontend (port 7274) needs cookies set by API (port 7272)
-        # Cross-port authentication requires setting cookie domain attribute.
-        #
-        # Domain attribute behavior:
-        #   - domain=None → Strict (exact host:port match) - MOST SECURE
-        #   - domain="10.1.0.164" → Loose (all ports on that IP) - NEEDED for cross-port
-        #   - domain="example.com" → Applies to example.com AND all subdomains (*.example.com)
-        #
-        # Security considerations:
-        #   1. Host Header Injection Risk: NEVER trust user-supplied Host header blindly
-        #      Attacker can send: "Host: evil.com" and steal cookies if we set domain=evil.com
-        #
-        #   2. Defense-in-Depth Strategy:
-        #      - IP addresses: Auto-allowed (no subdomain risk, validated by regex)
-        #      - Domain names: MUST be in whitelist (prevents header injection attacks)
-        #      - localhost/127.0.0.1: Always domain=None (strictest security)
-        #      - Unknown hosts: domain=None (fail secure)
-        #
-        #   3. Additional Protections:
-        #      - CORS whitelist (separate layer of defense)
-        #      - SameSite=lax (prevents CSRF)
-        #      - httpOnly=True (prevents XSS cookie theft)
-        #      - secure=True in production (HTTPS only)
-        #
-        # Configuration: config.yaml can define allowed domains for cookie_domains setting
-        # Load secure cookie config BEFORE cookie domain logic (always needed)
-        config = get_config()
-        secure_cookies = config.get("security", {}).get("cookies", {}).get("secure", False)
-        allowed_domains = config.get("security", {}).get("cookie_domains", [])
-
-        cookie_domain = None
-        if request and request.client:
-            # Extract host from request header (e.g., "10.1.0.164:7272" or "example.com:7272")
-            host_header = request.headers.get("host", "")
-            if host_header:
-                # Strip port if present (e.g., "10.1.0.164:7272" -> "10.1.0.164")
-                host_only = host_header.split(":")[0].lower()
-
-                # SECURITY CHECK #1: IP addresses (including localhost) share cookies across ports
-                # Localhost (127.0.0.1) treated same as network IPs for production parity
-                # Regex validates format: xxx.xxx.xxx.xxx where xxx = 1-3 digits
-                # IP addresses have no subdomain hierarchy, so domain=IP is safe
-                if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", host_only):
-                    cookie_domain = host_only
-                    logger.debug(f"Cookie domain set to IP address (safe): {host_only}")
-
-                # SECURITY CHECK #2: Domain names MUST be whitelisted (prevent header injection)
-                # Without whitelist, attacker could send "Host: evil.com" and steal cookies
-                elif host_only in allowed_domains:
-                    cookie_domain = host_only
-                    logger.info(f"Cookie domain set to whitelisted domain: {host_only}")
-                else:
-                    # FAIL SECURE: Unknown domain → domain=None (strictest)
-                    cookie_domain = None
-                    logger.warning(
-                        f"Cookie domain set to None for unknown host '{host_only}' "
-                        f"(not in whitelist: {allowed_domains}). Add to config.yaml security.cookie_domains if needed."
-                    )
-
         # Set httpOnly cookie for immediate login (same pattern as login endpoint)
-        response.set_cookie(
-            key="access_token",
-            value=token,
-            httponly=True,
-            secure=secure_cookies,  # Configured via config.yaml security.cookies.secure
-            samesite="lax",
-            path="/",  # Accessible from all paths (frontend and API)
-            domain=cookie_domain,  # Set to request host for cross-port cookie sharing
-            max_age=86400,  # 24 hours
-        )
+        cookie_params = _build_cookie_params(request)
+        response.set_cookie(value=token, **cookie_params)
 
         logger.info(
             f"[SETUP] First administrator account created successfully - "
