@@ -32,7 +32,7 @@ const statusConfig = {
     chipColor: 'success',
   },
   failed: {
-    label: 'Protocol Violation',
+    label: 'Failed',
     color: '#e53935', // Red
     italic: false,
     chipColor: 'error',
@@ -114,9 +114,9 @@ const STATUS_CONFIG = {
   },
   failed: {
     icon: 'mdi-alert-circle',
-    color: 'purple',
-    label: 'Protocol Violation',
-    description: 'Agent violated completion protocol',
+    color: 'error',
+    label: 'Failed',
+    description: 'Agent encountered an unrecoverable error',
   },
   cancelled: {
     icon: 'mdi-cancel',
