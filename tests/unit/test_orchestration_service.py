@@ -354,17 +354,16 @@ class TestOrchestrationServiceWorkflow:
         # Act
         result = await service.get_workflow_status(project_id="project-id", tenant_key="test-tenant")
 
-        # Assert
-        assert "active_agents" in result
-        assert "completed_agents" in result
-        assert "failed_agents" in result
-        assert "pending_agents" in result
-        assert "progress_percent" in result
-        assert "current_stage" in result
-        assert result["total_agents"] == 3
-        assert result["active_agents"] == 1
-        assert result["completed_agents"] == 1
-        assert result["pending_agents"] == 1
+        # Assert - WorkflowStatus is a Pydantic model, use attribute access
+        assert result.total_agents == 3
+        assert result.active_agents == 1
+        assert result.completed_agents == 1
+        assert result.pending_agents == 1
+        assert result.failed_agents == 0
+        assert result.blocked_agents == 0
+        assert result.cancelled_agents == 0
+        assert result.progress_percent == 33.33
+        assert result.current_stage == "In Progress"
 
     @pytest.mark.asyncio
     async def test_get_workflow_status_project_not_found(self, mock_db_manager):
@@ -384,6 +383,241 @@ class TestOrchestrationServiceWorkflow:
             await service.get_workflow_status(project_id="nonexistent", tenant_key="test-tenant")
 
         assert "not found" in str(exc_info.value).lower()
+
+    @pytest.mark.asyncio
+    async def test_get_workflow_status_blocked_agents_counted(self, mock_db_manager):
+        """Test that blocked agents are counted in workflow status.
+
+        Verifies that executions with status 'blocked' are tracked in the
+        blocked_agents field and reflected in the current_stage message.
+        """
+        # Arrange
+        db_manager, session = mock_db_manager
+        tenant_manager = Mock()
+
+        # Mock project
+        mock_project = Mock(spec=Project)
+        mock_project.id = "project-id"
+
+        # Mock executions: 1 working, 1 blocked, 1 complete
+        mock_exec_working = Mock(spec=AgentExecution)
+        mock_exec_working.status = "working"
+
+        mock_exec_blocked = Mock(spec=AgentExecution)
+        mock_exec_blocked.status = "blocked"
+
+        mock_exec_complete = Mock(spec=AgentExecution)
+        mock_exec_complete.status = "complete"
+
+        mock_job = Mock(spec=AgentJob)
+
+        # Create mock result with (execution, job) tuples
+        mock_result = Mock()
+        mock_result.all = Mock(
+            return_value=[
+                (mock_exec_working, mock_job),
+                (mock_exec_blocked, mock_job),
+                (mock_exec_complete, mock_job),
+            ]
+        )
+
+        # Two queries: project lookup, then executions lookup
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+            mock_result,
+        ]
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.get_workflow_status(
+            project_id="project-id", tenant_key="test-tenant"
+        )
+
+        # Assert
+        assert result.blocked_agents == 1
+        assert result.active_agents == 1
+        assert result.completed_agents == 1
+        assert result.total_agents == 3
+        assert result.failed_agents == 0
+        assert result.cancelled_agents == 0
+        assert "blocked" in result.current_stage.lower()
+
+    @pytest.mark.asyncio
+    async def test_get_workflow_status_cancelled_agents_counted(self, mock_db_manager):
+        """Test that cancelled/decommissioned agents are counted in workflow status.
+
+        Verifies that executions with status 'cancelled' or 'decommissioned'
+        are tracked in the cancelled_agents field.
+        """
+        # Arrange
+        db_manager, session = mock_db_manager
+        tenant_manager = Mock()
+
+        # Mock project
+        mock_project = Mock(spec=Project)
+        mock_project.id = "project-id"
+
+        # Mock executions: 2 complete, 1 cancelled
+        mock_exec_complete1 = Mock(spec=AgentExecution)
+        mock_exec_complete1.status = "complete"
+
+        mock_exec_complete2 = Mock(spec=AgentExecution)
+        mock_exec_complete2.status = "complete"
+
+        mock_exec_cancelled = Mock(spec=AgentExecution)
+        mock_exec_cancelled.status = "cancelled"
+
+        mock_job = Mock(spec=AgentJob)
+
+        # Create mock result with (execution, job) tuples
+        mock_result = Mock()
+        mock_result.all = Mock(
+            return_value=[
+                (mock_exec_complete1, mock_job),
+                (mock_exec_complete2, mock_job),
+                (mock_exec_cancelled, mock_job),
+            ]
+        )
+
+        # Two queries: project lookup, then executions lookup
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+            mock_result,
+        ]
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act
+        result = await service.get_workflow_status(
+            project_id="project-id", tenant_key="test-tenant"
+        )
+
+        # Assert
+        assert result.cancelled_agents == 1
+        assert result.completed_agents == 2
+        assert result.total_agents == 3
+        assert result.blocked_agents == 0
+        assert result.failed_agents == 0
+        # Progress excludes cancelled from denominator: 2 completed / 2 actionable = 100%
+        assert result.progress_percent == 100.0
+        # Stage should be Completed (cancelled agents don't block completion)
+        assert result.current_stage == "Completed"
+
+    @pytest.mark.asyncio
+    async def test_get_workflow_status_exclude_job_id_filters_orchestrator(self, mock_db_manager):
+        """Test that exclude_job_id filters the orchestrator's own job from results.
+
+        When an orchestrator calls get_workflow_status with its own job_id as
+        exclude_job_id, the result should not include the orchestrator itself,
+        only the spawned agents.
+        """
+        # Arrange
+        db_manager, session = mock_db_manager
+        tenant_manager = Mock()
+
+        # Mock project
+        mock_project = Mock(spec=Project)
+        mock_project.id = "project-id"
+
+        # Simulate what DB would return AFTER filtering out the orchestrator:
+        # Only the 2 spawned agents remain (1 complete, 1 working)
+        mock_exec_spawned_complete = Mock(spec=AgentExecution)
+        mock_exec_spawned_complete.status = "complete"
+
+        mock_exec_spawned_working = Mock(spec=AgentExecution)
+        mock_exec_spawned_working.status = "working"
+
+        mock_job_spawned = Mock(spec=AgentJob)
+
+        # Mock result returns only spawned agents (orchestrator excluded by query)
+        mock_result = Mock()
+        mock_result.all = Mock(
+            return_value=[
+                (mock_exec_spawned_complete, mock_job_spawned),
+                (mock_exec_spawned_working, mock_job_spawned),
+            ]
+        )
+
+        # Two queries: project lookup, then executions lookup (with filter applied)
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+            mock_result,
+        ]
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act - exclude the orchestrator's own job
+        result = await service.get_workflow_status(
+            project_id="project-id",
+            tenant_key="test-tenant",
+            exclude_job_id="orchestrator-job-id",
+        )
+
+        # Assert - orchestrator excluded, only 2 spawned agents counted
+        assert result.total_agents == 2
+        assert result.active_agents == 1
+        assert result.completed_agents == 1
+        assert result.progress_percent == 50.0
+
+        # Verify that session.execute was called twice (project + filtered query)
+        assert session.execute.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_get_workflow_status_exclude_job_id_none_returns_all(self, mock_db_manager):
+        """Test backward compatibility: exclude_job_id=None includes all agents.
+
+        When exclude_job_id is not provided (defaults to None), all agents
+        including orchestrators should be counted in the workflow status.
+        """
+        # Arrange
+        db_manager, session = mock_db_manager
+        tenant_manager = Mock()
+
+        # Mock project
+        mock_project = Mock(spec=Project)
+        mock_project.id = "project-id"
+
+        # All 3 agents returned (orchestrator + 2 spawned)
+        mock_exec_orch = Mock(spec=AgentExecution)
+        mock_exec_orch.status = "working"
+
+        mock_exec_spawned1 = Mock(spec=AgentExecution)
+        mock_exec_spawned1.status = "complete"
+
+        mock_exec_spawned2 = Mock(spec=AgentExecution)
+        mock_exec_spawned2.status = "working"
+
+        mock_job = Mock(spec=AgentJob)
+
+        # Mock result includes all 3 agents (no filtering)
+        mock_result = Mock()
+        mock_result.all = Mock(
+            return_value=[
+                (mock_exec_orch, mock_job),
+                (mock_exec_spawned1, mock_job),
+                (mock_exec_spawned2, mock_job),
+            ]
+        )
+
+        # Two queries: project lookup, then executions lookup (no filter)
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=Mock(return_value=mock_project)),
+            mock_result,
+        ]
+
+        service = OrchestrationService(db_manager, tenant_manager)
+
+        # Act - no exclude_job_id (backward compatible)
+        result = await service.get_workflow_status(
+            project_id="project-id", tenant_key="test-tenant"
+        )
+
+        # Assert - all 3 agents counted (including orchestrator)
+        assert result.total_agents == 3
+        assert result.active_agents == 2
+        assert result.completed_agents == 1
+        assert result.current_stage == "In Progress"
 
     @pytest.mark.asyncio
     @pytest.mark.asyncio

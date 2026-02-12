@@ -192,6 +192,9 @@ class WorkflowStatusResponse(BaseModel):
     completed_count: int
     failed_count: int
     active_count: int
+    blocked_count: int = 0
+    cancelled_count: int = 0
+    pending_count: int = 0
     progress_percent: int
 
 
