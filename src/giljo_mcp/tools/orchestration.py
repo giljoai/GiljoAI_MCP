@@ -523,7 +523,7 @@ def _get_context_management(context_budget: int) -> dict:
     return {
         "context_budget": context_budget,
         "warning_threshold": 0.8,
-        "action_at_threshold": "Consider triggering succession via create_successor_orchestrator",
+        "action_at_threshold": "User triggers session refresh via UI button or /gil_handover",
     }
 
 
@@ -720,7 +720,8 @@ User manually launches agents via [Copy Prompt] button in Claude Code Web
 Agents spawned via spawn_agent_job() during staging phase
 Each spawned agent gets a thin prompt (~10 lines)
 Agent calls get_agent_mission() to fetch full instructions
-Coordination happens via MCP messaging tools (send_message, receive)
+Coordination happens via MCP messaging tools (send_message, receive_messages)
+MESSAGING: Always use agent_id UUIDs in to_agents (from spawn_agent_job response)
 Orchestrator has NO active role after STAGING_COMPLETE broadcast
 """
 
@@ -870,7 +871,7 @@ COORDINATION PATTERNS:
 
 Sequential Pattern:
   Spawn agent A → Poll receive_messages() → Wait for completion →
-  Send handoff message → Spawn agent B → Repeat
+  Send handoff message (using agent_id UUID) → Spawn agent B → Repeat
 
 Parallel Pattern:
   Spawn all agents → Poll receive_messages() every 2-3 min →
@@ -878,7 +879,13 @@ Parallel Pattern:
 
 Hybrid Pattern:
   Spawn parallel batch 1 → Monitor → Wait for batch 1 complete →
-  Send handoff messages → Spawn batch 2 → Repeat
+  Send handoff messages (using agent_id UUIDs) → Spawn batch 2 → Repeat
+
+MESSAGING RULE: UUID-ONLY ADDRESSING
+- ALWAYS use agent_id UUIDs in send_message(to_agents=[...])
+- Each spawn_agent_job() returns agent_id - save these for messaging
+- Use to_agents=['all'] for broadcast only
+- NEVER use display names (e.g., "implementer") in to_agents
 
 MANDATORY: Before calling complete_job():
 - Ensure all agent TODO items are completed
@@ -1662,6 +1669,12 @@ Execute these IN ORDER before starting your mission:
 3. **Check Messages (BEFORE starting work):**
    Tool: mcp__giljo-mcp__receive_messages
    Parameters: {{"agent_id": "{agent_id}"}}
+
+## MESSAGING RULE: UUID-ONLY ADDRESSING
+- Your agent_id is `{agent_id}` - always use this as `from_agent` in send_message()
+- When messaging other agents, use their agent_id UUIDs from YOUR TEAM table (in mission response)
+- NEVER use display names like "orchestrator" or "implementer" in to_agents
+- Use to_agents=['all'] for broadcast only
 
 ## WORKFLOW REQUIREMENTS (MANDATORY)
 

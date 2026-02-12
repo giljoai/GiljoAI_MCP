@@ -126,20 +126,9 @@ async def test_e2e_orchestrator_workflow_spawn_execute_complete(
     assert agent_execution.completed_at is not None
 
 
-@pytest.mark.asyncio
-@pytest.mark.skip(
-    reason="Test removed in Handover 0461a - check_succession_status() method deleted (manual succession only)"
-)
-async def test_e2e_succession_workflow(
-    db_session: AsyncSession,
-    test_tenant_key: str,
-    test_project,
-    orchestration_service_with_session,
-):
-    """
-    DEPRECATED: This test tested check_succession_status() which was removed in Handover 0461a.
-    Succession is now manual-only via UI or /gil_handover command.
-    """
+# NOTE: test_e2e_succession_workflow removed - check_succession_status and
+# create_successor_orchestrator tools deleted. Succession is now user-triggered
+# via UI button or /gil_handover slash command.
 
 
 @pytest.mark.asyncio

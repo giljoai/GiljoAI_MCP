@@ -65,8 +65,6 @@ from src.giljo_mcp.schemas.service_responses import (
     PendingJobsResult,
     ProgressResult,
     SpawnResult,
-    SuccessionContextResult,
-    SuccessionStatus,
     WorkflowStatus,
 )
 from src.giljo_mcp.tenant import TenantManager
@@ -196,10 +194,13 @@ This project has {num_agents} agent(s) working together:
 """
 
     # Build COORDINATION section
-    coordination_section = """## COORDINATION
-- Use `mcp__giljo-mcp__send_message` to notify teammates when your work is complete
+    coordination_section = f"""## COORDINATION
+- **UUID-ONLY MESSAGING**: Always use agent_id UUIDs from the team table above when addressing agents
+- Use `mcp__giljo-mcp__send_message(to_agents=["{agent_id}"], from_agent="{agent_id}", ...)` with UUID values
 - Use `mcp__giljo-mcp__receive_messages` to check for instructions or updates
-- When you complete a deliverable, send a brief status message to downstream agents
+- When you complete a deliverable, send a brief status message to downstream agents using their agent_id UUIDs
+- Use `to_agents=['all']` for broadcast messages to the entire team
+- NEVER use display names (e.g., "orchestrator", "implementer") in to_agents - use the UUID from the team table
 - Check `full_protocol` for detailed messaging and progress reporting guidance
 
 ---
@@ -342,8 +343,9 @@ If you call `complete_job()` without meeting these requirements:
 **To mark yourself BLOCKED** (unclear requirements, waiting for clarification):
 1. Call `mcp__giljo-mcp__report_error(job_id="{job_id}", error="BLOCKED: <reason>")`
    - Sets status to "blocked" and stores block_reason
-2. Send message to orchestrator explaining what you need:
-   - `mcp__giljo-mcp__send_message(to_agents=["orchestrator"], content="BLOCKER: <details>", ...)`
+2. Send message to orchestrator explaining what you need (use orchestrator's agent_id UUID from YOUR TEAM table):
+   - `mcp__giljo-mcp__send_message(to_agents=["<orchestrator-agent-id-uuid>"], content="BLOCKER: <details>", from_agent="{executor_id}", project_id="...", message_type="direct")`
+   - ALWAYS use the orchestrator's agent_id UUID, NEVER the display name "orchestrator"
 3. STOP work and poll for response:
    - `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 
@@ -375,7 +377,7 @@ If you run out of context before completing:
    - summary: Brief overview of work completed so far
    - key_outcomes: What you accomplished before running out of context
    - decisions_made: Key decisions and rationale for successor
-2. Notify orchestrator via `send_message()` about context exhaustion
+2. Notify orchestrator via `send_message(to_agents=["<orchestrator-agent-id-uuid>"], ...)` about context exhaustion (use UUID from YOUR TEAM table)
 3. Call `complete_job()` to mark yourself complete
 
 Do NOT write 360 memory on normal completion - orchestrator handles that.
@@ -383,7 +385,13 @@ Do NOT write 360 memory on normal completion - orchestrator handles that.
 ---
 **Your Identifiers:**
 - job_id (work order): `{job_id}` - Use for mission, progress, completion
-- agent_id (executor): `{executor_id}` - Use for messages
+- agent_id (executor): `{executor_id}` - Use for messages (from_agent and receive_messages)
+
+**MESSAGING RULE: UUID-ONLY ADDRESSING**
+- ALWAYS use agent_id UUIDs in `to_agents` (from YOUR TEAM table in mission header)
+- NEVER use display names like "orchestrator" or "implementer" in `to_agents`
+- Use `to_agents=['all']` for broadcast only
+- Your `from_agent` is always your agent_id: `{executor_id}`
 
 **When to Check Messages:**
 - Phase 1 (STARTUP): Before starting work
@@ -2840,8 +2848,6 @@ report_error(
                         "spawn_agent_job",
                         "get_available_agents",
                         "send_message",
-                        "check_succession_status",
-                        "create_successor_orchestrator",
                         "report_progress",
                         "complete_job",
                     ],
@@ -3057,199 +3063,8 @@ report_error(
                 context={"job_id": job_id, "error": str(e)},
             ) from e
 
-    async def create_successor_orchestrator(
-        self, current_job_id: str, tenant_key: str, reason: str = "manual"
-    ) -> SuccessionContextResult:
-        """
-        Create successor orchestrator context via 360 Memory (Handover 0461f).
-
-        SIMPLIFIED: No longer creates new AgentExecution rows or swaps IDs.
-        Instead, writes session context to 360 Memory and resets context_used.
-
-        Handover 0730b: Exception-based error handling (no success wrapper).
-
-        Args:
-            current_job_id: Current orchestrator job_id or agent_id
-            tenant_key: Tenant key for isolation
-            reason: Handover reason (default: "manual")
-
-        Returns:
-            Dict with continuation instructions and memory entry info
-
-        Raises:
-            ResourceNotFoundError: When execution or project not found
-            ValidationError: When non-orchestrator attempts succession
-            OrchestrationError: When succession operation fails
-        """
-        try:
-            from datetime import datetime, timezone
-
-            async with self._get_session() as session:
-                # Find current execution by job_id
-                result = await session.execute(
-                    select(AgentExecution)
-                    .where(
-                        and_(
-                            AgentExecution.job_id == current_job_id,
-                            AgentExecution.tenant_key == tenant_key,
-                        )
-                    )
-                    .order_by(AgentExecution.started_at.desc())
-                )
-                execution = result.scalars().first()
-
-                # Fallback: try agent_id if job_id didn't match
-                if not execution:
-                    result = await session.execute(
-                        select(AgentExecution).where(
-                            and_(
-                                AgentExecution.agent_id == current_job_id,
-                                AgentExecution.tenant_key == tenant_key,
-                            )
-                        )
-                    )
-                    execution = result.scalars().first()
-
-                if not execution:
-                    raise ResourceNotFoundError(
-                        message=f"Execution not found for {current_job_id}",
-                        context={"job_id": current_job_id, "tenant_key": tenant_key},
-                    )
-
-                # Verify it's an orchestrator
-                if execution.agent_display_name != "orchestrator":
-                    raise ValidationError(
-                        message=f"Only orchestrators can use succession (found: {execution.agent_display_name})",
-                        context={
-                            "job_id": current_job_id,
-                            "agent_display_name": execution.agent_display_name,
-                        },
-                    )
-
-                # Get project_id from associated job
-                job_result = await session.execute(select(AgentJob).where(AgentJob.job_id == execution.job_id))
-                job = job_result.scalars().first()
-
-                if not job or not job.project_id:
-                    raise ResourceNotFoundError(
-                        message="Associated project not found", context={"job_id": execution.job_id}
-                    )
-
-                # Build session context for 360 Memory
-                {
-                    "context_used": execution.context_used or 0,
-                    "context_budget": execution.context_budget or 150000,
-                    "progress": execution.progress or 0,
-                    "current_task": execution.current_task,
-                    "agent_id": execution.agent_id,
-                    "job_id": execution.job_id,
-                    "reason": reason,
-                    "handover_at": datetime.now(timezone.utc).isoformat(),
-                }
-
-                # Write to 360 Memory using the existing tool
-                from src.giljo_mcp.tools.write_360_memory import write_360_memory
-
-                memory_result = await write_360_memory(
-                    project_id=str(job.project_id),
-                    summary=f"Session handover ({reason}) at {execution.context_used or 0}/{execution.context_budget or 150000} tokens.",
-                    key_outcomes=[
-                        f"Progress: {execution.progress or 0}%",
-                        f"Task: {execution.current_task or 'N/A'}",
-                    ],
-                    decisions_made=[f"Handover triggered: {reason}"],
-                    entry_type="session_handover",
-                    author_job_id=execution.job_id,
-                    tenant_key=tenant_key,
-                )
-
-                # Reset context_used (same agent continues, fresh context)
-                old_context = execution.context_used or 0
-                execution.context_used = 0
-                await session.commit()
-
-                logger.info(
-                    f"Simple succession: {execution.agent_id} context reset "
-                    f"({old_context} -> 0), reason: {reason}, "
-                    f"memory_entry: {memory_result.get('entry_id') if isinstance(memory_result, dict) else 'created'}"
-                )
-
-                # Handover 0731c: Typed return (SuccessionContextResult)
-                return SuccessionContextResult(
-                    job_id=execution.job_id,
-                    agent_id=execution.agent_id,  # SAME agent_id (no swap)
-                    context_reset=True,
-                    old_context_used=old_context,
-                    new_context_used=0,
-                    memory_entry_created=True,
-                    reason=reason,
-                    message="Session context written to 360 Memory. Use fetch_context(categories=['memory_360']) in new session to retrieve.",
-                )
-
-        except (ResourceNotFoundError, ValidationError):
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:
-            logger.exception("Failed to create successor orchestrator")
-            raise OrchestrationError(
-                message=f"Failed to create successor orchestrator: {e!s}",
-                context={"job_id": current_job_id, "reason": reason},
-            ) from e
-
-    async def check_succession_status(self, job_id: str, tenant_key: str) -> SuccessionStatus:
-        """Check if orchestrator should trigger succession (Handover 0080 + Phase C)"""
-        try:
-            async with self._get_session() as session:
-                # Phase C: Get current execution (latest instance)
-                result = await session.execute(
-                    select(AgentExecution)
-                    .where(
-                        and_(
-                            AgentExecution.job_id == job_id,
-                            AgentExecution.tenant_key == tenant_key,
-                        )
-                    )
-                    .order_by(AgentExecution.started_at.desc())
-                )
-                execution = result.scalars().first()
-
-                if not execution:
-                    raise ResourceNotFoundError(
-                        message=f"Job {job_id} not found",
-                        context={"job_id": job_id, "method": "check_succession_status"},
-                    )
-
-                # Calculate context usage percentage (from execution)
-                context_used = execution.context_used or 0
-                context_budget = execution.context_budget or 200000
-                usage_percentage = (context_used / context_budget) * 100 if context_budget > 0 else 0
-
-                # Determine if succession should be triggered (90% threshold)
-                should_trigger = usage_percentage >= 90.0
-
-                recommendation = ""
-                if usage_percentage < 70:
-                    recommendation = "Context usage healthy. Continue normal operation."
-                elif usage_percentage < 85:
-                    recommendation = "Monitor context usage. Begin planning for potential succession."
-                elif usage_percentage < 90:
-                    recommendation = "Context usage high. Prepare for succession soon."
-                else:
-                    recommendation = "Trigger succession now to avoid context overflow."
-
-                return SuccessionStatus(
-                    should_trigger=should_trigger,
-                    context_used=context_used,
-                    context_budget=context_budget,
-                    usage_percentage=round(usage_percentage, 2),
-                    threshold_reached=should_trigger,
-                    recommendation=recommendation,
-                )
-
-        except ResourceNotFoundError:
-            raise
-        except Exception as e:
-            logger.exception("Failed to check succession status")
-            raise OrchestrationError(
-                message="Failed to check succession status", context={"job_id": job_id, "error": str(e)}
-            ) from e
+    # Succession methods removed (0391/0461/0700d)
+    # Session refresh is handled by:
+    #   - REST: POST /api/agent-jobs/{job_id}/simple-handover (UI button)
+    #   - Slash: /gil_handover (CLI)
+    # Agents cannot self-detect context exhaustion (passive HTTP architecture).

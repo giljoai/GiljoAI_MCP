@@ -1,21 +1,22 @@
 <template>
   <div class="action-icons d-flex align-center ga-1">
-    <!-- Launch Action -->
+    <!-- Launch Action (pulsing during handover pending) -->
     <v-tooltip v-if="availableActions.includes('launch')" location="top">
       <template #activator="{ props }">
         <v-btn
           v-bind="props"
           icon="mdi-rocket-launch"
-          :color="getActionColor('launch')"
+          :color="handoverPending ? 'success' : getActionColor('launch')"
           size="small"
           variant="text"
+          :class="{ 'handover-pending-pulse': handoverPending }"
           :loading="loadingStates.launch"
           :disabled="loadingStates.launch"
           data-test="action-launch"
           @click="handleLaunch"
         />
       </template>
-      <span>{{ getActionTooltip('launch') }}</span>
+      <span>{{ handoverPending ? 'Copy continuation prompt for new terminal' : getActionTooltip('launch') }}</span>
     </v-tooltip>
 
     <!-- Copy Prompt Action -->
@@ -69,22 +70,22 @@
       <span>{{ getActionTooltip('viewMessages') }}</span>
     </v-tooltip>
 
-    <!-- Hand Over Action (Handover 0506) -->
+    <!-- Hand Over Action (Two-Stage: retirement + continuation) -->
     <v-tooltip v-if="availableActions.includes('handOver')" location="top">
       <template #activator="{ props }">
         <v-btn
           v-bind="props"
-          icon="mdi-hand-wave"
-          :color="getActionColor('handOver')"
+          :icon="handoverPending ? 'mdi-check-circle' : 'mdi-refresh'"
+          :color="handoverPending ? 'success' : getActionColor('handOver')"
           size="small"
           variant="text"
           :loading="loadingStates.handOver"
-          :disabled="loadingStates.handOver"
+          :disabled="loadingStates.handOver || handoverPending"
           data-test="action-handOver"
           @click="handleHandOver"
         />
       </template>
-      <span>{{ getActionTooltip('handOver') }}</span>
+      <span>{{ handoverPending ? 'Retirement prompt copied - paste in old terminal' : getActionTooltip('handOver') }}</span>
     </v-tooltip>
 
     <!-- Confirmation Dialog -->
@@ -122,6 +123,26 @@
     <!-- Copy Success Snackbar -->
     <v-snackbar v-model="showCopySuccess" color="success" timeout="2000">
       Prompt copied to clipboard!
+    </v-snackbar>
+
+    <!-- Handover Instructions Snackbar (persistent until play is clicked) -->
+    <v-snackbar
+      v-model="showHandoverSnackbar"
+      color="info"
+      :timeout="-1"
+      location="bottom"
+      data-test="handover-snackbar"
+    >
+      <div>
+        <strong>Step 1:</strong> Paste the retirement prompt in the OLD terminal.
+        <br>
+        <strong>Step 2:</strong> Click the pulsing launch button to copy the continuation prompt for a NEW terminal.
+      </div>
+      <template #actions>
+        <v-btn variant="text" size="small" @click="dismissHandover">
+          Dismiss
+        </v-btn>
+      </template>
     </v-snackbar>
   </div>
 </template>
@@ -168,6 +189,11 @@ export default {
     const pendingAction = ref(null)
     const showCopySuccess = ref(false)
 
+    // Two-stage handover state
+    const handoverPending = ref(false)
+    const storedContinuationPrompt = ref('')
+    const showHandoverSnackbar = ref(false)
+
     const availableActions = computed(() => {
       return getAvailableActions(props.job, props.claudeCodeCliMode)
     })
@@ -183,6 +209,31 @@ export default {
     }
 
     const handleLaunch = async () => {
+      // Two-stage handover: if pending, copy continuation prompt instead of normal launch
+      if (handoverPending.value && storedContinuationPrompt.value) {
+        loadingStates.value.launch = true
+        try {
+          await navigator.clipboard.writeText(storedContinuationPrompt.value)
+          showCopySuccess.value = true
+
+          // Reset handover state
+          handoverPending.value = false
+          storedContinuationPrompt.value = ''
+          showHandoverSnackbar.value = false
+
+          emit('hand-over', {
+            type: 'handOver',
+            job: props.job,
+            success: true,
+            stage: 'continuation',
+            message: 'Continuation prompt copied! Paste in a new terminal.',
+          })
+        } finally {
+          loadingStates.value.launch = false
+        }
+        return
+      }
+
       loadingStates.value.launch = true
       try {
         emit('launch', props.job)
@@ -209,19 +260,25 @@ export default {
       try {
         loadingStates.value.handOver = true
 
-        // Call simple-handover endpoint (Handover 0461d)
+        // Call simple-handover endpoint - returns both retirement + continuation prompts
         const response = await api.agentJobs.simpleHandover(props.job.job_id)
 
         if (response.data.success) {
-          // Copy continuation prompt to clipboard
-          await navigator.clipboard.writeText(response.data.continuation_prompt)
+          // Stage 1: Copy RETIREMENT prompt to clipboard (for old terminal)
+          await navigator.clipboard.writeText(response.data.retirement_prompt)
 
-          // Emit action event with success info
+          // Store continuation prompt for Stage 2 (play button click)
+          storedContinuationPrompt.value = response.data.continuation_prompt
+          handoverPending.value = true
+          showHandoverSnackbar.value = true
+
+          // Emit stage 1 event
           emit('hand-over', {
             type: 'handOver',
             job: props.job,
             success: true,
-            message: 'Session refreshed! Continuation prompt copied to clipboard.',
+            stage: 'retirement',
+            message: 'Retirement prompt copied! Paste in old terminal, then click the pulsing launch button.',
           })
         } else {
           throw new Error(response.data.error || 'Session refresh failed')
@@ -237,6 +294,12 @@ export default {
       } finally {
         loadingStates.value.handOver = false
       }
+    }
+
+    const dismissHandover = () => {
+      // Allow dismissing the snackbar without resetting state
+      // The pulsing button remains as visual cue
+      showHandoverSnackbar.value = false
     }
 
     const showConfirmation = (action, config) => {
@@ -276,12 +339,15 @@ export default {
       confirmationConfig,
       confirmationLoading,
       showCopySuccess,
+      handoverPending,
+      showHandoverSnackbar,
       getActionColor,
       getActionTooltip,
       handleLaunch,
       handleCopyPrompt,
       handleViewMessages,
       handleHandOver,
+      dismissHandover,
       cancelConfirmation,
       executeConfirmedAction,
     }
@@ -377,6 +443,24 @@ export default {
 /* ============================================================
    4.6 ANIMATIONS - CSS keyframe animations
    ============================================================ */
+
+/* Handover pending - pulsing ring around launch button */
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(76, 175, 80, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+.handover-pending-pulse {
+  animation: pulse-ring 1.5s ease infinite;
+  border-radius: 50%;
+}
 
 /* Copy success animation - checkmark appears with scale */
 @keyframes checkmark-pop {
