@@ -462,6 +462,11 @@ async def handle_tools_list(
                 "properties": {
                     "job_id": {"type": "string", "description": "Your work order (identity.job_id)"},
                     "error": {"type": "string", "description": "Error message"},
+                    "severity": {
+                        "type": "string",
+                        "enum": ["blocked", "failed"],
+                        "description": "blocked = needs input (recoverable), failed = unrecoverable (terminal). Default: blocked",
+                    },
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
                 "required": ["job_id", "error"],
