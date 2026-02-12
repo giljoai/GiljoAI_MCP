@@ -4,7 +4,6 @@ Comprehensive OrchestrationService tests - Handover 0453.
 Tests core functionality after orchestrator.py consolidation:
 - Process product vision (CRITICAL: duplicate project bug fix)
 - Agent spawning
-- Succession
 - Multi-tenant isolation
 - Error handling
 
@@ -21,7 +20,6 @@ from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Produc
 from src.giljo_mcp.schemas.service_responses import (
     MissionResponse,
     SpawnResult,
-    SuccessionContextResult,
 )
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
@@ -208,56 +206,8 @@ class TestSpawnAgentJob:
             assert job.job_type == "tester"
 
 
-class TestSuccession:
-    """Test orchestrator succession functionality."""
-
-    @pytest.mark.asyncio
-    async def test_create_successor_resets_context(
-        self,
-        orchestration_service: OrchestrationService,
-        test_project: dict,
-        db_manager: DatabaseManager,
-    ):
-        """Test that succession resets context and writes to 360 Memory (Handover 0461f)."""
-        # First, create an orchestrator job
-        result = await orchestration_service.spawn_agent_job(
-            agent_display_name="orchestrator",
-            agent_name="Orchestrator-1",
-            mission="Coordinate project development",
-            project_id=test_project["project_id"],
-            tenant_key=test_project["tenant_key"],
-        )
-
-        original_job_id = result.job_id
-        original_agent_id = result.agent_id
-
-        # Create successor
-        succession_result = await orchestration_service.create_successor_orchestrator(
-            current_job_id=original_job_id,
-            tenant_key=test_project["tenant_key"],
-            reason="context_limit",
-        )
-
-        # Handover 0731c: Returns SuccessionContextResult typed model
-        assert isinstance(succession_result, SuccessionContextResult)
-        assert succession_result.job_id == original_job_id  # Same job!
-        assert succession_result.agent_id == original_agent_id  # Same agent! (0461f)
-        assert succession_result.context_reset is True
-        assert succession_result.new_context_used == 0
-
-        # Verify database state - should still have 1 execution (not 2)
-        async with db_manager.get_session_async() as session:
-            from sqlalchemy import select
-
-            # Get all executions for this job
-            exec_query = select(AgentExecution).where(AgentExecution.job_id == original_job_id)
-            exec_result = await session.execute(exec_query)
-            executions = exec_result.scalars().all()
-
-            # Handover 0461f: No new execution created - same agent continues
-            assert len(executions) == 1, "Should have 1 execution (same agent continues after 0461f)"
-            assert executions[0].agent_id == original_agent_id
-            assert executions[0].context_used == 0  # Context was reset
+# NOTE: TestSuccession removed - create_successor_orchestrator tool deleted.
+# Succession is now user-triggered via UI button or /gil_handover slash command.
 
 
 class TestMultiTenantIsolation:

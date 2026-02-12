@@ -673,32 +673,21 @@ async function handleCloseoutProject(closeoutData) {
 }
 
 /**
- * Handle orchestrator handover (Handover 0506)
- * Calls initiate-handover endpoint and copies prompt to clipboard
- * User pastes prompt into current orchestrator terminal
+ * Handle orchestrator session refresh result from ActionIcons.
+ * ActionIcons handles the API call internally and emits the result.
  */
-async function handleHandOver(agent) {
-  try {
-    const jobId = agent?.job_id || agent?.agent_id || agent?.id
-    if (!jobId) {
-      throw new Error('Orchestrator job_id missing')
-    }
-
-    const response = await api.agentJobs.initiateHandover(jobId)
-    const prompt = response?.data?.prompt
-
-    if (!prompt) {
-      throw new Error('No handover prompt returned')
-    }
-
-    // Copy handover prompt to clipboard
-    await navigator.clipboard.writeText(prompt)
-
-    alert('📋 Handover prompt copied!\n\nPaste into your current orchestrator terminal to trigger handover.')
-
-  } catch (error) {
-    console.error('Initiate handover failed:', error)
-    alert(`❌ Failed to initiate handover: ${error.message}`)
+function handleHandOver(event) {
+  if (event.success) {
+    toastMessage.value = event.message || 'Session refreshed! Continuation prompt copied to clipboard.'
+    toastColor.value = 'success'
+    toastDuration.value = 4000
+    toastVisible.value = true
+  } else {
+    console.error('Session refresh failed:', event.error)
+    toastMessage.value = event.error || 'Failed to refresh session'
+    toastColor.value = 'error'
+    toastDuration.value = 5000
+    toastVisible.value = true
   }
 }
 

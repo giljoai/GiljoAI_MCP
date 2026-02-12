@@ -262,10 +262,11 @@ async def handle_tools_list(
                         "type": "array",
                         "items": {"type": "string"},
                         "description": (
-                            "List of recipients. Accepts: "
-                            "(1) agent_id UUIDs for direct targeting, "
-                            "(2) agent_display_name strings (e.g., 'Implementer') for automatic resolution, "
-                            "(3) ['all'] for broadcast to all active agents (sender excluded)."
+                            "List of recipient agent_id UUIDs. "
+                            "ALWAYS use agent_id UUIDs from your team roster (YOUR TEAM section in mission). "
+                            "Format: ['550e8400-e29b-41d4-a716-446655440000']. "
+                            "Use ['all'] for broadcast to all active agents (sender excluded). "
+                            "Display name resolution exists as fallback but is unreliable during handovers."
                         ),
                     },
                     "content": {"type": "string", "description": "Message content"},
@@ -284,7 +285,7 @@ async def handle_tools_list(
                     },
                     "from_agent": {
                         "type": "string",
-                        "description": "Your identity (identity.agent_id)",
+                        "description": "Your agent_id UUID (from YOUR IDENTITY section in mission)",
                     },
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
@@ -506,36 +507,9 @@ async def handle_tools_list(
                 "required": ["project_id"],
             },
         },
-        # Orchestrator Succession Tools (Handover 0080)
-        {
-            "name": "create_successor_orchestrator",
-            "description": "Write session context to 360 Memory and reset context for continuation. Use in new session: fetch_context(categories=['memory_360']) to retrieve handover context.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "current_job_id": {"type": "string", "description": "Current orchestrator job UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant key"},
-                    "reason": {
-                        "type": "string",
-                        "enum": ["context_limit", "manual", "phase_transition"],
-                        "description": "Succession reason",
-                    },
-                },
-                "required": ["current_job_id"],
-            },
-        },
-        {
-            "name": "check_succession_status",
-            "description": "Check if orchestrator should trigger succession",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "job_id": {"type": "string", "description": "Orchestrator job UUID"},
-                    "tenant_key": {"type": "string", "description": "Tenant key"},
-                },
-                "required": ["job_id"],
-            },
-        },
+        # Succession tools removed: create_successor_orchestrator, check_succession_status
+        # Handover 0391/0461/0700d: Succession is user-triggered via UI button (simple-handover REST endpoint)
+        # or /gil_handover slash command. Agents cannot self-detect context exhaustion (passive HTTP architecture).
         # Handover 0083: core /gil_* commands
         # NOTE: gil_activate, gil_launch, gil_handover removed (0388, 0391) - users perform these via web UI
         # gil_handover removed in 0391: REST API endpoint handles succession, MCP tool had tenant_key bug
@@ -715,10 +689,7 @@ async def handle_tools_call(
         "get_agent_mission": state.tool_accessor.get_agent_mission,
         "spawn_agent_job": state.tool_accessor.spawn_agent_job,
         "get_workflow_status": state.tool_accessor.get_workflow_status,
-        # Succession Tools (Handover 0080)
-        "create_successor_orchestrator": state.tool_accessor.create_successor_orchestrator,
-        "check_succession_status": state.tool_accessor.check_succession_status,
-        # NOTE: gil_handover removed (0391) - users trigger via UI button, REST API handles it
+        # Succession tools removed (0391/0461/0700d) - user triggers via UI button or /gil_handover slash command
         # Unified Context Tool (Handover 0350a)
         "fetch_context": state.tool_accessor.fetch_context,
         # Project Closeout (Handover 0411)
