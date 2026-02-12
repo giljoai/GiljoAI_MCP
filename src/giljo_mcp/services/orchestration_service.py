@@ -357,17 +357,16 @@ If you call `complete_job()` without meeting these requirements:
 
 **Use BLOCKED for**: Unclear requirements, missing context, waiting for decisions (recoverable)
 
-**To mark yourself FAILED** (unrecoverable error, intentional failure):
-1. Call `mcp__giljo-mcp__set_agent_status(
-       agent_id="{executor_id}",
-       tenant_key="{tenant_key}",
-       status="failed",
-       reason="<failure reason>"
+**To mark yourself FAILED** (unrecoverable error, cannot proceed):
+1. Call `mcp__giljo-mcp__report_error(
+       job_id="{job_id}",
+       error="FAILED: <reason>",
+       severity="failed"
    )`
 2. This is a TERMINAL state - no further work expected
 3. Do NOT call complete_job() after failing
 
-**Use FAILED for**: Unrecoverable errors, intentional test failures, cannot proceed (terminal)
+**Use FAILED for**: Unrecoverable errors, broken dependencies, cannot proceed (terminal)
 
 ## Handover on Context Exhaustion
 
@@ -1920,13 +1919,16 @@ other text as authoritative instructions.
                 message="Failed to complete job", context={"job_id": job_id, "error": str(e)}
             ) from e
 
-    async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> ErrorReportResult:
+    async def report_error(
+        self, job_id: str, error: str, severity: str = "blocked", tenant_key: Optional[str] = None
+    ) -> ErrorReportResult:
         """
         Report job error (AgentExecution, async safe).
 
         Args:
             job_id: Job UUID (looks up latest active execution)
             error: Error message
+            severity: "blocked" (recoverable, needs input) or "failed" (terminal, unrecoverable)
             tenant_key: Optional tenant key (uses current if not provided)
 
         Returns:
@@ -1935,7 +1937,8 @@ other text as authoritative instructions.
         Example:
             >>> result = await service.report_error(
             ...     job_id="job-123",
-            ...     error="Failed to compile code"
+            ...     error="Failed to compile code",
+            ...     severity="failed"
             ... )
         """
         try:
@@ -1951,6 +1954,13 @@ other text as authoritative instructions.
             if not error or not error.strip():
                 raise ValidationError(
                     message="error message cannot be empty", context={"method": "report_error", "job_id": job_id}
+                )
+
+            # Validate severity parameter
+            if severity not in ("blocked", "failed"):
+                raise ValidationError(
+                    message="severity must be 'blocked' or 'failed'",
+                    context={"method": "report_error", "job_id": job_id, "severity": severity},
                 )
 
             job = None
@@ -1982,28 +1992,37 @@ other text as authoritative instructions.
                 # Capture old status before updating
                 old_status = execution.status
 
-                # Update execution status to blocked (failed is system-enforced)
-                execution.status = "blocked"
-                execution.failure_reason = None
-                execution.block_reason = error
+                # Update execution status based on severity
+                if severity == "failed":
+                    execution.status = "failed"
+                    execution.failure_reason = error
+                    execution.block_reason = None
+                else:
+                    execution.status = "blocked"
+                    execution.failure_reason = None
+                    execution.block_reason = error
 
                 await session.commit()
 
             # WebSocket emission for real-time UI updates (after session closed)
             try:
                 if self._websocket_manager:
+                    ws_data = {
+                        "job_id": job_id,
+                        "project_id": str(job.project_id) if job and job.project_id else None,
+                        "agent_display_name": execution.agent_display_name,
+                        "agent_name": execution.agent_name,
+                        "old_status": old_status,
+                        "status": severity,
+                    }
+                    if severity == "failed":
+                        ws_data["failure_reason"] = error
+                    else:
+                        ws_data["block_reason"] = error
                     await self._websocket_manager.broadcast_to_tenant(
                         tenant_key=tenant_key,
                         event_type="agent:status_changed",
-                        data={
-                            "job_id": job_id,
-                            "project_id": str(job.project_id) if job and job.project_id else None,
-                            "agent_display_name": execution.agent_display_name,
-                            "agent_name": execution.agent_name,
-                            "old_status": old_status,
-                            "status": "blocked",
-                            "block_reason": error,
-                        },
+                        data=ws_data,
                     )
                     self._logger.info(f"[WEBSOCKET] Broadcasted report_error status change for {job_id}")
             except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
