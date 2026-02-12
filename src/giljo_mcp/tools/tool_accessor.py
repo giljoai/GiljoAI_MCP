@@ -20,6 +20,7 @@ from src.giljo_mcp.schemas.service_responses import (
     CompleteMessageResult,
     MessageListResult,
     SendMessageResult,
+    WorkflowStatus,
 )
 from src.giljo_mcp.services.context_service import ContextService
 from src.giljo_mcp.services.message_service import MessageService
@@ -694,9 +695,13 @@ class ToolAccessor:
         """Get agent-specific mission (delegates to OrchestrationService). Handover 0381: job_id contract."""
         return await self._orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
 
-    async def get_workflow_status(self, project_id: str, tenant_key: str) -> dict[str, Any]:
+    async def get_workflow_status(
+        self, project_id: str, tenant_key: str, exclude_job_id: str | None = None
+    ) -> WorkflowStatus:
         """Get workflow status for a project (delegates to OrchestrationService)"""
-        return await self._orchestration_service.get_workflow_status(project_id=project_id, tenant_key=tenant_key)
+        return await self._orchestration_service.get_workflow_status(
+            project_id=project_id, tenant_key=tenant_key, exclude_job_id=exclude_job_id
+        )
 
     # Agent Coordination Tools
 
