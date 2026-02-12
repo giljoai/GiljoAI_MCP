@@ -8,6 +8,7 @@ moved to the new middleware directory structure in Handover 0129c.
 """
 
 import os
+import time
 from typing import Callable, Optional
 
 from fastapi import Request
@@ -104,6 +105,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
             request.state.tenant_key = auth_result.get(
                 "tenant_key", os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
             )
+            # Stash token expiry for downstream use and response header
+            request.state.token_exp = auth_result.get("exp")
         else:
             # Auth failed - return 401
             logger.warning(
@@ -122,7 +125,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-        return await call_next(request)
+        response = await call_next(request)
+
+        # Add token expiry header so frontend can track remaining session time
+        if hasattr(request.state, "token_exp") and request.state.token_exp:
+            seconds_remaining = max(0, int(request.state.token_exp - time.time()))
+            response.headers["X-Token-Expires-In"] = str(seconds_remaining)
+
+        return response
 
     def _is_public_endpoint(self, path: str) -> bool:
         """Check if endpoint is public (no authentication required)"""
@@ -132,6 +142,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/redoc",
             "/openapi.json",
             "/api/auth/login",  # Login endpoint
+            "/api/auth/refresh",  # Token refresh (handles own auth via cookie)
             "/api/auth/create-first-admin",  # First admin creation (Handover 0034)
             "/api/setup/status",  # Fresh install detection (Handover 0034)
             "/api/v1/config/frontend",  # Frontend config
