@@ -154,23 +154,70 @@ class ToolAccessor:
     async def create_project(
         self,
         name: str,
-        mission: str,
+        mission: str = "",
         description: str = "",
         product_id: str | None = None,
         tenant_key: str | None = None,
-        status: str = "inactive",
-        context_budget: int = 150000,
     ) -> dict[str, Any]:
-        """Create a new project (delegates to ProjectService)"""
-        return await self._project_service.create_project(
+        """
+        Create a new project bound to the active product.
+
+        Args:
+            name: Project name (required)
+            mission: AI-generated mission statement (default: "" - orchestrator fills later)
+            description: Human-written project description (default: "")
+            product_id: Parent product ID (auto-resolved from active product if not provided)
+            tenant_key: Tenant isolation key (injected by MCP security layer)
+
+        Returns:
+            Dict with success status, project_id, alias, and metadata
+
+        Raises:
+            ValidationError: If no active product is set for the tenant
+        """
+        # Resolve effective tenant key
+        effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+
+        # Resolve product_id from active product if not explicitly provided
+        if not product_id:
+            product_service = ProductService(
+                db_manager=self.db_manager,
+                tenant_key=effective_tenant_key,
+                websocket_manager=self._websocket_manager,
+                test_session=self._test_session,
+            )
+            active_product = await product_service.get_active_product()
+
+            if not active_product:
+                raise ValidationError(
+                    "No active product set. Please activate a product first.",
+                    context={
+                        "tenant_key": effective_tenant_key,
+                        "operation": "create_project",
+                    },
+                )
+
+            product_id = active_product.id
+
+        # Delegate to ProjectService (always create as inactive)
+        project = await self._project_service.create_project(
             name=name,
             mission=mission,
             description=description,
             product_id=product_id,
-            tenant_key=tenant_key,
-            status=status,
-            context_budget=context_budget,
+            tenant_key=effective_tenant_key,
+            status="inactive",
         )
+
+        return {
+            "success": True,
+            "project_id": project.id,
+            "alias": project.alias,
+            "name": project.name,
+            "status": project.status,
+            "product_id": project.product_id,
+            "message": f"Project '{project.name}' created successfully",
+        }
 
     async def list_projects(self, status: str | None = None, tenant_key: str | None = None) -> list[dict[str, Any]]:
         """List all projects with optional status filter (delegates to ProjectService)"""
