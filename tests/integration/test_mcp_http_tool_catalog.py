@@ -15,18 +15,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 MCP_ENDPOINT = "/mcp"
 
-# Source of truth: api/endpoints/mcp_http.py tool_map keys (Jan 2026)
+# Source of truth: api/endpoints/mcp_http.py tool_map keys (Feb 2026)
 # NOTE: gil_activate, gil_launch removed (0388) - users perform these via web UI
 # NOTE: check_succession_status removed (0461a) - succession is manual-only
 # NOTE: orchestrate_project removed (0470) - deprecated (use manual orchestration)
+# NOTE: create_successor_orchestrator, check_succession_status removed - succession via UI only
 EXPECTED_TOOL_NAMES = {
     "acknowledge_job",
-    "check_succession_status",
     "close_project_and_update_memory",
     "complete_job",
-    "create_successor_orchestrator",
     "create_task",
     "fetch_context",
+    "generate_download_token",
     "get_agent_mission",
     "get_orchestrator_instructions",
     "get_pending_jobs",
