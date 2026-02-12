@@ -294,6 +294,8 @@ class WorkflowStatus(BaseModel):
     completed_agents: int = 0
     failed_agents: int = 0
     pending_agents: int = 0
+    blocked_agents: int = 0
+    cancelled_agents: int = 0
     current_stage: str = "Not started"
     progress_percent: float = 0.0
     total_agents: int = 0
