@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.thin_prompt_generator import build_continuation_prompt
 
 
 logger = logging.getLogger(__name__)
@@ -144,8 +145,8 @@ async def handle_gil_handover(
         execution.context_used = 0
         await db_session.commit()
 
-        # Generate continuation prompt
-        continuation_prompt = _build_continuation_prompt(
+        # Generate continuation prompt (canonical builder from ThinClientPromptGenerator)
+        continuation_prompt = build_continuation_prompt(
             project_id=str(job.project_id),
             agent_id=execution.agent_id,
             job_id=execution.job_id,
@@ -216,69 +217,3 @@ async def _get_active_orchestrator(
 
     result = await db_session.execute(stmt)
     return result.scalar_one_or_none()
-
-
-def _build_continuation_prompt(
-    project_id: str,
-    agent_id: str,
-    job_id: str,
-) -> str:
-    """
-    Build a continuation prompt that instructs reading 360 Memory.
-
-    This is a simplified prompt that tells the orchestrator to:
-    1. Verify MCP connection
-    2. Read 360 Memory for session context
-    3. Check messages and workflow status
-    4. Continue work
-
-    Args:
-        project_id: Project UUID
-        agent_id: Agent ID (WHO - executor ID for MCP calls)
-        job_id: Job ID (WHAT - work order ID)
-
-    Returns:
-        Continuation prompt string
-    """
-    mcp_url = "http://localhost:7272/mcp"
-
-    prompt = f"""I am Orchestrator for Project (CONTINUATION SESSION).
-
-A previous session ran out of context. I am continuing the work.
-
-YOUR IDENTITY (use these in all MCP calls):
-  YOUR Agent ID: {agent_id}
-  YOUR Job ID: {job_id}
-  THE Project ID: {project_id}
-
-MCP Server: {mcp_url}
-Note: tenant_key is auto-injected by server from your API key session
-
-FIRST ACTIONS (DO NOT RE-STAGE):
-
-1. Verify MCP: mcp__giljo-mcp__health_check()
-   → Expected: {{"status": "healthy"}}
-
-2. Read 360 Memory for session context:
-   mcp__giljo-mcp__fetch_context(
-       product_id="<fetch from project>",
-       categories=["memory_360"]
-   )
-   → Look for "session_handover" entry with session context
-   → Contains: previous context_used, progress, current_task
-
-3. Check messages from agents:
-   mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
-
-4. Check workflow status:
-   mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
-
-CRITICAL RULES:
-- Do NOT call get_orchestrator_instructions() to re-stage
-- Do NOT re-write the project mission
-- Read 360 Memory session_handover for context from previous session
-- You are CONTINUING work, not starting from scratch
-
-When ready, coordinate agents based on current status.
-"""
-    return prompt
