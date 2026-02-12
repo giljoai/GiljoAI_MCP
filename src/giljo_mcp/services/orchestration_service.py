@@ -536,21 +536,28 @@ class OrchestrationService:
     # ============================================================================
     # Note: orchestrate_project() method removed in favor of manual orchestration workflow
 
-    async def get_workflow_status(self, project_id: str, tenant_key: str) -> WorkflowStatus:
+    async def get_workflow_status(
+        self,
+        project_id: str,
+        tenant_key: str,
+        exclude_job_id: Optional[str] = None,
+    ) -> WorkflowStatus:
         """
         Get workflow status for a project.
 
         Handover 0358b: Migrated to dual-model (AgentJob + AgentExecution).
-        - Counts execution statuses (waiting, working, complete, failed)
+        - Counts execution statuses (waiting, working, complete, failed, blocked, cancelled)
         - Job status comes from AgentJob (active, completed, cancelled)
         - Execution status from AgentExecution (execution progress)
 
         Args:
             project_id: Project UUID
             tenant_key: Tenant key for isolation
+            exclude_job_id: Optional job_id to exclude from the query
+                (e.g. the orchestrator's own job to avoid counting itself)
 
         Returns:
-            Dict with workflow status including agent counts and progress
+            WorkflowStatus with agent counts, progress, and current stage
 
         Raises:
             ResourceNotFoundError: Project not found
@@ -559,9 +566,10 @@ class OrchestrationService:
         Example:
             >>> result = await service.get_workflow_status(
             ...     project_id="proj-123",
-            ...     tenant_key="tenant-abc"
+            ...     tenant_key="tenant-abc",
+            ...     exclude_job_id="my-job-id",
             ... )
-            >>> print(f"Progress: {result['progress_percent']}%")
+            >>> print(f"Progress: {result.progress_percent}%")
         """
         try:
             async with self._get_session() as session:
@@ -578,7 +586,7 @@ class OrchestrationService:
                     )
 
                 # Get all AgentExecutions for this project/tenant (join with AgentJob)
-                jobs_result = await session.execute(
+                query = (
                     select(AgentExecution, AgentJob)
                     .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
                     .where(
@@ -586,6 +594,9 @@ class OrchestrationService:
                         AgentJob.project_id == project_id,
                     )
                 )
+                if exclude_job_id:
+                    query = query.where(AgentJob.job_id != exclude_job_id)
+                jobs_result = await session.execute(query)
                 rows = jobs_result.all()
 
                 # Count by execution status
@@ -595,18 +606,28 @@ class OrchestrationService:
                 completed_count = sum(1 for execution in executions if execution.status in {"complete", "completed"})
                 failed_count = sum(1 for execution in executions if execution.status == "failed")
                 pending_count = sum(1 for execution in executions if execution.status in {"waiting", "pending"})
+                blocked_count = sum(1 for execution in executions if execution.status == "blocked")
+                cancelled_count = sum(
+                    1 for execution in executions if execution.status in {"cancelled", "decommissioned"}
+                )
                 total_count = len(executions)
 
-                # Calculate progress
-                progress_percent = (completed_count / total_count * 100.0) if total_count > 0 else 0.0
+                # Calculate progress (exclude terminal non-completed states from denominator)
+                # Cancelled/decommissioned agents should not prevent progress from reaching 100%
+                actionable_count = total_count - cancelled_count
+                progress_percent = (completed_count / actionable_count * 100.0) if actionable_count > 0 else 0.0
 
                 # Determine current stage
                 if total_count == 0:
                     current_stage = "Not started"
-                elif completed_count == total_count:
+                elif completed_count == actionable_count:
                     current_stage = "Completed"
+                elif failed_count > 0 and blocked_count > 0:
+                    current_stage = f"In Progress ({failed_count} failed, {blocked_count} blocked)"
                 elif failed_count > 0:
-                    current_stage = f"In Progress (with {failed_count} failure(s))"
+                    current_stage = f"In Progress ({failed_count} failed)"
+                elif blocked_count > 0:
+                    current_stage = f"In Progress ({blocked_count} blocked)"
                 elif active_count > 0:
                     current_stage = "In Progress"
                 elif pending_count > 0:
@@ -619,6 +640,8 @@ class OrchestrationService:
                     completed_agents=completed_count,
                     failed_agents=failed_count,
                     pending_agents=pending_count,
+                    blocked_agents=blocked_count,
+                    cancelled_agents=cancelled_count,
                     current_stage=current_stage,
                     progress_percent=round(progress_percent, 2),
                     total_agents=total_count,

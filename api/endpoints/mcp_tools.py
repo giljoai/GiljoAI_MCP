@@ -373,10 +373,11 @@ async def list_mcp_tools():
             },
             {
                 "name": "get_workflow_status",
-                "description": "Get status of all agents in project workflow",
+                "description": "Get status of all agents in project workflow. Returns active/completed/failed/blocked/cancelled/pending counts and progress_percent.",
                 "arguments": {
                     "project_id": "string (UUID) REQUIRED - Project UUID",
                     "tenant_key": "string (UUID) REQUIRED - Tenant isolation key",
+                    "exclude_job_id": "string (UUID) OPTIONAL - Job ID to exclude from counts (e.g., orchestrator's own job to avoid self-counting)",
                 },
                 "examples": [
                     {
