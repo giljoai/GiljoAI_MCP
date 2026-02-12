@@ -278,6 +278,7 @@ class AuthManager:
                     "tenant_key": token_info.get("tenant_key", "default"),
                     "is_auto_login": False,
                     "permissions": ["*"],
+                    "exp": token_info.get("exp"),
                 }
 
                 # Get user object from database for consistency
