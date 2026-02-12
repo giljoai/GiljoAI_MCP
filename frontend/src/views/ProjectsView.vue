@@ -1009,6 +1009,7 @@ async function saveProject() {
       // Update existing project
       const updateData = {
         name: projectData.value.name,
+        description: projectData.value.description,
         mission: projectData.value.mission,
         status: projectData.value.status,
       }

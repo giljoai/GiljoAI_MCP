@@ -47,6 +47,7 @@ class JWTManager:
     # Default algorithm and token expiration
     ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_HOURS = 24
+    REFRESH_GRACE_PERIOD_HOURS = 1
 
     @classmethod
     def _get_secret_key(cls) -> str:
@@ -173,6 +174,53 @@ class JWTManager:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Could not validate credentials: {e!s}"
             ) from e
+
+    @classmethod
+    def verify_token_allow_expired(cls, token: str, grace_hours: int | None = None) -> dict | None:
+        """Verify JWT, accepting tokens expired within the grace period.
+
+        Used by the /api/auth/refresh endpoint for silent token renewal.
+        If the token is valid, returns the payload. If expired within the
+        grace period, returns the payload (caller must re-validate user in DB).
+        If expired beyond the grace period or otherwise invalid, returns None.
+
+        Args:
+            token: JWT token string
+            grace_hours: Override grace period (default: REFRESH_GRACE_PERIOD_HOURS)
+
+        Returns:
+            Decoded payload dict if valid/within grace, None otherwise
+        """
+        grace = grace_hours if grace_hours is not None else cls.REFRESH_GRACE_PERIOD_HOURS
+        try:
+            secret_key = cls._get_secret_key()
+        except RuntimeError:
+            return None
+
+        try:
+            payload = jwt.decode(token, secret_key, algorithms=[cls.ALGORITHM])
+            if payload.get("type") != "access":
+                return None
+            return payload
+        except jwt.ExpiredSignatureError:
+            try:
+                payload = jwt.decode(
+                    token,
+                    secret_key,
+                    algorithms=[cls.ALGORITHM],
+                    options={"verify_exp": False},
+                )
+                if payload.get("type") != "access":
+                    return None
+                exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+                now = datetime.now(timezone.utc)
+                if (now - exp) <= timedelta(hours=grace):
+                    return payload
+                return None
+            except jwt.InvalidTokenError:
+                return None
+        except jwt.InvalidTokenError:
+            return None
 
     @classmethod
     def decode_token_no_verify(cls, token: str) -> dict:
