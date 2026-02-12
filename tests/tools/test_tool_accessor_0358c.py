@@ -439,57 +439,9 @@ async def test_multi_tenant_isolation_for_mcp_tools(tool_accessor, db_session, t
 # ========================================================================
 
 
-@pytest.mark.asyncio
-async def test_succession_preserves_job_id_changes_agent_id(
-    tool_accessor, orchestrator_job, orchestrator_execution, tenant_key
-):
-    """
-    Test that succession creates new AgentExecution with SAME job_id.
-
-    Expected behavior:
-    1. Original: job_id=X, agent_id=A, instance=1
-    2. Succession: job_id=X (SAME), agent_id=B (NEW), instance=2
-    3. Mission remains in AgentJob (not duplicated)
-
-    Will FAIL initially: tool_accessor.py succession uses AgentExecution.
-    """
-    # Trigger succession
-    result = await tool_accessor.create_successor_orchestrator(
-        current_job_id=orchestrator_job.job_id,
-        tenant_key=tenant_key,
-        reason="Testing succession workflow",
-    )
-
-    # Verify success
-    assert result.get("success") is True, f"Succession failed: {result.get('error')}"
-
-    # Verify response contains successor ID
-    assert "successor_id" in result  # This might be agent_id
-
-    # Verify new execution created (use test session to see uncommitted changes)
-    from sqlalchemy import select
-
-    # Need to use tool_accessor's test session to see the changes
-    # Query all executions for this job
-    exec_result = await tool_accessor._test_session.execute(
-        select(AgentExecution).where(
-            AgentExecution.job_id == orchestrator_job.job_id,
-            AgentExecution.tenant_key == tenant_key,
-        )
-    )
-    executions = exec_result.scalars().all()
-
-    # Should have 2 executions now
-    assert len(executions) == 2, f"Expected 2 executions, got {len(executions)}"
-
-    # Verify job_id same, agent_id different
-    assert executions[0].job_id == executions[1].job_id
-    assert executions[0].agent_id != executions[1].agent_id
-
-    # Verify instance numbers
-
-    # Verify succession chain
-    assert executions[1].spawned_by == executions[0].agent_id
+# NOTE: test_succession_preserves_job_id_changes_agent_id removed -
+# create_successor_orchestrator tool deleted. Succession is now user-triggered
+# via UI button or /gil_handover slash command.
 
 
 # ========================================================================

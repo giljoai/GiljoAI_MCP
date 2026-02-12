@@ -76,30 +76,26 @@ Check if `$ARGUMENTS` contains any of these flags:
 #### If No Flags (Interactive Mode):
 
 1. **Summarize Conversation:**
-   - Review the last 3-5 messages in the conversation
-   - Identify the most recent concept, feature, or issue discussed
+   - Review the conversation and identify the most relevant recent concept, feature, or issue discussed
    - Generate a concise title and detailed description
+   - Focus on the most recent topic, but do not limit yourself to a fixed number of messages — use your judgement to find the right context
 
-2. **Show Summary to User:**
+2. **Confirm Summary with User:**
    ```
-   Based on our conversation, I'll punt this task to your Tasks dashboard:
+   Based on our conversation, here's what I'd send to your Tasks dashboard:
 
    Title: <generated title>
    Description: <generated description>
+
+   Does this capture what you want to create as a task?
    ```
+   - If the user confirms, proceed to Step 3
+   - If the user says no or provides corrections, update the title/description accordingly and re-confirm
+   - If the user provides an entirely new title/description, use that instead
 
 3. **Ask Clarifying Questions:**
 
-   **Question 1 - Scope:**
-   ```
-   Where should this task live?
-   1. Active product: [Product Name if available]
-   2. All Tasks (unscoped - no product association)
-
-   Which would you prefer? (1 or 2)
-   ```
-
-   **Question 2 - Category:**
+   **Question 1 - Category:**
    ```
    What category best describes this task?
    1. frontend - UI/UX work
@@ -112,7 +108,7 @@ Check if `$ARGUMENTS` contains any of these flags:
    Select a number (1-6):
    ```
 
-   **Question 3 - Priority:**
+   **Question 2 - Priority:**
    ```
    What's the priority level?
    1. low - Nice to have
@@ -123,27 +119,22 @@ Check if `$ARGUMENTS` contains any of these flags:
    Select a number (1-4, default is 2):
    ```
 
-4. **Collect User Responses:**
-   Wait for the user to answer each question before proceeding.
-
-5. **Call MCP Tool:**
-   After collecting all responses, use `mcp__giljo-mcp__create_task`:
+4. **Call MCP Tool:**
+   After user confirms summary and selects category/priority, use `mcp__giljo-mcp__create_task`:
    ```
-   title: <generated title>
-   description: <generated description>
+   title: <confirmed title>
+   description: <confirmed description>
    priority: <user selected priority>
+   category: <user selected category>
    ```
 
-   Note: Include category information in the description or title.
-
-6. **Confirm Success:**
+5. **Confirm Success:**
    ```
    Task punted successfully!
 
    Title: <task title>
    Category: <category>
    Priority: <priority>
-   Scope: <product name or "All Tasks (unscoped)">
    Task ID: <task_id from MCP response>
 
    This task is now in your Tasks dashboard and can be converted to a project when ready.
@@ -194,18 +185,14 @@ You can view this task in the GiljoAI Tasks dashboard.
 User: /gil_task
 
 Claude:
-Based on our conversation, I'll punt this task to your Tasks dashboard:
+Based on our conversation, here's what I'd send to your Tasks dashboard:
 
 Title: Implement JWT authentication for API endpoints
 Description: Add JWT token-based authentication to replace the current session-based auth, improving security and enabling stateless API access
 
-Where should this task live?
-1. Active product: GiljoAI MCP Server
-2. All Tasks (unscoped - no product association)
+Does this capture what you want to create as a task?
 
-Which would you prefer? (1 or 2)
-
-User: 1
+User: yes
 
 Claude:
 What category best describes this task?
@@ -240,7 +227,6 @@ Task punted successfully!
 Title: Implement JWT authentication for API endpoints
 Category: backend
 Priority: high
-Scope: GiljoAI MCP Server
 Task ID: task-def456
 
 This task is now in your Tasks dashboard and can be converted to a project when ready.
@@ -250,11 +236,9 @@ This task is now in your Tasks dashboard and can be converted to a project when 
 
 ## Important Notes
 
-1. **MCP Tool Parameters:** The `create_task` tool accepts `title`, `description`, `priority`, and optionally `assigned_to`. Store category in the description text since the Task model supports it via the `category` field.
+1. **MCP Tool Parameters:** The `create_task` tool accepts `title`, `description`, `priority`, and `category`. Tasks are always bound to the active product (enforced server-side).
 
-2. **Product Scope:** If the user selects a product scope in interactive mode, you may need to fetch the active product ID using another MCP tool if available, or note it in the task description.
-
-3. **Conversation Context:** For interactive mode, analyze recent conversation history to generate meaningful titles and descriptions. Don't just punt generic "Task X" - be specific based on what was discussed.
+2. **Conversation Context:** For interactive mode, analyze conversation history to generate meaningful titles and descriptions. Don't just punt generic "Task X" - be specific based on what was discussed. Use your judgement on how far back to look for relevant context.
 
 4. **$ARGUMENTS Variable:** This contains everything the user typed after `/gil_task`. Parse it for flags or treat it as free text for interactive mode.
 
