@@ -114,6 +114,9 @@ async def get_workflow_status(
         completed_count=result.completed_agents,
         failed_count=result.failed_agents,
         active_count=result.active_agents,
+        blocked_count=result.blocked_agents,
+        cancelled_count=result.cancelled_agents,
+        pending_count=result.pending_agents,
         progress_percent=int(result.progress_percent),
     )
 
