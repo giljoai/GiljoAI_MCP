@@ -210,6 +210,28 @@ async def handle_tools_list(
     tools = [
         # Project Management Tools
         {
+            "name": "create_project",
+            "description": "Create a new project bound to the active product. Project is created as inactive. Use the web dashboard to activate and launch.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Project name/title",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Project description - what needs to be done",
+                    },
+                    "tenant_key": {
+                        "type": "string",
+                        "description": "Tenant isolation key (automatically injected by MCP security layer)",
+                    },
+                },
+                "required": ["name", "description"],
+            },
+        },
+        {
             "name": "update_project_mission",
             "description": "Save orchestrator's mission plan to database. Called by: ORCHESTRATOR ONLY after creating execution strategy (Step 3 of staging workflow). Persists the OUTPUT of mission planning. Critical: Project.description = user requirements (INPUT), Project.mission = orchestrator's plan (OUTPUT you create). Triggers WebSocket 'project:mission_updated' event for UI updates.",
             "inputSchema": {
@@ -502,12 +524,16 @@ async def handle_tools_list(
         },
         {
             "name": "get_workflow_status",
-            "description": "Monitor workflow progress across all project agents. Called by: ANY AGENT between todo item completion or work phases, at same time as sending status updates via MCP message tools. Returns active/completed/failed agent counts and progress_percent (0-100). Use to decide whether to proceed or wait for dependencies. Check if all agents completed (progress_percent == 100), detect failures (failed_agents > 0 requires investigation).",
+            "description": "Monitor workflow progress across all project agents. Called by: ANY AGENT between todo item completion or work phases, at same time as sending status updates via MCP message tools. Returns active/completed/failed/blocked/cancelled/pending agent counts and progress_percent (0-100). Use exclude_job_id to omit the calling orchestrator's own job from counts (avoids self-counting). Use to decide whether to proceed or wait for dependencies. Check if all agents completed (progress_percent == 100), detect failures (failed_agents > 0 requires investigation), detect blocked agents (blocked_agents > 0 may need unblocking).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "project_id": {"type": "string", "description": "Project ID"},
                     "tenant_key": {"type": "string", "description": "Tenant key"},
+                    "exclude_job_id": {
+                        "type": "string",
+                        "description": "Optional job_id to exclude from counts (e.g., the calling orchestrator's own job_id to avoid self-counting)",
+                    },
                 },
                 "required": ["project_id"],
             },
@@ -673,6 +699,7 @@ async def handle_tools_call(
     # Route to appropriate tool method
     tool_map = {
         # Project Management
+        "create_project": state.tool_accessor.create_project,
         "update_project_mission": state.tool_accessor.update_project_mission,
         "update_agent_mission": state.tool_accessor.update_agent_mission,  # Handover 0380
         # Orchestrator Tools
