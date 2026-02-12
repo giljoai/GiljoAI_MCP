@@ -22,6 +22,57 @@ export function setTenantKey(tenantKey) {
   currentTenantKey = tenantKey
 }
 
+// Token refresh state (prevents concurrent refresh races)
+let isRefreshing = false
+let refreshSubscribers = []
+
+function onRefreshed() {
+  refreshSubscribers.forEach((cb) => cb())
+  refreshSubscribers = []
+}
+
+function addRefreshSubscriber(callback) {
+  refreshSubscribers.push(callback)
+}
+
+async function silentRefresh() {
+  if (isRefreshing) return
+  isRefreshing = true
+  try {
+    await apiClient.post('/api/auth/refresh')
+  } catch {
+    // Silent failure -- will be caught by 401 interceptor if token actually expired
+  } finally {
+    isRefreshing = false
+  }
+}
+
+async function handleAuthFailure(error) {
+  const { default: router } = await import('@/router')
+
+  try {
+    const setupResponse = await fetch(`${apiClient.defaults.baseURL}/api/setup/status`, {
+      method: 'GET',
+      cache: 'no-cache',
+    })
+    if (setupResponse.ok) {
+      const setupData = await setupResponse.json()
+      if (setupData.is_fresh_install) {
+        router.push('/welcome')
+        return Promise.reject(error)
+      }
+    }
+  } catch {
+    // Secure fallback to login
+  }
+
+  const currentPath = window.location.pathname + window.location.search
+  if (!currentPath.includes('/login') && !currentPath.includes('/welcome')) {
+    router.push({ path: '/login', query: { redirect: currentPath } })
+  }
+  return Promise.reject(error)
+}
+
 // Request interceptor for tenant key
 // NOTE: Authentication token is sent automatically via httpOnly cookie (access_token)
 // No need to manually add Authorization header - the browser handles this
@@ -41,9 +92,16 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
-// Response interceptor for error handling
+// Response interceptor for error handling and token refresh
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Proactive token refresh: renew when less than 6 hours remaining
+    const expiresIn = response.headers['x-token-expires-in']
+    if (expiresIn && parseInt(expiresIn) < 21600 && !isRefreshing) {
+      silentRefresh()
+    }
+    return response
+  },
   async (error) => {
     const originalRequest = error.config
 
@@ -60,59 +118,51 @@ apiClient.interceptors.response.use(
         status: parsedError.status,
       })
 
-      // Log validation errors with field details
       if (parsedError.errors) {
         console.error('[API] Validation errors:', parsedError.errors)
       }
     } else if (error.response) {
-      // Log legacy errors for debugging
       console.error('[API] Legacy error:', {
         status: error.response.status,
         message: error.response.data?.message || error.message,
         data: error.response.data,
       })
     } else {
-      // Log network errors
       console.error('[API] Network error:', error.message)
     }
 
-    if (error.response?.status === 401) {
-      // Handle unauthorized: clear cached state
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('user')
-
+    // Handle 401 Unauthorized with silent refresh
+    if (error.response?.status === 401 && !originalRequest?._retry) {
+      // Don't attempt refresh for auth endpoints themselves
       if (
-        !window.location.pathname.includes('/login') &&
-        !window.location.pathname.includes('/welcome') &&
-        !originalRequest?._retry
+        originalRequest?.url?.includes('/api/auth/refresh') ||
+        originalRequest?.url?.includes('/api/auth/login')
       ) {
-        originalRequest._retry = true
+        return handleAuthFailure(error)
+      }
 
-        // CRITICAL FIX (Handover 0034): Check fresh install status BEFORE redirecting
-        // This prevents redirecting to /login when we should show /welcome (create admin page)
-        try {
-          const setupResponse = await fetch(`${apiClient.defaults.baseURL}/api/setup/status`, {
-            method: 'GET',
-            cache: 'no-cache',
+      if (isRefreshing) {
+        // Another request is already refreshing -- queue this one for retry
+        return new Promise((resolve, _reject) => {
+          addRefreshSubscriber(() => {
+            originalRequest._retry = true
+            resolve(apiClient(originalRequest))
           })
+        })
+      }
 
-          if (setupResponse.ok) {
-            const setupData = await setupResponse.json()
+      originalRequest._retry = true
+      isRefreshing = true
 
-            if (setupData.is_fresh_install) {
-              // Fresh install (0 users) - redirect to create admin account
-              window.location.href = '/welcome'
-              return Promise.reject(error)
-            }
-          }
-        } catch (setupError) {
-          console.warn('[API] Failed to check fresh install status:', setupError)
-          // On error, default to login redirect (secure fallback)
-        }
-
-        // Normal operation (users exist) - redirect to login
-        const currentPath = window.location.pathname + window.location.search
-        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
+      try {
+        await apiClient.post('/api/auth/refresh')
+        isRefreshing = false
+        onRefreshed()
+        return apiClient(originalRequest)
+      } catch {
+        isRefreshing = false
+        refreshSubscribers = []
+        return handleAuthFailure(error)
       }
     }
 
