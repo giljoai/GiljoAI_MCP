@@ -3,10 +3,10 @@ Tests for OrchestrationService instruction-related methods (Handover 0451 - Phas
 
 These methods are being moved from tool_accessor.py to OrchestrationService:
 - get_orchestrator_instructions() - Returns orchestrator context with framing-based instructions
-- create_successor_orchestrator() - Creates successor execution, marks current as decommissioned
 - update_agent_mission() - Updates AgentJob.mission field
 
 NOTE: check_succession_status() tests removed in Handover 0461a (manual succession only).
+NOTE: create_successor_orchestrator() tests removed - tool deleted (succession via UI only).
 
 All tests should FAIL initially (RED phase) since the methods don't exist yet in OrchestrationService.
 """
@@ -15,13 +15,12 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.exceptions import OrchestrationError, ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.schemas.service_responses import MissionUpdateResult, SuccessionContextResult
+from src.giljo_mcp.schemas.service_responses import MissionUpdateResult
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 
@@ -252,207 +251,8 @@ class TestGetOrchestratorInstructions:
         assert "not found" in str(exc_info.value).lower()
 
 
-# ============================================================================
-# TestCreateSuccessorOrchestrator
-# ============================================================================
-
-
-class TestCreateSuccessorOrchestrator:
-    """Tests for create_successor_orchestrator() method."""
-
-    @pytest.mark.asyncio
-    async def test_resets_context_same_execution(self, db_session: AsyncSession, test_project):
-        """Test resets context_used on same execution (Handover 0461f: simplified succession)."""
-        # Setup: Create current orchestrator execution
-        current_job = AgentJob(
-            job_id=str(uuid4()),
-            job_type="orchestrator",
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            mission="Original orchestrator mission",
-            status="active",  # AgentJob: active, completed, cancelled
-        )
-        db_session.add(current_job)
-        await db_session.commit()
-
-        current_agent_id = str(uuid4())
-        current_execution = AgentExecution(
-            agent_id=current_agent_id,
-            job_id=current_job.job_id,
-            tenant_key=test_project.tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            status="waiting",
-            context_used=140000,
-            context_budget=150000,
-        )
-        db_session.add(current_execution)
-        await db_session.commit()
-
-        # Create service
-        service = OrchestrationService(
-            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
-        )
-        service._test_session = db_session
-
-        # Act: Create successor
-        result = await service.create_successor_orchestrator(
-            current_job_id=current_job.job_id,
-            tenant_key=test_project.tenant_key,
-            reason="context_limit",
-        )
-
-        # Handover 0731c: Returns SuccessionContextResult typed model
-        assert isinstance(result, SuccessionContextResult)
-        assert result.job_id == current_job.job_id  # Same job_id
-        assert result.agent_id == current_agent_id  # SAME agent_id (0461f)
-        assert result.context_reset is True
-        assert result.new_context_used == 0
-
-        # Verify same execution still exists (not decommissioned)
-        await db_session.refresh(current_execution)
-        assert current_execution.context_used == 0  # Context was reset
-        assert current_execution.status == "waiting"  # Still active
-
-    @pytest.mark.asyncio
-    async def test_writes_360_memory_entry(self, db_session: AsyncSession, test_project):
-        """Test writes 360 memory entry for handover context (Handover 0461f)."""
-        # Setup: Create current orchestrator execution
-        current_job = AgentJob(
-            job_id=str(uuid4()),
-            job_type="orchestrator",
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            mission="Original orchestrator mission",
-            status="active",  # AgentJob: active, completed, cancelled
-        )
-        db_session.add(current_job)
-        await db_session.commit()
-
-        current_agent_id = str(uuid4())
-        current_execution = AgentExecution(
-            agent_id=current_agent_id,
-            job_id=current_job.job_id,
-            tenant_key=test_project.tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            status="waiting",
-            context_used=140000,
-            context_budget=150000,
-        )
-        db_session.add(current_execution)
-        await db_session.commit()
-
-        # Create service
-        service = OrchestrationService(
-            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
-        )
-        service._test_session = db_session
-
-        # Act: Create successor
-        result = await service.create_successor_orchestrator(
-            current_job_id=current_job.job_id,
-            tenant_key=test_project.tenant_key,
-            reason="context_limit",
-        )
-
-        # Handover 0731c: Returns SuccessionContextResult typed model
-        assert isinstance(result, SuccessionContextResult)
-        assert result.memory_entry_created is True
-        assert result.reason == "context_limit"
-
-    @pytest.mark.asyncio
-    async def test_preserves_job_and_agent_id(self, db_session: AsyncSession, test_project):
-        """Test same job_id AND same agent_id (Handover 0461f: no new execution)."""
-        # Setup: Create current orchestrator execution
-        current_job = AgentJob(
-            job_id=str(uuid4()),
-            job_type="orchestrator",
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            mission="Original orchestrator mission",
-            status="active",  # AgentJob: active, completed, cancelled
-        )
-        db_session.add(current_job)
-        await db_session.commit()
-
-        current_agent_id = str(uuid4())
-        current_execution = AgentExecution(
-            agent_id=current_agent_id,
-            job_id=current_job.job_id,
-            tenant_key=test_project.tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            status="waiting",
-            context_used=140000,
-            context_budget=150000,
-        )
-        db_session.add(current_execution)
-        await db_session.commit()
-
-        # Create service
-        service = OrchestrationService(
-            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
-        )
-        service._test_session = db_session
-
-        # Act: Create successor
-        result = await service.create_successor_orchestrator(
-            current_job_id=current_job.job_id,
-            tenant_key=test_project.tenant_key,
-            reason="context_limit",
-        )
-
-        # Handover 0731c: Returns SuccessionContextResult typed model
-        assert isinstance(result, SuccessionContextResult)
-        assert result.job_id == current_job.job_id
-        assert result.agent_id == current_agent_id  # SAME agent_id (0461f)
-
-    @pytest.mark.asyncio
-    async def test_allows_context_reset_for_completed_execution(self, db_session: AsyncSession, test_project):
-        """Test context reset works even for completed executions (Handover 0461f)."""
-        # NOTE: Handover 0461f simplified succession - no longer filters by status.
-        # Even completed executions can have context reset for fresh session continuation.
-        completed_job = AgentJob(
-            job_id=str(uuid4()),
-            job_type="orchestrator",
-            tenant_key=test_project.tenant_key,
-            project_id=test_project.id,
-            mission="Completed orchestrator mission",
-            status="completed",  # Already completed
-        )
-        db_session.add(completed_job)
-        await db_session.commit()
-
-        completed_execution = AgentExecution(
-            agent_id=str(uuid4()),
-            job_id=completed_job.job_id,
-            tenant_key=test_project.tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            status="complete",  # AgentExecution: complete
-            context_used=120000,
-        )
-        db_session.add(completed_execution)
-        await db_session.commit()
-
-        # Create service
-        service = OrchestrationService(
-            db_manager=MagicMock(), tenant_manager=MagicMock(), websocket_manager=MagicMock()
-        )
-        service._test_session = db_session
-
-        # Handover 0461f: Succession is now just context reset, works for any status
-        result = await service.create_successor_orchestrator(
-            current_job_id=completed_job.job_id,
-            tenant_key=test_project.tenant_key,
-            reason="context_limit",
-        )
-
-        # Handover 0731c: Returns SuccessionContextResult typed model
-        assert isinstance(result, SuccessionContextResult)
-        assert result.context_reset is True
-        assert result.new_context_used == 0
+# NOTE: TestCreateSuccessorOrchestrator removed - create_successor_orchestrator tool deleted.
+# Succession is now user-triggered via UI button or /gil_handover slash command.
 
 
 # ============================================================================

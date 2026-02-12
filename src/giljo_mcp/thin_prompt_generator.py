@@ -57,6 +57,158 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 logger = logging.getLogger(__name__)
 
 
+def build_continuation_prompt(
+    project_id: str,
+    agent_id: str,
+    job_id: str,
+    project_name: str | None = None,
+    product_id: str | None = None,
+) -> str:
+    """
+    Build a continuation prompt for orchestrator session refresh.
+
+    Canonical prompt builder for all handover paths (REST endpoint, slash command,
+    ThinClientPromptGenerator). Reads MCP URL from config including external_host
+    for public IP deployments.
+
+    Args:
+        project_id: Project UUID
+        agent_id: Agent execution ID (WHO - executor ID for MCP calls)
+        job_id: Job ID (WHAT - work order ID)
+        project_name: Optional project display name (for human readability)
+        product_id: Optional product UUID (for fetch_context call)
+
+    Returns:
+        Continuation prompt string
+    """
+    # Resolve MCP URL from config (supports external_host for public IP)
+    config = get_config()
+    mcp_host = config.server.api_host
+
+    # Check for external_host override (public IP deployments)
+    try:
+        from pathlib import Path
+
+        import yaml
+
+        config_path = Path("config.yaml")
+        if config_path.exists():
+            with open(config_path, encoding="utf-8") as f:
+                config_data = yaml.safe_load(f) or {}
+            external_host = config_data.get("services", {}).get("external_host")
+            if external_host:
+                mcp_host = external_host
+    except (OSError, ValueError, KeyError):
+        pass  # nosec B110
+
+    mcp_port = config.server.api_port
+    mcp_url = f"http://{mcp_host}:{mcp_port}/mcp"
+
+    # Build project display
+    project_display = f' "{project_name}"' if project_name else ""
+
+    # Build product_id display for fetch_context call
+    product_param = product_id if product_id else "<fetch from project>"
+
+    return f"""I am Orchestrator for Project{project_display} (CONTINUATION SESSION).
+
+A previous session ran out of context. I am continuing the work.
+
+YOUR IDENTITY (use these in all MCP calls):
+  YOUR Agent ID: {agent_id}
+  YOUR Job ID: {job_id}
+  THE Project ID: {project_id}
+
+MCP Server: {mcp_url}
+Note: tenant_key is auto-injected by server from your API key session
+
+FIRST ACTIONS (DO NOT RE-STAGE):
+
+1. Verify MCP: mcp__giljo-mcp__health_check()
+   -> Expected: {{"status": "healthy"}}
+
+2. Read 360 Memory for session context:
+   mcp__giljo-mcp__fetch_context(
+       product_id="{product_param}",
+       categories=["memory_360"]
+   )
+   -> Look for "session_handover" entry with session context
+   -> Contains: previous context_used, progress, current_task
+
+3. Check messages from agents:
+   mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
+
+4. Check workflow status:
+   mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
+
+CRITICAL RULES:
+- Do NOT call get_orchestrator_instructions() to re-stage
+- Do NOT re-write the project mission
+- Read 360 Memory session_handover for context from previous session
+- You are CONTINUING work, not starting from scratch
+
+When ready, coordinate agents based on current status.
+"""
+
+
+def build_retirement_prompt(
+    project_id: str,
+    agent_id: str,
+    job_id: str,
+    project_name: str | None = None,
+) -> str:
+    """
+    Build a retirement prompt for the old orchestrator terminal session.
+
+    This prompt instructs the orchestrator to write rich session context to 360 Memory
+    before the terminal session ends. The orchestrator has the actual context (decisions,
+    progress, blockers) that a bare-bones DB stats dump cannot capture.
+
+    Args:
+        project_id: Project UUID
+        agent_id: Agent execution ID (WHO - executor ID)
+        job_id: Job ID (WHAT - work order ID)
+        project_name: Optional project display name
+
+    Returns:
+        Retirement prompt string for the old orchestrator
+    """
+    project_display = f' "{project_name}"' if project_name else ""
+
+    return f"""ORCHESTRATOR SESSION RETIREMENT{project_display}
+
+Your terminal session is being refreshed. Before you stop, you MUST preserve your session context for the continuation session.
+
+YOUR IDENTITY:
+  Agent ID: {agent_id}
+  Job ID: {job_id}
+  Project ID: {project_id}
+
+REQUIRED ACTION - Write your session context to 360 Memory:
+
+mcp__giljo-mcp__write_360_memory(
+    project_id="{project_id}",
+    summary="<Summarize what you accomplished, what is in progress, and any blockers>",
+    key_outcomes=["<list each concrete outcome>"],
+    decisions_made=["<list decisions and rationale>"],
+    entry_type="session_handover"
+)
+
+YOUR SUMMARY MUST INCLUDE:
+- Tasks completed and their results
+- Work currently in progress (with status)
+- Decisions made and why
+- Known blockers or issues
+- Agent statuses and any pending coordination
+- Recommended next steps for the continuation session
+
+After writing memory, report: "Session context saved to 360 Memory. Ready for continuation."
+
+CRITICAL: Do NOT skip the memory write. The continuation session depends on this context.
+CRITICAL: Do NOT call complete_job(). You are NOT done - your work continues in a new terminal.
+"""
+
+
 @dataclass
 class ThinPromptResponse:
     """Thin client prompt response."""
@@ -503,7 +655,7 @@ MCP TOOLS AVAILABLE (ALL start with "mcp__giljo-mcp__"):
 ✓ update_project_mission(project_id, mission) - Save mission plan
 ✓ spawn_agent_job(agent_display_name, agent_name, mission, project_id) - Create agents
 ✓ get_workflow_status(project_id) - Check spawned agents
-✓ send_message(to_agents, content, project_id, message_type, priority) - Send message/broadcast to agents
+✓ send_message(to_agents, content, project_id, message_type, priority) - Send message to agents (use agent_id UUIDs in to_agents)
 
 STARTUP SEQUENCE:
 1. Verify MCP: mcp__giljo-mcp__health_check()
@@ -515,9 +667,13 @@ STARTUP SEQUENCE:
    └─► Saves to Project.mission field for UI display
 5. SPAWN AGENTS: mcp__giljo-mcp__spawn_agent_job() to create specialist agent jobs
    └─► Agents will EXECUTE the work (not you)
+   └─► SAVE each spawn response's agent_id - needed for UUID-based messaging later
 6. SIGNAL COMPLETE: mcp__giljo-mcp__send_message() to broadcast staging done
    └─► Message: "STAGING_COMPLETE: Mission created, N agents spawned: [list agent names]"
    └─► This enables the Implement button in UI (required for workflow)
+
+MESSAGING RULE: Always use agent_id UUIDs in send_message(to_agents=[...]).
+Each spawn_agent_job() returns an agent_id UUID. Never use display names in to_agents.
 
 CRITICAL DISTINCTIONS:
 - Project.description = User-written requirements (READ THIS for context)
@@ -628,11 +784,15 @@ WORKFLOW:
 3. Create condensed mission plan from fetched context
 4. Persist mission: mcp__giljo-mcp__update_project_mission('{project_id}', mission)
 5. Spawn specialist agents: mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}')
+   → SAVE each response's agent_id UUID - needed for UUID-based messaging
 6. Monitor: mcp__giljo-mcp__get_workflow_status('{project_id}')
 7. Signal complete: mcp__giljo-mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
    → This broadcast enables the Implement button in UI (REQUIRED)
 
 Claude Code: Use TodoWrite tool to track workflow progress.
+
+MESSAGING RULE: Always use agent_id UUIDs in send_message(to_agents=[...]).
+Each spawn_agent_job() returns an agent_id UUID. Never use display names in to_agents.
 
 CRITICAL DISTINCTIONS:
 - Project.description = User-written requirements (already provided above)
@@ -643,9 +803,9 @@ MCP CORE TOOLS (Always Available - tenant_key auto-injected by server):
 ✓ mcp__giljo-mcp__health_check() - Verify MCP connection
 ✓ mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}') - Fetch complete prioritized context
 ✓ mcp__giljo-mcp__update_project_mission('{project_id}', mission) - Save mission plan
-✓ mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}') - Create agents
+✓ mcp__giljo-mcp__spawn_agent_job(agent_display_name, agent_name, mission, '{project_id}') - Create agents (returns agent_id UUID)
 ✓ mcp__giljo-mcp__get_workflow_status('{project_id}') - Check spawned agents
-✓ mcp__giljo-mcp__send_message(to_agents, content, project_id, message_type, priority) - Send message/broadcast to agents
+✓ mcp__giljo-mcp__send_message(to_agents, content, project_id, message_type, priority) - Send message (use agent_id UUIDs in to_agents)
 
 CONNECTION TROUBLESHOOTING:
 If MCP fails: Check server running at {mcp_url}/health
@@ -1031,10 +1191,7 @@ START NOW:
         mcp_url: str,
     ) -> str:
         """
-        Generate continuation prompt that reads 360 Memory for session context.
-
-        Handover 0461c: Instead of hardcoded instructions, tell successor
-        to read 360 Memory for session context from previous session.
+        Generate continuation prompt. Delegates to module-level build_continuation_prompt().
 
         Args:
             project_name: Project display name
@@ -1042,61 +1199,18 @@ START NOW:
             orchestrator_id: Job ID (WHAT)
             project_id: Project UUID
             product_id: Product UUID (for fetch_context call)
-            mcp_url: MCP server URL
+            mcp_url: MCP server URL (ignored - resolved from config by canonical builder)
 
         Returns:
-            Continuation prompt instructing to read 360 Memory session_handover entry
+            Continuation prompt string
         """
-        # Validate product_id is available
-        if not product_id:
-            logger.warning(
-                "[ThinPromptGenerator] product_id not provided for continuation prompt. "
-                "Orchestrator may not be able to fetch 360 Memory context."
-            )
-            product_id = "(fetch from project data)"
-
-        prompt = f"""I am Orchestrator for Project "{project_name}" (CONTINUATION SESSION).
-
-A previous session ran out of context. I am continuing the work.
-
-YOUR IDENTITY (use these in all MCP calls):
-  YOUR Agent ID: {agent_id}
-  YOUR Job ID: {orchestrator_id}
-  THE Project ID: {project_id}
-  THE Product ID: {product_id}
-
-MCP Server: {mcp_url}
-Note: tenant_key is auto-injected by server from your API key session
-
-FIRST ACTIONS (DO NOT RE-STAGE):
-
-1. Verify MCP: mcp__giljo-mcp__health_check()
-   → Expected: {{"status": "healthy"}}
-
-2. Read 360 Memory for session context:
-   mcp__giljo-mcp__fetch_context(
-       product_id="{product_id}",
-       categories=["memory_360"]
-   )
-   → Look for "session_handover" entry with session context
-   → Contains: previous context_used, progress, current_task
-
-3. Check messages from agents:
-   mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
-
-4. Check workflow status:
-   mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
-
-CRITICAL RULES:
-- Do NOT call get_orchestrator_instructions() to re-stage
-- Do NOT re-write the project mission
-- Read 360 Memory session_handover for context from previous session
-- You are CONTINUING work, not starting from scratch
-
-When ready, coordinate agents based on current status.
-"""
-
-        return prompt
+        return build_continuation_prompt(
+            project_id=project_id,
+            agent_id=agent_id,
+            job_id=orchestrator_id,
+            project_name=project_name,
+            product_id=product_id,
+        )
 
     def _build_claude_code_execution_prompt(self, orchestrator_id: str, project, agent_jobs: list) -> str:
         """
@@ -1267,13 +1381,14 @@ When ready, coordinate agents based on current status.
             "",
             "### Handle Blockers",
             "- When agent status is 'blocked', read their messages",
-            "- Respond via send_message() with instructions",
+            "- Respond via send_message(to_agents=['<agent-id-uuid>'], ...) using agent_id UUID",
             "- Update their next_instruction field if needed",
             "",
             "### Message Handling",
             "- Agents report progress via report_progress() and send_message()",
             "- Monitor messages for questions or blockers",
             "- Respond promptly to keep workflow moving",
+            "- ALWAYS use agent_id UUIDs in to_agents (from spawn_agent_job responses), never display names",
             "",
         ]
 

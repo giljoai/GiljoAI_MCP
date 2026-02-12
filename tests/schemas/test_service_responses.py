@@ -37,8 +37,6 @@ from src.giljo_mcp.schemas.service_responses import (
     SendMessageResult,
     SetupState,
     SpawnResult,
-    SuccessionResult,
-    SuccessionStatus,
     TaskListResponse,
     TaskSummary,
     TaskUpdateResult,
@@ -846,7 +844,7 @@ class TestMissionUpdateResult:
 
 
 class TestInstructionsResponse:
-    """Tests for InstructionsResponse model (Handover 0731c: now alias for SuccessionContextResult).
+    """Tests for InstructionsResponse model.
 
     InstructionsResponse is a legacy alias kept for backward compatibility.
     get_orchestrator_instructions() returns dict[str, Any] (genuinely dynamic),
@@ -875,100 +873,6 @@ class TestInstructionsResponse:
 
     def test_from_attributes_config(self):
         assert InstructionsResponse.model_config.get("from_attributes") is True
-
-
-class TestSuccessionResult:
-    """Tests for SuccessionResult model (Handover 0731c: now alias for SuccessionContextResult).
-
-    SuccessionResult is a legacy alias kept for backward compatibility.
-    The canonical model is SuccessionContextResult with job_id, agent_id, context_reset fields.
-    """
-
-    def test_is_alias_for_succession_context_result(self):
-        from src.giljo_mcp.schemas.service_responses import SuccessionContextResult
-
-        assert SuccessionResult is SuccessionContextResult
-
-    def test_creation_with_required_fields(self):
-        result = SuccessionResult(
-            job_id="job-1",
-            agent_id="agent-1",
-        )
-        assert result.job_id == "job-1"
-        assert result.agent_id == "agent-1"
-        assert result.context_reset is True
-        assert result.memory_entry_created is True
-
-    def test_creation_with_all_fields(self):
-        result = SuccessionResult(
-            job_id="j1",
-            agent_id="a1",
-            context_reset=True,
-            old_context_used=140000,
-            new_context_used=0,
-            memory_entry_created=True,
-            reason="context_limit",
-            message="Context reset successful",
-        )
-        assert result.old_context_used == 140000
-        assert result.new_context_used == 0
-        assert result.reason == "context_limit"
-
-    def test_missing_job_id_raises(self):
-        with pytest.raises(ValidationError):
-            SuccessionResult(agent_id="a1")
-
-    def test_missing_agent_id_raises(self):
-        with pytest.raises(ValidationError):
-            SuccessionResult(job_id="j1")
-
-    def test_model_dump(self):
-        result = SuccessionResult(job_id="j", agent_id="a")
-        dumped = result.model_dump()
-        assert dumped["job_id"] == "j"
-        assert dumped["agent_id"] == "a"
-        assert dumped["context_reset"] is True
-
-    def test_from_attributes_config(self):
-        assert SuccessionResult.model_config.get("from_attributes") is True
-
-
-class TestSuccessionStatus:
-    """Tests for SuccessionStatus model (Handover 0731c: redesigned for check_succession_status)."""
-
-    def test_creation_defaults(self):
-        result = SuccessionStatus()
-        assert result.should_trigger is False
-        assert result.context_used == 0
-        assert result.context_budget == 0
-        assert result.usage_percentage == 0.0
-        assert result.threshold_reached is False
-        assert result.recommendation == ""
-
-    def test_creation_with_all_fields(self):
-        result = SuccessionStatus(
-            should_trigger=True,
-            context_used=85000,
-            context_budget=100000,
-            usage_percentage=85.0,
-            threshold_reached=True,
-            recommendation="Succession recommended: context usage at 85%",
-        )
-        assert result.should_trigger is True
-        assert result.context_used == 85000
-        assert result.context_budget == 100000
-        assert result.usage_percentage == 85.0
-        assert result.threshold_reached is True
-        assert "85%" in result.recommendation
-
-    def test_model_dump(self):
-        result = SuccessionStatus(context_used=5000)
-        dumped = result.model_dump()
-        assert dumped["context_used"] == 5000
-        assert dumped["should_trigger"] is False
-
-    def test_from_attributes_config(self):
-        assert SuccessionStatus.model_config.get("from_attributes") is True
 
 
 # ---------------------------------------------------------------------------

@@ -353,9 +353,9 @@ class ToolAccessor:
             websocket_manager=self._websocket_manager,
             test_session=self._test_session,
         )
-        active_product_result = await product_service.get_active_product()
+        active_product = await product_service.get_active_product()
 
-        if not active_product_result.get("product"):
+        if not active_product:
             raise ValidationError(
                 "No active product set. Please activate a product first.",
                 context={
@@ -364,7 +364,7 @@ class ToolAccessor:
                 },
             )
 
-        product_id = active_product_result["product"]["id"]
+        product_id = active_product.id
 
         # Create task with product binding and tenant isolation
         return await self._task_service.log_task(
@@ -732,24 +732,9 @@ class ToolAccessor:
             include_inactive=include_inactive,
         )
 
-    # Succession Tools (Handover 0080)
-
-    async def create_successor_orchestrator(
-        self, current_job_id: str, tenant_key: str, reason: str = "context_limit"
-    ) -> dict[str, Any]:
-        """
-        Create successor orchestrator context via 360 Memory (Handover 0461f).
-
-        SIMPLIFIED: Writes session context to 360 Memory and resets context_used.
-        No new AgentExecution rows created. Same agent_id continues.
-
-        Use fetch_context(categories=['memory_360']) in new session to retrieve context.
-        """
-        return await self._orchestration_service.create_successor_orchestrator(current_job_id, tenant_key, reason)
-
-    async def check_succession_status(self, job_id: str, tenant_key: str) -> dict[str, Any]:
-        """Delegate to OrchestrationService (Handover 0451)"""
-        return await self._orchestration_service.check_succession_status(job_id, tenant_key)
+    # Succession tools removed (0391/0461/0700d)
+    # User triggers via UI button (simple-handover REST endpoint) or /gil_handover slash command.
+    # Agents cannot self-detect context exhaustion (passive HTTP architecture).
 
     async def gil_launch(self, project_id: str) -> dict[str, Any]:
         try:

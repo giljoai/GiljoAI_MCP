@@ -109,7 +109,7 @@ class TestHelperFunctions:
         assert isinstance(result, dict)
         assert result["context_budget"] == 150000
         assert result["warning_threshold"] == 0.8
-        assert "create_successor_orchestrator" in result["action_at_threshold"]
+        assert "UI button" in result["action_at_threshold"] or "/gil_handover" in result["action_at_threshold"]
 
     def test_context_management_with_custom_budget(self):
         """Test context_management with custom budget."""

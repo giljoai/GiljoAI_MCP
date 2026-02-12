@@ -231,21 +231,15 @@ function handleViewMessages(job) {
 }
 
 /**
- * Handover 0506: Handle orchestrator handover action from ActionIcons
- * Calls initiate-handover endpoint and copies prompt to clipboard
- * User pastes prompt into current orchestrator terminal
+ * Handle orchestrator session refresh result from ActionIcons.
+ * ActionIcons handles the API call internally and emits the result.
  */
-async function handleHandOver(job) {
-  try {
-    const response = await api.agentJobs.initiateHandover(job.job_id)
-    const prompt = response.data.prompt
-
-    // Copy handover prompt to clipboard
-    await navigator.clipboard.writeText(prompt)
-    showSnackbar('Handover prompt copied! Paste into your current orchestrator terminal.', 'success')
-  } catch (error) {
-    console.error('[AgentTableView] Handover failed:', error)
-    showSnackbar('Failed to initiate handover', 'error')
+function handleHandOver(event) {
+  if (event.success) {
+    showSnackbar(event.message || 'Session refreshed! Continuation prompt copied to clipboard.', 'success')
+  } else {
+    console.error('[AgentTableView] Session refresh failed:', event.error)
+    showSnackbar(event.error || 'Failed to refresh session', 'error')
   }
 }
 

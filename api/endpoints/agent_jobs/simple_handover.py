@@ -1,15 +1,14 @@
 """
-Simple Handover Endpoint - Handover 0461c
+Simple Handover Endpoint - Handover 0461c (Updated: Two-Stage Retirement Flow)
 
-Replaces complex Agent ID Swap succession with 360 Memory-based session continuity.
+Two-stage orchestrator session refresh:
+1. Returns retirement_prompt (old orchestrator writes 360 Memory with rich context)
+2. Returns continuation_prompt (new terminal picks up where old left off)
 
-This endpoint:
-1. Writes session context to 360 Memory (session_handover entry)
-2. Resets context_used counter to 0
-3. Returns a continuation prompt that instructs reading 360 Memory
-4. Emits WebSocket event for UI updates
+The OLD orchestrator writes 360 Memory via MCP tools (not this endpoint),
+because only the orchestrator has the actual session context (decisions, progress, blockers).
 
-No more Agent ID Swap. No new AgentExecution rows. Just simple context reset.
+No more Agent ID Swap. No new AgentExecution rows. Same UUID, same card.
 """
 
 import logging
@@ -20,9 +19,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.thin_prompt_generator import build_continuation_prompt, build_retirement_prompt
 
 
 logger = logging.getLogger(__name__)
@@ -41,13 +40,16 @@ async def simple_handover(
     db: AsyncSession = Depends(get_db_session),
 ):
     """
-    Simple handover: Write session to 360 Memory and reset context.
+    Two-stage session handover: Returns retirement + continuation prompts.
 
-    Does NOT create new AgentExecution rows. Instead:
-    1. Gathers current session context
-    2. Writes session_handover entry to 360 Memory
-    3. Resets context_used to 0
-    4. Returns continuation prompt that reads 360 Memory
+    Stage 1 (retirement_prompt): User pastes in OLD terminal -> orchestrator writes
+    rich 360 Memory via MCP tools (captures actual session context, not just DB stats).
+
+    Stage 2 (continuation_prompt): User pastes in NEW terminal -> orchestrator reads
+    360 Memory and continues work with same UUID/identity.
+
+    Does NOT write 360 Memory server-side (the orchestrator does that with full context).
+    Does NOT create new AgentExecution rows. Same UUID, same card.
 
     Args:
         job_id: Orchestrator job_id or agent_id
@@ -57,8 +59,8 @@ async def simple_handover(
     Returns:
         {
             "success": True,
+            "retirement_prompt": "...",
             "continuation_prompt": "...",
-            "memory_entry_id": "...",
             "context_reset": True
         }
     """
@@ -103,55 +105,20 @@ async def simple_handover(
     if not job:
         raise HTTPException(status_code=500, detail="Job not found")
 
-    # Build session context for 360 Memory
-
-    # Calculate context usage percentage (avoid division by zero)
-    context_percent = (
-        int((execution.context_used / execution.context_budget) * 100) if execution.context_budget > 0 else 0
-    )
-
-    # Write to 360 Memory
-    from api.app import app
-    from src.giljo_mcp.tools.write_360_memory import write_360_memory
-
-    # Get database manager from app state (Handover 0461c fix)
-    db_manager = getattr(app.state, "db_manager", None)
-    if db_manager is None:
-        raise HTTPException(status_code=500, detail="Database manager not initialized")
-
-    memory_result = await write_360_memory(
-        project_id=str(job.project_id),
-        tenant_key=current_user.tenant_key,
-        summary=f"Session handover at {execution.context_used}/{execution.context_budget} tokens ({context_percent}% context used). Progress: {execution.progress}%. Current task: {execution.current_task or 'N/A'}.",
-        key_outcomes=[
-            f"Progress: {execution.progress}%",
-            f"Current task: {execution.current_task or 'N/A'}",
-            f"Context usage: {context_percent}%",
-        ],
-        decisions_made=["Session handover triggered by user"],
-        entry_type="session_handover",
-        author_job_id=execution.job_id,
-        db_manager=db_manager,
-        session=db,
-    )
-
-    # Check if memory write succeeded
-    if not memory_result.get("success"):
-        logger.error(f"Failed to write 360 memory: {memory_result.get('error')}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to write 360 memory: {memory_result.get('error')}",
-        )
-
-    # Reset context_used
+    # Reset context_used for the continuation session
     old_context = execution.context_used
     execution.context_used = 0
     await db.commit()
 
-    # Generate continuation prompt
-    # Note: ThinClientPromptGenerator doesn't support continuation_mode parameter,
-    # so we build a simple prompt manually that instructs reading 360 Memory
-    continuation_prompt = _build_continuation_prompt(
+    # Generate retirement prompt (old orchestrator writes 360 Memory)
+    retirement_prompt = build_retirement_prompt(
+        project_id=str(job.project_id),
+        agent_id=execution.agent_id,
+        job_id=execution.job_id,
+    )
+
+    # Generate continuation prompt (new terminal reads 360 Memory)
+    continuation_prompt = build_continuation_prompt(
         project_id=str(job.project_id),
         agent_id=execution.agent_id,
         job_id=execution.job_id,
@@ -159,18 +126,19 @@ async def simple_handover(
 
     # Emit WebSocket event
     try:
+        from api.app import app
+
         websocket_manager = getattr(app.state, "websocket_manager", None)
         if websocket_manager:
             await websocket_manager.broadcast_to_tenant(
                 tenant_key=current_user.tenant_key,
-                event_type="orchestrator:context_reset",
+                event_type="orchestrator:handover_initiated",
                 data={
                     "agent_id": execution.agent_id,
                     "job_id": execution.job_id,
                     "project_id": str(job.project_id),
                     "old_context_used": old_context,
                     "new_context_used": 0,
-                    "memory_entry_created": True,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             )
@@ -179,76 +147,8 @@ async def simple_handover(
 
     return {
         "success": True,
+        "retirement_prompt": retirement_prompt,
         "continuation_prompt": continuation_prompt,
-        "memory_entry_id": memory_result.get("entry_id"),
         "context_reset": True,
         "old_context_used": old_context,
     }
-
-
-def _build_continuation_prompt(
-    project_id: str,
-    agent_id: str,
-    job_id: str,
-) -> str:
-    """
-    Build a continuation prompt that instructs reading 360 Memory.
-
-    This is a simplified prompt that tells the orchestrator to:
-    1. Verify MCP connection
-    2. Read 360 Memory for session context
-    3. Check messages and workflow status
-    4. Continue work
-
-    Args:
-        project_id: Project UUID
-        agent_id: Agent ID (WHO - executor ID for MCP calls)
-        job_id: Job ID (WHAT - work order ID)
-
-    Returns:
-        Continuation prompt string
-    """
-    # Note: We use the MCP server URL pattern from config
-    config = get_config()
-    mcp_url = f"http://{config.get('host', 'localhost')}:{config.get('port', 7272)}/mcp"
-
-    prompt = f"""I am Orchestrator for Project (CONTINUATION SESSION).
-
-A previous session ran out of context. I am continuing the work.
-
-YOUR IDENTITY (use these in all MCP calls):
-  YOUR Agent ID: {agent_id}
-  YOUR Job ID: {job_id}
-  THE Project ID: {project_id}
-
-MCP Server: {mcp_url}
-Note: tenant_key is auto-injected by server from your API key session
-
-FIRST ACTIONS (DO NOT RE-STAGE):
-
-1. Verify MCP: mcp__giljo-mcp__health_check()
-   → Expected: {{"status": "healthy"}}
-
-2. Read 360 Memory for session context:
-   mcp__giljo-mcp__fetch_context(
-       product_id="<fetch from project>",
-       categories=["memory_360"]
-   )
-   → Look for "session_handover" entry with session context
-   → Contains: previous context_used, progress, current_task
-
-3. Check messages from agents:
-   mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
-
-4. Check workflow status:
-   mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
-
-CRITICAL RULES:
-- Do NOT call get_orchestrator_instructions() to re-stage
-- Do NOT re-write the project mission
-- Read 360 Memory session_handover for context from previous session
-- You are CONTINUING work, not starting from scratch
-
-When ready, coordinate agents based on current status.
-"""
-    return prompt
