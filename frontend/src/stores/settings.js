@@ -7,8 +7,10 @@ export const useSettingsStore = defineStore('settings', () => {
   // State
   const settings = ref({
     theme: 'dark',
-    notifications: true,
-    soundEnabled: false,
+    notifications: {
+      position: 'bottom-right',
+      duration: 5,
+    },
     compactView: false,
     showMascot: true,
     apiUrl: 'http://localhost:6002',
@@ -30,7 +32,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // Getters
   const isDarkTheme = computed(() => true)
-  const notificationsEnabled = computed(() => settings.value.notifications)
+  const notificationPosition = computed(() => settings.value.notifications?.position || 'bottom-right')
+  const notificationDuration = computed(() => (settings.value.notifications?.duration || 5) * 1000)
 
   // Actions
   async function loadSettings() {
@@ -112,6 +115,16 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  async function updateSettings(partial) {
+    settings.value = { ...settings.value, ...partial }
+    saveToLocalStorage()
+    try {
+      await api.settings.update(settings.value)
+    } catch (serverError) {
+      // Settings saved locally, server sync failed silently
+    }
+  }
+
 
   function applyTheme() {
     theme.change(settings.value.theme)
@@ -124,8 +137,10 @@ export const useSettingsStore = defineStore('settings', () => {
   function resetSettings() {
     settings.value = {
       theme: 'dark',
-      notifications: true,
-      soundEnabled: false,
+      notifications: {
+        position: 'bottom-right',
+        duration: 5,
+      },
       compactView: false,
       showMascot: true,
       apiUrl: 'http://localhost:6002',
@@ -207,12 +222,14 @@ export const useSettingsStore = defineStore('settings', () => {
 
     // Getters
     isDarkTheme,
-    notificationsEnabled,
+    notificationPosition,
+    notificationDuration,
 
     // Actions
     loadSettings,
     saveSettings,
     updateSetting,
+    updateSettings,
     resetSettings,
     clearError,
     fetchFieldPriorityConfig,
