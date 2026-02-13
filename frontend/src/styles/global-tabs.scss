@@ -50,6 +50,7 @@
 .global-tabs-window {
   .v-window__container {
     overflow: visible !important;
+    height: auto !important;
   }
 
   .v-window-item {

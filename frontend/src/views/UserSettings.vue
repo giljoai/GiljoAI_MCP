@@ -17,22 +17,13 @@
       <v-btn value="startup" data-testid="startup-settings-tab">
         <v-icon start>mdi-rocket-launch</v-icon>
         Startup
-        <v-btn
-          icon
-          size="x-small"
-          variant="text"
-          class="ml-1"
+        <v-icon
+          size="18"
+          class="ml-1 startup-help-icon"
           aria-label="What is GiljoAI MCP?"
           data-testid="startup-intro-help"
           @click.stop="openIntroTour"
-        >
-          <v-icon size="18">mdi-help-circle-outline</v-icon>
-          <v-tooltip activator="parent" location="bottom">What is this product?</v-tooltip>
-        </v-btn>
-      </v-btn>
-      <v-btn value="appearance">
-        <v-icon start>mdi-palette</v-icon>
-        Appearance
+        >mdi-help-circle-outline</v-icon>
       </v-btn>
       <v-btn value="notifications">
         <v-icon start>mdi-bell</v-icon>
@@ -82,74 +73,6 @@
           <v-card-text>
             <StartupQuickStart :git-enabled="gitEnabled" :serena-enabled="serenaEnabled" />
           </v-card-text>
-        </v-card>
-      </v-window-item>
-
-      <!-- Appearance Settings -->
-      <v-window-item value="appearance">
-        <v-card data-test="appearance-settings">
-          <v-card-title>Appearance Settings</v-card-title>
-          <v-card-text>
-            <v-row>
-              <v-col cols="12" md="6">
-                <h3 class="text-h6 mb-4">Mascot Preferences</h3>
-                <v-switch
-                  v-model="settings.appearance.showMascot"
-                  label="Show mascot animations"
-                  color="primary"
-                  data-test="mascot-toggle"
-                />
-                <v-switch
-                  v-model="settings.appearance.useBlueVariant"
-                  label="Use blue mascot variant"
-                  color="primary"
-                />
-              </v-col>
-            </v-row>
-
-            <v-divider class="my-6" />
-
-            <h3 class="text-h6 mb-4">Display Options</h3>
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-switch
-                  v-model="settings.appearance.compactMode"
-                  label="Compact mode"
-                  color="primary"
-                />
-                <v-switch
-                  v-model="settings.appearance.showAnimations"
-                  label="Enable animations"
-                  color="primary"
-                />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-switch
-                  v-model="settings.appearance.showTooltips"
-                  label="Show tooltips"
-                  color="primary"
-                />
-                <v-switch
-                  v-model="settings.appearance.highContrast"
-                  label="High contrast mode"
-                  color="primary"
-                />
-              </v-col>
-            </v-row>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer />
-            <v-btn variant="text" data-test="reset-appearance-btn" @click="resetAppearanceSettings"
-              >Reset</v-btn
-            >
-            <v-btn
-              color="primary"
-              variant="flat"
-              data-test="save-appearance-btn"
-              @click="saveAppearanceSettings"
-              >Save Changes</v-btn
-            >
-          </v-card-actions>
         </v-card>
       </v-window-item>
 
@@ -286,7 +209,6 @@
 import { ref, provide, onMounted, onUnmounted, watch } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useUserStore } from '@/stores/user'
-import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import TemplateManager from '@/components/TemplateManager.vue'
@@ -307,7 +229,6 @@ import api from '@/services/api'
 // Stores and Theme
 const settingsStore = useSettingsStore()
 const userStore = useUserStore()
-const theme = useTheme()
 const router = useRouter()
 
 // WebSocket for real-time Git integration updates
@@ -342,15 +263,6 @@ const settings = ref({
   general: {
     // Handover 0052: Removed unused projectName field (had broken save function)
   },
-  appearance: {
-    theme: 'dark',
-    showMascot: true,
-    useBlueVariant: false,
-    compactMode: false,
-    showAnimations: true,
-    showTooltips: true,
-    highContrast: false,
-  },
   notifications: {
     position: 'bottom-right',
     duration: 5,
@@ -359,38 +271,11 @@ const settings = ref({
 })
 
 // Methods
-async function saveAppearanceSettings() {
-  try {
-    // Apply theme immediately
-    if (settings.value.appearance.theme !== 'system') {
-      theme.change(settings.value.appearance.theme)
-      document.documentElement.setAttribute('data-theme', settings.value.appearance.theme)
-      localStorage.setItem('theme-preference', settings.value.appearance.theme)
-    }
-
-    await settingsStore.updateSettings({ appearance: settings.value.appearance })
-  } catch (error) {
-    console.error('Failed to save appearance settings:', error)
-  }
-}
-
 async function saveNotificationSettings() {
   try {
     await settingsStore.updateSettings({ notifications: settings.value.notifications })
   } catch (error) {
     console.error('Failed to save notification settings:', error)
-  }
-}
-
-function resetAppearanceSettings() {
-  settings.value.appearance = {
-    theme: 'dark',
-    showMascot: true,
-    useBlueVariant: false,
-    compactMode: false,
-    showAnimations: true,
-    showTooltips: true,
-    highContrast: false,
   }
 }
 
@@ -451,10 +336,6 @@ onMounted(async () => {
   if (settingsStore.settings.notifications) {
     settings.value.notifications = { ...settings.value.notifications, ...settingsStore.settings.notifications }
   }
-
-  // Initialize theme from current Vuetify theme AFTER loading stored settings
-  // This ensures UI reflects actual current theme (restored in main.js from localStorage)
-  settings.value.appearance.theme = theme.global.name.value
 
   // Load git integration settings (system-level)
   await loadGitSettings()
@@ -643,4 +524,14 @@ function openIntroTour() {
 }
 
 /* Tab animations are handled by global-tabs-window class */
+
+.startup-help-icon {
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.startup-help-icon:hover {
+  opacity: 1;
+}
 </style>
