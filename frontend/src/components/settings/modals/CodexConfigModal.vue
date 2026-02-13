@@ -5,7 +5,7 @@
     scrollable
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <v-card>
+    <v-card v-draggable>
       <v-card-title class="d-flex align-center">
         <v-icon start color="secondary">mdi-code-braces</v-icon>
         How to Configure Codex CLI
