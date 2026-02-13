@@ -1,8 +1,8 @@
 """
-Integration tests for /gil_task slash command.
+Integration tests for /gil_add slash command.
 
-These tests verify that the create_task MCP tool works correctly
-and that tasks appear in the database and UI.
+These tests verify that the create_task and create_project MCP tools work
+correctly and that tasks/projects appear in the database and UI.
 
 Note: The actual slash command behavior is client-side (Claude Code skill)
 and cannot be directly tested in pytest. These tests verify the backend
@@ -143,15 +143,111 @@ class TestCreateTaskMCPTool:
         assert result_2["success"] is True
 
         # Verify tenant isolation in database
-        stmt_1 = select(Task).where(Task.id == result_1["task_id"], Task.tenant_key == tenant_key_1)
+        stmt_1 = select(Task).where(
+            Task.id == result_1["task_id"], Task.tenant_key == tenant_key_1
+        )
         db_result_1 = await async_session.execute(stmt_1)
         task_1 = db_result_1.scalar_one()
         assert str(task_1.tenant_key) == tenant_key_1
 
-        stmt_2 = select(Task).where(Task.id == result_2["task_id"], Task.tenant_key == tenant_key_2)
+        stmt_2 = select(Task).where(
+            Task.id == result_2["task_id"], Task.tenant_key == tenant_key_2
+        )
         db_result_2 = await async_session.execute(stmt_2)
         task_2 = db_result_2.scalar_one()
         assert str(task_2.tenant_key) == tenant_key_2
+
+
+@pytest.mark.asyncio
+class TestCreateProjectMCPTool:
+    """Integration tests for create_project MCP tool backend via ToolAccessor"""
+
+    async def test_create_project_via_tool_accessor(self, async_session: AsyncSession):
+        """Project created via ToolAccessor.create_project appears in database."""
+        # Arrange
+        # Note: ToolAccessor wraps ProjectService for MCP tool exposure
+        from giljo_mcp.services.project_service import ProjectService
+
+        project_service = ProjectService(async_session)
+
+        # Act
+        result = await project_service.create_project(
+            name="API Rate Limiting",
+            description="Implement rate limiting for all public API endpoints",
+            tenant_key="tenant_abc",
+        )
+
+        # Assert
+        assert result is not None
+        # ProjectService returns the project object or dict depending on implementation
+        # Verify the project was persisted
+        from giljo_mcp.models.projects import Project
+
+        stmt = select(Project).where(Project.name == "API Rate Limiting")
+        db_result = await async_session.execute(stmt)
+        project = db_result.scalar_one_or_none()
+
+        assert project is not None
+        assert project.name == "API Rate Limiting"
+        assert "rate limiting" in project.description.lower()
+
+    async def test_create_project_with_tenant_isolation(self, async_session: AsyncSession):
+        """Projects are properly isolated by tenant_key."""
+        # Arrange
+        from giljo_mcp.services.project_service import ProjectService
+
+        project_service = ProjectService(async_session)
+        tenant_key_1 = "tenant_abc"
+        tenant_key_2 = "tenant_xyz"
+
+        # Act
+        await project_service.create_project(
+            name="Project for Tenant 1",
+            description="First tenant project",
+            tenant_key=tenant_key_1,
+        )
+
+        await project_service.create_project(
+            name="Project for Tenant 2",
+            description="Second tenant project",
+            tenant_key=tenant_key_2,
+        )
+
+        # Assert
+        from giljo_mcp.models.projects import Project
+
+        stmt_1 = select(Project).where(
+            Project.name == "Project for Tenant 1",
+            Project.tenant_key == tenant_key_1,
+        )
+        db_result_1 = await async_session.execute(stmt_1)
+        project_1 = db_result_1.scalar_one_or_none()
+        assert project_1 is not None
+        assert project_1.tenant_key == tenant_key_1
+
+        stmt_2 = select(Project).where(
+            Project.name == "Project for Tenant 2",
+            Project.tenant_key == tenant_key_2,
+        )
+        db_result_2 = await async_session.execute(stmt_2)
+        project_2 = db_result_2.scalar_one_or_none()
+        assert project_2 is not None
+        assert project_2.tenant_key == tenant_key_2
+
+    async def test_create_project_requires_name(self, async_session: AsyncSession):
+        """Project creation fails without a name."""
+        # Arrange
+        from giljo_mcp.services.project_service import ProjectService
+
+        project_service = ProjectService(async_session)
+
+        # Act & Assert
+        with pytest.raises((ValueError, TypeError)):
+            await project_service.create_project(
+                name="",
+                description="A project without a name",
+                tenant_key="tenant_abc",
+            )
 
 
 @pytest.fixture

@@ -116,6 +116,7 @@ class ToolAccessor:
         self._project_service = ProjectService(
             db_manager,
             tenant_manager,
+            test_session=test_session,
             websocket_manager=websocket_manager,  # Fix: Pass WebSocket manager for mission updates
         )
         self._template_service = TemplateService(db_manager, tenant_manager)
@@ -176,6 +177,15 @@ class ToolAccessor:
         Raises:
             ValidationError: If no active product is set for the tenant
         """
+        # Validate required fields (description validated at MCP schema layer)
+        if not name or not name.strip():
+            raise ValidationError(
+                "Project name is required and cannot be empty.",
+                context={"operation": "create_project"},
+            )
+        name = name.strip()
+        description = description.strip() if description else ""
+
         # Resolve effective tenant key
         effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
 
@@ -210,13 +220,24 @@ class ToolAccessor:
             status="inactive",
         )
 
+        logger.info(
+            "Created project %s (alias: %s) for tenant %s in product %s",
+            project.id,
+            project.alias,
+            effective_tenant_key,
+            product_id,
+        )
+
         return {
             "success": True,
             "project_id": project.id,
             "alias": project.alias,
             "name": project.name,
+            "description": project.description,
+            "mission": project.mission,
             "status": project.status,
             "product_id": project.product_id,
+            "created_at": project.created_at.isoformat() if project.created_at else None,
             "message": f"Project '{project.name}' created successfully",
         }
 
@@ -414,14 +435,36 @@ class ToolAccessor:
 
         product_id = active_product.id
 
+        # Default category to "general" when not provided (Bug 3 fix)
+        effective_category = category or "general"
+
         # Create task with product binding and tenant isolation
-        return await self._task_service.log_task(
-            content=description,
-            category=category or title,  # Use category if provided, otherwise use title
+        task_id = await self._task_service.log_task(
+            content=title,
+            title=title,
+            description=description,
+            category=effective_category,
             priority=priority,
-            product_id=product_id,  # Always bind to active product
-            tenant_key=effective_tenant_key,  # Ensure tenant isolation
+            product_id=product_id,
+            tenant_key=effective_tenant_key,
         )
+
+        logger.info(
+            "Created task %s for tenant %s in product %s",
+            task_id,
+            effective_tenant_key,
+            product_id,
+        )
+
+        return {
+            "success": True,
+            "task_id": task_id,
+            "title": title,
+            "priority": priority,
+            "category": effective_category,
+            "product_id": product_id,
+            "message": f"Task '{title}' created successfully",
+        }
 
     # Task MCP tools retired Dec 2025 - list_tasks, update_task, assign_task, complete_task removed
     # Web interface uses REST API (/api/v1/tasks/) via TaskService directly
