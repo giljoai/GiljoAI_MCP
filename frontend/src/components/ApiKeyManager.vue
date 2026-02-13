@@ -2,15 +2,16 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       API Keys
-      <v-spacer />
-      <v-btn color="primary" disabled>
-        <v-icon start>mdi-plus</v-icon>
-        Generate New Key (API Not Available)
-      </v-btn>
+      <v-tooltip location="right" max-width="300">
+        <template #activator="{ props }">
+          <v-icon v-bind="props" size="18" color="medium-emphasis" class="ml-2">mdi-help-circle-outline</v-icon>
+        </template>
+        Keys are automatically generated when you copy an MCP connection command from the Integrations tab.
+      </v-tooltip>
     </v-card-title>
 
     <v-card-subtitle class="mt-2">
-      Manage API keys for AI tool integrations and external applications
+      View and revoke API keys used by AI tool integrations
     </v-card-subtitle>
 
     <v-divider class="mt-4" />
@@ -18,8 +19,8 @@
     <v-card-text>
       <!-- Empty State -->
       <v-alert v-if="!loading && apiKeys.length === 0" type="info" variant="tonal" class="mb-4">
-        No API keys created yet. Generate a new integration key to connect AI tools like Claude
-        Code, Codex, or other external applications.
+        No API keys yet. Copy an MCP connection command from the
+        <strong>Integrations</strong> tab to automatically generate one.
       </v-alert>
 
       <!-- API Keys Table -->
