@@ -53,6 +53,15 @@ async def shutdown(state: APIState) -> None:
         except Exception as e:
             logger.error(f"Error stopping health monitor: {e}", exc_info=True)
 
+    # Stop silence detector gracefully (Handover 0491)
+    if getattr(state, "silence_detector", None):
+        try:
+            logger.info("Stopping silence detector...")
+            await state.silence_detector.stop()
+            logger.info("Silence detector stopped")
+        except Exception as e:
+            logger.error(f"Error stopping silence detector: {e}", exc_info=True)
+
     # Close all WebSocket connections
     try:
         logger.info("Closing WebSocket connections...")
