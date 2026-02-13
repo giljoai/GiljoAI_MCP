@@ -55,7 +55,7 @@ class TestSlashCommandsDownloadIntegration:
             # NOTE: gil_activate, gil_launch, gil_handover removed (0388) - users perform these via web UI
             namelist = zipf.namelist()
             assert "gil_get_claude_agents.md" in namelist
-            assert "gil_task.md" in namelist
+            assert "gil_add.md" in namelist
             # Install scripts are optional (only included if templates exist)
             assert "install.sh" in namelist or "install.ps1" in namelist
 
