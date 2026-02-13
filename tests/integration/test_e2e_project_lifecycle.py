@@ -221,9 +221,8 @@ class MockAgentSimulator:
         result = await self.db_session.execute(stmt)
         job = result.scalar_one()
 
-        job.status = "failed"
-        job.failure_reason = reason
-        job.completed_at = datetime.now(timezone.utc)
+        job.status = "blocked"
+        job.block_reason = reason
 
         await self.db_session.flush()
 

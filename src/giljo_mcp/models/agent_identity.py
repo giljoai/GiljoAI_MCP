@@ -167,7 +167,7 @@ class AgentExecution(Base):
         String(50),
         default="waiting",
         nullable=False,
-        comment="Execution status: waiting, working, blocked, complete, failed, cancelled",
+        comment="Execution status: waiting, working, blocked, complete, silent, decommissioned",
     )
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
@@ -263,13 +263,6 @@ class AgentExecution(Base):
         comment="Count of inbound messages that have been acknowledged/read",
     )
 
-    # Failure tracking
-    failure_reason = Column(
-        Text,
-        nullable=True,
-        comment="Reason for execution failure (full error description)",
-    )
-
     # Display name (optional)
     agent_name = Column(
         String(255),
@@ -288,7 +281,7 @@ class AgentExecution(Base):
         Index("idx_agent_executions_health", "health_status"),
         Index("idx_agent_executions_last_progress", "last_progress_at"),
         CheckConstraint(
-            "status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned')",
+            "status IN ('waiting', 'working', 'blocked', 'complete', 'silent', 'decommissioned')",
             name="ck_agent_execution_status",
         ),
         CheckConstraint(

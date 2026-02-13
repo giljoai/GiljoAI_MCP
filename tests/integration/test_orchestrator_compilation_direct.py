@@ -489,8 +489,9 @@ async def test_orchestrator_status_waiting_after_creation(db_session: AsyncSessi
     - "waiting": Created, ready for user to paste prompt
     - "working": Orchestrator is actively executing
     - "completed": Finished successfully
-    - "failed": Encountered error
-    - "cancelled": User cancelled execution
+    - "blocked": Encountered error (recoverable)
+    - "silent": Auto-detected timeout/inactivity
+    - "decommissioned": Agent terminated
 
     When create via generate(), status should be "waiting" until execution begins.
     """

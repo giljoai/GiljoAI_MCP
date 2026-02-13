@@ -179,16 +179,17 @@ export const EVENT_MAP = {
       }
     },
   },
-  'agent:auto_failed': {
+  // Handover 0491: Replaced agent:auto_failed with agent:silent
+  'agent:silent': {
     handler: async (payload) => {
       const { agent_display_name, reason, job_id } = payload
 
-      // Route to notification bell instead of toast (Handover 0424)
+      // Route to notification bell (Handover 0424 pattern)
       const notificationStore = useNotificationStore()
       notificationStore.addNotification({
         type: 'agent_health',
-        title: 'Agent Auto-Failed',
-        message: `${agent_display_name} - ${reason}`,
+        title: 'Agent Silent',
+        message: `${agent_display_name} - ${reason || 'Agent stopped communicating'}`,
         metadata: {
           job_id,
           agent_display_name,

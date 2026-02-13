@@ -174,9 +174,10 @@ class ProjectCloseoutDataResponse(BaseModel):
     project_name: str = Field(..., description="Project name")
     agent_count: int = Field(..., ge=0, description="Number of agents in the project")
     completed_agents: int = Field(..., ge=0, description="Number of completed agents")
-    failed_agents: int = Field(..., ge=0, description="Number of failed agents")
+    blocked_agents: int = Field(..., ge=0, description="Number of blocked agents")
+    silent_agents: int = Field(0, ge=0, description="Number of silent agents")
     all_agents_complete: bool = Field(..., description="Whether all agents finished work")
-    has_failed_agents: bool = Field(..., description="Whether any agents failed")
+    has_blocked_agents: bool = Field(..., description="Whether any agents are blocked")
 
     model_config = ConfigDict(from_attributes=True)
 

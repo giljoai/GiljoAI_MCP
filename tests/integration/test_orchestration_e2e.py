@@ -206,7 +206,7 @@ async def test_e2e_get_workflow_status(
     Test workflow status monitoring across multiple agents.
 
     Verifies:
-    - Active/completed/failed agent counts
+    - Active/completed/blocked agent counts
     - Progress percent calculation
     - Status aggregation across project
     """
@@ -257,7 +257,8 @@ async def test_e2e_get_workflow_status(
     assert status_result["completed_agents"] == 1
     assert status_result["active_agents"] == 1
     assert status_result["pending_agents"] == 1
-    assert status_result["failed_agents"] == 0
+    assert status_result["silent_agents"] == 0
+    assert status_result["decommissioned_agents"] == 0
 
     # Verify progress percent (1/3 = 33%)
     assert status_result["progress_percent"] == 33.33

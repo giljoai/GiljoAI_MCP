@@ -283,7 +283,7 @@ class TestPureCodexMode:
 
         # Assertions
         assert failed_job is not None
-        assert failed_job.status == "failed"
+        assert failed_job.status == "blocked"
 
 
 # ============================================================================
@@ -506,7 +506,7 @@ class TestErrorRecoveryFlow:
         )
 
         # Assertions
-        assert failed_job.status == "failed"
+        assert failed_job.status == "blocked"
 
     def test_error_stored_in_job(self, db_manager, job_manager, tenant_key):
         """Test error message stored in job."""
@@ -529,7 +529,7 @@ class TestErrorRecoveryFlow:
         )
 
         # Verify job status is failed
-        assert failed_job.status == "failed"
+        assert failed_job.status == "blocked"
 
 
 # ============================================================================
@@ -664,7 +664,7 @@ class TestJobStatusTransitions:
             job_id=job.job_id,
             error="Test error",
         )
-        assert job.status == "failed"
+        assert job.status == "blocked"
 
 
 # ============================================================================

@@ -122,7 +122,7 @@ class AgentJobRepository:
 
             if completed_at:
                 job.completed_at = completed_at
-            elif status in ["completed", "failed"] and not job.completed_at:
+            elif status in ["completed", "cancelled"] and not job.completed_at:
                 job.completed_at = datetime.now(timezone.utc)
 
             await session.flush()
@@ -320,7 +320,7 @@ class AgentJobRepository:
             "by_agent_display_name": dict(type_counts),
             "active_jobs": len([s for s, c in status_counts if s in ["pending", "active"]]),
             "completed_jobs": len([s for s, c in status_counts if s == "completed"]),
-            "failed_jobs": len([s for s, c in status_counts if s == "failed"]),
+            "blocked_jobs": len([s for s, c in status_counts if s == "blocked"]),
         }
 
     # ============================================================================

@@ -249,8 +249,8 @@ async def test_mission_acknowledged_event_not_emitted_for_other_status_transitio
     with patch("api.app.state") as mock_state:
         mock_state.websocket_manager = mock_websocket_manager
 
-        # Action: Update status to 'failed' (NOT 'working')
-        await job_manager.update_status(job_id=agent_job.job_id, new_status="failed", tenant_key=tenant_key)
+        # Action: Update status to 'blocked' (NOT 'working')
+        await job_manager.update_status(job_id=agent_job.job_id, new_status="blocked", tenant_key=tenant_key)
 
         # Refresh job from database
         await db_session.refresh(agent_job)
