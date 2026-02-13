@@ -299,6 +299,7 @@ class WorkflowStatus(BaseModel):
     current_stage: str = "Not started"
     progress_percent: float = 0.0
     total_agents: int = 0
+    caller_note: str = ""
 
     model_config = ConfigDict(from_attributes=True)
 
