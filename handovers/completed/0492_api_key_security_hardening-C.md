@@ -5,7 +5,7 @@
 **To Agent:** Next Session (tdd-implementor + database-expert)
 **Priority:** HIGH
 **Estimated Complexity:** 8-12h across 3 phases
-**Status:** Not Started
+**Status:** COMPLETED
 
 ---
 
@@ -194,13 +194,13 @@ await self._log_ip(api_key.id, request_ip)
 
 ## Success Criteria
 
-- [ ] No user can create more than 5 active API keys
-- [ ] API keys expire after 90 days and are rejected at auth time
-- [ ] IP addresses are passively logged for every authenticated MCP request
-- [ ] Frontend shows expiry dates with visual urgency indicators
-- [ ] All existing tests still pass
-- [ ] New tests cover all three features with >80% coverage
-- [ ] No performance regression on MCP request latency (IP logging is async/non-blocking)
+- [x] No user can create more than 5 active API keys
+- [x] API keys expire after 90 days and are rejected at auth time
+- [x] IP addresses are passively logged for every authenticated MCP request
+- [x] Frontend shows expiry dates with visual urgency indicators
+- [x] All existing tests still pass
+- [x] New tests cover all three features with >80% coverage
+- [x] No performance regression on MCP request latency (IP logging is async/non-blocking)
 
 ---
 
@@ -210,3 +210,49 @@ await self._log_ip(api_key.id, request_ip)
 - `api_key_ip_log` table: standalone, no FK impact on core tables. Drop table if needed.
 - Key limit check: single `if` block in `_create_api_key_impl()`, easily removed.
 - All changes are additive - no existing behavior modified, only new constraints added.
+
+---
+
+## Implementation Summary
+
+### 2026-02-13 - Claude Code Session
+**Status:** Completed
+
+### What Was Built
+
+- **Database**: `expires_at` column on `api_keys`, new `api_key_ip_log` table with upsert pattern
+- **Backend**: 5-key limit check + 90-day expiry in `_create_api_key_impl()`, expiry filtering in both auth paths (`authenticate_api_key`, `get_current_user`), non-blocking IP logging via PostgreSQL upsert
+- **Frontend**: Expiry column with color-coded urgency (green/yellow/red), "X of 5 keys used" chip, expired badge
+- **Migrations**: Baseline updated + incremental migration `a7f3b2c4d890` with backfill
+- **Tests**: 34 new tests across 3 test files (13 limit/expiry, 10 auth expiry, 11 IP logging)
+
+### Key Files Modified
+
+| File | Change |
+|------|--------|
+| `src/giljo_mcp/models/auth.py` | `expires_at` column, `ApiKeyIpLog` model |
+| `src/giljo_mcp/models/__init__.py` | `ApiKeyIpLog` export |
+| `src/giljo_mcp/services/auth_service.py` | 5-key limit, 90-day expiry, list includes `expires_at` |
+| `src/giljo_mcp/schemas/service_responses.py` | `expires_at` on `ApiKeyInfo` + `ApiKeyCreateResult` |
+| `api/endpoints/mcp_session.py` | Expiry filter + `log_ip()` method |
+| `api/endpoints/mcp_http.py` | IP logging call after session creation |
+| `src/giljo_mcp/auth/dependencies.py` | Expiry filter + IP logging in REST auth |
+| `api/endpoints/auth.py` | `expires_at` in `APIKeyResponse` + `APIKeyCreateResponse` |
+| `frontend/src/components/ApiKeyManager.vue` | Expiry column, key count chip |
+| `migrations/versions/baseline_v32_unified.py` | Schema additions |
+| `migrations/versions/a7f3b2c4d890_*.py` | Incremental migration with backfill |
+
+### Commits (6 total)
+
+| Hash | Description |
+|------|-------------|
+| `615729c9` | test: Add tests for API key 5-key limit and 90-day expiry |
+| `14a17a21` | feat: Enforce 5-key limit and 90-day expiry on API keys |
+| `8ea42dac` | test: Add tests for API key IP address logging |
+| `50d5504e` | feat: Implement passive IP address logging on API key auth |
+| `01977f47` | fix: Clean up API key expiry auth tests |
+| `b175605e` | feat: API key security hardening - models, API schemas, frontend |
+
+### Execution Approach
+
+Used 5 parallel subagents: database-expert (Phase 1a), 3x tdd-implementor (Phases 1b, 1c, 2), ux-designer (Phase 3). All phases completed with TDD approach (tests first, then implementation). All lint checks pass. IP logging verified with 11/11 tests passing.
