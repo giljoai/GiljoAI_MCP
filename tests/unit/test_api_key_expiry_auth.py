@@ -12,21 +12,23 @@ Each path must reject expired API keys while accepting:
 - Keys with future expiry (expires_at > now)
 """
 
-import pytest
-import pytest_asyncio
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
-from passlib.hash import bcrypt
+import pytest
+import pytest_asyncio
 
 from src.giljo_mcp.api_key_utils import (
     generate_api_key,
     get_key_prefix,
     hash_api_key,
-    verify_api_key,
 )
 from src.giljo_mcp.models import APIKey, User
+
+
+# Pre-computed bcrypt hash of "password" to avoid expensive hashing in each test
+_PRECOMPUTED_PASSWORD_HASH = "$2b$12$NByXwjtwx9JAX5gq6CYiPO3m1Ikl42rvnvbZv2lP4pdyKAU1rpxsO"
 
 
 class TestMCPSessionManagerExpiryCheck:
@@ -39,7 +41,7 @@ class TestMCPSessionManagerExpiryCheck:
             id=str(uuid4()),
             tenant_key="test_tenant_expiry",
             username="expiry_test_user",
-            password_hash=bcrypt.hash("password"),
+            password_hash=_PRECOMPUTED_PASSWORD_HASH,
             is_active=True,
             org_id="00000000-0000-0000-0000-000000000001",
         )
@@ -107,13 +109,11 @@ class TestMCPSessionManagerExpiryCheck:
         result = await manager.authenticate_api_key(plaintext)
 
         assert result is not None
-        key_result, user_result = result
+        key_result, _user_result = result
         assert key_result.id == api_key_record.id
 
     @pytest.mark.asyncio
-    async def test_expired_key_rejected(
-        self, db_session, setup_user_and_keys, create_api_key_with_expiry
-    ):
+    async def test_expired_key_rejected(self, db_session, setup_user_and_keys, create_api_key_with_expiry):
         """API key that has expired should be rejected."""
         from api.endpoints.mcp_session import MCPSessionManager
 
@@ -126,9 +126,7 @@ class TestMCPSessionManagerExpiryCheck:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_recently_expired_key_rejected(
-        self, db_session, setup_user_and_keys, create_api_key_with_expiry
-    ):
+    async def test_recently_expired_key_rejected(self, db_session, setup_user_and_keys, create_api_key_with_expiry):
         """API key that expired just moments ago should be rejected."""
         from api.endpoints.mcp_session import MCPSessionManager
 
@@ -141,16 +139,12 @@ class TestMCPSessionManagerExpiryCheck:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_inactive_key_still_rejected(
-        self, db_session, setup_user_and_keys, create_api_key_with_expiry
-    ):
+    async def test_inactive_key_still_rejected(self, db_session, setup_user_and_keys, create_api_key_with_expiry):
         """Inactive key with valid expiry should still be rejected (is_active check preserved)."""
         from api.endpoints.mcp_session import MCPSessionManager
 
         future_expiry = datetime.now(timezone.utc) + timedelta(days=30)
-        _, plaintext = await create_api_key_with_expiry(
-            expires_at=future_expiry, is_active=False
-        )
+        _, plaintext = await create_api_key_with_expiry(expires_at=future_expiry, is_active=False)
 
         manager = MCPSessionManager(db_session)
         result = await manager.authenticate_api_key(plaintext)
@@ -168,7 +162,7 @@ class TestGetCurrentUserExpiryCheck:
             id=str(uuid4()),
             tenant_key="test_tenant_deps",
             username="deps_test_user",
-            password_hash=bcrypt.hash("password"),
+            password_hash=_PRECOMPUTED_PASSWORD_HASH,
             is_active=True,
             org_id="00000000-0000-0000-0000-000000000001",
         )
@@ -212,9 +206,7 @@ class TestGetCurrentUserExpiryCheck:
         return request
 
     @pytest.mark.asyncio
-    async def test_valid_key_no_expiry_authenticates(
-        self, db_session, setup_user_and_keys, create_api_key_with_expiry
-    ):
+    async def test_valid_key_no_expiry_authenticates(self, db_session, setup_user_and_keys, create_api_key_with_expiry):
         """API key with no expiry authenticates via get_current_user."""
         from src.giljo_mcp.auth.dependencies import get_current_user
 
@@ -255,11 +247,10 @@ class TestGetCurrentUserExpiryCheck:
         assert user.id == setup_user_and_keys.id
 
     @pytest.mark.asyncio
-    async def test_expired_key_rejected(
-        self, db_session, setup_user_and_keys, create_api_key_with_expiry
-    ):
+    async def test_expired_key_rejected(self, db_session, setup_user_and_keys, create_api_key_with_expiry):
         """Expired API key should fail authentication via get_current_user."""
         from fastapi import HTTPException
+
         from src.giljo_mcp.auth.dependencies import get_current_user
 
         past_expiry = datetime.now(timezone.utc) - timedelta(hours=2)
@@ -278,11 +269,10 @@ class TestGetCurrentUserExpiryCheck:
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_long_expired_key_rejected(
-        self, db_session, setup_user_and_keys, create_api_key_with_expiry
-    ):
+    async def test_long_expired_key_rejected(self, db_session, setup_user_and_keys, create_api_key_with_expiry):
         """API key that expired days ago should fail authentication."""
         from fastapi import HTTPException
+
         from src.giljo_mcp.auth.dependencies import get_current_user
 
         old_expiry = datetime.now(timezone.utc) - timedelta(days=30)
@@ -306,12 +296,11 @@ class TestGetCurrentUserExpiryCheck:
     ):
         """Inactive (revoked) key with valid expiry should still fail."""
         from fastapi import HTTPException
+
         from src.giljo_mcp.auth.dependencies import get_current_user
 
         future_expiry = datetime.now(timezone.utc) + timedelta(days=30)
-        _, plaintext = await create_api_key_with_expiry(
-            expires_at=future_expiry, is_active=False
-        )
+        _, plaintext = await create_api_key_with_expiry(expires_at=future_expiry, is_active=False)
 
         request = self._make_request()
         with pytest.raises(HTTPException) as exc_info:
