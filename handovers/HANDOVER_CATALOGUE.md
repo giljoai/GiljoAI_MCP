@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-12 (Full reconciliation: 60+ files archived, catalogue aligned with git commits)
+**Last Updated:** 2026-02-13 (0492 API Key Security Hardening completed)
 
 ---
 
@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | 0371 IN PROGRESS, 0365/0373/0374/0382/0397 Ready |
-| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0491 COMPLETE, 0440/0481-0484/0486/0488-0489/0492 Ready |
+| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0492 COMPLETE, 0440/0481-0484/0486/0488-0489 Ready |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy + 0732 DEFERRED/READY |
@@ -62,7 +62,7 @@
 | **0486** | **Continuation Workflow Enhancements** | **Ready** | **HIGH** | Job reactivation, mission versioning, todo append |
 | **0488** | **Staging Broadcast Response Enforcement** | **Ready** | **HIGH** | STOP directive for staging completion |
 | **0489** | **Cleanup API MCP (CRITICAL)** | **Ready** | **CRITICAL** | mcp_http.py cleanup |
-| **0492** | **API Key Security Hardening** | **Ready** | **HIGH** | 5-key limit, 90-day expiry, IP logging |
+| ~~0492~~ | ~~API Key Security Hardening~~ | **COMPLETE** | - | Moved to completed/ |
 | 0732 | API Consistency Fixes | Ready | Low | Minor API polish from 0725 audit |
 
 ### Continuation Workflow Series (0486) - READY
@@ -141,6 +141,7 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0492 | API Key Security Hardening | **COMPLETE** (2026-02-13) |
 | 0750a-d | Post-Cleanup Audit & Scrub Series | **COMPLETE** (2026-02-11) |
 | 0731a-d | Typed Service Returns Series | **COMPLETE** (2026-02-11) |
 | 0733 | Tenant Isolation API Security Patch | **COMPLETE** (2026-02-09) |
@@ -395,7 +396,7 @@ completed/reference/
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0397
-**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0492 (0480/0485/0487/0490/0491 complete, 0481-0484/0486/0488-0489/0492 ready)
+**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0492 (0480/0485/0487/0490-0492 complete, 0481-0484/0486/0488-0489 ready)
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
@@ -444,6 +445,11 @@ completed/reference/
   - Added missing entries: 0434, 0485, 0490, 0726 (superseded), 0727-0733
   - Updated all series completion summaries
   - Updated Quick Reference for all ranges
+
+- **0492 API Key Security Hardening (2026-02-13)**: 6 commits, 34 new tests
+  - 5-key-per-user limit, 90-day key expiry, passive IP logging
+  - Database: `expires_at` column + `api_key_ip_log` table
+  - Frontend: Expiry column with color-coded urgency, key count chip
 
 - **0491 Agent Status Simplification (2026-02-13)**: 65 files, 5 commits
   - Simplified 7-status to 4 agent-reported + Silent + decommissioned
