@@ -79,9 +79,7 @@ async def test_user(db_session, test_org):
     return user, password
 
 
-async def _create_api_key_in_db(
-    db_session, user, *, is_active: bool = True, expires_at=None
-) -> APIKey:
+async def _create_api_key_in_db(db_session, user, *, is_active: bool = True, expires_at=None) -> APIKey:
     """Helper to create an API key directly in the database."""
     unique_id = str(uuid4())[:8]
     raw_key = f"gk_test_key_{unique_id}_{uuid4().hex[:12]}"
@@ -129,7 +127,7 @@ class TestApiKeyLimit:
         user, _ = test_user
 
         # Create 5 active keys directly in DB
-        for i in range(5):
+        for _i in range(5):
             await _create_api_key_in_db(
                 db_session,
                 user,
@@ -142,14 +140,12 @@ class TestApiKeyLimit:
             )
 
     @pytest.mark.asyncio
-    async def test_revoked_keys_not_counted_toward_limit(
-        self, auth_service, test_user, db_session
-    ):
+    async def test_revoked_keys_not_counted_toward_limit(self, auth_service, test_user, db_session):
         """Revoked (inactive) keys should not count toward the 5-key limit."""
         user, _ = test_user
 
         # Create 5 revoked keys
-        for i in range(5):
+        for _i in range(5):
             await _create_api_key_in_db(
                 db_session,
                 user,
@@ -164,14 +160,12 @@ class TestApiKeyLimit:
         assert isinstance(result, ApiKeyCreateResult)
 
     @pytest.mark.asyncio
-    async def test_expired_keys_not_counted_toward_limit(
-        self, auth_service, test_user, db_session
-    ):
+    async def test_expired_keys_not_counted_toward_limit(self, auth_service, test_user, db_session):
         """Expired keys (past expires_at) should not count toward the 5-key limit."""
         user, _ = test_user
 
         # Create 5 active but expired keys
-        for i in range(5):
+        for _i in range(5):
             await _create_api_key_in_db(
                 db_session,
                 user,

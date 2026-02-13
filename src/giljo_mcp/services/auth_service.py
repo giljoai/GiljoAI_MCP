@@ -24,11 +24,11 @@ Design Principles:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from passlib.hash import bcrypt
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
@@ -330,6 +330,7 @@ class AuthService:
                 created_at=key.created_at.isoformat() if key.created_at else None,
                 last_used=key.last_used.isoformat() if key.last_used else None,
                 revoked_at=key.revoked_at.isoformat() if key.revoked_at else None,
+                expires_at=key.expires_at.isoformat() if key.expires_at else None,
             )
             for key in api_keys
         ]
@@ -376,6 +377,21 @@ class AuthService:
         self, session: AsyncSession, user_id: str, tenant_key: str, name: str, permissions: list[str]
     ) -> ApiKeyCreateResult:
         """Implementation that uses provided session."""
+        active_count = await session.scalar(
+            select(func.count())
+            .select_from(APIKey)
+            .where(
+                APIKey.user_id == user_id,
+                APIKey.is_active.is_(True),
+                or_(APIKey.expires_at > func.now(), APIKey.expires_at.is_(None)),
+            )
+        )
+        if active_count >= 5:
+            raise ValidationError(
+                message="Maximum of 5 active API keys allowed. Revoke an existing key first.",
+                context={"method": "create_api_key", "user_id": user_id, "active_count": active_count},
+            )
+
         # Generate new API key
         api_key = generate_api_key()
         key_hash = hash_api_key(api_key)
@@ -392,6 +408,7 @@ class AuthService:
             permissions=permissions,
             is_active=True,
             created_at=datetime.now(timezone.utc),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=90),
         )
 
         session.add(new_key)
@@ -410,6 +427,7 @@ class AuthService:
             key_prefix=key_prefix,
             key_hash=key_hash,
             permissions=new_key.permissions,
+            expires_at=new_key.expires_at.isoformat() if new_key.expires_at else None,
         )
 
     async def revoke_api_key(self, key_id: str, user_id: str) -> None:
