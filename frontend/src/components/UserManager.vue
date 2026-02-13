@@ -31,7 +31,7 @@
       :items="filteredUsers"
       :loading="loading"
       :search="search"
-      class="elevation-1"
+      class="elevation-0"
     >
       <!-- Username column with icon -->
       <template #item.username="{ item }">
@@ -121,7 +121,7 @@
 
     <!-- Create/Edit User Dialog -->
     <v-dialog v-model="showUserDialog" max-width="600">
-      <v-card>
+      <v-card v-draggable>
         <v-card-title>
           <v-icon class="mr-2">{{ isEditMode ? 'mdi-pencil' : 'mdi-account-plus' }}</v-icon>
           {{ isEditMode ? 'Edit User' : 'Create New User' }}
@@ -194,7 +194,7 @@
 
     <!-- Change Password Dialog -->
     <v-dialog v-model="showPasswordDialog" max-width="500">
-      <v-card>
+      <v-card v-draggable>
         <v-card-title>
           <v-icon class="mr-2">mdi-key-variant</v-icon>
           Change Password
@@ -229,7 +229,7 @@
 
     <!-- Reset Password Confirmation Dialog -->
     <v-dialog v-model="showResetPasswordDialog" max-width="500">
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="bg-warning">
           <v-icon class="mr-2">mdi-lock-reset</v-icon>
           Reset User Password?
@@ -272,7 +272,7 @@
 
     <!-- Status Toggle Confirmation Dialog -->
     <v-dialog v-model="showStatusDialog" max-width="500">
-      <v-card>
+      <v-card v-draggable>
         <v-card-title :class="statusUser?.is_active ? 'bg-warning' : 'bg-success'">
           <v-icon class="mr-2">
             {{ statusUser?.is_active ? 'mdi-account-off' : 'mdi-account-check' }}
