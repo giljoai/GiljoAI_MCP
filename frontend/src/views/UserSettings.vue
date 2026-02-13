@@ -156,140 +156,20 @@
       <!-- Notification Settings -->
       <v-window-item value="notifications">
         <v-card data-test="notification-settings">
-          <v-card-title>Notification Settings</v-card-title>
+          <v-card-title>Notification Display</v-card-title>
+          <v-card-subtitle>Configure where and how long notifications appear</v-card-subtitle>
           <v-card-text>
-            <h3 class="text-h6 mb-4">Message Notifications</h3>
-            <div class="d-flex align-center">
-              <v-switch
-                v-model="settings.notifications.newMessages"
-                label="New message alerts"
-                color="primary"
-                data-test="new-messages-toggle"
-                hide-details
-                class="flex-grow-1"
-              />
-              <v-tooltip location="right" max-width="300">
-                <template #activator="{ props }">
-                  <v-icon v-bind="props" size="small" color="medium-emphasis" class="ml-2">mdi-help-circle-outline</v-icon>
-                </template>
-                Show notifications when agents send you messages
-              </v-tooltip>
-            </div>
-            <div class="d-flex align-center mt-2">
-              <v-switch
-                v-model="settings.notifications.urgentOnly"
-                label="Urgent messages only"
-                color="primary"
-                :disabled="!settings.notifications.newMessages"
-                hide-details
-                class="flex-grow-1"
-              />
-              <v-tooltip location="right" max-width="300">
-                <template #activator="{ props }">
-                  <v-icon v-bind="props" size="small" color="medium-emphasis" class="ml-2">mdi-help-circle-outline</v-icon>
-                </template>
-                Only show high-priority notifications, hide routine updates
-              </v-tooltip>
-            </div>
-
-            <v-divider class="my-6" />
-
-            <h3 class="text-h6 mb-4">Agent Notifications</h3>
-            <div class="d-flex align-center">
-              <v-switch
-                v-model="settings.notifications.agentStatus"
-                label="Agent status changes"
-                color="primary"
-                hide-details
-                class="flex-grow-1"
-              />
-              <v-tooltip location="right" max-width="300">
-                <template #activator="{ props }">
-                  <v-icon v-bind="props" size="small" color="medium-emphasis" class="ml-2">mdi-help-circle-outline</v-icon>
-                </template>
-                Notify when agents change status (started, completed, failed)
-              </v-tooltip>
-            </div>
-            <div class="d-flex align-center mt-2">
-              <v-switch
-                v-model="settings.notifications.agentErrors"
-                label="Agent errors"
-                color="primary"
-                hide-details
-                class="flex-grow-1"
-              />
-              <v-tooltip location="right" max-width="300">
-                <template #activator="{ props }">
-                  <v-icon v-bind="props" size="small" color="medium-emphasis" class="ml-2">mdi-help-circle-outline</v-icon>
-                </template>
-                Show alerts when agents encounter errors or health issues
-              </v-tooltip>
-            </div>
-
-            <v-divider class="my-6" />
-
-            <h3 class="text-h6 mb-4">Task Notifications</h3>
-            <div class="d-flex align-center">
-              <v-switch
-                v-model="settings.notifications.taskComplete"
-                label="Task completions"
-                color="primary"
-                hide-details
-                class="flex-grow-1"
-              />
-              <v-tooltip location="right" max-width="300">
-                <template #activator="{ props }">
-                  <v-icon v-bind="props" size="small" color="medium-emphasis" class="ml-2">mdi-help-circle-outline</v-icon>
-                </template>
-                Notify when tasks are marked complete
-              </v-tooltip>
-            </div>
-            <div class="d-flex align-center mt-2">
-              <v-switch
-                v-model="settings.notifications.taskOverdue"
-                label="Overdue task alerts"
-                color="primary"
-                hide-details
-                class="flex-grow-1"
-              />
-              <v-tooltip location="right" max-width="300">
-                <template #activator="{ props }">
-                  <v-icon v-bind="props" size="small" color="medium-emphasis" class="ml-2">mdi-help-circle-outline</v-icon>
-                </template>
-                Alert when tasks exceed their expected duration
-              </v-tooltip>
-            </div>
-
-            <v-divider class="my-6" />
-
-            <h3 class="text-h6 mb-4">Notification Display</h3>
-            <div class="d-flex align-center mb-4">
-              <v-switch
-                v-model="settings.notifications.periodicReminders"
-                label="Periodic reminders"
-                color="primary"
-                hide-details
-                class="flex-grow-1"
-                data-test="periodic-reminders-toggle"
-              />
-              <v-tooltip location="right" max-width="300">
-                <template #activator="{ props }">
-                  <v-icon v-bind="props" size="small" color="medium-emphasis" class="ml-2">mdi-help-circle-outline</v-icon>
-                </template>
-                Show a reminder toast every 15 minutes if you have unread notifications
-              </v-tooltip>
-            </div>
             <v-select
               v-model="settings.notifications.position"
               :items="[
-                'top-left',
-                'top-center',
-                'top-right',
-                'bottom-left',
-                'bottom-center',
-                'bottom-right',
+                { title: 'Top Left', value: 'top-left' },
+                { title: 'Top Center', value: 'top-center' },
+                { title: 'Top Right', value: 'top-right' },
+                { title: 'Bottom Left', value: 'bottom-left' },
+                { title: 'Bottom Center', value: 'bottom-center' },
+                { title: 'Bottom Right', value: 'bottom-right' },
               ]"
-              label="Notification position"
+              label="Position"
               variant="outlined"
               data-test="notification-position-select"
             />
@@ -450,13 +330,6 @@ const settings = ref({
     highContrast: false,
   },
   notifications: {
-    newMessages: true,
-    urgentOnly: false,
-    agentStatus: true,
-    agentErrors: true,
-    taskComplete: true,
-    taskOverdue: true,
-    periodicReminders: true,
     position: 'bottom-right',
     duration: 5,
   },
@@ -500,13 +373,6 @@ function resetAppearanceSettings() {
 
 function resetNotificationSettings() {
   settings.value.notifications = {
-    newMessages: true,
-    urgentOnly: false,
-    agentStatus: true,
-    agentErrors: true,
-    taskComplete: true,
-    taskOverdue: true,
-    periodicReminders: true,
     position: 'bottom-right',
     duration: 5,
   }

@@ -1,8 +1,8 @@
 <template>
   <v-snackbar-queue
     v-model="toasts"
-    :location="position"
-    :timeout="defaultTimeout"
+    :location="vuetifyLocation"
+    :timeout="storeDuration"
     multi-line
     class="toast-manager"
   >
@@ -10,8 +10,8 @@
       <v-snackbar
         v-model="toast.show"
         :color="toast.color"
-        :location="position"
-        :timeout="toast.timeout || defaultTimeout"
+        :location="vuetifyLocation"
+        :timeout="toast.timeout !== undefined ? toast.timeout : storeDuration"
         :multi-line="toast.multiLine"
         @update:model-value="(val) => !val && removeToast(index)"
       >
@@ -40,38 +40,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 
-// Props
-const props = defineProps({
-  position: {
-    type: String,
-    default: 'bottom end',
-    validator: (value) =>
-      [
-        'top start',
-        'top center',
-        'top end',
-        'bottom start',
-        'bottom center',
-        'bottom end',
-      ].includes(value),
-  },
-  defaultTimeout: {
-    type: Number,
-    default: 5000,
-  },
-  maxToasts: {
-    type: Number,
-    default: 5,
-  },
-})
+const MAX_TOASTS = 5
 
 // State
 const toasts = ref([])
 const toastId = ref(0)
 const settingsStore = useSettingsStore()
+
+// Map user-facing position values to Vuetify location strings
+const positionMap = {
+  'top-left': 'top start',
+  'top-center': 'top center',
+  'top-right': 'top end',
+  'bottom-left': 'bottom start',
+  'bottom-center': 'bottom center',
+  'bottom-right': 'bottom end',
+}
+
+const vuetifyLocation = computed(() => {
+  const pos = settingsStore.notificationPosition
+  return positionMap[pos] || 'bottom end'
+})
+
+const storeDuration = computed(() => settingsStore.notificationDuration)
 
 // Toast types configuration
 const toastTypes = {
@@ -117,7 +111,7 @@ function showToast(options) {
   }
 
   // Limit number of toasts
-  if (toasts.value.length >= props.maxToasts) {
+  if (toasts.value.length >= MAX_TOASTS) {
     toasts.value.shift()
   }
 
