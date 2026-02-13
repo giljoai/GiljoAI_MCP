@@ -179,7 +179,7 @@ class TestAgentExecutionStatusConstraint:
     """Test execution status validation."""
 
     @pytest.mark.parametrize(
-        "status", ["waiting", "working", "blocked", "complete", "failed", "cancelled", "decommissioned"]
+        "status", ["waiting", "working", "blocked", "complete", "silent", "decommissioned"]
     )
     @pytest.mark.asyncio
     async def test_agent_execution_allows_valid_statuses(self, db_session: AsyncSession, status: str):

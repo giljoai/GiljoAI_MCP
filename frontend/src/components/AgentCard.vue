@@ -146,23 +146,12 @@
           <div class="complete-text">Complete</div>
         </div>
 
-        <!-- Jobs Tab - Failure State (Handover 0113: Shows failure_reason) -->
-        <div v-else-if="agent.status === 'failed'" class="error-content">
-          <v-alert type="error" density="compact" variant="tonal" class="mb-2">
-            <div class="text-caption font-weight-bold mb-1">
-              Failure
-              <v-chip
-                v-if="agent.failure_reason"
-                size="x-small"
-                color="error"
-                variant="outlined"
-                class="ml-2"
-              >
-                {{ agent.failure_reason }}
-              </v-chip>
-            </div>
+        <!-- Jobs Tab - Silent State (Handover 0491: Agent stopped communicating) -->
+        <div v-else-if="agent.status === 'silent'" class="silent-content">
+          <v-alert type="warning" density="compact" variant="tonal" class="mb-2">
+            <div class="text-caption font-weight-bold mb-1">Silent</div>
             <div class="text-body-2">
-              {{ agent.block_reason || 'No details available' }}
+              {{ agent.block_reason || 'Agent stopped communicating' }}
             </div>
           </v-alert>
         </div>
@@ -177,14 +166,7 @@
           </v-alert>
         </div>
 
-        <!-- Jobs Tab - Cancelled State (Handover 0113) -->
-        <div v-else-if="agent.status === 'cancelled'" class="cancelled-content text-center py-4">
-          <v-icon size="48" color="warning" class="mb-2">mdi-cancel</v-icon>
-          <div class="text-body-1 font-weight-medium">Cancelled</div>
-          <div class="text-caption text-grey mt-1">Job was cancelled by user</div>
-        </div>
-
-        <!-- Decommissioned state removed (Handover 0461d) - Uses simple handover API now -->
+        <!-- Decommissioned/Cancelled states removed (Handovers 0461d, 0491) -->
       </div>
 
       <!-- Orchestrator special launch icons removed per UX request -->
@@ -251,16 +233,29 @@
           Details
         </v-btn>
 
-        <!-- Jobs Tab: Failure/Blocked State - View Error -->
+        <!-- Jobs Tab: Blocked State - View Error -->
         <v-btn
-          v-else-if="mode === 'jobs' && (agent.status === 'failed' || agent.status === 'blocked')"
+          v-else-if="mode === 'jobs' && agent.status === 'blocked'"
           variant="outlined"
-          :color="agent.status === 'failed' ? 'error' : 'warning'"
+          color="warning"
           block
           @click="$emit('view-error', agent)"
         >
           <v-icon start>mdi-alert-circle</v-icon>
           View Error
+        </v-btn>
+
+        <!-- Jobs Tab: Silent State - Clear Silent (Handover 0491) -->
+        <v-btn
+          v-else-if="mode === 'jobs' && agent.status === 'silent'"
+          variant="elevated"
+          color="amber-darken-2"
+          block
+          :loading="clearingSilent"
+          @click="clearSilentStatus"
+        >
+          <v-icon start>mdi-refresh</v-icon>
+          Clear Silent
         </v-btn>
 
         <!-- Complete State: Continue Working OR Close Out (Handover 0113) -->
@@ -288,28 +283,18 @@
           </v-btn>
         </div>
 
-        <!-- Cancelled State: No actions (terminal state) -->
-        <div v-else-if="mode === 'jobs' && agent.status === 'cancelled'" class="terminal-state">
-          <v-chip
-            color="grey"
-            variant="flat"
-            block
-            style="width: 100%; justify-content: center; height: 36px"
-          >
-            <v-icon start>mdi-cancel</v-icon>
-            <span class="text-caption">Cancelled</span>
-          </v-chip>
-        </div>
+        <!-- Cancelled state action removed (Handover 0491) -->
       </slot>
     </v-card-actions>
   </v-card>
 </template>
 
 <script setup>
-import { computed, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { getAgentColor } from '@/config/agentColors'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { getStatusConfig } from '@/utils/statusConfig'
+import api from '@/services/api'
 
 // Handover 0461d: Removed instance_number, decommissioned, and succession chain UI
 
@@ -416,7 +401,7 @@ const statusConfig = computed(() => {
  * Priority states (moved to top)
  */
 const isPriorityState = computed(() => {
-  return props.agent.status === 'failed' || props.agent.status === 'blocked'
+  return props.agent.status === 'silent' || props.agent.status === 'blocked'
 })
 
 /**
@@ -463,7 +448,7 @@ const cardAriaLabel = computed(() => {
  * Health Indicator Logic (Handover 0107)
  * Only show health indicator when:
  * 1. Mode is 'jobs' (not 'launch')
- * 2. Agent is active/waiting/working (not completed/failed)
+ * 2. Agent is active/waiting/working (not in terminal state)
  * 3. Health state is not 'healthy'
  */
 const showHealthIndicator = computed(() => {
@@ -473,7 +458,7 @@ const showHealthIndicator = computed(() => {
   }
 
   // Skip if job is in terminal state
-  if (['complete', 'failed', 'cancelled'].includes(props.agent.status)) {
+  if (['complete', 'silent', 'decommissioned'].includes(props.agent.status)) {
     return false
   }
 
@@ -537,6 +522,28 @@ const isStale = computed(() => {
     ['working'].includes(props.agent.status)
   )
 })
+
+/**
+ * Handover 0491: Clear Silent status
+ * Calls POST /api/agent-executions/{agent_id}/clear-silent to resume the agent
+ */
+const clearingSilent = ref(false)
+
+async function clearSilentStatus() {
+  const agentId = props.agent.agent_id || props.agent.job_id
+  if (!agentId) return
+
+  clearingSilent.value = true
+  try {
+    await api.post(`/api/agent-executions/${agentId}/clear-silent`)
+    emit('refresh-jobs')
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[AgentCard] Failed to clear silent status:', error)
+  } finally {
+    clearingSilent.value = false
+  }
+}
 
 /**
  * Initialize composables
@@ -668,7 +675,8 @@ onBeforeUnmount(() => {
 .mission-content,
 .waiting-content,
 .working-content,
-.error-content {
+.error-content,
+.silent-content {
   padding: 8px;
 }
 
@@ -738,9 +746,9 @@ onBeforeUnmount(() => {
   }
 }
 
-.status--failed {
+.status--silent {
   .agent-card__body {
-    background: linear-gradient(to bottom, rgba(156, 39, 176, 0.05) 0%, transparent 100%);
+    background: linear-gradient(to bottom, rgba(255, 152, 0, 0.05) 0%, transparent 100%);
   }
 }
 

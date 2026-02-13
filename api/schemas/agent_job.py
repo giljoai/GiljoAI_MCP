@@ -40,7 +40,7 @@ class JobUpdateRequest(BaseModel):
     - Fail: POST /api/agent-jobs/{job_id}/fail
     """
 
-    status: Optional[str] = Field(None, description="Job status: pending, active, completed, failed")
+    status: Optional[str] = Field(None, description="Job status: active, completed, cancelled")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -55,7 +55,7 @@ class JobResponse(BaseModel):
     tenant_key: str = Field(..., description="Tenant key for isolation")
     agent_display_name: str = Field(..., description="Human-readable display name for UI")
     mission: str = Field(..., description="Agent mission/instructions")
-    status: str = Field(..., description="Job status: pending, active, completed, failed")
+    status: str = Field(..., description="Job status: active, completed, cancelled")
     spawned_by: Optional[str] = Field(None, description="Job ID of parent job")
     context_chunks: list[str] = Field(default_factory=list, description="Context chunk IDs")
     messages: list[dict[str, Any]] = Field(default_factory=list, description="Job messages")
@@ -218,11 +218,11 @@ class JobFailRequest(BaseModel):
 
 class JobFailResponse(BaseModel):
     """
-    Schema for job fail response.
+    Schema for job fail/block response (Handover 0491: failed -> blocked).
     """
 
-    job_id: str = Field(..., description="Failed job ID")
-    status: str = Field(..., description="New status (failed)")
+    job_id: str = Field(..., description="Blocked job ID")
+    status: str = Field(..., description="New status (blocked)")
     completed_at: datetime = Field(..., description="Job completion timestamp")
     message: str = Field(..., description="Success message")
 
@@ -317,11 +317,11 @@ class JobForceFailRequest(BaseModel):
 
 class JobForceFailResponse(BaseModel):
     """
-    Schema for job force fail response.
+    Schema for job force fail/block response (Handover 0491: failed -> blocked).
     """
 
-    job_id: str = Field(..., description="Force failed job ID")
-    status: str = Field(..., description="New status (failed)")
+    job_id: str = Field(..., description="Force blocked job ID")
+    status: str = Field(..., description="New status (blocked)")
     message: str = Field(..., description="Success message")
     job: JobResponse = Field(..., description="Updated job details")
 

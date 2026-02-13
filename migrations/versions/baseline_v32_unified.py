@@ -379,6 +379,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('last_used', sa.DateTime(timezone=True), nullable=True),
     sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True),
     sa.CheckConstraint('(is_active = true AND revoked_at IS NULL) OR (is_active = false)', name='ck_apikey_revoked_consistency'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
@@ -390,6 +391,19 @@ def upgrade() -> None:
     op.create_index('idx_apikey_user', 'api_keys', ['user_id'], unique=False)
     op.create_index(op.f('ix_api_keys_key_hash'), 'api_keys', ['key_hash'], unique=True)
     op.create_index(op.f('ix_api_keys_tenant_key'), 'api_keys', ['tenant_key'], unique=False)
+    op.create_table('api_key_ip_log',
+    sa.Column('id', sa.String(length=36), nullable=False),
+    sa.Column('api_key_id', sa.String(length=36), nullable=False),
+    sa.Column('ip_address', sa.String(length=45), nullable=False),
+    sa.Column('first_seen_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('last_seen_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('request_count', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['api_key_id'], ['api_keys.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('api_key_id', 'ip_address', name='uq_api_key_ip')
+    )
+    op.create_index('idx_api_key_ip_log_key_id', 'api_key_ip_log', ['api_key_id'], unique=False)
+    op.create_index('idx_api_key_ip_log_last_seen', 'api_key_ip_log', ['last_seen_at'], unique=False)
     op.create_table('mcp_context_summary',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('tenant_key', sa.String(length=36), nullable=False),
@@ -723,7 +737,7 @@ def upgrade() -> None:
     sa.Column('mission_acknowledged_at', sa.DateTime(timezone=True), nullable=True, comment='Timestamp when agent first fetched mission via get_agent_mission() or get_orchestrator_instructions()'),
     sa.Column('template_id', sa.String(length=36), nullable=True, comment='Agent template ID this job was spawned from (Handover 0244a)'),
     sa.CheckConstraint("health_status IN ('unknown', 'healthy', 'warning', 'critical', 'timeout')", name='ck_mcp_agent_job_health_status'),
-    sa.CheckConstraint("status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned')", name='ck_mcp_agent_job_status'),
+    sa.CheckConstraint("status IN ('waiting', 'working', 'blocked', 'complete', 'silent', 'decommissioned')", name='ck_mcp_agent_job_status'),
     sa.CheckConstraint("succession_reason IS NULL OR succession_reason IN ('context_limit', 'manual', 'phase_transition')", name='ck_mcp_agent_job_succession_reason'),
     sa.CheckConstraint("tool_type IN ('claude-code', 'codex', 'gemini', 'universal')", name='ck_mcp_agent_job_tool_type'),
     sa.CheckConstraint('context_used >= 0 AND context_used <= context_budget', name='ck_mcp_agent_job_context_usage'),
@@ -935,10 +949,9 @@ def upgrade() -> None:
     sa.Column('messages_sent_count', sa.Integer(), nullable=False, server_default='0', comment='Count of outbound messages sent by this agent'),
     sa.Column('messages_waiting_count', sa.Integer(), nullable=False, server_default='0', comment='Count of inbound messages waiting to be read'),
     sa.Column('messages_read_count', sa.Integer(), nullable=False, server_default='0', comment='Count of inbound messages that have been acknowledged/read'),
-    sa.Column('failure_reason', sa.Text(), nullable=True, comment='Reason for execution failure (full error description)'),
     sa.Column('agent_name', sa.String(length=255), nullable=True, comment='Human-readable display name for UI'),
     sa.CheckConstraint("health_status IN ('unknown', 'healthy', 'warning', 'critical', 'timeout')", name='ck_agent_execution_health_status'),
-    sa.CheckConstraint("status IN ('waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled', 'decommissioned')", name='ck_agent_execution_status'),
+    sa.CheckConstraint("status IN ('waiting', 'working', 'blocked', 'complete', 'silent', 'decommissioned')", name='ck_agent_execution_status'),
     sa.CheckConstraint("tool_type IN ('claude-code', 'codex', 'gemini', 'universal')", name='ck_agent_execution_tool_type'),
     sa.CheckConstraint('context_used >= 0 AND context_used <= context_budget', name='ck_agent_execution_context_usage'),
     sa.CheckConstraint('progress >= 0 AND progress <= 100', name='ck_agent_execution_progress_range'),
@@ -1163,6 +1176,9 @@ def downgrade() -> None:
     op.drop_index('idx_mcp_summary_tenant_product', table_name='mcp_context_summary')
     op.drop_index('idx_mcp_summary_context_id', table_name='mcp_context_summary')
     op.drop_table('mcp_context_summary')
+    op.drop_index('idx_api_key_ip_log_last_seen', table_name='api_key_ip_log')
+    op.drop_index('idx_api_key_ip_log_key_id', table_name='api_key_ip_log')
+    op.drop_table('api_key_ip_log')
     op.drop_index(op.f('ix_api_keys_tenant_key'), table_name='api_keys')
     op.drop_index(op.f('ix_api_keys_key_hash'), table_name='api_keys')
     op.drop_index('idx_apikey_user', table_name='api_keys')

@@ -191,19 +191,19 @@ interface Message {
 
 ---
 
-### Jobs Tab - Failed State (`status="failed"`)
+### Jobs Tab - Silent State (`status="silent"`)
 
 **Display**:
 
 - Agent ID
-- Status badge: "Failure" (magenta/purple)
-- Error alert with block reason
+- Status badge: "Silent" (amber/orange)
+- Inactivity alert with last progress timestamp
 - Message badges (if messages exist)
 - Priority styling (moved to top)
 
-**Button**: "View Error" (error color) **Emits**: `view-error`
+**Button**: "Clear Silent" (amber) **Emits**: `clear-silent`
 
-**Priority**: Cards with failed status are moved to the top of the list.
+**Priority**: Cards with silent status are moved to the top of the list.
 
 ---
 

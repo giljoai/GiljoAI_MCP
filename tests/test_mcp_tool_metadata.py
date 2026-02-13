@@ -228,7 +228,7 @@ class TestMCPToolMetadata:
         response = client.get("/api/v1/mcp-tools/list")
         data = response.json()
 
-        valid_statuses = ["active", "completed", "archived", "pending", "in_progress", "blocked", "failed"]
+        valid_statuses = ["active", "completed", "archived", "pending", "in_progress", "blocked", "silent", "decommissioned", "failed"]
 
         for category, tools in data["tools"].items():
             for tool in tools:

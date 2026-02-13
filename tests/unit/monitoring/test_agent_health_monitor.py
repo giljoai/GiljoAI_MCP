@@ -595,10 +595,10 @@ class TestAgentHealthMonitor:
         await monitor._handle_unhealthy_job(session, health_status, "test-tenant")
 
         await session.refresh(execution)
-        assert execution.status == "failed"
-        assert execution.completed_at is not None
-        assert "Auto-failed" in execution.result_summary
-        assert "Complete silence" in execution.result_summary
+        # Handover 0491: Auto-timeout sets silent status (not failed)
+        assert execution.status == "silent"
+        assert execution.block_reason is not None
+        assert "Auto-detected timeout" in execution.block_reason
 
         mock_ws_manager.broadcast_agent_auto_failed.assert_called_once()
         call_args = mock_ws_manager.broadcast_agent_auto_failed.call_args

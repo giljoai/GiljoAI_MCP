@@ -176,11 +176,11 @@ class TestHealthMonitoringE2E:
             # Wait for detection and auto-fail
             await asyncio.sleep(3)
 
-            # Check job was auto-failed
+            # Handover 0491: Auto-timeout sets silent status (not failed)
             await session.refresh(job)
-            assert job.status == "failed"
-            assert job.completed_at is not None
-            assert "Auto-failed" in job.result_summary
+            assert job.status == "silent"
+            assert job.block_reason is not None
+            assert "Auto-detected timeout" in job.block_reason
 
             # Stop monitor
             await monitor.stop()

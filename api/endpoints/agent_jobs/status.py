@@ -77,7 +77,9 @@ def job_to_response(job: dict) -> JobResponse:
 @router.get("/", response_model=JobListResponse)
 async def list_jobs(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
-    status: Optional[str] = Query(None, description="Filter by status (waiting, active, completed, failed)"),
+    status: Optional[str] = Query(
+        None, description="Filter by status (waiting, working, blocked, complete, silent, decommissioned)"
+    ),
     agent_display_name: Optional[str] = Query(
         None, description="Filter by agent display name (orchestrator, implementer, etc.)"
     ),

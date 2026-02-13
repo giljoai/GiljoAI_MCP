@@ -419,13 +419,13 @@ class AgentHealthMonitor:
         execution.health_failure_count += 1
         execution.last_health_check = datetime.now(timezone.utc)
 
-        # Auto-fail on timeout (if configured)
+        # Handover 0491: Auto-silent on timeout (if configured)
+        # Silent status indicates detected inactivity - agent may have disconnected
         if health_status.health_state == "timeout" and self.config.auto_fail_on_timeout:
-            execution.status = "failed"
-            execution.completed_at = datetime.now(timezone.utc)
-            execution.result_summary = f"Auto-failed: {health_status.issue_description}"
+            execution.status = "silent"
+            execution.block_reason = f"Auto-detected timeout: {health_status.issue_description}"
 
-            # Broadcast auto-fail event
+            # Broadcast auto-silent event
             await self.ws.broadcast_agent_auto_failed(
                 tenant_key=tenant_key,
                 job_id=health_status.job_id,
