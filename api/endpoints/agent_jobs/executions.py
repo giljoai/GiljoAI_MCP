@@ -2,9 +2,12 @@
 Execution endpoints for agent jobs.
 
 Handover 0366d-1: Frontend Core Agent Display
+Handover 0491: Clear-silent endpoint
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,9 +15,10 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
-from .models import AgentExecutionResponse
+from .models import AgentExecutionResponse, ClearSilentResponse
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -57,3 +61,56 @@ async def get_job_executions(
         )
         for execution in executions
     ]
+
+
+@router.post("/{agent_id}/clear-silent", response_model=ClearSilentResponse)
+async def clear_silent(
+    agent_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_active_user),
+) -> ClearSilentResponse:
+    """
+    Clear silent status for an agent execution (Handover 0491).
+
+    When an agent is marked as 'silent' (no MCP activity past threshold),
+    this endpoint allows users to manually clear the status back to 'working'
+    by clicking the Silent badge in the dashboard.
+
+    Args:
+        agent_id: Agent execution ID
+        request: FastAPI request (for accessing app state)
+        db: Database session
+        current_user: Authenticated user
+
+    Returns:
+        ClearSilentResponse with updated agent info
+
+    Raises:
+        HTTPException 404: Agent not found or not in silent status
+    """
+    from src.giljo_mcp.services.silence_detector import clear_silent_status
+
+    # Get WebSocket manager from app state
+    ws_manager = getattr(request.app.state, "websocket_manager", None)
+
+    result = await clear_silent_status(
+        session=db,
+        agent_id=agent_id,
+        tenant_key=current_user.tenant_key,
+        ws_manager=ws_manager,
+    )
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Agent not found or not currently in silent status",
+        )
+
+    logger.info(
+        "User %s cleared silent status for agent %s",
+        current_user.username,
+        agent_id,
+    )
+
+    return ClearSilentResponse(**result)
