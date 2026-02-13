@@ -107,7 +107,7 @@ class TestCreateProjectActiveProductResolution:
         with (
             patch(
                 "src.giljo_mcp.tools.tool_accessor.ProductService"
-            ) as MockProductService,
+            ) as mock_product_service_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -121,23 +121,26 @@ class TestCreateProjectActiveProductResolution:
             mock_ps_instance.get_active_product = AsyncMock(
                 return_value=mock_product
             )
-            MockProductService.return_value = mock_ps_instance
+            mock_product_service_cls.return_value = mock_ps_instance
 
             mock_project = Mock()
             mock_project.id = "proj-456"
             mock_project.alias = "PRJ-001"
             mock_project.name = "Test Project"
+            mock_project.description = ""
+            mock_project.mission = ""
             mock_project.status = "inactive"
             mock_project.product_id = "prod-123"
+            mock_project.created_at = None
             mock_create.return_value = mock_project
 
-            result = await tool_accessor.create_project(
+            await tool_accessor.create_project(
                 name="Test Project",
                 tenant_key="tenant-abc",
             )
 
             # Verify ProductService was instantiated for active product lookup
-            MockProductService.assert_called_once()
+            mock_product_service_cls.assert_called_once()
             mock_ps_instance.get_active_product.assert_awaited_once()
 
             # Verify create_project was called with resolved product_id
@@ -162,7 +165,7 @@ class TestCreateProjectActiveProductResolution:
         with (
             patch(
                 "src.giljo_mcp.tools.tool_accessor.ProductService"
-            ) as MockProductService,
+            ) as mock_product_service_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -173,18 +176,21 @@ class TestCreateProjectActiveProductResolution:
             mock_project.id = "proj-789"
             mock_project.alias = "PRJ-002"
             mock_project.name = "Explicit Product Project"
+            mock_project.description = ""
+            mock_project.mission = ""
             mock_project.status = "inactive"
             mock_project.product_id = "explicit-prod-id"
+            mock_project.created_at = None
             mock_create.return_value = mock_project
 
-            result = await tool_accessor.create_project(
+            await tool_accessor.create_project(
                 name="Explicit Product Project",
                 product_id="explicit-prod-id",
                 tenant_key="tenant-abc",
             )
 
             # ProductService should NOT be instantiated when product_id is given
-            MockProductService.assert_not_called()
+            mock_product_service_cls.assert_not_called()
 
             # Verify create_project used the explicit product_id
             call_kwargs = mock_create.call_args[1]
@@ -206,10 +212,10 @@ class TestCreateProjectActiveProductResolution:
 
         with patch(
             "src.giljo_mcp.tools.tool_accessor.ProductService"
-        ) as MockProductService:
+        ) as mock_product_service_cls:
             mock_ps_instance = AsyncMock()
             mock_ps_instance.get_active_product = AsyncMock(return_value=None)
-            MockProductService.return_value = mock_ps_instance
+            mock_product_service_cls.return_value = mock_ps_instance
 
             with pytest.raises(ValidationError) as exc_info:
                 await tool_accessor.create_project(
@@ -237,7 +243,7 @@ class TestCreateProjectActiveProductResolution:
         with (
             patch(
                 "src.giljo_mcp.tools.tool_accessor.ProductService"
-            ) as MockProductService,
+            ) as mock_product_service_cls,
             patch.object(
                 tool_accessor._project_service,
                 "create_project",
@@ -251,14 +257,17 @@ class TestCreateProjectActiveProductResolution:
             mock_ps_instance.get_active_product = AsyncMock(
                 return_value=mock_product
             )
-            MockProductService.return_value = mock_ps_instance
+            mock_product_service_cls.return_value = mock_ps_instance
 
             mock_project = Mock()
             mock_project.id = "proj-111"
             mock_project.alias = "PRJ-003"
             mock_project.name = "Fallback Tenant Project"
+            mock_project.description = ""
+            mock_project.mission = ""
             mock_project.status = "inactive"
             mock_project.product_id = "prod-999"
+            mock_project.created_at = None
             mock_create.return_value = mock_project
 
             await tool_accessor.create_project(
@@ -270,7 +279,7 @@ class TestCreateProjectActiveProductResolution:
             tenant_manager.get_current_tenant.assert_called_once()
 
             # Verify ProductService was instantiated with manager's tenant_key
-            call_kwargs = MockProductService.call_args[1]
+            call_kwargs = mock_product_service_cls.call_args[1]
             assert call_kwargs["tenant_key"] == "tenant-from-manager"
 
 
@@ -300,8 +309,11 @@ class TestCreateProjectReturnValue:
             mock_project.id = "proj-aaa"
             mock_project.alias = "PRJ-010"
             mock_project.name = "Serialization Test"
+            mock_project.description = "Test description"
+            mock_project.mission = ""
             mock_project.status = "inactive"
             mock_project.product_id = "prod-bbb"
+            mock_project.created_at = None
             mock_create.return_value = mock_project
 
             result = await tool_accessor.create_project(
@@ -343,8 +355,11 @@ class TestCreateProjectReturnValue:
             mock_project.id = "proj-xyz"
             mock_project.alias = "PRJ-099"
             mock_project.name = "Keys Test"
+            mock_project.description = "Keys Test desc"
+            mock_project.mission = ""
             mock_project.status = "inactive"
             mock_project.product_id = "prod-xyz"
+            mock_project.created_at = None
             mock_create.return_value = mock_project
 
             result = await tool_accessor.create_project(
@@ -358,8 +373,11 @@ class TestCreateProjectReturnValue:
                 "project_id",
                 "alias",
                 "name",
+                "description",
+                "mission",
                 "status",
                 "product_id",
+                "created_at",
                 "message",
             }
             assert set(result.keys()) == expected_keys, (
@@ -393,8 +411,11 @@ class TestCreateProjectHardcodedBehavior:
             mock_project.id = "proj-status"
             mock_project.alias = "PRJ-STS"
             mock_project.name = "Status Test"
+            mock_project.description = ""
+            mock_project.mission = ""
             mock_project.status = "inactive"
             mock_project.product_id = "prod-status"
+            mock_project.created_at = None
             mock_create.return_value = mock_project
 
             await tool_accessor.create_project(
@@ -432,8 +453,11 @@ class TestCreateProjectHardcodedBehavior:
             mock_project.id = "proj-mission"
             mock_project.alias = "PRJ-MSN"
             mock_project.name = "Mission Default Test"
+            mock_project.description = ""
+            mock_project.mission = ""
             mock_project.status = "inactive"
             mock_project.product_id = "prod-mission"
+            mock_project.created_at = None
             mock_create.return_value = mock_project
 
             await tool_accessor.create_project(
@@ -470,8 +494,11 @@ class TestCreateProjectHardcodedBehavior:
             mock_project.id = "proj-expl"
             mock_project.alias = "PRJ-EXP"
             mock_project.name = "Explicit Mission Test"
+            mock_project.description = ""
+            mock_project.mission = ""
             mock_project.status = "inactive"
             mock_project.product_id = "prod-expl"
+            mock_project.created_at = None
             mock_create.return_value = mock_project
 
             await tool_accessor.create_project(
