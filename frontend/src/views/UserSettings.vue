@@ -183,6 +183,27 @@
               color="primary"
               class="mt-4"
             />
+
+            <!-- Handover 0491: Agent silence threshold -->
+            <v-divider class="my-4" />
+            <h3 class="text-subtitle-1 mb-2">Agent Monitoring</h3>
+            <v-text-field
+              v-model.number="settings.notifications.agent_silence_threshold_minutes"
+              type="number"
+              label="Agent Silence Threshold (minutes)"
+              hint="Time without communication before an agent is marked as silent"
+              persistent-hint
+              variant="outlined"
+              :min="1"
+              :max="60"
+              :rules="[
+                v => (v >= 1 && v <= 60) || 'Must be between 1 and 60 minutes',
+                v => Number.isInteger(v) || 'Must be a whole number',
+              ]"
+              data-test="silence-threshold-input"
+              class="mt-2"
+              style="max-width: 400px;"
+            />
           </v-card-text>
           <v-card-actions>
             <v-spacer />
@@ -333,6 +354,7 @@ const settings = ref({
   notifications: {
     position: 'bottom-right',
     duration: 5,
+    agent_silence_threshold_minutes: 10,
   },
 })
 
@@ -376,6 +398,7 @@ function resetNotificationSettings() {
   settings.value.notifications = {
     position: 'bottom-right',
     duration: 5,
+    agent_silence_threshold_minutes: 10,
   }
 }
 
@@ -423,9 +446,10 @@ onMounted(async () => {
   await checkSerenaStatus()
 
   // Load settings from store
-  const storedSettings = await settingsStore.loadSettings()
-  if (storedSettings) {
-    Object.assign(settings.value, storedSettings)
+  await settingsStore.loadSettings()
+  // Apply stored notification settings to local state
+  if (settingsStore.settings.notifications) {
+    settings.value.notifications = { ...settings.value.notifications, ...settingsStore.settings.notifications }
   }
 
   // Initialize theme from current Vuetify theme AFTER loading stored settings
