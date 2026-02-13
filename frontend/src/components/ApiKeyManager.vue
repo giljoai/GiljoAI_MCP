@@ -16,6 +16,16 @@
 
     <v-divider class="mt-4" />
 
+    <v-chip
+      v-if="apiKeys.length > 0"
+      class="ml-4 mt-2"
+      :color="keyCountColor"
+      size="small"
+      variant="tonal"
+    >
+      {{ apiKeys.filter(k => k.is_active).length }} of 5 keys used
+    </v-chip>
+
     <v-card-text>
       <!-- Empty State -->
       <v-alert v-if="!loading && apiKeys.length === 0" type="info" variant="tonal" class="mb-4">
@@ -52,6 +62,17 @@
         <!-- Last Used Column -->
         <template #item.last_used="{ item }">
           <span class="text-caption">{{ humanizeTimestamp(item.last_used) }}</span>
+        </template>
+
+        <!-- Expires Column -->
+        <template #item.expires_at="{ item }">
+          <v-chip v-if="isExpired(item.expires_at)" color="error" size="small" variant="flat">
+            Expired
+          </v-chip>
+          <span v-else-if="item.expires_at" :class="expiryClass(item.expires_at)" class="text-caption">
+            {{ humanizeTimestamp(item.expires_at) }}
+          </span>
+          <span v-else class="text-caption text-medium-emphasis">No expiry</span>
         </template>
 
         <!-- Actions Column -->
@@ -104,7 +125,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -122,6 +143,7 @@ const headers = [
   { title: 'Key Prefix', key: 'key_prefix', sortable: false },
   { title: 'Created', key: 'created_at', sortable: true },
   { title: 'Last Used', key: 'last_used', sortable: true },
+  { title: 'Expires', key: 'expires_at', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' },
 ]
 
@@ -134,6 +156,32 @@ function humanizeTimestamp(timestamp) {
     return 'Unknown'
   }
 }
+
+function isExpired(expiresAt) {
+  if (!expiresAt) return false
+  return new Date(expiresAt) < new Date()
+}
+
+function daysUntilExpiry(expiresAt) {
+  if (!expiresAt) return Infinity
+  const diff = new Date(expiresAt) - new Date()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
+
+function expiryClass(expiresAt) {
+  const days = daysUntilExpiry(expiresAt)
+  if (days < 7) return 'text-error'
+  if (days < 30) return 'text-warning'
+  return 'text-success'
+}
+
+const keyCountColor = computed(() => {
+  const active = apiKeys.value.filter(k => k.is_active).length
+  if (active >= 5) return 'error'
+  if (active >= 4) return 'warning'
+  return 'success'
+})
+
 async function loadKeys() {
   loading.value = true
   try {
