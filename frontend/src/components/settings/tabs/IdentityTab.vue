@@ -1,88 +1,75 @@
 <template>
-  <v-row v-if="loading" class="my-6">
-    <v-col cols="12" class="text-center">
-      <v-progress-circular indeterminate color="primary" />
-    </v-col>
-  </v-row>
+  <v-card data-test="workspace-card">
+    <v-card-title>Identity</v-card-title>
+    <v-card-subtitle>Workspace and user management</v-card-subtitle>
 
-  <v-alert v-else-if="error" type="error" class="mb-4" data-test="error-alert">
-    {{ error }}
-  </v-alert>
+    <v-card-text>
+      <!-- Loading State -->
+      <div v-if="loading" class="d-flex justify-center py-8">
+        <v-progress-circular indeterminate color="primary" />
+      </div>
 
-  <v-row v-else-if="currentOrg" class="ga-4">
-    <!-- Workspace Details Section -->
-    <v-col cols="12" md="6">
-      <v-card data-test="workspace-card">
-        <v-card-title class="d-flex align-center">
-          <v-icon start>mdi-office-building</v-icon>
-          Workspace Details
-        </v-card-title>
+      <v-alert v-else-if="error" type="error" class="mb-4" data-test="error-alert">
+        {{ error }}
+      </v-alert>
 
-        <v-card-text>
-          <v-text-field
-            v-model="orgForm.name"
-            label="Workspace Name"
-            variant="outlined"
-            :disabled="!isAdmin || saving"
-            placeholder="Enter workspace name"
-            hint="The name of your workspace"
-            persistent-hint
-            data-test="org-name-field"
-            class="mb-4"
-          />
+      <template v-else-if="currentOrg">
+        <!-- Workspace Details Section -->
+        <h3 class="text-h6 mb-3">Workspace Details</h3>
 
-          <v-text-field
-            :model-value="currentOrg.slug"
-            label="Slug (URL-friendly)"
-            variant="outlined"
-            disabled
-            placeholder="url-slug"
-            hint="Cannot be changed after creation"
-            persistent-hint
-            data-test="org-slug-field"
-          />
-        </v-card-text>
+        <v-text-field
+          v-model="orgForm.name"
+          label="Workspace Name"
+          variant="outlined"
+          :disabled="!isAdmin || saving"
+          placeholder="Enter workspace name"
+          hint="The name of your workspace"
+          persistent-hint
+          data-test="org-name-field"
+          class="mb-4"
+        />
 
-        <v-card-actions v-if="isAdmin" class="gap-2">
-          <v-spacer />
-          <v-btn variant="text" data-test="reset-btn" @click="resetForm">
-            Reset
-          </v-btn>
-          <v-btn
-            color="primary"
-            :loading="saving"
-            :disabled="!isFormDirty"
-            data-test="save-org-btn"
-            @click="saveOrgDetails"
-          >
-            <v-icon start>mdi-content-save</v-icon>
-            Save Changes
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-col>
+        <v-text-field
+          :model-value="currentOrg.slug"
+          label="Slug (URL-friendly)"
+          variant="outlined"
+          disabled
+          placeholder="url-slug"
+          hint="Cannot be changed after creation"
+          persistent-hint
+          data-test="org-slug-field"
+        />
 
-    <!-- Users Section - Full Width -->
-    <v-col cols="12">
-      <v-card data-test="users-card">
-        <v-card-title class="d-flex align-center">
-          <v-icon start>mdi-account-group</v-icon>
-          Users
-        </v-card-title>
+        <!-- Users Section -->
+        <v-divider class="my-6" />
 
-        <v-divider />
+        <h3 class="text-h6 mb-3" data-test="users-card">Users</h3>
 
-        <v-card-text class="pa-0">
-          <UserManager />
-        </v-card-text>
-      </v-card>
-    </v-col>
-  </v-row>
+        <UserManager />
+      </template>
 
-  <v-alert v-else type="warning" class="my-6" data-test="no-org-alert">
-    <v-icon start>mdi-alert</v-icon>
-    No organization found. Please contact your administrator.
-  </v-alert>
+      <v-alert v-else type="warning" data-test="no-org-alert">
+        No organization found. Please contact your administrator.
+      </v-alert>
+    </v-card-text>
+
+    <v-card-actions v-if="isAdmin && currentOrg && !loading">
+      <v-spacer />
+      <v-btn variant="text" data-test="reset-btn" @click="resetForm">
+        Reset
+      </v-btn>
+      <v-btn
+        color="primary"
+        :loading="saving"
+        :disabled="!isFormDirty"
+        data-test="save-org-btn"
+        @click="saveOrgDetails"
+      >
+        <v-icon start>mdi-content-save</v-icon>
+        Save Changes
+      </v-btn>
+    </v-card-actions>
+  </v-card>
 
   <!-- Notification Snackbar -->
   <v-snackbar
