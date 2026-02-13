@@ -367,7 +367,7 @@ PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "
 - **Password Reset**: Recovery PIN system - 4-digit PIN with rate limiting (Handover 0023)
 - **Default Password**: "GiljoMCP" for admin resets only (never admin/admin)
 - **Agent Jobs**: Use AgentJobManager for lifecycle, AgentCommunicationQueue for messaging
-- **Task Management**: All tasks MUST be bound to a product (Task.product_id NOT NULL) - no "unassigned tasks" pattern. Use `/gil_task` slash command or TaskService.log_task() with tenant_key + product_id required (Handover 0433)
+- **Task Management**: All tasks MUST be bound to a product (Task.product_id NOT NULL) - no "unassigned tasks" pattern. Use `/gil_add` slash command (creates both tasks and projects) or TaskService.log_task() with tenant_key + product_id required (Handover 0433)
 - **Context Management v2.0**: 2-dimensional model (Priority × Depth) - orchestrator fetches context via MCP tools based on user configuration
 - **Context API (product-level)**: Orchestrators call the unified `fetch_context(product_id, tenant_key, project_id=None, categories=[...])` MCP tool (implemented in `src/giljo_mcp/tools/context_tools/fetch_context.py`) to load product/project context for mission planning.
 - **Context API (agent-level)**: Executor agents call `fetch_context(agent_id, tenant_key, categories=[...])` and companion tools (`update_context_usage`, `get_context_history`, `get_succession_context`) from `src/giljo_mcp/tools/context.py` when they need their own context window or history; these tools are keyed by `AgentExecution.agent_id` and always scoped by `tenant_key`.

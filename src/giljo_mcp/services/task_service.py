@@ -97,16 +97,20 @@ class TaskService:
         project_id: Optional[str] = None,
         product_id: Optional[str] = None,
         tenant_key: Optional[str] = None,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> str:
         """Quick task capture - logs a task with minimal information.
 
         Args:
-            content: Task description (used as both title and description)
+            content: Task content (used as fallback for title and description)
             category: Optional category/classification
             priority: Task priority (default: "medium")
             project_id: Optional project ID to attach task to
             product_id: Required product ID (task must belong to a product)
             tenant_key: Required tenant key for multi-tenant isolation
+            title: Optional explicit title (overrides content for Task.title)
+            description: Optional explicit description (overrides content for Task.description)
 
         Returns:
             Task ID of created task
@@ -129,11 +133,27 @@ class TaskService:
         try:
             if self._session:
                 return await self._log_task_impl(
-                    self._session, content, category, priority, project_id, product_id, tenant_key
+                    self._session,
+                    content,
+                    category,
+                    priority,
+                    project_id,
+                    product_id,
+                    tenant_key,
+                    title=title,
+                    description=description,
                 )
             async with self.db_manager.get_session_async() as session:
                 return await self._log_task_impl(
-                    session, content, category, priority, project_id, product_id, tenant_key
+                    session,
+                    content,
+                    category,
+                    priority,
+                    project_id,
+                    product_id,
+                    tenant_key,
+                    title=title,
+                    description=description,
                 )
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
@@ -151,8 +171,21 @@ class TaskService:
         project_id: Optional[str],
         product_id: Optional[str],
         tenant_key: Optional[str],
+        title: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> str:
         """Implementation of log_task with explicit session parameter.
+
+        Args:
+            session: Database session
+            content: Task content (used as fallback for title and description)
+            category: Optional category/classification
+            priority: Task priority
+            project_id: Optional project ID
+            product_id: Required product ID
+            tenant_key: Required tenant key
+            title: Optional explicit title (overrides content for Task.title)
+            description: Optional explicit description (overrides content for Task.description)
 
         Returns:
             Task ID of created task
@@ -197,13 +230,17 @@ class TaskService:
                     context={"project_id": project_id, "product_id": product_id, "tenant_key": tenant_key},
                 )
 
+        # Use title/description if provided, fall back to content for backwards compat
+        task_title = title or content
+        task_description = description or content
+
         # Create task
         task = Task(
             tenant_key=tenant_key,
             product_id=product_id,
             project_id=str(project.id) if project else None,
-            title=content,  # Use content as title
-            description=content,  # Also store as description
+            title=task_title,
+            description=task_description,
             category=category,
             priority=priority,
             status="pending",
@@ -234,8 +271,8 @@ class TaskService:
         """
         Create a new task with full details.
 
-        This delegates to log_task for simplicity, using description as content
-        and title as category.
+        Delegates to log_task with separate title and description parameters
+        so that both are preserved independently on the Task model.
 
         Args:
             title: Task title/summary
@@ -259,8 +296,9 @@ class TaskService:
             ... )
         """
         return await self.log_task(
-            content=description,
-            category=title,
+            content=title,
+            title=title,
+            description=description,
             priority=priority,
             project_id=project_id,
             product_id=product_id,
