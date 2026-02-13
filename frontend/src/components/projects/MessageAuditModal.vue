@@ -6,7 +6,7 @@
     class="message-audit-modal"
     @keydown.esc="handleClose"
   >
-    <v-card>
+    <v-card v-draggable>
       <!-- Header -->
       <v-card-title class="d-flex align-center justify-space-between">
         <div class="d-flex align-center">

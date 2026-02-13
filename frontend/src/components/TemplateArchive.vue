@@ -1,5 +1,5 @@
 <template>
-  <v-card class="template-archive">
+  <v-card v-draggable class="template-archive">
     <v-card-title class="d-flex align-center">
       <v-icon class="mr-2" color="primary">
         <img src="/icons/archive.svg" width="24" height="24" alt="Archive" />
@@ -116,7 +116,7 @@
 
     <!-- Diff Dialog -->
     <v-dialog v-model="diffDialog" max-width="1200px" scrollable>
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="d-flex align-center">
           <span class="text-h5">Compare Versions</span>
           <v-spacer />
@@ -179,7 +179,7 @@
 
     <!-- Restore Confirmation Dialog -->
     <v-dialog v-model="restoreDialog" max-width="500px">
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="d-flex align-center">
           <span class="text-h5">Confirm Restore</span>
           <v-spacer />
