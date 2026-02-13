@@ -4,8 +4,9 @@ Verifies that IP addresses are passively logged when API keys authenticate,
 without blocking or slowing down the authentication flow.
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class TestApiKeyIpLogging:
@@ -122,8 +123,6 @@ class TestMcpEndpointIpLogging:
     @pytest.mark.asyncio
     async def test_mcp_endpoint_calls_log_ip_on_success(self):
         """After successful session creation, IP should be logged."""
-        from unittest.mock import patch, AsyncMock, MagicMock
-
         mock_session = MagicMock()
         mock_session.api_key_id = "test-key-id"
         mock_session.session_id = "test-session-id"

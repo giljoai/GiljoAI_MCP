@@ -1010,6 +1010,13 @@ async def mcp_endpoint(
             error=JSONRPCError(code=-32600, message="Invalid API key", data={"authenticated": False}), id=rpc_request.id
         )
 
+    # Log IP address for security tracking (passive, non-blocking)
+    client_ip = request.client.host if request.client else "unknown"
+    try:
+        await session_manager.log_ip(session.api_key_id, client_ip)
+    except Exception:  # noqa: BLE001
+        logger.debug("IP logging failed for MCP request (non-blocking)")
+
     # Route to method handler
     method = rpc_request.method
     params = rpc_request.params or {}
