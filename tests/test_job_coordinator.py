@@ -271,7 +271,7 @@ class TestJobCoordination:
 
         assert result["all_complete"] is True
         assert result["completed"] == 2
-        assert result["failed"] == 0
+        assert result["blocked"] == 0
         assert result["active"] == 0
 
     @pytest.mark.asyncio
@@ -304,7 +304,7 @@ class TestJobCoordination:
 
         mixed_jobs = [
             Mock(job_id="child-001", status="completed", agent_display_name="analyzer"),
-            Mock(job_id="child-002", status="failed", agent_display_name="implementer"),
+            Mock(job_id="child-002", status="blocked", agent_display_name="implementer"),
             Mock(job_id="child-003", status="active", agent_display_name="tester"),
         ]
 
@@ -313,7 +313,7 @@ class TestJobCoordination:
             mixed_jobs,
             [
                 Mock(job_id="child-001", status="completed", agent_display_name="analyzer"),
-                Mock(job_id="child-002", status="failed", agent_display_name="implementer"),
+                Mock(job_id="child-002", status="blocked", agent_display_name="implementer"),
                 Mock(job_id="child-003", status="completed", agent_display_name="tester"),
             ],
         ]
@@ -324,7 +324,7 @@ class TestJobCoordination:
 
         assert result["all_complete"] is True
         assert result["completed"] == 2
-        assert result["failed"] == 1
+        assert result["blocked"] == 1
 
     @pytest.mark.asyncio
     async def test_aggregate_child_results_collect(self, job_coordinator, job_manager, sample_child_jobs):
@@ -539,7 +539,7 @@ class TestJobStatusAggregation:
 
         assert result["total_children"] == 3
         assert result["completed"] == 2
-        assert result["failed"] == 0
+        assert result["blocked"] == 0
         assert result["active"] == 1
         assert "success_rate" in result
         assert "avg_completion_time" in result

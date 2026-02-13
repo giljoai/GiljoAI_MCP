@@ -231,7 +231,7 @@ async def test_execute_workflow_waterfall(workflow_engine, job_manager, job_coor
     job_coordinator.wait_for_children.return_value = {
         "all_complete": True,
         "completed": 1,
-        "failed": 0,
+        "blocked": 0,
         "active": 0,
         "timed_out": False,
     }
@@ -279,7 +279,7 @@ async def test_execute_workflow_parallel(workflow_engine, job_manager, job_coord
     job_coordinator.wait_for_children.return_value = {
         "all_complete": True,
         "completed": 1,
-        "failed": 0,
+        "blocked": 0,
         "active": 0,
         "timed_out": False,
     }
@@ -478,7 +478,7 @@ async def test_parallel_all_success(workflow_engine, job_manager, job_coordinato
     job_coordinator.wait_for_children.return_value = {
         "all_complete": True,
         "completed": 1,
-        "failed": 0,
+        "blocked": 0,
         "active": 0,
         "timed_out": False,
     }
@@ -633,7 +633,7 @@ async def test_stage_timeout(workflow_engine, job_manager, job_coordinator, samp
     job_coordinator.wait_for_children.return_value = {
         "all_complete": False,
         "completed": 0,
-        "failed": 0,
+        "blocked": 0,
         "active": 1,
         "timed_out": True,
     }
@@ -680,7 +680,7 @@ async def test_single_stage_workflow(workflow_engine, job_manager, job_coordinat
     job_coordinator.wait_for_children.return_value = {
         "all_complete": True,
         "completed": 1,
-        "failed": 0,
+        "blocked": 0,
         "active": 0,
         "timed_out": False,
     }
@@ -798,7 +798,7 @@ async def test_execute_stage_creates_jobs(workflow_engine, job_manager, job_coor
     job_coordinator.wait_for_children.return_value = {
         "all_complete": True,
         "completed": 2,
-        "failed": 0,
+        "blocked": 0,
         "active": 0,
         "timed_out": False,
     }

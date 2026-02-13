@@ -292,10 +292,10 @@ class WorkflowStatus(BaseModel):
 
     active_agents: int = 0
     completed_agents: int = 0
-    failed_agents: int = 0
     pending_agents: int = 0
     blocked_agents: int = 0
-    cancelled_agents: int = 0
+    silent_agents: int = 0
+    decommissioned_agents: int = 0
     current_stage: str = "Not started"
     progress_percent: float = 0.0
     total_agents: int = 0
@@ -775,7 +775,7 @@ class ProjectSummaryResult(BaseModel):
     mission: Optional[str] = None
     total_jobs: int = 0
     completed_jobs: int = 0
-    failed_jobs: int = 0
+    blocked_jobs: int = 0
     active_jobs: int = 0
     pending_jobs: int = 0
     completion_percentage: float = 0.0
@@ -795,9 +795,10 @@ class CloseoutData(BaseModel):
     project_name: str
     agent_count: int = 0
     completed_agents: int = 0
-    failed_agents: int = 0
+    blocked_agents: int = 0
+    silent_agents: int = 0
     all_agents_complete: bool = False
-    has_failed_agents: bool = False
+    has_blocked_agents: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -863,7 +864,7 @@ class SoftDeleteResult(BaseModel):
 
     message: str
     deleted_at: Optional[str] = None
-    cancelled_jobs: int = 0
+    decommissioned_jobs: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

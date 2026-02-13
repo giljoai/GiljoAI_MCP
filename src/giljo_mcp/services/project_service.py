@@ -812,7 +812,7 @@ class ProjectService:
                         and_(
                             AgentJob.project_id == project_id,
                             AgentJob.tenant_key == tenant_key,
-                            AgentExecution.status.notin_(["complete", "failed", "cancelled"]),
+                            AgentExecution.status.notin_(["complete", "decommissioned"]),
                         )
                     )
                 )
@@ -1112,7 +1112,7 @@ class ProjectService:
                 AgentJob.project_id == project.id,
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == tenant_key,
-                ~AgentExecution.status.in_(["failed", "cancelled"]),  # FIX 1
+                ~AgentExecution.status.in_(["decommissioned"]),  # Handover 0491: Simplified statuses
             )
         )
         existing_result = await session.execute(existing_stmt)
@@ -1417,7 +1417,7 @@ class ProjectService:
 
             total_jobs = sum(job_counts.values())
             completed_jobs = job_counts.get("completed", 0)
-            failed_jobs = job_counts.get("failed", 0)
+            blocked_jobs = job_counts.get("blocked", 0)
             active_jobs = job_counts.get("active", 0)
             pending_jobs = job_counts.get("pending", 0)
 
@@ -1471,7 +1471,7 @@ class ProjectService:
                 mission=project.mission,
                 total_jobs=total_jobs,
                 completed_jobs=completed_jobs,
-                failed_jobs=failed_jobs,
+                blocked_jobs=blocked_jobs,
                 active_jobs=active_jobs,
                 pending_jobs=pending_jobs,
                 completion_percentage=completion_percentage,
@@ -1568,20 +1568,22 @@ class ProjectService:
         status_counts = await self._aggregate_agent_statuses(project_id, tenant_key, session)
         total_agents = status_counts["total"]
         completed_agents = status_counts["completed"]
-        failed_agents = status_counts["failed"]
+        blocked_agents = status_counts["blocked"]
+        silent_agents = status_counts.get("silent", 0)
         active_agents = status_counts["active"]
 
         all_agents_complete = total_agents > 0 and completed_agents == total_agents and active_agents == 0
-        has_failed_agents = failed_agents > 0
+        has_blocked_agents = blocked_agents > 0
 
         return CloseoutData(
             project_id=project_id,
             project_name=project.name,
             agent_count=total_agents,
             completed_agents=completed_agents,
-            failed_agents=failed_agents,
+            blocked_agents=blocked_agents,
+            silent_agents=silent_agents,
             all_agents_complete=all_agents_complete,
-            has_failed_agents=has_failed_agents,
+            has_blocked_agents=has_blocked_agents,
         )
 
     async def _build_can_close_response(self, project_id: str, tenant_key: str, session: Any) -> CanCloseResult:
@@ -1605,8 +1607,8 @@ class ProjectService:
         summary = None
         if all_agents_finished:
             summary_parts = [f"{status_counts['completed']} successful agents"]
-            summary_parts.append(f"{status_counts['failed']} failed agents")
             summary_parts.append(f"{status_counts['blocked']} blocked agents")
+            summary_parts.append(f"{status_counts.get('silent', 0)} silent agents")
             summary = ", ".join(summary_parts)
 
         return CanCloseResult(
@@ -1615,9 +1617,9 @@ class ProjectService:
             all_agents_finished=all_agents_finished,
             agent_statuses={
                 "complete": status_counts["completed"],
-                "failed": status_counts["failed"],
-                "active": status_counts["active"],
                 "blocked": status_counts["blocked"],
+                "silent": status_counts.get("silent", 0),
+                "active": status_counts["active"],
             },
         )
 
@@ -1639,9 +1641,9 @@ class ProjectService:
         status_counts = await self._aggregate_agent_statuses(project_id, tenant_key, session)
         agent_summary = (
             f"{status_counts['completed']} completed, "
-            f"{status_counts['failed']} failed, "
-            f"{status_counts['active']} active, "
-            f"{status_counts['blocked']} blocked"
+            f"{status_counts['blocked']} blocked, "
+            f"{status_counts.get('silent', 0)} silent, "
+            f"{status_counts['active']} active"
         )
 
         repo_path = "."
@@ -1706,8 +1708,8 @@ class ProjectService:
 
         total_agents = sum(job_counts.values())
         completed_agents = job_counts.get("complete", 0) + job_counts.get("completed", 0)
-        failed_agents = job_counts.get("failed", 0)
         blocked_agents = job_counts.get("blocked", 0)
+        silent_agents = job_counts.get("silent", 0)
         active_statuses = {
             "working",
             "active",
@@ -1720,6 +1722,7 @@ class ProjectService:
             "review",
             "planning",
             "blocked",
+            "silent",
         }
         active_agents = sum(job_counts.get(status, 0) for status in active_statuses)
 
@@ -1727,8 +1730,8 @@ class ProjectService:
             "job_counts": job_counts,
             "total": total_agents,
             "completed": completed_agents,
-            "failed": failed_agents,
             "blocked": blocked_agents,
+            "silent": silent_agents,
             "active": active_agents,
         }
 
@@ -1930,7 +1933,7 @@ class ProjectService:
                     AgentJob.project_id == project_id,
                     AgentExecution.agent_display_name == "orchestrator",
                     AgentExecution.tenant_key == tenant_key,
-                    ~AgentExecution.status.in_(["failed", "cancelled"]),  # Same filter as Fix 1 & 2
+                    ~AgentExecution.status.in_(["decommissioned"]),  # Handover 0491: Simplified statuses
                 )
                 .order_by(AgentExecution.started_at.desc())
             )
@@ -2446,31 +2449,31 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     and_(
                         AgentJob.project_id == project_id,
                         AgentJob.tenant_key == tenant_key,
-                        AgentExecution.status.notin_(["completed", "failed", "cancelled"]),
+                        AgentExecution.status.notin_(["completed", "complete", "decommissioned"]),
                     )
                 )
             )
             executions_result = await session.execute(executions_stmt)
             executions = executions_result.scalars().all()
 
-            cancelled_jobs_count = 0
+            decommissioned_jobs_count = 0
             for execution in executions:
-                execution.status = "cancelled"
+                execution.status = "decommissioned"
                 execution.completed_at = now
-                cancelled_jobs_count += 1
+                decommissioned_jobs_count += 1
 
             await session.commit()
 
             self._logger.info(
                 f"Soft deleted project {project_id} for tenant {tenant_key} "
                 f"at {project.deleted_at.isoformat() if project.deleted_at else 'unknown time'}. "
-                f"Cancelled {cancelled_jobs_count} agent jobs."
+                f"Decommissioned {decommissioned_jobs_count} agent jobs."
             )
 
             return SoftDeleteResult(
                 message="Project deleted successfully",
                 deleted_at=project.deleted_at.isoformat() if project.deleted_at else None,
-                cancelled_jobs=cancelled_jobs_count,
+                decommissioned_jobs=decommissioned_jobs_count,
             )
 
     async def purge_deleted_project(self, project_id: str) -> ProjectPurgeResult:

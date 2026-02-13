@@ -372,8 +372,8 @@ class WorkflowEngine:
             raise TimeoutError(f"Stage {stage.name} timed out after {stage.timeout_seconds}s")
 
         # Check for failures
-        if wait_result["failed"] > 0:
-            raise WorkflowStageFailureError(f"Stage {stage.name} had {wait_result['failed']} failed jobs")
+        if wait_result["blocked"] > 0:
+            raise WorkflowStageFailureError(f"Stage {stage.name} had {wait_result['blocked']} blocked jobs")
 
         # Aggregate results from all jobs
         aggregated = await self.job_coordinator.aggregate_child_results(

@@ -155,9 +155,10 @@ async def get_project_closeout_data(
         project_name=result.project_name,
         agent_count=result.agent_count,
         completed_agents=result.completed_agents,
-        failed_agents=result.failed_agents,
+        blocked_agents=result.blocked_agents,
+        silent_agents=result.silent_agents,
         all_agents_complete=result.all_agents_complete,
-        has_failed_agents=result.has_failed_agents,
+        has_blocked_agents=result.has_blocked_agents,
     )
 
 

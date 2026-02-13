@@ -62,16 +62,16 @@ async def test_get_closeout_data_all_agents_complete(
     assert data.project_name == "Closeout Ready"
     assert data.agent_count == 3
     assert data.completed_agents == 3
-    assert data.failed_agents == 0
+    assert data.blocked_agents == 0
     assert data.all_agents_complete is True
-    assert data.has_failed_agents is False
+    assert data.has_blocked_agents is False
 
 
 @pytest.mark.asyncio
-async def test_get_closeout_data_with_failed_agents(
+async def test_get_closeout_data_with_blocked_agents(
     db_manager, db_session: AsyncSession, tenant_manager: TenantManager
 ):
-    """Closeout data reports failed agents and incomplete status."""
+    """Closeout data reports blocked agents and incomplete status."""
     tenant_key = TenantManager.generate_tenant_key()
     tenant_manager.set_current_tenant(tenant_key)
 
@@ -115,7 +115,7 @@ async def test_get_closeout_data_with_failed_agents(
             job_id=job2.job_id,
             tenant_key=tenant_key,
             agent_display_name="tester",
-            status="failed",
+            status="blocked",
         )
     )
 
@@ -147,9 +147,9 @@ async def test_get_closeout_data_with_failed_agents(
     assert data.project_name == "Mixed Outcomes"
     assert data.agent_count == 3
     assert data.completed_agents == 1
-    assert data.failed_agents == 1
+    assert data.blocked_agents == 1
     assert data.all_agents_complete is False
-    assert data.has_failed_agents is True
+    assert data.has_blocked_agents is True
 
 
 @pytest.mark.asyncio
@@ -209,9 +209,9 @@ async def test_get_closeout_data_with_git_integration(
     assert data.project_name == "Git Enabled Project"
     assert data.agent_count == 1
     assert data.completed_agents == 1
-    assert data.failed_agents == 0
+    assert data.blocked_agents == 0
     assert data.all_agents_complete is True
-    assert data.has_failed_agents is False
+    assert data.has_blocked_agents is False
 
 
 @pytest.mark.asyncio

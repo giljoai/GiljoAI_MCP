@@ -631,7 +631,7 @@ class TestCloseoutVerificationEdgeCases:
         assert result["success"] is True
 
     @pytest.mark.asyncio
-    async def test_skips_cancelled_agents(
+    async def test_skips_decommissioned_agents(
         self,
         db_session,
         db_manager,
@@ -641,14 +641,14 @@ class TestCloseoutVerificationEdgeCases:
         test_orchestrator_job,
         test_orchestrator_execution,
     ):
-        """Should skip cancelled agents in verification."""
-        # Create cancelled agent (should be ignored)
+        """Should skip decommissioned agents in verification."""
+        # Create decommissioned agent (should be ignored)
         await create_test_agent(
             db_session=db_session,
             project_id=test_project.id,
-            status="cancelled",
+            status="decommissioned",
             tenant_key=tenant_key,
-            agent_name="cancelled-agent",
+            agent_name="decommissioned-agent",
         )
 
         result = await write_360_memory(
@@ -662,7 +662,7 @@ class TestCloseoutVerificationEdgeCases:
             session=db_session,
         )
 
-        # Should succeed - cancelled agent doesn't block
+        # Should succeed - decommissioned agent doesn't block
         assert result["success"] is True
 
     @pytest.mark.asyncio

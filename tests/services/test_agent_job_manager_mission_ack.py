@@ -176,8 +176,8 @@ async def test_other_status_transitions_dont_set_mission_acknowledged_at(
     execution = await manager.get_execution_by_agent_id(agent_id, tenant_key)
     assert execution.mission_acknowledged_at is None
 
-    # Transition to 'failed' (not 'working')
-    await manager.update_agent_status(agent_id=agent_id, status="failed", tenant_key=tenant_key)
+    # Transition to 'blocked' (not 'working') - Handover 0491
+    await manager.update_agent_status(agent_id=agent_id, status="blocked", tenant_key=tenant_key)
 
     # Verify mission_acknowledged_at is still None
     execution = await manager.get_execution_by_agent_id(agent_id, tenant_key)

@@ -353,7 +353,7 @@ class TestAgentJobWebSocketEvents:
         try:
             # Fail job via API
             response = await async_client.put(
-                f"/api/agent/agent-jobs/{job_id}/status", headers=auth_headers, json={"status": "failed"}
+                f"/api/agent/agent-jobs/{job_id}/status", headers=auth_headers, json={"status": "blocked"}
             )
 
             assert response.status_code == 200
@@ -364,7 +364,7 @@ class TestAgentJobWebSocketEvents:
             assert event is not None, "Did not receive agent:status_changed event"
             assert event["type"] == "agent:status_changed"
             assert event["data"]["job_id"] == job_id
-            assert event["data"]["status"] == "failed"
+            assert event["data"]["status"] == "blocked"
             assert "duration_seconds" in event["data"]
 
         finally:

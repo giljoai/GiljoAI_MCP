@@ -461,7 +461,7 @@ async def test_system_statistics_agent_status_counting(
     - active_agents = count of agents with status "waiting" OR "working"
     - total_jobs_completed = count of agents with status "complete"
 
-    AgentExecution has 7 statuses: waiting, working, blocked, complete, failed, cancelled, decommissioned
+    AgentExecution has 6 statuses: waiting, working, blocked, complete, silent, decommissioned
     """
     # Create a project
     project = Project(
@@ -483,8 +483,7 @@ async def test_system_statistics_agent_status_counting(
         "working": 3,
         "blocked": 1,
         "complete": 4,
-        "failed": 1,
-        "cancelled": 1,
+        "silent": 1,
         "decommissioned": 1,
     }
 
@@ -498,7 +497,7 @@ async def test_system_statistics_agent_status_counting(
                 project_id=project.id,
                 job_type="worker",
                 mission=f"Test mission {status}",
-                status="active" if status not in ["complete", "failed", "cancelled"] else "completed",
+                status="active" if status not in ["complete", "decommissioned"] else "completed",
                 created_at=datetime.now(timezone.utc),
                 job_metadata={},
             )
@@ -530,7 +529,7 @@ async def test_system_statistics_agent_status_counting(
     assert response.status_code == 200
     data = response.json()
 
-    # Total agents = sum of all statuses = 13
+    # Total agents = sum of all statuses = 12
     expected_total = sum(statuses.values())
     assert data["total_agents"] == expected_total, (
         f"Total agents should be {expected_total}, got {data['total_agents']}"

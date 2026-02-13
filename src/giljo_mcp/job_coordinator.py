@@ -179,12 +179,18 @@ class JobCoordinator:
 
             # Count statuses
             completed = sum(1 for j in children if j.status == "completed")
-            failed = sum(1 for j in children if j.status == "failed")
+            blocked = sum(1 for j in children if j.status == "blocked")
             active = sum(1 for j in children if j.status in ["pending", "active"])
 
             # Check if all done
             if active == 0:
-                return {"all_complete": True, "completed": completed, "failed": failed, "active": 0, "timed_out": False}
+                return {
+                    "all_complete": True,
+                    "completed": completed,
+                    "blocked": blocked,
+                    "active": 0,
+                    "timed_out": False,
+                }
 
             # Check timeout
             elapsed = asyncio.get_event_loop().time() - start_time
@@ -199,7 +205,7 @@ class JobCoordinator:
         return {
             "all_complete": False,
             "completed": completed,
-            "failed": failed,
+            "blocked": blocked,
             "active": active,
             "timed_out": timed_out,
         }
@@ -389,7 +395,7 @@ class JobCoordinator:
         """
         # Track visited jobs to prevent cycles
         visited = set()
-        status_counts = {"completed": 0, "failed": 0, "active": 0, "pending": 0}
+        status_counts = {"completed": 0, "blocked": 0, "active": 0, "pending": 0}
 
         async def traverse(job_id: str, current_depth: int) -> int:
             """Recursively traverse job tree."""
@@ -431,7 +437,7 @@ class JobCoordinator:
             "root_job_id": root_job_id,
             "total_jobs": len(visited),
             "completed": status_counts.get("completed", 0),
-            "failed": status_counts.get("failed", 0),
+            "blocked": status_counts.get("blocked", 0),
             "active": status_counts.get("active", 0),
             "pending": status_counts.get("pending", 0),
             "tree_depth": tree_depth,
@@ -449,7 +455,7 @@ class JobCoordinator:
             Dict with:
                 total_children: int
                 completed: int
-                failed: int
+                blocked: int
                 active: int
                 success_rate: float
                 avg_completion_time: float or None (seconds)
@@ -463,7 +469,7 @@ class JobCoordinator:
             return {
                 "total_children": 0,
                 "completed": 0,
-                "failed": 0,
+                "blocked": 0,
                 "active": 0,
                 "success_rate": 0.0,
                 "avg_completion_time": None,
@@ -471,11 +477,11 @@ class JobCoordinator:
 
         # Count statuses
         completed = sum(1 for j in children if j.status == "completed")
-        failed = sum(1 for j in children if j.status == "failed")
+        blocked = sum(1 for j in children if j.status == "blocked")
         active = sum(1 for j in children if j.status in ["pending", "active"])
 
         # Calculate success rate
-        finished = completed + failed
+        finished = completed + blocked
         success_rate = completed / finished if finished > 0 else 0.0
 
         # Calculate average completion time for completed jobs
@@ -490,7 +496,7 @@ class JobCoordinator:
         return {
             "total_children": total_children,
             "completed": completed,
-            "failed": failed,
+            "blocked": blocked,
             "active": active,
             "success_rate": success_rate,
             "avg_completion_time": avg_completion_time,

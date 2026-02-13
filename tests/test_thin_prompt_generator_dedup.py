@@ -229,10 +229,11 @@ class TestThinPromptGeneratorDeduplication:
         assert executions[0].status == "blocked"
 
     @pytest.mark.asyncio
-    async def test_generate_creates_when_failed(self, db_session, test_user):
+    async def test_generate_creates_when_decommissioned(self, db_session, test_user):
         """
         Test that ThinClientPromptGenerator.generate() creates a NEW orchestrator
-        when the existing one has "failed" status (Fix 2).
+        when the existing one has "decommissioned" status.
+        Handover 0491: failed -> decommissioned (only decommissioned is excluded by filter).
         """
         # Create product and project
         product = Product(
@@ -245,7 +246,7 @@ class TestThinPromptGeneratorDeduplication:
 
         project = Project(
             name=f"Test Project {uuid4().hex[:8]}",
-            description="Test project for failed orchestrator",
+            description="Test project for decommissioned orchestrator",
             product_id=product.id,
             tenant_key=test_user.tenant_key,
             status="active",
@@ -253,12 +254,12 @@ class TestThinPromptGeneratorDeduplication:
         db_session.add(project)
         await db_session.flush()
 
-        # Create orchestrator with "failed" status
-        failed_job_id = str(uuid4())
-        failed_agent_id = str(uuid4())
+        # Create orchestrator with "decommissioned" status
+        decommissioned_job_id = str(uuid4())
+        decommissioned_agent_id = str(uuid4())
 
         agent_job = AgentJob(
-            job_id=failed_job_id,
+            job_id=decommissioned_job_id,
             tenant_key=test_user.tenant_key,
             project_id=project.id,
             mission=f"Orchestrator for project: {project.name}",
@@ -268,12 +269,12 @@ class TestThinPromptGeneratorDeduplication:
         db_session.add(agent_job)
 
         agent_execution = AgentExecution(
-            agent_id=failed_agent_id,
-            job_id=failed_job_id,
+            agent_id=decommissioned_agent_id,
+            job_id=decommissioned_job_id,
             tenant_key=test_user.tenant_key,
             agent_display_name="orchestrator",
             agent_name="orchestrator",
-            status="failed",  # FAILED status - should NOT be found
+            status="decommissioned",  # DECOMMISSIONED status - should NOT be found
             progress=25,
         )
         db_session.add(agent_execution)
@@ -292,10 +293,10 @@ class TestThinPromptGeneratorDeduplication:
             tool="universal",
         )
 
-        # ASSERT: Should create NEW orchestrator (not reuse failed one)
-        assert result["orchestrator_id"] != failed_job_id
+        # ASSERT: Should create NEW orchestrator (not reuse decommissioned one)
+        assert result["orchestrator_id"] != decommissioned_job_id
 
-        # ASSERT: Should now have TWO orchestrators (failed + new)
+        # ASSERT: Should now have TWO orchestrators (decommissioned + new)
         stmt = (
             select(AgentExecution)
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
@@ -312,5 +313,5 @@ class TestThinPromptGeneratorDeduplication:
 
         # Verify statuses
         statuses = {ex.status for ex in executions}
-        assert "failed" in statuses
+        assert "decommissioned" in statuses
         assert "waiting" in statuses  # New orchestrator should be "waiting"

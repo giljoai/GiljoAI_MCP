@@ -294,21 +294,19 @@ class TestOrchestrationServiceJobManagement:
         mock_job = Mock(spec=AgentExecution)
         mock_job.job_id = "job-123"
         mock_job.status = "working"
-        mock_job.failure_reason = None
         mock_job.block_reason = None
 
         session.execute.return_value = Mock(scalar_one_or_none=Mock(return_value=mock_job))
 
         service = OrchestrationService(db_manager, tenant_manager)
 
-        # Act
+        # Act - Handover 0491: severity param removed, always sets blocked
         result = await service.report_error(job_id="job-123", error="Failed to compile code")
 
         # Assert
-        assert result["job_id"] == "job-123"
-        assert result["message"] == "Error reported"
+        assert result.job_id == "job-123"
+        assert result.message == "Error reported"
         assert mock_job.status == "blocked"
-        assert mock_job.failure_reason is None
         assert mock_job.block_reason == "Failed to compile code"
         session.commit.assert_awaited_once()
 
@@ -359,9 +357,9 @@ class TestOrchestrationServiceWorkflow:
         assert result.active_agents == 1
         assert result.completed_agents == 1
         assert result.pending_agents == 1
-        assert result.failed_agents == 0
         assert result.blocked_agents == 0
-        assert result.cancelled_agents == 0
+        assert result.silent_agents == 0
+        assert result.decommissioned_agents == 0
         assert result.progress_percent == 33.33
         assert result.current_stage == "In Progress"
 
@@ -439,16 +437,17 @@ class TestOrchestrationServiceWorkflow:
         assert result.active_agents == 1
         assert result.completed_agents == 1
         assert result.total_agents == 3
-        assert result.failed_agents == 0
-        assert result.cancelled_agents == 0
+        assert result.silent_agents == 0
+        assert result.decommissioned_agents == 0
         assert "blocked" in result.current_stage.lower()
 
     @pytest.mark.asyncio
-    async def test_get_workflow_status_cancelled_agents_counted(self, mock_db_manager):
-        """Test that cancelled/decommissioned agents are counted in workflow status.
+    async def test_get_workflow_status_decommissioned_agents_counted(self, mock_db_manager):
+        """Test that decommissioned agents are counted in workflow status.
 
-        Verifies that executions with status 'cancelled' or 'decommissioned'
-        are tracked in the cancelled_agents field.
+        Verifies that executions with status 'decommissioned'
+        are tracked in the decommissioned_agents field.
+        Handover 0491: cancelled -> decommissioned.
         """
         # Arrange
         db_manager, session = mock_db_manager
@@ -458,15 +457,15 @@ class TestOrchestrationServiceWorkflow:
         mock_project = Mock(spec=Project)
         mock_project.id = "project-id"
 
-        # Mock executions: 2 complete, 1 cancelled
+        # Mock executions: 2 complete, 1 decommissioned
         mock_exec_complete1 = Mock(spec=AgentExecution)
         mock_exec_complete1.status = "complete"
 
         mock_exec_complete2 = Mock(spec=AgentExecution)
         mock_exec_complete2.status = "complete"
 
-        mock_exec_cancelled = Mock(spec=AgentExecution)
-        mock_exec_cancelled.status = "cancelled"
+        mock_exec_decommissioned = Mock(spec=AgentExecution)
+        mock_exec_decommissioned.status = "decommissioned"
 
         mock_job = Mock(spec=AgentJob)
 
@@ -476,7 +475,7 @@ class TestOrchestrationServiceWorkflow:
             return_value=[
                 (mock_exec_complete1, mock_job),
                 (mock_exec_complete2, mock_job),
-                (mock_exec_cancelled, mock_job),
+                (mock_exec_decommissioned, mock_job),
             ]
         )
 
@@ -494,14 +493,14 @@ class TestOrchestrationServiceWorkflow:
         )
 
         # Assert
-        assert result.cancelled_agents == 1
+        assert result.decommissioned_agents == 1
         assert result.completed_agents == 2
         assert result.total_agents == 3
         assert result.blocked_agents == 0
-        assert result.failed_agents == 0
-        # Progress excludes cancelled from denominator: 2 completed / 2 actionable = 100%
+        assert result.silent_agents == 0
+        # Progress excludes decommissioned from denominator: 2 completed / 2 actionable = 100%
         assert result.progress_percent == 100.0
-        # Stage should be Completed (cancelled agents don't block completion)
+        # Stage should be Completed (decommissioned agents don't block completion)
         assert result.current_stage == "Completed"
 
     @pytest.mark.asyncio
