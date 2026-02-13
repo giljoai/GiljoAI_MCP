@@ -74,7 +74,7 @@ class AgentJobResponse(BaseModel):
 
 
 class AgentJobStatusUpdate(BaseModel):
-    status: str = Field(..., description="New status (pending, active, completed, failed)")
+    status: str = Field(..., description="New status (waiting, working, blocked, complete, silent, decommissioned)")
 
 
 class AgentJobMessage(BaseModel):
@@ -207,7 +207,7 @@ async def update_agent_job_status(
 
         # Calculate duration for completed/failed jobs
         duration_seconds = None
-        if status_update.status in ["completed", "failed"] and job.started_at:
+        if status_update.status in ["completed", "complete", "decommissioned"] and job.started_at:
             from datetime import datetime, timezone
 
             completed_at = job.completed_at or datetime.now(timezone.utc)

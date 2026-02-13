@@ -7,6 +7,7 @@ export const formatStatus = (status) => {
     pending: 'Pending',
     completed: 'Completed',
     failed: 'Failed',
+    silent: 'Silent',
     in_progress: 'In Progress',
     error: 'Error',
     success: 'Success',

@@ -100,8 +100,8 @@ class TestOrchestratorStatusFiltering:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="Cancelled Orchestrator",
-            status="cancelled",
-            mission="Cancelled",
+            status="decommissioned",
+            mission="Decommissioned",
         )
         db_session.add(cancelled_orch)
 
@@ -111,8 +111,8 @@ class TestOrchestratorStatusFiltering:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="Failed Orchestrator",
-            status="failed",
-            mission="Failed",
+            status="blocked",
+            mission="Blocked",
         )
         db_session.add(failed_orch)
         await db_session.commit()

@@ -218,13 +218,13 @@ async def test_report_error_sets_blocked_not_failed(mock_db_manager):
     execution = Mock(spec=AgentExecution)
     execution.job_id = "job-123"
     execution.status = "working"
-    execution.failure_reason = None
     execution.block_reason = None
 
     session.execute.return_value = _scalar_result(execution)
 
     service = OrchestrationService(db_manager, tenant_manager)
 
+    # Handover 0491: severity param removed, always sets blocked
     result = await service.report_error(
         job_id="job-123",
         error="Need input from user",
@@ -234,4 +234,3 @@ async def test_report_error_sets_blocked_not_failed(mock_db_manager):
     assert result["message"] == "Error reported"
     assert execution.status == "blocked"
     assert execution.block_reason == "Need input from user"
-    assert execution.failure_reason is None

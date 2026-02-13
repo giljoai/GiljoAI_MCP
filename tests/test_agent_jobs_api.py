@@ -457,7 +457,7 @@ async def test_fail_job_success(authenticated_client: tuple[AsyncClient, User], 
     assert response.status_code == 200
     data = response.json()
     assert data["job_id"] == test_job.job_id
-    assert data["status"] == "failed"
+    assert data["status"] == "blocked"
     assert "completed_at" in data
     assert "Job failed" in data["message"]
 

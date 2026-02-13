@@ -87,8 +87,7 @@ async def get_job_health(
         # Job is stale if no progress in 10+ minutes and not in terminal state
         is_stale = minutes_since_progress >= 10.0 and execution.status not in (
             "complete",
-            "failed",
-            "cancelled",
+            "silent",
             "decommissioned",
         )
 

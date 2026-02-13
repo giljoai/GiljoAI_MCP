@@ -240,7 +240,7 @@ class TestOrchestrationTools:
             assert isinstance(result, dict)
             assert result["active_agents"] == 1
             assert result["completed_agents"] == 2
-            assert result["failed_agents"] == 0
+            assert result["blocked_agents"] == 0
             assert "progress_percent" in result
             assert result["progress_percent"] > 0
 
@@ -276,7 +276,7 @@ class TestOrchestrationTools:
             assert isinstance(result, dict)
             assert result["active_agents"] == 0
             assert result["completed_agents"] == 0
-            assert result["failed_agents"] == 0
+            assert result["blocked_agents"] == 0
             assert result["progress_percent"] == 0.0
             assert result["current_stage"] == "Not started"
 
@@ -309,8 +309,8 @@ class TestOrchestrationTools:
             assert "not found" in result["error"].lower()
 
     @pytest.mark.asyncio
-    async def test_get_workflow_status_with_failed_jobs(self):
-        """Test get_workflow_status with failed jobs"""
+    async def test_get_workflow_status_with_blocked_jobs(self):
+        """Test get_workflow_status with blocked jobs"""
         from src.giljo_mcp.tools.orchestration import register_orchestration_tools
 
         registrar = MockMCPToolRegistrar()
@@ -332,7 +332,7 @@ class TestOrchestrationTools:
                     spec=MCPAgentJob,
                     id=1,
                     job_id="job-1",
-                    status="failed",
+                    status="blocked",
                     agent_display_name="implementer",
                 ),
                 Mock(
@@ -356,7 +356,7 @@ class TestOrchestrationTools:
 
             # Verify failed count
             assert isinstance(result, dict)
-            assert result["failed_agents"] == 1
+            assert result["blocked_agents"] == 1
             assert result["completed_agents"] == 1
 
     @pytest.mark.asyncio

@@ -65,7 +65,7 @@ async def get_project_summary(
         mission=summary_data.mission,
         total_jobs=summary_data.total_jobs,
         completed_jobs=summary_data.completed_jobs,
-        failed_jobs=summary_data.failed_jobs,
+        blocked_jobs=summary_data.blocked_jobs,
         active_jobs=summary_data.active_jobs,
         pending_jobs=summary_data.pending_jobs,
         completion_percentage=summary_data.completion_percentage,

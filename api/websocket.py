@@ -542,7 +542,7 @@ class WebSocketManager:
         current_task: Optional[str] = None,
         progress_percentage: Optional[int] = None,
         meta_data: Optional[dict] = None,
-        failure_reason: Optional[str] = None,  # Handover 0113
+        block_reason: Optional[str] = None,  # Handover 0491: Replaced failure_reason
     ):
         """Broadcast real-time status updates during agent execution."""
         data: dict[str, Any] = {
@@ -559,8 +559,8 @@ class WebSocketManager:
             "update_time": datetime.now(timezone.utc).isoformat(),
         }
 
-        if status == "failed" and failure_reason:
-            data["failure_reason"] = failure_reason
+        if status in ("blocked", "silent") and block_reason:
+            data["block_reason"] = block_reason
 
         event = EventFactory.tenant_envelope(
             event_type="agent:update",

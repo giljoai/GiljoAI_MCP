@@ -163,6 +163,17 @@
 > **Prerequisite**: Phase 1 research must validate no unexpected usage of removed statuses before implementation
 > **Origin**: Alpha trial session (2026-02-11) - workflow status fix + design discussion
 
+### API Key Security Hardening (0492) - NEW
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0492** | **API Key Security Hardening (Limit + Expiry + IP Logging)** | **Ready** | **HIGH** | 8-12h |
+
+> **Purpose**: 5-key-per-user limit, 90-day key expiry, passive IP logging per API key
+> **Database**: `expires_at` column on `api_keys`, new `api_key_ip_log` table
+> **Frontend**: Expiry display with color coding, "X of 5 keys used" indicator
+> **Deferred**: JWT single-session (breaks multi-device), per-key rate limiting, IP enforcement
+> **Origin**: Settings cleanup session (2026-02-12) - API key sharing risk analysis
+
 ### Superseded/Moved to Completed (Cleanup)
 | ID | Title | Status | Notes |
 |----|-------|--------|-------|
@@ -715,7 +726,7 @@ completed/reference/
 - **0317**: Gap in 0301-0400 range
 - **0398-0399**: Gaps in 0301-0400 range (0385-0386 used in git, 0396-0397 now used)
 - **0413, 0418, 0434-0439**: Gaps in 0401-0500 range (0433 now used)
-- **0441-0449, 0454-0459, 0465-0469, 0471-0479, 0491-0499**: Additional 0401-0500 gaps (0490 now used)
+- **0441-0449, 0454-0459, 0465-0469, 0471-0479, 0493-0499**: Additional 0401-0500 gaps (0490-0492 now used)
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
 - **0133-0134**: Gaps in 0101-0200 range
