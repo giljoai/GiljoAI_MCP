@@ -113,7 +113,7 @@
 
     <!-- Delete Confirmation -->
     <v-dialog v-model="showDeleteDialog" max-width="400">
-      <v-card>
+      <v-card v-draggable>
         <v-card-title>Delete Organization?</v-card-title>
         <v-card-text>
           Are you sure you want to delete <strong>{{ currentOrg?.name }}</strong

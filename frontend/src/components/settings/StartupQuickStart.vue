@@ -239,7 +239,7 @@
 
     <!-- Step details dialog -->
     <v-dialog v-model="showDetails" max-width="760">
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="d-flex align-center justify-space-between">
           <div class="d-flex align-center ga-2">
             <GiljoFaceIcon
@@ -274,7 +274,7 @@
 
     <!-- Shortcuts dialog (mock) -->
     <v-dialog v-model="showShortcuts" max-width="760">
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="d-flex align-center justify-space-between">
           <span>Quick Start Shortcuts</span>
           <v-btn icon="mdi-close" variant="text" @click="showShortcuts = false" />
@@ -323,7 +323,7 @@
 
     <!-- Help mock dialog -->
     <v-dialog v-model="showHelpMock" max-width="760">
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="d-flex align-center justify-space-between">
           <span>Help (mock)</span>
           <v-btn icon="mdi-close" variant="text" @click="showHelpMock = false" />

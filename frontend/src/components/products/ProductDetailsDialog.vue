@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="isOpen" max-width="600">
-    <v-card>
+    <v-card v-draggable>
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-information-outline</v-icon>
         Product Details
@@ -300,7 +300,7 @@
 
   <!-- Summary Preview Dialog -->
   <v-dialog v-model="summaryDialog" max-width="800" scrollable>
-    <v-card>
+    <v-card v-draggable>
       <v-card-title class="d-flex align-center">
         <v-icon start :color="summaryLevelColor">mdi-text-box-outline</v-icon>
         {{ summaryTitle }}
@@ -334,7 +334,7 @@
 
   <!-- Consolidated Summary Viewer Dialog (Handover 0377) -->
   <v-dialog v-model="consolidatedSummaryDialog" max-width="800" scrollable>
-    <v-card>
+    <v-card v-draggable>
       <v-card-title class="d-flex align-center">
         <v-icon start color="teal">mdi-database-merge</v-icon>
         {{ consolidatedSummaryTitle }}

@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="isVisible" max-width="700" persistent>
-    <v-card>
+    <v-card v-draggable>
       <!-- Header -->
       <v-card-title class="d-flex align-center">
         <v-avatar :color="getAgentColor(agent?.agent_name || agent?.agent_display_name)" size="32" class="agent-avatar mr-2">

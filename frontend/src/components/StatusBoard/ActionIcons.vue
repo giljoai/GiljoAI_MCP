@@ -90,7 +90,7 @@
 
     <!-- Confirmation Dialog -->
     <v-dialog v-model="showConfirmDialog" max-width="500" data-test="confirm-dialog">
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="text-h5">
           {{ confirmationConfig.title }}
         </v-card-title>
