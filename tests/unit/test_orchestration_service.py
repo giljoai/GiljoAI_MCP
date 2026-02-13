@@ -559,6 +559,7 @@ class TestOrchestrationServiceWorkflow:
         assert result.active_agents == 1
         assert result.completed_agents == 1
         assert result.progress_percent == 50.0
+        assert "excluded" in result.caller_note.lower()
 
         # Verify that session.execute was called twice (project + filtered query)
         assert session.execute.call_count == 2
@@ -618,6 +619,7 @@ class TestOrchestrationServiceWorkflow:
         assert result.active_agents == 2
         assert result.completed_agents == 1
         assert result.current_stage == "In Progress"
+        assert "included" in result.caller_note.lower()
 
     @pytest.mark.asyncio
     @pytest.mark.asyncio
