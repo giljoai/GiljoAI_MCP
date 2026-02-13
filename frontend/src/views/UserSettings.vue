@@ -362,40 +362,6 @@
               @openAdvanced="openGitAdvanced"
             />
 
-            <!-- Vision Document Summarization Info (Handover 0345e) -->
-            <v-card outlined class="mb-4">
-              <v-card-title class="text-subtitle-1">
-                <v-icon left color="primary">mdi-file-document-outline</v-icon>
-                Vision Document Summarization
-              </v-card-title>
-              <v-card-text>
-                <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-                  Vision documents are automatically compressed using Sumy LSA (Latent Semantic Analysis)
-                  extractive summarization. Configure compression levels in
-                  <strong>Context → Depth Configuration → Vision Documents</strong>.
-                </v-alert>
-                <v-list density="compact">
-                  <v-list-item>
-                    <v-list-item-title>Compression Levels</v-list-item-title>
-                    <v-list-item-subtitle>
-                      Light (5K tokens), Moderate (12.5K), Heavy (25K), Full (all)
-                    </v-list-item-subtitle>
-                  </v-list-item>
-                  <v-list-item>
-                    <v-list-item-title>Algorithm</v-list-item-title>
-                    <v-list-item-subtitle>
-                      LSA extractive summarization (CPU-based, fast, no hallucination)
-                    </v-list-item-subtitle>
-                  </v-list-item>
-                  <v-list-item>
-                    <v-list-item-title>Processing Time</v-list-item-title>
-                    <v-list-item-subtitle>
-                      ~5 seconds for 100K token documents
-                    </v-list-item-subtitle>
-                  </v-list-item>
-                </v-list>
-              </v-card-text>
-            </v-card>
           </v-card-text>
         </v-card>
       </v-window-item>
