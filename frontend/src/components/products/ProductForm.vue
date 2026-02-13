@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="isOpen" max-width="950" persistent retain-focus>
-    <v-card class="product-form-card">
+    <v-card v-draggable class="product-form-card">
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2">{{ isEdit ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
         <span>{{ isEdit ? 'Edit Product' : 'Create New Product' }}</span>

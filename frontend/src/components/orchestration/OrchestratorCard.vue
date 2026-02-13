@@ -86,7 +86,7 @@
 
     <!-- Close confirmation dialog -->
     <v-dialog v-model="showCloseConfirmation" max-width="500">
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="text-h6">Confirm Project Closure</v-card-title>
         <v-card-text>
           Are you sure you want to close this project? This will initiate the closeout workflow.

@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="isOpen" max-width="800" persistent>
-    <v-card>
+    <v-card v-draggable>
       <!-- Header -->
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-information-outline</v-icon>

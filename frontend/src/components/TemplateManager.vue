@@ -286,7 +286,7 @@
 
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="editDialog" max-width="900px" persistent retain-focus>
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="d-flex align-center">
           <span class="text-h5">{{ editingTemplate.id ? 'Edit' : 'Create' }} Template</span>
           <v-spacer />
@@ -526,7 +526,7 @@
 
     <!-- Preview Dialog -->
     <v-dialog v-model="previewDialog" max-width="800px" persistent retain-focus>
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="d-flex align-center">
           <span class="text-h5">Template Preview: {{ previewingTemplate.name }}</span>
           <v-spacer />
@@ -586,7 +586,7 @@
 
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="500px" persistent retain-focus>
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="d-flex align-center">
           <v-icon color="error" class="mr-2">mdi-alert</v-icon>
           <span class="text-h5">Permanently Delete Template</span>
@@ -627,7 +627,7 @@
 
     <!-- Reset Confirmation Dialog -->
     <v-dialog v-model="resetDialog" max-width="600px" persistent retain-focus>
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="d-flex align-center">
           <v-icon color="warning" class="mr-2">mdi-alert</v-icon>
           <span class="text-h5">Confirm Reset to Default</span>
@@ -659,7 +659,7 @@
 
     <!-- Diff Viewer Dialog -->
     <v-dialog v-model="diffDialog" max-width="1200px" scrollable persistent retain-focus>
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="d-flex align-center">
           <v-icon color="primary" class="mr-2">mdi-compare</v-icon>
           <span class="text-h5">Template Comparison</span>
