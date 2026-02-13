@@ -936,6 +936,7 @@ class ApiKeyInfo(BaseModel):
     created_at: Optional[str] = None
     last_used: Optional[str] = None
     revoked_at: Optional[str] = None
+    expires_at: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -956,6 +957,7 @@ class ApiKeyCreateResult(BaseModel):
     key_prefix: str
     key_hash: str
     permissions: list[str] = Field(default_factory=list)
+    expires_at: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
