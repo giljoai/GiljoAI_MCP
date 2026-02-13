@@ -580,3 +580,141 @@ class TestTaskServiceTenantIsolation:
         # Verify filter_type="all_tasks" handling is removed (lines 306-308)
         assert 'filter_type == "all_tasks"' not in source, \
             "Lines 306-308 filter_type='all_tasks' handling should be removed"
+
+
+class TestTaskServiceTitleDescriptionSeparation:
+    """Tests for Bug 2 fix: title and description are preserved separately.
+
+    Previously, _log_task_impl set both Task.title and Task.description to the
+    same 'content' value, losing the real title when a separate description was
+    provided. After the fix, log_task accepts optional title and description
+    parameters that are stored independently on the Task model.
+    """
+
+    @pytest.mark.asyncio
+    async def test_log_task_with_separate_title_and_description(
+        self, mock_db_manager, mock_tenant_manager
+    ):
+        """When title and description are both provided, they should be stored separately."""
+        db_manager, session = mock_db_manager
+        service = TaskService(db_manager, mock_tenant_manager)
+
+        captured_task = None
+        original_add = session.add
+
+        def capture_add(obj):
+            nonlocal captured_task
+            if isinstance(obj, Task):
+                captured_task = obj
+            original_add(obj)
+
+        session.add = capture_add
+
+        await service.log_task(
+            content="Fix authentication bug",
+            title="Fix login flow",
+            description="Users cannot login with email containing special characters",
+            category="bug",
+            priority="high",
+            product_id="product-1",
+            tenant_key="test-tenant",
+        )
+
+        assert captured_task is not None, "Task should have been added to session"
+        assert captured_task.title == "Fix login flow"
+        assert captured_task.description == "Users cannot login with email containing special characters"
+
+    @pytest.mark.asyncio
+    async def test_log_task_title_only_falls_back_for_description(
+        self, mock_db_manager, mock_tenant_manager
+    ):
+        """When only title is provided (no description), description falls back to content."""
+        db_manager, session = mock_db_manager
+        service = TaskService(db_manager, mock_tenant_manager)
+
+        captured_task = None
+        original_add = session.add
+
+        def capture_add(obj):
+            nonlocal captured_task
+            if isinstance(obj, Task):
+                captured_task = obj
+            original_add(obj)
+
+        session.add = capture_add
+
+        await service.log_task(
+            content="Fix authentication bug",
+            title="Fix auth",
+            category="bug",
+            priority="high",
+            product_id="product-1",
+            tenant_key="test-tenant",
+        )
+
+        assert captured_task is not None
+        assert captured_task.title == "Fix auth"
+        # description falls back to content when not provided
+        assert captured_task.description == "Fix authentication bug"
+
+    @pytest.mark.asyncio
+    async def test_log_task_backwards_compatible_content_only(
+        self, mock_db_manager, mock_tenant_manager
+    ):
+        """When neither title nor description is provided, content is used for both (backwards compat)."""
+        db_manager, session = mock_db_manager
+        service = TaskService(db_manager, mock_tenant_manager)
+
+        captured_task = None
+        original_add = session.add
+
+        def capture_add(obj):
+            nonlocal captured_task
+            if isinstance(obj, Task):
+                captured_task = obj
+            original_add(obj)
+
+        session.add = capture_add
+
+        await service.log_task(
+            content="Fix authentication bug",
+            category="bug",
+            priority="high",
+            product_id="product-1",
+            tenant_key="test-tenant",
+        )
+
+        assert captured_task is not None
+        assert captured_task.title == "Fix authentication bug"
+        assert captured_task.description == "Fix authentication bug"
+
+    @pytest.mark.asyncio
+    async def test_create_task_preserves_title_and_description(
+        self, mock_db_manager, mock_tenant_manager
+    ):
+        """TaskService.create_task should pass title and description separately."""
+        db_manager, session = mock_db_manager
+        service = TaskService(db_manager, mock_tenant_manager)
+
+        captured_task = None
+        original_add = session.add
+
+        def capture_add(obj):
+            nonlocal captured_task
+            if isinstance(obj, Task):
+                captured_task = obj
+            original_add(obj)
+
+        session.add = capture_add
+
+        await service.create_task(
+            title="Implement feature X",
+            description="Add new feature X with unit tests and docs",
+            priority="high",
+            product_id="product-1",
+            tenant_key="test-tenant",
+        )
+
+        assert captured_task is not None
+        assert captured_task.title == "Implement feature X"
+        assert captured_task.description == "Add new feature X with unit tests and docs"

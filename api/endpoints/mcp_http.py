@@ -190,6 +190,105 @@ async def handle_initialize(
 # As of Jan 2026, no MCP tools are hidden from schema.
 HIDDEN_FROM_SCHEMA_TOOLS: set[str] = set()
 
+# ============================================================================
+# SECURITY: Schema-Based Argument Allowlist (Defense-in-Depth)
+# ============================================================================
+# Only parameters declared in the MCP tool inputSchema.properties are passed
+# through to tool functions. This prevents injection of optional Python method
+# parameters (e.g., mission, product_id, status) that are valid kwargs but
+# NOT exposed in the MCP schema.
+#
+# IMPORTANT: When adding or modifying tool schemas in handle_tools_list(),
+# update this allowlist to match. The allowlist MUST be a subset of the
+# Python function's accepted parameters.
+#
+# tenant_key is always allowed through (handled by validate_and_override_tenant_key).
+# ============================================================================
+_TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
+    # Project Management
+    "create_project": {"name", "description", "tenant_key"},
+    "update_project_mission": {"project_id", "mission"},
+    "update_agent_mission": {"job_id", "tenant_key", "mission"},
+    # Orchestrator Tools
+    "get_orchestrator_instructions": {"job_id", "tenant_key"},
+    "health_check": set(),
+    # Message Communication
+    "send_message": {
+        "to_agents",
+        "content",
+        "project_id",
+        "message_type",
+        "priority",
+        "from_agent",
+        "tenant_key",
+    },
+    "receive_messages": {
+        "agent_id",
+        "limit",
+        "exclude_self",
+        "exclude_progress",
+        "message_types",
+        "tenant_key",
+    },
+    "list_messages": {"agent_id", "status", "limit", "tenant_key"},
+    # Task Management
+    "create_task": {
+        "title",
+        "description",
+        "priority",
+        "category",
+        "assigned_to",
+        "tenant_key",
+    },
+    # Agent Coordination
+    "get_pending_jobs": {"agent_display_name", "tenant_key"},
+    "acknowledge_job": {"job_id", "agent_id", "tenant_key"},
+    "report_progress": {"job_id", "tenant_key", "todo_items"},
+    "complete_job": {"job_id", "result", "tenant_key"},
+    "report_error": {"job_id", "error", "severity", "tenant_key"},
+    # Orchestration Tools
+    "get_agent_mission": {"job_id", "tenant_key"},
+    "spawn_agent_job": {
+        "agent_display_name",
+        "agent_name",
+        "mission",
+        "project_id",
+        "tenant_key",
+    },
+    "get_workflow_status": {"project_id", "tenant_key", "exclude_job_id"},
+    # Context Tools
+    "fetch_context": {
+        "product_id",
+        "tenant_key",
+        "project_id",
+        "agent_name",
+        "categories",
+        "depth_config",
+        "apply_user_config",
+        "format",
+    },
+    # Project Closeout
+    "close_project_and_update_memory": {
+        "project_id",
+        "summary",
+        "key_outcomes",
+        "decisions_made",
+        "tenant_key",
+    },
+    # 360 Memory
+    "write_360_memory": {
+        "project_id",
+        "tenant_key",
+        "summary",
+        "key_outcomes",
+        "decisions_made",
+        "entry_type",
+        "author_job_id",
+    },
+    # Download Tools
+    "generate_download_token": {"content_type", "tenant_key"},
+}
+
 
 async def handle_tools_list(
     params: dict[str, Any], session_manager: MCPSessionManager, session_id: str
@@ -747,6 +846,53 @@ async def handle_tools_call(
         tool_name=tool_name,
         tool_func=tool_func,
     )
+
+    # SECURITY: Strip arguments not declared in MCP schema (defense-in-depth)
+    # Prevents injection of optional Python kwargs (e.g., mission, product_id)
+    # that are valid method parameters but NOT exposed in the tool's inputSchema
+    allowed_params = _TOOL_SCHEMA_PARAMS.get(tool_name)
+    if allowed_params is not None:
+        stripped = {k: v for k, v in arguments.items() if k not in allowed_params}
+        if stripped:
+            logger.warning(
+                "SECURITY: Stripped undeclared arguments from %s call: %s (session: %s, tenant: %s)",
+                tool_name,
+                list(stripped.keys()),
+                session_id,
+                session.tenant_key,
+            )
+        arguments = {k: v for k, v in arguments.items() if k in allowed_params}
+    else:
+        # Tool not in allowlist - log and fall back to signature-based filtering
+        # This ensures new tools added to tool_map but not yet in _TOOL_SCHEMA_PARAMS
+        # still get basic protection against completely unknown parameters
+        import inspect
+
+        try:
+            sig = inspect.signature(tool_func)
+            accepted = set(sig.parameters.keys()) - {"self"}
+            unexpected = {k for k in arguments if k not in accepted}
+            if unexpected:
+                logger.warning(
+                    "SECURITY: Tool %s missing from _TOOL_SCHEMA_PARAMS allowlist; "
+                    "stripped signature-invalid arguments: %s (session: %s, tenant: %s)",
+                    tool_name,
+                    list(unexpected),
+                    session_id,
+                    session.tenant_key,
+                )
+                arguments = {k: v for k, v in arguments.items() if k in accepted}
+        except (ValueError, TypeError):
+            logger.exception(
+                "SECURITY: Cannot inspect signature for tool %s and tool missing from "
+                "_TOOL_SCHEMA_PARAMS; rejecting call (session: %s)",
+                tool_name,
+                session_id,
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=f"Tool {tool_name} cannot be validated for safe dispatch",
+            ) from None
 
     try:
         # Execute tool
