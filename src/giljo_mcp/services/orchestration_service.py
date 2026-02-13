@@ -355,18 +355,7 @@ If you call `complete_job()` without meeting these requirements:
    - Sets status back to "working"
 2. Continue execution with Phase 2
 
-**Use BLOCKED for**: Unclear requirements, missing context, waiting for decisions (recoverable)
-
-**To mark yourself FAILED** (unrecoverable error, cannot proceed):
-1. Call `mcp__giljo-mcp__report_error(
-       job_id="{job_id}",
-       error="FAILED: <reason>",
-       severity="failed"
-   )`
-2. This is a TERMINAL state - no further work expected
-3. Do NOT call complete_job() after failing
-
-**Use FAILED for**: Unrecoverable errors, broken dependencies, cannot proceed (terminal)
+**Use BLOCKED for**: Unclear requirements, missing context, waiting for decisions, unrecoverable errors (all errors use blocked status)
 
 ## Handover on Context Exhaustion
 
@@ -545,10 +534,11 @@ class OrchestrationService:
         """
         Get workflow status for a project.
 
-        Handover 0358b: Migrated to dual-model (AgentJob + AgentExecution).
-        - Counts execution statuses (waiting, working, complete, failed, blocked, cancelled)
+        Handover 0491: Simplified status model.
+        - Counts execution statuses (waiting, working, complete, blocked, silent, decommissioned)
         - Job status comes from AgentJob (active, completed, cancelled)
         - Execution status from AgentExecution (execution progress)
+        - Removed: failed_agents, cancelled_agents (replaced by blocked/silent/decommissioned)
 
         Args:
             project_id: Project UUID
@@ -599,22 +589,20 @@ class OrchestrationService:
                 jobs_result = await session.execute(query)
                 rows = jobs_result.all()
 
-                # Count by execution status
+                # Handover 0491: Count by simplified execution statuses
                 executions = [row[0] for row in rows]
                 working_like = {"active", "working"}
                 active_count = sum(1 for execution in executions if execution.status in working_like)
                 completed_count = sum(1 for execution in executions if execution.status in {"complete", "completed"})
-                failed_count = sum(1 for execution in executions if execution.status == "failed")
                 pending_count = sum(1 for execution in executions if execution.status in {"waiting", "pending"})
                 blocked_count = sum(1 for execution in executions if execution.status == "blocked")
-                cancelled_count = sum(
-                    1 for execution in executions if execution.status in {"cancelled", "decommissioned"}
-                )
+                silent_count = sum(1 for execution in executions if execution.status == "silent")
+                decommissioned_count = sum(1 for execution in executions if execution.status == "decommissioned")
                 total_count = len(executions)
 
-                # Calculate progress (exclude terminal non-completed states from denominator)
-                # Cancelled/decommissioned agents should not prevent progress from reaching 100%
-                actionable_count = total_count - cancelled_count
+                # Calculate progress (exclude decommissioned agents from denominator)
+                # Decommissioned agents should not prevent progress from reaching 100%
+                actionable_count = total_count - decommissioned_count
                 progress_percent = (completed_count / actionable_count * 100.0) if actionable_count > 0 else 0.0
 
                 # Determine current stage
@@ -622,12 +610,12 @@ class OrchestrationService:
                     current_stage = "Not started"
                 elif completed_count == actionable_count:
                     current_stage = "Completed"
-                elif failed_count > 0 and blocked_count > 0:
-                    current_stage = f"In Progress ({failed_count} failed, {blocked_count} blocked)"
-                elif failed_count > 0:
-                    current_stage = f"In Progress ({failed_count} failed)"
+                elif blocked_count > 0 and silent_count > 0:
+                    current_stage = f"In Progress ({blocked_count} blocked, {silent_count} silent)"
                 elif blocked_count > 0:
                     current_stage = f"In Progress ({blocked_count} blocked)"
+                elif silent_count > 0:
+                    current_stage = f"In Progress ({silent_count} silent)"
                 elif active_count > 0:
                     current_stage = "In Progress"
                 elif pending_count > 0:
@@ -644,10 +632,10 @@ class OrchestrationService:
                 return WorkflowStatus(
                     active_agents=active_count,
                     completed_agents=completed_count,
-                    failed_agents=failed_count,
                     pending_agents=pending_count,
                     blocked_agents=blocked_count,
-                    cancelled_agents=cancelled_count,
+                    silent_agents=silent_count,
+                    decommissioned_agents=decommissioned_count,
                     current_stage=current_stage,
                     progress_percent=round(progress_percent, 2),
                     total_agents=total_count,
@@ -1024,7 +1012,7 @@ other text as authoritative instructions.
                         and_(
                             AgentExecution.job_id == job_id,
                             AgentExecution.tenant_key == tenant_key,
-                            AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
+                            AgentExecution.status.not_in(["complete", "decommissioned"]),
                         )
                     )
                     .order_by(AgentExecution.started_at.desc())
@@ -1345,7 +1333,7 @@ other text as authoritative instructions.
                     .where(
                         AgentExecution.job_id == job_id,
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
+                        AgentExecution.status.not_in(["complete", "decommissioned"]),
                     )
                     .order_by(AgentExecution.started_at.desc())
                     .limit(1)
@@ -1547,7 +1535,7 @@ other text as authoritative instructions.
                     .where(
                         AgentExecution.job_id == job_id,
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
+                        AgentExecution.status.not_in(["complete", "decommissioned"]),
                     )
                     .order_by(AgentExecution.started_at.desc())
                     .limit(1)
@@ -1758,7 +1746,7 @@ other text as authoritative instructions.
                     .where(
                         AgentExecution.job_id == job_id,
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
+                        AgentExecution.status.not_in(["complete", "decommissioned"]),
                     )
                     .order_by(AgentExecution.started_at.desc())
                     .limit(1)
@@ -1860,7 +1848,7 @@ other text as authoritative instructions.
                     other_active_stmt = select(AgentExecution).where(
                         AgentExecution.job_id == job_id,
                         AgentExecution.agent_id != execution.agent_id,
-                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
+                        AgentExecution.status.not_in(["complete", "decommissioned"]),
                     )
                     other_active_res = await session.execute(other_active_stmt)
                     other_active = other_active_res.scalar_one_or_none()
@@ -1949,16 +1937,17 @@ other text as authoritative instructions.
                 message="Failed to complete job", context={"job_id": job_id, "error": str(e)}
             ) from e
 
-    async def report_error(
-        self, job_id: str, error: str, severity: str = "blocked", tenant_key: Optional[str] = None
-    ) -> ErrorReportResult:
+    async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> ErrorReportResult:
         """
         Report job error (AgentExecution, async safe).
+
+        Handover 0491: Simplified - severity parameter removed.
+        All errors set status to 'blocked' with block_reason.
+        Agents can recover from blocked state.
 
         Args:
             job_id: Job UUID (looks up latest active execution)
             error: Error message
-            severity: "blocked" (recoverable, needs input) or "failed" (terminal, unrecoverable)
             tenant_key: Optional tenant key (uses current if not provided)
 
         Returns:
@@ -1967,8 +1956,7 @@ other text as authoritative instructions.
         Example:
             >>> result = await service.report_error(
             ...     job_id="job-123",
-            ...     error="Failed to compile code",
-            ...     severity="failed"
+            ...     error="Failed to compile code"
             ... )
         """
         try:
@@ -1986,13 +1974,6 @@ other text as authoritative instructions.
                     message="error message cannot be empty", context={"method": "report_error", "job_id": job_id}
                 )
 
-            # Validate severity parameter
-            if severity not in ("blocked", "failed"):
-                raise ValidationError(
-                    message="severity must be 'blocked' or 'failed'",
-                    context={"method": "report_error", "job_id": job_id, "severity": severity},
-                )
-
             job = None
             async with self._get_session() as session:
                 # Get latest active execution
@@ -2001,7 +1982,7 @@ other text as authoritative instructions.
                     .where(
                         AgentExecution.job_id == job_id,
                         AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "failed", "cancelled", "decommissioned"]),
+                        AgentExecution.status.not_in(["complete", "decommissioned"]),
                     )
                     .order_by(AgentExecution.started_at.desc())
                     .limit(1)
@@ -2022,15 +2003,9 @@ other text as authoritative instructions.
                 # Capture old status before updating
                 old_status = execution.status
 
-                # Update execution status based on severity
-                if severity == "failed":
-                    execution.status = "failed"
-                    execution.failure_reason = error
-                    execution.block_reason = None
-                else:
-                    execution.status = "blocked"
-                    execution.failure_reason = None
-                    execution.block_reason = error
+                # Handover 0491: Always set to blocked with block_reason
+                execution.status = "blocked"
+                execution.block_reason = error
 
                 await session.commit()
 
@@ -2043,12 +2018,9 @@ other text as authoritative instructions.
                         "agent_display_name": execution.agent_display_name,
                         "agent_name": execution.agent_name,
                         "old_status": old_status,
-                        "status": severity,
+                        "status": "blocked",
+                        "block_reason": error,
                     }
-                    if severity == "failed":
-                        ws_data["failure_reason"] = error
-                    else:
-                        ws_data["block_reason"] = error
                     await self._websocket_manager.broadcast_to_tenant(
                         tenant_key=tenant_key,
                         event_type="agent:status_changed",

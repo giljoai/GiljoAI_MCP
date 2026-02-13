@@ -499,7 +499,7 @@ class TestProjectServiceLifecycle:
         mock_project.product = mock_product
 
         # Mock job counts data
-        job_counts_data = [("completed", 3), ("active", 1), ("pending", 2), ("failed", 1)]
+        job_counts_data = [("completed", 3), ("active", 1), ("pending", 2), ("blocked", 1)]
 
         # Mock multiple queries: get project, job counts, last activity, product
         session.execute = AsyncMock(
@@ -523,7 +523,7 @@ class TestProjectServiceLifecycle:
         assert summary["completed_jobs"] == 3
         assert summary["active_jobs"] == 1
         assert summary["pending_jobs"] == 2
-        assert summary["failed_jobs"] == 1
+        assert summary["blocked_jobs"] == 1
         assert summary["completion_percentage"] == pytest.approx(42.86, rel=0.1)
 
     @pytest.mark.asyncio

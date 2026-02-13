@@ -38,7 +38,7 @@ MAX_KEY_OUTCOMES = 100
 MAX_DECISIONS_MADE = 100
 
 # Statuses to skip during verification (they don't block closeout)
-SKIP_STATUSES = {"decommissioned", "cancelled", "failed"}
+SKIP_STATUSES = {"decommissioned"}
 
 
 async def _check_closeout_readiness(

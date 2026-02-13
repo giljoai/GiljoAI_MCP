@@ -268,7 +268,7 @@ class TestProjectLifecycleMethods:
                 ),
                 AgentExecution(
                     agent_display_name="analyzer",
-                    status="failed",
+                    status="blocked",
                     project_id=project_id,
                     tenant_key=tenant_manager.get_current_tenant(),
                 ),
@@ -287,7 +287,7 @@ class TestProjectLifecycleMethods:
         assert summary["completed_jobs"] == 3
         assert summary["active_jobs"] == 1
         assert summary["pending_jobs"] == 2
-        assert summary["failed_jobs"] == 1
+        assert summary["blocked_jobs"] == 1
         assert abs(summary["completion_percentage"] - 42.86) < 0.1
         assert summary["product_name"] == "Test Product"
 

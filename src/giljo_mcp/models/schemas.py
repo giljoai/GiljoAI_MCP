@@ -30,7 +30,7 @@ class ProjectSummaryResponse(BaseModel):
     # Job metrics
     total_jobs: int = Field(0, description="Total number of agent jobs")
     completed_jobs: int = Field(0, description="Number of completed jobs")
-    failed_jobs: int = Field(0, description="Number of failed jobs")
+    blocked_jobs: int = Field(0, description="Number of blocked jobs")
     active_jobs: int = Field(0, description="Number of currently active jobs")
     pending_jobs: int = Field(0, description="Number of pending jobs")
 
@@ -55,7 +55,7 @@ class ProjectSummaryResponse(BaseModel):
                 "mission": "Implement user authentication system",
                 "total_jobs": 10,
                 "completed_jobs": 7,
-                "failed_jobs": 1,
+                "blocked_jobs": 1,
                 "active_jobs": 1,
                 "pending_jobs": 1,
                 "completion_percentage": 70.0,

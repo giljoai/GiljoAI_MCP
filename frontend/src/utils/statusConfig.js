@@ -31,15 +31,9 @@ const statusConfig = {
     italic: false,
     chipColor: 'success',
   },
-  failed: {
-    label: 'Failed',
-    color: '#e53935', // Red
-    italic: false,
-    chipColor: 'error',
-  },
-  cancelled: {
-    label: 'Cancelled',
-    color: '#ff9800', // Orange
+  silent: {
+    label: 'Silent',
+    color: '#ff9800', // Amber/Orange (warning, not error)
     italic: false,
     chipColor: 'warning',
   },
@@ -112,17 +106,11 @@ const STATUS_CONFIG = {
     label: 'Complete',
     description: 'Agent has completed successfully',
   },
-  failed: {
-    icon: 'mdi-alert-circle',
-    color: 'error',
-    label: 'Failed',
-    description: 'Agent encountered an unrecoverable error',
-  },
-  cancelled: {
-    icon: 'mdi-cancel',
-    color: 'warning',
-    label: 'Cancelled',
-    description: 'Agent was cancelled by user',
+  silent: {
+    icon: 'mdi-clock-alert',
+    color: 'amber-darken-2',
+    label: 'Silent',
+    description: 'Agent stopped communicating',
   },
   decommissioned: {
     icon: 'mdi-archive',
@@ -190,7 +178,7 @@ export function getHealthConfig(healthStatus) {
 export function isJobStale(lastProgressAt, status) {
   if (!lastProgressAt) return false
 
-  const terminalStates = ['complete', 'failed', 'cancelled', 'decommissioned', 'handed_over']
+  const terminalStates = ['complete', 'silent', 'decommissioned', 'handed_over']
   if (terminalStates.includes(status)) return false
 
   const now = new Date()

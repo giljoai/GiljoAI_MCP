@@ -41,16 +41,16 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
   const jobs = computed(() => Array.from(jobsById.value.values()))
 
   const sortedJobs = computed(() => {
-    // Sort order: Working (top) -> Failed -> Blocked -> Waiting -> Completed (bottom)
+    // Sort order: Working (top) -> Silent -> Blocked -> Waiting -> Completed (bottom)
+    // Handover 0491: Removed failed/cancelled, added silent
     const priority = {
       working: 1,
-      failed: 2,
+      silent: 2,
       blocked: 3,
       waiting: 4,
       complete: 5,
       completed: 5,  // alias
-      cancelled: 6,
-      decommissioned: 7,
+      decommissioned: 6,
     }
 
     const list = Array.from(jobsById.value.values())

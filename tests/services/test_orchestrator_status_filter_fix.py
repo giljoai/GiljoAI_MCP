@@ -1,8 +1,11 @@
 """
-Tests for orchestrator status filter fix (Handover 0485 - Bug B)
+Tests for orchestrator status filter (Handover 0491 - Agent Status Simplification)
 
 These tests verify that the orchestrator deduplication logic uses the correct
-status filter: ~status.in_(["failed", "cancelled"]) instead of status.in_(["waiting", "working"])
+status filter: ~status.in_(["decommissioned"]) - only decommissioned agents are excluded.
+
+Handover 0491: Simplified from ~status.in_(["failed", "cancelled"]) to ~status.in_(["decommissioned"]).
+The statuses 'failed' and 'cancelled' no longer exist for AgentExecution.
 """
 
 from uuid import uuid4
@@ -14,15 +17,12 @@ from src.giljo_mcp.models import AgentExecution, AgentJob
 
 
 class TestOrchestratorStatusFilterFix:
-    """Test that orchestrator status filter finds non-failed orchestrators"""
+    """Test that orchestrator status filter finds non-decommissioned orchestrators"""
 
     @pytest.mark.asyncio
     async def test_complete_orchestrator_should_be_found(self, db_session, test_project):
         """
         Test that an orchestrator with "complete" status is found by the filter.
-
-        The old filter status.in_(["waiting", "working"]) would NOT find "complete" status.
-        The new filter ~status.in_(["failed", "cancelled"]) WILL find "complete" status.
         """
         # Create orchestrator with "complete" status
         job_id = str(uuid4())
@@ -50,7 +50,7 @@ class TestOrchestratorStatusFilterFix:
         db_session.add(agent_execution)
         await db_session.commit()
 
-        # Test NEW filter: ~status.in_(["failed", "cancelled"])
+        # Test filter: ~status.in_(["decommissioned"])
         stmt = (
             select(AgentExecution)
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
@@ -58,37 +58,20 @@ class TestOrchestratorStatusFilterFix:
                 AgentJob.project_id == test_project.id,
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == test_project.tenant_key,
-                ~AgentExecution.status.in_(["failed", "cancelled"]),  # NEW FILTER
+                ~AgentExecution.status.in_(["decommissioned"]),  # Handover 0491
             )
         )
         result = await db_session.execute(stmt)
         found = result.scalar_one_or_none()
 
-        # ASSERT: "complete" status SHOULD be found with new filter
+        # ASSERT: "complete" status SHOULD be found
         assert found is not None
         assert found.status == "complete"
-
-        # Test OLD filter: status.in_(["waiting", "working"])
-        old_stmt = (
-            select(AgentExecution)
-            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-            .where(
-                AgentJob.project_id == test_project.id,
-                AgentExecution.agent_display_name == "orchestrator",
-                AgentExecution.tenant_key == test_project.tenant_key,
-                AgentExecution.status.in_(["waiting", "working"]),  # OLD FILTER
-            )
-        )
-        old_result = await db_session.execute(old_stmt)
-        old_found = old_result.scalar_one_or_none()
-
-        # ASSERT: "complete" status would NOT be found with old filter (THIS IS THE BUG)
-        assert old_found is None
 
     @pytest.mark.asyncio
     async def test_blocked_orchestrator_should_be_found(self, db_session, test_project):
         """
-        Test that an orchestrator with "blocked" status is found by the new filter.
+        Test that an orchestrator with "blocked" status is found by the filter.
         """
         # Create orchestrator with "blocked" status
         job_id = str(uuid4())
@@ -116,7 +99,7 @@ class TestOrchestratorStatusFilterFix:
         db_session.add(agent_execution)
         await db_session.commit()
 
-        # Test NEW filter
+        # Test filter
         stmt = (
             select(AgentExecution)
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
@@ -124,22 +107,23 @@ class TestOrchestratorStatusFilterFix:
                 AgentJob.project_id == test_project.id,
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == test_project.tenant_key,
-                ~AgentExecution.status.in_(["failed", "cancelled"]),  # NEW FILTER
+                ~AgentExecution.status.in_(["decommissioned"]),  # Handover 0491
             )
         )
         result = await db_session.execute(stmt)
         found = result.scalar_one_or_none()
 
-        # ASSERT: "blocked" status SHOULD be found with new filter
+        # ASSERT: "blocked" status SHOULD be found
         assert found is not None
         assert found.status == "blocked"
 
     @pytest.mark.asyncio
-    async def test_failed_orchestrator_should_not_be_found(self, db_session, test_project):
+    async def test_silent_orchestrator_should_be_found(self, db_session, test_project):
         """
-        Test that an orchestrator with "failed" status is NOT found by the new filter.
+        Test that an orchestrator with "silent" status is found by the filter.
+        Handover 0491: silent is a new status for inactive agents.
         """
-        # Create orchestrator with "failed" status
+        # Create orchestrator with "silent" status
         job_id = str(uuid4())
         agent_id = str(uuid4())
 
@@ -159,13 +143,13 @@ class TestOrchestratorStatusFilterFix:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="orchestrator",
-            status="failed",  # FAILED status
+            status="silent",  # SILENT status
             progress=25,
         )
         db_session.add(agent_execution)
         await db_session.commit()
 
-        # Test NEW filter
+        # Test filter
         stmt = (
             select(AgentExecution)
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
@@ -173,21 +157,22 @@ class TestOrchestratorStatusFilterFix:
                 AgentJob.project_id == test_project.id,
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == test_project.tenant_key,
-                ~AgentExecution.status.in_(["failed", "cancelled"]),  # NEW FILTER
+                ~AgentExecution.status.in_(["decommissioned"]),  # Handover 0491
             )
         )
         result = await db_session.execute(stmt)
         found = result.scalar_one_or_none()
 
-        # ASSERT: "failed" status should NOT be found (excluded by new filter)
-        assert found is None
+        # ASSERT: "silent" status SHOULD be found (agent may recover)
+        assert found is not None
+        assert found.status == "silent"
 
     @pytest.mark.asyncio
-    async def test_cancelled_orchestrator_should_not_be_found(self, db_session, test_project):
+    async def test_decommissioned_orchestrator_should_not_be_found(self, db_session, test_project):
         """
-        Test that an orchestrator with "cancelled" status is NOT found by the new filter.
+        Test that an orchestrator with "decommissioned" status is NOT found by the filter.
         """
-        # Create orchestrator with "cancelled" status
+        # Create orchestrator with "decommissioned" status
         job_id = str(uuid4())
         agent_id = str(uuid4())
 
@@ -207,13 +192,13 @@ class TestOrchestratorStatusFilterFix:
             tenant_key=test_project.tenant_key,
             agent_display_name="orchestrator",
             agent_name="orchestrator",
-            status="cancelled",  # CANCELLED status
+            status="decommissioned",  # DECOMMISSIONED status
             progress=10,
         )
         db_session.add(agent_execution)
         await db_session.commit()
 
-        # Test NEW filter
+        # Test filter
         stmt = (
             select(AgentExecution)
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
@@ -221,20 +206,19 @@ class TestOrchestratorStatusFilterFix:
                 AgentJob.project_id == test_project.id,
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == test_project.tenant_key,
-                ~AgentExecution.status.in_(["failed", "cancelled"]),  # NEW FILTER
+                ~AgentExecution.status.in_(["decommissioned"]),  # Handover 0491
             )
         )
         result = await db_session.execute(stmt)
         found = result.scalar_one_or_none()
 
-        # ASSERT: "cancelled" status should NOT be found (excluded by new filter)
+        # ASSERT: "decommissioned" status should NOT be found (excluded by filter)
         assert found is None
 
     @pytest.mark.asyncio
     async def test_waiting_and_working_still_found(self, db_session, test_project):
         """
-        Test that "waiting" and "working" statuses are still found by the new filter.
-        (These were the only statuses found by the old filter - we still want them)
+        Test that "waiting" and "working" statuses are still found by the filter.
         """
         # Create orchestrator with "waiting" status
         waiting_job_id = str(uuid4())
@@ -288,7 +272,7 @@ class TestOrchestratorStatusFilterFix:
 
         await db_session.commit()
 
-        # Test NEW filter
+        # Test filter
         stmt = (
             select(AgentExecution)
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
@@ -296,7 +280,7 @@ class TestOrchestratorStatusFilterFix:
                 AgentJob.project_id == test_project.id,
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == test_project.tenant_key,
-                ~AgentExecution.status.in_(["failed", "cancelled"]),  # NEW FILTER
+                ~AgentExecution.status.in_(["decommissioned"]),  # Handover 0491
             )
         )
         result = await db_session.execute(stmt)

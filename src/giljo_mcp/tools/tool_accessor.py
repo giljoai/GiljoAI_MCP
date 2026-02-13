@@ -782,10 +782,10 @@ class ToolAccessor:
         return await self._orchestration_service.complete_job(job_id=job_id, result=result)
 
     async def report_error(
-        self, job_id: str, error: str, severity: str = "blocked", tenant_key: str | None = None
+        self, job_id: str, error: str, tenant_key: str | None = None, **kwargs: Any
     ) -> dict[str, Any]:
-        """Report job error (delegates to OrchestrationService)"""
-        return await self._orchestration_service.report_error(job_id=job_id, error=error, severity=severity)
+        """Report job error (delegates to OrchestrationService). Handover 0491: severity param removed."""
+        return await self._orchestration_service.report_error(job_id=job_id, error=error)
 
     async def get_team_agents(
         self,
