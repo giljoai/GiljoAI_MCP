@@ -121,12 +121,11 @@
     <!-- Tasks Table -->
     <v-card class="task-table-card">
       <!-- Table Controls -->
-      <v-card-title class="d-flex align-center py-3 bg-primary text-white">
-        <span class="text-h6">Tasks</span>
-        <v-spacer />
+      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
+        <span class="text-h6">Task List</span>
         <v-btn
-          color="white"
-          variant="outlined"
+          color="primary"
+          variant="flat"
           prepend-icon="mdi-plus"
           @click="showTaskDialog = true"
         >
