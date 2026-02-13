@@ -265,9 +265,9 @@ class AgentExecution(Base):
 
     # Failure tracking
     failure_reason = Column(
-        String(50),
+        Text,
         nullable=True,
-        comment="Reason for failure: error, timeout, system_error (Handover 0113)",
+        comment="Reason for execution failure (full error description)",
     )
 
     # Display name (optional)
