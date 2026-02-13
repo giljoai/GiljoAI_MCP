@@ -153,6 +153,7 @@ class APIKeyResponse(BaseModel):
     created_at: str
     last_used: str | None
     revoked_at: str | None
+    expires_at: str | None
 
 
 class APIKeyCreateRequest(BaseModel):
@@ -170,6 +171,7 @@ class APIKeyCreateResponse(BaseModel):
     api_key: str  # Plaintext key - only shown once!
     key_prefix: str
     message: str
+    expires_at: str | None
 
 
 class APIKeyRevokeResponse(BaseModel):
@@ -525,6 +527,7 @@ async def list_api_keys(
             created_at=key.created_at,
             last_used=key.last_used,
             revoked_at=key.revoked_at,
+            expires_at=key.expires_at,
         )
         for key in keys
     ]
@@ -566,6 +569,7 @@ async def create_api_key(
         api_key=key_data.api_key,  # Plaintext key - only shown once!
         key_prefix=key_data.key_prefix,
         message="API key created successfully. Store this key securely - it will not be shown again!",
+        expires_at=key_data.expires_at,
     )
 
 

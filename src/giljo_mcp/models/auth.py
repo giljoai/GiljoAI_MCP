@@ -4,6 +4,7 @@ Authentication and authorization models.
 This module contains all user authentication and session management models:
 - User: User accounts for authentication
 - APIKey: Personal API keys for MCP tool authentication
+- ApiKeyIpLog: IP address tracking for API key usage auditing
 - MCPSession: MCP HTTP session tracking with tenant isolation
 """
 
@@ -18,6 +19,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
@@ -193,6 +195,7 @@ class APIKey(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_used = Column(DateTime(timezone=True), nullable=True)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="api_keys")
@@ -217,6 +220,39 @@ class APIKey(Base):
     def display_key(self) -> str:
         """Get display-friendly version of key (prefix only)"""
         return f"{self.key_prefix}..."
+
+
+class ApiKeyIpLog(Base):
+    """
+    Tracks IP addresses used with each API key.
+
+    Passive logging only - no enforcement. Used for security auditing
+    and detecting potential key sharing/abuse.
+
+    Upsert pattern: INSERT ON CONFLICT (api_key_id, ip_address)
+    DO UPDATE SET last_seen_at = NOW(), request_count = request_count + 1
+    """
+
+    __tablename__ = "api_key_ip_log"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    api_key_id = Column(String(36), ForeignKey("api_keys.id", ondelete="CASCADE"), nullable=False)
+    ip_address = Column(String(45), nullable=False)
+    first_seen_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_seen_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    request_count = Column(Integer, nullable=False, default=1)
+
+    # Relationships
+    api_key = relationship("APIKey", backref="ip_logs")
+
+    __table_args__ = (
+        UniqueConstraint("api_key_id", "ip_address", name="uq_api_key_ip"),
+        Index("idx_api_key_ip_log_key_id", "api_key_id"),
+        Index("idx_api_key_ip_log_last_seen", "last_seen_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ApiKeyIpLog(api_key_id={self.api_key_id}, ip={self.ip_address}, count={self.request_count})>"
 
 
 class MCPSession(Base):

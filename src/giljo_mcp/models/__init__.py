@@ -8,7 +8,7 @@ Database models package for GiljoAI MCP.
 ✅ PREFERRED (New Code):
 Use specific module imports for clarity and maintainability:
 
-    from src.giljo_mcp.models.auth import User, APIKey, MCPSession
+    from src.giljo_mcp.models.auth import User, APIKey, ApiKeyIpLog, MCPSession
     from src.giljo_mcp.models.projects import Project
     from src.giljo_mcp.models.agents import AgentInteraction, Job
     from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
@@ -77,6 +77,7 @@ from .agents import (
 # Auth models
 from .auth import (
     APIKey,
+    ApiKeyIpLog,
     MCPSession,
     User,
 )
@@ -150,13 +151,11 @@ from .templates import (
 __all__ = [
     "APIKey",
     "AgentExecution",
-    # Agents
     "AgentInteraction",
-    # Agent Identity (Handover 0366a, 0402)
     "AgentJob",
-    # Templates
     "AgentTemplate",
     "AgentTodoItem",
+    "ApiKeyIpLog",
     "ApiMetrics",
     # Base
     "Base",
