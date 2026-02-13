@@ -70,7 +70,7 @@ class TestDownloadSlashCommands:
         # NOTE: gil_activate, gil_launch, gil_handover removed (0388) - users perform these via web UI
         assert {
             "gil_get_claude_agents.md",
-            "gil_task.md",
+            "gil_add.md",
         }.issubset(namelist)
 
     def test_slash_commands_zip_does_not_ship_legacy_commands(self, api_client):
