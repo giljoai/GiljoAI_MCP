@@ -65,21 +65,7 @@
 
     <!-- Filters Row -->
     <v-row class="mb-4" align="center">
-      <!-- Product Task Filter -->
-      <v-col cols="12" md="3">
-        <v-chip-group v-model="taskFilter" mandatory active-class="primary" density="comfortable">
-          <v-chip value="product_tasks" data-test="product-tasks-chip">
-            <v-icon start>mdi-package-variant</v-icon>
-            Product Tasks
-          </v-chip>
-          <v-chip value="all_tasks" data-test="all-tasks-chip">
-            <v-icon start>mdi-format-list-bulleted</v-icon>
-            All Tasks
-          </v-chip>
-        </v-chip-group>
-      </v-col>
-
-      <v-col cols="12" md="3">
+      <v-col cols="12" md="4">
         <v-text-field
           v-model="search"
           prepend-inner-icon="mdi-magnify"
@@ -91,7 +77,7 @@
           data-search-input
         />
       </v-col>
-      <v-col cols="12" md="2">
+      <v-col cols="12" md="3">
         <v-select
           v-model="statusFilter"
           :items="statusOptions"
@@ -102,7 +88,7 @@
           hide-details
         />
       </v-col>
-      <v-col cols="12" md="2">
+      <v-col cols="12" md="3">
         <v-select
           v-model="priorityFilter"
           :items="priorityOptions"
@@ -557,8 +543,6 @@ const editingTask = ref(null)
 const taskForm = ref(null)
 const saving = ref(false)
 
-// Product task filter
-const taskFilter = ref('product_tasks')
 const user = computed(() => userStore.currentUser)
 
 // Dialog state
@@ -606,20 +590,13 @@ const categoryOptions = ['general', 'feature', 'bug', 'improvement', 'docs', 'te
 const loading = computed(() => taskStore.loading)
 const tasks = computed(() => taskStore.tasks)
 
-// Product-filtered tasks
+// Product-filtered tasks (all tasks are bound to a product - Handover 0433)
 const userFilteredTasks = computed(() => {
-  if (taskFilter.value === 'product_tasks') {
-    // Show tasks for active product only
-    const productId = productStore.effectiveProductId
-    if (!productId) {
-      return [] // No active product, return empty list
-    }
-    return tasks.value.filter((task) => task.product_id === productId)
-  } else if (taskFilter.value === 'all_tasks') {
-    // Show tasks with NULL product_id
-    return tasks.value.filter((task) => task.product_id === null || task.product_id === undefined)
+  const productId = productStore.effectiveProductId
+  if (!productId) {
+    return []
   }
-  return tasks.value
+  return tasks.value.filter((task) => task.product_id === productId)
 })
 
 const agentOptions = computed(() => {
@@ -865,11 +842,8 @@ function getUserName(userId) {
   return 'User'
 }
 
-// Phase 4: Fetch tasks with user filter
 async function fetchTasks() {
-  const params = {
-    filter_type: taskFilter.value,
-  }
+  const params = {}
 
   if (productStore.currentProductId) {
     params.product_id = productStore.currentProductId
@@ -877,11 +851,6 @@ async function fetchTasks() {
 
   await taskStore.fetchTasks(params)
 }
-
-// Phase 4: Watch filter changes
-watch(taskFilter, () => {
-  fetchTasks()
-})
 
 // Watch for dialog trigger
 onMounted(() => {
