@@ -635,6 +635,12 @@ class OrchestrationService:
                 else:
                     current_stage = "Unknown"
 
+                # Caller note: remind the agent it's counted in active
+                if exclude_job_id:
+                    caller_note = "Your job was excluded from these counts."
+                else:
+                    caller_note = "Note: You (the calling agent) are included in the active count above."
+
                 return WorkflowStatus(
                     active_agents=active_count,
                     completed_agents=completed_count,
@@ -645,6 +651,7 @@ class OrchestrationService:
                     current_stage=current_stage,
                     progress_percent=round(progress_percent, 2),
                     total_agents=total_count,
+                    caller_note=caller_note,
                 )
 
         except ResourceNotFoundError:
