@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="dialogModel" max-width="500">
-    <v-card>
+    <v-card v-draggable>
       <v-card-title>Invite Member</v-card-title>
       <v-card-text>
         <v-text-field

@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="internalModel" max-width="560" persistent>
-    <v-card>
+    <v-card v-draggable>
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-account</v-icon>
         Edit Profile

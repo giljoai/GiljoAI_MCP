@@ -10,7 +10,7 @@
     data-testid="closeout-modal"
     @keydown.esc="handleClose"
   >
-    <v-card data-testid="closeout-modal">
+    <v-card v-draggable data-testid="closeout-modal">
       <!-- Modal header -->
       <v-card-title id="closeout-modal-title" class="modal-title bg-primary text-white pa-4">
         <div class="d-flex align-center justify-space-between">

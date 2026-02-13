@@ -56,7 +56,7 @@
       :aria-labelledby="confirmDialogTitle"
       role="alertdialog"
     >
-      <v-card>
+      <v-card v-draggable>
         <v-card-title class="d-flex align-center">
           <v-icon start :color="pendingAction?.destructive ? 'error' : 'warning'">
             {{ pendingAction?.destructive ? 'mdi-alert-circle' : 'mdi-help-circle' }}
