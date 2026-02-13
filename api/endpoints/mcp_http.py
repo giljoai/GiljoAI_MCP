@@ -245,7 +245,7 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
     "acknowledge_job": {"job_id", "agent_id", "tenant_key"},
     "report_progress": {"job_id", "tenant_key", "todo_items"},
     "complete_job": {"job_id", "result", "tenant_key"},
-    "report_error": {"job_id", "error", "severity", "tenant_key"},
+    "report_error": {"job_id", "error", "tenant_key"},
     # Orchestration Tools
     "get_agent_mission": {"job_id", "tenant_key"},
     "spawn_agent_job": {
@@ -582,12 +582,7 @@ async def handle_tools_list(
                 "type": "object",
                 "properties": {
                     "job_id": {"type": "string", "description": "Your work order (identity.job_id)"},
-                    "error": {"type": "string", "description": "Error message"},
-                    "severity": {
-                        "type": "string",
-                        "enum": ["blocked", "failed"],
-                        "description": "blocked = needs input (recoverable), failed = unrecoverable (terminal). Default: blocked",
-                    },
+                    "error": {"type": "string", "description": "Error message describing what went wrong"},
                     "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
                 },
                 "required": ["job_id", "error"],
@@ -623,7 +618,7 @@ async def handle_tools_list(
         },
         {
             "name": "get_workflow_status",
-            "description": "Monitor workflow progress across all project agents. Called by: ANY AGENT between todo item completion or work phases, at same time as sending status updates via MCP message tools. Returns active/completed/failed/blocked/cancelled/pending agent counts and progress_percent (0-100). Use exclude_job_id to omit the calling orchestrator's own job from counts (avoids self-counting). Use to decide whether to proceed or wait for dependencies. Check if all agents completed (progress_percent == 100), detect failures (failed_agents > 0 requires investigation), detect blocked agents (blocked_agents > 0 may need unblocking).",
+            "description": "Monitor workflow progress across all project agents. Called by: ANY AGENT between todo item completion or work phases, at same time as sending status updates via MCP message tools. Returns active/completed/blocked/silent/decommissioned/pending agent counts and progress_percent (0-100). Use exclude_job_id to omit the calling orchestrator's own job from counts (avoids self-counting). Use to decide whether to proceed or wait for dependencies. Check if all agents completed (progress_percent == 100), detect blocked agents (blocked_agents > 0 may need unblocking), detect silent agents (silent_agents > 0 may have disconnected).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -911,6 +906,21 @@ async def handle_tools_call(
         )
 
         logger.info(f"Tool executed successfully: {tool_name} (session: {session_id})")
+
+        # Handover 0491: Auto-clear silent status when agent makes an MCP call
+        job_id = arguments.get("job_id") or arguments.get("agent_job_id")
+        if job_id and state.websocket_manager:
+            try:
+                from src.giljo_mcp.services.silence_detector import auto_clear_silent
+
+                async with state.db_manager.get_session_async() as silence_session:
+                    await auto_clear_silent(
+                        session=silence_session,
+                        job_id=job_id,
+                        ws_manager=state.websocket_manager,
+                    )
+            except (OSError, RuntimeError, ValueError) as auto_clear_err:
+                logger.debug("Auto-clear silent check: %s", auto_clear_err)
 
         # Return result in MCP format
         # Convert result to JSON string for proper formatting

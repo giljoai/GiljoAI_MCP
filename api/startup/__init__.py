@@ -9,6 +9,7 @@ Modules:
     event_bus: Event bus and WebSocket listener setup
     background_tasks: Background task management (cleanup, metrics sync, purge)
     health_monitor: Agent health monitoring service
+    silence_detector: Silent agent detection service (Handover 0491)
     validation: Setup state validation
     shutdown: Graceful shutdown procedures
 """
@@ -19,6 +20,7 @@ from api.startup.database import init_database
 from api.startup.event_bus import init_event_bus
 from api.startup.health_monitor import init_health_monitor
 from api.startup.shutdown import shutdown
+from api.startup.silence_detector import init_silence_detector
 from api.startup.validation import init_validation
 
 
@@ -28,6 +30,7 @@ __all__ = [
     "init_database",
     "init_event_bus",
     "init_health_monitor",
+    "init_silence_detector",
     "init_validation",
     "shutdown",
 ]
