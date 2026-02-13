@@ -19,7 +19,7 @@
     </v-main>
 
     <!-- Global Toast Notifications -->
-    <ToastManager position="top center" />
+    <ToastManager />
   </v-app>
 </template>
 
@@ -30,7 +30,6 @@ import { useUserStore } from '@/stores/user'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useMessageStore } from '@/stores/messages'
 import { initWebsocketEventRouter } from '@/stores/websocketEventRouter'
-import { useNotificationReminder } from '@/composables/useNotificationReminder'
 import AppBar from '@/components/navigation/AppBar.vue'
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
 import ToastManager from '@/components/ToastManager.vue'
@@ -45,10 +44,6 @@ const messageStore = useMessageStore()
 const drawer = ref(true)
 const rail = ref(false)
 const currentUser = ref(null)
-
-// Initialize notification reminder composable at top level (must be synchronous)
-// The composable's onMounted/onUnmounted hooks will fire at correct lifecycle points
-useNotificationReminder()
 
 const loadCurrentUser = async () => {
   try {
