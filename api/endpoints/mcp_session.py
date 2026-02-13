@@ -22,7 +22,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.api_key_utils import verify_api_key
@@ -43,7 +43,9 @@ class MCPSessionManager:
 
     async def authenticate_api_key(self, api_key_value: str):
         try:
-            stmt = select(APIKey).where(APIKey.is_active)
+            stmt = select(APIKey).where(
+                APIKey.is_active, or_(APIKey.expires_at > func.now(), APIKey.expires_at.is_(None))
+            )
             result = await self.db.execute(stmt)
             api_keys = result.scalars().all()
 
@@ -69,6 +71,48 @@ class MCPSessionManager:
         except Exception as e:
             logger.error(f"API key authentication error: {e}", exc_info=True)
             return None
+
+    async def log_ip(self, api_key_id: str, ip_address: str) -> None:
+        """Log IP address for API key usage tracking (passive, non-blocking).
+
+        Uses PostgreSQL upsert (INSERT ... ON CONFLICT) to either create a new
+        entry or increment the request_count and update last_seen_at for an
+        existing api_key + ip_address pair.
+
+        This method is designed to never raise exceptions. All errors are
+        caught and logged as warnings so that IP logging never blocks or
+        slows down the authentication flow.
+
+        Args:
+            api_key_id: The ID of the API key that was used.
+            ip_address: The client IP address (IPv4/IPv6 or 'unknown').
+        """
+        try:
+            from uuid import uuid4
+
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+            from src.giljo_mcp.models.auth import ApiKeyIpLog
+
+            stmt = (
+                pg_insert(ApiKeyIpLog)
+                .values(
+                    id=str(uuid4()),
+                    api_key_id=api_key_id,
+                    ip_address=ip_address,
+                )
+                .on_conflict_do_update(
+                    constraint="uq_api_key_ip",
+                    set_={
+                        "last_seen_at": func.now(),
+                        "request_count": ApiKeyIpLog.request_count + 1,
+                    },
+                )
+            )
+            await self.db.execute(stmt)
+            await self.db.commit()
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Failed to log IP for API key %s: %s", api_key_id, e)
 
     async def get_or_create_session(self, api_key_value: str, project_id: str | None = None) -> MCPSession | None:
         auth_result = await self.authenticate_api_key(api_key_value)

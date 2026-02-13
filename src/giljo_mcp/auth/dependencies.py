@@ -177,10 +177,12 @@ async def get_current_user(
     # Try API key header (MCP tools)
     if x_api_key:
         try:
-            # Query all active API keys (optimized with index)
-            from sqlalchemy import select
+            # Query all active, non-expired API keys (optimized with index)
+            from sqlalchemy import func, or_, select
 
-            stmt = select(APIKey).where(APIKey.is_active)
+            stmt = select(APIKey).where(
+                APIKey.is_active, or_(APIKey.expires_at > func.now(), APIKey.expires_at.is_(None))
+            )
             result = await db.execute(stmt)
             api_keys = result.scalars().all()
 
@@ -198,6 +200,15 @@ async def get_current_user(
 
                     if user and user.is_active:
                         logger.debug(f"Authenticated via API key: {user.username} ({key_record.name})")
+                        # Log IP address for security tracking (passive, non-blocking)
+                        try:
+                            from api.endpoints.mcp_session import MCPSessionManager
+
+                            ip_logger = MCPSessionManager(db)
+                            client_ip = request.client.host if request.client else "unknown"
+                            await ip_logger.log_ip(str(key_record.id), client_ip)
+                        except Exception:  # noqa: BLE001
+                            logger.debug("IP logging failed for API key auth (non-blocking)")
                         return user
                     logger.warning(f"API key valid but user inactive: {key_record.user_id}")
                     break
