@@ -141,6 +141,7 @@ class APIState:
         self.metrics_sync_task: Optional[asyncio.Task] = None
         self.health_monitor = None
         self.health_monitor_task: Optional[asyncio.Task] = None
+        self.silence_detector = None  # SilenceDetector (Handover 0491)
         self.api_call_count: dict[str, int] = {}
         self.mcp_call_count: dict[str, int] = {}
         self.system_prompt_service: Optional[SystemPromptService] = None
@@ -158,6 +159,7 @@ async def lifespan(app: FastAPI):
         init_database,
         init_event_bus,
         init_health_monitor,
+        init_silence_detector,
         init_validation,
         shutdown,
     )
@@ -181,7 +183,10 @@ async def lifespan(app: FastAPI):
     # Phase 5: Health monitoring
     await init_health_monitor(state)
 
-    # Phase 6: Validation
+    # Phase 6: Silence detection (Handover 0491)
+    await init_silence_detector(state)
+
+    # Phase 7: Validation
     await init_validation(state)
 
     # Expose db_manager and websocket_manager directly on app.state

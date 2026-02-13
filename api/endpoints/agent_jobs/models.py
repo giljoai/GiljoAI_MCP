@@ -190,10 +190,10 @@ class WorkflowStatusResponse(BaseModel):
     status: str
     agent_count: int
     completed_count: int
-    failed_count: int
     active_count: int
     blocked_count: int = 0
-    cancelled_count: int = 0
+    silent_count: int = 0
+    decommissioned_count: int = 0
     pending_count: int = 0
     progress_percent: int
 
@@ -275,3 +275,12 @@ class AgentExecutionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ClearSilentResponse(BaseModel):
+    """Response model for clear-silent endpoint (Handover 0491)."""
+
+    agent_id: str
+    job_id: str
+    status: str
+    last_progress_at: Optional[str] = None
