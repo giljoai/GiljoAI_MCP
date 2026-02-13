@@ -7,7 +7,7 @@
     attach
     @keydown.esc="handleClose"
   >
-    <v-card>
+    <v-card v-draggable>
       <!-- Header -->
       <v-card-title class="d-flex align-center pa-4">
         <v-icon class="mr-2" color="primary">mdi-lock-reset</v-icon>

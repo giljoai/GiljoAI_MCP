@@ -11,6 +11,9 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import '@mdi/font/css/materialdesignicons.css'
 
+// Custom Directives
+import { draggable } from './directives/draggable'
+
 // Global Styles
 import '@/styles/main.scss'
 import '@/styles/global-tabs.scss'
@@ -43,6 +46,9 @@ const app = createApp(App)
 app.use(router)
 app.use(pinia)
 app.use(vuetify)
+
+// Register custom directives
+app.directive('draggable', draggable)
 
 // Always use dark theme
 localStorage.setItem('theme-preference', 'dark')

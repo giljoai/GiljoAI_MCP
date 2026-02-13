@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="isOpen" max-width="800" persistent>
-    <v-card>
+    <v-card v-draggable>
       <v-card-title class="d-flex align-center">
         <v-icon start color="warning">mdi-delete-restore</v-icon>
         Deleted Products

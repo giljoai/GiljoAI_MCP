@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="isOpen" max-width="900" persistent>
-    <v-card>
+    <v-card v-draggable>
       <!-- Header -->
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2" :color="agentColor">mdi-pencil</v-icon>

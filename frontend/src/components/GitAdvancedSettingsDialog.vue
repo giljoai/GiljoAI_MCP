@@ -4,7 +4,7 @@
     max-width="560"
     @update:model-value="$emit('update:model-value', $event)"
   >
-    <v-card>
+    <v-card v-draggable>
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-github</v-icon>
         Git Integration – Advanced Settings
