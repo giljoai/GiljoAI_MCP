@@ -180,6 +180,7 @@
               :step="1"
               label="Display duration (seconds)"
               thumb-label
+              color="primary"
               class="mt-4"
             />
           </v-card-text>
