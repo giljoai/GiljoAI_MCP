@@ -152,6 +152,17 @@
 > **Root Cause**: UI reading obsolete JSONB field removed in 0700c; backend lacks API endpoint for normalized table
 > **Solution**: Create GET endpoint + update frontend to use new API (TDD approach)
 
+### Agent Status Simplification (0491) - NEW
+| ID | Title | Status | Priority | Est. Hours |
+|----|-------|--------|----------|------------|
+| **0491** | **Agent Status Simplification & Silent Detection** | **Ready** | **HIGH** | 12-18h |
+
+> **Purpose**: Simplify 7-status model to 4 agent-reported + 1 server-detected (Silent) + 1 lifecycle (decommissioned)
+> **Removals**: `failed` status (entirely), `cancelled` status (entirely), `failure_reason` column, `severity` param on `report_error()`
+> **Additions**: `Silent` server-side detection (10-min threshold), MCP auto-clear, dashboard badge + notification bell
+> **Prerequisite**: Phase 1 research must validate no unexpected usage of removed statuses before implementation
+> **Origin**: Alpha trial session (2026-02-11) - workflow status fix + design discussion
+
 ### Superseded/Moved to Completed (Cleanup)
 | ID | Title | Status | Notes |
 |----|-------|--------|-------|
