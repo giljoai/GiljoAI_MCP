@@ -128,7 +128,7 @@ class FileStaging:
             # in slash_command_templates.py; this list was incorrect.
             wanted = [
                 "gil_get_claude_agents.md",  # Unified agent installer (interactive)
-                "gil_task.md",  # Task punting to dashboard
+                "gil_add.md",  # Unified task/project creation (Handover 0433)
             ]
             missing = [w for w in wanted if w not in all_templates]
             if missing:

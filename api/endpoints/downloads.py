@@ -184,7 +184,7 @@ async def download_slash_commands(
 
     Supported commands:
     - gil_get_claude_agents.md (unified agent installer)
-    - gil_task.md (task punting to dashboard)
+    - gil_add.md (unified task/project creation)
 
     NOTE: gil_activate, gil_launch, gil_handover removed (0388) - users perform these via web UI
 
