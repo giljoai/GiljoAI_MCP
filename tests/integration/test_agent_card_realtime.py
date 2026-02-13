@@ -361,7 +361,7 @@ class TestAgentCardRealTimeBroadcasting:
             agent_job = result_query.scalar_one_or_none()
             assert agent_job is not None
             assert agent_job.agent_display_name == "tester"
-            assert agent_job.status in {"waiting", "working", "complete", "failed", "cancelled", "decommissioned"}
+            assert agent_job.status in {"waiting", "working", "blocked", "complete", "silent", "decommissioned"}
 
     """
     Test 6: Broadcast errors do not hang

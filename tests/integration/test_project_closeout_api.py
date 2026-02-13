@@ -72,7 +72,7 @@ async def test_can_close_all_agents_complete(
 
     # Validate agent status breakdown
     assert data["agent_statuses"]["complete"] == 3
-    assert data["agent_statuses"]["failed"] == 0
+    assert data["agent_statuses"]["blocked"] == 0
     assert data["agent_statuses"]["active"] == 0
     assert data["agent_statuses"]["blocked"] == 0
 
@@ -111,7 +111,7 @@ async def test_can_close_some_agents_failed(
             project_id=project.id,
             agent_display_name="tester",
             mission=f"Test feature {i}",
-            status="failed",
+            status="blocked",
             block_reason="Dependencies missing",
         )
         db_session.add(agent)
@@ -126,9 +126,9 @@ async def test_can_close_some_agents_failed(
 
     assert data["can_close"] is True
     assert data["agent_statuses"]["complete"] == 2
-    assert data["agent_statuses"]["failed"] == 1
+    assert data["agent_statuses"]["blocked"] == 1
     assert "2 successful agents" in data["summary"]
-    assert "1 failed agents" in data["summary"]
+    assert "1 blocked agents" in data["summary"]
 
 
 @pytest.mark.asyncio
@@ -523,9 +523,9 @@ async def test_get_closeout_data_endpoint_success(
     assert data["project_name"] == project.name
     assert data["agent_count"] == 2
     assert data["completed_agents"] == 1
-    assert data["failed_agents"] == 0
+    assert data["blocked_agents"] == 0
     assert data["all_agents_complete"] is False
-    assert data["has_failed_agents"] is False
+    assert data["has_blocked_agents"] is False
 
 
 @pytest.mark.asyncio

@@ -347,7 +347,7 @@ class ThinClientPromptGenerator:
                 AgentJob.project_id == project_id,
                 AgentExecution.agent_display_name == "orchestrator",
                 AgentExecution.tenant_key == self.tenant_key,
-                ~AgentExecution.status.in_(["failed", "cancelled"]),  # FIX 2
+                ~AgentExecution.status.in_(["decommissioned"]),  # Handover 0491: Simplified statuses
             )
             .order_by(AgentExecution.started_at.desc())
         )

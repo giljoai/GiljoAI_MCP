@@ -21,8 +21,8 @@ export function useAgentData(agents) {
    * Priority sorting algorithm
    * Extracted from AgentCardGrid.vue to prevent duplication
    *
-   * Sort order:
-   * 1. Status priority (failed/blocked → waiting → working → complete)
+   * Sort order (Handover 0491: Status simplification):
+   * 1. Status priority (blocked/silent → waiting → working → complete)
    * 2. Agent type (orchestrator first)
    * 3. Alphabetical by name
    */
@@ -30,13 +30,12 @@ export function useAgentData(agents) {
     return [...agents.value].sort((a, b) => {
       // Status priority mapping
       const priority = {
-        failed: 1,
         blocked: 1,
+        silent: 1,
         waiting: 2,
         working: 3,
         complete: 4,
-        cancelled: 5,
-        decommissioned: 6,
+        decommissioned: 5,
       }
 
       // Primary sort: status priority
@@ -80,8 +79,7 @@ export function useAgentData(agents) {
       working: 'blue',
       blocked: 'orange',
       complete: 'green',
-      failed: 'red',
-      cancelled: 'grey-darken-2',
+      silent: 'amber-darken-2',
       decommissioned: 'grey-lighten-1',
     }
     return colors[status] || 'grey'

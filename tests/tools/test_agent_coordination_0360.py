@@ -225,8 +225,7 @@ async def test_get_team_agents_excludes_inactive_by_default(db_session, tenant_k
         job_id=test_job.job_id,
         tenant_key=tenant_key,
         agent_display_name="tester",
-        status="failed",
-        completed_at=datetime.now(timezone.utc),
+        status="blocked",
     )
 
     db_session.add(active_execution)

@@ -264,7 +264,7 @@ const currentOrchestrator = computed(() => {
  */
 const needsOrchestratorRelaunch = computed(() => {
   if (!currentOrchestrator.value) return true
-  const terminalStates = ['complete', 'handed_over', 'failed', 'cancelled', 'decommissioned']
+  const terminalStates = ['complete', 'handed_over', 'silent', 'decommissioned']
   return terminalStates.includes(currentOrchestrator.value.status)
 })
 
@@ -636,8 +636,7 @@ watch(missionText, (next, previous) => {
       &.status-complete { color: #67bd6d; }
       &.status-handed_over { color: #9e9e9e; }
       &.status-blocked { color: #ff9800; }
-      &.status-failed { color: #e53935; }
-      &.status-cancelled { color: #ff9800; }
+      &.status-silent { color: #ff9800; }
       &.status-pending { color: #90a4ae; }
     }
 
