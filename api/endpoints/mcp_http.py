@@ -498,13 +498,13 @@ async def handle_tools_list(
         # Download Tools (Handover 0384)
         {
             "name": "generate_download_token",
-            "description": "Generate a one-time download URL for agent templates. Returns a URL valid for 15 minutes.",
+            "description": "Generate a one-time download URL for agent templates or slash commands. Returns a URL valid for 15 minutes.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "content_type": {
                         "type": "string",
-                        "enum": ["agent_templates"],
+                        "enum": ["agent_templates", "slash_commands"],
                         "description": "Type of content to download",
                     },
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
@@ -633,9 +633,11 @@ async def handle_tools_list(
             },
         },
         # Succession tools removed: create_successor_orchestrator, check_succession_status
-        # Handover 0391/0461/0700d: Succession is user-triggered via UI button (simple-handover REST endpoint).
-        # Agents cannot self-detect context exhaustion (passive HTTP architecture).
-        # NOTE: gil_activate, gil_launch removed (0388, 0391) - users perform these via web UI
+        # Handover 0391/0461/0700d: Succession is user-triggered via UI button (simple-handover REST endpoint)
+        # or /gil_handover slash command. Agents cannot self-detect context exhaustion (passive HTTP architecture).
+        # Handover 0083: core /gil_* commands
+        # NOTE: gil_activate, gil_launch, gil_handover removed (0388, 0391) - users perform these via web UI
+        # gil_handover removed in 0391: REST API endpoint handles succession, MCP tool had tenant_key bug
         # Unified Context Tool (Handover 0350a, updated 0430)
         {
             "name": "fetch_context",
@@ -813,7 +815,7 @@ async def handle_tools_call(
         "get_agent_mission": state.tool_accessor.get_agent_mission,
         "spawn_agent_job": state.tool_accessor.spawn_agent_job,
         "get_workflow_status": state.tool_accessor.get_workflow_status,
-        # Succession tools removed (0391/0461/0700d) - user triggers via UI button (simple-handover REST endpoint)
+        # Succession tools removed (0391/0461/0700d) - user triggers via UI button or /gil_handover slash command
         # Unified Context Tool (Handover 0350a)
         "fetch_context": state.tool_accessor.fetch_context,
         # Project Closeout (Handover 0411)
