@@ -767,9 +767,7 @@ git commit -m "feat: Preserve execution mode through succession (Handover 0246c)
 Tests: 5 passed, 0 failed
 Coverage: 91%
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ---

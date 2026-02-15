@@ -1003,7 +1003,6 @@ git commit -m "feat(0424c): Add Organization API endpoints
 - Add permission middleware for org access
 - Add 15+ API tests (all passing)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Step 6: Spawn Next Terminal

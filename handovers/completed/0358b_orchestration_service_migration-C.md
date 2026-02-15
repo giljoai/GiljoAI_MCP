@@ -358,9 +358,7 @@ feat(0358b): migrate OrchestrationService to dual-model architecture
 
 BREAKING CHANGE: Return values now include agent_id in addition to job_id
 
-Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---

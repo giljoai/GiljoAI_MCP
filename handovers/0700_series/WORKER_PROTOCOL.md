@@ -173,7 +173,7 @@ Changes:
 Docs Updated:
 - [list docs updated]
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+[handover ID]"
 ```
 
 **Report**:

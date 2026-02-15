@@ -158,5 +158,4 @@ Verification:
 - API imports successfully
 - RateLimiter middleware works
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```

@@ -233,5 +233,4 @@ cleanup(0708): Modernize type hints to PEP 585+
 - Added return types to [X] functions
 - Configured mypy for type checking
 
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```

@@ -804,7 +804,6 @@ git commit -m "feat(0424d): Add Organization frontend components
 - Add orgStore.js Pinia store
 - Move Test Connection button (UI tweak)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Step 6: Spawn Next Terminal

@@ -230,7 +230,6 @@ Add response model classes (DeleteResult, TransferResult, PaginatedResult, etc.)
 for replacing dict[str, Any] returns across 14 service files. TDD: tests written
 first. Design doc validated against current codebase.
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
 ---

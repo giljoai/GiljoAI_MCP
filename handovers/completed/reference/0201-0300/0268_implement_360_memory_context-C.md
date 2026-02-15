@@ -668,9 +668,7 @@ Coverage: 91%
 
 Closes: #268
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ---

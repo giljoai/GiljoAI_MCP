@@ -768,9 +768,7 @@ Coverage: 92%
 Token Count: ~2400 tokens per agent
 Protocol Version: 1.0
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ---

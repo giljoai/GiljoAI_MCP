@@ -970,7 +970,6 @@ git commit -m "test: Add integration tests for JSON mission generation (Handover
 Tests will PASS once 0347a-e are complete.
 
 🤖 Generated with Claude Code
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
 # Commit 2: Coverage reporting and documentation
 git add pytest.ini htmlcov/ docs/
@@ -982,7 +981,6 @@ git commit -m "docs: Add coverage reporting and E2E testing guide (Handover 0347
 - Update TESTING.md with integration examples
 
 🤖 Generated with Claude Code
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### No Implementation Commits

@@ -290,7 +290,6 @@ normalized product_memory_entries table.
 BREAKING: sequential_history JSONB is deprecated.
 Use ProductMemoryRepository for all 360 memory operations.
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 #### 5b. Merge to Master

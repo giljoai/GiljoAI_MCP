@@ -713,7 +713,6 @@ git commit -m "feat(0424a): Add Organization and OrgMembership models
 - Add org_id FK to products, templates, tasks
 - Add 6 model tests (all passing)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Step 6: Spawn Next Terminal
