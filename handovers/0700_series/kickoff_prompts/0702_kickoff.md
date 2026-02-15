@@ -168,5 +168,4 @@ Verification:
 - Config loads successfully
 - All callers use canonical property names
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```

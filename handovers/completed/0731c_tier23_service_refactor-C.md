@@ -170,7 +170,6 @@ git commit -m "refactor(0731c): ProjectService typed returns - remove 25 dict wr
 Replace dict[str, Any] returns with typed model returns and exception-based
 error handling. Tests updated first per TDD workflow.
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
 For small services, batch commits are acceptable:
@@ -179,7 +178,6 @@ git commit -m "refactor(0731c): Tier 3 services typed returns - Settings, Config
 
 Remove remaining dict wrappers from 4 small services (7 total instances).
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
 ---

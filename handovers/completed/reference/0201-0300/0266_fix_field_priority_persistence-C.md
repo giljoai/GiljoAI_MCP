@@ -855,9 +855,7 @@ Performance: Settings save < 200ms (target: <500ms)
 
 Closes: #266
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ---

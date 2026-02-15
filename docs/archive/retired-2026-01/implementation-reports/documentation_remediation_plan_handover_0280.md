@@ -1149,7 +1149,6 @@ Related:
 - Handover 0312-0316: Context Management v2.0
 
 🤖 Generated with Claude Code
-Co-Authored-By: Documentation Manager Agent <noreply@anthropic.com>
 ```
 
 ---

@@ -575,7 +575,6 @@ Handover: 0424m
 Chain: 0424 Organization Hierarchy (Extended)
 Impact: Model-migration alignment complete, multi-tenant isolation restored
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Step 5: Update Chain Log

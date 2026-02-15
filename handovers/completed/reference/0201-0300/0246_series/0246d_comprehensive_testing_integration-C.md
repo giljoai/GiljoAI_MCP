@@ -519,9 +519,7 @@ Test Results:
 - Token Reduction: 25% (target >20%)
 - Regressions: None detected
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ---

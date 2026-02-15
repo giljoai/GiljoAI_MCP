@@ -255,7 +255,6 @@ git commit -m "refactor(0731b): OrgService typed returns - remove 33 dict wrappe
 Replace dict[str, Any] returns with typed model returns and exception-based
 error handling. Tests updated first per TDD workflow.
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 
 # After UserService
 git commit -m "refactor(0731b): UserService typed returns - remove N dict wrappers

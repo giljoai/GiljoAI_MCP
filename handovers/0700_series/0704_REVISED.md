@@ -262,5 +262,4 @@ Coverage: 17/34 (50%) → 34/34 (100%)
 
 Validation: Subagent confirmed [X] classes need __repr__.
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```

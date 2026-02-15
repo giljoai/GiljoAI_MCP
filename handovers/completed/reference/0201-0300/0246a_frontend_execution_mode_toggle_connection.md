@@ -634,9 +634,7 @@ git commit -m "feat: Connect execution mode toggle to backend (Handover 0246a)
 Tests: 5 passed, 0 failed
 Coverage: 87%
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ---

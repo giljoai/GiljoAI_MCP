@@ -324,7 +324,6 @@ Series: 0700 Code Cleanup (missed deprecation)
 Risk: VERY LOW (dead code removal)
 Phases: Research → Implement → Migrate → Validate → Fix → Commit
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ```
 
 **3. Verify commit:**

@@ -187,7 +187,6 @@ async def org_not_found_handler(request: Request, exc: OrgNotFoundError):
    - Endpoints simplified to rely on exception handlers
    - Proper HTTP status codes (404, 409, etc.)
 
-   Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
    ```
 
 ### Step 3: Final Validation (30 minutes)

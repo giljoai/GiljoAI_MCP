@@ -949,7 +949,6 @@ git add -A && git commit -m "feat(0424h): Add org data to API endpoints and welc
 - Add 'Workspace Name' field to welcome screen (required)
 - Add org state to user store with computed properties
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Step 5: Update Chain Log

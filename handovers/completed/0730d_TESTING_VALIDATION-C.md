@@ -965,7 +965,6 @@ User will review the complete 0730 series and determine next priorities independ
 
 <body - optional>
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 **Types:** feat, fix, refactor, test, docs, chore
@@ -983,7 +982,6 @@ Validation phase of 0730 series
 - Updated error handling section
 - All examples now use raise instead of return dicts
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 **Example (Final Series Completion):**
@@ -1006,7 +1004,6 @@ Series Summary:
 
 Total impact: Eliminated dict wrapper anti-pattern across entire service layer
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---

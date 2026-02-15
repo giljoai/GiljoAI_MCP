@@ -410,7 +410,6 @@ feat(0311): Integrate 360 Memory + Git into context system
 - Coverage: 87% for new code
 
 🤖 Generated with Claude Code
-Co-Authored-By: Claude <noreply@anthropic.com>
 
 HANDOVER 0311 COMPLETE ✅
 ```

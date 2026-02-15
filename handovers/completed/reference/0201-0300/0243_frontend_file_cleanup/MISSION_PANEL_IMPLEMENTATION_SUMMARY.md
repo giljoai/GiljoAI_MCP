@@ -176,7 +176,6 @@ $radius-scrollbar: 4px;
 
 - **Commit**: 50ad4ee8
 - **Branch**: master
-- **Author**: Claude <noreply@anthropic.com>
 - **Files changed**: 1 (LaunchTab.vue)
 - **Insertions**: 186
 - **Deletions**: 11

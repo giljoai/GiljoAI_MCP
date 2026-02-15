@@ -122,7 +122,6 @@ fix(api): Add proper exception handling to Agent Jobs API endpoints
 
 Part of Handover 0480 remediation series.
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---
