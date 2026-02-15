@@ -179,5 +179,4 @@ Validation phase found [X] gaps ([Y] claimed, [Z] additional).
 0700i fixes:
 - [List instance_number changes]
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```

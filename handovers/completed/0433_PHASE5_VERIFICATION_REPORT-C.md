@@ -486,7 +486,6 @@ if project_id:
    Phase 5 confirms Handover 0433 successfully eliminated tenant isolation
    vulnerability while simplifying code complexity by 40-66% (exceeds target).
 
-   Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
    ```
 
 2. ✅ **Update HANDOVER_CATALOGUE.md:**

@@ -353,7 +353,6 @@ Total Impact: ~400 lines removed
 Visualization Proof: succession.py confirmed orphan (0 dependents) by 0701
 Replacement: simple_handover.py (Handover 0461f)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ---

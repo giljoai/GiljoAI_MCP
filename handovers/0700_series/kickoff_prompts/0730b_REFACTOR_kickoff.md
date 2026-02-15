@@ -132,7 +132,6 @@ git commit -m "refactor(0730b): OrgService dict wrappers to exceptions (33 metho
 - Update all tests to expect exceptions instead of dict wrappers
 - Coverage maintained at >80%
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ```
 
 ---

@@ -186,5 +186,4 @@ Remediation of gaps found during comprehensive audit:
 
 Validation: [SCOPE CONFIRMED/EXPANDED by research agent]
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```

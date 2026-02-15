@@ -296,7 +296,6 @@ Verification:
 - All tests pass
 - Zero active references remain
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---

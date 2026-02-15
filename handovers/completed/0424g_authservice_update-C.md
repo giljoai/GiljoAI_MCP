@@ -798,7 +798,6 @@ git add -A && git commit -m "feat(0424g): Update AuthService for org-first user 
 - Update _register_user_impl() to accept and set org_id
 - Add create_user_in_org() method for admin user creation
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Step 5: Update Chain Log

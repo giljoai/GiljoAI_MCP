@@ -266,5 +266,4 @@ Comprehensive auth cleanup based on audit findings:
 
 Validation: Subagent confirmed [X] duplicates, [Y] resolved.
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```

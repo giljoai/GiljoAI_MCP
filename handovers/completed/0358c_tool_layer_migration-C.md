@@ -359,9 +359,7 @@ Events emitted by tools must continue working:
     - Added test_spawn_agent_job_0358c.py
     - All 0366c regression tests passing
 
-    Generated with [Claude Code](https://claude.com/claude-code)
 
-    Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 
 ---
 

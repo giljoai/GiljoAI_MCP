@@ -495,7 +495,6 @@ git commit -m "docs(handover-0283): Migrate documentation to monolithic context 
 See: Handover 0280 (Master Roadmap), 0281 (Backend), 0282 (Testing), 0283 (Documentation)
 
 🤖 Generated with Claude Code
-Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ### Post-Deployment

@@ -518,9 +518,7 @@ deprecate(0358d): mark MCPAgentJob as deprecated in favor of AgentJob/AgentExecu
 Part of Agent Identity Refactor (0366 series)
 See: handovers/completed/0366_agent_identity_refactor_roadmap-C.md
 
-Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---

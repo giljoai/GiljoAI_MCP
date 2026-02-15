@@ -294,9 +294,7 @@ Wall-clock time: 4 hours (vs 16 hours sequential)
    - ✅ Criterion 1
    - ✅ Criterion 2
 
-   🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-   Co-Authored-By: Claude <noreply@anthropic.com>"
+   Completed: [date]"
    ```
 
 ---

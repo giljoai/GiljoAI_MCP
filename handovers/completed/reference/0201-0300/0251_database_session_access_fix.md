@@ -436,6 +436,4 @@ session = db_manager.AsyncSessionLocal()
 - `tests/unit/test_mission_planner_chunk_retrieval.py`
 - `tests/unit/test_mission_planner_priority.py`
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>

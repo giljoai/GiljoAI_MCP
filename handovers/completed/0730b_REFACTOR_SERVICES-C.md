@@ -149,7 +149,6 @@ git commit -m "feat(0730b): Add AlreadyExistsError for 409 Conflict responses
 
 Supports duplicate resource detection in service layer refactoring.
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Tier 1 Execution (8-12 hours)
@@ -229,7 +228,6 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
    - transfer_ownership, list_members, get_user_organizations
    - [... 24 more methods - see 0730a docs]
 
-   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
    ```
 
 **Repeat for UserService (2-3 hours) and ProductService (2-3 hours) using same TDD workflow.**
@@ -641,7 +639,6 @@ User will review refactored services, test results, and coverage reports before 
 
 <body - optional>
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 **Types:** feat, refactor, test, docs, chore
@@ -663,7 +660,6 @@ Refactored methods:
 - transfer_ownership, list_members, get_user_organizations
 - [... 24 more methods]
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ---

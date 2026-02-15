@@ -356,7 +356,6 @@ Deliverables:
 
 Next: 0701 will use this index to create dependency visualization graphs.
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ---

@@ -612,10 +612,6 @@ Documentation: 7 guides (1,500+ lines)
 
 This completes the week-long remediation effort for message counter display issues.
 
-Co-authored-by: Claude Deep-Researcher <noreply@anthropic.com>
-Co-authored-by: Claude Database-Expert <noreply@anthropic.com>
-Co-authored-by: Claude TDD-Implementor <noreply@anthropic.com>
-Co-authored-by: Claude Frontend-Tester <noreply@anthropic.com>
 ```
 
 ---
