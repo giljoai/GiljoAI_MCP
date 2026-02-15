@@ -82,7 +82,6 @@ class TestCLIModeRules:
                 agent_display_name="orchestrator",
                 agent_name="CLI Mode Orchestrator",
                 status="waiting",
-                context_budget=150000,
             )
             session.add(orchestrator)
 
@@ -163,7 +162,6 @@ class TestCLIModeRules:
                 agent_display_name="orchestrator",
                 agent_name="Multi-Terminal Orchestrator",
                 status="waiting",
-                context_budget=150000,
             )
             session.add(orchestrator)
 
@@ -581,7 +579,6 @@ class TestCLIModeRulesBackwardCompatibility:
                 agent_display_name="orchestrator",
                 agent_name="CLI Mode Orchestrator",
                 status="waiting",
-                context_budget=150000,
             )
             session.add(orchestrator)
 
@@ -660,8 +657,6 @@ class TestCLIModeRulesBackwardCompatibility:
             "project_name",
             "project_description",
             "mission",
-            "context_budget",
-            "context_used",
             "agent_discovery_tool",
             "thin_client",
         ]

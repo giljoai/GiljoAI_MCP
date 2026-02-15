@@ -71,7 +71,6 @@ async def test_stage_project_updates_existing_orchestrator_metadata(db_session: 
         name="Test Project",
         description="Test project for staging tests",
         mission="Initial test mission",
-        context_budget=10000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -175,7 +174,6 @@ async def test_stage_project_regenerates_instructions_with_current_settings(db_s
         name="Test Project",
         description="Test project for instruction regeneration",
         mission="Initial test mission",
-        context_budget=10000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -274,7 +272,6 @@ async def test_stage_project_returns_fresh_prompt_after_settings_change(db_sessi
         name="Test Project",
         description="Project for testing prompt freshness",
         mission="Test mission for prompt refresh",
-        context_budget=10000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -367,7 +364,6 @@ async def test_multiple_stage_clicks_keep_same_orchestrator_id(db_session: Async
         name="Test Project",
         description="Project for testing multiple stage clicks",
         mission="Test mission",
-        context_budget=10000,
     )
     db_session.add(project)
     await db_session.commit()

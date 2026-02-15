@@ -41,7 +41,6 @@ async def setup_test_data(session: AsyncSession):
         role="orchestrator",
         status="active",
         mission="Orchestrate the project",
-        context_used=5000,
         created_at=datetime.now(timezone.utc),
     )
     session.add(orchestrator)
@@ -56,7 +55,6 @@ async def setup_test_data(session: AsyncSession):
             role=role,
             status="active" if i < 2 else "decommissioned",
             mission=f"Handle {role} tasks",
-            context_used=1000 * (i + 1),
             created_at=datetime.now(timezone.utc),
         )
         for i, role in enumerate(["designer", "implementer", "tester"])

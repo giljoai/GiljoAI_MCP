@@ -32,8 +32,6 @@ async def test_project_with_data(db_session, test_tenant_key):
         description="Project for statistics testing",
         mission="Test mission",
         status="active",
-        context_used=50000,
-        context_budget=100000,
         created_at=datetime.now(timezone.utc),
     )
     db_session.add(project)
@@ -131,8 +129,6 @@ async def test_agent_executions(db_session, test_tenant_key, test_project_with_d
             messages_read_count=0,
             health_status="healthy",
             tool_type="universal",
-            context_used=0,
-            context_budget=150000,
         )
         db_session.add(execution)
         executions.append(execution)
@@ -191,8 +187,6 @@ class TestProjectStatisticsDomain:
             description="Completed",
             mission="Test",
             status="completed",
-            context_used=0,
-            context_budget=100000,
         )
         db_session.add(completed_proj)
         await db_session.commit()
@@ -214,8 +208,6 @@ class TestProjectStatisticsDomain:
             description="Test",
             mission="Test",
             status="active",
-            context_used=75000,
-            context_budget=100000,
         )
         db_session.add(project2)
         await db_session.commit()
@@ -237,8 +229,6 @@ class TestProjectStatisticsDomain:
                 description="Test",
                 mission="Test",
                 status="active" if i % 2 == 0 else "completed",
-                context_used=0,
-                context_budget=100000,
             )
             db_session.add(project)
         await db_session.commit()
@@ -502,8 +492,6 @@ class TestTenantIsolation:
             description="Test",
             mission="Test",
             status="active",
-            context_used=50000,
-            context_budget=100000,
         )
         project2 = Project(
             id="proj_tenant2",
@@ -512,8 +500,6 @@ class TestTenantIsolation:
             description="Test",
             mission="Test",
             status="active",
-            context_used=75000,
-            context_budget=100000,
         )
         db_session.add_all([project1, project2])
         await db_session.commit()

@@ -92,13 +92,6 @@
               class="mb-3"
             ></v-textarea>
 
-            <v-text-field
-              v-model.number="projectData.context_budget"
-              label="Context Budget (tokens)"
-              type="number"
-              :rules="[(v) => v > 0 || 'Must be positive']"
-              class="mb-3"
-            ></v-text-field>
           </v-form>
         </v-card-text>
 
@@ -140,7 +133,6 @@ const projectData = ref({
   name: '',
   description: '',
   mission: '',
-  context_budget: 150000,
 })
 
 async function fetchProjectDetails() {
@@ -178,7 +170,6 @@ function handleEditDescription() {
     name: project.value.name,
     description: project.value.description || '',
     mission: project.value.mission || '',
-    context_budget: project.value.context_budget || 150000,
   }
   showEditDialog.value = true
 }
@@ -191,7 +182,6 @@ function handleEditMission(missionData) {
     description: project.value.description || '',
     // Use the latest orchestrator mission text if provided from LaunchTab
     mission: missionData || project.value.mission || '',
-    context_budget: project.value.context_budget || 150000,
   }
 
   showEditDialog.value = true
@@ -213,7 +203,6 @@ async function saveProject() {
       name: projectData.value.name,
       description: projectData.value.description,
       mission: projectData.value.mission,
-      context_budget: projectData.value.context_budget,
     }
 
     await api.projects.update(projectId.value, updateData)
@@ -242,7 +231,6 @@ function cancelEdit() {
     name: '',
     description: '',
     mission: '',
-    context_budget: 150000,
   }
 }
 

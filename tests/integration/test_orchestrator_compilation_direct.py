@@ -56,8 +56,6 @@ async def setup_test_environment(db_session: AsyncSession, test_tenant_key: str)
         description="User requirements for testing compilation behavior",
         mission="",
         status="waiting",
-        context_budget=150000,
-        context_used=0,
     )
     db_session.add(project)
     await db_session.commit()

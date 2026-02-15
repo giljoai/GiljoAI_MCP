@@ -89,7 +89,6 @@ class TestMessageWebSocketRecipientCounters:
                     status="waiting",
                     progress=0,
                     tool_type="claude-code",
-                    context_used=0,
                 )
                 session.add(agent)
 
@@ -222,7 +221,6 @@ class TestMessageWebSocketRecipientCounters:
                     status="waiting",
                     progress=0,
                     tool_type="claude-code",
-                    context_used=0,
                 )
                 session.add(agent)
 

@@ -148,7 +148,6 @@ async def test_agent_templates_in_full_context_workflow(db_session: AsyncSession
         tenant_key=tenant_key,
         description="This is an integration test project to validate agent templates in context generation workflow.",
         mission="Integration test mission",
-        context_budget=150000,
     )
     db_session.add(project)
 

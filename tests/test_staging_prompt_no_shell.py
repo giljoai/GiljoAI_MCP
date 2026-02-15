@@ -47,7 +47,6 @@ async def test_staging_prompt_no_shell_commands(db_session: AsyncSession):
         name="Test Project",
         description="Test project description",
         mission="Test mission",
-        context_budget=200000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -107,7 +106,6 @@ async def test_staging_prompt_simplified_workflow(db_session: AsyncSession):
         name="Test Project 2",
         description="Project requirements here",
         mission="Test mission 2",  # Required field
-        context_budget=200000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -160,7 +158,6 @@ async def test_claude_code_mode_instructions(db_session: AsyncSession):
         name="Test Project 3",
         description="CC test project",
         mission="Test mission 3",  # Required field
-        context_budget=200000,
     )
     db_session.add(project)
     await db_session.commit()

@@ -388,7 +388,6 @@ class TestAgentTemplateDepthIntegration:
                 job_id=job_id,
                 agent_display_name="orchestrator",
                 status="waiting",
-                context_budget=150000,
             )
             session.add(orchestrator)
             await session.commit()
@@ -488,7 +487,6 @@ class TestAgentTemplateDepthIntegration:
                 job_id=job_id,
                 agent_display_name="orchestrator",
                 status="waiting",
-                context_budget=150000,
             )
             session.add(orchestrator)
             await session.commit()
@@ -587,7 +585,6 @@ class TestAgentTemplateDepthIntegration:
                 job_id=job_id,
                 agent_display_name="orchestrator",
                 status="waiting",
-                context_budget=150000,
             )
             session.add(orchestrator)
             await session.commit()
@@ -661,7 +658,6 @@ class TestAgentTemplateDepthIntegration:
                 job_id=job_id,
                 agent_display_name="orchestrator",
                 status="waiting",
-                context_budget=150000,
             )
             session.add(orchestrator)
             await session.commit()

@@ -95,7 +95,6 @@ async def test_project(db_session, tenant_key, test_product):
         description="Test project for agent.py migration",
         product_id=test_product.id,
         mission="Implement user authentication system",
-        context_budget=150000,
         status="active",
     )
     db_session.add(project)
@@ -142,8 +141,6 @@ async def test_agent_execution(db_session, tenant_key, test_agent_job):
         agent_display_name="backend-implementor",
         status="waiting",
         agent_name="Backend Implementor #1",
-        context_used=0,
-        context_budget=50000,
         tool_type="claude-code",
     )
     db_session.add(execution)
@@ -394,7 +391,7 @@ async def test_get_agent_health_queries_execution_table(db_session, tenant_key, 
 
     Expected behavior (NEW semantic contract):
     - Queries AgentExecution by agent_name (if specified)
-    - Returns executor-specific fields: status, context_used, last_active
+    - Returns executor-specific fields: status, last_active
     - Queries all AgentExecution records if agent_name=None
     - Includes job_id for reference
 
@@ -421,7 +418,6 @@ async def test_get_agent_health_queries_execution_table(db_session, tenant_key, 
     # Verify executor-specific fields returned
     assert result["agent"] == "backend-implementor", "Agent name should match input"
     assert result["status"] == test_agent_execution.status, "Status should match AgentExecution.status"
-    assert "context_used" in result, "Response must include context_used"
     assert "last_activity" in result, "Response must include last_activity"
 
     # Verify job_id included for reference
@@ -466,8 +462,6 @@ async def test_handoff_creates_successor_execution(db_session, tenant_key, test_
         agent_display_name="backend-implementor",
         status="waiting",
         agent_name="backend-implementor #2",
-        context_used=0,
-        context_budget=50000,
         tool_type="claude-code",
     )
     db_session.add(to_execution)
@@ -527,7 +521,7 @@ async def test_spawn_sub_agent_creates_execution(db_session, tenant_key, test_pr
     # 1. Create AgentJob for sub-agent mission
     # 2. Create AgentExecution with spawned_by=parent.agent_id
     # 3. Create AgentInteraction record (existing behavior)
-    # 4. Update parent context_used (existing behavior)
+    # 4. Notify parent of sub-agent spawn (existing behavior)
 
     pytest.skip("Requires full MCP tool setup - pattern tested in ensure_agent tests")
 

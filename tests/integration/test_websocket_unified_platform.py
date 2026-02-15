@@ -144,8 +144,6 @@ async def test_agent_with_execution(
         messages_sent_count=0,
         messages_waiting_count=0,
         messages_read_count=0,
-        context_used=0,
-        context_budget=100000,
     )
     db_session.add(execution)
     await db_session.commit()
@@ -181,8 +179,6 @@ async def test_sender_agent(
         agent_name="test-orchestrator",
         status="working",
         messages=[],
-        context_used=0,
-        context_budget=100000,
     )
     db_session.add(execution)
     await db_session.commit()

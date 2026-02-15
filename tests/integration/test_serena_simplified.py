@@ -212,8 +212,6 @@ class TestOrchestratorSerenaIntegration:
                 agent_name="Orchestrator",
                 mission="Test mission",
                 status="working",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(orchestrator)
             await session.commit()

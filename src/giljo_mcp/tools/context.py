@@ -239,8 +239,6 @@ async def fetch_context(
                 "success": True,
                 "agent_id": execution.agent_id,
                 "job_id": execution.job_id,
-                "context_used": execution.context_used,
-                "context_budget": execution.context_budget,
                 "context": product_context,
             }
 
@@ -293,21 +291,11 @@ async def get_context_history(
                     "error": "Agent execution not found or unauthorized",
                 }
 
-            # Build context history (placeholder - real implementation would track history)
-            context_history = [
-                {
-                    "timestamp": execution.last_progress_at.isoformat() if execution.last_progress_at else None,
-                    "tokens_used": execution.context_used,
-                    "tokens_budget": execution.context_budget,
-                }
-            ]
-
             return {
                 "success": True,
                 "agent_id": execution.agent_id,
                 "job_id": execution.job_id,
                 "agent_display_name": execution.agent_display_name,
-                "context_history": context_history,
             }
 
     except Exception as e:
@@ -379,8 +367,6 @@ async def get_succession_context(
                     "agent_id": execution.agent_id,
                     "agent_display_name": execution.agent_display_name,
                     "status": execution.status,
-                    "context_used": execution.context_used,
-                    "context_budget": execution.context_budget,
                     "spawned_by": execution.spawned_by,
                 }
                 for execution in all_executions

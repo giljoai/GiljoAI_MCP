@@ -199,8 +199,6 @@ async def _ensure_agent_with_session(
         agent_display_name=agent_name,
         status="waiting",
         agent_name=agent_name,
-        context_used=0,
-        context_budget=50000,
         tool_type="claude-code",
     )
     session.add(agent_execution)
@@ -321,7 +319,6 @@ async def _get_agent_health_with_session(session, agent_name: Optional[str] = No
             "success": True,
             "agent": agent_name,
             "status": execution.status,
-            "context_used": execution.context_used or 0,
             "last_activity": execution.last_progress_at.isoformat() if execution.last_progress_at else None,
             "job_id": str(execution.job_id),
         }
@@ -342,7 +339,6 @@ async def _get_agent_health_with_session(session, agent_name: Optional[str] = No
             {
                 "name": execution.agent_name,
                 "status": execution.status,
-                "context_used": execution.context_used or 0,
                 "project_id": str(job.project_id) if job else None,
             }
         )

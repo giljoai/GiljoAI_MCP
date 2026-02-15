@@ -232,7 +232,6 @@ class TestProjectCRUD:
                 "mission": "Complete the mission",
                 "product_id": tenant_a_product["id"],
                 "status": "inactive",
-                "context_budget": 150000,
             },
             cookies={"access_token": tenant_a_token},
         )
@@ -247,8 +246,6 @@ class TestProjectCRUD:
         assert data["mission"] == "Complete the mission"
         assert data["product_id"] == tenant_a_product["id"]
         assert data["status"] == "inactive"
-        assert data["context_budget"] == 150000
-        assert data["context_used"] == 0
         assert data["agent_count"] == 0
         assert data["message_count"] == 0
         assert "created_at" in data
@@ -272,7 +269,6 @@ class TestProjectCRUD:
         assert data["name"] == "Minimal Project"
         assert data["mission"] == ""  # Default empty mission
         assert data["status"] == "inactive"  # Default status
-        assert data["context_budget"] == 150000  # Default budget
 
     @pytest.mark.asyncio
     async def test_create_project_unauthorized(self, api_client: AsyncClient):
