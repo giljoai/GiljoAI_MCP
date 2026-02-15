@@ -81,8 +81,8 @@ def test_product_config_data_field_exists():
 
 
 @pytest.mark.integration
-def test_project_model_context_budget_field_deprecated():
-    """Test Project model has context_budget field but it's deprecated (Handover 0316)."""
+def test_project_model_context_budget_field_removed():
+    """Test Project model no longer has context_budget field (removed after deprecation)."""
     project = Project(
         id="test-id",
         tenant_key="test-tenant",
@@ -93,10 +93,8 @@ def test_project_model_context_budget_field_deprecated():
         mission="Test mission",
     )
 
-    # context_budget field exists but is deprecated (will be removed in v4.0)
-    assert hasattr(project, "context_budget"), "context_budget field exists (deprecated, will be removed in v4.0)"
-
-    # Verify field is not returned in get_project context tool output (tested in E2E tests)
+    # context_budget field has been removed (was deprecated in Handover 0316)
+    assert not hasattr(project, "context_budget"), "context_budget field should be removed"
 
 
 @pytest.mark.integration

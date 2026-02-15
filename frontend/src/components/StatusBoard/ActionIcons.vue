@@ -164,8 +164,6 @@ export default {
         status: 'waiting',
         agent_display_name: 'implementer',
         unread_count: 0,
-        context_used: 0,
-        context_budget: 0,
       }),
     },
     claudeCodeCliMode: {

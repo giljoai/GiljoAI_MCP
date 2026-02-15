@@ -335,7 +335,7 @@ export const useProjectStore = defineStore('projects', () => {
 
   // Handle real-time updates from WebSocket
   function handleRealtimeUpdate(data) {
-    const { project_id, update_type, name, status, mission, context_used, context_budget } = data
+    const { project_id, update_type, name, status, mission } = data
 
     // Find project by ID
     const projectIndex = projects.value.findIndex((p) => p.id === project_id)
@@ -347,8 +347,6 @@ export const useProjectStore = defineStore('projects', () => {
         name,
         status,
         mission,
-        context_used: context_used || 0,
-        context_budget: context_budget || 150000,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -379,12 +377,6 @@ export const useProjectStore = defineStore('projects', () => {
       }
       if (mission) {
         project.mission = mission
-      }
-      if (context_used !== undefined) {
-        project.context_used = context_used
-      }
-      if (context_budget !== undefined) {
-        project.context_budget = context_budget
       }
 
       project.updated_at = new Date().toISOString()

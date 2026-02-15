@@ -30,8 +30,6 @@ describe('Projects Workflow Integration Tests', () => {
       status: 'active',
       product_id: 'prod-1',
       mission: 'Implement OAuth2 authentication with JWT tokens',
-      context_budget: 200000,
-      context_used: 150000,
       agent_count: 3,
       created_at: '2024-10-01T08:00:00Z',
       updated_at: '2024-10-28T14:30:00Z',
@@ -43,8 +41,6 @@ describe('Projects Workflow Integration Tests', () => {
       status: 'inactive',
       product_id: 'prod-1',
       mission: 'Integrate Stripe payment processing',
-      context_budget: 150000,
-      context_used: 80000,
       agent_count: 2,
       created_at: '2024-10-10T10:00:00Z',
       updated_at: '2024-10-28T10:00:00Z',
@@ -56,8 +52,6 @@ describe('Projects Workflow Integration Tests', () => {
       status: 'inactive',
       product_id: 'prod-1',
       mission: 'Build comprehensive REST API endpoints',
-      context_budget: 250000,
-      context_used: 0,
       agent_count: 1,
       created_at: '2024-10-20T09:00:00Z',
       updated_at: '2024-10-28T09:00:00Z',
@@ -69,8 +63,6 @@ describe('Projects Workflow Integration Tests', () => {
       status: 'completed',
       product_id: 'prod-1',
       mission: 'Migrate from monolith to microservices',
-      context_budget: 300000,
-      context_used: 300000,
       agent_count: 0,
       created_at: '2024-09-15T07:00:00Z',
       updated_at: '2024-10-25T16:00:00Z',
@@ -121,7 +113,7 @@ describe('Projects Workflow Integration Tests', () => {
         ...data,
         id: `proj-${Date.now()}`,
         agent_count: 0,
-        context_used: 0,
+
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         deleted_at: null,
@@ -266,7 +258,7 @@ describe('Projects Workflow Integration Tests', () => {
       wrapper.vm.projectData = {
         name: 'Frontend UI Framework',
         mission: 'Build component library for product',
-        context_budget: 180000,
+
         status: 'inactive',
       }
       wrapper.vm.formValid = true
@@ -292,7 +284,7 @@ describe('Projects Workflow Integration Tests', () => {
       wrapper.vm.projectData = {
         name: 'Testing Suite',
         mission: 'Implement comprehensive test coverage',
-        context_budget: 120000,
+
         status: 'inactive',
       }
       wrapper.vm.formValid = true
@@ -309,7 +301,7 @@ describe('Projects Workflow Integration Tests', () => {
       wrapper.vm.projectData = {
         name: 'New Project',
         mission: 'Test mission',
-        context_budget: 100000,
+
         status: 'inactive',
       }
       wrapper.vm.formValid = true
@@ -587,7 +579,7 @@ describe('Projects Workflow Integration Tests', () => {
       wrapper.vm.projectData = {
         name: 'New Isolated Project',
         mission: 'Test isolation',
-        context_budget: 100000,
+
         status: 'inactive',
       }
       wrapper.vm.formValid = true
@@ -630,8 +622,8 @@ describe('Projects Workflow Integration Tests', () => {
         status: 'inactive',
         product_id: 'prod-1',
         mission: 'Test real-time creation',
-        context_budget: 100000,
-        context_used: 0,
+
+
         agent_count: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

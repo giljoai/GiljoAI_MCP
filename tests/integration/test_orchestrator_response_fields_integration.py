@@ -1,7 +1,7 @@
 """
 Integration test for Handover 0347c - verify new response fields in real database scenario.
 
-This test creates a real database scenario and verifies that all 6 new fields
+This test creates a real database scenario and verifies that all 5 guidance fields
 are properly returned by get_orchestrator_instructions().
 """
 
@@ -54,8 +54,6 @@ async def test_new_fields_in_real_response():
             status="pending",
             project_id=project.id,
             tenant_key=tenant_key,
-            context_budget=150000,
-            context_used=0,
             mission="Test mission",
         )
         session.add(orchestrator)
@@ -71,13 +69,12 @@ async def test_new_fields_in_real_response():
     # Verify response structure
     assert "error" not in result, f"Unexpected error: {result.get('message')}"
 
-    # Verify all 6 new fields are present
+    # Verify all 5 guidance fields are present
     assert "post_staging_behavior" in result
     assert "required_final_action" in result
     assert "multi_terminal_mode_rules" in result
     assert "error_handling" in result
     assert "agent_spawning_limits" in result
-    assert "context_management" in result
 
     # Verify post_staging_behavior structure
     assert isinstance(result["post_staging_behavior"], dict)
@@ -100,10 +97,6 @@ async def test_new_fields_in_real_response():
     # Verify agent_spawning_limits structure
     assert result["agent_spawning_limits"]["max_agent_display_names"] == 8
     assert result["agent_spawning_limits"]["max_instances_per_type"] == "unlimited"
-
-    # Verify context_management structure
-    assert result["context_management"]["context_budget"] == 150000
-    assert result["context_management"]["warning_threshold"] == 0.8
 
     # Cleanup
     await db_manager.close_async()
@@ -147,8 +140,6 @@ async def test_cli_mode_excludes_multi_terminal_rules():
             status="pending",
             project_id=project.id,
             tenant_key=tenant_key,
-            context_budget=200000,
-            context_used=0,
             mission="Test mission for CLI mode",
         )
         session.add(orchestrator)
@@ -169,10 +160,6 @@ async def test_cli_mode_excludes_multi_terminal_rules():
     assert "required_final_action" in result
     assert "error_handling" in result
     assert "agent_spawning_limits" in result
-    assert "context_management" in result
-
-    # Verify context_management uses orchestrator's budget
-    assert result["context_management"]["context_budget"] == 200000
 
     # Cleanup
     await db_manager.close_async()

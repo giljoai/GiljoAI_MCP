@@ -29,8 +29,6 @@ class ToolsTestHelper:
             mission="Test mission for tools testing",
             status="active",
             tenant_key=TenantManager.generate_tenant_key(name),
-            context_budget=100000,
-            context_used=0,
             created_at=datetime.now(timezone.utc),
         )
         session.add(project)

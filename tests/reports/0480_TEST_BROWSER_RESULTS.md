@@ -2,7 +2,7 @@
 
 **Date**: 2026-01-27
 **Branch**: 0480-exception-handling-remediation
-**Tester**: Claude Code (Browser Extension)
+**Tester**: Browser Extension
 
 ## Test Environment
 - Backend: http://localhost:7272

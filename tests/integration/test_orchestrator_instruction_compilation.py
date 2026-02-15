@@ -64,8 +64,6 @@ async def test_project(db_session: AsyncSession, test_tenant_key: str, test_prod
         description="User-written requirements: Build a REST API with authentication",
         mission="",  # Will be compiled later
         status="waiting",
-        context_budget=150000,
-        context_used=0,
     )
     db_session.add(project)
     await db_session.commit()
@@ -733,8 +731,6 @@ async def test_multiple_projects_independent_orchestrators(
         description="First test project",
         mission="",
         status="waiting",
-        context_budget=150000,
-        context_used=0,
     )
     db_session.add(project1)
     await db_session.commit()
@@ -747,8 +743,6 @@ async def test_multiple_projects_independent_orchestrators(
         description="Second test project",
         mission="",
         status="waiting",
-        context_budget=150000,
-        context_used=0,
     )
     db_session.add(project2)
     await db_session.commit()

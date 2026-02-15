@@ -67,8 +67,6 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_during_staging(db_ses
         agent_display_name="orchestrator",
         agent_name="Orchestrator",
         status="waiting",  # Staging status
-        context_budget=10000,
-        context_used=0,
     )
     db_session.add(existing_execution)
     await db_session.commit()
@@ -141,8 +139,6 @@ async def test_spawn_agent_prevents_duplicate_orchestrator_when_working(db_sessi
         agent_display_name="orchestrator",
         agent_name="Orchestrator",
         status="working",  # Already running
-        context_budget=10000,
-        context_used=0,
     )
     db_session.add(existing_execution)
     await db_session.commit()
@@ -211,8 +207,6 @@ async def test_spawn_agent_allows_orchestrator_when_previous_complete(db_session
         agent_display_name="orchestrator",
         agent_name="Orchestrator #1",
         status="complete",  # Finished, succession allowed
-        context_budget=10000,
-        context_used=0,
     )
     db_session.add(completed_execution)
     await db_session.commit()
@@ -296,8 +290,6 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         agent_display_name="orchestrator",
         agent_name="Orchestrator",
         status="working",
-        context_budget=10000,
-        context_used=0,
     )
     db_session.add(orch_execution)
 
@@ -319,8 +311,6 @@ async def test_spawn_agent_allows_non_orchestrator_agents(db_session, db_manager
         tenant_key=tenant_key,
         agent_display_name="worker",  # agent_display_name for categorization
         agent_name="implementer",  # agent_name matches template (SSOT)        status="working",
-        context_budget=10000,
-        context_used=0,
     )
     db_session.add(impl1_execution)
     await db_session.commit()
@@ -403,8 +393,6 @@ async def test_spawn_agent_respects_tenant_isolation(db_session, db_manager):
         agent_display_name="orchestrator",
         agent_name="Orchestrator A",
         status="working",
-        context_budget=10000,
-        context_used=0,
     )
     db_session.add(orch_a_execution)
     await db_session.commit()

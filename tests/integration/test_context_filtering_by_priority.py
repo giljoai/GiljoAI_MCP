@@ -160,7 +160,6 @@ async def test_project_for_filtering(db_session, test_product_with_vision, test_
         tenant_key=test_tenant_key,
         status="planning",
         mission="Test mission for context filtering.",
-        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()

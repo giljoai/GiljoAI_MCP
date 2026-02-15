@@ -633,7 +633,7 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Use Serena MCP for code exploration",
                 "Focus on architecture and patterns",
                 "Report analysis findings incrementally (don't wait until end)",
-                "Include file analysis progress in context_used tracking",
+                "Report file analysis progress incrementally",
                 *mcp_rules,
             ],
             "success_criteria": [
