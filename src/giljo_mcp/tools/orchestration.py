@@ -1153,9 +1153,6 @@ async def get_orchestrator_instructions(
                 full_mission = serena_notice + "\n\n---\n\n" + full_mission
                 logger.info("[SERENA] Injected into orchestrator instructions", extra={"agent_id": agent_id})
 
-            # Calculate token estimate
-            len(full_mission) // 4
-
             # Handover 0346: Read execution mode from Project table for live switching (not frozen metadata)
             execution_mode = getattr(project, "execution_mode", None) or metadata.get(
                 "execution_mode", "multi_terminal"
