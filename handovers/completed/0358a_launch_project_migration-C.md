@@ -257,7 +257,6 @@ Test coverage:
 - tests/api/test_launch_project_depth_config.py (updated)
 
 Generated with Claude Code
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---

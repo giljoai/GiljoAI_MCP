@@ -782,9 +782,7 @@ Token Savings: 144 tokens per orchestrator instance
 
 Handover 0246c: Dynamic Agent Discovery & Token Reduction
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ---

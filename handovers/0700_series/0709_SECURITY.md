@@ -240,5 +240,4 @@ security(0709): Harden security posture
 - Removed [X] hardcoded credentials
 - Bandit scan: 0 high, [X] medium remaining
 
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```

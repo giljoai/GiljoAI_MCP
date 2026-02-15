@@ -669,9 +669,7 @@ Fixes:
 - Issue #6: "Closeout Project" button disappears on refresh
 - Issue #7: Duplicate orchestrator spawned on refresh
 
-Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---

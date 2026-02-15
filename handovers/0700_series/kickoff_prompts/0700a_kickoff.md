@@ -203,7 +203,6 @@ Changes:
 Docs Updated:
 - frontend/README.md (if applicable)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ---

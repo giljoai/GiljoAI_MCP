@@ -364,7 +364,6 @@ Analysis confirmed:
 Series: 0700 Code Cleanup (missed deprecation)
 Risk: VERY LOW (dead code removal)
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ```
 
 **Pre-commit validation:**

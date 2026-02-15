@@ -967,7 +967,6 @@ git add -A && git commit -m "feat(0424i): Integrate workspace into AppBar and Us
 - Add workspace name edit for owner/admin
 - Create RoleBadge component for consistency
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Step 5: Update Chain Log

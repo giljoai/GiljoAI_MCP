@@ -392,7 +392,6 @@ Migration:
 Future:
 - Column removal planned for v4.0
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 EOF
 )"
 

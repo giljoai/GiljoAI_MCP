@@ -215,7 +215,6 @@ git commit -m "refactor(0731d): Update product endpoints for typed service retur
 Remove dict-checking patterns from crud.py, lifecycle.py, vision.py,
 git_integration.py. Services now return typed models and raise exceptions.
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
 Final commit:
@@ -225,7 +224,6 @@ git commit -m "chore(0731d): Final validation + completion report
 Zero dict wrappers remaining. All services return typed models. All endpoints
 use typed returns. Architecture score improvement documented.
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
 ---

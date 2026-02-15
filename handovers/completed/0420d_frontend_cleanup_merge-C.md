@@ -333,7 +333,6 @@ This handover requires compiling **ALL Integration Reports** from the previous h
 
    Part 4 of 4 (FINAL) - Legacy Agent Coordination Removal series complete.
 
-   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
    ```
 
 2. **Switch to master and merge**:
@@ -372,7 +371,6 @@ This handover requires compiling **ALL Integration Reports** from the previous h
 
    Series complete (4 parts: safety net, deletion, migration, cleanup).
 
-   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
    git push origin master
    ```

@@ -229,5 +229,4 @@ Verification:
 - API imports OK
 - Tests pass
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```

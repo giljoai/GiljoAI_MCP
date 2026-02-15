@@ -761,7 +761,6 @@ git add -A && git commit -m "feat(0424j): Finalize User.org_id migration - make 
 - Change User.org_id to NOT NULL
 - Run full test suite
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Step 5: Update Chain Log - MARK CHAIN COMPLETE
