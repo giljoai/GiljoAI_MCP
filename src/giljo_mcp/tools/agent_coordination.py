@@ -167,8 +167,6 @@ async def spawn_agent(
                 status="waiting",
                 spawned_by=spawned_by_agent_id,  # Link to parent executor
                 agent_name=agent_display_name.title(),
-                context_used=0,
-                context_budget=50000,
                 tool_type="universal",
             )
 
@@ -216,8 +214,6 @@ async def spawn_agent(
                 status="waiting",
                 spawned_by=spawned_by_agent_id,  # Link to parent executor
                 agent_name=agent_display_name.title(),
-                context_used=0,
-                context_budget=50000,
                 tool_type="universal",
             )
 

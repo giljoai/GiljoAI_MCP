@@ -65,8 +65,6 @@ class TestGetOrchestratorInstructions:
             agent_display_name="orchestrator",
             agent_name="orchestrator",
             status="waiting",
-            context_used=5000,
-            context_budget=150000,
         )
         db_session.add(orchestrator_execution)
         await db_session.commit()
@@ -102,9 +100,6 @@ class TestGetOrchestratorInstructions:
 
         assert "mcp_tools_available" in result
         assert isinstance(result["mcp_tools_available"], list)
-
-        assert result["context_budget"] == 150000
-        assert result["context_used"] == 5000
 
     @pytest.mark.asyncio
     async def test_validates_job_id_required(self, db_session: AsyncSession, test_project):

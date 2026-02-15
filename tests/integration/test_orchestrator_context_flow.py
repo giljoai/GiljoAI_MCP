@@ -113,7 +113,6 @@ async def test_project(db_session, user_with_field_config, test_product):
         tenant_key=user_with_field_config.tenant_key,
         status="planning",
         mission="Test mission for orchestrator with field priorities.",
-        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -241,7 +240,6 @@ async def test_orchestrator_receives_empty_dict_when_no_user_config(db_session, 
         tenant_key=user_without_field_config.tenant_key,
         status="planning",
         mission="Test mission.",
-        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()

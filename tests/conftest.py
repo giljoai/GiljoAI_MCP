@@ -338,8 +338,6 @@ async def test_agent_job(db_session, test_project_id, test_tenant_key):
         messages_read_count=0,
         health_status="unknown",
         tool_type="universal",
-        context_used=0,
-        context_budget=150000,
     )
 
     db_session.add(execution)

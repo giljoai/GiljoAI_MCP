@@ -92,8 +92,6 @@ class TestAPIEndpoints:
 
         data = response.json()
         assert data["id"] == self.test_project_id
-        assert "context_budget" in data
-        assert "context_used" in data
         assert "agent_count" in data
         assert "message_count" in data
 
@@ -301,7 +299,7 @@ class TestAPIEndpoints:
         # Set tenant config
         response = self.client.put(
             f"/api/v1/config/tenant/{tenant_key}",
-            json={"max_agents": 20, "context_budget": 200000, "features.custom": True},
+            json={"max_agents": 20, "features.custom": True},
         )
 
         assert response.status_code == 200

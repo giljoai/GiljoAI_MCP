@@ -101,7 +101,6 @@ class AgentJobManager:
         tenant_key: str,
         agent_name: Optional[str] = None,
         tool_type: str = "universal",
-        context_budget: int = 150000,
         spawned_by: Optional[str] = None,
         job_metadata: Optional[dict[str, Any]] = None,
     ) -> tuple[str, str, str, str]:
@@ -122,7 +121,6 @@ class AgentJobManager:
             tenant_key: Tenant key for multi-tenant isolation
             agent_name: Optional human-readable name (template lookup key)
             tool_type: AI coding tool assigned (claude-code, codex, gemini, universal)
-            context_budget: Maximum context window budget in tokens
             spawned_by: Optional agent_id of parent agent that spawned this agent
             job_metadata: Optional metadata dict
 
@@ -163,7 +161,6 @@ class AgentJobManager:
                     status="waiting",  # Waiting to be launched
                     spawned_by=spawned_by,
                     tool_type=tool_type,
-                    context_budget=context_budget,
                     agent_name=agent_name,
                 )
 

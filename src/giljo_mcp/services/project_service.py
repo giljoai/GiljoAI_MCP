@@ -176,7 +176,6 @@ class ProjectService:
                     tenant_key=tenant_key,
                     product_id=product_id,
                     status=status,
-                    context_used=0,
                     updated_at=now,  # Explicitly set since DB schema may not have DEFAULT
                 )
 
@@ -272,8 +271,6 @@ class ProjectService:
                     staging_status=project.staging_status,
                     product_id=project.product_id,
                     tenant_key=project.tenant_key,
-                    context_budget=150000,
-                    context_used=project.context_used,
                     execution_mode=project.execution_mode,
                     created_at=project.created_at.isoformat() if project.created_at else None,
                     updated_at=project.updated_at.isoformat() if project.updated_at else None,
@@ -363,8 +360,6 @@ class ProjectService:
                     updated_at=project.updated_at.isoformat() if project.updated_at else None,
                     completed_at=project.completed_at.isoformat() if project.completed_at else None,
                     deleted_at=project.deleted_at.isoformat() if project.deleted_at else None,
-                    context_budget=150000,
-                    context_used=project.context_used or 0,
                     agent_count=agent_count,
                     message_count=message_count,
                 )
@@ -436,8 +431,6 @@ class ProjectService:
                         updated_at=(
                             project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat()
                         ),
-                        context_budget=150000,
-                        context_used=project.context_used,
                     )
                     for project in projects
                 ]
@@ -1153,7 +1146,6 @@ class ProjectService:
             agent_name="orchestrator",
             status="waiting",
             progress=0,
-            context_used=0,
             health_status="unknown",
         )
         session.add(agent_execution)
@@ -1991,7 +1983,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 agent_display_name="orchestrator",  # Lowercase for frontend compatibility
                 agent_name="orchestrator",  # Type key for color lookup
                 status="waiting",
-                context_used=0,
                 progress=0,
                 health_status="unknown",
             )
@@ -2138,7 +2129,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 name=project.name,
                 mission=project.mission,
                 tenant_key=project.tenant_key,
-                context_usage=f"{project.context_used}/150000",
             )
 
     # ============================================================================

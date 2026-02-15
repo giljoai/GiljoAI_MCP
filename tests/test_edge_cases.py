@@ -273,39 +273,6 @@ class TestEdgeCases:
         assert message.to_agents == []
         assert message.acknowledged_by == []
 
-    def test_context_budget_tracking(self, db_session):
-        """Test context budget tracking and limits."""
-        tenant_key = str(uuid4())
-
-        # Create project with limited budget
-        project = Project(
-            name="Limited Budget Project",
-            mission="Test budget tracking",
-            tenant_key=tenant_key,
-            context_budget=1000,
-            context_used=0,
-        )
-        db_session.add(project)
-        db_session.commit()
-
-        # Simulate context usage
-        context_budget = 150000  # Hardcoded default (Project.context_budget removed)
-        for _i in range(5):
-            project.context_used += 200
-            db_session.commit()
-
-            # Check if over budget
-            if project.context_used >= context_budget:
-                project.status = "inactive"
-                db_session.commit()
-                break
-
-        # Verify budget tracking
-        db_session.refresh(project)
-        assert project.context_used == 1000
-        assert project.status == "inactive"
-
-
 class TestPathHandling:
     """Test OS-neutral path handling."""
 

@@ -49,7 +49,6 @@ def test_multi_tenant_isolation_demo():
                     tenant_key=tenant_key,
                     project_id=project.id,
                     status="active",
-                    context_used=0,
                 )
                 session.add(agent)
 

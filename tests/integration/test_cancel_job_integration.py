@@ -81,8 +81,6 @@ class TestCancelJobIntegration:
             messages_read_count=0,
             health_status="healthy",
             tool_type="universal",
-            context_used=5000,
-            context_budget=150000,
         )
         db_session.add(execution2)
         await db_session.commit()
@@ -330,8 +328,6 @@ class TestCancelJobIntegration:
                 messages_read_count=0,
                 health_status="healthy",
                 tool_type="universal",
-                context_used=i * 1000,
-                context_budget=150000,
             )
             db_session.add(execution)
 

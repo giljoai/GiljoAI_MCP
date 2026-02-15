@@ -496,8 +496,6 @@ class WebSocketManager:
                 "name": project_data.get("name"),
                 "status": project_data.get("status"),
                 "mission": project_data.get("mission"),
-                "context_used": project_data.get("context_used"),
-                "context_budget": project_data.get("context_budget"),
             },
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }

@@ -214,22 +214,6 @@ class TestOrchestratorWorkflow:
         assert project_status["success"] is True
         assert len(project_status["agents"]) >= 1  # At least orchestrator
 
-    @pytest.mark.asyncio
-    async def test_context_budget_tracking(self, db_manager, tenant_manager):
-        """Test that context budget is tracked correctly."""
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-
-        tool_accessor = ToolAccessor(db_manager, tenant_manager)
-
-        # Create project
-        project_result = await tool_accessor.create_project(name="Context Test", mission="Test context tracking")
-        assert project_result["success"] is True
-
-        # Verify initial context
-        status = await tool_accessor.project_status(project_result["project_id"])
-        assert status["success"] is True
-        assert status["project"]["context_budget"] == 150000
-        assert status["project"]["context_used"] == 0
 
 
 @pytest.fixture

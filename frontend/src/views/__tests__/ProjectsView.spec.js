@@ -31,8 +31,6 @@ describe('ProjectsView.vue', () => {
       status: 'active',
       product_id: 'prod-1',
       mission: 'Test mission 1',
-      context_budget: 100000,
-      context_used: 0,
       agent_count: 3,
       created_at: '2024-10-01T00:00:00Z',
       updated_at: '2024-10-28T00:00:00Z',
@@ -44,8 +42,6 @@ describe('ProjectsView.vue', () => {
       status: 'inactive',
       product_id: 'prod-1',
       mission: 'Test mission 2',
-      context_budget: 150000,
-      context_used: 0,
       agent_count: 1,
       created_at: '2024-10-15T00:00:00Z',
       updated_at: '2024-10-28T00:00:00Z',
@@ -57,8 +53,6 @@ describe('ProjectsView.vue', () => {
       status: 'inactive',
       product_id: 'prod-1',
       mission: 'Test mission 3',
-      context_budget: 120000,
-      context_used: 0,
       agent_count: 2,
       created_at: '2024-10-20T00:00:00Z',
       updated_at: '2024-10-28T00:00:00Z',
@@ -70,8 +64,6 @@ describe('ProjectsView.vue', () => {
       status: 'completed',
       product_id: 'prod-1',
       mission: 'Test mission 4',
-      context_budget: 100000,
-      context_used: 0,
       agent_count: 0,
       created_at: '2024-09-01T00:00:00Z',
       updated_at: '2024-10-28T00:00:00Z',
@@ -413,7 +405,7 @@ describe('ProjectsView.vue', () => {
       wrapper.vm.projectData = {
         name: 'New Project',
         mission: 'New mission',
-        context_budget: 200000,
+
         status: 'inactive',
       }
       wrapper.vm.formValid = true
@@ -432,7 +424,7 @@ describe('ProjectsView.vue', () => {
       wrapper.vm.projectData = {
         name: 'Updated Project',
         mission: 'Updated mission',
-        context_budget: 200000,
+
         status: 'active',
       }
       wrapper.vm.formValid = true
@@ -578,7 +570,7 @@ describe('ProjectsView.vue', () => {
       wrapper.vm.projectData = {
         name: 'New Project',
         mission: 'New mission',
-        context_budget: 150000,
+
         status: 'inactive',
       }
       wrapper.vm.formValid = true

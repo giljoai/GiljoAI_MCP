@@ -51,8 +51,6 @@ class TestMultiTenantIsolation:
                     name=f"Tenant {i} Project",
                     mission=f"Mission for tenant {i}",
                     tenant_key=tenant_key,
-                    context_budget=150000,
-                    context_used=0,
                 )
                 session.add(project)
                 session.commit()
@@ -66,7 +64,6 @@ class TestMultiTenantIsolation:
                         tenant_key=tenant_key,
                         project_id=project.id,
                         status="active",
-                        context_used=0,
                     )
                     agents.append(agent)
                     session.add(agent)
@@ -163,8 +160,6 @@ class TestMultiTenantIsolation:
                         name=f"Concurrent Project T{tenant_id}_P{i}",
                         mission=f"Concurrent mission {i}",
                         tenant_key=tenant_key,
-                        context_budget=150000,
-                        context_used=random.randint(0, 50000),
                     )
                     session.add(project)
 
@@ -176,7 +171,6 @@ class TestMultiTenantIsolation:
                             tenant_key=tenant_key,
                             project_id=project.id,
                             status="active",
-                            context_used=0,
                         )
                         session.add(agent)
 
@@ -300,7 +294,6 @@ class TestMultiTenantIsolation:
                 tenant_key=TenantManager.inherit_tenant_key(project),
                 project_id=project.id,
                 status="active",
-                context_used=0,
             )
             session.add(agent)
             session.commit()
@@ -419,7 +412,6 @@ class TestMultiTenantIsolation:
                             tenant_key=tenant_key,
                             project_id=project.id,
                             status="active",
-                            context_used=0,
                         )
                         session.add(agent)
                         counts["agents_created"] += 1

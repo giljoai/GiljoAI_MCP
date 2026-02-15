@@ -64,7 +64,6 @@ class TestThinClientGeneratorBasic:
             name="Test Project",
             description="Test project for thin prompt",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -120,7 +119,6 @@ class TestThinClientGeneratorBasic:
             name="Project",
             description="Description",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -162,7 +160,6 @@ class TestThinClientGeneratorBasic:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -178,8 +175,6 @@ class TestThinClientGeneratorBasic:
         assert orchestrator.agent_name == "Orchestrator #2"
         assert orchestrator.status == "pending"
         assert orchestrator.tool_type == "codex"
-        assert orchestrator.context_budget == 150000
-        assert orchestrator.context_used == 0
 
     async def test_mission_stored_with_field_priorities(self, db_session):
         """
@@ -212,7 +207,6 @@ class TestThinClientGeneratorBasic:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -255,7 +249,6 @@ class TestThinClientGeneratorBasic:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -287,7 +280,6 @@ class TestThinClientGeneratorBasic:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -327,7 +319,6 @@ class TestThinClientGeneratorSecurity:
             product_id=product1.id,
             name="Tenant1 Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project1)
 
@@ -343,7 +334,6 @@ class TestThinClientGeneratorSecurity:
             product_id=product2.id,
             name="Tenant2 Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project2)
         await db_session.commit()
@@ -377,7 +367,6 @@ class TestThinClientGeneratorErrors:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -418,7 +407,6 @@ class TestThinClientGeneratorErrors:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -461,7 +449,6 @@ class TestThinClientGeneratorPromptContent:
             description="Test project",
             mission="Test mission for staging prompt",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -498,7 +485,6 @@ class TestThinClientGeneratorPromptContent:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -527,7 +513,6 @@ class TestThinClientGeneratorPromptContent:
             product_id=product.id,
             name="My Test Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -556,7 +541,6 @@ class TestThinClientGeneratorPromptContent:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()

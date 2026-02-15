@@ -87,8 +87,6 @@ class TestData:
             "messages_read_count": 0,
             "health_status": "unknown",
             "tool_type": "universal",
-            "context_used": 0,
-            "context_budget": 150000,
         }
 
     @staticmethod

@@ -107,22 +107,16 @@ class StatisticsRepository:
         """
         Get average and peak context usage across all projects.
 
+        Returns (0.0, 0) - context tracking columns removed.
+
         Args:
             session: Async database session
             tenant_key: Tenant key for isolation
 
         Returns:
-            Tuple of (average_context_used, peak_context_used)
+            Tuple of (0.0, 0) - stub values
         """
-        avg_context = (
-            await session.scalar(select(func.avg(Project.context_used)).where(Project.tenant_key == tenant_key)) or 0.0
-        )
-
-        peak_context = (
-            await session.scalar(select(func.max(Project.context_used)).where(Project.tenant_key == tenant_key)) or 0
-        )
-
-        return (float(avg_context), peak_context)
+        return (0.0, 0)
 
     async def get_projects_with_pagination(
         self,

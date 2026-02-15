@@ -377,17 +377,6 @@ class TestDatabaseConsistency:
         execution = await manager.get_execution_by_agent_id(agent_id, tenant_key)
         assert execution.progress == 75
 
-        # Test 4: Context budget should be positive
-        job_id2, agent_id2, _, _ = await manager.spawn_agent(
-            project_id=project.id,
-            agent_display_name="Budget Test Agent",
-            mission="Agent with custom budget",
-            tenant_key=tenant_key,
-            context_budget=200000,  # Custom budget
-        )
-        execution2 = await manager.get_execution_by_agent_id(agent_id2, tenant_key)
-        assert execution2.context_budget == 200000
-
     @pytest.mark.asyncio
     async def test_session_cleanup_consistency(
         self, db_manager: DatabaseManager, db_session: AsyncSession, tenant_manager: TenantManager

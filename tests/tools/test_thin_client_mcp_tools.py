@@ -88,7 +88,6 @@ async def test_project_with_product(db_session, tenant_key, test_product):
         description="Test project for orchestration",
         product_id=test_product.id,
         mission="Build amazing software",
-        context_budget=150000,
         status="active",
     )
     db_session.add(project)
@@ -109,8 +108,6 @@ async def test_orchestrator_job(db_session, tenant_key, test_project_with_produc
         agent_name="Orchestrator #1",
         mission="Condensed mission content with priorities applied",
         status="waiting",
-        context_budget=150000,
-        context_used=0,
         metadata={
             "field_priorities": test_user.config_data["field_priorities"],
             "user_id": str(test_user.id),
@@ -208,10 +205,6 @@ async def test_get_orchestrator_instructions_success(
     assert "mission" in result
     assert len(result["mission"]) > 0
     assert isinstance(result["mission"], str)
-
-    # Verify context management
-    assert result["context_budget"] == 150000
-    assert result["context_used"] == 0
 
     # Verify field priorities applied
     assert result["token_reduction_applied"] is True
@@ -425,8 +418,6 @@ async def test_get_agent_mission_thin_client(db_session, tenant_key, test_projec
         agent_name="Backend Implementer",
         mission="Implement user authentication system with JWT tokens",
         status="waiting",
-        context_budget=10000,
-        context_used=0,
     )
     db_session.add(agent_job)
     await db_session.commit()
@@ -624,8 +615,6 @@ async def test_full_thin_client_workflow(db_session, tenant_key, test_user, test
         agent_name="Orchestrator #1",
         mission="Condensed mission",
         status="waiting",
-        context_budget=150000,
-        context_used=0,
         metadata={"field_priorities": test_user.config_data["field_priorities"], "user_id": str(test_user.id)},
     )
     db_session.add(orchestrator)

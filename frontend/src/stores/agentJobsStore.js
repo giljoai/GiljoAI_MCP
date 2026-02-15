@@ -437,41 +437,6 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     })
   }
 
-  // Handover 0461d: Handle orchestrator:context_reset WebSocket event
-  // Updates context_used field when orchestrator performs a simple handover
-  function handleContextReset(payload) {
-    const { agent_id, job_id, old_context_used, new_context_used } = payload
-
-    // Resolve the job using agent_id or job_id
-    const jobIdentifier = resolveJobId(agent_id) || resolveJobId(job_id)
-    if (!jobIdentifier) {
-      // eslint-disable-next-line no-console
-      console.debug('[agentJobsStore] handleContextReset: Could not resolve job ID', {
-        agent_id,
-        job_id,
-      })
-      return
-    }
-
-    const previous = jobsById.value.get(jobIdentifier)
-    if (!previous) return
-
-    // Handover 0463: Spread previous to preserve identity fields and prevent ghost entries
-    // Update the agent with new context_used value
-    upsertJob({
-      ...previous,
-      context_used: new_context_used,
-    })
-
-    // eslint-disable-next-line no-console
-    console.debug('[agentJobsStore] handleContextReset: Updated context', {
-      agent_id,
-      job_id,
-      old_context_used,
-      new_context_used,
-    })
-  }
-
   function $reset() {
     jobsById.value = new Map()
   }
@@ -516,7 +481,6 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     handleMessageSent,
     handleMessageReceived,
     handleMessageAcknowledged,
-    handleContextReset,
 
     // lifecycle
     $reset,

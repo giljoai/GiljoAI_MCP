@@ -34,8 +34,6 @@ class TestWebSocketManagerCoverage:
             "name": "Test Project",
             "status": "active",
             "mission": "Test mission",
-            "context_used": 1500,
-            "context_budget": 5000,
         }
 
         ws_manager.notify_entity_update = AsyncMock()
