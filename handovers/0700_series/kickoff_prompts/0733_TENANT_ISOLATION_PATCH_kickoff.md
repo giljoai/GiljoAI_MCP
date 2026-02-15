@@ -242,7 +242,6 @@ Vulnerability class: Same as Handover 0433
 Related: #0733
 Follow-up: Handover 0730 series (remove fallback blocks)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---

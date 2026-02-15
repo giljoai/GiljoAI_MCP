@@ -224,7 +224,6 @@ Handover: 0424n (FINAL)
 Chain: 0424 Organization Hierarchy Series - COMPLETE
 Status: Customer deployment ready
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Step 5: Mark Chain COMPLETE

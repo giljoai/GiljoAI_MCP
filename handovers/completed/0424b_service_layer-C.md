@@ -1064,7 +1064,6 @@ git commit -m "feat(0424b): Add OrgService and OrgRepository
 - Update AuthService for default org on registration
 - Add 15+ service tests (all passing)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Step 6: Spawn Next Terminal

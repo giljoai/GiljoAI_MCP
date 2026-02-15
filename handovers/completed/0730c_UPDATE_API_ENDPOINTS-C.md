@@ -783,7 +783,6 @@ User will review deliverables and provide NEW kickoff prompt if approved to proc
 
 <body - optional>
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 **Types:** feat, fix, refactor, test, docs, chore
@@ -799,7 +798,6 @@ refactor(0730c): Remove dict checking from organizations/crud endpoints
 - Exceptions now propagate to handlers (404, 409, etc.)
 - All tests updated and passing
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 **Example (Final Commit After All Files):**
@@ -824,7 +822,6 @@ Files modified:
 - api/endpoints/context.py (1 endpoint)
 - api/endpoints/vision_documents.py (3 endpoints)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---

@@ -306,6 +306,4 @@ All features are production-ready and await deployment.
 **Engineer**: Claude (Opus 4.1)
 **Assisted by**: Specialized Subagents (haiku models)
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>

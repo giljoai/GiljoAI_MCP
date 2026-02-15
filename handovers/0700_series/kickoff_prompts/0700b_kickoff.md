@@ -341,7 +341,6 @@ Verification:
 Docs Updated:
 - [List docs you updated]
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ---

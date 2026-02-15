@@ -103,7 +103,6 @@ feat(exceptions): Complete exception handling remediation (0480 series)
 - Update frontend error handling
 
 Handovers: 0480a-0480f (REVISED)
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---

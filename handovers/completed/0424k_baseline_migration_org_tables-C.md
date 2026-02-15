@@ -284,7 +284,6 @@ Handover: 0424k
 Chain: 0424 Organization Hierarchy (Extended)
 Impact: Fresh installs now create complete org schema
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ### Step 5: Update Chain Log

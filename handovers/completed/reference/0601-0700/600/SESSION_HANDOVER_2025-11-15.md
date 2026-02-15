@@ -565,9 +565,7 @@ Impact: X tests unblocked, Y% improvement
 
 Ref: handovers/600/FINAL_TEST_RESULTS.md
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
 
 # View recent commits
 git log --oneline -10

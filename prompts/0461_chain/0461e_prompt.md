@@ -97,7 +97,6 @@ This is the final handover in the 0461 series.
 
    See prompts/0461_chain/chain_log.json for full execution log.
 
-   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
    ```
 
 **DO NOT spawn another terminal - the chain is complete.**
