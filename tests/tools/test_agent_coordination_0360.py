@@ -97,7 +97,6 @@ async def test_project(db_session, tenant_key, test_product):
         description="Test project for team discovery",
         product_id=test_product.id,
         mission="Build authentication system",
-        context_budget=150000,
         status="active",
     )
     db_session.add(project)

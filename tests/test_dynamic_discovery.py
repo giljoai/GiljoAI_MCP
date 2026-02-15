@@ -34,7 +34,6 @@ class TestDynamicDiscovery:
                 tenant_key="test-tenant-123",
                 mission="Test dynamic discovery",
                 status="active",
-                context_budget=150000,
             )
             session.add(project)
             await session.commit()

@@ -33,8 +33,6 @@ class SystemStatsResponse(BaseModel):
     pending_messages: int
     total_tasks: int
     completed_tasks: int
-    average_context_usage: float
-    peak_context_usage: int
     database_size_mb: float
     uptime_seconds: float
     total_agents_spawned: int
@@ -51,9 +49,6 @@ class ProjectStatsResponse(BaseModel):
     message_count: int
     task_count: int
     completed_tasks: int
-    context_used: int
-    context_budget: int
-    context_usage_percent: float
     last_activity: datetime
 
 
@@ -186,8 +181,6 @@ async def get_system_statistics(request: Request):
         completed_tasks = await stats_repo.count_completed_tasks(session, tenant_key)
         logger.info(f"[STATS DEBUG] completed_tasks: {completed_tasks}")
 
-        avg_context, peak_context = await stats_repo.get_project_context_stats(session, tenant_key)
-
         db_size = 0
 
         uptime = (datetime.now(timezone.utc) - startup_time).total_seconds()
@@ -207,8 +200,6 @@ async def get_system_statistics(request: Request):
             pending_messages=pending_messages,
             total_tasks=total_tasks,
             completed_tasks=completed_tasks,
-            average_context_usage=avg_context,
-            peak_context_usage=peak_context,
             database_size_mb=db_size,
             uptime_seconds=uptime,
             total_agents_spawned=total_agents_spawned,
@@ -256,10 +247,6 @@ async def get_project_statistics(
             end_time = project.updated_at if project.status == "completed" else datetime.now(timezone.utc)
             duration = (end_time - project.created_at).total_seconds()
 
-            # Calculate context usage (hardcoded default budget)
-            context_budget = 150000  # Hardcoded default (Project.context_budget removed)
-            context_percent = (project.context_used / context_budget * 100) if context_budget > 0 else 0
-
             stats.append(
                 ProjectStatsResponse(
                     project_id=str(project.id),
@@ -270,9 +257,6 @@ async def get_project_statistics(
                     message_count=message_count,
                     task_count=task_count,
                     completed_tasks=completed_task_count,
-                    context_used=project.context_used,
-                    context_budget=context_budget,
-                    context_usage_percent=context_percent,
                     last_activity=last_message or project.updated_at,
                 )
             )

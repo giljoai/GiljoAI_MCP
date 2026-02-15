@@ -72,8 +72,6 @@ async def working_agent_with_recent_progress(db_session: AsyncSession):
         last_progress_at=datetime.now(timezone.utc) - timedelta(minutes=2),
         health_status="unknown",
         tool_type="universal",
-        context_used=0,
-        context_budget=150000,
     )
     db_session.add(execution)
     await db_session.commit()
@@ -123,8 +121,6 @@ async def stale_working_agent(db_session: AsyncSession):
         last_progress_at=datetime.now(timezone.utc) - timedelta(minutes=20),
         health_status="unknown",
         tool_type="universal",
-        context_used=0,
-        context_budget=150000,
     )
     db_session.add(execution)
     await db_session.commit()
@@ -174,8 +170,6 @@ async def null_progress_working_agent(db_session: AsyncSession):
         last_progress_at=None,
         health_status="unknown",
         tool_type="universal",
-        context_used=0,
-        context_budget=150000,
     )
     db_session.add(execution)
     await db_session.commit()
@@ -225,8 +219,6 @@ async def silent_agent(db_session: AsyncSession):
         last_progress_at=datetime.now(timezone.utc) - timedelta(minutes=25),
         health_status="unknown",
         tool_type="universal",
-        context_used=0,
-        context_budget=150000,
     )
     db_session.add(execution)
     await db_session.commit()
@@ -548,8 +540,6 @@ class TestSilenceDetectorIntegration:
             last_progress_at=datetime.now(timezone.utc) - timedelta(minutes=15),
             health_status="unknown",
             tool_type="universal",
-            context_used=0,
-            context_budget=150000,
         )
         db_session.add(execution)
         await db_session.commit()
@@ -635,8 +625,6 @@ class TestSilenceDetectorIntegration:
                 last_progress_at=datetime.now(timezone.utc) - timedelta(minutes=15),
                 health_status="unknown",
                 tool_type="universal",
-                context_used=0,
-                context_budget=150000,
             )
             db_session.add(execution)
             agents.append(execution)

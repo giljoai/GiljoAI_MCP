@@ -83,7 +83,6 @@ async def test_project(db_session: AsyncSession, test_user_with_field_config: Us
         tenant_key=test_user_with_field_config.tenant_key,
         status="planning",
         mission="Test mission for orchestrator.",
-        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -186,7 +185,6 @@ async def test_user_without_field_config_uses_empty_dict(
         tenant_key=test_user_without_field_config.tenant_key,
         status="planning",
         mission="Test mission.",
-        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -278,7 +276,6 @@ async def test_field_priorities_respect_tenant_isolation(db_session: AsyncSessio
         tenant_key=test_user_with_field_config.tenant_key,
         status="planning",
         mission="Mission A.",
-        context_budget=180000,
     )
     db_session.add(project_a)
     await db_session.commit()

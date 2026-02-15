@@ -32,6 +32,32 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _constraint_exists(conn, constraint_name: str) -> bool:
+    """Check if a constraint exists in pg_constraint."""
+    result = conn.execute(text(
+        "SELECT 1 FROM pg_constraint WHERE conname = :name"
+    ), {"name": constraint_name})
+    return result.fetchone() is not None
+
+
+def _column_exists(conn, table_name: str, column_name: str) -> bool:
+    """Check if a column exists on a table."""
+    result = conn.execute(text(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name = :table AND column_name = :col"
+    ), {"table": table_name, "col": column_name})
+    return result.fetchone() is not None
+
+
+def _table_exists(conn, table_name: str) -> bool:
+    """Check if a table exists."""
+    result = conn.execute(text(
+        "SELECT 1 FROM information_schema.tables "
+        "WHERE table_name = :table AND table_schema = 'public'"
+    ), {"table": table_name})
+    return result.fetchone() is not None
+
+
 def upgrade() -> None:
     """Simplify agent execution statuses: remove failed/cancelled, add silent."""
     conn = op.get_bind()
@@ -58,13 +84,10 @@ def upgrade() -> None:
     )
     logger.info(f"Migrated {result.rowcount} 'cancelled' executions to 'decommissioned'")
 
-    # Step 3: Drop old CHECK constraint and create new one
-    # Drop existing constraint (idempotent)
-    try:
+    # Step 3: Drop old CHECK constraint and create new one (idempotent)
+    if _constraint_exists(conn, "ck_agent_execution_status"):
         op.drop_constraint("ck_agent_execution_status", "agent_executions", type_="check")
         logger.info("Dropped old ck_agent_execution_status constraint")
-    except Exception:
-        logger.info("ck_agent_execution_status constraint already dropped or not found")
 
     # Create new constraint with simplified statuses
     op.create_check_constraint(
@@ -75,14 +98,14 @@ def upgrade() -> None:
     logger.info("Created new ck_agent_execution_status constraint")
 
     # Step 4: Drop failure_reason column (idempotent)
-    try:
+    if _column_exists(conn, "agent_executions", "failure_reason"):
         op.drop_column("agent_executions", "failure_reason")
         logger.info("Dropped failure_reason column from agent_executions")
-    except Exception:
-        logger.info("failure_reason column already dropped or not found")
+    else:
+        logger.info("failure_reason column already dropped")
 
-    # Step 5: Update legacy mcp_agent_jobs CHECK if table exists
-    try:
+    # Step 5: Update legacy mcp_agent_jobs CHECK if table still exists
+    if _table_exists(conn, "mcp_agent_jobs") and _constraint_exists(conn, "ck_mcp_agent_job_status"):
         op.drop_constraint("ck_mcp_agent_job_status", "mcp_agent_jobs", type_="check")
         op.create_check_constraint(
             "ck_mcp_agent_job_status",
@@ -90,7 +113,7 @@ def upgrade() -> None:
             "status IN ('waiting', 'working', 'blocked', 'complete', 'silent', 'decommissioned')",
         )
         logger.info("Updated mcp_agent_jobs CHECK constraint")
-    except Exception:
+    else:
         logger.info("mcp_agent_jobs table not found or constraint already updated")
 
 

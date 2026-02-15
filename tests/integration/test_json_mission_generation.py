@@ -106,8 +106,6 @@ def sample_orchestrator(sample_project):
         project_id=sample_project.id,
         mission="Test orchestrator mission",
         status="active",
-        context_budget=150000,
-        context_used=0,
     )
     return orchestrator
 

@@ -61,7 +61,6 @@ async def test_project(db_session, test_product):
         status="active",
         tenant_key=test_product.tenant_key,
         product_id=test_product.id,
-        context_budget=100000,
     )
 
     db_session.add(project)

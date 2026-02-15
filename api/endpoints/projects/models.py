@@ -70,8 +70,6 @@ class ProjectResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     completed_at: datetime | None = None
-    context_budget: int = 150000  # Hardcoded default (Project.context_budget removed, using AgentExecution default)
-    context_used: int | None = 0  # Nullable after project reset
     agent_count: int
     message_count: int
     agents: list[AgentSimple] = []

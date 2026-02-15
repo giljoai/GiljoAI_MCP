@@ -97,7 +97,6 @@ async def test_project_for_bug_demo(db_session, user_with_correct_priorities_str
         tenant_key=user_with_correct_priorities_structure.tenant_key,
         status="planning",
         mission="Test mission to demonstrate field priority bug.",
-        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()

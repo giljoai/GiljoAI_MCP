@@ -2,7 +2,7 @@
 Project Context Tool - Handover 0316
 
 Fetch current project context for orchestrator awareness.
-Returns project metadata, mission, status (excludes context_budget - deprecated).
+Returns project metadata, mission, status.
 """
 
 from typing import Any
@@ -32,8 +32,6 @@ async def get_project(
     Fetch current project context (Project Context).
 
     Handover 0316: Returns project metadata and mission.
-    NOTE: Excludes context_budget (soft deprecated as of v3.1).
-
     Args:
         project_id: Project UUID
         tenant_key: Tenant isolation key
@@ -51,7 +49,6 @@ async def get_project(
                 "orchestrator_mission": "...",
                 "status": "active",
                 "staging_status": "staged",
-                "context_used": 50000,
                 "orchestrator_summary": "..."  # Only if include_summary=True
             },
             "metadata": {
@@ -93,7 +90,7 @@ async def get_project(
                 "metadata": {"project_id": project_id, "tenant_key": tenant_key, "error": "project_not_found"},
             }
 
-        # Build data dict (EXCLUDE context_budget - deprecated)
+        # Build data dict
         data = {
             "project_name": project.name,
             "project_alias": project.alias,
@@ -101,7 +98,6 @@ async def get_project(
             "orchestrator_mission": project.mission,
             "status": project.status,
             "staging_status": project.staging_status,
-            "context_used": project.context_used,
         }
 
         # Conditionally include summary

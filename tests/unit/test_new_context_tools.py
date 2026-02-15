@@ -133,7 +133,6 @@ async def test_get_project_description_basic():
     mock_project.mission = "AI-generated mission"
     mock_project.status = "active"
     mock_project.staging_status = "staged"
-    mock_project.context_used = 50000
     mock_project.orchestrator_summary = None
 
     mock_session = AsyncMock()
@@ -150,8 +149,8 @@ async def test_get_project_description_basic():
 
     assert result["source"] == "project_description"
     assert result["data"]["project_name"] == "Test Project"
-    assert result["data"]["context_used"] == 50000
     assert "context_budget" not in result["data"]  # EXCLUDED (deprecated)
+    assert "context_used" not in result["data"]  # EXCLUDED (deprecated)
     assert "orchestrator_summary" not in result["data"]  # Not included
 
 
@@ -167,7 +166,6 @@ async def test_get_project_description_with_summary():
     mock_project.mission = "Mission"
     mock_project.status = "completed"
     mock_project.staging_status = None
-    mock_project.context_used = 80000
     mock_project.orchestrator_summary = "Project completed successfully..."
 
     mock_session = AsyncMock()

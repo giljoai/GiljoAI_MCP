@@ -202,8 +202,6 @@ async def generate_orchestrator_prompt_thin(
             success=True,
             orchestrator_id=result["orchestrator_id"],
             prompt=result["thin_prompt"],
-            context_budget=result["context_budget"],
-            context_used=0,  # New orchestrator starts with 0 context used
             estimated_prompt_tokens=result["estimated_prompt_tokens"],
             thin_client=True,
             status="ready",
@@ -450,7 +448,6 @@ async def generate_staging_prompt(
             "orchestrator_id": result["orchestrator_id"],
             "agent_id": result.get("agent_id"),  # WHO - executor ID for MCP tool calls
             "prompt": staging_prompt,  # Mode-specific staging prompt
-            "context_budget": result["context_budget"],
             "estimated_prompt_tokens": staging_tokens,  # Updated token count for staging prompt
         }
 

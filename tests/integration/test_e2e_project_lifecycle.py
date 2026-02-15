@@ -367,8 +367,6 @@ class OrchestratorSimulator:
                 spawned_by=self.orchestrator_job_id,
                 template_id=config.get("template_id"),
                 tool_type="claude-code",
-                context_budget=150000,
-                context_used=0,
                 health_status="healthy",
                 created_at=datetime.now(timezone.utc),
             )
@@ -447,8 +445,6 @@ async def test_project(db_session, test_product, test_user) -> Project:
         status="active",
         created_at=datetime.now(timezone.utc),
         activated_at=datetime.now(timezone.utc),
-        context_budget=150000,
-        context_used=0,
         meta_data={"test": True},
     )
 
@@ -470,8 +466,6 @@ async def orchestrator_job(db_session, test_project, test_user) -> AgentExecutio
         mission="Execute staging workflow and spawn agents",
         status="waiting",
         tool_type="claude-code",
-        context_budget=150000,
-        context_used=0,
         health_status="healthy",
         created_at=datetime.now(timezone.utc),
     )
@@ -934,8 +928,6 @@ class TestCompleteProjectLifecycle:
                 mission=f"Test mission for {agent_display_name}",
                 status="waiting",
                 tool_type="claude-code",
-                context_budget=150000,
-                context_used=0,
                 health_status="healthy",
                 created_at=datetime.now(timezone.utc),
             )
@@ -987,35 +979,6 @@ class TestCompleteProjectLifecycle:
             assert message.content is not None
             assert message.status == "waiting"
 
-    async def test_orchestrator_context_tracking(self, db_session, orchestrator_job, test_project):
-        """Test orchestrator context budget monitored"""
-        # Update orchestrator context usage
-        orchestrator_job.context_used = 45000  # 30% of 150000 budget
-        orchestrator_job.context_budget = 150000
-        await db_session.commit()
-
-        # Verify context tracking
-        await db_session.refresh(orchestrator_job)
-        assert orchestrator_job.context_used == 45000
-        assert orchestrator_job.context_budget == 150000
-
-        # Calculate utilization
-        utilization = orchestrator_job.context_used / orchestrator_job.context_budget
-        assert utilization == 0.3  # 30%
-
-        # Verify succession NOT triggered (< 90% threshold)
-        assert utilization < 0.9
-
-        # Simulate high context usage (trigger succession)
-        orchestrator_job.context_used = 135000  # 90% of budget
-        await db_session.commit()
-
-        await db_session.refresh(orchestrator_job)
-        utilization = orchestrator_job.context_used / orchestrator_job.context_budget
-        assert utilization == 0.9  # 90% context usage
-
-        # In real system, manual succession could be triggered via UI or /gil_handover
-        # (Auto-succession removed in Handover 0461a)
 
 
 # =============================================================================
