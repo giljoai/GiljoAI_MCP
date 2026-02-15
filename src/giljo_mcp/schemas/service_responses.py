@@ -453,8 +453,6 @@ class SuccessionContextResult(BaseModel):
     job_id: str
     agent_id: str
     context_reset: bool = True
-    old_context_used: int = 0
-    new_context_used: int = 0
     memory_entry_created: bool = True
     reason: str = "manual"
     message: str = ""
@@ -469,8 +467,6 @@ class SuccessionStatus(BaseModel):
     """
 
     should_trigger: bool = False
-    context_used: int = 0
-    context_budget: int = 0
     usage_percentage: float = 0.0
     threshold_reached: bool = False
     recommendation: str = ""
@@ -645,8 +641,6 @@ class ProjectDetail(BaseModel):
     staging_status: Optional[str] = None
     product_id: Optional[str] = None
     tenant_key: str
-    context_budget: int = 150000
-    context_used: int = 0
     execution_mode: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -674,8 +668,6 @@ class ProjectListItem(BaseModel):
     product_id: Optional[str] = None
     created_at: str
     updated_at: str
-    context_budget: int = 150000
-    context_used: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -697,8 +689,6 @@ class ActiveProjectDetail(BaseModel):
     updated_at: Optional[str] = None
     completed_at: Optional[str] = None
     deleted_at: Optional[str] = None
-    context_budget: int = 150000
-    context_used: int = 0
     agent_count: int = 0
     message_count: int = 0
 
@@ -844,7 +834,6 @@ class ProjectSwitchResult(BaseModel):
     name: str
     mission: Optional[str] = None
     tenant_key: str
-    context_usage: str = ""
 
     model_config = ConfigDict(from_attributes=True)
 

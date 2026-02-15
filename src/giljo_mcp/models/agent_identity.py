@@ -228,20 +228,6 @@ class AgentExecution(Base):
         comment="AI coding tool assigned (claude-code, codex, gemini, universal)",
     )
 
-    # Context tracking (for orchestrator executions)
-    context_used = Column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment="Current context window usage in tokens",
-    )
-    context_budget = Column(
-        Integer,
-        default=150000,
-        nullable=False,
-        comment="Maximum context window budget in tokens",
-    )
-
     # Message counter columns (Handover 0387e - AUTHORITATIVE)
     # Note: JSONB messages column removed in Handover 0700c
     messages_sent_count = Column(
@@ -295,10 +281,6 @@ class AgentExecution(Base):
         CheckConstraint(
             "health_status IN ('unknown', 'healthy', 'warning', 'critical', 'timeout')",
             name="ck_agent_execution_health_status",
-        ),
-        CheckConstraint(
-            "context_used >= 0 AND context_used <= context_budget",
-            name="ck_agent_execution_context_usage",
         ),
     )
 

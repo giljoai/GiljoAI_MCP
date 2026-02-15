@@ -191,7 +191,6 @@ class TestTokenReductionComparison:
             name="Platform MVP",
             description="Minimum viable product for platform launch",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -265,7 +264,6 @@ class TestTokenReductionComparison:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -313,7 +311,6 @@ class TestTokenReductionComparison:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -369,7 +366,6 @@ class TestTokenReductionComparison:
             product_id=product.id,
             name="Project",
             status="active",
-            context_budget=150000,
         )
         db_session.add(project)
         await db_session.commit()

@@ -140,7 +140,6 @@ export const useAgentStore = defineStore('agents', () => {
       status,
       health,
       active_jobs,
-      context_used,
       progress_percentage,
     } = data
 
@@ -158,7 +157,6 @@ export const useAgentStore = defineStore('agents', () => {
         healthData.value[agent.id] = {
           ...healthData.value[agent.id],
           health,
-          context_used,
           active_jobs,
           last_updated: new Date().toISOString(),
         }

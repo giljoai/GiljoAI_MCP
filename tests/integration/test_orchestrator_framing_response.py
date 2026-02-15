@@ -203,8 +203,6 @@ class TestGetOrchestratorInstructionsFramingResponse:
                 ],
             },
             "mcp_tools_available": ["fetch_context", "spawn_agent_job", "get_available_agents"],
-            "context_budget": 150000,
-            "context_used": 0,
             "thin_client": True,
             "architecture": "framing_based",
         }
@@ -240,28 +238,6 @@ class TestGetOrchestratorInstructionsFramingResponse:
 
             assert "mcp_tools_available" in result
             assert "fetch_context" in result["mcp_tools_available"]
-
-    # =========================================================================
-    # Test: Context Budget
-    # =========================================================================
-
-    @pytest.mark.asyncio
-    async def test_response_includes_context_budget(self, tool_accessor):
-        """Test that response includes context_budget and context_used."""
-        with patch.object(tool_accessor, "get_orchestrator_instructions") as mock_method:
-            mock_method.return_value = {
-                "identity": {"orchestrator_id": "test"},
-                "project_description_inline": {"description": "", "mission": ""},
-                "context_fetch_instructions": {"critical": [], "important": [], "reference": []},
-                "context_budget": 150000,
-                "context_used": 0,
-                "thin_client": True,
-            }
-
-            result = await mock_method("test-orch-id", "test-tenant")
-
-            assert "context_budget" in result
-            assert "context_used" in result
 
     # =========================================================================
     # Test: Legacy Fields Removed

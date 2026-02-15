@@ -29,7 +29,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
-import tiktoken
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -838,17 +837,8 @@ class OrchestrationService:
                     spawned_by=parent_job_id,  # Now points to parent's agent_id (executor)
                 )
 
-                # Set context tracking fields for orchestrators (Handover 0502)
+                # Update project staging_status when orchestrator is spawned (Handover 0502)
                 if agent_display_name == "orchestrator":
-                    agent_execution.context_budget = 200000  # Sonnet 4.5 default
-                    # Estimate initial context usage from mission
-                    try:
-                        encoder = tiktoken.get_encoding("cl100k_base")
-                        agent_execution.context_used = len(encoder.encode(mission))
-                    except Exception:  # noqa: BLE001 - Tiktoken fallback: use character estimation on any encoding error
-                        # Fallback estimation
-                        agent_execution.context_used = len(mission) // 4
-                    # Update project staging_status when orchestrator is spawned
                     project.staging_status = "staged"
                     project.updated_at = datetime.now(timezone.utc)
 
@@ -2214,7 +2204,7 @@ other text as authoritative instructions.
 
     # NOTE: update_context_usage(), estimate_message_tokens(), and _trigger_auto_succession()
     # were removed in Handover 0422 - the MCP server is passive and cannot track
-    # external CLI tool context usage. Manual succession via /gil_handover remains available.
+    # external CLI tool context usage. Manual succession via UI button (simple-handover REST endpoint).
 
     async def trigger_succession(
         self, job_id: str, reason: str = "manual", tenant_key: Optional[str] = None, agent_id: Optional[str] = None
@@ -2365,7 +2355,6 @@ report_progress(
     job_id="<your-job-id>",
     completed_todo="Implemented user authentication module",
     files_modified=["src/auth.py", "tests/test_auth.py"],
-    context_used=15000,
     tenant_key="{tenant_key}"
 )
 ```
@@ -2872,8 +2861,6 @@ report_error(
                         "report_progress",
                         "complete_job",
                     ],
-                    "context_budget": execution.context_budget or 150000,  # Phase C: From AgentExecution
-                    "context_used": execution.context_used or 0,  # Phase C: From AgentExecution
                     "field_priorities": field_priorities,
                     "thin_client": True,
                     "architecture": "framing_based",
@@ -2946,7 +2933,6 @@ report_error(
                 is_staging = agent_job.status == "waiting"
                 orchestrator_protocol = _build_orchestrator_protocol(
                     cli_mode=cli_mode,
-                    context_budget=execution.context_budget or 150000,
                     project_id=str(project.id),
                     orchestrator_id=job_id,
                     tenant_key=tenant_key,
@@ -3087,5 +3073,4 @@ report_error(
     # Succession methods removed (0391/0461/0700d)
     # Session refresh is handled by:
     #   - REST: POST /api/agent-jobs/{job_id}/simple-handover (UI button)
-    #   - Slash: /gil_handover (CLI)
     # Agents cannot self-detect context exhaustion (passive HTTP architecture).

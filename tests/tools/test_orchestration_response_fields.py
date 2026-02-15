@@ -1,20 +1,18 @@
 """
 Test suite for orchestrator response fields enhancement (Handover 0347c).
 
-Tests the 6 new guidance fields added to get_orchestrator_instructions():
+Tests the 5 guidance fields added to get_orchestrator_instructions():
 1. post_staging_behavior
 2. required_final_action
 3. multi_terminal_mode_rules
 4. error_handling
 5. agent_spawning_limits
-6. context_management
 """
 
 import pytest
 
-# Import the helper functions we'll create
+# Import the helper functions
 from src.giljo_mcp.tools.orchestration import (
-    _get_context_management,
     _get_error_handling,
     _get_multi_terminal_rules,
     _get_post_staging_behavior,
@@ -102,23 +100,6 @@ class TestHelperFunctions:
         assert result["max_instances_per_type"] == "unlimited"
         assert "2-5 agents" in result["recommended_total"]
 
-    def test_context_management_with_default_budget(self):
-        """Test context_management with default budget."""
-        result = _get_context_management(150000)
-
-        assert isinstance(result, dict)
-        assert result["context_budget"] == 150000
-        assert result["warning_threshold"] == 0.8
-        assert "UI button" in result["action_at_threshold"] or "/gil_handover" in result["action_at_threshold"]
-
-    def test_context_management_with_custom_budget(self):
-        """Test context_management with custom budget."""
-        result = _get_context_management(200000)
-
-        assert result["context_budget"] == 200000
-        assert result["warning_threshold"] == 0.8
-
-
 class TestOrchestratorInstructionsIntegration:
     """Integration tests for get_orchestrator_instructions response.
 
@@ -128,34 +109,31 @@ class TestOrchestratorInstructionsIntegration:
 
     @pytest.mark.asyncio
     async def test_response_includes_all_new_fields_multi_terminal(self):
-        """Test that response includes all 6 new fields in multi-terminal mode."""
+        """Test that response includes all 5 new fields in multi-terminal mode."""
         # Mock a minimal response dict that would be returned by get_orchestrator_instructions
         # We'll test the helper function integration by building a response dict similar to the actual function
 
         cli_mode = False
-        context_budget = 150000
 
         response = {
             "orchestrator_id": "test-orch-id",
             "project_id": "test-project-id",
             "project_name": "Test Project",
             "thin_client": True,
-            # Handover 0347c: Add 6 new guidance fields
+            # Handover 0347c: Add guidance fields
             "post_staging_behavior": _get_post_staging_behavior(cli_mode),
             "required_final_action": _get_required_final_action(),
             "multi_terminal_mode_rules": _get_multi_terminal_rules() if not cli_mode else None,
             "error_handling": _get_error_handling(),
             "agent_spawning_limits": _get_spawning_limits(),
-            "context_management": _get_context_management(context_budget),
         }
 
-        # Verify all 6 new fields are present
+        # Verify all 5 new fields are present
         assert "post_staging_behavior" in response
         assert "required_final_action" in response
         assert "multi_terminal_mode_rules" in response
         assert "error_handling" in response
         assert "agent_spawning_limits" in response
-        assert "context_management" in response
 
         # Verify post_staging_behavior structure
         assert isinstance(response["post_staging_behavior"], dict)
@@ -175,26 +153,21 @@ class TestOrchestratorInstructionsIntegration:
         # Verify agent_spawning_limits structure
         assert response["agent_spawning_limits"]["max_agent_display_names"] == 8
 
-        # Verify context_management structure
-        assert response["context_management"]["context_budget"] == 150000
-
     @pytest.mark.asyncio
     async def test_response_excludes_multi_terminal_rules_in_cli_mode(self):
         """Test that multi_terminal_mode_rules is None in CLI mode."""
         cli_mode = True
-        context_budget = 150000
 
         response = {
             "orchestrator_id": "test-orch-id",
             "project_id": "test-project-id",
             "thin_client": True,
-            # Handover 0347c: Add 6 new guidance fields
+            # Handover 0347c: Add guidance fields
             "post_staging_behavior": _get_post_staging_behavior(cli_mode),
             "required_final_action": _get_required_final_action(),
             "multi_terminal_mode_rules": _get_multi_terminal_rules() if not cli_mode else None,
             "error_handling": _get_error_handling(),
             "agent_spawning_limits": _get_spawning_limits(),
-            "context_management": _get_context_management(context_budget),
         }
 
         # Verify multi_terminal_mode_rules is None in CLI mode
@@ -205,42 +178,13 @@ class TestOrchestratorInstructionsIntegration:
         assert "required_final_action" in response
         assert "error_handling" in response
         assert "agent_spawning_limits" in response
-        assert "context_management" in response
-
-    @pytest.mark.asyncio
-    async def test_context_management_uses_orchestrator_budget(self):
-        """Test that context_management uses orchestrator's context_budget."""
-        cli_mode = False
-        context_budget = 200000
-
-        response = {
-            "orchestrator_id": "test-orch-id",
-            "context_management": _get_context_management(context_budget),
-        }
-
-        # Verify context_management uses orchestrator's budget
-        assert response["context_management"]["context_budget"] == 200000
-
-    @pytest.mark.asyncio
-    async def test_context_management_defaults_to_150k_if_none(self):
-        """Test that context_management defaults to 150K if budget is None."""
-        cli_mode = False
-        context_budget = None
-
-        response = {
-            "orchestrator_id": "test-orch-id",
-            "context_management": _get_context_management(context_budget or 150000),
-        }
-
-        # Verify context_management defaults to 150000
-        assert response["context_management"]["context_budget"] == 150000
 
 
 class TestTokenImpact:
     """Test token impact of new fields."""
 
     def test_estimated_token_impact(self):
-        """Test that new fields add approximately 375 tokens."""
+        """Test that new fields add a reasonable number of tokens."""
         import json
 
         # Generate all fields
@@ -249,7 +193,6 @@ class TestTokenImpact:
         multi_terminal = _get_multi_terminal_rules()
         error_handling = _get_error_handling()
         spawning_limits = _get_spawning_limits()
-        context_mgmt = _get_context_management(150000)
 
         # Combine into dict
         all_fields = {
@@ -258,7 +201,6 @@ class TestTokenImpact:
             "multi_terminal_mode_rules": multi_terminal,
             "error_handling": error_handling,
             "agent_spawning_limits": spawning_limits,
-            "context_management": context_mgmt,
         }
 
         # Serialize to JSON
@@ -267,8 +209,8 @@ class TestTokenImpact:
         # Rough token estimate: ~4 chars per token
         estimated_tokens = len(json_str) / 4
 
-        # Verify within acceptable range (375 ± 100)
-        assert 275 <= estimated_tokens <= 475, f"Token estimate {estimated_tokens} outside expected range 275-475"
+        # Verify within acceptable range (250 ± 125)
+        assert 125 <= estimated_tokens <= 475, f"Token estimate {estimated_tokens} outside expected range 125-475"
 
     def test_cli_mode_reduces_tokens(self):
         """Test that CLI mode reduces tokens by excluding multi_terminal_mode_rules."""
@@ -281,7 +223,6 @@ class TestTokenImpact:
             "multi_terminal_mode_rules": _get_multi_terminal_rules(),
             "error_handling": _get_error_handling(),
             "agent_spawning_limits": _get_spawning_limits(),
-            "context_management": _get_context_management(150000),
         }
 
         # CLI mode (multi_terminal_mode_rules is None)
@@ -291,7 +232,6 @@ class TestTokenImpact:
             "multi_terminal_mode_rules": None,
             "error_handling": _get_error_handling(),
             "agent_spawning_limits": _get_spawning_limits(),
-            "context_management": _get_context_management(150000),
         }
 
         multi_terminal_tokens = len(json.dumps(multi_terminal_fields)) / 4

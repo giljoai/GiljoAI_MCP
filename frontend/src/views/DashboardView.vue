@@ -295,13 +295,6 @@
                           {{ formatDuration(project) }}
                         </div>
                       </v-col>
-                      <v-col cols="6">
-                        <div class="text-caption text-medium-emphasis">Tokens</div>
-                        <div class="text-body-2 font-weight-bold">
-                          <v-icon size="small" color="success">mdi-alpha-t-circle</v-icon>
-                          {{ formatTokens(project.context_used) }}
-                        </div>
-                      </v-col>
                     </v-row>
 
                     <v-divider class="my-3" />
@@ -451,7 +444,7 @@ const dateRangeOptions = [
  * 2. Response should include:
  *    - id, name, description, status
  *    - created_at, completed_at, cancelled_at
- *    - agent_count, message_count, context_used
+ *    - agent_count, message_count
  *    - duration (calculated from created_at to completed_at)
  *    - project_summary (from closeout process)
  *    - performance_metrics (avg_response_time, success_rate, etc.)
@@ -466,7 +459,6 @@ const dateRangeOptions = [
  *    - Project name + status badge
  *    - Completion/cancellation date
  *    - Agent count, message count
- *    - Token usage (context_used)
  *    - Duration (time from start to completion)
  *    - Quick stats (tasks completed, avg response time)
  *    - "View Full Details" button → /projects/{id}/launch?readonly=true
@@ -524,16 +516,6 @@ async function fetchHistoricalProjects() {
 }
 
 // Methods
-
-const formatTokens = (tokens) => {
-  if (tokens > 1000000) {
-    return `${(tokens / 1000000).toFixed(1)}M`
-  }
-  if (tokens > 1000) {
-    return `${(tokens / 1000).toFixed(1)}K`
-  }
-  return tokens.toString()
-}
 
 // Helper functions for Historical Projects (for future use)
 const getProjectStatusColor = (status) => {

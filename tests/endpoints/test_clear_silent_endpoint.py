@@ -58,8 +58,6 @@ async def silent_agent_for_endpoint(db_session: AsyncSession):
         last_progress_at=datetime.now(timezone.utc) - timedelta(minutes=20),
         health_status="unknown",
         tool_type="universal",
-        context_used=0,
-        context_budget=150000,
     )
     db_session.add(execution)
     await db_session.commit()
@@ -172,8 +170,6 @@ class TestClearSilentEndpoint:
             last_progress_at=datetime.now(timezone.utc),
             health_status="unknown",
             tool_type="universal",
-            context_used=0,
-            context_budget=150000,
         )
         db_session.add(execution)
         await db_session.commit()

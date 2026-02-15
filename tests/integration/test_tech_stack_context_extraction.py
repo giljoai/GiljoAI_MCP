@@ -66,7 +66,6 @@ async def sample_project(db_session: AsyncSession, sample_product_with_tech_stac
         tenant_key=sample_product_with_tech_stack.tenant_key,
         status="planning",
         mission="Test mission for tech stack extraction.",
-        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -277,7 +276,6 @@ class TestTechStackContextExtraction:
             tenant_key=product.tenant_key,
             status="planning",
             mission="Test mission.",
-            context_budget=180000,
         )
         db_session.add(project)
         await db_session.commit()
@@ -325,7 +323,6 @@ class TestTechStackContextExtraction:
             tenant_key=product.tenant_key,
             status="planning",
             mission="Test mission.",
-            context_budget=180000,
         )
         db_session.add(project)
         await db_session.commit()

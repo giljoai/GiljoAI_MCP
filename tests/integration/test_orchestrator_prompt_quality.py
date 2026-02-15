@@ -74,8 +74,6 @@ class TestTechStackEncoding:
                 description="Test project for tech stack encoding",
                 mission="Build test project for validating tech stack encoding in prompts",
                 status="active",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(project)
             await session.flush()
@@ -89,8 +87,6 @@ class TestTechStackEncoding:
                 agent_display_name="orchestrator",
                 mission="Test orchestrator for tech stack encoding",
                 status="waiting",
-                context_budget=150000,
-                context_used=0,
                 job_metadata={
                     "field_priorities": {
                         "product_core": 1,
@@ -154,8 +150,6 @@ class TestTechStackEncoding:
                 description="Test project for mixed tech stack",
                 mission="Build test project for validating mixed tech stack formats",
                 status="active",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(project)
             await session.flush()
@@ -169,8 +163,6 @@ class TestTechStackEncoding:
                 agent_display_name="orchestrator",
                 mission="Test orchestrator for mixed tech stack",
                 status="waiting",
-                context_budget=150000,
-                context_used=0,
                 job_metadata={
                     "field_priorities": {"tech_stack": 1},
                     "depth_config": {},
@@ -261,8 +253,6 @@ class TestTokenEstimationAccuracy:
                 description="Test project for token estimation accuracy",
                 mission="Build test project for validating token estimation accuracy in prompts",
                 status="active",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(project)
             await session.flush()
@@ -276,8 +266,6 @@ class TestTokenEstimationAccuracy:
                 agent_display_name="orchestrator",
                 mission="Test orchestrator for token estimation",
                 status="waiting",
-                context_budget=150000,
-                context_used=0,
                 job_metadata={
                     "field_priorities": {
                         "vision_documents": 2,  # IMPORTANT - include vision
@@ -376,8 +364,6 @@ class TestFullContextPolicy:
                 description="Test project for full context",
                 mission="Build test project for validating full context policy",
                 status="active",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(project)
             await session.flush()
@@ -391,8 +377,6 @@ class TestFullContextPolicy:
                 agent_display_name="orchestrator",
                 mission="Test orchestrator for full context",
                 status="waiting",
-                context_budget=150000,
-                context_used=0,
                 job_metadata={
                     "field_priorities": {"vision_documents": 2},  # Include vision
                     "depth_config": {},  # No depth limits - full context always
@@ -459,8 +443,6 @@ class TestCLIModeRulesInclusion:
                 description="Test project for CLI mode",
                 mission="Build test project for validating CLI mode agent spawning constraints",
                 status="active",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(project)
             await session.flush()
@@ -474,8 +456,6 @@ class TestCLIModeRulesInclusion:
                 agent_display_name="orchestrator",
                 mission="Test orchestrator for CLI mode",
                 status="waiting",
-                context_budget=150000,
-                context_used=0,
                 job_metadata={
                     "field_priorities": {},
                     "depth_config": {},
@@ -566,8 +546,6 @@ class TestPromptQualityRegression:
                 description="Full-featured project for testing",
                 mission="Build comprehensive test project for validating all prompt quality fixes",
                 status="active",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(project)
             await session.flush()
@@ -581,8 +559,6 @@ class TestPromptQualityRegression:
                 agent_display_name="orchestrator",
                 mission="Comprehensive test orchestrator",
                 status="waiting",
-                context_budget=150000,
-                context_used=0,
                 job_metadata={
                     "field_priorities": {
                         "tech_stack": 1,

@@ -175,9 +175,7 @@ class SessionConfig:
 class AgentConfig:
     """Agent configuration settings."""
 
-    max_agents: int = 20
-    default_context_budget: int = 150000  # tokens
-    context_warning_threshold: int = 140000  # tokens
+    max_agents: int = 20  # tokens
 
 
 @dataclass
@@ -452,8 +450,6 @@ class ConfigManager:
             if "agents" in data:
                 ag = data["agents"]
                 self.agent.max_agents = ag.get("max_per_project", self.agent.max_agents)
-                self.agent.default_context_budget = ag.get("context_limit", self.agent.default_context_budget)
-                self.agent.context_warning_threshold = ag.get("handoff_threshold", self.agent.context_warning_threshold)
 
             # Message configuration
             if "messages" in data:
@@ -599,9 +595,6 @@ class ConfigManager:
             errors.append("PostgreSQL password is required")
 
         # Agent configuration validation
-        if self.agent.context_warning_threshold >= self.agent.default_context_budget:
-            errors.append("Handoff threshold must be less than context limit")
-
         if self.agent.max_agents < 1:
             errors.append("Must allow at least 1 agent per project")
 
@@ -702,8 +695,6 @@ class ConfigManager:
             },
             "agents": {
                 "max_per_project": self.agent.max_agents,
-                "context_limit": self.agent.default_context_budget,
-                "handoff_threshold": self.agent.context_warning_threshold,
             },
             "messages": {
                 "max_queue_size": self.message.max_queue_size,

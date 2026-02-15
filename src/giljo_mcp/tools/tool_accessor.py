@@ -640,7 +640,7 @@ class ToolAccessor:
 
     async def generate_download_token(self, content_type: str, tenant_key: str) -> dict[str, Any]:
         """
-        Generate one-time download URL for agent templates or slash commands.
+        Generate one-time download URL for agent templates.
 
         The MCP session is already authenticated, so no API key needed.
         Returns download_url valid for 15 minutes.
@@ -650,8 +650,8 @@ class ToolAccessor:
         from giljo_mcp.downloads.token_manager import TokenManager
         from giljo_mcp.file_staging import FileStaging
 
-        if content_type not in ["agent_templates", "slash_commands"]:
-            return {"success": False, "error": "content_type must be 'agent_templates' or 'slash_commands'"}
+        if content_type not in ["agent_templates"]:
+            return {"success": False, "error": "content_type must be 'agent_templates'"}
 
         try:
             async with self.get_session_async() as session:
@@ -659,7 +659,7 @@ class ToolAccessor:
                 staging = FileStaging(db_session=session)
 
                 # Generate token
-                filename = "slash_commands.zip" if content_type == "slash_commands" else "agent_templates.zip"
+                filename = "agent_templates.zip"
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type=content_type,
@@ -668,12 +668,7 @@ class ToolAccessor:
 
                 # Stage files
                 staging_path = await staging.create_staging_directory(tenant_key, token)
-                if content_type == "slash_commands":
-                    zip_path, message = await staging.stage_slash_commands(staging_path)
-                else:
-                    zip_path, message = await staging.stage_agent_templates(
-                        staging_path, tenant_key, db_session=session
-                    )
+                zip_path, message = await staging.stage_agent_templates(staging_path, tenant_key, db_session=session)
 
                 if not zip_path:
                     await token_manager.mark_failed(token, message)
@@ -830,7 +825,7 @@ class ToolAccessor:
         )
 
     # Succession tools removed (0391/0461/0700d)
-    # User triggers via UI button (simple-handover REST endpoint) or /gil_handover slash command.
+    # User triggers via UI button (simple-handover REST endpoint).
     # Agents cannot self-detect context exhaustion (passive HTTP architecture).
 
     async def gil_launch(self, project_id: str) -> dict[str, Any]:

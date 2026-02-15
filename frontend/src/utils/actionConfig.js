@@ -52,7 +52,7 @@ const ACTION_CONFIG = {
 
 /**
  * Get available actions for a job
- * @param {Object} job - Job object with status, agent_display_name, context_used, context_budget
+ * @param {Object} job - Job object with status, agent_display_name
  * @param {Boolean} claudeCodeCliMode - Whether Claude Code CLI mode is enabled
  * @returns {Array<string>} List of available action names
  */

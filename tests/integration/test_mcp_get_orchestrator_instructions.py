@@ -49,8 +49,6 @@ class TestGetOrchestratorInstructionsMCP:
                 description="Test project for MCP",
                 mission="Test mission for orchestrator",
                 status="active",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(project)
             await session.flush()
@@ -64,8 +62,6 @@ class TestGetOrchestratorInstructionsMCP:
                 agent_display_name="orchestrator",
                 mission="Orchestrate test project",
                 status="waiting",
-                context_budget=150000,
-                context_used=0,
                 job_metadata={
                     "field_priorities": {"core_features": 10, "tech_stack": 8, "architecture": 7},
                     "user_id": "test_user_123",
@@ -159,7 +155,6 @@ class TestGetOrchestratorInstructionsMCP:
         assert "project_id" in result
         assert "project_name" in result
         assert "mission" in result
-        assert "context_budget" in result
         assert "agent_templates" in result
         assert "thin_client" in result
         assert result["thin_client"] is True
@@ -442,8 +437,6 @@ class TestGetOrchestratorInstructionsMCP:
                 description="Test project with vision documents",
                 mission="Test mission",
                 status="active",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(project)
             await session.flush()
@@ -457,8 +450,6 @@ class TestGetOrchestratorInstructionsMCP:
                 agent_display_name="orchestrator",
                 mission="Orchestrate test project with vision",
                 status="waiting",  # Valid statuses: waiting, working, blocked, complete, failed, cancelled, decommissioned
-                context_budget=150000,
-                context_used=0,
                 job_metadata={
                     "field_priorities": {"core_features": 10, "vision": 9},
                     "user_id": "test_user_123",

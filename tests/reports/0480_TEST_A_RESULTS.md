@@ -1,6 +1,6 @@
 # 0480-TEST-A Results: Backend Service Tests
 
-**Executed By:** Claude Code (Terminal Session 0480-TEST-A)
+**Executed By:** Terminal Session 0480-TEST-A
 **Date:** January 27, 2026
 **Branch:** 0480-exception-handling-remediation
 

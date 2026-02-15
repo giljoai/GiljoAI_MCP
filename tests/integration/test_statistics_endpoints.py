@@ -54,8 +54,6 @@ async def statistics_test_data(db_session: AsyncSession, test_user: User, test_p
         product_id=test_product.id,
         tenant_key=test_user.tenant_key,
         status="active",
-        context_used=50000,
-        context_budget=100000,
         created_at=datetime.now(timezone.utc),
     )
     db_session.add(active_project)
@@ -70,8 +68,6 @@ async def statistics_test_data(db_session: AsyncSession, test_user: User, test_p
             product_id=test_product.id,
             tenant_key=test_user.tenant_key,
             status="completed",
-            context_used=60000 + (i * 15000),
-            context_budget=100000,
             created_at=datetime.now(timezone.utc) - timedelta(days=i + 1),
         )
         db_session.add(completed_project)
@@ -110,8 +106,6 @@ async def statistics_test_data(db_session: AsyncSession, test_user: User, test_p
             messages_read_count=0,
             health_status="healthy",
             tool_type="universal",
-            context_used=0,
-            context_budget=150000,
         )
         db_session.add(execution)
         agent_executions.append(execution)
@@ -404,52 +398,6 @@ async def test_system_statistics_performance(authed_client: AsyncClient, test_us
 
 
 @pytest.mark.asyncio
-async def test_system_statistics_context_calculation(
-    authed_client: AsyncClient, db_session: AsyncSession, test_user: User, test_product
-):
-    """
-    Test that context usage statistics are calculated correctly.
-
-    Expected behavior:
-    - Average context usage = sum(context_used) / count(projects)
-    - Peak context usage = max(context_used)
-    - Calculations handle edge cases (no projects, all zero context)
-    """
-    # Create projects with known context values
-    projects = []
-    context_values = [10000, 20000, 30000, 40000, 50000]
-
-    for i, context in enumerate(context_values):
-        project = Project(
-            name=f"Context Test Project {i}",
-            description="Test project",
-            mission="Test mission",
-            product_id=test_product.id,
-            tenant_key=test_user.tenant_key,
-            status="active",
-            context_used=context,
-            context_budget=100000,
-        )
-        db_session.add(project)
-        projects.append(project)
-
-    await db_session.commit()
-
-    response = await authed_client.get("/api/v1/stats/system")
-    assert response.status_code == 200
-    data = response.json()
-
-    # Average should be (10000 + 20000 + 30000 + 40000 + 50000) / 5 = 30000
-    expected_average = sum(context_values) / len(context_values)
-    assert abs(data["average_context_usage"] - expected_average) < 1.0, (
-        f"Average context should be {expected_average}, got {data['average_context_usage']}"
-    )
-
-    # Peak should be 50000
-    assert data["peak_context_usage"] == 50000, "Peak context should be 50000"
-
-
-@pytest.mark.asyncio
 async def test_system_statistics_agent_status_counting(
     authed_client: AsyncClient, db_session: AsyncSession, test_user: User, test_product
 ):
@@ -471,8 +419,6 @@ async def test_system_statistics_agent_status_counting(
         product_id=test_product.id,
         tenant_key=test_user.tenant_key,
         status="active",
-        context_used=0,
-        context_budget=100000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -517,8 +463,6 @@ async def test_system_statistics_agent_status_counting(
                 messages_read_count=0,
                 health_status="healthy",
                 tool_type="universal",
-                context_used=0,
-                context_budget=150000,
             )
             db_session.add(execution)
             agent_counter += 1
@@ -579,8 +523,6 @@ async def test_system_statistics_no_division_by_zero(
         product_id=test_product.id,
         tenant_key=test_user.tenant_key,
         status="active",
-        context_used=0,
-        context_budget=100000,
     )
     db_session.add(project)
     await db_session.commit()

@@ -121,8 +121,6 @@ async def test_orchestrator_execution(db_session, tenant_key, test_orchestrator_
         messages_read_count=0,
         health_status="healthy",
         tool_type="universal",
-        context_used=5000,
-        context_budget=150000,
     )
     db_session.add(execution)
     await db_session.commit()
@@ -171,8 +169,6 @@ async def create_test_agent(
         messages_read_count=0,
         health_status="healthy",
         tool_type="universal",
-        context_used=5000,
-        context_budget=150000,
     )
     db_session.add(execution)
 
