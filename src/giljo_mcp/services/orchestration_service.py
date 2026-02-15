@@ -2202,22 +2202,10 @@ other text as authoritative instructions.
                 message="Failed to list jobs", context={"tenant_key": tenant_key, "error": str(e)}
             ) from e
 
-    # NOTE: update_context_usage(), estimate_message_tokens(), and _trigger_auto_succession()
-    # were removed in Handover 0422 - the MCP server is passive and cannot track
-    # external CLI tool context usage. Manual succession via UI button (simple-handover REST endpoint).
-
-    async def trigger_succession(
-        self, job_id: str, reason: str = "manual", tenant_key: Optional[str] = None, agent_id: Optional[str] = None
-    ) -> None:
-        """
-        REMOVED (Handover 0700d): Legacy Agent ID Swap succession removed.
-        Use simple_handover.py endpoint instead for 360 Memory-based session continuity.
-
-        This method stub remains for backward compatibility.
-        """
-        raise NotImplementedError(
-            "trigger_succession() removed in Handover 0700d. Use POST /api/agent-jobs/{job_id}/simple-handover instead."
-        )
+    # NOTE: update_context_usage(), estimate_message_tokens(), _trigger_auto_succession(),
+    # and trigger_succession() were removed in Handover 0422/0700d - the MCP server is passive
+    # and cannot track external CLI tool context usage.
+    # Manual succession via UI button (simple-handover REST endpoint).
 
     # ========================================================================
     # Handover 0450: Orchestrator Logic Consolidation
@@ -2307,85 +2295,6 @@ other text as authoritative instructions.
         # Create new session
         async with self._get_session() as db_session:
             return await self._get_agent_template_internal(role, tenant_key, product_id, db_session)
-
-    def _generate_mcp_instructions_internal(
-        self, tenant_key: str, agent_role: str, mission_text: Optional[str] = None
-    ) -> str:
-        """
-        Generate MCP coordination protocol instructions.
-
-        Includes:
-        - Checkpoint recommendations (every 2-3 tasks)
-        - MCP tool call examples (acknowledge_job, report_progress, complete_job, report_error)
-        - Tenant-specific examples (include tenant_key)
-
-        Args:
-            tenant_key: Tenant key for multi-tenant isolation
-            agent_role: Agent role for contextualized examples
-            mission_text: Optional mission text (unused, for compatibility)
-
-        Returns:
-            Formatted MCP instructions text
-        """
-        return f"""
-## MCP Coordination Protocol
-
-**IMPORTANT**: Use MCP tools for coordination and progress tracking.
-
-### Checkpointing Guidelines
-- Report progress every 2-3 completed tasks
-- Use `report_progress` tool to save state
-- Include files modified and context used
-- Request handoff if context usage exceeds 25K tokens
-
-### MCP Tool Examples
-
-1. **Acknowledge Job** (First step after assignment):
-```
-acknowledge_job(
-    job_id="<your-job-id>",
-    agent_id="{agent_role}",
-    tenant_key="{tenant_key}"
-)
-```
-
-2. **Report Progress** (After completing tasks):
-```
-report_progress(
-    job_id="<your-job-id>",
-    completed_todo="Implemented user authentication module",
-    files_modified=["src/auth.py", "tests/test_auth.py"],
-    tenant_key="{tenant_key}"
-)
-```
-
-3. **Complete Job** (When mission accomplished):
-```
-complete_job(
-    job_id="<your-job-id>",
-    result={{
-        "summary": "Successfully implemented feature X",
-        "files_created": ["src/new_module.py"],
-        "files_modified": ["src/main.py"],
-        "tests_written": ["tests/test_new_module.py"],
-        "coverage": "95%",
-        "notes": "All tests passing"
-    }},
-    tenant_key="{tenant_key}"
-)
-```
-
-4. **Report Error** (If blocking issues encountered):
-```
-report_error(
-    job_id="<your-job-id>",
-    error_type="test_failure",
-    error_message="<full error details>",
-    context="What you were doing when error occurred",
-    tenant_key="{tenant_key}"
-)
-```
-"""
 
     async def generate_mission_plan(
         self, product: "Product", project_description: str, user_id: Optional[str] = None
