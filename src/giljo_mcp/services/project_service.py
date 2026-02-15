@@ -1699,23 +1699,11 @@ class ProjectService:
         job_counts = dict(job_counts_result.all())
 
         total_agents = sum(job_counts.values())
-        completed_agents = job_counts.get("complete", 0) + job_counts.get("completed", 0)
+        completed_agents = job_counts.get("complete", 0)
         blocked_agents = job_counts.get("blocked", 0)
         silent_agents = job_counts.get("silent", 0)
-        active_statuses = {
-            "working",
-            "active",
-            "waiting",
-            "pending",
-            "preparing",
-            "running",
-            "queued",
-            "paused",
-            "review",
-            "planning",
-            "blocked",
-            "silent",
-        }
+        # Valid statuses after 0491: waiting, working, blocked, complete, silent, decommissioned
+        active_statuses = {"working", "waiting", "blocked", "silent"}
         active_agents = sum(job_counts.get(status, 0) for status in active_statuses)
 
         return {
@@ -2032,27 +2020,28 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 staging_status=project.staging_status,
             )
 
-    async def restore_project(self, project_id: str) -> OperationResult:
+    async def restore_project(self, project_id: str, tenant_key: str) -> OperationResult:
         """
         Restore a completed, cancelled, or soft-deleted project to inactive status.
 
         Args:
             project_id: Project UUID
+            tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
             Success message dictionary
 
         Raises:
-            ResourceNotFoundError: Project not found
+            ResourceNotFoundError: Project not found or access denied
 
         Example:
-            >>> result = await service.restore_project("abc-123")
+            >>> result = await service.restore_project("abc-123", "tenant-key-456")
         """
         async with self._get_session() as session:
-            # Update project to inactive and clear completed_at and deleted_at
+            # TENANT ISOLATION: Filter by both project_id AND tenant_key
             result = await session.execute(
                 update(Project)
-                .where(Project.id == project_id)
+                .where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
                 .values(
                     status="inactive",
                     completed_at=None,
@@ -2062,7 +2051,10 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             )
 
             if result.rowcount == 0:
-                raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
+                raise ResourceNotFoundError(
+                    message="Project not found or access denied",
+                    context={"project_id": project_id, "tenant_key": tenant_key},
+                )
 
             await session.commit()
 
@@ -2085,12 +2077,13 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
         Args:
             project_id: Project UUID to switch to
-            tenant_key: Tenant key for multi-tenant isolation (required for security)
+            tenant_key: Tenant key for multi-tenant isolation (uses context if not provided)
 
         Returns:
             Project details dictionary
 
         Raises:
+            ValidationError: No tenant context available
             ResourceNotFoundError: Project not found or access denied
 
         Example:
@@ -2100,14 +2093,18 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         async with self._get_session() as db_session:
             from giljo_mcp.tenant import current_tenant
 
-            # Find project with tenant isolation filter (Handover 0325)
-            if tenant_key:
-                result = await db_session.execute(
-                    select(Project).where(Project.tenant_key == tenant_key, Project.id == project_id)
+            # TENANT ISOLATION: Require tenant_key, fall back to context
+            if not tenant_key:
+                tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "switch_project", "project_id": project_id},
                 )
-            else:
-                # Fallback for backward compatibility - will be deprecated
-                result = await db_session.execute(select(Project).where(Project.id == project_id))
+
+            result = await db_session.execute(
+                select(Project).where(and_(Project.tenant_key == tenant_key, Project.id == project_id))
+            )
             project = result.scalar_one_or_none()
 
             if not project:
