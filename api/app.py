@@ -91,6 +91,7 @@ try:
         serena,
         settings,
         setup_security,
+        slash_commands,
         statistics,
         system_prompts,
         tasks,
@@ -454,6 +455,9 @@ def create_app() -> FastAPI:
 
     # Pure MCP JSON-RPC 2.0 over HTTP endpoint (Handover 0032)
     app.include_router(mcp_http.router, tags=["mcp"])
+
+    # Slash command endpoints (Handover 0080a)
+    app.include_router(slash_commands.router, prefix="/api", tags=["slash-commands"])
 
     # AI Tools configuration generator endpoints
     app.include_router(ai_tools.router, prefix="/api/ai-tools", tags=["ai-tools"])
