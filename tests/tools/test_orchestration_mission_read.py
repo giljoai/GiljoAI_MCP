@@ -60,8 +60,6 @@ async def test_get_orchestrator_instructions_sets_mission_acknowledged_at(db_man
             agent_name="TestOrchestrator",
             status="waiting",
             mission="Test orchestrator mission",
-            context_budget=150000,
-            context_used=0,
             job_metadata={"field_priorities": {}, "user_id": str(uuid.uuid4())},
         )
         session.add(orchestrator)

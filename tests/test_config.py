@@ -110,8 +110,6 @@ class TestConfigManager:
 
         # Test agent limits
         assert config.agent.max_agents > 0
-        assert config.agent.default_context_budget > 0
-        assert config.agent.context_warning_threshold > 0
 
     def test_message_configuration(self):
         """Test message system configuration."""

@@ -75,8 +75,6 @@ class TenantFixture:
                 description=f"Test project for tenant {tenant_key}",
                 mission=f"Test mission for tenant {tenant_key}",
                 status="active",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(project)
 
@@ -182,8 +180,6 @@ class TenantFixture:
                 description=f"Test project for tenant {tenant_key}",
                 mission=f"Test mission for tenant {tenant_key}",
                 status="active",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(project)
 

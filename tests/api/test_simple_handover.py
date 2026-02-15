@@ -3,9 +3,8 @@ Unit tests for simple handover endpoint - Handover 0461c
 
 Tests the POST /api/agent-jobs/{job_id}/simple-handover endpoint which:
 1. Writes session context to 360 Memory
-2. Resets context_used counter to 0
-3. Returns continuation prompt
-4. Emits WebSocket event
+2. Returns continuation prompt
+3. Emits WebSocket event
 
 NO Agent ID Swap. Just simple session reset.
 """
@@ -120,8 +119,6 @@ async def orchestrator_execution(db_manager, test_tenant_key, test_project):
             messages_read_count=3,
             health_status="healthy",
             tool_type="universal",
-            context_used=100000,
-            context_budget=200000,
         )
         session.add(execution)
 
@@ -171,8 +168,6 @@ async def worker_execution(db_manager, test_tenant_key, test_project):
             messages_read_count=0,
             health_status="healthy",
             tool_type="universal",
-            context_used=50000,
-            context_budget=150000,
         )
         session.add(execution)
 
@@ -275,46 +270,27 @@ class TestSimpleHandover:
         assert "Session handover" in call_kwargs["summary"]
 
     @pytest.mark.asyncio
-    async def test_simple_handover_resets_context(
-        self, api_client: AsyncClient, auth_headers: dict, orchestrator_execution, db_manager
+    async def test_simple_handover_returns_context_reset(
+        self, api_client: AsyncClient, auth_headers: dict, orchestrator_execution
     ):
         """
-        Test that simple handover resets context_used to 0.
+        Test that simple handover returns context_reset flag.
 
         Verifies:
-        - execution.context_used starts at 100000
-        - After handover, context_used is reset to 0
-        - Response includes old_context_used value
+        - Response includes context_reset=True
+        - Response includes retirement_prompt and continuation_prompt
         """
-        from sqlalchemy import select
+        response = await api_client.post(
+            f"/api/agent-jobs/{orchestrator_execution.job_id}/simple-handover", headers=auth_headers
+        )
 
-        from src.giljo_mcp.models.agent_identity import AgentExecution
-
-        # Verify initial state
-        assert orchestrator_execution.context_used == 100000
-
-        # Mock write_360_memory
-        with patch("src.giljo_mcp.tools.write_360_memory.write_360_memory") as mock_write:
-            mock_write.return_value = {"success": True, "entry_id": "test-memory-entry-456"}
-
-            response = await api_client.post(
-                f"/api/agent-jobs/{orchestrator_execution.job_id}/simple-handover", headers=auth_headers
-            )
-
-        # Verify response
         assert response.status_code == 200
         data = response.json()
 
-        assert data["old_context_used"] == 100000
         assert data["context_reset"] is True
-
-        # Query fresh from database to verify context reset (avoids session mismatch)
-        async with db_manager.get_session_async() as session:
-            result = await session.execute(
-                select(AgentExecution).where(AgentExecution.agent_id == orchestrator_execution.agent_id)
-            )
-            refreshed = result.scalar_one()
-            assert refreshed.context_used == 0
+        assert data["success"] is True
+        assert "retirement_prompt" in data
+        assert "continuation_prompt" in data
 
     @pytest.mark.asyncio
     async def test_continuation_prompt_mentions_360_memory(
@@ -408,7 +384,7 @@ class TestSimpleHandover:
         Verifies:
         - 500 Internal Server Error status
         - Error message indicates memory write failure
-        - context_used is NOT reset when memory write fails
+        - Session is NOT handed over when memory write fails
         """
         # Mock write_360_memory to fail (patched at source - imported inside function)
         with patch("src.giljo_mcp.tools.write_360_memory.write_360_memory") as mock_write:
@@ -471,48 +447,3 @@ class TestSimpleHandover:
 
         assert data["success"] is True
         assert data["context_reset"] is True
-
-    @pytest.mark.asyncio
-    async def test_simple_handover_with_zero_context_used(
-        self, api_client: AsyncClient, auth_headers: dict, orchestrator_execution, db_manager
-    ):
-        """
-        Test simple handover when context_used is already 0.
-
-        Verifies:
-        - Handover succeeds even with 0 context_used
-        - Context percentage calculated correctly (0%)
-        - Still writes to 360 Memory
-        """
-        from sqlalchemy import update
-
-        from src.giljo_mcp.models.agent_identity import AgentExecution
-
-        # Set context_used to 0 via fresh session
-        async with db_manager.get_session_async() as session:
-            await session.execute(
-                update(AgentExecution)
-                .where(AgentExecution.agent_id == orchestrator_execution.agent_id)
-                .values(context_used=0)
-            )
-            await session.commit()
-
-        # Mock write_360_memory
-        with patch("src.giljo_mcp.tools.write_360_memory.write_360_memory") as mock_write:
-            mock_write.return_value = {"success": True, "entry_id": "test-memory-entry-222"}
-
-            response = await api_client.post(
-                f"/api/agent-jobs/{orchestrator_execution.job_id}/simple-handover", headers=auth_headers
-            )
-
-        # Verify response
-        assert response.status_code == 200
-        data = response.json()
-
-        assert data["success"] is True
-        assert data["old_context_used"] == 0
-
-        # Verify write_360_memory called with 0% context
-        assert mock_write.called
-        call_kwargs = mock_write.call_args.kwargs
-        assert "0%" in call_kwargs["summary"] or "0% context" in str(call_kwargs["key_outcomes"])

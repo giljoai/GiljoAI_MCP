@@ -108,7 +108,6 @@ def mock_project():
         name="Test Project",
         description="Test project description",
         mission="Test mission",
-        context_budget=180000,
     )
     return project
 

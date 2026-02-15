@@ -47,7 +47,6 @@ async def test_orchestrator_metadata_new_creation(
         name="Test Orchestrator Metadata",
         description="Integration test for metadata flow",
         mission="Test orchestrator mission",
-        context_budget=200000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -164,7 +163,6 @@ async def test_orchestrator_metadata_reuse_updates(
         name="Test Orchestrator Reuse",
         description="Test metadata update on reuse",
         mission="Test orchestrator mission",
-        context_budget=200000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -179,8 +177,6 @@ async def test_orchestrator_metadata_reuse_updates(
         agent_display_name="orchestrator",
         status="waiting",
         mission="Old orchestrator mission",
-        context_budget=200000,
-        context_used=0,
         tool_type="claude-code",
         job_metadata={},  # OLD: Empty metadata (the bug we're fixing)
     )
@@ -278,7 +274,6 @@ async def test_orchestrator_metadata_default_values(
         name="Test Orchestrator Defaults",
         description="Test default metadata values",
         mission="Test orchestrator mission",
-        context_budget=200000,
     )
     db_session.add(project)
     await db_session.commit()

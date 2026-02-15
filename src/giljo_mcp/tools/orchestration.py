@@ -510,26 +510,8 @@ def _get_spawning_limits() -> dict:
     }
 
 
-def _get_context_management(context_budget: int) -> dict:
-    """
-    Generate context_management field.
-
-    Args:
-        context_budget: Context budget in tokens (default 150000)
-
-    Returns:
-        Dict with context management guidance
-    """
-    return {
-        "context_budget": context_budget,
-        "warning_threshold": 0.8,
-        "action_at_threshold": "User triggers session refresh via UI button or /gil_handover",
-    }
-
-
 def _build_orchestrator_protocol(
     cli_mode: bool,
-    context_budget: int,
     project_id: str,
     orchestrator_id: str,
     tenant_key: str,
@@ -543,7 +525,6 @@ def _build_orchestrator_protocol(
 
     Args:
         cli_mode: True if execution_mode is "claude_code_cli"
-        context_budget: Token budget (default 150000)
         project_id: Project UUID for parameter substitution
         orchestrator_id: Job ID for parameter substitution
         tenant_key: Tenant key for parameter substitution
@@ -808,12 +789,6 @@ Action: Condense mission further, focus on essentials
 Technique: Reference vision docs instead of embedding content
 Target: <5K tokens for mission plan
 
-── Context Budget Warning ──────────────────────────────────────────────────
-Symptom: Approaching 80% of context_budget (120K/150K tokens)
-Action: Review field_priorities, reduce depth_config if needed
-Tools: fetch_context() for on-demand loading instead of upfront
-Note: Only applies during implementation phase (see CH5)
-
 ── Agent Discovery Empty ───────────────────────────────────────────────────
 Symptom: get_available_agents() returns empty list
 Cause: No active agent templates in database
@@ -929,20 +904,6 @@ User chooses:
   - "Close Out Project" → Marks project as completed
 
 Orchestrator waits for user decision (no further action)
-
-────────────────────────────────────────────────────────────────────────────
-
-CONTEXT MANAGEMENT (Implementation Phase):
-
-Budget: {context_budget} tokens (default 150,000)
-Warning Threshold: 80% ({int(context_budget * 0.8)} tokens)
-Simple Handover: Available via /gil_handover command or UI "Hand Over" button
-
-When context is high:
-  - User can manually trigger handover
-  - Session context written to 360 Memory
-  - Context counter reset to 0
-  - Continuation prompt returned for same session
 
 ────────────────────────────────────────────────────────────────────────────
 
@@ -1210,8 +1171,6 @@ async def get_orchestrator_instructions(
                 "project_description": project.description or "",
                 "mission": full_mission,  # Job mission + condensed context
                 "mission_format": "json",  # Handover 0347b: JSON format indicator
-                "context_budget": agent_execution.context_budget or 150000,
-                "context_used": agent_execution.context_used or 0,
                 "agent_discovery_tool": "get_available_agents()",  # Handover 0246c: Reference to discovery tool
                 "field_priorities": field_priorities,
                 "token_reduction_applied": bool(field_priorities),
@@ -1222,7 +1181,6 @@ async def get_orchestrator_instructions(
                 "multi_terminal_mode_rules": _get_multi_terminal_rules() if not cli_mode else None,
                 "error_handling": _get_error_handling(),
                 "agent_spawning_limits": _get_spawning_limits(),
-                "context_management": _get_context_management(agent_execution.context_budget or 150000),
                 # Handover 0408: Serena MCP integration status
                 "integrations": {
                     "serena_mcp_enabled": include_serena,
@@ -1626,8 +1584,6 @@ async def _spawn_agent_job_impl(
             agent_name=agent_name,
             status="waiting",  # AgentExecution uses 'waiting'
             spawned_by=parent_job_id,  # Link to parent agent_id (not job_id)
-            context_budget=10000,
-            context_used=0,
         )
         session.add(agent_execution)
 

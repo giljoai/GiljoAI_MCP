@@ -46,8 +46,6 @@ class TestSerenaInjection0408:
                 description="Test project",
                 mission="Test mission",
                 status="active",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(project)
             await session.flush()
@@ -78,8 +76,6 @@ class TestSerenaInjection0408:
                 project_id=project.id,
                 agent_display_name="orchestrator",
                 status="waiting",
-                context_budget=150000,
-                context_used=0,
             )
             session.add(orchestrator_exec)
 

@@ -132,8 +132,6 @@ async def monolithic_test_project(db_session: AsyncSession, test_tenant_key: str
         description="User requirements: Build a REST API with authentication and rate limiting",
         mission="",  # Empty mission - will be compiled by get_orchestrator_instructions
         status="active",
-        context_budget=150000,
-        context_used=0,
     )
     db_session.add(project)
     await db_session.commit()
@@ -154,8 +152,6 @@ async def monolithic_test_orchestrator(
         agent_name="Monolithic Test Orchestrator",
         mission="Initial mission to be replaced by get_orchestrator_instructions",
         status="waiting",  # Valid statuses: waiting, working, blocked, complete, failed, cancelled, decommissioned
-        context_budget=150000,
-        context_used=0,
         job_metadata={
             "field_priorities": monolithic_test_user.field_priority_config["priorities"],
             "depth_config": monolithic_test_user.depth_config,

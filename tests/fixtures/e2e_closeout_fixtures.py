@@ -231,8 +231,6 @@ class E2ECloseoutFixtures:
             status="active",
             created_at=datetime.now(timezone.utc),
             activated_at=datetime.now(timezone.utc),
-            context_budget=150000,
-            context_used=0,
             meta_data={"test": True, "e2e_fixture": True},
         )
 
@@ -292,8 +290,6 @@ class E2ECloseoutFixtures:
                 started_at=datetime.now(timezone.utc),
                 completed_at=datetime.now(timezone.utc),
                 tool_type="claude-code",
-                context_budget=150000,
-                context_used=50000,
                 health_status="healthy",
             )
 

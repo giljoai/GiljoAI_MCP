@@ -144,7 +144,6 @@ async def project_tenant_a(db_session, product_tenant_a, tenant_a_key):
         tenant_key=tenant_a_key,
         status="planning",
         mission="Mission for Tenant A.",
-        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -163,7 +162,6 @@ async def project_tenant_b(db_session, product_tenant_b, tenant_b_key):
         tenant_key=tenant_b_key,
         status="planning",
         mission="Mission for Tenant B.",
-        context_budget=180000,
     )
     db_session.add(project)
     await db_session.commit()
@@ -407,7 +405,6 @@ async def test_multiple_users_same_tenant_independent_priorities(db_session, ten
         tenant_key=tenant_a_key,
         status="planning",
         mission="Alice's mission.",
-        context_budget=180000,
     )
 
     project_bob = Project(
@@ -417,7 +414,6 @@ async def test_multiple_users_same_tenant_independent_priorities(db_session, ten
         tenant_key=tenant_a_key,
         status="planning",
         mission="Bob's mission.",
-        context_budget=180000,
     )
 
     db_session.add(project_alice)

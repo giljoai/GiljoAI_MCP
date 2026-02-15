@@ -86,8 +86,6 @@ async def activate_project(
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         completed_at=proj.completed_at,
-        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.context_used,
         agent_count=proj.agent_count,
         message_count=proj.message_count,
         agents=[],
@@ -140,8 +138,6 @@ async def deactivate_project(
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         completed_at=proj.completed_at,
-        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.context_used,
         agent_count=proj.agent_count,
         message_count=proj.message_count,
         agents=[],
@@ -192,8 +188,6 @@ async def cancel_project(
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         completed_at=proj.completed_at,
-        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.context_used,
         agent_count=proj.agent_count,
         message_count=proj.message_count,
         agents=[],
@@ -242,8 +236,6 @@ async def restore_project(
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         completed_at=proj.completed_at,
-        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.context_used,
         agent_count=proj.agent_count,
         message_count=proj.message_count,
         agents=[],
@@ -297,8 +289,6 @@ async def cancel_project_staging(
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         completed_at=proj.completed_at,
-        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.context_used,
         agent_count=proj.agent_count,
         message_count=proj.message_count,
         agents=[],
@@ -417,8 +407,6 @@ async def archive_project(
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         completed_at=proj.completed_at,
-        context_budget=150000,  # Hardcoded default (Project.context_budget removed)
-        context_used=proj.context_used,
         agent_count=proj.agent_count,
         message_count=proj.message_count,
         agents=[],

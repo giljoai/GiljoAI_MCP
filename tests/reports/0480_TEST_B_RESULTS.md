@@ -1,7 +1,7 @@
 # 0480-TEST-B Results: MCP Tool Tests
 
 **Date:** 2026-01-27
-**Executor:** Claude Opus 4.5 (0480-TEST-B session)
+**Executor:** 0480-TEST-B session
 **Branch:** 0480-exception-handling-remediation
 
 ## Executive Summary

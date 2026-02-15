@@ -105,9 +105,6 @@ async def simple_handover(
     if not job:
         raise HTTPException(status_code=500, detail="Job not found")
 
-    # Reset context_used for the continuation session
-    old_context = execution.context_used
-    execution.context_used = 0
     await db.commit()
 
     # Generate retirement prompt (old orchestrator writes 360 Memory)
@@ -137,8 +134,6 @@ async def simple_handover(
                     "agent_id": execution.agent_id,
                     "job_id": execution.job_id,
                     "project_id": str(job.project_id),
-                    "old_context_used": old_context,
-                    "new_context_used": 0,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             )
@@ -150,5 +145,4 @@ async def simple_handover(
         "retirement_prompt": retirement_prompt,
         "continuation_prompt": continuation_prompt,
         "context_reset": True,
-        "old_context_used": old_context,
     }

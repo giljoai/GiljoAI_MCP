@@ -463,41 +463,6 @@ class TestAgentExecution:
         assert agent_execution.messages_read_count == 2
         assert agent_execution.messages_waiting_count == 0
 
-    def test_agent_execution_context_tracking(self, db_session):
-        """Test agent execution context tracking for orchestrator."""
-        # Create job first
-        job = AgentJob(
-            tenant_key="test-tenant", job_type="orchestrator", mission="Analyze with context", status="active"
-        )
-        db_session.add(job)
-        db_session.commit()
-
-        # Create execution with context tracking
-        agent_execution = AgentExecution(
-            tenant_key="test-tenant",
-            job_id=job.job_id,
-            agent_display_name="analyzer",
-            status="waiting",
-            context_used=0,
-            context_budget=150000,
-        )
-
-        db_session.add(agent_execution)
-        db_session.commit()
-
-        # Verify default context tracking
-        assert agent_execution.context_used == 0
-        assert agent_execution.context_budget == 150000
-
-        # Simulate context usage
-        agent_execution.context_used = 50000
-        db_session.commit()
-
-        # Verify updated context usage
-        assert agent_execution.context_used == 50000
-        assert agent_execution.context_used < agent_execution.context_budget
-
-
 class TestProductVisionDocumentRelationship:
     """Test Product model VisionDocument relationship (Handover 0128e)."""
 

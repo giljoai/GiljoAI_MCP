@@ -223,27 +223,6 @@ export const EVENT_MAP = {
     },
   },
 
-  // Handover 0461d: Handle context reset for simple handover
-  'orchestrator:context_reset': {
-    handler: async (payload, { storeRegistry } = {}) => {
-      const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
-
-      // Update the orchestrator's context_used field
-      agentJobsStore.handleContextReset?.(payload)
-
-      // Optional: Show notification for context reset
-      const notificationStore = useNotificationStore()
-      if (notificationStore) {
-        notificationStore.addNotification({
-          type: 'info',
-          title: 'Session Refreshed',
-          message: 'Orchestrator context reset. Continuation prompt available.',
-        })
-      }
-
-    },
-  },
-
   // =========================
   // Messages
   // =========================

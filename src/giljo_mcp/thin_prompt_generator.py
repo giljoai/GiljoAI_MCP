@@ -10,7 +10,7 @@ Architecture (Handover 0315):
 - User configures priorities (Handover 0313) and depth (Handover 0314)
 - Generator creates thin prompt listing available MCP tools by priority
 - Orchestrator fetches context on-demand via MCP tool calls
-- Simple handover available via /gil_handover when context reset needed (0461c)
+- Simple handover available via UI button (simple-handover REST endpoint) when context reset needed (0461c)
 
 Token Reduction:
 - Fat Prompt (v1.0): ~3500 tokens (inline context embedded in prompt)
@@ -133,7 +133,7 @@ FIRST ACTIONS (DO NOT RE-STAGE):
        categories=["memory_360"]
    )
    -> Look for "session_handover" entry with session context
-   -> Contains: previous context_used, progress, current_task
+   -> Contains: previous progress, current_task
 
 3. Check messages from agents:
    mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
@@ -426,7 +426,6 @@ class ThinClientPromptGenerator:
                 status="waiting",
                 progress=0,
                 tool_type=tool,
-                context_used=0,
             )
             self.db.add(agent_execution)
 
@@ -509,7 +508,6 @@ class ThinClientPromptGenerator:
             "agent_id": agent_id,  # WHO - executor ID for MCP tool calls (Handover 0388)
             "execution_id": execution_id,  # UNIQUE row ID - for frontend Map key (prevents duplicates)
             "thin_prompt": thin_prompt,
-            "context_budget": 150000,  # Hardcoded default (AgentExecution.context_budget has same default)
             "estimated_prompt_tokens": estimated_tokens,
             # Handover 0276: Include regenerated mission in response
             "mission": regenerated_mission,
@@ -1446,7 +1444,7 @@ START NOW:
             "",
             "### Handover (if needed)",
             "If you reach context limits before completion:",
-            "- Use /gil_handover slash command to reset your context",
+            "- Use the Hand Over button in the UI to reset your context",
             "- Your session context will be saved to 360 Memory",
             "- You'll receive a continuation prompt to continue work",
             "",
