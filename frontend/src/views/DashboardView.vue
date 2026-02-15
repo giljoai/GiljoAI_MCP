@@ -351,7 +351,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
-import { useTheme } from 'vuetify'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useTaskStore } from '@/stores/tasks'
@@ -361,7 +360,6 @@ import { useWebSocketStore } from '@/stores/websocket'
 import api from '@/services/api'
 import setupService from '@/services/setupService'
 
-const theme = useTheme()
 const router = useRouter()
 
 // Stores
