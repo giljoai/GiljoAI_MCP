@@ -155,5 +155,4 @@ Removed unused imports:
 
 No behavior changes.
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```

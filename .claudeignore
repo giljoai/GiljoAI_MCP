@@ -1,7 +1,7 @@
 # ============================================================================
-# .claudeignore - Claude Code Context Exclusions
+# .claudeignore - Context Exclusions
 # ============================================================================
-# Prevents Claude from indexing cache folders, archives, and build artifacts
+# Prevents AI assistants from indexing cache folders, archives, and build artifacts
 # This dramatically reduces context consumption and improves performance
 # ============================================================================
 

@@ -188,9 +188,7 @@ Expected: A/B tests → C/B tests
 
 Ref: handovers/600/SESSION_HANDOVER_2025-11-15.md
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ### After All Fixes

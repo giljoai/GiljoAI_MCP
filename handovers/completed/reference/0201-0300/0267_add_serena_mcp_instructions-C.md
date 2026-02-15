@@ -938,9 +938,7 @@ Performance: <50ms instruction generation (cached)
 
 Closes: #267
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ---

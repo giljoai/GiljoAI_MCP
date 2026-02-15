@@ -114,7 +114,6 @@ This is the FINAL remediation handover. After completion:
 
    Completes Handover 0461 series remediation.
 
-   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
    ```
 
 **DO NOT spawn another terminal - the chain is now truly complete.**

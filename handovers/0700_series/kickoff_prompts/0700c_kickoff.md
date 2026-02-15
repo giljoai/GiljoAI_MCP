@@ -286,7 +286,6 @@ Docs Updated:
 
 Verified with grep, database inspection, and test suite.
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ```
 
 ---

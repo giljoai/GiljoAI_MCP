@@ -175,9 +175,7 @@ Impact: Prevents NameError and ImportError at runtime.
 
 Handover: 0366c (TDD bug fix)
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ## Notes
