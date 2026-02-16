@@ -9,6 +9,8 @@ from typing import Any, Optional
 
 from sqlalchemy import select
 
+from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET
+
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +81,9 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-async def get_vision(part: int = 1, max_tokens: int = 20000, force_reindex: bool = False) -> dict[str, Any]:
+async def get_vision(
+    part: int = 1, max_tokens: int = VISION_DELIVERY_BUDGET, force_reindex: bool = False
+) -> dict[str, Any]:
     """
     Legacy tool - Vision model removed in Handover 0728.
     Vision functionality now handled by VisionDocument (product-centric).

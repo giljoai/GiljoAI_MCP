@@ -4,11 +4,11 @@ Reuses logic from:
 - mission_planner._get_relevant_vision_chunks() (lines 695-832)
 - tools/chunking.py EnhancedChunker class
 
-Token Budget by Depth (Handover 0246b):
+Token Budget by Depth (Handover 0246b, updated 0493):
 - "none": 0 tokens (empty response)
-- "light": ~10K tokens (first 2 chunks)
-- "medium": ~17.5K tokens (first 4 chunks)
-- "full": ~30K tokens (all chunks)
+- "light": consolidated summary, paginated at 24K tokens (VISION_DELIVERY_BUDGET)
+- "medium": consolidated summary, paginated at 24K tokens (VISION_DELIVERY_BUDGET)
+- "full": all chunks, paginated at 24K tokens (VISION_DELIVERY_BUDGET)
 
 Backward Compatibility:
 - "moderate" maps to "medium"
@@ -24,6 +24,7 @@ from sqlalchemy.orm import selectinload
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.models.context import MCPContextIndex
+from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET, EnhancedChunker
 
 
 logger = structlog.get_logger(__name__)
@@ -38,51 +39,45 @@ def estimate_tokens(data: Any) -> int:
 
 
 def get_max_tokens(chunking: str) -> int:
-    """Map chunking depth to max token budget.
+    """Map chunking depth to max per-call token budget.
 
-    Handles both new-style depth values and summary-based values:
-    - Standard style: light, medium, full
-    - Summary style (with Sumy): summary_light, summary_medium, full
-    - Backward compat: moderate -> medium, heavy -> medium
+    Handover 0493: light/medium use consolidated summaries (percentage-based, not
+    token-capped) delivered via _get_summary_response() with 24K pagination.
+    This function is only used by the "full" depth chunk loop.
     """
     # Backward compatibility mapping (Handover 0246b)
     if chunking in {"moderate", "heavy"}:
         chunking = "medium"
 
     mapping = {
-        # Standard style - token-based
         "none": 0,
-        "light": 10000,
-        "medium": 17500,
-        "full": 24000,  # Safe margin below 25K Claude Code limit
-        # Summary style - summary + chunks
-        "summary_light": 2500,  # ~500 tokens (summary) + ~2000 tokens (light chunks)
-        "summary_medium": 5000,  # ~500 tokens (summary) + ~4500 tokens (medium chunks)
+        # light/medium: routed to _get_summary_response() before this is called.
+        # Kept for defensive fallback only.
+        "light": VISION_DELIVERY_BUDGET,
+        "medium": VISION_DELIVERY_BUDGET,
+        "full": VISION_DELIVERY_BUDGET,
     }
-    return mapping.get(chunking, 17500)
+    return mapping.get(chunking, VISION_DELIVERY_BUDGET)
 
 
 def get_max_chunks(chunking: str) -> int:
-    """Map chunking depth to max chunk count.
+    """Map chunking depth to max chunk count per call.
 
-    For summary_* depths, limits chunks to append after summary.
-    For full, returns all chunks.
+    Handover 0493: light/medium use consolidated summaries with their own
+    pagination, so these entries are defensive fallback only.
+    For full depth, effectively unlimited (agent keeps calling with offset).
     """
     # Backward compatibility mapping (Handover 0246b)
     if chunking in {"moderate", "heavy"}:
         chunking = "medium"
 
     mapping = {
-        # Standard style - token-based
         "none": 0,
-        "light": 2,
-        "medium": 4,
-        "full": 100,  # Effectively unlimited
-        # Summary style - summary + chunks (chunk counts for the chunks portion only)
-        "summary_light": 1,  # Just 1 chunk after summary (light)
-        "summary_medium": 2,  # 2 chunks after summary (medium)
+        "light": 100,
+        "medium": 100,
+        "full": 100,  # Agent pages through with offset until has_more=False
     }
-    return mapping.get(chunking, 4)
+    return mapping.get(chunking, 100)
 
 
 async def _get_summary_response(
@@ -90,18 +85,23 @@ async def _get_summary_response(
     depth: str,
     product_id: str,
     tenant_key: str,
+    offset: int = 0,
 ) -> dict[str, Any]:
     """
     Helper function to retrieve CONSOLIDATED summary response (Handover 0377).
+
+    Handover 0493: Adds pagination when summary exceeds VISION_DELIVERY_BUDGET.
+    If the summary fits within budget, returns as single response (no regression).
 
     Args:
         product: Product instance with consolidated vision columns
         depth: Depth level ("light" or "medium")
         product_id: Product UUID
         tenant_key: Tenant key
+        offset: Character offset for pagination (0 = start)
 
     Returns:
-        Dict with consolidated summary content (no pagination)
+        Dict with consolidated summary content, paginated if needed
     """
     # Handover 0377: Use Product's consolidated columns
     if depth == "light":
@@ -144,27 +144,88 @@ async def _get_summary_response(
             "pagination": None,
         }
 
+    # Handover 0493: Check if summary exceeds delivery budget and paginate if needed
+    summary_tokens = token_count or estimate_tokens(summary_text)
+
+    if summary_tokens <= VISION_DELIVERY_BUDGET:
+        # Fits within budget - return as single response (no regression)
+        logger.info(
+            "consolidated_vision_summary_fetched",
+            product_id=product_id,
+            depth=depth,
+            tokens=summary_tokens,
+            compression=compression,
+            consolidated_at=str(product.consolidated_at) if product.consolidated_at else None,
+            consolidated_hash=product.consolidated_vision_hash[:8] if product.consolidated_vision_hash else None,
+        )
+        return {
+            "source": "vision_documents",
+            "depth": depth,
+            "data": {
+                "summary": summary_text,
+                "tokens": summary_tokens,
+                "compression": compression,
+                "consolidated_at": str(product.consolidated_at) if product.consolidated_at else None,
+                "source_hash": product.consolidated_vision_hash,
+            },
+            "pagination": None,
+        }
+
+    # Summary exceeds budget - chunk and paginate
+    chunker = EnhancedChunker(max_tokens=VISION_DELIVERY_BUDGET)
+    chunks = chunker.chunk_content(summary_text)
+    total_chunks = len(chunks)
+
+    # Apply offset
+    if offset >= total_chunks:
+        return {
+            "source": "vision_documents",
+            "depth": depth,
+            "data": {"summary": "", "tokens": 0, "compression": compression},
+            "pagination": {
+                "total_chunks": total_chunks,
+                "offset": offset,
+                "limit": 1,
+                "has_more": False,
+                "next_offset": None,
+            },
+        }
+
+    selected_chunk = chunks[offset]
+    chunk_text = selected_chunk.get("content", "")
+    chunk_tokens = estimate_tokens(chunk_text)
+    has_more = (offset + 1) < total_chunks
+    next_offset = offset + 1 if has_more else None
+
     logger.info(
-        "consolidated_vision_summary_fetched",
+        "consolidated_vision_summary_paginated",
         product_id=product_id,
         depth=depth,
-        tokens=token_count,
+        total_tokens=summary_tokens,
+        chunk_tokens=chunk_tokens,
+        chunk_index=offset,
+        total_chunks=total_chunks,
+        has_more=has_more,
         compression=compression,
-        consolidated_at=str(product.consolidated_at) if product.consolidated_at else None,
-        consolidated_hash=product.consolidated_vision_hash[:8] if product.consolidated_vision_hash else None,
     )
 
     return {
         "source": "vision_documents",
         "depth": depth,
         "data": {
-            "summary": summary_text,
-            "tokens": token_count,
+            "summary": chunk_text,
+            "tokens": chunk_tokens,
             "compression": compression,
             "consolidated_at": str(product.consolidated_at) if product.consolidated_at else None,
             "source_hash": product.consolidated_vision_hash,
         },
-        "pagination": None,
+        "pagination": {
+            "total_chunks": total_chunks,
+            "offset": offset,
+            "limit": 1,
+            "has_more": has_more,
+            "next_offset": next_offset,
+        },
     }
 
 
@@ -344,13 +405,14 @@ async def get_vision_document(
                 },
             }
 
-        # Handover 0377: Use Product's consolidated vision columns for light/medium depths
+        # Handover 0377/0493: Use Product's consolidated vision columns for light/medium depths
         if chunking == "light":
             return await _get_summary_response(
                 product=product,
                 depth="light",
                 product_id=product_id,
                 tenant_key=tenant_key,
+                offset=offset,
             )
 
         if chunking == "medium":
@@ -359,6 +421,7 @@ async def get_vision_document(
                 depth="medium",
                 product_id=product_id,
                 tenant_key=tenant_key,
+                offset=offset,
             )
 
         # For "full" depth, use chunk-based pagination (existing logic below)
@@ -440,8 +503,9 @@ async def get_vision_document(
         total_tokens = 0
 
         # Select chunks within budget
+        # Handover 0493: Use stored token_count (tiktoken) instead of chars/4 estimation
         for chunk in paginated_chunks:
-            chunk_tokens = estimate_tokens(chunk.content)
+            chunk_tokens = chunk.token_count if chunk.token_count else estimate_tokens(chunk.content)
 
             if total_tokens + chunk_tokens > max_tokens:
                 logger.debug(
