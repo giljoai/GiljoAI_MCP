@@ -297,6 +297,64 @@ async def tenant_b_project(api_client: AsyncClient, tenant_b_admin_token: str, t
 
 
 @pytest.fixture
+async def tenant_a_agent_templates(db_manager, tenant_a_admin):
+    """Create AgentTemplate records for Tenant A.
+
+    Required because OrchestrationService.spawn_agent_job() validates
+    agent_name against active AgentTemplate records when
+    agent_display_name != 'orchestrator'.
+    """
+    from src.giljo_mcp.models import AgentTemplate
+
+    tenant_key = tenant_a_admin._test_tenant_key
+    agent_names = ["Test Implementer", "Lifecycle Test", "Error Test", "Cancel Test"]
+
+    async with db_manager.get_session_async() as session:
+        for name in agent_names:
+            template = AgentTemplate(
+                tenant_key=tenant_key,
+                name=name,
+                role="implementer",
+                description=f"{name} agent template for testing",
+                system_instructions=f"# {name}\nTest agent template.",
+                is_active=True,
+            )
+            session.add(template)
+        await session.commit()
+
+    return agent_names
+
+
+@pytest.fixture
+async def tenant_b_agent_templates(db_manager, tenant_b_admin):
+    """Create AgentTemplate records for Tenant B.
+
+    Required because OrchestrationService.spawn_agent_job() validates
+    agent_name against active AgentTemplate records when
+    agent_display_name != 'orchestrator'.
+    """
+    from src.giljo_mcp.models import AgentTemplate
+
+    tenant_key = tenant_b_admin._test_tenant_key
+    agent_names = ["Test Implementer B"]
+
+    async with db_manager.get_session_async() as session:
+        for name in agent_names:
+            template = AgentTemplate(
+                tenant_key=tenant_key,
+                name=name,
+                role="implementer",
+                description=f"{name} agent template for testing",
+                system_instructions=f"# {name}\nTest agent template.",
+                is_active=True,
+            )
+            session.add(template)
+        await session.commit()
+
+    return agent_names
+
+
+@pytest.fixture
 async def tenant_a_agent_job(api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project):
     """Create a test agent job for Tenant A."""
     response = await api_client.post(
@@ -342,7 +400,7 @@ class TestAgentJobLifecycle:
 
     @pytest.mark.asyncio
     async def test_spawn_agent_job_happy_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project
+        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project, tenant_a_agent_templates
     ):
         """Test successful agent job spawn with admin user."""
         response = await api_client.post(
@@ -862,7 +920,7 @@ class TestAgentJobStateTransitions:
 
     @pytest.mark.asyncio
     async def test_full_lifecycle_happy_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project
+        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project, tenant_a_agent_templates
     ):
         """Test full job lifecycle: spawn -> acknowledge -> complete."""
         # Spawn job
@@ -897,7 +955,7 @@ class TestAgentJobStateTransitions:
         assert complete_response.json()["status"] == "completed"
 
     @pytest.mark.asyncio
-    async def test_error_lifecycle_path(self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project):
+    async def test_error_lifecycle_path(self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project, tenant_a_agent_templates):
         """Test error lifecycle: spawn -> acknowledge -> error."""
         # Spawn job
         spawn_response = await api_client.post(
@@ -932,7 +990,7 @@ class TestAgentJobStateTransitions:
 
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="cancel endpoint removed - passive HTTP architecture")
-    async def test_cancel_lifecycle_path(self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project):
+    async def test_cancel_lifecycle_path(self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project, tenant_a_agent_templates):
         """Test cancel lifecycle: spawn -> acknowledge -> cancel."""
         # Spawn job
         spawn_response = await api_client.post(
