@@ -12,6 +12,12 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
+# Canonical vision document token constants (Handover 0493)
+VISION_MAX_INGEST_TOKENS = 25000  # Max accepted document size on upload
+VISION_DELIVERY_BUDGET = 24000  # Max tokens per delivery call (safety buffer below 25K)
+VISION_DEFAULT_CHUNK_SIZE = 24000  # Default chunk target (= delivery budget)
+TOKEN_CHAR_RATIO = 4  # Approximate chars-per-token ratio
+
 
 class EnhancedChunker:
     """
@@ -20,13 +26,13 @@ class EnhancedChunker:
     """
 
     # Token to character ratio (from analysis)
-    TOKEN_CHAR_RATIO = 4
+    TOKEN_CHAR_RATIO = TOKEN_CHAR_RATIO
 
     # Maximum tokens per chunk (hard limit from MCP)
-    MAX_TOKENS = 24000
+    MAX_TOKENS = VISION_DELIVERY_BUDGET
 
     # Default chunk size
-    DEFAULT_MAX_TOKENS = 20000
+    DEFAULT_MAX_TOKENS = VISION_DELIVERY_BUDGET
 
     # Boundary search ranges
     DEFAULT_SEARCH_RANGE = 1000

@@ -10,7 +10,7 @@ Features:
 - Summary generation
 - Multi-tenant isolation via product_id
 
-Target chunk size: 5000 tokens with semantic boundaries.
+Target chunk size: 24000 tokens (VISION_DELIVERY_BUDGET) with semantic boundaries.
 """
 
 import logging
@@ -18,7 +18,7 @@ from typing import Any
 
 import tiktoken
 
-from src.giljo_mcp.tools.chunking import EnhancedChunker
+from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET, EnhancedChunker
 
 
 logger = logging.getLogger(__name__)
@@ -33,12 +33,12 @@ class VisionDocumentChunker:
     summaries for each chunk.
     """
 
-    def __init__(self, target_chunk_size: int = 5000):
+    def __init__(self, target_chunk_size: int = VISION_DELIVERY_BUDGET):
         """
         Initialize VisionDocumentChunker.
 
         Args:
-            target_chunk_size: Target tokens per chunk (default 5000)
+            target_chunk_size: Target tokens per chunk (default VISION_DELIVERY_BUDGET)
         """
         self.target_chunk_size = target_chunk_size
 

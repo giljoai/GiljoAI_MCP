@@ -44,6 +44,7 @@ from src.giljo_mcp.schemas.service_responses import (
     PurgeResult,
     VisionUploadResult,
 )
+from src.giljo_mcp.tools.chunking import VISION_MAX_INGEST_TOKENS
 
 
 logger = logging.getLogger(__name__)
@@ -1099,7 +1100,7 @@ class ProductService:
         content: str,
         filename: str,
         auto_chunk: bool = True,
-        max_tokens: int = 25000,
+        max_tokens: int = VISION_MAX_INGEST_TOKENS,
     ) -> VisionUploadResult:
         """
         Upload and optionally chunk vision document for product.
@@ -1248,6 +1249,23 @@ class ProductService:
                             f"Document {doc.id} created but chunking failed: "
                             f"{chunk_result.get('error', 'Unknown error')}"
                         )
+
+                # Handover 0493: Auto-consolidation after upload
+                # Ensures light/medium summaries are always available
+                try:
+                    from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
+
+                    consolidation_service = ConsolidatedVisionService()
+                    await consolidation_service.consolidate_vision_documents(
+                        product_id=product_id,
+                        session=session,
+                        tenant_key=self.tenant_key,
+                        force=True,
+                    )
+                    self._logger.info(f"Auto-consolidated vision documents for product {product_id}")
+                except (ValidationError, ResourceNotFoundError, ValueError, KeyError) as e:
+                    # Consolidation failure should not fail the upload
+                    self._logger.warning(f"Auto-consolidation failed for product {product_id}: {e}")
 
                 # Handover 0731b: Return VisionUploadResult Pydantic model
                 return VisionUploadResult(
