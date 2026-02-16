@@ -386,7 +386,12 @@ class AgentJobManager:
                 job.completed_at = datetime.now(timezone.utc)
 
                 # Decommission ALL executions for this job
-                executions_result = await session.execute(select(AgentExecution).where(AgentExecution.job_id == job_id))
+                # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
+                executions_result = await session.execute(
+                    select(AgentExecution).where(
+                        AgentExecution.job_id == job_id, AgentExecution.tenant_key == tenant_key
+                    )
+                )
                 executions = executions_result.scalars().all()
 
                 for execution in executions:
