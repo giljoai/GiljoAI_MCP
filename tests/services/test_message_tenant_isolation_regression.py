@@ -615,3 +615,75 @@ async def test_message_service_cross_tenant_audit(db_session, two_tenant_message
         "CRITICAL: Tenant isolation violated!\nViolations:\n"
         + "\n".join(f"- {v}" for v in violations)
     )
+
+
+# ============================================================================
+# list_messages() -- Cross-Tenant Read Tests (BATCH 1 addition)
+# ============================================================================
+
+
+@pytest.mark.tenant_isolation
+@pytest.mark.asyncio
+async def test_list_messages_requires_tenant_key(db_session, two_tenant_messages):
+    """
+    REGRESSION: list_messages() must always require tenant_key.
+
+    Bug: When tenant_key was None AND project_id was provided, list_messages()
+    would proceed without tenant filtering, leaking cross-tenant messages.
+    Now raises ValidationError if tenant_key is missing.
+    """
+    service = two_tenant_messages["service"]
+
+    TenantManager.clear_current_tenant()
+
+    with pytest.raises(ValidationError):
+        await service.list_messages(
+            project_id=two_tenant_messages["project_a"].id,
+            tenant_key=None,
+        )
+
+
+@pytest.mark.tenant_isolation
+@pytest.mark.asyncio
+async def test_list_messages_blocks_cross_tenant_by_agent(db_session, two_tenant_messages):
+    """
+    REGRESSION: list_messages() must filter AgentJob by tenant_key.
+
+    Bug: AgentJob lookup conditions were conditionally filtered by tenant_key.
+    Now tenant_key is always included in the AgentJob WHERE clause.
+    """
+    tenant_a = two_tenant_messages["tenant_a"]
+    job_b = two_tenant_messages["job_b"]
+    service = two_tenant_messages["service"]
+
+    # Tenant A tries to list messages for tenant B's agent
+    # Cross-tenant agent lookup should find no matching job and raise
+    with pytest.raises(ResourceNotFoundError):
+        await service.list_messages(
+            agent_id=job_b.job_id,
+            tenant_key=tenant_a,
+        )
+
+
+@pytest.mark.tenant_isolation
+@pytest.mark.asyncio
+async def test_list_messages_blocks_cross_tenant_by_project(db_session, two_tenant_messages):
+    """
+    REGRESSION: list_messages() must filter Messages by tenant_key.
+
+    Bug: When querying by project_id, the Message query conditionally
+    included tenant_key. Now tenant_key is always in the WHERE clause.
+    """
+    tenant_a = two_tenant_messages["tenant_a"]
+    project_b = two_tenant_messages["project_b"]
+    service = two_tenant_messages["service"]
+
+    # Tenant A tries to list messages in tenant B's project
+    result = await service.list_messages(
+        project_id=project_b.id,
+        tenant_key=tenant_a,
+    )
+
+    assert result.count == 0, (
+        f"CRITICAL: list_messages() returned {result.count} cross-tenant messages!"
+    )
