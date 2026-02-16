@@ -10,14 +10,12 @@ Tests cover:
 - Full lifecycle integration: working -> silent -> MCP call -> working -> complete
 """
 
-import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
