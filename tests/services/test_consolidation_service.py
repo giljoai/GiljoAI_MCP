@@ -386,19 +386,15 @@ async def test_consolidate_enforces_tenant_isolation(mock_db_manager):
 
     db_manager, session = mock_db_manager
 
-    # Product exists but belongs to different tenant
-    product = MagicMock(spec=Product)
-    product.id = "test-product-id"
-    product.tenant_key = "other-tenant"  # Different tenant
-    product.vision_documents = []
-
+    # Product belongs to different tenant - query returns None because
+    # tenant_key is now in the WHERE clause (defense-in-depth fix)
     mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = product
+    mock_result.scalar_one_or_none.return_value = None
     session.execute.return_value = mock_result
 
     service = ConsolidatedVisionService()
 
-    # Verify ResourceNotFoundError raised (don't leak tenant info)
+    # Verify ResourceNotFoundError raised (product not found due to tenant filter)
     with pytest.raises(ResourceNotFoundError) as exc_info:
         await service.consolidate_vision_documents(
             product_id="test-product-id",
@@ -410,7 +406,6 @@ async def test_consolidate_enforces_tenant_isolation(mock_db_manager):
     assert exc_info.value.error_code == "PRODUCT_NOT_FOUND"
     # Context should have product_id but NOT reveal tenant mismatch
     assert "product_id" in exc_info.value.context
-    assert "other-tenant" not in str(exc_info.value.context)  # Don't leak actual tenant
 
     # Verify commit NOT called
     assert not session.commit.called

@@ -6,6 +6,9 @@ Tests written FIRST following TDD discipline (RED -> GREEN -> REFACTOR).
 
 Handover 0731b: Updated assertions for typed returns (Product ORM model)
 instead of dict[str, Any] wrappers.
+
+Updated: Defense-in-depth audit - session.get() replaced with select().where(tenant_key).
+Mock setup changed from session.get to session.execute with scalar_one_or_none().
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -16,6 +19,13 @@ from src.giljo_mcp.exceptions import ResourceNotFoundError
 from src.giljo_mcp.models.products import Product
 
 
+def _mock_execute_result(product):
+    """Create a mock execute result that returns product from scalar_one_or_none()."""
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = product
+    return mock_result
+
+
 @pytest.fixture
 def mock_db_manager():
     """Mock database manager with async session support."""
@@ -23,7 +33,7 @@ def mock_db_manager():
     session = AsyncMock()
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)  # Don't suppress exceptions
-    session.get = AsyncMock()
+    session.execute = AsyncMock()
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
     session.add = MagicMock()
@@ -44,8 +54,8 @@ async def test_update_quality_standards_success(mock_db_manager):
     mock_product.tenant_key = "test-tenant"
     mock_product.quality_standards = None
 
-    # Session.get returns product
-    session.get.return_value = mock_product
+    # session.execute returns result with scalar_one_or_none
+    session.execute.return_value = _mock_execute_result(mock_product)
 
     # Create service
     service = ProductService(db_manager, tenant_key="test-tenant")
@@ -65,26 +75,22 @@ async def test_update_quality_standards_success(mock_db_manager):
 
 @pytest.mark.asyncio
 async def test_update_quality_standards_multi_tenant_isolation(mock_db_manager):
-    """Test update_quality_standards enforces multi-tenant isolation."""
+    """Test update_quality_standards enforces multi-tenant isolation via WHERE clause."""
     from src.giljo_mcp.services.product_service import ProductService
 
     db_manager, session = mock_db_manager
 
-    # Mock product with different tenant_key
-    mock_product = MagicMock(spec=Product)
-    mock_product.id = "test-product-id"
-    mock_product.tenant_key = "other-tenant"  # Different tenant
-
-    session.get.return_value = mock_product
+    # Query returns None because tenant_key doesn't match in WHERE clause
+    session.execute.return_value = _mock_execute_result(None)
 
     service = ProductService(db_manager, tenant_key="test-tenant")
 
-    # Should raise ResourceNotFoundError (wrong tenant)
+    # Should raise ResourceNotFoundError (query returns None due to tenant filter)
     with pytest.raises(ResourceNotFoundError, match=r"Product .* not found"):
         await service.update_quality_standards(
             product_id="test-product-id",
             quality_standards="Standards here",
-            tenant_key="test-tenant",  # Different from product.tenant_key
+            tenant_key="test-tenant",
         )
 
 
@@ -95,7 +101,7 @@ async def test_update_quality_standards_product_not_found(mock_db_manager):
 
     db_manager, session = mock_db_manager
 
-    session.get.return_value = None  # Product not found
+    session.execute.return_value = _mock_execute_result(None)  # Product not found
 
     service = ProductService(db_manager, tenant_key="test-tenant")
 
@@ -117,7 +123,7 @@ async def test_update_quality_standards_emits_websocket_event(mock_db_manager):
     mock_product.tenant_key = "test-tenant"
     mock_product.quality_standards = None
 
-    session.get.return_value = mock_product
+    session.execute.return_value = _mock_execute_result(mock_product)
 
     service = ProductService(db_manager, tenant_key="test-tenant")
 
@@ -151,7 +157,7 @@ async def test_update_quality_standards_updates_existing_value(mock_db_manager):
     mock_product.tenant_key = "test-tenant"
     mock_product.quality_standards = "Old standards: 70% coverage"
 
-    session.get.return_value = mock_product
+    session.execute.return_value = _mock_execute_result(mock_product)
 
     service = ProductService(db_manager, tenant_key="test-tenant")
 

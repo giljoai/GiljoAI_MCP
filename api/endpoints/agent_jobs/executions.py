@@ -43,9 +43,11 @@ async def get_job_executions(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # Fetch all executions for this job
+    # Fetch all executions for this job (defense-in-depth: tenant_key filter)
     result = await db.execute(
-        select(AgentExecution).where(AgentExecution.job_id == job_id).order_by(AgentExecution.started_at.asc())
+        select(AgentExecution)
+        .where(AgentExecution.job_id == job_id, AgentExecution.tenant_key == current_user.tenant_key)
+        .order_by(AgentExecution.started_at.asc())
     )
     executions = result.scalars().all()
 

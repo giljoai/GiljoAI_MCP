@@ -164,7 +164,7 @@ async def list_tasks(
         status=status,
         priority=priority,
         created_by_user_id=created_by_user_id,
-        tenant_key=None,  # Will use current tenant from context
+        tenant_key=current_user.tenant_key,
     )
 
     # Service returns list[Task] ORM objects directly (0731 typed returns)
