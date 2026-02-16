@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.giljo_mcp.exceptions import BaseGiljoError, ProjectStateError, ResourceNotFoundError
+from src.giljo_mcp.exceptions import BaseGiljoError, ResourceNotFoundError
 from src.giljo_mcp.models import AgentExecution, Project
 from src.giljo_mcp.models.agent_identity import AgentJob
 from src.giljo_mcp.services.project_service import ProjectService

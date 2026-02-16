@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Import modules to test
 GUI_AVAILABLE = True
 try:
-    import tkinter as tk
+    import tkinter as tk  # noqa: F401
 except ImportError:
     GUI_AVAILABLE = False
 
