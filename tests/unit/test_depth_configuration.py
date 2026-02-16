@@ -411,7 +411,7 @@ async def test_build_context_without_depth_config_uses_defaults(mock_product, mo
 
 def test_default_depth_config_values():
     """Test DEFAULT_DEPTH_CONFIG constants are correct."""
-    from src.giljo_mcp.tools.orchestration import DEFAULT_DEPTH_CONFIG
+    from src.giljo_mcp.services.orchestration_service import DEFAULT_DEPTH_CONFIG
 
     assert DEFAULT_DEPTH_CONFIG["memory_360"] == 5
     assert DEFAULT_DEPTH_CONFIG["git_history"] == 20

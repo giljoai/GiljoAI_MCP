@@ -91,10 +91,16 @@ async def test_get_agent_mission_emits_ack_and_status_changed(
         mission_acknowledged_at=None,
         started_at=None,
     )
+    project = SimpleNamespace(
+        id=project_id,
+        tenant_key=tenant_key,
+        implementation_launched_at=datetime.now(timezone.utc),
+    )
 
     session.execute.side_effect = [
         _scalar_result(job),
         _scalar_result(execution),
+        _scalar_result(project),
         _rows_result([(execution, job)]),
     ]
 
@@ -133,10 +139,16 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
         mission_acknowledged_at=datetime.now(timezone.utc),
         started_at=datetime.now(timezone.utc),
     )
+    project = SimpleNamespace(
+        id=project_id,
+        tenant_key=tenant_key,
+        implementation_launched_at=datetime.now(timezone.utc),
+    )
 
     session.execute.side_effect = [
         _scalar_result(job),
         _scalar_result(execution),
+        _scalar_result(project),
         _rows_result([(execution, job)]),
     ]
 
@@ -154,6 +166,7 @@ async def test_acknowledge_job_emits_status_changed(
     db_manager, session = mock_db_manager
     tenant_key = "tenant-test-123"
     job_id = str(uuid4())
+    project_id = str(uuid4())
 
     execution = SimpleNamespace(
         agent_id=str(uuid4()),
@@ -165,11 +178,17 @@ async def test_acknowledge_job_emits_status_changed(
         started_at=None,
         mission_acknowledged_at=None,
     )
-    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=str(uuid4()), mission="Do work")
+    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work")
+    project = SimpleNamespace(
+        id=project_id,
+        tenant_key=tenant_key,
+        implementation_launched_at=datetime.now(timezone.utc),
+    )
 
     session.execute.side_effect = [
         _scalar_result(execution),
         _scalar_result(job),
+        _scalar_result(project),
     ]
 
     result = await orchestration_service.acknowledge_job(job_id=job_id, agent_id="ignored", tenant_key=tenant_key)
@@ -308,6 +327,7 @@ async def test_websocket_failures_do_not_break_orchestration_calls(
     db_manager, session = mock_db_manager
     tenant_key = "tenant-test-123"
     job_id = str(uuid4())
+    project_id = str(uuid4())
 
     execution = SimpleNamespace(
         agent_id=str(uuid4()),
@@ -319,11 +339,17 @@ async def test_websocket_failures_do_not_break_orchestration_calls(
         started_at=None,
         mission_acknowledged_at=None,
     )
-    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=str(uuid4()), mission="Do work")
+    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work")
+    project = SimpleNamespace(
+        id=project_id,
+        tenant_key=tenant_key,
+        implementation_launched_at=datetime.now(timezone.utc),
+    )
 
     session.execute.side_effect = [
         _scalar_result(execution),
         _scalar_result(job),
+        _scalar_result(project),
     ]
 
     mock_websocket_manager.broadcast_to_tenant.side_effect = Exception("WebSocket down")
