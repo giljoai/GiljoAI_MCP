@@ -84,21 +84,23 @@ def verify_tool_implementation():
 
 
 def verify_api_endpoints():
-    """Verify /continue and /archive endpoints exist."""
+    """Verify /continue-working and /archive endpoints exist."""
     print("\n[OK] Verifying API endpoints...")
 
-    # Read the file and check for endpoints
+    # Check for /continue-working endpoint in completion.py (canonical endpoint)
+    completion_file = Path(__file__).parent.parent / "api" / "endpoints" / "projects" / "completion.py"
+    completion_content = completion_file.read_text()
+
+    assert '@router.post("/{project_id}/continue-working"' in completion_content, "/continue-working endpoint not found"
+    assert "async def continue_working(" in completion_content, "continue_working function not found"
+    print("  [OK] POST /{project_id}/continue-working endpoint exists")
+
+    # Check for /archive endpoint in lifecycle.py
     lifecycle_file = Path(__file__).parent.parent / "api" / "endpoints" / "projects" / "lifecycle.py"
-    content = lifecycle_file.read_text()
+    lifecycle_content = lifecycle_file.read_text()
 
-    # Check for /continue endpoint
-    assert '@router.post("/{project_id}/continue"' in content, "/continue endpoint not found"
-    assert "async def continue_project(" in content, "continue_project function not found"
-    print("  [OK] POST /{project_id}/continue endpoint exists")
-
-    # Check for /archive endpoint
-    assert '@router.post("/{project_id}/archive"' in content, "/archive endpoint not found"
-    assert "async def archive_project(" in content, "archive_project function not found"
+    assert '@router.post("/{project_id}/archive"' in lifecycle_content, "/archive endpoint not found"
+    assert "async def archive_project(" in lifecycle_content, "archive_project function not found"
     print("  [OK] POST /{project_id}/archive endpoint exists")
 
     return True
@@ -123,7 +125,7 @@ def main():
         print("  • MCP tool 'write_360_memory' registered in HTTP endpoint")
         print("  • ToolAccessor.write_360_memory() method added")
         print("  • Tool implementation in src/giljo_mcp/tools/write_360_memory.py")
-        print("  • POST /{project_id}/continue endpoint added")
+        print("  • POST /{project_id}/continue-working endpoint exists")
         print("  • POST /{project_id}/archive endpoint added")
         print("\nNext Steps:")
         print("  • Test via MCP client (Claude Code / Codex)")

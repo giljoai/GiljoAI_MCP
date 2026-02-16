@@ -7,7 +7,7 @@ Original direct SQLAlchemy queries preserved as comments for rollback reference.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -106,6 +106,13 @@ class CallCountsResponse(BaseModel):
     total_mcp_calls: int
 
 
+class DetailedHealthResponse(BaseModel):
+    overall: str
+    components: dict[str, Any]
+    checks_passed: int
+    checks_failed: int
+
+
 # Store startup time
 startup_time = datetime.now(timezone.utc)
 
@@ -145,7 +152,7 @@ async def get_system_statistics(request: Request):
     from api.app import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
-    logger.info(f"[STATS DEBUG] tenant_key from request: {tenant_key}")
+    logger.debug(f"[STATS DEBUG] tenant_key from request: {tenant_key}")
     if not tenant_key:
         raise HTTPException(status_code=400, detail="Tenant key not found in request state")
 
@@ -155,31 +162,31 @@ async def get_system_statistics(request: Request):
     stats_repo = StatisticsRepository(state.db_manager)
     async with state.db_manager.get_session_async() as session:
         total_projects = await stats_repo.count_total_projects(session, tenant_key)
-        logger.info(f"[STATS DEBUG] total_projects: {total_projects}")
+        logger.debug(f"[STATS DEBUG] total_projects: {total_projects}")
 
         active_projects = await stats_repo.count_projects_by_status(session, tenant_key, "active")
-        logger.info(f"[STATS DEBUG] active_projects: {active_projects}")
+        logger.debug(f"[STATS DEBUG] active_projects: {active_projects}")
 
         completed_projects = await stats_repo.count_projects_by_status(session, tenant_key, "completed")
-        logger.info(f"[STATS DEBUG] completed_projects: {completed_projects}")
+        logger.debug(f"[STATS DEBUG] completed_projects: {completed_projects}")
 
         total_agents = await stats_repo.count_total_agents(session, tenant_key)
-        logger.info(f"[STATS DEBUG] total_agents: {total_agents}")
+        logger.debug(f"[STATS DEBUG] total_agents: {total_agents}")
 
         active_agents = await stats_repo.count_active_agents(session, tenant_key)
-        logger.info(f"[STATS DEBUG] active_agents: {active_agents}")
+        logger.debug(f"[STATS DEBUG] active_agents: {active_agents}")
 
         total_messages = await stats_repo.count_total_messages(session, tenant_key)
-        logger.info(f"[STATS DEBUG] total_messages: {total_messages}")
+        logger.debug(f"[STATS DEBUG] total_messages: {total_messages}")
 
         pending_messages = await stats_repo.count_messages_by_status(session, tenant_key, "pending")
-        logger.info(f"[STATS DEBUG] pending_messages: {pending_messages}")
+        logger.debug(f"[STATS DEBUG] pending_messages: {pending_messages}")
 
         total_tasks = await stats_repo.count_total_tasks(session, tenant_key)
-        logger.info(f"[STATS DEBUG] total_tasks: {total_tasks}")
+        logger.debug(f"[STATS DEBUG] total_tasks: {total_tasks}")
 
         completed_tasks = await stats_repo.count_completed_tasks(session, tenant_key)
-        logger.info(f"[STATS DEBUG] completed_tasks: {completed_tasks}")
+        logger.debug(f"[STATS DEBUG] completed_tasks: {completed_tasks}")
 
         db_size = 0
 
@@ -466,62 +473,7 @@ async def get_performance_metrics():
     )
 
 
-@router.get("/timeseries/{metric}", response_model=TimeSeriesResponse)
-async def get_timeseries_data(
-    metric: str,
-    period: str = Query("1h", description="Time period (1h, 24h, 7d)"),
-    project_id: Optional[str] = Query(None, description="Filter by project"),
-):
-    """Get time series data for specific metrics"""
-    from api.app import state
-
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    valid_metrics = ["messages", "agents", "tasks", "context_usage", "errors"]
-    if metric not in valid_metrics:
-        raise HTTPException(status_code=400, detail=f"Invalid metric. Choose from: {valid_metrics}")
-
-    # Generate sample time series data
-    now = datetime.now(timezone.utc)
-    data_points = []
-
-    if period == "1h":
-        points = 12  # 5-minute intervals
-        interval = timedelta(minutes=5)
-    elif period == "24h":
-        points = 24  # Hourly
-        interval = timedelta(hours=1)
-    elif period == "7d":
-        points = 7  # Daily
-        interval = timedelta(days=1)
-    else:
-        points = 24
-        interval = timedelta(hours=1)
-
-    # Generate data points (simplified - in production, query actual data)
-    import random
-
-    for i in range(points):
-        timestamp = now - (interval * (points - i - 1))
-
-        if metric == "messages":
-            value = random.randint(10, 100)
-        elif metric == "agents":
-            value = random.randint(1, 10)
-        elif metric == "tasks":
-            value = random.randint(5, 50)
-        elif metric == "context_usage":
-            value = random.randint(1000, 150000)
-        else:  # errors
-            value = random.randint(0, 5)
-
-        data_points.append(TimeSeriesDataPoint(timestamp=timestamp, value=float(value)))
-
-    return TimeSeriesResponse(metric=metric, period=period, data_points=data_points)
-
-
-@router.get("/health/detailed")
+@router.get("/health/detailed", response_model=DetailedHealthResponse)
 async def get_detailed_health():
     """Get detailed health status of all system components"""
     from api.app import state
