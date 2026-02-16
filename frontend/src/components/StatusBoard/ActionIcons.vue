@@ -88,38 +88,6 @@
       <span>{{ handoverPending ? 'Retirement prompt copied - paste in old terminal' : getActionTooltip('handOver') }}</span>
     </v-tooltip>
 
-    <!-- Confirmation Dialog -->
-    <v-dialog v-model="showConfirmDialog" max-width="500" data-test="confirm-dialog">
-      <v-card v-draggable>
-        <v-card-title class="text-h5">
-          {{ confirmationConfig.title }}
-        </v-card-title>
-        <v-card-text>
-          {{ confirmationConfig.message }}
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn
-            color="grey"
-            variant="text"
-            data-test="confirm-dialog-cancel"
-            @click="cancelConfirmation"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            :color="confirmationConfig.color || 'error'"
-            variant="text"
-            data-test="confirm-dialog-confirm"
-            :loading="confirmationLoading"
-            @click="executeConfirmedAction"
-          >
-            {{ confirmationConfig.confirmText }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- Copy Success Snackbar -->
     <v-snackbar v-model="showCopySuccess" color="success" timeout="2000">
       Prompt copied to clipboard!
@@ -181,10 +149,6 @@ export default {
       handOver: false,
     })
 
-    const showConfirmDialog = ref(false)
-    const confirmationConfig = ref({})
-    const confirmationLoading = ref(false)
-    const pendingAction = ref(null)
     const showCopySuccess = ref(false)
 
     // Two-stage handover state
@@ -300,42 +264,9 @@ export default {
       showHandoverSnackbar.value = false
     }
 
-    const showConfirmation = (action, config) => {
-      confirmationConfig.value = {
-        title: config.confirmationTitle,
-        message: config.confirmationMessage,
-        color: config.color,
-        confirmText: config.label,
-      }
-      pendingAction.value = action
-      showConfirmDialog.value = true
-    }
-
-    const cancelConfirmation = () => {
-      showConfirmDialog.value = false
-      pendingAction.value = null
-      confirmationLoading.value = false
-    }
-
-    const executeConfirmedAction = async () => {
-      confirmationLoading.value = true
-      try {
-        if (pendingAction.value === 'handOver') {
-          await handleHandOver()
-        }
-      } finally {
-        confirmationLoading.value = false
-        showConfirmDialog.value = false
-        pendingAction.value = null
-      }
-    }
-
     return {
       availableActions,
       loadingStates,
-      showConfirmDialog,
-      confirmationConfig,
-      confirmationLoading,
       showCopySuccess,
       handoverPending,
       showHandoverSnackbar,
@@ -346,8 +277,6 @@ export default {
       handleViewMessages,
       handleHandOver,
       dismissHandover,
-      cancelConfirmation,
-      executeConfirmedAction,
     }
   },
 }
@@ -477,11 +406,6 @@ export default {
 
 .copy-success-icon {
   animation: checkmark-pop 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-/* Confirmation dialog slide-in animation */
-.v-dialog {
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 /* Snackbar slide-in animation */
