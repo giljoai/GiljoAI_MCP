@@ -199,21 +199,9 @@
             </div>
           </template>
 
-          <!-- Status Column with Badge -->
-          <template v-slot:item.status="{ item }">
-            <v-chip
-              :color="getStatusColor(normalizeStatus(item.status))"
-              size="small"
-              variant="tonal"
-              data-testid="project-status"
-            >
-              {{ normalizeStatus(item.status) }}
-            </v-chip>
-          </template>
-
           <!-- Product Column -->
           <template v-slot:item.product="{ item }">
-            <span class="text-caption">
+            <span class="text-caption project-name-link" @click.stop="router.push('/products')">
               {{ activeProduct?.name || '—' }}
             </span>
           </template>
@@ -245,7 +233,7 @@
             </div>
           </template>
 
-          <!-- Actions Column (StatusBadge only) -->
+          <!-- Status Column (StatusBadge with actions dropdown) -->
           <template v-slot:item.actions="{ item }">
             <div class="d-flex align-center justify-center">
               <StatusBadge
@@ -256,7 +244,7 @@
             </div>
           </template>
 
-          <!-- Menu Column (separate) -->
+          <!-- Actions Column (edit/delete menu) -->
           <template v-slot:item.menu="{ item }">
             <div class="d-flex align-center justify-center">
               <v-menu>
@@ -580,7 +568,6 @@ import { useProjectTabsStore } from '@/stores/projectTabs'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import { formatStatus } from '@/utils/formatters'
 
 // Router
 const router = useRouter()
@@ -624,9 +611,6 @@ const projectData = ref({
   status: 'inactive',
 })
 
-// Status options
-const statusOptions = ['active', 'inactive', 'completed', 'cancelled']
-
 // Filter options computed
 const filterOptions = computed(() => {
   const counts = statusCounts.value
@@ -642,13 +626,12 @@ const filterOptions = computed(() => {
 // Table headers
 const headers = [
   { title: 'Name', key: 'name', sortable: true, width: '25%' },
-  { title: 'Status', key: 'status', sortable: true, width: '12%' },
   { title: 'Product', key: 'product', sortable: false, width: '15%' },
   { title: 'Staged', key: 'staged', sortable: false, width: '10%', align: 'center' },
   { title: 'Created', key: 'created_at', sortable: true, width: '15%' },
   { title: 'Completed', key: 'completed_at', sortable: true, width: '15%', align: 'center' },
-  { title: 'Actions', key: 'actions', sortable: false, width: '120px', align: 'center' },
-  { title: '', key: 'menu', sortable: false, width: '50px', align: 'center' },
+  { title: 'Status', key: 'actions', sortable: false, width: '120px', align: 'center' },
+  { title: 'Actions', key: 'menu', sortable: false, width: '60px', align: 'center' },
 ]
 
 // Computed properties
@@ -781,17 +764,6 @@ function normalizeStatus(status) {
     return 'inactive'
   }
   return status || 'inactive'
-}
-
-// Get color for status chip
-function getStatusColor(status) {
-  const colors = {
-    active: 'success',
-    inactive: 'grey',
-    completed: 'info',
-    cancelled: 'warning',
-  }
-  return colors[status] || 'default'
 }
 
 // Methods
