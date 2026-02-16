@@ -242,7 +242,15 @@ async def get_messages(
     return messages
 
 
-@router.post("/{message_id}/complete")
+class CompleteMessageResponse(BaseModel):
+    """Response schema for the complete_message endpoint."""
+
+    success: bool = Field(..., description="Whether the operation succeeded")
+    message: str = Field(..., description="Human-readable status message")
+    result: str = Field(..., description="Completion result from the agent")
+
+
+@router.post("/{message_id}/complete", response_model=CompleteMessageResponse)
 async def complete_message(
     message_id: str,
     agent_name: str = Query(..., description="Agent completing the message"),
@@ -267,7 +275,7 @@ async def complete_message(
             message_data={"completed_by": agent_name, "result": result, "status": "completed"},
         )
 
-    return {"message": "Message completed", "result": result}
+    return {"success": True, "message": "Message completed", "result": result}
 
 
 class BroadcastMessage(BaseModel):
