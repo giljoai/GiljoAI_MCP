@@ -13,6 +13,7 @@ Features:
 import logging
 
 from src.giljo_mcp.context_management.indexer import ContextIndexer
+from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET
 
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,7 @@ class DynamicContextLoader:
         product_id: str,
         query: str,
         role: str | None = None,
-        max_tokens: int = 10000,
+        max_tokens: int = VISION_DELIVERY_BUDGET,
         limit: int = 20,
     ) -> list[dict[str, any]]:
         """
