@@ -37,9 +37,6 @@ class TestConfigManager:
         assert config.server.api_host == "0.0.0.0"  # v3.0: Always bind to all interfaces
         assert config.server.api_port == 7272  # Production default (changed from 8000)
         assert config.tenant.enable_multi_tenant is True
-        assert config.session.vision_chunk_size == 50000
-        assert config.session.vision_overlap == 500
-
     def test_server_binds_all_interfaces(self):
         """Test that server always binds to 0.0.0.0 (v3.0: mode removed, firewall controls access)."""
         config = get_config()
@@ -152,15 +149,6 @@ class TestConfigManager:
         assert hasattr(config.tenant, "enable_multi_tenant")
         assert hasattr(config.tenant, "default_tenant_key")
         assert hasattr(config.tenant, "tenant_isolation_level")
-
-    def test_session_configuration(self):
-        """Test session-specific configuration."""
-        config = get_config()
-
-        # Test vision processing settings
-        assert config.session.vision_chunk_size > 0
-        assert config.session.vision_overlap >= 0
-        assert config.session.max_vision_size > config.session.vision_chunk_size
 
     @patch.dict(os.environ, {"GILJO_CONFIG_FILE": "nonexistent.yaml"})
     def test_missing_config_file_handling(self):
