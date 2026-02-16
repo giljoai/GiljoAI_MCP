@@ -36,6 +36,7 @@ from src.giljo_mcp.agent_selector import AgentSelector
 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
+    AlreadyExistsError,
     DatabaseError,
     OrchestrationError,
     ProjectStateError,
@@ -714,6 +715,66 @@ class OrchestrationService:
                         message="Project not found", context={"project_id": project_id, "tenant_key": tenant_key}
                     )
 
+                # Agent name validation against active templates (backported from tools layer)
+                if agent_display_name != "orchestrator":
+                    template_result = await session.execute(
+                        select(AgentTemplate.name).where(
+                            and_(
+                                AgentTemplate.tenant_key == tenant_key,
+                                AgentTemplate.is_active,
+                            )
+                        )
+                    )
+                    valid_agent_names = [row[0] for row in template_result.fetchall()]
+
+                    if agent_name not in valid_agent_names:
+                        raise ValidationError(
+                            message=f"Invalid agent_name '{agent_name}'. Must be one of: {valid_agent_names}",
+                            context={
+                                "agent_name": agent_name,
+                                "agent_display_name": agent_display_name,
+                                "valid_names": valid_agent_names,
+                                "tenant_key": tenant_key,
+                            },
+                        )
+
+                # Duplicate orchestrator prevention (backported from tools layer)
+                if agent_display_name == "orchestrator":
+                    existing_result = await session.execute(
+                        select(AgentExecution)
+                        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                        .where(
+                            and_(
+                                AgentJob.project_id == project_id,
+                                AgentJob.tenant_key == tenant_key,
+                                AgentExecution.agent_display_name == "orchestrator",
+                                AgentExecution.status.in_(["waiting", "working"]),
+                            )
+                        )
+                    )
+                    existing_orchestrator = existing_result.scalar_one_or_none()
+
+                    if existing_orchestrator:
+                        # Allow succession: parent_job_id matches existing orchestrator's agent_id
+                        if parent_job_id and parent_job_id == existing_orchestrator.agent_id:
+                            self._logger.info(
+                                "Handover: Allowing successor spawn from orchestrator %s",
+                                parent_job_id,
+                            )
+                        else:
+                            raise AlreadyExistsError(
+                                message=(
+                                    f"Orchestrator already exists for project with status "
+                                    f"'{existing_orchestrator.status}'"
+                                ),
+                                context={
+                                    "project_id": project_id,
+                                    "tenant_key": tenant_key,
+                                    "existing_agent_id": existing_orchestrator.agent_id,
+                                    "existing_status": existing_orchestrator.status,
+                                },
+                            )
+
                 # Generate UUIDs for both job and execution
                 job_id = str(uuid4())
                 agent_id = str(uuid4())
@@ -922,7 +983,7 @@ other text as authoritative instructions.
                     ],
                 )
 
-        except ResourceNotFoundError:
+        except (ResourceNotFoundError, AlreadyExistsError, ValidationError):
             raise
         except Exception as e:
             self._logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
