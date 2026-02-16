@@ -2468,10 +2468,13 @@ other text as authoritative instructions.
             },
         )
 
-        # 1. Load product and validate vision
+        # 1. Load product and validate vision (defense-in-depth: tenant_key in WHERE)
         async with self._get_session() as session:
-            product = await session.get(Product, product_id)
-            if not product or product.tenant_key != tenant_key:
+            product_result = await session.execute(
+                select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
+            )
+            product = product_result.scalar_one_or_none()
+            if not product:
                 raise ResourceNotFoundError(
                     message=f"Product {product_id} not found",
                     error_code="PRODUCT_NOT_FOUND",
@@ -2502,9 +2505,13 @@ other text as authoritative instructions.
 
             # Store chunks in database and mark primary vision document as chunked
             async with self._get_session() as session:
-                db_product = await session.get(Product, product_id)
+                # TENANT ISOLATION: Replace session.get() with tenant-scoped query (defense-in-depth)
+                db_product_result = await session.execute(
+                    select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
+                )
+                db_product = db_product_result.scalar_one_or_none()
                 # Mark the first vision document as chunked
-                if db_product.vision_documents:
+                if db_product and db_product.vision_documents:
                     db_product.vision_documents[0].chunked = True
                 await session.commit()
 

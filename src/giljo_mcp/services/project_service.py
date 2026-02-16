@@ -232,11 +232,11 @@ class ProjectService:
                         context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
-                # Get agent jobs for this project (migrated to AgentJob + AgentExecution - Handover 0367a)
+                # Get agent jobs for this project (defense-in-depth: tenant_key on join query)
                 agent_query = (
                     select(AgentJob, AgentExecution)
                     .join(AgentExecution, AgentJob.job_id == AgentExecution.job_id)
-                    .where(AgentJob.project_id == project_id)
+                    .where(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key)
                     .order_by(AgentJob.created_at)
                 )
                 agent_result = await session.execute(agent_query)
@@ -337,12 +337,16 @@ class ProjectService:
                     self._logger.info(f"No active project found for tenant {tenant_key}")
                     return None
 
-                # Get agent job and message counts (migrated to AgentJob - Handover 0367a)
-                agent_job_stmt = select(func.count(AgentJob.job_id)).where(AgentJob.project_id == project.id)
+                # Get agent job and message counts (defense-in-depth: tenant_key on child queries)
+                agent_job_stmt = select(func.count(AgentJob.job_id)).where(
+                    AgentJob.project_id == project.id, AgentJob.tenant_key == tenant_key
+                )
                 agent_count_result = await session.execute(agent_job_stmt)
                 agent_count = agent_count_result.scalar() or 0
 
-                message_stmt = select(func.count(Message.id)).where(Message.project_id == project.id)
+                message_stmt = select(func.count(Message.id)).where(
+                    Message.project_id == project.id, Message.tenant_key == tenant_key
+                )
                 message_count_result = await session.execute(message_stmt)
                 message_count = message_count_result.scalar() or 0
 
