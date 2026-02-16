@@ -198,6 +198,35 @@ async def tenant_a_project(api_client: AsyncClient, tenant_a_admin_token: str, t
 
 
 @pytest.fixture
+async def tenant_a_agent_templates(db_manager, tenant_a_admin):
+    """Create AgentTemplate records for Tenant A.
+
+    Required because OrchestrationService.spawn_agent_job() validates
+    agent_name against active AgentTemplate records when
+    agent_display_name != 'orchestrator'.
+    """
+    from src.giljo_mcp.models import AgentTemplate
+
+    tenant_key = tenant_a_admin._test_tenant_key
+    agent_names = ["Test Implementer"]
+
+    async with db_manager.get_session_async() as session:
+        for name in agent_names:
+            template = AgentTemplate(
+                tenant_key=tenant_key,
+                name=name,
+                role="implementer",
+                description=f"{name} agent template for testing",
+                system_instructions=f"# {name}\nTest agent template.",
+                is_active=True,
+            )
+            session.add(template)
+        await session.commit()
+
+    return agent_names
+
+
+@pytest.fixture
 async def tenant_a_orchestrator_job(api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_project):
     """Create an orchestrator agent job for Tenant A.
 
@@ -437,6 +466,7 @@ class TestSimpleHandover:
         api_client: AsyncClient,
         tenant_a_admin_token: str,
         tenant_a_project,
+        tenant_a_agent_templates,
     ):
         """Test POST /api/agent-jobs/{job_id}/simple-handover - 400 for non-orchestrator agent.
 
