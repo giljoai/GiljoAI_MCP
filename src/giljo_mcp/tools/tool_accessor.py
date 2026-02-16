@@ -655,9 +655,9 @@ class ToolAccessor:
 
     async def health_check(self) -> dict[str, Any]:
         """MCP server health check"""
-        from giljo_mcp.tools.orchestration import health_check
+        from giljo_mcp.services.orchestration_service import OrchestrationService
 
-        return await health_check()
+        return await OrchestrationService.health_check()
 
     async def generate_download_token(self, content_type: str, tenant_key: str) -> dict[str, Any]:
         """
