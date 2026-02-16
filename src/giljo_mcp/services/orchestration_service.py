@@ -1020,7 +1020,11 @@ other text as authoritative instructions.
                 if job.project_id:
                     from src.giljo_mcp.models.projects import Project
 
-                    project = await session.get(Project, job.project_id)
+                    # TENANT ISOLATION: Replace session.get() with tenant-scoped query (Phase D audit fix)
+                    project_res = await session.execute(
+                        select(Project).where(Project.id == job.project_id, Project.tenant_key == tenant_key)
+                    )
+                    project = project_res.scalar_one_or_none()
                     if project and project.implementation_launched_at is None:
                         # BLOCKED: User must click "Implement" button first
                         return MissionResponse(
@@ -1338,7 +1342,10 @@ other text as authoritative instructions.
                     )
 
                 # Get job for mission details
-                job_result = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
+                # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
+                job_result = await session.execute(
+                    select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
+                )
                 job = job_result.scalar_one_or_none()
                 if not job:
                     raise ResourceNotFoundError(
@@ -1349,7 +1356,11 @@ other text as authoritative instructions.
                 if job.project_id:
                     from src.giljo_mcp.models.projects import Project
 
-                    project = await session.get(Project, job.project_id)
+                    # TENANT ISOLATION: Replace session.get() with tenant-scoped query (Phase D audit fix)
+                    project_res = await session.execute(
+                        select(Project).where(Project.id == job.project_id, Project.tenant_key == tenant_key)
+                    )
+                    project = project_res.scalar_one_or_none()
                     if project and project.implementation_launched_at is None:
                         # BLOCKED: User must click "Implement" button first
                         raise ProjectStateError(
@@ -1540,7 +1551,10 @@ other text as authoritative instructions.
                     )
 
                 # Get job for metadata and project_id
-                job_res = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
+                # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
+                job_res = await session.execute(
+                    select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
+                )
                 job = job_res.scalar_one_or_none()
 
                 if not job:
@@ -1593,7 +1607,12 @@ other text as authoritative instructions.
                     from sqlalchemy import delete as sql_delete
 
                     # Delete existing items for this job (replace strategy)
-                    await session.execute(sql_delete(AgentTodoItem).where(AgentTodoItem.job_id == job_id))
+                    # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
+                    await session.execute(
+                        sql_delete(AgentTodoItem).where(
+                            AgentTodoItem.job_id == job_id, AgentTodoItem.tenant_key == tenant_key
+                        )
+                    )
 
                     # Insert new items with sequence
                     for seq, item in enumerate(todo_items):
@@ -1625,8 +1644,11 @@ other text as authoritative instructions.
             # Handover 0402: Query todo_items for WebSocket payload
             todo_items_payload = None
             async with self._get_session() as session:
+                # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
                 result = await session.execute(
-                    select(AgentTodoItem).where(AgentTodoItem.job_id == job_id).order_by(AgentTodoItem.sequence)
+                    select(AgentTodoItem)
+                    .where(AgentTodoItem.job_id == job_id, AgentTodoItem.tenant_key == tenant_key)
+                    .order_by(AgentTodoItem.sequence)
                 )
                 items = result.scalars().all()
                 if items:
@@ -1835,8 +1857,10 @@ other text as authoritative instructions.
 
                     # Also update job status to completed if this is the last active execution
                     # Check if there are any other active executions
+                    # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
                     other_active_stmt = select(AgentExecution).where(
                         AgentExecution.job_id == job_id,
+                        AgentExecution.tenant_key == tenant_key,
                         AgentExecution.agent_id != execution.agent_id,
                         AgentExecution.status.not_in(["complete", "decommissioned"]),
                     )
@@ -1987,7 +2011,10 @@ other text as authoritative instructions.
                     )
 
                 # Get job for project_id (needed for WebSocket event filtering)
-                job_res = await session.execute(select(AgentJob).where(AgentJob.job_id == job_id))
+                # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
+                job_res = await session.execute(
+                    select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
+                )
                 job = job_res.scalar_one_or_none()
 
                 # Capture old status before updating

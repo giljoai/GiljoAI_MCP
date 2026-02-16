@@ -1005,19 +1005,16 @@ class MessageService:
             if not tenant_key:
                 tenant_key = self.tenant_manager.get_current_tenant()
 
-            if not tenant_key and not project_id:
-                raise ValidationError(
-                    message="No active project or tenant context", context={"operation": "list_messages"}
-                )
+            # TENANT ISOLATION: tenant_key is always required (Phase D audit fix)
+            if not tenant_key:
+                raise ValidationError(message="No tenant context available", context={"operation": "list_messages"})
 
             async with self._get_session() as session:
                 # If agent_id provided, filter messages for that agent
                 if agent_id:
                     # Get agent job to verify it exists and get project context
-                    # Build WHERE conditions
-                    conditions = [AgentJob.job_id == agent_id]
-                    if tenant_key:
-                        conditions.append(AgentJob.tenant_key == tenant_key)
+                    # TENANT ISOLATION: Always filter by tenant_key (Phase D audit fix)
+                    conditions = [AgentJob.job_id == agent_id, AgentJob.tenant_key == tenant_key]
 
                     result = await session.execute(select(AgentJob).where(and_(*conditions)))
                     job = result.scalar_one_or_none()
@@ -1083,13 +1080,10 @@ class MessageService:
 
                 # Otherwise, list by project
                 if project_id:
-                    # TENANT ISOLATION: Filter by tenant_key when available
-                    if tenant_key:
-                        query = select(Message).where(
-                            and_(Message.project_id == project_id, Message.tenant_key == tenant_key)
-                        )
-                    else:
-                        query = select(Message).where(Message.project_id == project_id)
+                    # TENANT ISOLATION: Always filter by tenant_key (Phase D audit fix)
+                    query = select(Message).where(
+                        and_(Message.project_id == project_id, Message.tenant_key == tenant_key)
+                    )
                 else:
                     # Find project by tenant key
                     project_query = select(Project).where(
@@ -1114,7 +1108,8 @@ class MessageService:
                         # Handover 0731c: Return MessageListResult typed model
                         return MessageListResult(messages=[], count=0)
 
-                    query = select(Message).where(Message.project_id == project.id)
+                    # TENANT ISOLATION: Always filter by tenant_key (Phase D audit fix)
+                    query = select(Message).where(Message.project_id == project.id, Message.tenant_key == tenant_key)
 
                 # Apply status filter
                 if status:
