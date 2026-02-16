@@ -720,7 +720,7 @@ function formatDate(dateString) {
 }
 
 function removeVisionFile(index) {
-  visionFiles.value.splice(index, 1)
+  visionFiles.value = visionFiles.value.filter((_, i) => i !== index)
   visionUploadError.value = null // Clear error when file is removed
 }
 
