@@ -25,7 +25,7 @@ import pytest_asyncio
 
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models import Product, Project
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
 

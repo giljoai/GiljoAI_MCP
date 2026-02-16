@@ -25,7 +25,7 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.exceptions import AlreadyExistsError, AuthorizationError, ResourceNotFoundError
+from src.giljo_mcp.exceptions import AlreadyExistsError, AuthorizationError
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.services.org_service import OrgService
