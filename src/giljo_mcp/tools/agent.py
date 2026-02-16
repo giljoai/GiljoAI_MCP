@@ -111,7 +111,7 @@ async def log_interaction_legacy(interaction: dict[str, Any], tenant_key: str, s
 
 # Helper functions for testing and internal use
 async def _ensure_agent(
-    project_id: str, agent_name: str, mission: Optional[str] = None, session=None
+    project_id: str, agent_name: str, mission: Optional[str] = None, tenant_key: Optional[str] = None, session=None
 ) -> dict[str, Any]:
     """Internal helper for ensure_agent - used by tests"""
     from giljo_mcp.database import DatabaseManager
@@ -119,19 +119,22 @@ async def _ensure_agent(
     if session is None:
         db_manager = DatabaseManager()
         async with db_manager.get_session_async() as db_session:
-            return await _ensure_agent_with_session(db_session, project_id, agent_name, mission)
+            return await _ensure_agent_with_session(db_session, project_id, agent_name, mission, tenant_key)
     else:
-        return await _ensure_agent_with_session(session, project_id, agent_name, mission)
+        return await _ensure_agent_with_session(session, project_id, agent_name, mission, tenant_key)
 
 
 async def _ensure_agent_with_session(
-    session, project_id: str, agent_name: str, mission: Optional[str] = None
+    session, project_id: str, agent_name: str, mission: Optional[str] = None, tenant_key: Optional[str] = None
 ) -> dict[str, Any]:
     """Internal helper with session for ensure_agent - Creates AgentJob + AgentExecution"""
     from uuid import uuid4
 
-    # Check if project exists
-    project_query = select(Project).where(Project.id == project_id)
+    # TENANT ISOLATION: Scope Project lookup by tenant_key when provided (Phase D audit fix)
+    if tenant_key:
+        project_query = select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
+    else:
+        project_query = select(Project).where(Project.id == project_id)
     project_result = await session.execute(project_query)
     project = project_result.scalar_one_or_none()
 
@@ -215,7 +218,7 @@ async def _ensure_agent_with_session(
 
 
 async def _decommission_agent(
-    agent_name: str, project_id: str, reason: str = "completed", session=None
+    agent_name: str, project_id: str, reason: str = "completed", tenant_key: Optional[str] = None, session=None
 ) -> dict[str, Any]:
     """Internal helper for decommission_agent - used by tests"""
     from giljo_mcp.database import DatabaseManager
@@ -223,17 +226,20 @@ async def _decommission_agent(
     if session is None:
         db_manager = DatabaseManager()
         async with db_manager.get_session_async() as db_session:
-            return await _decommission_agent_with_session(db_session, agent_name, project_id, reason)
+            return await _decommission_agent_with_session(db_session, agent_name, project_id, reason, tenant_key)
     else:
-        return await _decommission_agent_with_session(session, agent_name, project_id, reason)
+        return await _decommission_agent_with_session(session, agent_name, project_id, reason, tenant_key)
 
 
 async def _decommission_agent_with_session(
-    session, agent_name: str, project_id: str, reason: str = "completed"
+    session, agent_name: str, project_id: str, reason: str = "completed", tenant_key: Optional[str] = None
 ) -> dict[str, Any]:
     """Internal helper with session for decommission_agent - Updates AgentExecution status"""
-    # Get project for tenant isolation
-    project_query = select(Project).where(Project.id == project_id)
+    # TENANT ISOLATION: Scope Project lookup by tenant_key when provided (Phase D audit fix)
+    if tenant_key:
+        project_query = select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
+    else:
+        project_query = select(Project).where(Project.id == project_id)
     project_result = await session.execute(project_query)
     project = project_result.scalar_one_or_none()
 
@@ -291,23 +297,30 @@ async def _decommission_agent_with_session(
     }
 
 
-async def _get_agent_health(agent_name: Optional[str] = None, session=None) -> dict[str, Any]:
+async def _get_agent_health(
+    agent_name: Optional[str] = None, tenant_key: Optional[str] = None, session=None
+) -> dict[str, Any]:
     """Internal helper for agent_health - used by tests"""
     from giljo_mcp.database import DatabaseManager
 
     if session is None:
         db_manager = DatabaseManager()
         async with db_manager.get_session_async() as db_session:
-            return await _get_agent_health_with_session(db_session, agent_name)
+            return await _get_agent_health_with_session(db_session, agent_name, tenant_key)
     else:
-        return await _get_agent_health_with_session(session, agent_name)
+        return await _get_agent_health_with_session(session, agent_name, tenant_key)
 
 
-async def _get_agent_health_with_session(session, agent_name: Optional[str] = None) -> dict[str, Any]:
+async def _get_agent_health_with_session(
+    session, agent_name: Optional[str] = None, tenant_key: Optional[str] = None
+) -> dict[str, Any]:
     """Internal helper with session for agent_health - Queries AgentExecution table"""
     if agent_name:
-        # Query AgentExecution by agent_name
-        execution_query = select(AgentExecution).where(AgentExecution.agent_name.like(f"{agent_name}%"))
+        # TENANT ISOLATION: Filter by tenant_key when provided (Phase D audit fix)
+        conditions = [AgentExecution.agent_name.like(f"{agent_name}%")]
+        if tenant_key:
+            conditions.append(AgentExecution.tenant_key == tenant_key)
+        execution_query = select(AgentExecution).where(and_(*conditions))
         execution_result = await session.execute(execution_query)
         execution = execution_result.scalar_one_or_none()
 
@@ -323,14 +336,24 @@ async def _get_agent_health_with_session(session, agent_name: Optional[str] = No
         }
 
     # Return health for all agent executions
-    executions_query = select(AgentExecution)
+    # TENANT ISOLATION: Filter by tenant_key when provided (Phase D audit fix)
+    if tenant_key:
+        executions_query = select(AgentExecution).where(AgentExecution.tenant_key == tenant_key)
+    else:
+        executions_query = select(AgentExecution)
     executions_result = await session.execute(executions_query)
     executions = executions_result.scalars().all()
 
     # Get associated jobs for project_id
     agents_data = []
     for execution in executions:
-        job_query = select(AgentJob).where(AgentJob.job_id == execution.job_id)
+        # TENANT ISOLATION: Filter by tenant_key when provided (Phase D audit fix)
+        if tenant_key:
+            job_query = select(AgentJob).where(
+                and_(AgentJob.job_id == execution.job_id, AgentJob.tenant_key == tenant_key)
+            )
+        else:
+            job_query = select(AgentJob).where(AgentJob.job_id == execution.job_id)
         job_result = await session.execute(job_query)
         job = job_result.scalar_one_or_none()
 
@@ -350,7 +373,12 @@ async def _get_agent_health_with_session(session, agent_name: Optional[str] = No
 
 
 async def _handoff_agent_work(
-    from_agent: str, to_agent: str, project_id: str, context: dict[str, Any], session=None
+    from_agent: str,
+    to_agent: str,
+    project_id: str,
+    context: dict[str, Any],
+    tenant_key: Optional[str] = None,
+    session=None,
 ) -> dict[str, Any]:
     """Internal helper for handoff - used by tests"""
     from giljo_mcp.database import DatabaseManager
@@ -358,17 +386,27 @@ async def _handoff_agent_work(
     if session is None:
         db_manager = DatabaseManager()
         async with db_manager.get_session_async() as db_session:
-            return await _handoff_agent_work_with_session(db_session, from_agent, to_agent, project_id, context)
+            return await _handoff_agent_work_with_session(
+                db_session, from_agent, to_agent, project_id, context, tenant_key
+            )
     else:
-        return await _handoff_agent_work_with_session(session, from_agent, to_agent, project_id, context)
+        return await _handoff_agent_work_with_session(session, from_agent, to_agent, project_id, context, tenant_key)
 
 
 async def _handoff_agent_work_with_session(
-    session, from_agent: str, to_agent: str, project_id: str, context: dict[str, Any]
+    session,
+    from_agent: str,
+    to_agent: str,
+    project_id: str,
+    context: dict[str, Any],
+    tenant_key: Optional[str] = None,
 ) -> dict[str, Any]:
     """Internal helper with session for handoff - Creates successor AgentExecution"""
-    # Get project for tenant isolation
-    project_query = select(Project).where(Project.id == project_id)
+    # TENANT ISOLATION: Scope Project lookup by tenant_key when provided (Phase D audit fix)
+    if tenant_key:
+        project_query = select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
+    else:
+        project_query = select(Project).where(Project.id == project_id)
     project_result = await session.execute(project_query)
     project = project_result.scalar_one_or_none()
 
