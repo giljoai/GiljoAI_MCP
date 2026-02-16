@@ -136,11 +136,12 @@ class TestGetAgentMissionImplementationGate:
         exec_result = MagicMock()
         exec_result.scalar_one_or_none = MagicMock(return_value=execution)
 
-        # Mock project lookup via session.get
-        session.get = AsyncMock(return_value=project)
+        # Mock project lookup via session.execute (tenant-scoped query)
+        project_result = MagicMock()
+        project_result.scalar_one_or_none = MagicMock(return_value=project)
 
-        # Mock session.execute for job and execution lookups
-        session.execute = AsyncMock(side_effect=[job_result, exec_result])
+        # Mock session.execute for job, execution, and project lookups
+        session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result])
 
         # Call get_agent_mission
         response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
@@ -175,14 +176,15 @@ class TestGetAgentMissionImplementationGate:
         exec_result = MagicMock()
         exec_result.scalar_one_or_none = MagicMock(return_value=execution)
 
+        # Mock project lookup via session.execute (tenant-scoped query)
+        project_result = MagicMock()
+        project_result.scalar_one_or_none = MagicMock(return_value=project)
+
         all_exec_result = MagicMock()
         all_exec_result.all = MagicMock(return_value=[(execution, job)])
 
-        # Mock project lookup via session.get
-        session.get = AsyncMock(return_value=project)
-
-        # Mock session.execute for job, execution, and project executions
-        session.execute = AsyncMock(side_effect=[job_result, exec_result, all_exec_result])
+        # Mock session.execute for job, execution, project, and project executions
+        session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result, all_exec_result])
 
         # Stub httpx to avoid real WebSocket bridge calls
         with patch("httpx.AsyncClient") as MockHttpxClient:
@@ -229,11 +231,12 @@ class TestAcknowledgeJobImplementationGate:
         job_result = MagicMock()
         job_result.scalar_one_or_none = MagicMock(return_value=job)
 
-        # Mock project lookup via session.get
-        session.get = AsyncMock(return_value=project)
+        # Mock project lookup via session.execute (tenant-scoped query)
+        project_result = MagicMock()
+        project_result.scalar_one_or_none = MagicMock(return_value=project)
 
-        # Mock session.execute for execution and job lookups
-        session.execute = AsyncMock(side_effect=[exec_result, job_result])
+        # Mock session.execute for execution, job, and project lookups
+        session.execute = AsyncMock(side_effect=[exec_result, job_result, project_result])
 
         # Call acknowledge_job - should raise DatabaseError wrapping ProjectStateError
         with pytest.raises(DatabaseError) as exc_info:
@@ -263,11 +266,12 @@ class TestAcknowledgeJobImplementationGate:
         job_result = MagicMock()
         job_result.scalar_one_or_none = MagicMock(return_value=job)
 
-        # Mock project lookup via session.get
-        session.get = AsyncMock(return_value=project)
+        # Mock project lookup via session.execute (tenant-scoped query)
+        project_result = MagicMock()
+        project_result.scalar_one_or_none = MagicMock(return_value=project)
 
-        # Mock session.execute for execution and job lookups
-        session.execute = AsyncMock(side_effect=[exec_result, job_result])
+        # Mock session.execute for execution, job, and project lookups
+        session.execute = AsyncMock(side_effect=[exec_result, job_result, project_result])
 
         # Stub httpx to avoid real WebSocket bridge calls
         with patch("httpx.AsyncClient") as MockHttpxClient:

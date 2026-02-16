@@ -79,24 +79,28 @@ async def test_project(db_manager: DatabaseManager, test_product: dict):
 
 
 @pytest.fixture
-async def test_agent_template(db_manager: DatabaseManager, test_product: dict):
-    """Create a test agent template."""
+async def test_agent_templates(db_manager: DatabaseManager, test_product: dict):
+    """Create test agent templates for agent name validation."""
     async with db_manager.get_session_async() as session:
-        template = AgentTemplate(
-            tenant_key=test_product["tenant_key"],
-            name="implementer",
-            role="implementer",
-            description="Implementation specialist",
-            system_instructions="# Implementer\nImplements features according to specifications.",
-            is_active=True,
-        )
-        session.add(template)
+        templates = []
+        for name, role in [("implementer", "implementer"), ("tester", "tester")]:
+            template = AgentTemplate(
+                tenant_key=test_product["tenant_key"],
+                name=name,
+                role=role,
+                description=f"{role.title()} specialist",
+                system_instructions=f"# {role.title()}\nSpecialist agent.",
+                is_active=True,
+            )
+            session.add(template)
+            templates.append(template)
         await session.commit()
-        await session.refresh(template)
+        for t in templates:
+            await session.refresh(t)
 
         yield {
             **test_product,
-            "template_id": str(template.id),
+            "template_ids": [str(t.id) for t in templates],
         }
 
 
@@ -135,12 +139,13 @@ class TestSpawnAgentJob:
         self,
         orchestration_service: OrchestrationService,
         test_project: dict,
+        test_agent_templates: dict,
         db_manager: DatabaseManager,
     ):
         """Test that spawn_agent_job creates both AgentJob and AgentExecution records."""
         result = await orchestration_service.spawn_agent_job(
             agent_display_name="implementer",
-            agent_name="Implementer-1",
+            agent_name="implementer",
             mission="Implement user authentication module",
             project_id=test_project["project_id"],
             tenant_key=test_project["tenant_key"],
@@ -180,12 +185,13 @@ class TestSpawnAgentJob:
         self,
         orchestration_service: OrchestrationService,
         test_project: dict,
+        test_agent_templates: dict,
         db_manager: DatabaseManager,
     ):
         """Test that agent is routed correctly based on agent_display_name."""
         result = await orchestration_service.spawn_agent_job(
             agent_display_name="tester",
-            agent_name="Tester-1",
+            agent_name="tester",
             mission="Test authentication module",
             project_id=test_project["project_id"],
             tenant_key=test_project["tenant_key"],
@@ -242,13 +248,14 @@ class TestMultiTenantIsolation:
         self,
         orchestration_service: OrchestrationService,
         test_project: dict,
+        test_agent_templates: dict,
         db_manager: DatabaseManager,
     ):
         """Test that get_agent_mission respects tenant isolation."""
         # Create job
         result = await orchestration_service.spawn_agent_job(
             agent_display_name="implementer",
-            agent_name="Implementer-1",
+            agent_name="implementer",
             mission="Implement feature",
             project_id=test_project["project_id"],
             tenant_key=test_project["tenant_key"],
@@ -322,13 +329,14 @@ class TestAgentMission:
         self,
         orchestration_service: OrchestrationService,
         test_project: dict,
+        test_agent_templates: dict,
         db_manager: DatabaseManager,
     ):
         """Test that get_agent_mission returns MissionResponse with full_protocol field."""
         # Create job
         result = await orchestration_service.spawn_agent_job(
             agent_display_name="implementer",
-            agent_name="Implementer-1",
+            agent_name="implementer",
             mission="Implement user authentication",
             project_id=test_project["project_id"],
             tenant_key=test_project["tenant_key"],

@@ -82,11 +82,15 @@ def setup_get_agent_mission_mocks(session, job, execution):
     """
     Helper to setup database mocks for get_agent_mission() calls.
 
-    The method makes 3 database queries:
+    The method makes 4 database queries:
     1. Get AgentJob by job_id
     2. Get AgentExecution by job_id
-    3. Get all project executions (if job has project_id)
+    3. Get Project for implementation phase gate (Handover 0709)
+    4. Get all project executions (if job has project_id)
     """
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
     # 1. Get AgentJob
     job_result = MagicMock()
     job_result.scalar_one_or_none = MagicMock(return_value=job)
@@ -95,12 +99,21 @@ def setup_get_agent_mission_mocks(session, job, execution):
     exec_result = MagicMock()
     exec_result.scalar_one_or_none = MagicMock(return_value=execution)
 
-    # 3. Get all project executions (returns a list of tuples)
+    # 3. Get Project for implementation phase gate
+    mock_project = SimpleNamespace(
+        id=job.project_id,
+        tenant_key=job.tenant_key,
+        implementation_launched_at=datetime.now(timezone.utc),
+    )
+    project_result = MagicMock()
+    project_result.scalar_one_or_none = MagicMock(return_value=mock_project)
+
+    # 4. Get all project executions (returns a list of tuples)
     all_exec_result = MagicMock()
     all_exec_result.all = MagicMock(return_value=[(execution, job)])
 
     # Mock session.execute to return different results for different queries
-    session.execute = AsyncMock(side_effect=[job_result, exec_result, all_exec_result])
+    session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result, all_exec_result])
 
 
 class TestGetAgentMissionFullProtocol:
