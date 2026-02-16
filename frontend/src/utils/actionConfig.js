@@ -10,8 +10,6 @@ const ACTION_CONFIG = {
     label: 'Launch Agent',
     tooltip: 'Copy prompt to clipboard',
     confirmation: false,
-    requiresStatus: [], // Always available for prompt re-copying
-    excludeTerminalStates: false,
   },
 
   copyPrompt: {
@@ -20,8 +18,6 @@ const ACTION_CONFIG = {
     label: 'Copy Prompt',
     tooltip: 'Copy agent prompt to clipboard',
     confirmation: false,
-    requiresStatus: [], // Available for all
-    excludeTerminalStates: false,
   },
 
   viewMessages: {
@@ -30,8 +26,6 @@ const ACTION_CONFIG = {
     label: 'View Messages',
     tooltip: 'Open message history',
     confirmation: false,
-    requiresStatus: [], // Available for all
-    excludeTerminalStates: false,
     badge: true, // Show unread count badge
   },
 
@@ -43,10 +37,6 @@ const ACTION_CONFIG = {
     // Handover 0461d: Direct API call - no confirmation dialog
     // Copies continuation prompt to clipboard automatically
     confirmation: false,
-    requiresStatus: ['working'],
-    requiresAgentType: 'orchestrator',
-    // Handover 0461d: Session refresh available while working
-    excludeTerminalStates: true,
   },
 }
 
