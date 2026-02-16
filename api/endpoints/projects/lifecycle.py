@@ -218,7 +218,8 @@ async def restore_project(
     logger.info(f"User {current_user.username} restoring project {project_id}")
 
     # Restore via ProjectService (raises exceptions on error)
-    await project_service.restore_project(project_id=project_id)
+    # SECURITY: Explicit tenant_key prevents cross-tenant project restoration
+    await project_service.restore_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
     logger.info(f"Restored project {project_id}")
 
