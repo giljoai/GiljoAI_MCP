@@ -207,7 +207,7 @@
           </template>
 
           <!-- Staged Column -->
-          <template v-slot:item.staged="{ item }">
+          <template v-slot:item.staging_status="{ item }">
             <v-chip
               :color="isProjectStaged(item) ? 'success' : 'default'"
               size="small"
@@ -234,7 +234,7 @@
           </template>
 
           <!-- Status Column (StatusBadge with actions dropdown) -->
-          <template v-slot:item.actions="{ item }">
+          <template v-slot:item.status="{ item }">
             <div class="d-flex align-center justify-center">
               <StatusBadge
                 :status="normalizeStatus(item.status)"
@@ -625,13 +625,13 @@ const filterOptions = computed(() => {
 
 // Table headers
 const headers = [
-  { title: 'Name', key: 'name', sortable: true, width: '25%' },
-  { title: 'Product', key: 'product', sortable: false, width: '15%' },
-  { title: 'Staged', key: 'staged', sortable: false, width: '10%', align: 'center' },
-  { title: 'Created', key: 'created_at', sortable: true, width: '15%' },
-  { title: 'Completed', key: 'completed_at', sortable: true, width: '15%', align: 'center' },
-  { title: 'Status', key: 'actions', sortable: false, width: '120px', align: 'center' },
-  { title: 'Actions', key: 'menu', sortable: false, width: '60px', align: 'center' },
+  { title: 'Name', key: 'name', sortable: true, width: '28%' },
+  { title: 'Product', key: 'product', sortable: false, width: '12%' },
+  { title: 'Staged', key: 'staging_status', sortable: true, width: '8%', align: 'center' },
+  { title: 'Created', key: 'created_at', sortable: true, width: '14%' },
+  { title: 'Completed', key: 'completed_at', sortable: true, width: '14%', align: 'center' },
+  { title: 'Status', key: 'status', sortable: true, width: '13%', align: 'center' },
+  { title: 'Actions', key: 'menu', sortable: false, width: '11%', align: 'center' },
 ]
 
 // Computed properties
