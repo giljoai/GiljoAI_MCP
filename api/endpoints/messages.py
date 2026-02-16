@@ -209,8 +209,10 @@ async def get_messages(
     message_service: MessageService = Depends(get_message_service),
 ):
     """Get pending messages for an agent"""
-    # Service raises exceptions on error
-    result = await message_service.get_messages(agent_name=agent_name, project_id=project_id, status="pending")
+    # SECURITY: Explicit tenant_key prevents cross-tenant message access
+    result = await message_service.get_messages(
+        agent_name=agent_name, project_id=project_id, status="pending", tenant_key=current_user.tenant_key
+    )
 
     messages = []
     for msg in result.messages:
@@ -251,8 +253,10 @@ async def complete_message(
     """Mark message as completed"""
     from api.app import state
 
-    # Service raises exceptions on error
-    await message_service.complete_message(message_id=message_id, agent_name=agent_name, result=result)
+    # SECURITY: Explicit tenant_key prevents cross-tenant message completion
+    await message_service.complete_message(
+        message_id=message_id, agent_name=agent_name, result=result, tenant_key=current_user.tenant_key
+    )
 
     # Broadcast message completion
     if state.websocket_manager:
@@ -286,12 +290,13 @@ async def broadcast_message(
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
 
-    # Use MessageService to broadcast (it handles finding active agents, raises exceptions on error)
+    # SECURITY: Explicit tenant_key prevents cross-tenant broadcast
     message_result = await message_service.broadcast(
         content=broadcast.content,
         project_id=broadcast.project_id,
         priority=broadcast.priority,
         from_agent=broadcast.from_agent or "user",
+        tenant_key=current_user.tenant_key,
     )
 
     # Handover 0731c: Service returns SendMessageResult typed model
