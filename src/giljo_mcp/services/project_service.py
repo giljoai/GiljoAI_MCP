@@ -2567,16 +2567,16 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             days_before_purge: Number of days before permanent deletion (default: 10)
 
         Returns:
-            dict: Purge results with count and details
+            ProjectPurgeResult: Pydantic model with:
                 - purged_count: int - Number of projects purged
-                - projects: list - Details of purged projects
+                - projects: list[dict] - Details of purged projects
 
         Raises:
             BaseGiljoError: Database not available
 
         Example:
             >>> result = await service.purge_expired_deleted_projects()
-            >>> print(f"Nuclear purged {result['purged_count']} expired projects")
+            >>> print(f"Nuclear purged {result.purged_count} expired projects")
         """
         from datetime import timedelta, timezone
 
