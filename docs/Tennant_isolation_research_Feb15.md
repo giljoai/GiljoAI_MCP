@@ -101,85 +101,119 @@ The tenant isolation bug occurred because `get_deleted_projects()` at `api/endpo
 
 ---
 
-## Remaining Gaps (P1 - Next Sprint)
+## BATCH 1 - OrchestrationService + MessageService list_messages (Commit 6c6c7221)
 
-### OrchestrationService - AgentJob lookups by job_id (4 methods)
+### OrchestrationService (7 fixes)
 
-| Method | Line | Model | Risk |
-|--------|------|-------|------|
-| `acknowledge_job` | 1341 | AgentJob | HIGH |
-| `report_progress` | 1543 | AgentJob | HIGH |
-| `complete_job` | 1838 | AgentExecution | HIGH |
-| `report_error` | 1990 | AgentJob | HIGH |
+| Method | Finding | Severity | Fix Applied |
+|--------|---------|----------|-------------|
+| `report_progress` | AgentJob lookup by `job_id` only (line 1543) | HIGH | Added `AgentJob.tenant_key == tenant_key` to WHERE |
+| `report_progress` | `DELETE AgentTodoItem` by `job_id` only (line 1596) | CRITICAL | Added `AgentTodoItem.tenant_key == tenant_key` to DELETE WHERE |
+| `report_progress` | `SELECT AgentTodoItem` by `job_id` only (line 1629) | HIGH | Added `AgentTodoItem.tenant_key == tenant_key` to SELECT WHERE |
+| `get_agent_mission` | `session.get(Project, job.project_id)` bypasses WHERE (line 1023) | HIGH | Replaced with `select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)` |
+| `acknowledge_job` | AgentJob lookup by `job_id` only (line 1341) + `session.get(Project)` (line 1352) | HIGH | Added `tenant_key` to AgentJob WHERE; replaced `session.get` with `select().where(tenant_key)` |
+| `complete_job` | Sibling AgentExecution query by `job_id` only (line 1838) | HIGH | Added `AgentExecution.tenant_key == tenant_key` to WHERE |
+| `report_error` | AgentJob lookup by `job_id` only (line 1990) | HIGH | Added `AgentJob.tenant_key == tenant_key` to WHERE |
 
-All query by `job_id` only without `tenant_key`. Reads feed directly into writes. Mitigated by UUID uniqueness + MCP auth.
+### MessageService list_messages (4 fixes)
 
-### OrchestrationService - session.get() PK lookups
+| Finding | Severity | Fix Applied |
+|---------|----------|-------------|
+| `tenant_key` parameter was optional, allowing unscoped queries | HIGH | Made `tenant_key` always required (raises error if None) |
+| AgentJob lookup conditions only used `tenant_key` conditionally | HIGH | `AgentJob.tenant_key == tenant_key` always applied |
+| Message query by `project_id` had conditional tenant filter | HIGH | `Message.tenant_key == tenant_key` always applied |
+| Fallback `project.id` query path skipped tenant filter | HIGH | `Project.tenant_key == tenant_key` always applied |
 
-| Method | Line | Model | Risk |
-|--------|------|-------|------|
-| `get_agent_mission` | 1023 | Project | HIGH |
-| `acknowledge_job` | 1352 | Project | HIGH |
-| `process_product_vision` | 2446 | Product | HIGH (post-fetch check mitigates) |
-| `process_product_vision` | 2478 | Product | HIGH (no post-fetch check) |
+### Regression Tests
 
-Fix: Replace `session.get(Model, pk)` with `select(Model).where(id, tenant_key)`.
+- `tests/services/test_orchestration_tenant_isolation_regression.py`: 11 new tests
+  - Cross-tenant blocked + same-tenant allowed for: `report_progress`, `get_agent_mission`, `acknowledge_job`, `complete_job`, `report_error`
+  - Combined audit test verifying all 5 methods in single fixture
+- `tests/services/test_message_tenant_isolation_regression.py`: 3 new tests added
+  - `test_list_messages_requires_tenant_key`
+  - `test_list_messages_blocks_cross_tenant_by_agent` (raises `ResourceNotFoundError`)
+  - `test_list_messages_blocks_cross_tenant_by_project`
 
-### OrchestrationService - AgentTodoItem DELETE
+---
 
-| Method | Line | Model | Risk |
-|--------|------|-------|------|
-| `report_progress` | 1596 | AgentTodoItem | CRITICAL |
+## BATCH 2 - tools/agent.py, tool_accessor.py, message_service, agent_job_manager (Commit 9afff7ec)
 
-DELETE without tenant filter. Fix: add `tenant_key` to WHERE.
+### tools/agent.py (6 helper functions hardened)
 
-### tools/agent.py - All internal helpers
+| Function | Finding | Severity | Fix Applied |
+|----------|---------|----------|-------------|
+| `_ensure_agent_with_session` | `select(Project).where(Project.id == project_id)` -- no tenant_key (line 134) | HIGH | Added `tenant_key` param; when provided, adds `Project.tenant_key == tenant_key` to WHERE |
+| `_decommission_agent_with_session` | Same pattern (line 236) | HIGH | Same fix |
+| `_get_agent_health_with_session` | `select(AgentExecution).where(agent_name.like(...))` -- no tenant_key (line 310) | HIGH | Added `AgentExecution.tenant_key == tenant_key` when provided |
+| `_get_agent_health_with_session` | `select(AgentExecution)` with zero WHERE clause -- returns ALL tenants (line 326) | HIGH | Added `AgentExecution.tenant_key == tenant_key` when provided |
+| `_get_agent_health_with_session` | `select(AgentJob).where(job_id)` -- no tenant_key (line 333) | HIGH | Added `AgentJob.tenant_key == tenant_key` when provided |
+| `_handoff_agent_work_with_session` | `select(Project).where(Project.id == project_id)` -- no tenant_key (line 371) | HIGH | Same pattern as ensure/decommission |
 
-| Method | Line | Model | Risk |
-|--------|------|-------|------|
-| `_ensure_agent_with_session` | 134 | Project | HIGH |
-| `_decommission_agent_with_session` | 236 | Project | HIGH |
-| `_get_agent_health_with_session` | 310 | AgentExecution | HIGH |
-| `_get_agent_health_with_session` | 326 | AgentExecution | **CRITICAL - NO FILTER AT ALL** |
-| `_handoff_agent_work_with_session` | 371 | Project | HIGH |
+All 4 wrapper functions (`_ensure_agent`, `_decommission_agent`, `_get_agent_health`, `_handoff_agent_work`) updated to accept and pass through `tenant_key`.
 
-Line 326 returns ALL agent executions across ALL tenants with zero WHERE clause.
+### tool_accessor.py (3 pass-throughs fixed)
 
-### MessageService - Internal AgentJob lookups
+| Method | Finding | Severity | Fix Applied |
+|--------|---------|----------|-------------|
+| `acknowledge_job` | Accepts `tenant_key` from MCP caller but doesn't pass to OrchestrationService | HIGH | Added `tenant_key=tenant_key` to `acknowledge_job()` call |
+| `complete_job` | Same silent drop | HIGH | Added `tenant_key=tenant_key` to `complete_job()` call |
+| `report_error` | Same silent drop | HIGH | Added `tenant_key=tenant_key` to `report_error()` call |
 
-| Method | Line | Model | Risk |
-|--------|------|-------|------|
-| `send_message` | 466 | AgentJob | HIGH |
-| `receive_messages` | 830 | AgentJob | HIGH |
+### message_service.py (2 AgentJob lookups)
 
-Mitigated by job_id UUID uniqueness.
+| Method | Finding | Severity | Fix Applied |
+|--------|---------|----------|-------------|
+| `send_message` (line 466) | Sender's AgentJob lookup by `job_id` only | HIGH | Added `AgentJob.tenant_key == tenant_key` |
+| `receive_messages` (line 829) | AgentJob lookup by `job_id` only | HIGH | Added `AgentJob.tenant_key == tenant_key` |
 
-### ToolAccessor - Silently dropped tenant_key
+### agent_job_manager.py (1 AgentExecution lookup)
 
-| Method | Line | Risk |
-|--------|------|------|
-| `acknowledge_job` | 778 | HIGH (defense-in-depth) |
-| `complete_job` | 801 | HIGH (defense-in-depth) |
-| `report_error` | 806 | HIGH (defense-in-depth) |
+| Method | Finding | Severity | Fix Applied |
+|--------|---------|----------|-------------|
+| `complete_job_lifecycle` (line 389) | `select(AgentExecution).where(job_id)` -- no tenant_key | HIGH | Added `AgentExecution.tenant_key == tenant_key` |
 
-Accept `tenant_key` from MCP callers but don't pass to OrchestrationService.
+---
 
-### agent_job_manager.py - AgentExecution lookup
+## BATCH 3 - TenantManager hardening + mission_planner session.get (Commit 308ffa68)
 
-| Method | Line | Model | Risk |
-|--------|------|-------|------|
-| `complete_job` | 389 | AgentExecution | HIGH |
+### TenantManager fail-open behavior (2 fixes)
 
-Partially mitigated by prior AgentJob tenant check.
+| Method | Finding | Severity | Fix Applied |
+|--------|---------|----------|-------------|
+| `apply_tenant_filter()` | When called with `tenant_key=None` and no ContextVar set, silently returned the unfiltered query | HIGH | Now raises `ValueError("apply_tenant_filter called without tenant_key and no tenant context set...")` |
+| `ensure_tenant_isolation()` | When called with `tenant_key=None` and no ContextVar set, silently returned without checking | HIGH | Now raises `ValueError("ensure_tenant_isolation called without tenant_key and no tenant context set...")` |
 
-### Cross-tenant purge operations (likely BY DESIGN)
+Note: Only 2 production callers use `apply_tenant_filter` (200+ queries use inline `.where()` clauses). The fix ensures any future callers cannot accidentally get unfiltered results.
 
-| File | Method | Line | Risk |
-|------|--------|------|------|
-| `product_service.py` | `purge_expired_deleted_products` | 1591 | CRITICAL |
-| `project_service.py` | `purge_expired_deleted_projects` | 2586 | HIGH |
+### mission_planner.py session.get() replacement (2 fixes)
 
-Both are startup cleanup jobs. Likely BY DESIGN (like silence_detector). Need documentation.
+| Method | Finding | Severity | Fix Applied |
+|--------|---------|----------|-------------|
+| `_store_token_metrics` async path (line 3124) | `session.get(Project, project_id)` bypasses WHERE | HIGH | Replaced with `select(Project).where(Project.id == project_id)` |
+| `_store_token_metrics` sync path (line 3136) | Same `session.get()` pattern | HIGH | Same replacement |
+
+Note: These lookups don't yet filter by `tenant_key` because the method doesn't receive one. The `session.get` -> `select().where()` migration removes the ORM shortcut that bypasses query-level filtering, making it straightforward to add `tenant_key` when available.
+
+---
+
+## Test Results After Full Remediation
+
+- 61 tenant isolation regression tests across 3 test files, all passing
+- 159 total tests passing in full suite
+- 1 pre-existing failure (`test_acknowledge_message_happy_path`) confirmed unrelated to tenant isolation changes
+
+---
+
+## Not Fixed (Documented - Per Remediation Scope)
+
+| Item | Category | Reason |
+|------|----------|--------|
+| `silence_detector.py` (2 CRITICAL) | By design | Ephemeral background service, non-persistent, no user/tenant context available |
+| `context.py` broken endpoints (ImportError + arg mismatch) | Functional bug | Pre-existing broken code, not a security issue |
+| `GET /context/index` filesystem path disclosure | Separate issue | Not a tenant isolation vulnerability |
+| 10 MEDIUM defense-in-depth items | Backlog | Parent entity validation provides coverage |
+| `process_product_vision` `session.get(Product)` (2 instances) | Backlog | Post-fetch check partially mitigates; needs `select().where()` replacement |
+| Cross-tenant purge operations (`purge_expired_deleted_products`, `purge_expired_deleted_projects`) | By design | Startup cleanup jobs, similar to silence_detector |
 
 ---
 
@@ -190,10 +224,9 @@ Both are startup cleanup jobs. Likely BY DESIGN (like silence_detector). Need do
 - `product_service.py`: PK lookups with post-fetch checks, count queries on pre-validated products
 - `consolidation_service.py`: PK lookup with post-fetch check
 - `project_service.py`: Join queries on pre-validated projects
-- `message_service.py`: Conditional list_messages paths
 - `task_service.py`: User lookups for permission checks (task already validated)
 - `template_service.py`: Role lookup by template_id
-- `orchestration_service.py`: System default template fallback
+- `orchestration_service.py`: System default template fallback (intentional)
 - `silence_detector.py`: Global settings read
 
 ### Code quality items
@@ -222,15 +255,18 @@ Both are startup cleanup jobs. Likely BY DESIGN (like silence_detector). Need do
 
 ### Common Anti-Patterns Found
 
-1. **`session.get(Model, pk)`** bypasses WHERE entirely (5 occurrences)
-2. **AgentJob lookup by `job_id` only** (7 occurrences)
-3. **Project lookup by `project_id` only** (5 occurrences)
-4. **Backward-compat `else` fallback** removing filter (3 found, all fixed)
-5. **Background services scanning all tenants** (3 found, 2 documented as BY DESIGN)
+1. **`session.get(Model, pk)`** bypasses WHERE entirely (8 occurrences found, 4 fixed)
+2. **AgentJob lookup by `job_id` only** (7 occurrences, all fixed)
+3. **Project lookup by `project_id` only** (5 occurrences in tools/agent.py, all fixed)
+4. **Backward-compat `else` fallback** removing filter (3 found, all fixed in Phase A-C)
+5. **Background services scanning all tenants** (3 found, documented as BY DESIGN)
+6. **ToolAccessor silently dropping `tenant_key`** (3 found, all fixed in BATCH 2)
+7. **TenantManager utilities failing open on None** (2 found, hardened in BATCH 3)
 
 ### Recommendations for Prevention
 
-1. Make `tenant_key` non-optional in service method signatures
-2. Add SQLAlchemy query mixin that auto-appends `WHERE tenant_key`
-3. Fix `TenantManager.apply_tenant_filter()` to raise instead of returning unfiltered queries
-4. Add linting rule requiring tenant_key on all tenant-scoped queries
+1. Ban `session.get()` for tenant-scoped entities -- always use `select().where(tenant_key)`
+2. Make `tenant_key` non-optional in service method signatures
+3. Add SQLAlchemy query mixin that auto-appends `WHERE tenant_key`
+4. Add linting rule or test that scans for unscoped queries on tenant-key-bearing tables
+5. Require all new service methods to have regression tests verifying cross-tenant access is blocked
