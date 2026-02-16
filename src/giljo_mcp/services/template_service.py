@@ -22,6 +22,7 @@ TemplateListResult, TemplateGetResult, TemplateCreateResult, TemplateUpdateResul
 """
 
 import logging
+from contextlib import asynccontextmanager
 from typing import Optional
 from uuid import uuid4
 
@@ -69,17 +70,38 @@ class TemplateService:
     Thread Safety: Each instance is session-scoped. Do not share across requests.
     """
 
-    def __init__(self, db_manager: DatabaseManager, tenant_manager: TenantManager):
+    def __init__(self, db_manager: DatabaseManager, tenant_manager: TenantManager, session: AsyncSession | None = None):
         """
         Initialize TemplateService with database and tenant management.
 
         Args:
             db_manager: Database manager for async database operations
             tenant_manager: Tenant manager for multi-tenancy support
+            session: Optional AsyncSession for test transaction isolation
         """
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
+        self._session = session
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    def _get_session(self):
+        """
+        Get a session, preferring an injected test session when provided.
+        This keeps service methods compatible with test transaction fixtures.
+
+        Returns:
+            Context manager for database session
+        """
+        if self._session is not None:
+            # For test sessions, wrap in a context manager that doesn't close
+            @asynccontextmanager
+            async def _test_session_wrapper():
+                yield self._session
+
+            return _test_session_wrapper()
+
+        # Return the context manager directly (no double-wrapping)
+        return self.db_manager.get_session_async()
 
     # ============================================================================
     # CRUD Operations
@@ -112,7 +134,7 @@ class TemplateService:
             if not tenant_key:
                 raise ValidationError(message="No tenant context available", context={"operation": "list_templates"})
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # TENANT ISOLATION: Only return templates for the specified tenant
                 result = await session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
                 templates = result.scalars().all()
@@ -178,7 +200,7 @@ class TemplateService:
             if not tenant_key:
                 raise ValidationError(message="No tenant context available", context={"operation": "get_template"})
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Build query based on provided identifier
                 if template_id:
                     query = select(AgentTemplate).where(
@@ -279,7 +301,7 @@ class TemplateService:
             if not tenant_key:
                 raise ValidationError(message="No tenant context available", context={"operation": "create_template"})
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Create template entity
                 template = AgentTemplate(
                     id=str(uuid4()),
@@ -365,7 +387,7 @@ class TemplateService:
             if not tenant_key:
                 raise ValidationError(message="No tenant context available", context={"operation": "update_template"})
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # Get template with tenant isolation
                 result = await session.execute(
                     select(AgentTemplate).where(AgentTemplate.id == template_id, AgentTemplate.tenant_key == tenant_key)

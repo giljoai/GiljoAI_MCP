@@ -20,6 +20,7 @@ Design Principles:
 """
 
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -74,6 +75,24 @@ class UserService:
         self._session = session  # Store for test transaction isolation
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
+    def _get_session(self):
+        """
+        Get a session, preferring an injected test session when provided.
+        This keeps service methods compatible with test transaction fixtures.
+
+        Returns:
+            Context manager for database session
+        """
+        if self._session is not None:
+
+            @asynccontextmanager
+            async def _test_session_wrapper():
+                yield self._session
+
+            return _test_session_wrapper()
+
+        return self.db_manager.get_session_async()
+
     # ============================================================================
     # CRUD Operations
     # ============================================================================
@@ -92,12 +111,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._list_users_impl(self._session, include_all_tenants)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._list_users_impl(session, include_all_tenants)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -142,12 +156,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._get_user_impl(self._session, user_id, include_all_tenants)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._get_user_impl(session, user_id, include_all_tenants)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -209,14 +218,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._create_user_impl(
-                    self._session, username, email, full_name, password, role, is_active
-                )
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._create_user_impl(session, username, email, full_name, password, role, is_active)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -301,12 +303,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._update_user_impl(self._session, user_id, updates, include_all_tenants)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._update_user_impl(session, user_id, updates, include_all_tenants)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -382,12 +379,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._delete_user_impl(self._session, user_id)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._delete_user_impl(session, user_id)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -438,12 +430,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._change_role_impl(self._session, user_id, new_role)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._change_role_impl(session, user_id, new_role)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -527,12 +514,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._change_password_impl(self._session, user_id, old_password, new_password, is_admin)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._change_password_impl(session, user_id, old_password, new_password, is_admin)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -586,12 +568,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._reset_password_impl(self._session, user_id)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._reset_password_impl(session, user_id)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -645,12 +622,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._check_username_exists_impl(self._session, username)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._check_username_exists_impl(session, username)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -687,12 +659,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._check_email_exists_impl(self._session, email)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._check_email_exists_impl(session, email)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -729,12 +696,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._verify_password_impl(self._session, user_id, password)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._verify_password_impl(session, user_id, password)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -782,12 +744,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._get_field_priority_config_impl(self._session, user_id)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._get_field_priority_config_impl(session, user_id)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -837,12 +794,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._update_field_priority_config_impl(self._session, user_id, config)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._update_field_priority_config_impl(session, user_id, config)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -908,12 +860,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._reset_field_priority_config_impl(self._session, user_id)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._reset_field_priority_config_impl(session, user_id)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -958,12 +905,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._get_depth_config_impl(self._session, user_id)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._get_depth_config_impl(session, user_id)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -1014,12 +956,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._update_depth_config_impl(self._session, user_id, config)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._update_depth_config_impl(session, user_id, config)
 
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
@@ -1082,10 +1019,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            if self._session:
-                return await self._get_execution_mode_impl(self._session, user_id)
-
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._get_execution_mode_impl(session, user_id)
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
             raise  # Re-raise without wrapping
@@ -1127,10 +1061,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         try:
-            if self._session:
-                return await self._update_execution_mode_impl(self._session, user_id, execution_mode)
-
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._update_execution_mode_impl(session, user_id, execution_mode)
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
             raise  # Re-raise without wrapping
