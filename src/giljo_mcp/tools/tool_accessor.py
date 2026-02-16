@@ -777,7 +777,9 @@ class ToolAccessor:
 
     async def acknowledge_job(self, job_id: str, agent_id: str, tenant_key: str | None = None) -> dict[str, Any]:
         """Acknowledge job assignment (delegates to OrchestrationService)"""
-        return await self._orchestration_service.acknowledge_job(job_id=job_id, agent_id=agent_id)
+        return await self._orchestration_service.acknowledge_job(
+            job_id=job_id, agent_id=agent_id, tenant_key=tenant_key
+        )
 
     async def report_progress(
         self,
@@ -800,13 +802,13 @@ class ToolAccessor:
 
     async def complete_job(self, job_id: str, result: dict[str, Any], tenant_key: str | None = None) -> dict[str, Any]:
         """Mark job as complete (delegates to OrchestrationService)"""
-        return await self._orchestration_service.complete_job(job_id=job_id, result=result)
+        return await self._orchestration_service.complete_job(job_id=job_id, result=result, tenant_key=tenant_key)
 
     async def report_error(
         self, job_id: str, error: str, tenant_key: str | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         """Report job error (delegates to OrchestrationService). Handover 0491: severity param removed."""
-        return await self._orchestration_service.report_error(job_id=job_id, error=error)
+        return await self._orchestration_service.report_error(job_id=job_id, error=error, tenant_key=tenant_key)
 
     async def get_team_agents(
         self,

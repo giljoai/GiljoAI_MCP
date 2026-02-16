@@ -462,8 +462,11 @@ class MessageService:
 
                     if sender_execution:
                         # Look up the job to check agent_name and status
+                        # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
                         sender_job_result = await session.execute(
-                            select(AgentJob).where(AgentJob.job_id == sender_execution.job_id)
+                            select(AgentJob).where(
+                                AgentJob.job_id == sender_execution.job_id, AgentJob.tenant_key == tenant_key
+                            )
                         )
                         sender_job = sender_job_result.scalar_one_or_none()
 
@@ -823,7 +826,10 @@ class MessageService:
                     )
 
                 # Get the job to access project_id
-                job_result = await session.execute(select(AgentJob).where(AgentJob.job_id == execution.job_id))
+                # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
+                job_result = await session.execute(
+                    select(AgentJob).where(AgentJob.job_id == execution.job_id, AgentJob.tenant_key == tenant_key)
+                )
                 job = job_result.scalar_one_or_none()
 
                 if not job:
