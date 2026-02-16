@@ -8,6 +8,10 @@ Handles project lifecycle operations:
 - POST /{project_id}/restore - Restore cancelled project
 - POST /{project_id}/cancel-staging - Cancel staging phase (Handover 0504)
 - POST /{project_id}/launch - Launch orchestrator (Handover 0504)
+- POST /{project_id}/archive - Archive completed project (Handover 0412)
+- DELETE /{project_id} - Soft delete project
+- DELETE /deleted - Purge all deleted projects
+- DELETE /{project_id}/purge - Nuclear purge single deleted project
 
 All operations use ProjectService.
 """
@@ -473,53 +477,6 @@ async def launch_project(
     )
 
     logger.info(f"Launched project {project_id}")
-
-    # 0731d: ProjectService returns ProjectLaunchResult typed model
-    return ProjectLaunchResponse(
-        project_id=launch_data.project_id,
-        orchestrator_job_id=launch_data.orchestrator_job_id,
-        launch_prompt=launch_data.launch_prompt,
-        status=launch_data.status,
-    )
-
-
-@router.post("/{project_id}/continue", response_model=ProjectLaunchResponse)
-async def continue_project(
-    project_id: str,
-    current_user: User = Depends(get_current_active_user),
-    project_service: ProjectService = Depends(get_project_service),
-) -> ProjectLaunchResponse:
-    """
-    Continue working on a completed project by spawning a new orchestrator (Handover 0412).
-
-    Validates orchestrator is in 'complete' status, then spawns a new orchestrator instance.
-    This allows the user to continue working after the orchestrator has completed.
-
-    Args:
-        project_id: Project UUID
-        current_user: Authenticated user (from dependency)
-        project_service: Project service (from dependency)
-
-    Returns:
-        ProjectLaunchResponse with new orchestrator job ID and launch prompt
-
-    Raises:
-        HTTPException 404: Project not found
-        HTTPException 400: Continue failed (orchestrator not complete)
-    """
-    logger.info(f"User {current_user.username} continuing project {project_id}")
-
-    # Resume project via ProjectService (raises exceptions on error)
-    await project_service.continue_working(project_id=project_id, tenant_key=current_user.tenant_key)
-
-    logger.info(f"Resumed project {project_id}, now launching new orchestrator")
-
-    # Launch new orchestrator (raises exceptions on error)
-    launch_data = await project_service.launch_project(
-        project_id=project_id, user_id=str(current_user.id), launch_config=None
-    )
-
-    logger.info(f"Launched new orchestrator for project {project_id}")
 
     # 0731d: ProjectService returns ProjectLaunchResult typed model
     return ProjectLaunchResponse(

@@ -22,8 +22,11 @@ from sqlalchemy.orm import joinedload
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 from api.schemas.prompt import (
     AgentPromptResponse,
+    ImplementationPromptResponse,
     OrchestratorPromptRequest,
     OrchestratorPromptResponse,
+    StagingPromptResponse,
+    ThinOrchestratorPromptResponse,
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import Project, User
@@ -130,13 +133,13 @@ Prerequisites:
     )
 
 
-@router.post("/prompts/orchestrator-thin", response_model=OrchestratorPromptResponse)
+@router.post("/prompts/orchestrator-thin", response_model=ThinOrchestratorPromptResponse)
 async def generate_orchestrator_prompt_thin(
     request: OrchestratorPromptRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
     ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
-) -> OrchestratorPromptResponse:
+) -> ThinOrchestratorPromptResponse:
     """
     Generate a thin orchestrator prompt for GiljoMCP Agent Orchestration.
 
@@ -157,7 +160,7 @@ async def generate_orchestrator_prompt_thin(
         db: Database session
 
     Returns:
-        OrchestratorPromptResponse with thin prompt
+        ThinOrchestratorPromptResponse with thin prompt
 
     Raises:
         HTTPException: If project not found or error occurs
@@ -198,7 +201,7 @@ async def generate_orchestrator_prompt_thin(
                 },
             )
 
-        return OrchestratorPromptResponse(
+        return ThinOrchestratorPromptResponse(
             success=True,
             orchestrator_id=result["orchestrator_id"],
             prompt=result["thin_prompt"],
@@ -328,7 +331,7 @@ Prerequisites:
     )
 
 
-@router.get("/staging/{project_id}")
+@router.get("/staging/{project_id}", response_model=StagingPromptResponse)
 async def generate_staging_prompt(
     project_id: str,
     tool: str = Query("claude-code", pattern="^(claude-code|codex|gemini)$"),
@@ -373,15 +376,11 @@ async def generate_staging_prompt(
         db: Database session
 
     Returns:
-        ThinPromptResponse: Thin client prompt response with:
-            - prompt: Thin orchestrator prompt (~10 lines)
+        StagingPromptResponse: Staging prompt response with:
             - orchestrator_id: Created orchestrator job ID
-            - project_id: Project UUID
-            - project_name: Project name
-            - estimated_prompt_tokens: ~50 tokens
-            - mcp_tool_name: MCP tool to fetch mission
-            - instructions_stored: True (mission in database)
-            - thin_client: True
+            - agent_id: Executor agent ID for MCP tool calls
+            - prompt: Staging prompt for orchestrator
+            - estimated_prompt_tokens: Token estimate for the staging prompt
 
     Raises:
         HTTPException 404: Project not found or not accessible
@@ -464,7 +463,7 @@ async def generate_staging_prompt(
         ) from e
 
 
-@router.get("/implementation/{project_id}")
+@router.get("/implementation/{project_id}", response_model=ImplementationPromptResponse)
 async def get_implementation_prompt(
     project_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -598,18 +597,6 @@ async def get_implementation_prompt(
 
     # 5. Generate implementation prompt using existing generator method
     generator = ThinClientPromptGenerator(db, current_user.tenant_key)
-
-    # Build agent jobs list for prompt generator (using executions + jobs)
-    [
-        {
-            "job_id": agent_exec.job_id,
-            "agent_display_name": agent_exec.agent_display_name,
-            "agent_name": agent_exec.agent_name or agent_exec.agent_display_name,
-            "status": agent_exec.status,
-            "mission": agent_exec.job.mission if agent_exec.job else "(No mission assigned)",
-        }
-        for agent_exec in agent_executions
-    ]
 
     # Call the existing implementation prompt generator
     # Handover 0385: Use job_id (not agent_id) for mission retrieval
