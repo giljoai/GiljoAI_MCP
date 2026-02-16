@@ -154,7 +154,8 @@ async def get_deleted_projects(
     logger.debug(f"User {current_user.username} listing deleted projects")
 
     # List deleted projects via ProjectService (raises exceptions on error)
-    projects = await project_service.list_projects(status="deleted")
+    # SECURITY: Explicit tenant_key prevents cross-tenant data leak
+    projects = await project_service.list_projects(status="deleted", tenant_key=current_user.tenant_key)
 
     logger.info(f"Found {len(projects)} deleted projects for tenant {current_user.tenant_key}")
 

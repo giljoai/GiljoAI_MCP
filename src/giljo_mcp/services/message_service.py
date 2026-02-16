@@ -152,14 +152,18 @@ class MessageService:
         """
         try:
             async with self._get_session() as session:
-                # Get project with tenant isolation filter (Handover 0325)
-                if tenant_key:
-                    result = await session.execute(
-                        select(Project).where(Project.tenant_key == tenant_key, Project.id == project_id)
+                # TENANT ISOLATION: Require tenant_key, fall back to context
+                if not tenant_key:
+                    tenant_key = self.tenant_manager.get_current_tenant()
+                if not tenant_key:
+                    raise ValidationError(
+                        message="No tenant context available",
+                        context={"operation": "send_message", "project_id": project_id},
                     )
-                else:
-                    # Fallback for backward compatibility - will be deprecated
-                    result = await session.execute(select(Project).where(Project.id == project_id))
+
+                result = await session.execute(
+                    select(Project).where(and_(Project.tenant_key == tenant_key, Project.id == project_id))
+                )
                 project = result.scalar_one_or_none()
 
                 if not project:
@@ -327,6 +331,7 @@ class MessageService:
                         recipient_agent_ids = []
                         if to_agents and to_agents[0] == "all":
                             # Broadcast: Get ALL agent executions in the project, EXCLUDING sender
+                            # TENANT ISOLATION: Filter by tenant_key
                             result = await session.execute(
                                 select(AgentExecution)
                                 .join(AgentJob)
@@ -334,6 +339,7 @@ class MessageService:
                                     and_(
                                         AgentJob.project_id == project.id,
                                         AgentExecution.status.in_(["waiting", "working", "blocked"]),
+                                        AgentExecution.tenant_key == tenant_key,
                                     )
                                 )
                             )
@@ -363,11 +369,17 @@ class MessageService:
 
                         # For recipient counter, get first recipient's waiting count
                         # Handover 0429: Get latest instance by agent_id
+                        # TENANT ISOLATION: Filter by tenant_key
                         recipient_waiting_count = None
                         if recipient_agent_ids:
                             recipient_result = await session.execute(
                                 select(AgentExecution)
-                                .where(AgentExecution.agent_id == recipient_agent_ids[0])
+                                .where(
+                                    and_(
+                                        AgentExecution.agent_id == recipient_agent_ids[0],
+                                        AgentExecution.tenant_key == tenant_key,
+                                    )
+                                )
                                 .order_by(AgentExecution.started_at.desc())
                                 .limit(1)
                             )
@@ -491,7 +503,12 @@ class MessageService:
             raise BaseGiljoError(message=str(e), context={"operation": "send_message", "project_id": project_id}) from e
 
     async def broadcast(
-        self, content: str, project_id: str, priority: str = "normal", from_agent: str = "orchestrator"
+        self,
+        content: str,
+        project_id: str,
+        priority: str = "normal",
+        from_agent: str = "orchestrator",
+        tenant_key: Optional[str] = None,
     ) -> SendMessageResult:
         """
         Broadcast a message to all agents in a project.
@@ -501,37 +518,49 @@ class MessageService:
             project_id: Project ID to broadcast to
             priority: Message priority (default: "normal")
             from_agent: Sender agent name (default: "orchestrator")
+            tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
             SendMessageResult with message_id, to_agents, message_type
 
         Raises:
             ResourceNotFoundError: No agent jobs found in project
+            ValidationError: No tenant context available
 
         Example:
             >>> result = await service.broadcast(
             ...     content="Project status update",
             ...     project_id="project-123",
-            ...     priority="high"
+            ...     priority="high",
+            ...     tenant_key="tenant-abc"
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
-                # Get all agent jobs in project
-                result = await session.execute(select(AgentJob).where(AgentJob.project_id == project_id))
+            # TENANT ISOLATION: Require tenant_key, fall back to context
+            if not tenant_key:
+                tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "broadcast", "project_id": project_id},
+                )
+
+            async with self._get_session() as session:
+                # TENANT ISOLATION: Filter agent jobs by tenant_key
+                result = await session.execute(
+                    select(AgentJob).where(and_(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key))
+                )
                 agent_jobs = result.scalars().all()
 
                 if not agent_jobs:
                     raise ResourceNotFoundError(
-                        message="No agent jobs found in project", context={"project_id": project_id}
+                        message="No agent jobs found in project",
+                        context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
                 agent_display_names = [job.job_type for job in agent_jobs]
 
-                # Get tenant_key from first agent job for WebSocket broadcast
-                tenant_key = agent_jobs[0].tenant_key if agent_jobs else None
-
-                # Send message to all agents
+                # Send message to all agents (pass tenant_key explicitly)
                 result = await self.send_message(
                     to_agents=agent_display_names,
                     content=content,
@@ -539,6 +568,7 @@ class MessageService:
                     message_type="broadcast",
                     priority=priority,
                     from_agent=from_agent,
+                    tenant_key=tenant_key,
                 )
 
                 # Emit additional broadcast-specific WebSocket event if manager is available
@@ -654,7 +684,11 @@ class MessageService:
     # ============================================================================
 
     async def get_messages(
-        self, agent_name: str, project_id: Optional[str] = None, status: str = "pending"
+        self,
+        agent_name: str,
+        project_id: Optional[str] = None,
+        status: str = "pending",
+        tenant_key: Optional[str] = None,
     ) -> MessageListResult:
         """
         Retrieve messages for a specific agent.
@@ -663,22 +697,36 @@ class MessageService:
             agent_name: Name of agent to get messages for
             project_id: Optional project ID filter
             status: Message status filter (default: "pending")
+            tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
             MessageListResult with agent, count, and messages list
 
+        Raises:
+            ValidationError: No tenant context available
+
         Example:
             >>> result = await service.get_messages(
             ...     agent_name="impl-1",
-            ...     project_id="project-123"
+            ...     project_id="project-123",
+            ...     tenant_key="tenant-abc"
             ... )
             >>> for msg in result["messages"]:
             ...     print(f"{msg['from']}: {msg['content']}")
         """
         try:
-            async with self.db_manager.get_session_async() as session:
-                # Build query
-                query = select(Message).where(Message.status == status)
+            # TENANT ISOLATION: Require tenant_key, fall back to context
+            if not tenant_key:
+                tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "get_messages", "agent_name": agent_name},
+                )
+
+            async with self._get_session() as session:
+                # TENANT ISOLATION: Always filter by tenant_key
+                query = select(Message).where(and_(Message.status == status, Message.tenant_key == tenant_key))
 
                 if project_id:
                     query = query.where(Message.project_id == project_id)
@@ -962,7 +1010,7 @@ class MessageService:
                     message="No active project or tenant context", context={"operation": "list_messages"}
                 )
 
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 # If agent_id provided, filter messages for that agent
                 if agent_id:
                     # Get agent job to verify it exists and get project context
@@ -1035,7 +1083,13 @@ class MessageService:
 
                 # Otherwise, list by project
                 if project_id:
-                    query = select(Message).where(Message.project_id == project_id)
+                    # TENANT ISOLATION: Filter by tenant_key when available
+                    if tenant_key:
+                        query = select(Message).where(
+                            and_(Message.project_id == project_id, Message.tenant_key == tenant_key)
+                        )
+                    else:
+                        query = select(Message).where(Message.project_id == project_id)
                 else:
                     # Find project by tenant key
                     project_query = select(Project).where(
@@ -1113,7 +1167,9 @@ class MessageService:
     # Message Status Updates
     # ============================================================================
 
-    async def complete_message(self, message_id: str, agent_name: str, result: str) -> CompleteMessageResult:
+    async def complete_message(
+        self, message_id: str, agent_name: str, result: str, tenant_key: Optional[str] = None
+    ) -> CompleteMessageResult:
         """
         Mark a message as completed with a result.
 
@@ -1121,24 +1177,44 @@ class MessageService:
             message_id: Message UUID
             agent_name: Name of agent completing the message
             result: Completion result/response
+            tenant_key: Tenant key for multi-tenant isolation
 
         Returns:
             CompleteMessageResult with message_id and completed_by
+
+        Raises:
+            ValidationError: No tenant context available
 
         Example:
             >>> result = await service.complete_message(
             ...     message_id="msg-123",
             ...     agent_name="impl-1",
-            ...     result="Code review completed successfully"
+            ...     result="Code review completed successfully",
+            ...     tenant_key="tenant-abc"
             ... )
         """
         try:
-            async with self.db_manager.get_session_async() as session:
-                msg_result = await session.execute(select(Message).where(Message.id == message_id))
+            # TENANT ISOLATION: Require tenant_key, fall back to context
+            if not tenant_key:
+                tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "complete_message", "message_id": message_id},
+                )
+
+            async with self._get_session() as session:
+                # TENANT ISOLATION: Filter by both message_id AND tenant_key
+                msg_result = await session.execute(
+                    select(Message).where(and_(Message.id == message_id, Message.tenant_key == tenant_key))
+                )
                 message = msg_result.scalar_one_or_none()
 
                 if not message:
-                    raise ResourceNotFoundError(message="Message not found", context={"message_id": message_id})
+                    raise ResourceNotFoundError(
+                        message="Message not found or access denied",
+                        context={"message_id": message_id, "tenant_key": tenant_key},
+                    )
 
                 # Update message
                 message.status = "completed"
