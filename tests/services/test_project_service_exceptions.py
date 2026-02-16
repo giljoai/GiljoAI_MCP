@@ -126,7 +126,7 @@ class TestProjectServiceExceptions:
     async def test_restore_project_raises_not_found(self, project_service: ProjectService, test_tenant_key: str):
         """Test restore_project raises ResourceNotFoundError"""
         with pytest.raises(ResourceNotFoundError) as exc_info:
-            await project_service.restore_project("nonexistent-id")
+            await project_service.restore_project("nonexistent-id", tenant_key=test_tenant_key)
 
         assert "not found" in exc_info.value.message.lower()
 
@@ -227,7 +227,7 @@ class TestProjectServiceTypedReturns:
         await db_session.commit()
         await db_session.refresh(project)
 
-        result = await project_service.restore_project(project.id)
+        result = await project_service.restore_project(project.id, tenant_key=test_tenant_key)
         assert isinstance(result, OperationResult)
         assert "restored" in result.message.lower()
 

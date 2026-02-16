@@ -265,13 +265,13 @@ class ToolAccessor:
 
     async def cancel_project(self, project_id: str, reason: str | None = None) -> dict[str, Any]:
         """Cancel a project (delegates to ProjectService)"""
-        # NOTE: cancel_project needs service-level fix to accept tenant_key
-        return await self._project_service.cancel_project(project_id, reason)
+        tenant_key = self.tenant_manager.get_current_tenant()
+        return await self._project_service.cancel_project(project_id, tenant_key, reason)
 
     async def restore_project(self, project_id: str) -> dict[str, Any]:
         """Restore a completed or cancelled project (delegates to ProjectService)"""
-        # NOTE: restore_project needs service-level fix to accept tenant_key
-        return await self._project_service.restore_project(project_id)
+        tenant_key = self.tenant_manager.get_current_tenant()
+        return await self._project_service.restore_project(project_id, tenant_key=tenant_key)
 
     async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
         """Update the mission field (delegates to ProjectService)"""
@@ -308,15 +308,24 @@ class ToolAccessor:
 
     async def get_messages(self, agent_name: str, project_id: str | None = None) -> MessageListResult:
         """Retrieve pending messages for an agent (delegates to MessageService)"""
-        return await self._message_service.get_messages(agent_name=agent_name, project_id=project_id)
+        tenant_key = self.tenant_manager.get_current_tenant()
+        return await self._message_service.get_messages(
+            agent_name=agent_name, project_id=project_id, tenant_key=tenant_key
+        )
 
     async def complete_message(self, message_id: str, agent_name: str, result: str) -> CompleteMessageResult:
         """Mark message as completed with result (delegates to MessageService)"""
-        return await self._message_service.complete_message(message_id=message_id, agent_name=agent_name, result=result)
+        tenant_key = self.tenant_manager.get_current_tenant()
+        return await self._message_service.complete_message(
+            message_id=message_id, agent_name=agent_name, result=result, tenant_key=tenant_key
+        )
 
     async def broadcast(self, content: str, project_id: str, priority: str = "normal") -> SendMessageResult:
         """Broadcast message to all agents in project (delegates to MessageService)"""
-        return await self._message_service.broadcast(content=content, project_id=project_id, priority=priority)
+        tenant_key = self.tenant_manager.get_current_tenant()
+        return await self._message_service.broadcast(
+            content=content, project_id=project_id, priority=priority, tenant_key=tenant_key
+        )
 
     async def receive_messages(
         self,
@@ -374,7 +383,19 @@ class ToolAccessor:
 
     async def log_task(self, content: str, category: str | None = None, priority: str = "medium") -> dict[str, Any]:
         """Quick task capture (delegates to TaskService)"""
-        return await self._task_service.log_task(content=content, category=category, priority=priority)
+        tenant_key = self.tenant_manager.get_current_tenant()
+        # Resolve active product (required since Handover 0433)
+        product_service = ProductService(
+            db_manager=self.db_manager,
+            tenant_key=tenant_key,
+            websocket_manager=self._websocket_manager,
+            test_session=self._test_session,
+        )
+        active_product = await product_service.get_active_product()
+        product_id = active_product.id if active_product else None
+        return await self._task_service.log_task(
+            content=content, category=category, priority=priority, tenant_key=tenant_key, product_id=product_id
+        )
 
     async def create_task(
         self,
