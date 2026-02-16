@@ -165,11 +165,6 @@ class SessionConfig:
     max_concurrent: int = 10
     cleanup_interval: int = 300  # seconds
 
-    # Vision chunking settings (restored from cleanup)
-    vision_chunk_size: int = 50000
-    vision_overlap: int = 500
-    max_vision_size: int = 200000  # Maximum size before chunking required
-
 
 @dataclass
 class AgentConfig:
