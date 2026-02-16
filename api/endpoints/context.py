@@ -97,11 +97,14 @@ class HealthCheckResponse(BaseModel):
 
 
 @router.get("/index", response_model=ContextIndexResponse)
-async def get_context_index(product_id: str | None = Query(None, description="Product ID")):
+async def get_context_index(
+    product_id: str | None = Query(None, description="Product ID"),
+    tenant_key: str = Depends(get_tenant_key),
+):
     """Get the context index for intelligent querying"""
     from src.giljo_mcp.tools.context import get_context_index
 
-    # Tool raises exceptions on error
+    # tenant_key dependency sets TenantManager ContextVar for tool function
     index = await get_context_index(product_id=product_id)
 
     return ContextIndexResponse(
@@ -116,11 +119,12 @@ async def get_context_index(product_id: str | None = Query(None, description="Pr
 async def get_vision(
     part: int = Query(1, description="Part number to retrieve"),
     max_tokens: int = Query(20000, description="Maximum tokens per part"),
+    tenant_key: str = Depends(get_tenant_key),
 ):
     """Get the vision document (chunked if large)"""
     from src.giljo_mcp.tools.context import get_vision
 
-    # Tool raises exceptions on error
+    # tenant_key dependency sets TenantManager ContextVar for tool function
     result = await get_vision(part=part, max_tokens=max_tokens)
 
     return VisionResponse(
@@ -132,20 +136,25 @@ async def get_vision(
 
 
 @router.get("/vision/index", response_model=dict[str, Any])
-async def get_vision_index():
+async def get_vision_index(
+    tenant_key: str = Depends(get_tenant_key),
+):
     """Get the vision document index"""
     from src.giljo_mcp.tools.context import get_vision_index
 
-    # Tool raises exceptions on error
+    # tenant_key dependency sets TenantManager ContextVar for tool function
     return await get_vision_index()
 
 
 @router.get("/settings", response_model=dict[str, Any])
-async def get_product_settings(product_id: str | None = Query(None, description="Product ID")):
+async def get_product_settings(
+    product_id: str | None = Query(None, description="Product ID"),
+    tenant_key: str = Depends(get_tenant_key),
+):
     """Get all product settings for analysis"""
     from src.giljo_mcp.tools.context import get_product_settings
 
-    # Tool raises exceptions on error
+    # tenant_key dependency sets TenantManager ContextVar for tool function
     return await get_product_settings(product_id=product_id)
 
 

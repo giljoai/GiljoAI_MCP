@@ -456,12 +456,13 @@ class ProjectService:
         Args:
             project_id: Project UUID
             mission: Updated mission statement
-            tenant_key: Tenant key for multi-tenant isolation (required for security)
+            tenant_key: Tenant key for multi-tenant isolation (uses context if not provided)
 
         Returns:
             Dict with success status
 
         Raises:
+            ValidationError: No tenant context available
             ResourceNotFoundError: When project not found
             BaseGiljoError: When operation fails
 
@@ -474,23 +475,21 @@ class ProjectService:
         """
         try:
             async with self._get_session() as session:
-                # Update project with tenant isolation filter (Handover 0325)
+                # TENANT ISOLATION: Require tenant_key, fall back to context
+                if not tenant_key:
+                    tenant_key = self.tenant_manager.get_current_tenant()
+                if not tenant_key:
+                    raise ValidationError(
+                        message="No tenant context available",
+                        context={"operation": "update_project_mission", "project_id": project_id},
+                    )
+
                 # Handover 0425: Also set staging_status to 'staged' when mission is updated
-                # This ensures the Staged column shows "Yes" even if orchestrator was created
-                # through a different code path
-                if tenant_key:
-                    result = await session.execute(
-                        update(Project)
-                        .where(Project.tenant_key == tenant_key, Project.id == project_id)
-                        .values(mission=mission, staging_status="staged", updated_at=datetime.now(timezone.utc))
-                    )
-                else:
-                    # Fallback for backward compatibility - will be deprecated
-                    result = await session.execute(
-                        update(Project)
-                        .where(Project.id == project_id)
-                        .values(mission=mission, staging_status="staged", updated_at=datetime.now(timezone.utc))
-                    )
+                result = await session.execute(
+                    update(Project)
+                    .where(and_(Project.tenant_key == tenant_key, Project.id == project_id))
+                    .values(mission=mission, staging_status="staged", updated_at=datetime.now(timezone.utc))
+                )
 
                 if result.rowcount == 0:
                     raise ResourceNotFoundError(
@@ -498,13 +497,10 @@ class ProjectService:
                         context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
-                # Get project for tenant_key (with tenant filter if provided)
-                if tenant_key:
-                    project_result = await session.execute(
-                        select(Project).where(Project.tenant_key == tenant_key, Project.id == project_id)
-                    )
-                else:
-                    project_result = await session.execute(select(Project).where(Project.id == project_id))
+                # Get project for WebSocket broadcast
+                project_result = await session.execute(
+                    select(Project).where(and_(Project.tenant_key == tenant_key, Project.id == project_id))
+                )
                 project = project_result.scalar_one_or_none()
 
                 await session.commit()
@@ -518,7 +514,7 @@ class ProjectService:
                     project_id=project_id,
                 )
 
-        except ResourceNotFoundError:
+        except (ResourceNotFoundError, ValidationError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
@@ -2362,18 +2358,23 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             if deleted_count > 0:
                 self._logger.info(f"Marked {deleted_count} memory entries as deleted for project {project.id}")
 
+        # TENANT ISOLATION: All cascade deletes filter by tenant_key
+        tenant_key = project.tenant_key
+
         # Delete agent jobs (migrated to AgentJob - Handover 0367a)
-        agent_job_stmt = select(AgentJob).where(AgentJob.project_id == project.id)
+        agent_job_stmt = select(AgentJob).where(
+            and_(AgentJob.project_id == project.id, AgentJob.tenant_key == tenant_key)
+        )
         agent_jobs = (await session.execute(agent_job_stmt)).scalars().all()
         for job in agent_jobs:
             await session.delete(job)
 
-        task_stmt = select(Task).where(Task.project_id == project.id)
+        task_stmt = select(Task).where(and_(Task.project_id == project.id, Task.tenant_key == tenant_key))
         tasks = (await session.execute(task_stmt)).scalars().all()
         for task in tasks:
             await session.delete(task)
 
-        message_stmt = select(Message).where(Message.project_id == project.id)
+        message_stmt = select(Message).where(and_(Message.project_id == project.id, Message.tenant_key == tenant_key))
         messages = (await session.execute(message_stmt)).scalars().all()
         for message in messages:
             await session.delete(message)
