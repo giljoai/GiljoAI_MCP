@@ -220,12 +220,20 @@ class TenantManager:
 
         Returns:
             Query with tenant filter applied
+
+        Raises:
+            ValueError: If no tenant key available (explicit or from context)
         """
         # Determine which tenant key to use
         key_to_use = tenant_key or cls.get_current_tenant()
 
-        # Only apply filter if model has tenant_key and we have a key
-        if key_to_use and hasattr(model, "tenant_key"):
+        if not key_to_use:
+            raise ValueError(
+                "apply_tenant_filter called without tenant_key and no tenant context set. "
+                "Pass tenant_key explicitly or set tenant context via set_current_tenant()."
+            )
+
+        if hasattr(model, "tenant_key"):
             return query.filter(model.tenant_key == key_to_use)
 
         return query
@@ -240,6 +248,7 @@ class TenantManager:
             tenant_key: Expected tenant key (uses current context if None)
 
         Raises:
+            ValueError: If no tenant key available (explicit or from context)
             PermissionError: If entity belongs to different tenant
         """
         if not hasattr(entity, "tenant_key"):
@@ -247,7 +256,10 @@ class TenantManager:
 
         expected_key = tenant_key or cls.get_current_tenant()
         if not expected_key:
-            return  # No tenant context to enforce
+            raise ValueError(
+                "ensure_tenant_isolation called without tenant_key and no tenant context set. "
+                "Pass tenant_key explicitly or set tenant context via set_current_tenant()."
+            )
 
         if entity.tenant_key != expected_key:
             raise PermissionError(
