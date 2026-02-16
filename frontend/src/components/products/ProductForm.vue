@@ -961,7 +961,7 @@ function deleteVisionDocument(doc) {
 }
 
 function removeVisionFile(index) {
-  visionFiles.value.splice(index, 1)
+  visionFiles.value = visionFiles.value.filter((_, i) => i !== index)
 }
 
 function formatFileSize(bytes) {
