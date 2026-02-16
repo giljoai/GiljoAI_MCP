@@ -24,6 +24,7 @@ Design Principles:
 """
 
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -86,6 +87,24 @@ class AuthService:
         self._session = session  # Store for test transaction isolation
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
+    def _get_session(self):
+        """
+        Get a session, preferring an injected test session when provided.
+        This keeps service methods compatible with test transaction fixtures.
+
+        Returns:
+            Context manager for database session
+        """
+        if self._session is not None:
+
+            @asynccontextmanager
+            async def _test_session_wrapper():
+                yield self._session
+
+            return _test_session_wrapper()
+
+        return self.db_manager.get_session_async()
+
     # ============================================================================
     # Authentication Methods
     # ============================================================================
@@ -112,12 +131,7 @@ class AuthService:
             >>> token = result.token
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._authenticate_user_impl(self._session, username, password)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._authenticate_user_impl(session, username, password)
 
         except (AuthenticationError, AuthorizationError):
@@ -191,13 +205,8 @@ class AuthService:
             >>> await service.update_last_login(user_id, datetime.now(timezone.utc))
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                await self._update_last_login_impl(self._session, user_id, timestamp)
-            else:
-                # Otherwise create new session (production mode)
-                async with self.db_manager.get_session_async() as session:
-                    await self._update_last_login_impl(session, user_id, timestamp)
+            async with self._get_session() as session:
+                await self._update_last_login_impl(session, user_id, timestamp)
 
         except ResourceNotFoundError:
             raise
@@ -245,12 +254,7 @@ class AuthService:
             ...     print("Admin exists")
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._check_setup_state_impl(self._session, tenant_key)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._check_setup_state_impl(session, tenant_key)
 
         except Exception as e:
@@ -298,12 +302,7 @@ class AuthService:
             ...     print(key.name, key.is_active)
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._list_api_keys_impl(self._session, user_id, include_revoked)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._list_api_keys_impl(session, user_id, include_revoked)
 
         except Exception as e:
@@ -359,12 +358,7 @@ class AuthService:
             >>> print("Store this key:", result.api_key)
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._create_api_key_impl(self._session, user_id, tenant_key, name, permissions)
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._create_api_key_impl(session, user_id, tenant_key, name, permissions)
 
         except Exception as e:
@@ -446,13 +440,8 @@ class AuthService:
             >>> await service.revoke_api_key(key_id, user_id)
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                await self._revoke_api_key_impl(self._session, key_id, user_id)
-            else:
-                # Otherwise create new session (production mode)
-                async with self.db_manager.get_session_async() as session:
-                    await self._revoke_api_key_impl(session, key_id, user_id)
+            async with self._get_session() as session:
+                await self._revoke_api_key_impl(session, key_id, user_id)
 
         except ResourceNotFoundError:
             raise
@@ -519,14 +508,7 @@ class AuthService:
             >>> print(user.tenant_key)
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._register_user_impl(
-                    self._session, username, email, password, role, requesting_admin_id
-                )
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._register_user_impl(session, username, email, password, role, requesting_admin_id)
 
         except ValidationError:
@@ -733,14 +715,7 @@ class AuthService:
             >>> token = admin.token
         """
         try:
-            # Use provided session if available (test mode)
-            if self._session:
-                return await self._create_first_admin_impl(
-                    self._session, username, email, password, full_name, org_name
-                )
-
-            # Otherwise create new session (production mode)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._create_first_admin_impl(session, username, email, password, full_name, org_name)
 
         except ValidationError:
