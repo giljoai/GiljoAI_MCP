@@ -495,9 +495,7 @@ pytest tests/integration/ -v
 
 **Format**: `[SEQUENCE]_[SHORT_DESCRIPTION].md` (all lowercase, underscores)
 
-**Tool Selection (CCW vs CLI)**:
-- **Use CLI**: Database changes, service layer, integration testing, MCP tools
-- **Use CCW**: Frontend work, documentation, pure code (no DB), parallel tasks
+**Execution**: All work via Claude Code CLI. Use specialized subagents for parallel independent tasks.
 
 ## Development Workflow
 
