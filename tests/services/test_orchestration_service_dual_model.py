@@ -30,7 +30,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentExecution, AgentJob, Project
+from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Project
 
 
 # ============================================================================
@@ -45,8 +45,25 @@ async def test_tenant_key() -> str:
 
 
 @pytest_asyncio.fixture
-async def test_project(db_session, test_tenant_key) -> Project:
-    """Create test project for agent jobs."""
+async def test_agent_templates(db_session, test_tenant_key):
+    """Create agent templates matching agent_name values used in tests."""
+    template_names = ["impl-1", "auth-impl", "test-1", "impl-waiting", "test-working", "tester-1"]
+    for name in template_names:
+        template = AgentTemplate(
+            tenant_key=test_tenant_key,
+            name=name,
+            role=name,
+            description=f"Test template for {name}",
+            system_instructions=f"# {name}\nTest agent.",
+            is_active=True,
+        )
+        db_session.add(template)
+    await db_session.commit()
+
+
+@pytest_asyncio.fixture
+async def test_project(db_session, test_tenant_key, test_agent_templates) -> Project:
+    """Create test project for agent jobs (depends on test_agent_templates)."""
     from datetime import datetime, timezone
 
     project = Project(
