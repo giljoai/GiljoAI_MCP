@@ -187,7 +187,12 @@
           <!-- Name Column with ID -->
           <template v-slot:item.name="{ item }">
             <div class="py-2">
-              <div class="font-weight-bold text-body-2">{{ item.name }}</div>
+              <div
+                class="font-weight-bold text-body-2 project-name-link"
+                @click.stop="editProject(item)"
+              >
+                {{ item.name }}
+              </div>
               <div class="text-caption text-medium-emphasis" style="font-family: monospace">
                 Project ID: {{ item.id }}
               </div>
@@ -1082,6 +1087,16 @@ onMounted(async () => {
 
 .rounded {
   border-radius: 4px;
+}
+
+/* Clickable project name */
+.project-name-link {
+  cursor: pointer;
+  color: #ffc300;
+}
+
+.project-name-link:hover {
+  text-decoration: underline;
 }
 
 /* Scrollable project list container */
