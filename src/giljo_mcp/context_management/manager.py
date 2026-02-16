@@ -17,6 +17,7 @@ from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.context_management.indexer import ContextIndexer
 from src.giljo_mcp.context_management.loader import DynamicContextLoader
 from src.giljo_mcp.context_management.summarizer import ContextSummarizer
+from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class ContextManagementSystem:
     vision document workflow with context prioritization tracking.
     """
 
-    def __init__(self, db_manager, target_chunk_size: int = 5000):
+    def __init__(self, db_manager, target_chunk_size: int = VISION_DELIVERY_BUDGET):
         """
         Initialize ContextManagementSystem.
 
