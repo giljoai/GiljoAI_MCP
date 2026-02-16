@@ -228,12 +228,12 @@ class TestMissionAcknowledgement:
     """
 
     async def test_acknowledge_sets_mission_acknowledged_at(
-        self, db_session, orchestration_service, test_project, test_tenant_key
+        self, db_session, orchestration_service, test_project, test_tenant_key, test_agent_template
     ):
         """Verify mission_acknowledged_at is set after acknowledge_job."""
         result = await orchestration_service.spawn_agent_job(
             agent_display_name="implementer",
-            agent_name="impl-1",
+            agent_name="tdd-implementor",
             mission="Implement feature",
             project_id=test_project.id,
             tenant_key=test_tenant_key,
