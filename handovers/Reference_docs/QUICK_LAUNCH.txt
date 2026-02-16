@@ -179,7 +179,7 @@ Backend Services:
     • create_project, activate_project, launch_orchestrator
 
   - OrchestrationService (src/giljo_mcp/services/orchestration_service.py)
-    • create_orchestrator_job, trigger_succession, update_context_usage
+    • create_orchestrator_job, compile_orchestrator_instructions
 
   - UserService (src/giljo_mcp/services/user_service.py)
     • list_users, create_user, update_user, change_password
@@ -309,6 +309,17 @@ Best Example: ProjectsView.vue extracted 9 components (~2,500 lines → 1,018)
 ══════════════════════════════════════════════════════════════════════════════
 
 Production-grade code from the start. No bandaids, no "fix later" comments.
+
+IMPORTANT (Post-0480/0730): Service methods raise domain exceptions on error,
+NOT return {"success": False, "error": ...} dicts. Some examples below predate
+this migration and still show dict patterns - use exception-based patterns instead:
+
+  # OLD pattern (pre-0480) - DO NOT USE:
+  return {"success": False, "error": str(e)}
+
+  # NEW pattern (post-0480) - USE THIS:
+  raise ProductNotFoundError(f"Product {product_id} not found")
+  raise OrchestrationError(message="Failed", context={"key": value})
 
 ### Cross-Platform Paths (CRITICAL for Windows/Linux/Mac)
 

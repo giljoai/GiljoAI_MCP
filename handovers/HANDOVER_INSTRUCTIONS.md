@@ -31,6 +31,43 @@ Follow these principles " "Use Test-Driven Development (TDD):
 
 ---
 
+## Commercial-Grade Code Quality Gate (Non-Negotiable)
+
+This is a professional product built to community-facing standards. Code quality minimum: **7/10 or better**. Every commit should maintain or improve the 0700 cleanup baseline (8/10 architecture score, zero lint issues).
+
+### Pre-Commit Quality Checks
+
+Before EVERY commit, verify:
+
+1. **Zero lint issues**: `ruff check src/ api/` must pass clean
+2. **No dict return regression**: Services raise exceptions (post-0480/0730), NOT `return {"success": False, ...}`
+3. **Tenant isolation**: Every new DB query filters by `tenant_key` (security-critical)
+4. **No dead code introduced**: If you add a method, it must be called. If you remove a caller, remove the method.
+5. **Valid agent statuses only**: `waiting`, `working`, `blocked`, `complete`, `silent`, `decommissioned` (post-0491)
+6. **No bare expressions**: Every computed value must be assigned or used
+7. **No commented-out code**: Delete it. Git has the history.
+8. **Pre-commit hooks must pass**: Do NOT use `--no-verify` without explicit user approval
+
+### Periodic Code Quality Audits
+
+Every 15-30 commits, run the code quality audit:
+**Read and execute:** `handovers/Code_quality_prompt.md`
+
+This launches parallel subagents to check for drift from the 0700 clean baseline.
+
+### Handover Number Assignment Protocol
+
+When creating a new handover, you MUST validate the number:
+
+1. **Read `handovers/HANDOVER_CATALOGUE.md`** to find available gaps
+2. **Check `handovers/completed/` folder** for conflicts with archived numbers
+3. **Verify via git**: `git log --oneline --all | grep "0XXX"` to ensure no commit references this number
+4. **Prefer filling gaps** in existing ranges rather than jumping to higher numbers
+5. **Current known gaps** (check catalogue for latest): 0021, 0033, 0054-0059, 0068, 0097-0099, 0133-0134, 0259, 0277, 0317, 0398-0399, 0413, 0418, 0435-0439, 0441-0449, 0493-0499
+6. **Use gaps appropriate to the domain**: Foundation (0001-0100), Architecture (0101-0200), GUI/Context (0201-0300), Services (0301-0400), Agent/Org (0401-0500)
+
+---
+
 ## Code Quality Standards
 
 ### Production-Grade Requirements
