@@ -20,7 +20,7 @@ async def test_tools():
 
     # Test Project Tools (4)
     try:
-        from src.giljo_mcp.tools.project import (
+        from src.giljo_mcp.tools.project import (  # noqa: F401
             close_project,
             list_projects,
             project_status,
@@ -34,7 +34,7 @@ async def test_tools():
 
     # Test Agent Tools (6)
     try:
-        from src.giljo_mcp.tools.agent import (
+        from src.giljo_mcp.tools.agent import (  # noqa: F401
             activate_agent,
             agent_health,
             assign_job,
@@ -50,7 +50,7 @@ async def test_tools():
 
     # Test Message Tools (6)
     try:
-        from src.giljo_mcp.tools.message import (
+        from src.giljo_mcp.tools.message import (  # noqa: F401
             acknowledge_message,
             broadcast,
             complete_message,
@@ -66,7 +66,7 @@ async def test_tools():
 
     # Test Context Tools (8)
     try:
-        from src.giljo_mcp.tools.context import (
+        from src.giljo_mcp.tools.context import (  # noqa: F401
             get_context_index,
             get_context_section,
             get_product_settings,

@@ -6,9 +6,6 @@ operates correctly in all scenarios.
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, text, inspect
-from alembic import command
-from alembic.config import Config
 
 
 @pytest.fixture

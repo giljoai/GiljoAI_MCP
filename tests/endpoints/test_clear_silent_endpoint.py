@@ -6,12 +6,10 @@ Tests the POST /api/agent-jobs/{agent_id}/clear-silent endpoint.
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
