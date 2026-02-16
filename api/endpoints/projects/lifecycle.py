@@ -40,6 +40,38 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _build_project_response(proj, agents=None) -> ProjectResponse:
+    """Build a ProjectResponse from a ProjectDetail DTO.
+
+    Centralises the ProjectDetail-to-ProjectResponse mapping used by every
+    lifecycle endpoint so the field list is maintained in exactly one place.
+
+    Args:
+        proj: ProjectDetail DTO returned by ProjectService.get_project().
+        agents: Optional list of agent dicts. Defaults to an empty list.
+
+    Returns:
+        A fully populated ProjectResponse.
+    """
+    if agents is None:
+        agents = []
+    return ProjectResponse(
+        id=proj.id,
+        alias=proj.alias or "",
+        name=proj.name,
+        description=proj.description,
+        mission=proj.mission or "",
+        status=proj.status,
+        product_id=proj.product_id,
+        created_at=proj.created_at,
+        updated_at=proj.updated_at,
+        completed_at=proj.completed_at,
+        agent_count=proj.agent_count,
+        message_count=proj.message_count,
+        agents=agents,
+    )
+
+
 @router.post("/{project_id}/activate", response_model=ProjectResponse)
 async def activate_project(
     project_id: str,
@@ -79,21 +111,7 @@ async def activate_project(
     # Get full project details with agents (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    return ProjectResponse(
-        id=proj.id,
-        alias=proj.alias or "",
-        name=proj.name,
-        description=proj.description,
-        mission=proj.mission or "",
-        status=proj.status,
-        product_id=proj.product_id,
-        created_at=proj.created_at,
-        updated_at=proj.updated_at,
-        completed_at=proj.completed_at,
-        agent_count=proj.agent_count,
-        message_count=proj.message_count,
-        agents=[],
-    )
+    return _build_project_response(proj)
 
 
 @router.post("/{project_id}/deactivate", response_model=ProjectResponse)
@@ -131,21 +149,7 @@ async def deactivate_project(
     # Get updated project with agents (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    return ProjectResponse(
-        id=proj.id,
-        alias=proj.alias or "",
-        name=proj.name,
-        description=proj.description,
-        mission=proj.mission or "",
-        status=proj.status,
-        product_id=proj.product_id,
-        created_at=proj.created_at,
-        updated_at=proj.updated_at,
-        completed_at=proj.completed_at,
-        agent_count=proj.agent_count,
-        message_count=proj.message_count,
-        agents=[],
-    )
+    return _build_project_response(proj)
 
 
 @router.post("/{project_id}/cancel", response_model=ProjectResponse)
@@ -181,21 +185,7 @@ async def cancel_project(
     # Get updated project (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    return ProjectResponse(
-        id=proj.id,
-        alias=proj.alias or "",
-        name=proj.name,
-        description=proj.description,
-        mission=proj.mission or "",
-        status=proj.status,
-        product_id=proj.product_id,
-        created_at=proj.created_at,
-        updated_at=proj.updated_at,
-        completed_at=proj.completed_at,
-        agent_count=proj.agent_count,
-        message_count=proj.message_count,
-        agents=[],
-    )
+    return _build_project_response(proj)
 
 
 @router.post("/{project_id}/restore", response_model=ProjectResponse)
@@ -230,21 +220,7 @@ async def restore_project(
     # Get updated project (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    return ProjectResponse(
-        id=proj.id,
-        alias=proj.alias or "",
-        name=proj.name,
-        description=proj.description,
-        mission=proj.mission or "",
-        status=proj.status,
-        product_id=proj.product_id,
-        created_at=proj.created_at,
-        updated_at=proj.updated_at,
-        completed_at=proj.completed_at,
-        agent_count=proj.agent_count,
-        message_count=proj.message_count,
-        agents=[],
-    )
+    return _build_project_response(proj)
 
 
 @router.post("/{project_id}/cancel-staging", response_model=ProjectResponse)
@@ -283,21 +259,7 @@ async def cancel_project_staging(
     # Get updated project (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    return ProjectResponse(
-        id=proj.id,
-        alias=proj.alias or "",
-        name=proj.name,
-        description=proj.description,
-        mission=proj.mission or "",
-        status=proj.status,
-        product_id=proj.product_id,
-        created_at=proj.created_at,
-        updated_at=proj.updated_at,
-        completed_at=proj.completed_at,
-        agent_count=proj.agent_count,
-        message_count=proj.message_count,
-        agents=[],
-    )
+    return _build_project_response(proj)
 
 
 @router.delete("/deleted", response_model=ProjectPurgeResponse)
@@ -401,21 +363,7 @@ async def archive_project(
     # Get updated project (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    return ProjectResponse(
-        id=proj.id,
-        alias=proj.alias or "",
-        name=proj.name,
-        description=proj.description,
-        mission=proj.mission or "",
-        status=proj.status,
-        product_id=proj.product_id,
-        created_at=proj.created_at,
-        updated_at=proj.updated_at,
-        completed_at=proj.completed_at,
-        agent_count=proj.agent_count,
-        message_count=proj.message_count,
-        agents=[],
-    )
+    return _build_project_response(proj)
 
 
 @router.delete("/{project_id}", response_model=ProjectDeleteResponse)

@@ -89,18 +89,6 @@ class PerformanceMetricsResponse(BaseModel):
     error_rate_percent: float
 
 
-class TimeSeriesDataPoint(BaseModel):
-    timestamp: datetime
-    value: float
-    label: Optional[str] = None
-
-
-class TimeSeriesResponse(BaseModel):
-    metric: str
-    period: str
-    data_points: list[TimeSeriesDataPoint]
-
-
 class CallCountsResponse(BaseModel):
     total_api_calls: int
     total_mcp_calls: int
