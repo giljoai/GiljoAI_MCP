@@ -11,7 +11,6 @@ Provides fixtures specific to API integration testing including:
 
 from unittest.mock import MagicMock
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport
 from httpx import AsyncClient as HTTPXAsyncClient
