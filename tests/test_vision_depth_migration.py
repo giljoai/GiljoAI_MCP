@@ -18,7 +18,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.tools.orchestration import DEFAULT_DEPTH_CONFIG, _get_user_config
+from src.giljo_mcp.services.orchestration_service import DEFAULT_DEPTH_CONFIG, _get_user_config
 
 
 class TestVisionDepthDefaults:
