@@ -3121,7 +3121,11 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
         try:
             if self.db_manager.is_async:
                 async with self.db_manager.get_session_async() as session:
-                    project = await session.get(Project, project_id)
+                    # TENANT ISOLATION: Use select().where() instead of session.get() (Phase D audit fix)
+                    from sqlalchemy import select
+
+                    result = await session.execute(select(Project).where(Project.id == project_id))
+                    project = result.scalar_one_or_none()
                     if project:
                         if not project.meta_data:
                             project.meta_data = {}
@@ -3133,7 +3137,11 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
                         await session.commit()
             else:
                 with self.db_manager.get_session() as session:
-                    project = session.get(Project, project_id)
+                    # TENANT ISOLATION: Use select().where() instead of session.get() (Phase D audit fix)
+                    from sqlalchemy import select
+
+                    result = session.execute(select(Project).where(Project.id == project_id))
+                    project = result.scalar_one_or_none()
                     if project:
                         if not project.meta_data:
                             project.meta_data = {}
