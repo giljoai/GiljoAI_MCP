@@ -136,7 +136,6 @@ class TestEventSchemaStandalone:
         try:
             # Import using direct file loading to avoid circular imports
             import importlib.util
-            import sys
             from pathlib import Path
 
             schema_path = Path(__file__).parent.parent.parent / "api" / "events" / "schemas.py"
@@ -346,7 +345,6 @@ class TestWebSocketDependencyMocked:
     def test_websocket_dependency_instantiation(self):
         """Test WebSocketDependency can be instantiated."""
         import importlib.util
-        import sys
         from pathlib import Path
         from unittest.mock import MagicMock
 

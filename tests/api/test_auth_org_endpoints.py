@@ -18,7 +18,6 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from passlib.hash import bcrypt
 
 
 @pytest_asyncio.fixture

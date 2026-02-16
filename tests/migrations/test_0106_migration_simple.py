@@ -5,7 +5,6 @@ Tests use direct SQL and minimal setup for maximum reliability.
 """
 from pathlib import Path
 import pytest
-from sqlalchemy import text
 
 
 # ============================================================================
