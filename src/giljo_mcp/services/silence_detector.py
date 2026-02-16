@@ -121,7 +121,11 @@ class SilenceDetector:
         """
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
 
-        # Find working agents past the silence threshold
+        # TENANT ISOLATION NOTE (Phase C audit, Feb 2026):
+        # This query intentionally scans ALL tenants. The silence detector is a
+        # system-wide background health monitor (like a database cleanup job), not
+        # a tenant-facing operation. It runs on a server timer with no user/tenant
+        # context. Cross-tenant scope is BY DESIGN.
         stmt = select(AgentExecution).where(
             AgentExecution.status == "working",
             or_(
@@ -185,6 +189,11 @@ async def auto_clear_silent(
         job_id: The job_id extracted from MCP tool arguments
         ws_manager: WebSocket manager for broadcasting
     """
+    # TENANT ISOLATION NOTE (Phase C audit, Feb 2026):
+    # This query filters by job_id (UUID) which uniquely identifies one agent's job.
+    # MCP authentication resolves job_id from the authenticated tenant's context,
+    # so a tenant cannot call this with another tenant's job_id. Cross-tenant risk
+    # is mitigated by UUID uniqueness + MCP auth layer. System-level by design.
     stmt = select(AgentExecution).where(
         AgentExecution.job_id == job_id,
         AgentExecution.status == "silent",
