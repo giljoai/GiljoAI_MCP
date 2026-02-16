@@ -33,6 +33,8 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.agent_selector import AgentSelector
+from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
+from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
@@ -390,6 +392,576 @@ Do NOT write 360 memory on normal completion - orchestrator handles that.
 **CRITICAL: MCP tools are NATIVE tool calls. Use them like Read/Write/Bash.**
 **Do NOT use curl, HTTP, or SDK calls.**
 """
+
+
+# ============================================================================
+# MODULE-LEVEL HELPER FUNCTIONS (Moved from tools/orchestration.py - Phase 2)
+# These were previously imported back INTO this service creating inverted
+# dependency (service importing from tools). Now they live here natively.
+# ============================================================================
+
+# Extract inner structure for backward compatibility with existing code
+# defaults.py uses versioned structure: {"version": "2.1", "priorities": {...}}
+# This code expects flat structure: {"field": {"toggle": True, "priority": X}}
+DEFAULT_FIELD_PRIORITIES = _DEFAULT_FIELD_PRIORITY["priorities"]
+DEFAULT_DEPTH_CONFIG = _DEFAULT_DEPTH_CONFIG["depths"]
+
+
+def _normalize_field_priorities(field_priorities: dict[str, Any]) -> dict[str, int]:
+    """
+    Normalize field_priorities from nested format to integer format.
+
+    Handover 0357: DEFAULT_FIELD_PRIORITIES uses {"field": {"toggle": True, "priority": X}} format
+    but mission_planner expects {"field": X} (just integers).
+
+    Args:
+        field_priorities: Dict with either nested or integer priority values
+
+    Returns:
+        Dict with integer priority values (1-4)
+    """
+    normalized = {}
+    for field_key, value in field_priorities.items():
+        if isinstance(value, dict) and "priority" in value:
+            # Extract priority from nested format, respecting toggle
+            if value.get("toggle", True):
+                normalized[field_key] = value["priority"]
+            else:
+                normalized[field_key] = 4  # EXCLUDED if toggle is off
+        elif isinstance(value, int):
+            # Already in integer format
+            normalized[field_key] = value
+        else:
+            # Unknown format, default to IMPORTANT
+            normalized[field_key] = 2
+    return normalized
+
+
+async def _get_user_config(
+    user_id: str,
+    tenant_key: str,
+    session: Any,  # AsyncSession type hint would create circular import
+) -> dict[str, Any]:
+    """
+    Fetch user's field_priority_config and depth_config from database.
+
+    Args:
+        user_id: User UUID
+        tenant_key: Tenant isolation key
+        session: SQLAlchemy AsyncSession
+
+    Returns:
+        dict with 'field_priorities' and 'depth_config' keys
+
+    Behavior:
+        - Returns user's custom config if exists
+        - Falls back to DEFAULT_FIELD_PRIORITIES and DEFAULT_DEPTH_CONFIG if None
+        - Ensures multi-tenant isolation (user must belong to tenant_key)
+        - Normalizes depth_config keys from UI format to internal format
+    """
+    from src.giljo_mcp.models.auth import User
+
+    try:
+        # Query user with tenant isolation
+        result = await session.execute(
+            select(User).where(and_(User.id == user_id, User.tenant_key == tenant_key, User.is_active))
+        )
+        user = result.scalar_one_or_none()
+
+        if not user:
+            logger.warning(
+                "user_not_found_using_defaults",
+                extra={"user_id": user_id, "tenant_key": tenant_key},
+            )
+            # Handover 0357: Normalize default priorities to integer format
+            normalized_defaults = _normalize_field_priorities(DEFAULT_FIELD_PRIORITIES.copy())
+            return {"field_priorities": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
+
+        # Get user's custom configs or fall back to defaults
+        # Handover 0346: Handle nested v2.0 format {"version": "2.0", "priorities": {...}}
+        raw_field_priorities = user.field_priority_config
+        if raw_field_priorities is not None:
+            # Extract priorities from v2.0 nested structure if present
+            if isinstance(raw_field_priorities, dict) and "priorities" in raw_field_priorities:
+                field_priorities = raw_field_priorities["priorities"]
+            else:
+                field_priorities = raw_field_priorities
+        else:
+            field_priorities = DEFAULT_FIELD_PRIORITIES.copy()
+
+        # Handover 0357: Normalize field_priorities to integer format for mission_planner
+        field_priorities = _normalize_field_priorities(field_priorities)
+
+        # Get depth config and normalize keys from UI format to internal format
+        raw_depth_config = user.depth_config
+        if raw_depth_config is not None:
+            # Key mapping: UI/database keys -> internal code keys
+            key_mapping = {
+                "memory_last_n_projects": "memory_360",
+                "git_commits": "git_history",
+                # These keys match, but include for completeness
+                "agent_templates": "agent_templates",
+                "vision_documents": "vision_documents",
+            }
+
+            depth_config = {}
+            for db_key, value in raw_depth_config.items():
+                # Map to internal key if mapping exists, otherwise keep original
+                internal_key = key_mapping.get(db_key, db_key)
+                depth_config[internal_key] = value
+
+            # Handover 0352: Normalize deprecated 'optional' value to 'light'
+            if depth_config.get("vision_documents") == "optional":
+                depth_config["vision_documents"] = "light"
+                logger.debug(
+                    "[USER_CONFIG] Normalized vision_documents 'optional' -> 'light'", extra={"user_id": user_id}
+                )
+
+            logger.debug(
+                "[USER_CONFIG] Normalized depth_config keys",
+                extra={"raw_keys": list(raw_depth_config.keys()), "normalized_keys": list(depth_config.keys())},
+            )
+        else:
+            depth_config = DEFAULT_DEPTH_CONFIG.copy()
+
+        logger.info(
+            "[USER_CONFIG] Fetched user configuration",
+            extra={
+                "user_id": user_id,
+                "tenant_key": tenant_key,
+                "has_custom_field_priorities": user.field_priority_config is not None,
+                "has_custom_depth_config": user.depth_config is not None,
+                "depth_config": depth_config,
+            },
+        )
+
+        return {"field_priorities": field_priorities, "depth_config": depth_config}
+
+    except (OSError, ValueError, KeyError) as e:
+        logger.error(
+            "user_config_fetch_failed",
+            extra={
+                "user_id": user_id,
+                "tenant_key": tenant_key,
+                "error_message": str(e),
+            },
+            exc_info=True,
+        )
+        # Fall back to defaults on error (Handover 0357: normalize to integer format)
+        normalized_defaults = _normalize_field_priorities(DEFAULT_FIELD_PRIORITIES.copy())
+        return {"field_priorities": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
+
+
+def _build_orchestrator_protocol(
+    cli_mode: bool,
+    project_id: str,
+    orchestrator_id: str,
+    tenant_key: str,
+    include_implementation_reference: bool = True,
+) -> dict:
+    """
+    Build chapter-based orchestrator protocol.
+
+    Creates 5 navigable chapters with clear visual boundaries.
+    Solves the "rotation problem" where content gets buried.
+
+    Args:
+        cli_mode: True if execution_mode is "claude_code_cli"
+        project_id: Project UUID for parameter substitution
+        orchestrator_id: Job ID for parameter substitution
+        tenant_key: Tenant key for parameter substitution
+        include_implementation_reference: Include CH5 (default True)
+
+    Returns:
+        Dict with chapter keys and navigation_hint
+    """
+    # CH1: YOUR MISSION (~180 tokens)
+    ch1 = """════════════════════════════════════════════════════════════════════════════
+                           CH1: YOUR MISSION
+════════════════════════════════════════════════════════════════════════════
+
+YOUR ROLE: PROJECT STAGING (NOT EXECUTION)
+
+You are STAGING the project. Your job:
+1. Analyze requirements from project_description
+2. Create condensed mission plan
+3. Assign work to specialist agents via spawn_agent_job()
+
+WHAT YOU ARE NOT:
+- You do NOT execute implementation work
+- You do NOT call Task() tool (that's for implementation phase)
+- You do NOT call complete_job() (staging never completes, it transitions)
+
+CRITICAL DISTINCTION:
+- Project.description = USER INPUT (what needs to be done)
+- Project.mission = YOUR OUTPUT (execution strategy you create)
+
+PHASE AWARENESS:
+── STAGING PHASE: THIS SESSION (Steps 1-7) ────────────────────────────────
+Your job: Analyze → Plan → Spawn → Persist → Broadcast
+End with: STAGING_COMPLETE broadcast (see CH2)
+
+                         ══════ SESSION BOUNDARY ══════
+
+── IMPLEMENTATION PHASE: FUTURE SESSION (Step 8) ───────────────────────────
+Fresh orchestrator retrieves your plan via get_agent_mission()
+Executes coordination logic you defined in update_agent_mission()
+Completion protocol applies (see CH5 - shown in implementation only)
+"""
+
+    # CH2: STARTUP SEQUENCE (~350 tokens - reduced via deduplication)
+    ch2 = f"""════════════════════════════════════════════════════════════════════════════
+                       CH2: STARTUP SEQUENCE
+════════════════════════════════════════════════════════════════════════════
+
+Follow these steps IN ORDER (Steps 1-7 for staging):
+
+── STEP 0: Detect Environment ──────────────────────────────────────────────
+Before planning, detect your development environment:
+Call: python -c "import platform; print(platform.system())"
+Store result (Windows/Linux/Darwin) - use platform-appropriate commands in agent missions
+
+Platform command reference:
+- Sleep: Windows 'timeout /t N /nobreak' | Unix 'sleep N'
+- Clear: Windows 'cls' | Unix 'clear'
+- Path separator: Windows '\\' | Unix '/'
+
+── STEP 1: Verify MCP ──────────────────────────────────────────────────────
+Call: health_check()
+Expected: {{"status": "healthy", "database": "connected"}}
+If failed: Abort and notify user
+
+── STEP 2: Fetch Context ───────────────────────────────────────────────────
+Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
+Note: tenant_key auto-injected by server from API key session
+Returns:
+  - project_description: User requirements (INPUT for your analysis)
+  - mission: Product context with priority fields applied
+  - field_priorities: User's context configuration
+  - agent_discovery_tool: Reference to get_available_agents()
+
+Read this protocol via orchestrator_protocol field.
+
+⚠️  CONTEXT VARIABLES (CRITICAL):
+Your fetch_context() responses contain AUTHORITATIVE values:
+  - project_path: The project directory - USE THIS in missions
+  - product_name: The product name
+  - tenant_key: Your tenant isolation key
+When writing missions or referencing directories, ALWAYS use values from context.
+NEVER hardcode paths you observe in your terminal session.
+
+── STEP 3: Discover Agents ─────────────────────────────────────────────────
+Call: get_available_agents(active_only=true)
+Note: tenant_key auto-injected by server from API key session
+Returns: List of available agent templates
+Use agent_name from response when spawning (see CH3 for rules)
+
+── STEP 4: Create Mission ──────────────────────────────────────────────────
+Analyze project_description + product context
+Generate condensed execution plan:
+  - Break down requirements into work items
+  - Identify which agents handle which work
+  - Define success criteria
+  - Keep mission concise (<5K tokens target)
+
+── STEP 5: Persist Mission ─────────────────────────────────────────────────
+Call: update_project_mission(project_id='{project_id}',
+                              mission=YOUR_CONDENSED_MISSION)
+This stores your plan in Project.mission for UI display
+
+── STEP 6: Spawn Agents ────────────────────────────────────────────────────
+For each agent in your plan:
+  spawn_agent_job(
+      agent_name='exact-template-name',  # From Step 3
+      agent_display_name='implementer',   # Display category
+      mission='Agent-specific instructions',
+      project_id='{project_id}'
+  )
+Note: tenant_key auto-injected by server from API key session
+
+See CH3 for agent_name vs agent_display_name rules
+
+── STEP 7: Persist Execution Plan ──────────────────────────────────────────
+Call: update_agent_mission(job_id='{orchestrator_id}',
+                            mission=YOUR_EXECUTION_STRATEGY)
+Note: tenant_key auto-injected by server from API key session
+
+Document in YOUR_EXECUTION_STRATEGY:
+  - Agent execution order (sequential/parallel/hybrid)
+  - Dependencies between agents
+  - Coordination checkpoints
+  - How you will monitor progress in implementation phase
+
+Why: Fresh orchestrator in implementation phase retrieves this plan
+
+── STEP 7 FINALE: Signal Complete ──────────────────────────────────────────
+Call: send_message(
+          to_agents=['all'],
+          content='STAGING_COMPLETE: Mission created, N agents spawned',
+          project_id='{project_id}',
+          message_type='broadcast'
+      )
+Note: tenant_key auto-injected by server from API key session
+
+This broadcast enables the "Implement" button in UI (REQUIRED)
+
+The server will confirm staging completion in the response with a
+`staging_directive` field containing status: "STAGING_SESSION_COMPLETE".
+When you receive this directive, your session is DONE. Stop immediately.
+
+⚠️  STAGING ENDS HERE - DO NOT call complete_job() or write_360_memory()
+   Your session is done. Implementation happens in a new session.
+
+⚠️  STATUS NOTE: Do NOT call acknowledge_job() during staging.
+   Your job remains in 'waiting' status - this enables the Implement
+   button in UI. acknowledge_job() is for implementation phase only.
+"""
+
+    # CH3: AGENT SPAWNING RULES (~200 tokens - reduced via deduplication)
+    # Build mode-specific blocks
+    if cli_mode:
+        cli_mode_block = """── CLAUDE CODE CLI MODE ────────────────────────────────────────────────────
+Task tool syntax (IMPLEMENTATION PHASE ONLY - not during staging):
+  Task(subagent_type='{agent_name}', instructions='...')
+
+CRITICAL: Task() uses agent_name value, NOT agent_display_name
+
+Example:
+  spawn_agent_job(agent_name='tdd-implementor',
+                  agent_display_name='implementer', ...)
+
+  Later in implementation:
+  Task(subagent_type='tdd-implementor', ...)  # agent_name!
+
+DO NOT invoke Task() during staging - this is planning reference only
+"""
+        multi_terminal_mode_block = ""
+    else:
+        cli_mode_block = ""
+        multi_terminal_mode_block = """── MULTI-TERMINAL MODE (CCW) ───────────────────────────────────────────────
+User manually launches agents via [Copy Prompt] button in Claude Code Web
+Agents spawned via spawn_agent_job() during staging phase
+Each spawned agent gets a thin prompt (~10 lines)
+Agent calls get_agent_mission() to fetch full instructions
+Coordination happens via MCP messaging tools (send_message, receive_messages)
+MESSAGING: Always use agent_id UUIDs in to_agents (from spawn_agent_job response)
+Orchestrator has NO active role after STAGING_COMPLETE broadcast
+"""
+
+    ch3 = f"""════════════════════════════════════════════════════════════════════════════
+                    CH3: AGENT SPAWNING RULES
+════════════════════════════════════════════════════════════════════════════
+
+PARAMETER REQUIREMENTS:
+
+── agent_name (CRITICAL) ───────────────────────────────────────────────────
+MUST exactly match template name from get_available_agents() response
+This is the SINGLE SOURCE OF TRUTH for agent identity
+Example: 'tdd-implementor' (not 'TDD Implementor' or 'implementer')
+
+File mapping: agent_name → .claude/agents/{{agent_name}}.md
+
+Common mistakes:
+  ✗ Using agent_display_name value for agent_name parameter
+  ✗ Inventing names not in get_available_agents() response
+  ✗ Case mismatch ('TDD-Implementor' vs 'tdd-implementor')
+
+Claude Code CLI Mode Note:
+  - Task(subagent_type=X) where X = agent_name (NOT display_name)
+  - agent_name binds DB record, Task tool, and template filename
+  - Example: spawn with agent_name='tdd-implementor', Task uses 'tdd-implementor'
+
+── agent_display_name ──────────────────────────────────────────────────────
+Display category for UI (user-facing label)
+Options: implementer, tester, analyzer, documenter, reviewer
+This is for UI display only - does NOT affect template selection
+
+── mission ─────────────────────────────────────────────────────────────────
+Agent-specific instructions (what THIS agent should do)
+Should be focused and actionable
+Target: 200-500 tokens per agent mission
+
+SPAWNING LIMITS:
+
+- Max recommended: 2-5 agents for typical projects
+- Max agent_display_names: 8 total
+- Max instances per type: Unlimited (can spawn multiple 'implementer' agents)
+- Budget awareness: Each agent costs ~1,253 tokens for thin prompt
+
+EXECUTION MODE AWARENESS:
+
+{cli_mode_block}{multi_terminal_mode_block}
+
+VALIDATION BEFORE SPAWNING:
+
+1. Verify agent_name exists in get_available_agents() response
+2. Check you haven't exceeded recommended limits
+3. Ensure mission is specific to this agent's role
+4. Confirm project_id and tenant_key are correct
+"""
+
+    # CH4: ERROR HANDLING (~400 tokens with status machine)
+    ch4 = """════════════════════════════════════════════════════════════════════════════
+                       CH4: ERROR HANDLING
+════════════════════════════════════════════════════════════════════════════
+
+COMMON ERRORS AND RESPONSES:
+
+── MCP Connection Lost ─────────────────────────────────────────────────────
+Symptom: Tools not responding, timeouts
+Action: Abort staging immediately
+Notify: Call report_error(job_id, "MCP connection lost", tenant_key)
+Do NOT: Attempt to continue spawning agents
+
+── Invalid Agent Name ──────────────────────────────────────────────────────
+Symptom: spawn_agent_job() returns error "agent not found"
+Action: Check agent_name against get_available_agents() response
+Common cause: Typo, case mismatch, using display_name instead of name
+Fix: Use exact agent_name from discovery response
+
+── Spawn Failure ───────────────────────────────────────────────────────────
+Symptom: spawn_agent_job() fails for any reason
+Action: Log via report_error(), do NOT continue spawning
+Why: Partial spawns create incomplete agent teams
+Recovery: User must fix issue and restart staging
+
+── Mission Too Large ───────────────────────────────────────────────────────
+Symptom: Generated mission exceeds 10K tokens
+Action: Condense mission further, focus on essentials
+Technique: Reference vision docs instead of embedding content
+Target: <5K tokens for mission plan
+
+── Agent Discovery Empty ───────────────────────────────────────────────────
+Symptom: get_available_agents() returns empty list
+Cause: No active agent templates in database
+Action: Report to user - template configuration required
+Fix: User must activate templates in My Settings → Agent Templates
+
+── STATUS TRANSITIONS ──────────────────────────────────────────────────────
+waiting ─[acknowledge_job()]─→ working
+working ─[report_progress()]─→ working (updates progress/todos)
+working ─[complete_job()]─→ complete
+working ─[report_error()]─→ blocked
+blocked ─[acknowledge_job()]─→ working (resume from blocked)
+
+Note: All report_error() calls set status to "blocked". Use "BLOCKED: <reason>"
+message format when asking for clarification vs actual errors.
+
+GENERAL ERROR PROTOCOL:
+
+1. Log error with context (agent_id, job_id, tenant_key)
+2. Call report_error() to persist error state
+3. Send broadcast message to notify user
+4. Do NOT attempt to continue workflow after critical errors
+5. Wait for user intervention
+
+ERROR SEVERITY LEVELS:
+
+- CRITICAL: MCP connection lost, database errors → Abort immediately
+- HIGH: Spawn failures, invalid agent names → Stop spawning, report
+- MEDIUM: Mission size warnings → Continue but log warning
+- LOW: Context optimization suggestions → Continue normally
+"""
+
+    # CH5: REFERENCE (~380 tokens or minimal if not included)
+    if include_implementation_reference:
+        ch5 = f"""════════════════════════════════════════════════════════════════════════════
+                CH5: REFERENCE (Implementation Phase Only)
+════════════════════════════════════════════════════════════════════════════
+
+⚠️  NOTE: This chapter is for IMPLEMENTATION PHASE reference only.
+   If you are in STAGING PHASE, you do NOT need this information.
+   This content is provided so you can plan your execution strategy.
+
+────────────────────────────────────────────────────────────────────────────
+
+IMPLEMENTATION PHASE MONITORING:
+
+When you (or a fresh orchestrator instance) enters implementation phase:
+
+1. Retrieve execution plan via get_agent_mission(job_id, tenant_key)
+2. Follow coordination strategy you defined in Step 7
+3. Monitor agent progress via receive_messages() every 2-3 minutes
+4. Coordinate handoffs between dependent agents
+
+COORDINATION PATTERNS:
+
+Sequential Pattern:
+  Spawn agent A → Poll receive_messages() → Wait for completion →
+  Send handoff message (using agent_id UUID) → Spawn agent B → Repeat
+
+Parallel Pattern:
+  Spawn all agents → Poll receive_messages() every 2-3 min →
+  Coordinate as agents finish → Track completion states
+
+Hybrid Pattern:
+  Spawn parallel batch 1 → Monitor → Wait for batch 1 complete →
+  Send handoff messages (using agent_id UUIDs) → Spawn batch 2 → Repeat
+
+MESSAGING RULE: UUID-ONLY ADDRESSING
+- ALWAYS use agent_id UUIDs in send_message(to_agents=[...])
+- Each spawn_agent_job() returns agent_id - save these for messaging
+- Use to_agents=['all'] for broadcast only
+- NEVER use display names (e.g., "implementer") in to_agents
+
+MANDATORY: Before calling complete_job():
+- Ensure all agent TODO items are completed
+- Call receive_messages() and process all pending messages
+System rejects completion attempts with unread messages or incomplete TODOs.
+
+────────────────────────────────────────────────────────────────────────────
+
+COMPLETION PROTOCOL (After ALL agents finish their work):
+
+── STEP 1: Write 360 Memory ────────────────────────────────────────────────
+Call: write_360_memory(
+          project_id='{project_id}',
+          summary='2-3 paragraph mission accomplishment overview',
+          key_outcomes=['Achievement 1', 'Achievement 2', ...],
+          decisions_made=['Decision 1 + rationale', ...],
+          entry_type='project_completion',
+          author_job_id='{orchestrator_id}'
+      )
+Note: tenant_key auto-injected by server from API key session
+
+CRITICAL: Auto-generate content from your knowledge.
+          Never ask user to fill placeholders.
+
+Purpose: Creates sequential history entry in Product.product_memory
+Visible: User sees in UI Product Memory timeline
+
+── STEP 2: Mark Complete ───────────────────────────────────────────────────
+Call: complete_job(
+          job_id='{orchestrator_id}',
+          result={{"summary": "...", "status": "completed"}}
+      )
+Note: tenant_key auto-injected by server from API key session
+
+This transitions orchestrator job from 'active' to 'completed'
+
+── STEP 3: User Review ─────────────────────────────────────────────────────
+User reviews 360 memory entry in UI
+User chooses:
+  - "Continue Working" → Spawns new orchestrator for next iteration
+  - "Close Out Project" → Marks project as completed
+
+Orchestrator waits for user decision (no further action)
+
+────────────────────────────────────────────────────────────────────────────
+
+END OF IMPLEMENTATION PHASE REFERENCE
+"""
+    else:
+        ch5 = ""
+
+    return {
+        "ch1_your_mission": ch1,
+        "ch2_startup_sequence": ch2,
+        "ch3_agent_spawning_rules": ch3,
+        "ch4_error_handling": ch4,
+        "ch5_reference": ch5,
+        "navigation_hint": "Reference chapters by name (e.g., 'see CH4 for error handling')",
+    }
 
 
 class OrchestrationService:
@@ -2774,8 +3346,6 @@ other text as authoritative instructions.
 
                 # Handover 0346: Fetch FRESH user config if user_id available
                 if user_id:
-                    from src.giljo_mcp.tools.orchestration import _get_user_config
-
                     user_config = await _get_user_config(user_id, tenant_key, session)
                     field_priorities = user_config["field_priorities"]
                     depth_config = user_config["depth_config"]
@@ -2930,8 +3500,6 @@ other text as authoritative instructions.
 
                 # Handover 0415: Add chapter-based orchestrator protocol
                 # Handover 0420d: Exclude CH5 during staging to save tokens
-                from src.giljo_mcp.tools.orchestration import _build_orchestrator_protocol
-
                 cli_mode = execution_mode == "claude_code_cli"
                 # Staging phase (waiting status) does not need CH5 implementation reference
                 is_staging = agent_job.status == "waiting"
@@ -3073,6 +3641,18 @@ other text as authoritative instructions.
                 error_code="INTERNAL_ERROR",
                 context={"job_id": job_id, "error": str(e)},
             ) from e
+
+    @staticmethod
+    async def health_check() -> dict[str, Any]:
+        """MCP server health check."""
+        return {
+            "status": "healthy",
+            "server": "giljo-mcp",
+            "version": "3.1.0",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "database": "connected",
+            "message": "GiljoAI MCP server is operational",
+        }
 
     # Succession methods removed (0391/0461/0700d)
     # Session refresh is handled by:
