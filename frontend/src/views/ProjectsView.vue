@@ -625,9 +625,9 @@ const filterOptions = computed(() => {
 
 // Table headers
 const headers = [
-  { title: 'Name', key: 'name', sortable: true, width: '28%' },
+  { title: 'Name', key: 'name', sortable: true, width: '26%' },
   { title: 'Product', key: 'product', sortable: false, width: '12%' },
-  { title: 'Staged', key: 'staging_status', sortable: true, width: '8%', align: 'center' },
+  { title: 'Staged', key: 'staging_status', sortable: true, width: '10%', align: 'center' },
   { title: 'Created', key: 'created_at', sortable: true, width: '14%' },
   { title: 'Completed', key: 'completed_at', sortable: true, width: '14%', align: 'center' },
   { title: 'Status', key: 'status', sortable: true, width: '13%', align: 'center' },
