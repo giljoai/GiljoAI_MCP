@@ -90,40 +90,9 @@ Every handover should follow this structure:
 
 ---
 
-## Tool Selection: CCW vs CLI
+## Execution Environment
 
-### **Complete Guide**: `handovers/CCW_OR_CLI_EXECUTION_GUIDE.md`
-
-### **Quick Decision Matrix**
-
-| Task Type | Tool | Why |
-|-----------|------|-----|
-| Database schema changes | CLI | Requires local database access |
-| Service layer development | CLI | Needs database testing |
-| API endpoint implementation | CLI | Requires backend server testing |
-| Frontend Vue components | CCW | Pure frontend, no backend needed |
-| Documentation writing | CCW | No code execution required |
-| Integration testing | CLI | Needs full stack running |
-| Multiple independent tasks | CCW | Parallelization (multi-branch) |
-| MCP tool development | CLI | Requires MCP server testing |
-| Template updates | CCW | Pure text changes |
-| Vision document updates | CCW | Pure text changes |
-
-### **Use CLI (Local) When:**
-- ✅ Database migrations or schema changes
-- ✅ Testing with live backend/database
-- ✅ Debugging runtime issues
-- ✅ File system operations (large file moves, gitignore updates)
-- ✅ MCP tool registration and testing
-- ✅ Integration testing (multi-service workflows)
-
-### **Use CCW (Cloud) When:**
-- ✅ Pure code changes (no DB required)
-- ✅ Frontend work (Vue components, Vuetify UI)
-- ✅ Template updates (agent prompts, mission templates)
-- ✅ Documentation writing (markdown, guides)
-- ✅ Multiple independent tasks (parallelization via multi-branch)
-- ✅ API endpoint implementation (after service layer complete)
+All handover work is executed via **Claude Code CLI** (local). Use specialized subagents for parallelization when tasks are independent.
 
 ---
 
@@ -190,17 +159,14 @@ pytest tests/ --cov=src/giljo_mcp --cov-report=html
 ### **Lesson 4: Parallel Execution**
 
 **Problem**: Sequential execution wasted time on independent tasks
-**Fix**: CCW parallelization (4 endpoints in 4h wall-clock vs 12h sequential)
-**Going forward**: Use CCW for pure code, parallelize when possible
+**Going forward**: Use specialized subagents for independent tasks when possible
 
-**Parallel Execution Example** (CCW):
+**Parallel Execution Example** (subagents):
 ```
-Branch 1: Implement POST /api/products
-Branch 2: Implement GET /api/products
-Branch 3: Implement PUT /api/products/{id}
-Branch 4: Implement DELETE /api/products/{id}
-
-Wall-clock time: 4 hours (vs 16 hours sequential)
+Subagent 1: Implement POST /api/products
+Subagent 2: Implement GET /api/products
+Subagent 3: Implement PUT /api/products/{id}
+Subagent 4: Implement DELETE /api/products/{id}
 ```
 
 ---
@@ -211,15 +177,13 @@ Wall-clock time: 4 hours (vs 16 hours sequential)
 
 1. **Read handover document fully**
 2. **Identify dependencies** (blocked by other handovers?)
-3. **Choose tool** (CCW vs CLI based on decision matrix)
-4. **Create todo list** (use TodoWrite tool)
-5. **Estimate effort** (compare to handover estimate)
+3. **Create todo list** (use TodoWrite tool)
+4. **Estimate effort** (compare to handover estimate)
 
 ### **Phase 2: Implementation** (varies)
 
 1. **Sequential tasks** (service → endpoints → frontend):
    ```bash
-   # CLI: Sequential with testing
    # Implement service
    # Run: pytest tests/services/test_product_service.py -v
    # Implement endpoint
@@ -228,13 +192,12 @@ Wall-clock time: 4 hours (vs 16 hours sequential)
    # Run: npm run dev (manual testing)
    ```
 
-2. **Parallel tasks** (CCW multi-branch):
+2. **Parallel tasks** (subagents for independent work):
    ```
-   Branch A: Endpoint 1 (2h)
-   Branch B: Endpoint 2 (2h)
-   Branch C: Endpoint 3 (2h)
-   Branch D: Endpoint 4 (2h)
-   Total: 2h wall-clock (vs 8h sequential)
+   Subagent A: Endpoint 1
+   Subagent B: Endpoint 2
+   Subagent C: Endpoint 3
+   Subagent D: Endpoint 4
    ```
 
 ### **Phase 3: Testing** (20-30% of implementation time)
@@ -303,35 +266,30 @@ Wall-clock time: 4 hours (vs 16 hours sequential)
 
 ### **Remediation Example (Handovers 0500-0515)**
 
-**Phase 0A: Service Layer** (Week 1, Days 1-3) - CLI Sequential
-- 0500: ProductService Enhancement (4h)
-- 0501: ProjectService Implementation (12-16h)
-- 0502: OrchestrationService Integration (4-5h)
-- **Total**: 20-25h sequential (cannot parallelize - dependencies)
+**Phase 0A: Service Layer** (sequential - dependencies)
+- 0500: ProductService Enhancement
+- 0501: ProjectService Implementation
+- 0502: OrchestrationService Integration
 
-**Phase 0B: API Endpoints** (Week 1, Days 4-5) - CCW Parallel (4 branches)
-- 0503: Product Endpoints (2h)
-- 0504: Project Endpoints (4h)
-- 0505: Orchestrator Succession Endpoint (3h)
-- 0506: Settings Endpoints (3-4h)
-- **Total**: 12h work, 4h wall-clock (parallelization)
+**Phase 0B: API Endpoints** (parallelizable via subagents)
+- 0503: Product Endpoints
+- 0504: Project Endpoints
+- 0505: Orchestrator Succession Endpoint
+- 0506: Settings Endpoints
 
-**Phase 0C: Frontend Fixes** (Week 2, Days 1-2) - CCW Parallel (3 branches)
-- 0507: API Client URL Fixes (1h)
-- 0508: Vision Upload Error Handling (2h)
-- 0509: Succession UI Components (4-6h)
-- **Total**: 7-9h work, 6h wall-clock
+**Phase 0C: Frontend Fixes** (parallelizable via subagents)
+- 0507: API Client URL Fixes
+- 0508: Vision Upload Error Handling
+- 0509: Succession UI Components
 
-**Phase 0D: Integration Testing** (Week 2, Days 3-5) - CLI Sequential
-- 0510: Fix Broken Test Suite (8-12h)
-- 0511: E2E Integration Tests (12-16h)
-- **Total**: 20-28h sequential (testing requires full stack)
+**Phase 0D: Integration Testing** (sequential - requires full stack)
+- 0510: Fix Broken Test Suite
+- 0511: E2E Integration Tests
 
-**Phase 0E: Documentation** (Week 3, Days 1-2) - CCW Parallel (3 branches)
-- 0512: CLAUDE.md Update & Cleanup (2h)
-- 0513: Handover 0132 Documentation (2h)
-- 0514: Roadmap Rewrites (10h)
-- **Total**: 14h work, 10h wall-clock
+**Phase 0E: Documentation** (parallelizable via subagents)
+- 0512: CLAUDE.md Update & Cleanup
+- 0513: Handover 0132 Documentation
+- 0514: Roadmap Rewrites
 
 ---
 
@@ -342,19 +300,19 @@ Wall-clock time: 4 hours (vs 16 hours sequential)
 **Example**: Add "favorite projects" feature
 
 ```
-1. Database (CLI):
+1. Database:
    - Add favorite BOOLEAN column to mcp_projects
    - Migration: ALTER TABLE mcp_projects ADD COLUMN favorite BOOLEAN DEFAULT FALSE
 
-2. Service (CLI):
+2. Service:
    - ProjectService.toggle_favorite(project_id)
    - Unit tests: test_toggle_favorite()
 
-3. Endpoint (CLI or CCW):
+3. Endpoint:
    - POST /api/projects/{id}/favorite
    - API tests: test_favorite_endpoint()
 
-4. Frontend (CCW):
+4. Frontend:
    - Add star icon to project cards
    - Toggle on click
    - WebSocket update for real-time sync
@@ -365,13 +323,11 @@ Wall-clock time: 4 hours (vs 16 hours sequential)
 **Example**: Add dark mode toggle
 
 ```
-1. Frontend (CCW):
+1. Frontend:
    - Add theme toggle in settings
    - Vuetify theme configuration
    - Persist theme preference (localStorage)
    - CSS variable updates
-
-No backend changes needed → CCW parallel execution
 ```
 
 ### **Pattern 3: Documentation Update**
@@ -379,13 +335,11 @@ No backend changes needed → CCW parallel execution
 **Example**: Update architecture diagrams
 
 ```
-1. Documentation (CCW):
+1. Documentation:
    - Update docs/ARCHITECTURE.md
    - Create new diagrams (mermaid.js or PNG)
    - Update cross-references in CLAUDE.md
    - Verify all links work
-
-No code changes → CCW parallel execution
 ```
 
 ---
