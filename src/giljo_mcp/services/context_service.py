@@ -27,6 +27,7 @@ from typing import Any, Optional
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.tenant import TenantManager
+from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET
 
 
 # ============================================================================
@@ -123,7 +124,7 @@ class ContextService:
     # Vision Document (Stub)
     # ============================================================================
 
-    async def get_vision(self, part: int = 1, max_tokens: int = 20000) -> VisionDocument:
+    async def get_vision(self, part: int = 1, max_tokens: int = VISION_DELIVERY_BUDGET) -> VisionDocument:
         """
         Get a vision document part.
 
