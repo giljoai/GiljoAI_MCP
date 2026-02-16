@@ -644,17 +644,14 @@ class TestProjectServiceSwitchProject:
 
         service = ProjectService(db_manager, tenant_manager)
 
-        # Act
-        with patch("giljo_mcp.tenant.current_tenant") as mock_current_tenant:
-            result = await service.switch_project("new-project-id")
+        # Act - switch_project no longer uses lazy import of current_tenant
+        result = await service.switch_project("new-project-id")
 
-        # Assert
-        assert result["success"] is True
-        assert result["project_id"] == "new-project-id"
-        assert result["name"] == "New Project"
-        assert result["tenant_key"] == "tenant2"
+        # Assert - returns ProjectSwitchResult typed model
+        assert result.project_id == "new-project-id"
+        assert result.name == "New Project"
+        assert result.tenant_key == "tenant2"
         tenant_manager.set_current_tenant.assert_called_once_with("tenant2")
-        mock_current_tenant.set.assert_called_once_with("tenant2")
 
     @pytest.mark.asyncio
     async def test_update_project_mission_success(self, mock_db_manager):
@@ -681,10 +678,9 @@ class TestProjectServiceSwitchProject:
         with patch.object(service, "_broadcast_mission_update", new_callable=AsyncMock) as mock_broadcast:
             result = await service.update_project_mission("test-id", "New mission statement")
 
-        # Assert
-        assert isinstance(result, dict)
-        assert "Mission updated" in result["message"]
-        assert result["project_id"] == "test-id"
+        # Assert - returns ProjectMissionUpdateResult typed model
+        assert result.message == "Mission updated successfully"
+        assert result.project_id == "test-id"
         mock_broadcast.assert_awaited_once()
 
     @pytest.mark.asyncio
