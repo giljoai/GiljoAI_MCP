@@ -31,6 +31,7 @@ Return Type Conventions (0731c):
 """
 
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -84,6 +85,25 @@ class TaskService:
         self.tenant_manager = tenant_manager
         self._session = session  # Store for test transaction isolation
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    def _get_session(self):
+        """
+        Get a session, preferring an injected test session when provided.
+        This keeps service methods compatible with test transaction fixtures.
+
+        Returns:
+            Context manager for database session
+        """
+        if self._session is not None:
+            # For test sessions, wrap in a context manager that doesn't close
+            @asynccontextmanager
+            async def _test_session_wrapper():
+                yield self._session
+
+            return _test_session_wrapper()
+
+        # Return the context manager directly (no double-wrapping)
+        return self.db_manager.get_session_async()
 
     # ============================================================================
     # Task Creation
@@ -143,7 +163,7 @@ class TaskService:
                     title=title,
                     description=description,
                 )
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._log_task_impl(
                     session,
                     content,
@@ -363,7 +383,7 @@ class TaskService:
                     created_by_user_id,
                     filter_type,
                 )
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._list_tasks_impl(
                     session,
                     tenant_key,
@@ -481,7 +501,7 @@ class TaskService:
         try:
             if self._session:
                 return await self._update_task_impl(self._session, task_id, **kwargs)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._update_task_impl(session, task_id, **kwargs)
 
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
@@ -498,14 +518,26 @@ class TaskService:
             TaskUpdateResult with task_id and list of updated field names
 
         Raises:
-            ResourceNotFoundError: Task not found
+            ResourceNotFoundError: Task not found or access denied
+            ValidationError: No tenant context available
         """
-        task_query = select(Task).where(Task.id == task_id)
+        # TENANT ISOLATION: Require tenant_key for all task updates
+        tenant_key = self.tenant_manager.get_current_tenant()
+        if not tenant_key:
+            raise ValidationError(
+                message="No tenant context available",
+                context={"operation": "update_task", "task_id": task_id},
+            )
+
+        task_query = select(Task).where(and_(Task.id == task_id, Task.tenant_key == tenant_key))
         task_result = await session.execute(task_query)
         task = task_result.scalar_one_or_none()
 
         if not task:
-            raise ResourceNotFoundError(message=f"Task {task_id} not found", context={"task_id": task_id})
+            raise ResourceNotFoundError(
+                message="Task not found or access denied",
+                context={"task_id": task_id, "tenant_key": tenant_key},
+            )
 
         # Update fields
         updated_fields = []
@@ -601,7 +633,7 @@ class TaskService:
         try:
             if self._session:
                 return await self._get_task_impl(self._session, task_id)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._get_task_impl(session, task_id)
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
@@ -662,7 +694,7 @@ class TaskService:
         try:
             if self._session:
                 return await self._delete_task_impl(self._session, task_id, user_id)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._delete_task_impl(session, task_id, user_id)
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
@@ -764,7 +796,7 @@ class TaskService:
                 return await self._convert_to_project_impl(
                     self._session, task_id, project_name, strategy, include_subtasks, user_id
                 )
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._convert_to_project_impl(
                     session, task_id, project_name, strategy, include_subtasks, user_id
                 )
@@ -883,7 +915,8 @@ class TaskService:
 
         # Handle subtasks if requested
         if include_subtasks:
-            subtask_stmt = select(Task).where(Task.parent_task_id == task_id)
+            # TENANT ISOLATION: Filter subtasks by tenant_key
+            subtask_stmt = select(Task).where(and_(Task.parent_task_id == task_id, Task.tenant_key == tenant_key))
             subtask_result = await session.execute(subtask_stmt)
             subtasks = subtask_result.scalars().all()
 
@@ -932,7 +965,7 @@ class TaskService:
         try:
             if self._session:
                 return await self._change_status_impl(self._session, task_id, new_status)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._change_status_impl(session, task_id, new_status)
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
@@ -1008,7 +1041,7 @@ class TaskService:
         try:
             if self._session:
                 return await self._get_summary_impl(self._session, product_id)
-            async with self.db_manager.get_session_async() as session:
+            async with self._get_session() as session:
                 return await self._get_summary_impl(session, product_id)
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping

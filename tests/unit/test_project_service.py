@@ -324,7 +324,7 @@ class TestProjectServiceLifecycle:
         service = ProjectService(db_manager, tenant_manager)
 
         # Act
-        result = await service.restore_project("test-id")
+        result = await service.restore_project("test-id", tenant_key="test-tenant")
 
         # Assert
         assert result["success"] is True
@@ -789,8 +789,8 @@ class TestProjectServiceEdgeCases:
         methods_to_test = [
             (service.get_project, ["test-id"]),
             (service.complete_project, ["test-id"]),
-            (service.cancel_project, ["test-id"]),
-            (service.restore_project, ["test-id"]),
+            (service.cancel_project, ["test-id", "test-tenant"]),
+            (service.restore_project, ["test-id", "test-tenant"]),
         ]
 
         for method, args in methods_to_test:
