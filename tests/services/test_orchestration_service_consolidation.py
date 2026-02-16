@@ -586,8 +586,10 @@ class TestMultiTenantIsolation:
         db_session.add(product_a)
         await db_session.commit()
 
-        # Create service
-        service = OrchestrationService(db_manager=MagicMock(), tenant_manager=MagicMock())
+        # Create service with test_session for real DB queries
+        service = OrchestrationService(
+            db_manager=MagicMock(), tenant_manager=MagicMock(), test_session=db_session
+        )
 
         # Act & Assert: Tenant B should not access tenant A's product
         # Handover 0731c: Service now raises ResourceNotFoundError instead of ValueError

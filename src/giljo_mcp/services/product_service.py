@@ -464,11 +464,14 @@ class ProductService:
         )
 
         async with self._get_session() as session:
-            # Fetch product with multi-tenant isolation
-            product = await session.get(Product, product_id)
+            # TENANT ISOLATION: Replace session.get() with tenant-scoped query (defense-in-depth)
+            result = await session.execute(
+                select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
+            )
+            product = result.scalar_one_or_none()
 
             # Verify product exists and belongs to tenant
-            if not product or product.tenant_key != tenant_key:
+            if not product:
                 self._logger.warning(
                     f"Product {product_id} not found or wrong tenant",
                     extra={"product_id": product_id, "tenant_key": tenant_key, "operation": "update_quality_standards"},
@@ -940,19 +943,27 @@ class ProductService:
                         message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
-                # Count related entities
+                # Count related entities (defense-in-depth: explicit tenant_key on all child queries)
                 project_count = await session.execute(
                     select(func.count(Project.id)).where(
                         and_(
-                            Project.product_id == product_id, or_(Project.status != "deleted", Project.status.is_(None))
+                            Project.product_id == product_id,
+                            Project.tenant_key == self.tenant_key,
+                            or_(Project.status != "deleted", Project.status.is_(None)),
                         )
                     )
                 )
 
-                task_count = await session.execute(select(func.count(Task.id)).where(Task.product_id == product_id))
+                task_count = await session.execute(
+                    select(func.count(Task.id)).where(
+                        and_(Task.product_id == product_id, Task.tenant_key == self.tenant_key)
+                    )
+                )
 
                 vision_count = await session.execute(
-                    select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product_id)
+                    select(func.count(VisionDocument.id)).where(
+                        and_(VisionDocument.product_id == product_id, VisionDocument.tenant_key == self.tenant_key)
+                    )
                 )
 
                 # Handover 0731b: Return CascadeImpact Pydantic model
@@ -1506,10 +1517,14 @@ class ProductService:
         Returns:
             Dict with metric counts
         """
-        # Count projects
+        # Count projects (defense-in-depth: explicit tenant_key on all child queries)
         projects_result = await session.execute(
             select(func.count(Project.id)).where(
-                and_(Project.product_id == product_id, or_(Project.status != "deleted", Project.status.is_(None)))
+                and_(
+                    Project.product_id == product_id,
+                    Project.tenant_key == self.tenant_key,
+                    or_(Project.status != "deleted", Project.status.is_(None)),
+                )
             )
         )
         project_count = projects_result.scalar() or 0
@@ -1517,27 +1532,38 @@ class ProductService:
         # Count unfinished projects
         unfinished_result = await session.execute(
             select(func.count(Project.id)).where(
-                and_(Project.product_id == product_id, Project.status.in_(["active", "inactive"]))
+                and_(
+                    Project.product_id == product_id,
+                    Project.tenant_key == self.tenant_key,
+                    Project.status.in_(["active", "inactive"]),
+                )
             )
         )
         unfinished_projects = unfinished_result.scalar() or 0
 
         # Count tasks
-        tasks_result = await session.execute(select(func.count(Task.id)).where(Task.product_id == product_id))
+        tasks_result = await session.execute(
+            select(func.count(Task.id)).where(and_(Task.product_id == product_id, Task.tenant_key == self.tenant_key))
+        )
         task_count = tasks_result.scalar() or 0
 
         # Count unresolved tasks
         unresolved_result = await session.execute(
             select(func.count(Task.id)).where(
-                and_(Task.product_id == product_id, Task.status.in_(["pending", "in_progress"]))
+                and_(
+                    Task.product_id == product_id,
+                    Task.tenant_key == self.tenant_key,
+                    Task.status.in_(["pending", "in_progress"]),
+                )
             )
         )
         unresolved_tasks = unresolved_result.scalar() or 0
 
         # Count vision documents
-        # Note: VisionDocument doesn't support soft delete (no deleted_at field)
         vision_result = await session.execute(
-            select(func.count(VisionDocument.id)).where(VisionDocument.product_id == product_id)
+            select(func.count(VisionDocument.id)).where(
+                and_(VisionDocument.product_id == product_id, VisionDocument.tenant_key == self.tenant_key)
+            )
         )
         vision_documents_count = vision_result.scalar() or 0
 

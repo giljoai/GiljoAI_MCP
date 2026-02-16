@@ -46,26 +46,16 @@ class ConsolidatedVisionService:
             ResourceNotFoundError: Product not found or tenant mismatch
             ValidationError: No changes detected (unless force=True)
         """
-        # Fetch product with vision documents (eagerly load relationship to avoid lazy loading issues)
+        # Fetch product with vision documents (defense-in-depth: tenant_key in WHERE clause)
         result = await session.execute(
-            select(Product).options(selectinload(Product.vision_documents)).where(Product.id == product_id)
+            select(Product)
+            .options(selectinload(Product.vision_documents))
+            .where(Product.id == product_id, Product.tenant_key == tenant_key)
         )
         product = result.scalar_one_or_none()
 
         if not product:
             logger.warning("consolidate_vision_documents.product_not_found: product_id=%s", product_id)
-            raise ResourceNotFoundError(
-                message="Product not found", error_code="PRODUCT_NOT_FOUND", context={"product_id": product_id}
-            )
-
-        # Multi-tenant isolation check
-        if product.tenant_key != tenant_key:
-            logger.warning(
-                "consolidate_vision_documents.tenant_mismatch: product_id=%s expected_tenant=%s",
-                product_id,
-                tenant_key,
-            )
-            # Don't leak tenant info - raise same error as not found
             raise ResourceNotFoundError(
                 message="Product not found", error_code="PRODUCT_NOT_FOUND", context={"product_id": product_id}
             )
