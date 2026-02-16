@@ -104,6 +104,10 @@ After all subagents complete, compile results into a single report with this str
 #### LOW (housekeeping)
 - [unused imports, dead fixtures, stale pycache]
 
+### Migration Blockers
+- [inverted dependencies, ToolAccessor direct calls, 
+  test files importing dead layers]
+
 ### Quality Score
 Rate the codebase 1-10 based on:
 - Lint cleanliness (0 issues = 10/10)
