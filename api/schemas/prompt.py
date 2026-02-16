@@ -221,3 +221,50 @@ class ThinPromptResponse(BaseModel):
     thin_client: bool = Field(default=True, description="Always True for thin client architecture")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StagingPromptResponse(BaseModel):
+    """
+    Schema for staging prompt generation response.
+    GET /api/prompts/staging/{project_id}
+
+    Returns the thin client staging prompt with orchestrator metadata.
+    """
+
+    orchestrator_id: str = Field(..., description="Created orchestrator job ID")
+    agent_id: str | None = Field(None, description="Executor agent ID for MCP tool calls")
+    prompt: str = Field(..., description="Staging prompt for orchestrator")
+    estimated_prompt_tokens: int = Field(..., description="Token estimate for the staging prompt")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ThinOrchestratorPromptResponse(BaseModel):
+    """
+    Schema for thin orchestrator prompt response.
+    POST /api/prompts/orchestrator-thin
+
+    Returns a thin prompt with orchestrator metadata for the thin client architecture.
+    """
+
+    success: bool = Field(..., description="Whether prompt generation succeeded")
+    orchestrator_id: str = Field(..., description="Created orchestrator job ID")
+    prompt: str = Field(..., description="Thin orchestrator prompt")
+    estimated_prompt_tokens: int = Field(..., description="Token estimate for prompt")
+    thin_client: bool = Field(default=True, description="Always True for thin client architecture")
+    status: str = Field(..., description="Orchestrator readiness status")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ImplementationPromptResponse(BaseModel):
+    """
+    Schema for implementation prompt response (Handover 0337).
+    GET /api/prompts/implementation/{project_id}
+    """
+
+    prompt: str = Field(..., description="Implementation prompt for orchestrator to spawn agents")
+    orchestrator_job_id: str = Field(..., description="Orchestrator job UUID")
+    agent_count: int = Field(..., description="Number of spawned agents ready to execute")
+
+    model_config = ConfigDict(from_attributes=True)

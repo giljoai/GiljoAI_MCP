@@ -15,6 +15,7 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,8 +29,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+class SimpleHandoverResponse(BaseModel):
+    """Response model for simple session handover."""
+
+    success: bool = Field(..., description="Whether handover succeeded")
+    retirement_prompt: str = Field(..., description="Prompt for old orchestrator to write 360 Memory")
+    continuation_prompt: str = Field(..., description="Prompt for new terminal to continue work")
+    context_reset: bool = Field(..., description="Whether context was reset")
+
+
 @router.post(
     "/{job_id}/simple-handover",
+    response_model=SimpleHandoverResponse,
     summary="Simple session handover via 360 Memory",
     description="Write session context to 360 Memory and return continuation prompt",
     tags=["agent-jobs", "handover"],
@@ -140,9 +151,9 @@ async def simple_handover(
     except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
         logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
-    return {
-        "success": True,
-        "retirement_prompt": retirement_prompt,
-        "continuation_prompt": continuation_prompt,
-        "context_reset": True,
-    }
+    return SimpleHandoverResponse(
+        success=True,
+        retirement_prompt=retirement_prompt,
+        continuation_prompt=continuation_prompt,
+        context_reset=True,
+    )
