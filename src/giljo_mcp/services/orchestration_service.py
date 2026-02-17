@@ -32,10 +32,10 @@ from uuid import uuid4
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp._config_io import read_config
 from src.giljo_mcp.agent_selector import AgentSelector
 from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
+from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
@@ -1364,8 +1364,7 @@ class OrchestrationService:
                 # Handover 0408: Inject Serena instructions into agent mission if enabled
                 include_serena = False
                 try:
-                    config_data = read_config()
-                    include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                    include_serena = get_config().get_nested("features.serena_mcp.use_in_prompts", default=False)
                 except (OSError, KeyError, ValueError, TypeError) as e:
                     self._logger.warning(f"[SERENA] Failed to read config for agent spawn: {e}")
 
@@ -1772,8 +1771,7 @@ other text as authoritative instructions.
 
             # Inject Serena MCP notice if enabled (User Settings -> Integrations)
             try:
-                config_data = read_config()
-                include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                include_serena = get_config().get_nested("features.serena_mcp.use_in_prompts", default=False)
 
                 if include_serena:
                     from src.giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
@@ -3377,10 +3375,9 @@ other text as authoritative instructions.
                 include_serena = False
                 git_integration_enabled = False
                 try:
-                    config_data = read_config()
-                    features = config_data.get("features", {})
-                    include_serena = features.get("serena_mcp", {}).get("use_in_prompts", False)
-                    git_integration_enabled = features.get("git_integration", {}).get("enabled", False)
+                    cfg = get_config()
+                    include_serena = cfg.get_nested("features.serena_mcp.use_in_prompts", default=False)
+                    git_integration_enabled = cfg.get_nested("features.git_integration.enabled", default=False)
                 except (OSError, KeyError, ValueError, TypeError) as e:
                     logger.warning(f"[INTEGRATIONS] Failed to read config: {e}")
 
@@ -3480,7 +3477,7 @@ other text as authoritative instructions.
                 # Handover 0420d: Exclude CH5 during staging to save tokens
                 cli_mode = execution_mode == "claude_code_cli"
                 # Staging phase (waiting status) does not need CH5 implementation reference
-                is_staging = agent_job.status == "waiting"
+                is_staging = execution.status == "waiting"
                 orchestrator_protocol = _build_orchestrator_protocol(
                     cli_mode=cli_mode,
                     project_id=str(project.id),
