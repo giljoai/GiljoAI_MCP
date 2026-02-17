@@ -14,11 +14,11 @@ import zipfile
 from pathlib import Path
 from typing import Optional
 
-import yaml
 from fastapi import APIRouter, Body, Cookie, Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp._config_io import read_config
 from src.giljo_mcp.auth.dependencies import get_db_session
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import AgentTemplate
@@ -43,15 +43,11 @@ def get_server_url(request=None) -> str:
         Server URL (e.g., "http://10.1.0.164:7272")
     """
     try:
-        from pathlib import Path
-
         config = get_config()
 
         # Read external_host directly from config.yaml
         # (ConfigManager.get() can't traverse nested dicts)
-        config_path = Path.cwd() / "config.yaml"
-        with open(config_path) as f:
-            config_data = yaml.safe_load(f)
+        config_data = read_config()
 
         host = config_data.get("services", {}).get("external_host", "localhost")
         port = config.server.api_port
