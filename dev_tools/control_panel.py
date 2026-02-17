@@ -757,24 +757,48 @@ class GiljoDevControlPanel:
                 if 7200 <= conn.laddr.port <= 7299:
                     giljo_ports[conn.laddr.port] = conn.pid
         except (psutil.AccessDenied, AttributeError):
-            # Fallback to Windows netstat command
+            # Fallback to platform-specific CLI
             try:
-                result = subprocess.run(["netstat", "-ano"], check=False, capture_output=True, text=True, timeout=5)
-
-                for line in result.stdout.splitlines():
-                    if ":72" in line and "LISTENING" in line:
-                        parts = line.split()
-                        if parts:
-                            # Extract port from address (e.g., "0.0.0.0:7272")
-                            addr_parts = parts[1].split(":")
-                            if len(addr_parts) == 2:
-                                try:
-                                    port = int(addr_parts[1])
-                                    pid = int(parts[-1])
-                                    if 7200 <= port <= 7299 and pid != 0:
-                                        giljo_ports[port] = pid
-                                except (ValueError, IndexError):
-                                    pass
+                system = platform.system()
+                if system == "Windows":
+                    result = subprocess.run(
+                        ["netstat", "-ano"], check=False, capture_output=True, text=True, timeout=5
+                    )
+                    for line in result.stdout.splitlines():
+                        if ":72" in line and "LISTENING" in line:
+                            parts = line.split()
+                            if parts:
+                                addr_parts = parts[1].split(":")
+                                if len(addr_parts) == 2:
+                                    try:
+                                        port = int(addr_parts[1])
+                                        pid = int(parts[-1])
+                                        if 7200 <= port <= 7299 and pid != 0:
+                                            giljo_ports[port] = pid
+                                    except (ValueError, IndexError):
+                                        pass
+                else:
+                    # Linux/macOS: use ss (preferred) or lsof
+                    result = subprocess.run(
+                        ["ss", "-tlnp"], check=False, capture_output=True, text=True, timeout=5
+                    )
+                    for line in result.stdout.splitlines():
+                        if ":72" in line:
+                            # ss output: LISTEN 0 128 0.0.0.0:7272 ... users:(("python3",pid=1234,...))
+                            parts = line.split()
+                            for part in parts:
+                                if ":72" in part and "." in part:
+                                    try:
+                                        port = int(part.rsplit(":", 1)[1])
+                                        if 7200 <= port <= 7299:
+                                            # Extract PID from users:(...pid=NNNN...)
+                                            import re
+                                            pid_match = re.search(r"pid=(\d+)", line)
+                                            pid = int(pid_match.group(1)) if pid_match else None
+                                            if pid:
+                                                giljo_ports[port] = pid
+                                    except (ValueError, IndexError):
+                                        pass
             except Exception:
                 pass
 
@@ -1257,23 +1281,50 @@ class GiljoDevControlPanel:
 
     def get_db_credentials(self) -> dict[str, Any]:
         """
-        Get database credentials from config and environment.
+        Get database credentials from .env or prompt.
 
-        Multi-PC Support:
-        - C: drive and F: drive both use localhost PostgreSQL
-        - Hardcoded development password: 4010
+        Cross-platform support:
+        - Reads PG_SUPERUSER_PASSWORD from .env (set per dev station)
+        - Falls back to prompting via dialog if not found
+        - Caches the password for the session
         - Always connects to localhost:5432
         """
+        password = getattr(self, "_cached_pg_password", None)
+
+        if not password:
+            # Try reading from .env
+            env_file = self.project_root / ".env"
+            if env_file.exists():
+                try:
+                    for line in env_file.read_text().splitlines():
+                        line = line.strip()
+                        if line.startswith("PG_SUPERUSER_PASSWORD="):
+                            password = line.split("=", 1)[1].strip().strip("'\"")
+                            break
+                except Exception:
+                    pass
+
+            # Prompt if not found
+            if not password:
+                from tkinter import simpledialog
+                password = simpledialog.askstring(
+                    "PostgreSQL Password",
+                    "Enter postgres superuser password:\n\n"
+                    "(Add PG_SUPERUSER_PASSWORD=<pwd> to .env to skip this prompt)",
+                    show="*",
+                    parent=self.root,
+                )
+
+            if password:
+                self._cached_pg_password = password
+
         credentials = {
             "host": "localhost",
             "port": 5432,
             "user": "postgres",
-            "password": "4010",  # Hardcoded for development (both C: and F: systems)
-            "database": "postgres",  # Connect to postgres DB to check/create giljo_mcp
+            "password": password,
+            "database": "postgres",
         }
-
-        # Note: Config and .env are gitignored and system-specific
-        # We use hardcoded localhost:5432 since both dev systems use local PostgreSQL
 
         return credentials
 
@@ -1364,7 +1415,7 @@ class GiljoDevControlPanel:
         Delete giljo_mcp database after confirmation with proper ownership handling.
 
         Multi-PC Support:
-        - Uses hardcoded password 4010 (same on both C: and F: systems)
+        - Reads postgres password from .env (PG_SUPERUSER_PASSWORD) or prompts
         - Always connects to localhost PostgreSQL
         - Fallback to psql command-line if psycopg2 fails
         """
@@ -1759,7 +1810,7 @@ class GiljoDevControlPanel:
 
         This method:
         1. Finds psql (PATH or common platform-specific locations)
-        2. Uses PGPASSWORD environment variable (password: 4010)
+        2. Uses PGPASSWORD environment variable (from .env or prompt)
         3. Runs the same SQL sequence as psycopg2 method
         4. Includes User/ApiKey counting via DO block with RAISE NOTICE
 
@@ -1781,6 +1832,12 @@ class GiljoDevControlPanel:
             return False
 
         self.update_status_message(f"Found psql at: {psql_path}")
+
+        # Get credentials (reads from .env or prompts)
+        credentials = self.get_db_credentials()
+        if not credentials.get("password"):
+            messagebox.showerror("Error", "No PostgreSQL password provided.")
+            return False
 
         try:
             # First, audit User/ApiKey counts via psql
@@ -1812,7 +1869,7 @@ END $$;
 
             try:
                 env = os.environ.copy()
-                env["PGPASSWORD"] = "4010"
+                env["PGPASSWORD"] = credentials["password"]
 
                 # Run audit against giljo_mcp database
                 audit_result = subprocess.run(
@@ -1882,7 +1939,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             try:
                 # Execute psql with password in environment
                 env = os.environ.copy()
-                env["PGPASSWORD"] = "4010"
+                env["PGPASSWORD"] = credentials["password"]
 
                 result = subprocess.run(
                     [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "postgres", "-f", sql_file],
@@ -2205,8 +2262,9 @@ pg_restore -l {backup_file.name} | head -20
             psql_path = self._find_psql_path()
             if psql_path:
                 try:
+                    credentials = self.get_db_credentials()
                     env = os.environ.copy()
-                    env["PGPASSWORD"] = "4010"
+                    env["PGPASSWORD"] = credentials.get("password", "")
 
                     # Check if database exists
                     db_result = subprocess.run(
