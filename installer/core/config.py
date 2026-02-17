@@ -207,6 +207,9 @@ POSTGRES_PASSWORD={user_password}
 POSTGRES_OWNER_USER=giljo_owner
 POSTGRES_OWNER_PASSWORD={owner_password}
 
+# PostgreSQL superuser password (for database management tools)
+PG_SUPERUSER_PASSWORD={self.settings.get("pg_password", "")}
+
 # Generic database configuration (for application compatibility)
 DB_TYPE=postgresql
 DB_HOST={pg_host}
