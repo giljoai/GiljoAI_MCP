@@ -93,11 +93,13 @@ async def message_service(
     db_manager: DatabaseManager,
     db_session: AsyncSession,
     mock_websocket_manager: MagicMock,
+    test_tenant_key: str,
 ) -> MessageService:
     """Create MessageService instance with mocked WebSocket manager and test session."""
     from contextlib import asynccontextmanager
 
-    tenant_manager = TenantManager()
+    tenant_manager = MagicMock(spec=TenantManager)
+    tenant_manager.get_current_tenant.return_value = test_tenant_key
 
     @asynccontextmanager
     async def mock_get_session_async():
