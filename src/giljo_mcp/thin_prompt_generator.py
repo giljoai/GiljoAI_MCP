@@ -49,6 +49,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from src.giljo_mcp._config_io import read_config
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import Product, Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
@@ -87,17 +88,10 @@ def build_continuation_prompt(
 
     # Check for external_host override (public IP deployments)
     try:
-        from pathlib import Path
-
-        import yaml
-
-        config_path = Path("config.yaml")
-        if config_path.exists():
-            with open(config_path, encoding="utf-8") as f:
-                config_data = yaml.safe_load(f) or {}
-            external_host = config_data.get("services", {}).get("external_host")
-            if external_host:
-                mcp_host = external_host
+        config_data = read_config()
+        external_host = config_data.get("services", {}).get("external_host")
+        if external_host:
+            mcp_host = external_host
     except (OSError, ValueError, KeyError):
         pass  # nosec B110
 
@@ -609,18 +603,9 @@ class ThinClientPromptGenerator:
         # Use external_host (user-facing IP) not api_host (bind address 0.0.0.0)
         # External host is configured during installation for network access
         # Need to read config.yaml directly as ConfigManager doesn't load services section
-        from pathlib import Path
-
-        import yaml
-
         try:
-            config_path = Path("config.yaml")
-            if config_path.exists():
-                with open(config_path, encoding="utf-8") as f:
-                    config_data = yaml.safe_load(f) or {}
-                mcp_host = config_data.get("services", {}).get("external_host") or config.server.api_host
-            else:
-                mcp_host = config.server.api_host
+            config_data = read_config()
+            mcp_host = config_data.get("services", {}).get("external_host") or config.server.api_host
         except (OSError, ValueError, KeyError):  # nosec B110
             # Fallback to api_host if YAML loading fails
             mcp_host = config.server.api_host
@@ -724,18 +709,9 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         config = get_config()
 
         # Use external_host (user-facing IP) not api_host (bind address 0.0.0.0)
-        from pathlib import Path
-
-        import yaml
-
         try:
-            config_path = Path("config.yaml")
-            if config_path.exists():
-                with open(config_path, encoding="utf-8") as f:
-                    config_data = yaml.safe_load(f) or {}
-                mcp_host = config_data.get("services", {}).get("external_host") or config.server.api_host
-            else:
-                mcp_host = config.server.api_host
+            config_data = read_config()
+            mcp_host = config_data.get("services", {}).get("external_host") or config.server.api_host
         except (OSError, ValueError, KeyError):  # nosec B110
             # Fallback to api_host if YAML loading fails
             mcp_host = config.server.api_host
@@ -1079,18 +1055,11 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         Returns external_host for user-facing connections,
         falls back to api_host if not configured.
         """
-        from pathlib import Path
-
-        import yaml
-
         try:
-            config_path = Path("config.yaml")
-            if config_path.exists():
-                with open(config_path, encoding="utf-8") as f:
-                    config_data = yaml.safe_load(f) or {}
-                external_host = config_data.get("services", {}).get("external_host")
-                if external_host:
-                    return external_host
+            config_data = read_config()
+            external_host = config_data.get("services", {}).get("external_host")
+            if external_host:
+                return external_host
         except (OSError, ValueError, KeyError):
             pass  # nosec B110
 

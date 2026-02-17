@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 from sqlalchemy import and_, select
 
+from src.giljo_mcp._config_io import read_config
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.models import Product, Project
@@ -704,16 +705,10 @@ class ToolAccessor:
                 await token_manager.mark_ready(token)
 
                 # Get server URL from config (same approach as downloads.py)
-                from pathlib import Path
-
-                import yaml
-
                 from giljo_mcp.config_manager import get_config
 
                 config = get_config()
-                config_path = Path.cwd() / "config.yaml"
-                with open(config_path) as f:
-                    config_data = yaml.safe_load(f)
+                config_data = read_config()
                 host = config_data.get("services", {}).get("external_host", "localhost")
                 port = config.server.api_port
                 server_url = f"http://{host}:{port}"
