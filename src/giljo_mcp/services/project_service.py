@@ -66,6 +66,27 @@ from src.giljo_mcp.tenant import TenantManager
 logger = logging.getLogger(__name__)
 
 
+def _build_ws_project_data(project) -> dict:
+    """Build standardized project data dict for WebSocket broadcasts.
+
+    Single source of truth for project data sent to frontend via
+    WebSocket ``broadcast_project_update`` events. All project broadcast
+    sites should use this helper to ensure a consistent field structure.
+
+    Args:
+        project: Project model instance (SQLAlchemy).
+
+    Returns:
+        Dict with the fields extracted by
+        ``WebSocketManager.broadcast_project_update``.
+    """
+    return {
+        "name": project.name,
+        "status": project.status,
+        "mission": project.mission,
+    }
+
+
 class ProjectService:
     """
     Service for managing project lifecycle and operations.
@@ -1041,11 +1062,7 @@ class ProjectService:
                         await ws_mgr.broadcast_project_update(
                             project_id=project.id,
                             update_type="status_changed",
-                            project_data={
-                                "name": project.name,
-                                "status": project.status,
-                                "mission": project.mission,
-                            },
+                            project_data=_build_ws_project_data(project),
                         )
                     except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                         self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
@@ -1261,11 +1278,7 @@ class ProjectService:
                     await ws_mgr.broadcast_project_update(
                         project_id=project.id,
                         update_type="status_changed",
-                        project_data={
-                            "name": project.name,
-                            "status": project.status,
-                            "mission": project.mission,
-                        },
+                        project_data=_build_ws_project_data(project),
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
@@ -1330,11 +1343,7 @@ class ProjectService:
                     await websocket_manager.broadcast_project_update(
                         project_id=project.id,
                         update_type="cancelled",
-                        project_data={
-                            "name": project.name,
-                            "status": project.status,
-                            "mission": project.mission,
-                        },
+                        project_data=_build_ws_project_data(project),
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
@@ -1794,11 +1803,7 @@ class ProjectService:
                     await websocket_manager.broadcast_project_update(
                         project_id=project.id,
                         update_type="updated",
-                        project_data={
-                            "name": project.name,
-                            "status": project.status,
-                            "mission": project.mission,
-                        },
+                        project_data=_build_ws_project_data(project),
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
@@ -1999,15 +2004,13 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             # Broadcast WebSocket event
             if websocket_manager:
                 try:
+                    project_data = _build_ws_project_data(project)
+                    project_data["staging_status"] = project.staging_status
+                    project_data["orchestrator_job_id"] = orchestrator_job_id
                     await websocket_manager.broadcast_project_update(
                         project_id=project.id,
                         update_type="launched",
-                        project_data={
-                            "name": project.name,
-                            "status": project.status,
-                            "staging_status": project.staging_status,
-                            "orchestrator_job_id": orchestrator_job_id,
-                        },
+                        project_data=project_data,
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
