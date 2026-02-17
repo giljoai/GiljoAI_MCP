@@ -13,12 +13,14 @@ Project 0036: Cookie domain whitelist management for cross-port authentication.
 
 import logging
 import re
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp._config_io import get_config_path
+from src.giljo_mcp._config_io import read_config as _read_config_raw
+from src.giljo_mcp._config_io import write_config as _write_config_raw
 from src.giljo_mcp.auth.dependencies import get_db_session, require_admin
 from src.giljo_mcp.models import User
 
@@ -108,80 +110,26 @@ class RemoveCookieDomainRequest(BaseModel):
 # Helper Functions
 
 
-def _get_config_path() -> Path:
-    """Get path to config.yaml in project root."""
-    return Path.cwd() / "config.yaml"
-
-
 def _read_config() -> dict:
-    """
-    Read config.yaml file.
-
-    Returns:
-        Parsed YAML configuration dictionary
-
-    Raises:
-        HTTPException: 500 if config file cannot be read
-    """
-    import yaml
-
-    config_path = _get_config_path()
-
-    try:
-        if not config_path.exists():
-            logger.error(f"config.yaml not found at {config_path}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Configuration file not found. System may not be properly installed.",
-            )
-
-        with open(config_path, encoding="utf-8") as f:
-            config = yaml.safe_load(f) or {}
-
-        return config
-
-    except yaml.YAMLError as e:
-        logger.exception("Failed to parse config.yaml")
+    """Read config.yaml, raising HTTPException if missing or unreadable."""
+    config_path = get_config_path()
+    if not config_path.exists():
+        logger.error(f"config.yaml not found at {config_path}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Configuration file is malformed: {e!s}"
-        ) from e
-    except Exception as e:
-        logger.exception("Failed to read config.yaml")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to read configuration file: {e!s}"
-        ) from e
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Configuration file not found. System may not be properly installed.",
+        )
+    return _read_config_raw()
 
 
 def _write_config(config: dict) -> None:
-    """
-    Write config.yaml file atomically.
-
-    Args:
-        config: Configuration dictionary to write
-
-    Raises:
-        HTTPException: 500 if config file cannot be written
-    """
-    import yaml
-
-    config_path = _get_config_path()
-
+    """Write config.yaml, raising HTTPException on failure."""
     try:
-        # Write to temporary file first (atomic write)
-        temp_path = config_path.with_suffix(".yaml.tmp")
-
-        with open(temp_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
-
-        # Atomic rename
-        temp_path.replace(config_path)
-
-        logger.info("config.yaml updated successfully")
-
-    except Exception as e:
-        logger.exception("Failed to write config.yaml")
+        _write_config_raw(config)
+    except OSError as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update configuration file: {e!s}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update configuration file: {e!s}",
         ) from e
 
 
