@@ -170,6 +170,7 @@ async def test_message_service_without_websocket_manager(db_session, db_manager,
         project_id=project.id,
         message_type="broadcast",
         from_agent="test_agent",
+        tenant_key=tenant_key,
     )
 
     # Handover 0731c: Assert message was sent successfully (typed model)
