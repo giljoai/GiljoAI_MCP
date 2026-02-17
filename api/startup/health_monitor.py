@@ -6,9 +6,8 @@ Extracted from api/app.py lifespan function (lines ~414-459).
 
 import logging
 
-import yaml
-
 from api.app import APIState
+from src.giljo_mcp._config_io import read_config
 
 
 logger = logging.getLogger(__name__)
@@ -28,11 +27,8 @@ async def init_health_monitor(state: APIState) -> None:
         logger.info("Initializing agent health monitoring...")
 
         # Load health_monitoring config directly from YAML
-        health_config_dict = {}
-        if state.config.config_path.exists():
-            with open(state.config.config_path, encoding="utf-8") as f:
-                config_data = yaml.safe_load(f) or {}
-                health_config_dict = config_data.get("health_monitoring", {})
+        config_data = read_config(config_path=state.config.config_path)
+        health_config_dict = config_data.get("health_monitoring", {})
 
         # Only start if enabled in config
         if health_config_dict.get("enabled", True):

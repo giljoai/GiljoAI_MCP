@@ -4,49 +4,18 @@ Similar to Serena integration, operates at config.yaml level.
 """
 
 import logging
-from pathlib import Path
 from typing import Any
 
-import yaml
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
+from src.giljo_mcp._config_io import read_config, write_config
 from src.giljo_mcp.auth.dependencies import get_current_user
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-def get_config_path() -> Path:
-    """Get path to config.yaml."""
-    return Path.cwd() / "config.yaml"
-
-
-def read_config() -> dict[str, Any]:
-    """Read config.yaml."""
-    config_path = get_config_path()
-    if not config_path.exists():
-        return {}
-
-    try:
-        with open(config_path, encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except (OSError, ValueError):
-        logger.exception("Failed to read config")
-        return {}
-
-
-def write_config(config: dict[str, Any]) -> None:
-    """Write config.yaml."""
-    config_path = get_config_path()
-    try:
-        with open(config_path, "w", encoding="utf-8") as f:
-            yaml.dump(config, f, default_flow_style=False, sort_keys=False)
-    except (OSError, ValueError) as e:
-        logger.exception("Failed to write config")
-        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 class GitToggleRequest(BaseModel):
@@ -104,7 +73,10 @@ async def toggle_git_integration(
     config["features"]["git_integration"]["use_in_prompts"] = request.enabled
 
     # Save config
-    write_config(config)
+    try:
+        write_config(config)
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
     logger.info(f"Git integration toggled to {request.enabled} by user {current_user.username}")
 
@@ -151,7 +123,10 @@ async def update_git_settings(
     git_settings["branch_strategy"] = request.branch_strategy
 
     # Save config
-    write_config(config)
+    try:
+        write_config(config)
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
     logger.info(f"Git settings updated by user {current_user['username']}")
 

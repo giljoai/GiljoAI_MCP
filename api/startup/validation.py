@@ -5,11 +5,9 @@ Extracted from api/app.py lifespan function (lines ~461-507).
 """
 
 import logging
-from pathlib import Path
-
-import yaml
 
 from api.app import APIState
+from src.giljo_mcp._config_io import read_config
 
 
 logger = logging.getLogger(__name__)
@@ -32,10 +30,8 @@ async def init_validation(state: APIState) -> None:
             # Get current version from config
             from src.giljo_mcp.setup.state_manager import SetupStateManager
 
-            config_path = Path.cwd() / "config.yaml"
-            if config_path.exists():
-                with open(config_path) as f:
-                    config_data = yaml.safe_load(f) or {}
+            config_data = read_config()
+            if config_data:
                 current_version = config_data.get("installation", {}).get("version", "2.0.0")
                 db_version = "18"  # PostgreSQL 18
 
