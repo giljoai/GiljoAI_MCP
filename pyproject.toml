@@ -76,6 +76,7 @@ dev = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.2.0",
     "pre-commit>=3.4.0",
     "types-PyYAML",
     "types-passlib",
@@ -241,7 +242,10 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html",
     "--ignore=tests/test_websocket_security.py",
+    "--timeout=30",
+    "--timeout-method=thread",
 ]
+timeout_func_only = true
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
