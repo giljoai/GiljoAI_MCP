@@ -469,44 +469,69 @@ class UnifiedInstaller:
 
         # PostgreSQL password (with verification)
         print(f"\n{Fore.CYAN}[PostgreSQL Configuration]{Style.RESET_ALL}")
-        print(f"\n{Fore.WHITE}PostgreSQL Admin Password Required{Style.RESET_ALL}")
-        print("This is the password for the 'postgres' superuser account")
 
-        if platform.system() != "Windows":
-            print(f"\n{Fore.YELLOW}Linux/macOS Note:{Style.RESET_ALL} PostgreSQL installed via apt/brew may not")
-            print("have a TCP password set. If you haven't set one, run this first:")
-            print(f"  {Fore.GREEN}sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'your_password';\"{Style.RESET_ALL}")
-            print("Then enter that password below.")
-        else:
+        if platform.system() == "Windows":
+            # Windows: PostgreSQL installer already set a password
+            print(f"\n{Fore.WHITE}PostgreSQL Admin Password Required{Style.RESET_ALL}")
+            print("This is the password for the 'postgres' superuser account")
             print("(The password you set when you first installed PostgreSQL)")
+            print(f"{Fore.RED}Required - no defaults allowed{Style.RESET_ALL}")
 
-        print(f"{Fore.RED}Required - no defaults allowed{Style.RESET_ALL}")
+            max_attempts = 3
+            for attempt in range(max_attempts):
+                pg_pass = getpass_with_asterisks(f"{Fore.YELLOW}Password: {Style.RESET_ALL}")
+                if not pg_pass:
+                    self._print_error("Password cannot be empty.")
+                    continue
+                pg_pass_confirm = getpass_with_asterisks(f"{Fore.YELLOW}Confirm password: {Style.RESET_ALL}")
+                if pg_pass == pg_pass_confirm:
+                    self.settings["pg_password"] = pg_pass
+                    self._print_success("Password confirmed")
+                    break
+                remaining = max_attempts - attempt - 1
+                if remaining > 0:
+                    self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
+                else:
+                    raise ValueError("PostgreSQL password required for installation")
+        else:
+            # Linux/macOS: PostgreSQL likely has no TCP password set
+            # Try to set one automatically via peer/trust auth
+            print(f"\n{Fore.WHITE}PostgreSQL Password Setup{Style.RESET_ALL}")
+            print("Setting up a password for the PostgreSQL 'postgres' account...")
+            print(f"{Fore.RED}Required - no defaults allowed{Style.RESET_ALL}")
 
-        # Ask twice to confirm
-        max_attempts = 3
-        for attempt in range(max_attempts):
-            pg_pass = getpass_with_asterisks(f"{Fore.YELLOW}Password: {Style.RESET_ALL}")
+            max_attempts = 3
+            for attempt in range(max_attempts):
+                pg_pass = getpass_with_asterisks(f"{Fore.YELLOW}Choose a PostgreSQL password: {Style.RESET_ALL}")
+                if not pg_pass:
+                    self._print_error("Password cannot be empty.")
+                    continue
+                pg_pass_confirm = getpass_with_asterisks(f"{Fore.YELLOW}Confirm password: {Style.RESET_ALL}")
+                if pg_pass != pg_pass_confirm:
+                    remaining = max_attempts - attempt - 1
+                    if remaining > 0:
+                        self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
+                        continue
+                    else:
+                        raise ValueError("PostgreSQL password required for installation")
 
-            # Require password - no defaults
-            if not pg_pass:
-                self._print_error("Password cannot be empty. Please enter your actual PostgreSQL admin password.")
-                continue
-
-            # Ask for confirmation
-            pg_pass_confirm = getpass_with_asterisks(f"{Fore.YELLOW}Confirm password: {Style.RESET_ALL}")
-
-            # Check if they match
-            if pg_pass == pg_pass_confirm:
-                self.settings["pg_password"] = pg_pass
-                self._print_success("Password confirmed")
-                break
-            remaining = max_attempts - attempt - 1
-            if remaining > 0:
-                self._print_error(f"Passwords do not match. {remaining} attempt(s) remaining.")
+                # Try setting the password via peer auth (local socket)
+                if self._set_postgres_password_via_peer(pg_pass):
+                    self.settings["pg_password"] = pg_pass
+                    self._print_success("PostgreSQL password set and confirmed")
+                    break
+                else:
+                    # Peer auth failed — maybe user already set a password manually
+                    print(f"\n{Fore.YELLOW}Could not set password automatically.{Style.RESET_ALL}")
+                    print("If you already set a PostgreSQL password, enter it now.")
+                    pg_pass = getpass_with_asterisks(f"{Fore.YELLOW}Existing password: {Style.RESET_ALL}")
+                    if pg_pass:
+                        self.settings["pg_password"] = pg_pass
+                        self._print_success("Password accepted")
+                        break
+                    else:
+                        self._print_error("Password cannot be empty.")
             else:
-                self._print_error(
-                    "Too many failed attempts. Installation cannot continue without valid PostgreSQL password."
-                )
                 raise ValueError("PostgreSQL password required for installation")
 
         # REMOVED: Start services prompt - services will not auto-start
@@ -2122,6 +2147,50 @@ except Exception as e:
         print(f"\n{Fore.CYAN}{Style.BRIGHT}{separator}{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{Style.BRIGHT}  {text}{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{Style.BRIGHT}{separator}{Style.RESET_ALL}\n")
+
+    def _set_postgres_password_via_peer(self, password: str) -> bool:
+        """Set PostgreSQL password using local peer/trust authentication.
+
+        On Linux: uses sudo -u postgres psql (peer auth over Unix socket)
+        On macOS: uses psql -U postgres directly (Homebrew trust auth)
+
+        Returns True if password was set successfully.
+        """
+        # Escape single quotes in password for SQL
+        safe_password = password.replace("'", "''")
+        sql = f"ALTER USER postgres PASSWORD '{safe_password}';"
+
+        system = platform.system()
+        try:
+            if system == "Darwin":
+                # macOS (Homebrew): postgres runs as current user
+                cmd = ["psql", "-U", "postgres", "-d", "postgres", "-c", sql]
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=10
+                )
+            else:
+                # Linux: use sudo -u postgres for peer auth
+                cmd = ["sudo", "-u", "postgres", "psql", "-c", sql]
+                self._print_info("Setting PostgreSQL password (sudo may ask for your password)...")
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=30
+                )
+
+            if result.returncode == 0:
+                return True
+
+            self._print_warning(f"Peer auth password set failed: {result.stderr.strip()}")
+            return False
+
+        except subprocess.TimeoutExpired:
+            self._print_warning("Password set timed out")
+            return False
+        except FileNotFoundError:
+            self._print_warning("psql not found in PATH")
+            return False
+        except Exception as e:
+            self._print_warning(f"Peer auth password set failed: {e}")
+            return False
 
     def _print_success(self, text: str) -> None:
         """Print success message"""
