@@ -274,6 +274,14 @@ class UnifiedInstaller:
                 return result
             result["steps"].append("postgresql_found")
 
+            # Step 3.5: Discover Node.js (soft requirement for frontend)
+            self._print_header("Discovering Node.js")
+            node_result = self.discover_nodejs()
+            if node_result["found"]:
+                result["steps"].append("nodejs_found")
+            else:
+                self._print_warning("Continuing without Node.js - frontend will be unavailable")
+
             # Step 4: Install dependencies
             self._print_header("Installing Dependencies")
             dep_result = self.install_dependencies()
@@ -787,6 +795,140 @@ class UnifiedInstaller:
         except Exception as e:
             self._print_error(f"Invalid path: {e}")
             return False
+
+    def discover_nodejs(self) -> Dict[str, Any]:
+        """
+        Discover Node.js and npm installation across platforms
+
+        This is a soft requirement - installation continues even if Node.js is
+        not found, but frontend functionality will be unavailable.
+
+        Checks:
+        1. node and npm in PATH
+        2. Attempt auto-install on Linux/macOS if missing
+        3. Prompt user before auto-installing (unless headless mode)
+
+        Returns:
+            Discovery result with found status: {"found": bool}
+        """
+        result: Dict[str, Any] = {"found": False}
+
+        # Check if node and npm are already available
+        node_path = shutil.which("node")
+        npm_path = shutil.which("npm")
+
+        if node_path and npm_path:
+            try:
+                version_proc = subprocess.run(
+                    ["node", "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                node_version = version_proc.stdout.strip()
+            except Exception:
+                node_version = "unknown"
+
+            self._print_success(f"Node.js detected: {node_path} ({node_version})")
+            self._print_success(f"npm detected: {npm_path}")
+            result["found"] = True
+            return result
+
+        # Node.js not found - attempt auto-install based on platform
+        self._print_warning("Node.js / npm not found in PATH")
+
+        platform_name = self.platform.platform_name
+
+        if platform_name == "Windows":
+            self._print_info("Please install Node.js from https://nodejs.org/")
+            self._print_warning("Frontend will not be available. Backend-only installation will continue.")
+            return result
+
+        # Linux or macOS - offer auto-install
+        headless = self.settings.get("headless")
+
+        if platform_name == "Linux":
+            if not headless:
+                print(
+                    f"\n{Fore.YELLOW}Install Node.js automatically? [Y/n]: {Style.RESET_ALL}",
+                    end="",
+                    flush=True,
+                )
+                response = input().strip().lower()
+                if response not in ("", "y", "yes"):
+                    self._print_warning("Skipping Node.js installation")
+                    self._print_warning("Frontend will not be available. Backend-only installation will continue.")
+                    return result
+
+            self._print_info("Installing Node.js and npm via apt...")
+            try:
+                subprocess.run(
+                    ["sudo", "apt", "install", "-y", "nodejs", "npm"],
+                    check=True,
+                    timeout=120,
+                )
+                self._print_success("Node.js and npm installed via apt")
+            except subprocess.CalledProcessError as e:
+                self._print_error(f"apt install failed: {e}")
+            except subprocess.TimeoutExpired:
+                self._print_error("apt install timed out after 120 seconds")
+
+        elif platform_name == "Darwin":
+            brew_path = shutil.which("brew")
+            if not brew_path:
+                self._print_info("Homebrew not found. Please install Node.js from https://nodejs.org/")
+                self._print_warning("Frontend will not be available. Backend-only installation will continue.")
+                return result
+
+            if not headless:
+                print(
+                    f"\n{Fore.YELLOW}Install Node.js automatically via Homebrew? [Y/n]: {Style.RESET_ALL}",
+                    end="",
+                    flush=True,
+                )
+                response = input().strip().lower()
+                if response not in ("", "y", "yes"):
+                    self._print_warning("Skipping Node.js installation")
+                    self._print_warning("Frontend will not be available. Backend-only installation will continue.")
+                    return result
+
+            self._print_info("Installing Node.js via Homebrew...")
+            try:
+                subprocess.run(
+                    ["brew", "install", "node"],
+                    check=True,
+                    timeout=300,
+                )
+                self._print_success("Node.js installed via Homebrew")
+            except subprocess.CalledProcessError as e:
+                self._print_error(f"brew install failed: {e}")
+            except subprocess.TimeoutExpired:
+                self._print_error("brew install timed out after 300 seconds")
+
+        # Re-check after auto-install attempt
+        node_path = shutil.which("node")
+        npm_path = shutil.which("npm")
+
+        if node_path and npm_path:
+            try:
+                version_proc = subprocess.run(
+                    ["node", "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                node_version = version_proc.stdout.strip()
+            except Exception:
+                node_version = "unknown"
+
+            self._print_success(f"Node.js detected: {node_path} ({node_version})")
+            self._print_success(f"npm detected: {npm_path}")
+            result["found"] = True
+            return result
+
+        self._print_warning("Node.js not found after install attempt")
+        self._print_warning("Frontend will not be available. Backend-only installation will continue.")
+        return result
 
     def _get_postgresql_scan_paths(self) -> List[Path]:
         """
