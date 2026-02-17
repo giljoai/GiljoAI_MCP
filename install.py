@@ -33,6 +33,9 @@ def _bootstrap_dependencies():
 
     This solves the bootstrap problem where install.py needs these packages
     to run, but is also responsible for installing them.
+
+    On Ubuntu 24.04+, system Python is externally-managed (PEP 668),
+    so we use --user flag when not inside a virtual environment.
     """
     required = ["click", "colorama"]
     missing = []
@@ -44,11 +47,20 @@ def _bootstrap_dependencies():
 
     if missing:
         print(f"Installing bootstrap dependencies: {', '.join(missing)}...")
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "-q"] + missing,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        cmd = [sys.executable, "-m", "pip", "install", "-q"] + missing
+
+        # If not in a venv, use --user to avoid PEP 668 restriction on Linux/macOS
+        if sys.prefix == sys.base_prefix:
+            cmd.insert(5, "--user")
+
+        try:
+            subprocess.check_call(cmd, stdout=subprocess.DEVNULL)
+        except subprocess.CalledProcessError:
+            print("\nERROR: Could not install bootstrap dependencies.")
+            print("Please install manually:")
+            print("  pip install --user click colorama")
+            print("  or: sudo apt install python3-click python3-colorama  (Ubuntu/Debian)")
+            sys.exit(1)
 
 
 _bootstrap_dependencies()
@@ -459,7 +471,15 @@ class UnifiedInstaller:
         print(f"\n{Fore.CYAN}[PostgreSQL Configuration]{Style.RESET_ALL}")
         print(f"\n{Fore.WHITE}PostgreSQL Admin Password Required{Style.RESET_ALL}")
         print("This is the password for the 'postgres' superuser account")
-        print("(The password you set when you first installed PostgreSQL)")
+
+        if platform.system() != "Windows":
+            print(f"\n{Fore.YELLOW}Linux/macOS Note:{Style.RESET_ALL} PostgreSQL installed via apt/brew may not")
+            print("have a TCP password set. If you haven't set one, run this first:")
+            print(f"  {Fore.GREEN}sudo -u postgres psql -c \"ALTER USER postgres PASSWORD 'your_password';\"{Style.RESET_ALL}")
+            print("Then enter that password below.")
+        else:
+            print("(The password you set when you first installed PostgreSQL)")
+
         print(f"{Fore.RED}Required - no defaults allowed{Style.RESET_ALL}")
 
         # Ask twice to confirm
@@ -857,11 +877,12 @@ class UnifiedInstaller:
             from installer.core.database import DatabaseInstaller
 
             # Prepare settings for DatabaseInstaller
+            # Keys must match DatabaseInstaller.__init__ expectations
             db_settings = {
-                "pg_host": self.settings.get("pg_host", "localhost"),
-                "pg_port": self.settings.get("pg_port", 5432),
-                "pg_password": self.settings.get("pg_password"),
-                "pg_user": self.settings.get("pg_user", "postgres"),
+                "host": self.settings.get("pg_host", "localhost"),
+                "port": self.settings.get("pg_port", 5432),
+                "password": self.settings.get("pg_password"),
+                "username": self.settings.get("pg_user", "postgres"),
             }
 
             db_installer = DatabaseInstaller(settings=db_settings)
@@ -1187,6 +1208,7 @@ class UnifiedInstaller:
             config_settings = {
                 "pg_host": self.settings.get("pg_host", "localhost"),
                 "pg_port": self.settings.get("pg_port", 5432),
+                "pg_password": self.settings.get("pg_password"),
                 "api_port": self.settings.get("api_port", DEFAULT_API_PORT),
                 "dashboard_port": self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT),
                 "install_dir": str(self.install_dir),
