@@ -108,14 +108,13 @@
             <!-- Agent Status: Dynamic binding from agent.status -->
             <td
               class="status-cell"
-              :class="{ 'status-working-pulse': agent.status === 'working' }"
               data-testid="status-chip"
               :style="{
                 color: getStatusColor(agent.status),
                 fontStyle: isStatusItalic(agent.status) ? 'italic' : 'normal'
               }"
             >
-              {{ getStatusLabel(agent.status) }}
+              {{ getStatusLabel(agent.status) }}<span v-if="agent.status === 'working'" class="working-dots"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
             </td>
 
             <!-- Duration: Time from working to completed (or elapsed if still working) -->
@@ -1145,24 +1144,25 @@ async function copyToClipboard(text) {
         }
 
         &.status-cell {
-          color: #ffd700;
           font-style: italic;
 
-          /* Pulsing animation for "Working" status */
-          &.status-working-pulse {
-            animation: pulse-glow 1.5s ease-in-out infinite;
+          .working-dots {
+            display: inline;
+
+            .dot {
+              animation: dot-blink 1.4s infinite steps(1);
+              opacity: 0;
+            }
+
+            .dot:nth-child(1) { animation-delay: 0s; }
+            .dot:nth-child(2) { animation-delay: 0.3s; }
+            .dot:nth-child(3) { animation-delay: 0.6s; }
           }
         }
 
-        @keyframes pulse-glow {
-          0%, 100% {
-            opacity: 1;
-            text-shadow: 0 0 4px rgba(255, 215, 0, 0.4);
-          }
-          50% {
-            opacity: 0.6;
-            text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
-          }
+        @keyframes dot-blink {
+          0%, 100% { opacity: 0; }
+          30%, 70% { opacity: 1; }
         }
 
         &.duration-cell {
