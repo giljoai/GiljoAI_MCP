@@ -3,6 +3,8 @@ Tool Accessor for API Integration
 Provides direct access to MCP tool functions for API endpoints
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -104,7 +106,7 @@ class ToolAccessor:
         db_manager: DatabaseManager,
         tenant_manager: TenantManager,
         websocket_manager: Any | None = None,
-        test_session: "AsyncSession" | None = None,
+        test_session: AsyncSession | None = None,
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager

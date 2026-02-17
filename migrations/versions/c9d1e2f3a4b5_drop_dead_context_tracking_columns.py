@@ -12,11 +12,14 @@ Changes:
 1. Drop CHECK constraint ck_agent_execution_context_usage from agent_executions
 2. Drop context_used and context_budget columns from agent_executions
 3. Drop context_used column from projects
+
+All operations are IDEMPOTENT - safe on fresh installs where baseline already omits these.
 """
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 
 # revision identifiers, used by Alembic.
 revision: str = 'c9d1e2f3a4b5'
@@ -25,16 +28,37 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _column_exists(conn, table_name: str, column_name: str) -> bool:
+    result = conn.execute(text(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name = :table AND column_name = :col"
+    ), {"table": table_name, "col": column_name})
+    return result.fetchone() is not None
+
+
+def _constraint_exists(conn, constraint_name: str) -> bool:
+    result = conn.execute(text(
+        "SELECT 1 FROM pg_constraint WHERE conname = :name"
+    ), {"name": constraint_name})
+    return result.fetchone() is not None
+
+
 def upgrade() -> None:
-    # Drop CHECK constraint first (must be before column drop)
-    op.drop_constraint('ck_agent_execution_context_usage', 'agent_executions', type_='check')
+    conn = op.get_bind()
 
-    # Drop columns from agent_executions
-    op.drop_column('agent_executions', 'context_used')
-    op.drop_column('agent_executions', 'context_budget')
+    # Drop CHECK constraint first (skip if baseline already omits it)
+    if _constraint_exists(conn, 'ck_agent_execution_context_usage'):
+        op.drop_constraint('ck_agent_execution_context_usage', 'agent_executions', type_='check')
 
-    # Drop column from projects
-    op.drop_column('projects', 'context_used')
+    # Drop columns from agent_executions (skip if baseline already omits them)
+    if _column_exists(conn, 'agent_executions', 'context_used'):
+        op.drop_column('agent_executions', 'context_used')
+    if _column_exists(conn, 'agent_executions', 'context_budget'):
+        op.drop_column('agent_executions', 'context_budget')
+
+    # Drop column from projects (skip if baseline already omits it)
+    if _column_exists(conn, 'projects', 'context_used'):
+        op.drop_column('projects', 'context_used')
 
 
 def downgrade() -> None:
