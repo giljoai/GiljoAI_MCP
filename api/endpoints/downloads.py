@@ -18,7 +18,6 @@ from fastapi import APIRouter, Body, Cookie, Depends, Header, HTTPException, Que
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp._config_io import read_config
 from src.giljo_mcp.auth.dependencies import get_db_session
 from src.giljo_mcp.config_manager import get_config
 from src.giljo_mcp.models import AgentTemplate
@@ -44,12 +43,7 @@ def get_server_url(request=None) -> str:
     """
     try:
         config = get_config()
-
-        # Read external_host directly from config.yaml
-        # (ConfigManager.get() can't traverse nested dicts)
-        config_data = read_config()
-
-        host = config_data.get("services", {}).get("external_host", "localhost")
+        host = config.get_nested("services.external_host", "localhost")
         port = config.server.api_port
 
         # Detect HTTPS from request headers if available
