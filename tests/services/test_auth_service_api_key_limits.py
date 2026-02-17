@@ -17,7 +17,7 @@ import pytest
 import pytest_asyncio
 from passlib.hash import bcrypt
 
-from src.giljo_mcp.exceptions import ValidationError
+from src.giljo_mcp.exceptions import BaseGiljoError
 from src.giljo_mcp.models.auth import APIKey, User
 from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.schemas.service_responses import ApiKeyCreateResult, ApiKeyInfo
@@ -134,7 +134,7 @@ class TestApiKeyLimit:
                 expires_at=datetime.now(timezone.utc) + timedelta(days=90),
             )
 
-        with pytest.raises(ValidationError, match="Maximum of 5 active API keys"):
+        with pytest.raises(BaseGiljoError, match="Maximum of 5 active API keys"):
             await auth_service.create_api_key(
                 user_id=user.id, tenant_key=user.tenant_key, name="Key 6", permissions=["*"]
             )
