@@ -843,13 +843,8 @@ def run_database_migrations() -> bool:
     """
     print_header("Running Database Migrations")
     try:
-        alembic_path = shutil.which("alembic")
-        if not alembic_path:
-            print_error("Alembic not found in system PATH")
-            return False
-
         result = subprocess.run(
-            [alembic_path, "upgrade", "head"],
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
             capture_output=True,
             text=True,
             check=True,
