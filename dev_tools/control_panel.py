@@ -757,24 +757,48 @@ class GiljoDevControlPanel:
                 if 7200 <= conn.laddr.port <= 7299:
                     giljo_ports[conn.laddr.port] = conn.pid
         except (psutil.AccessDenied, AttributeError):
-            # Fallback to Windows netstat command
+            # Fallback to platform-specific CLI
             try:
-                result = subprocess.run(["netstat", "-ano"], check=False, capture_output=True, text=True, timeout=5)
-
-                for line in result.stdout.splitlines():
-                    if ":72" in line and "LISTENING" in line:
-                        parts = line.split()
-                        if parts:
-                            # Extract port from address (e.g., "0.0.0.0:7272")
-                            addr_parts = parts[1].split(":")
-                            if len(addr_parts) == 2:
-                                try:
-                                    port = int(addr_parts[1])
-                                    pid = int(parts[-1])
-                                    if 7200 <= port <= 7299 and pid != 0:
-                                        giljo_ports[port] = pid
-                                except (ValueError, IndexError):
-                                    pass
+                system = platform.system()
+                if system == "Windows":
+                    result = subprocess.run(
+                        ["netstat", "-ano"], check=False, capture_output=True, text=True, timeout=5
+                    )
+                    for line in result.stdout.splitlines():
+                        if ":72" in line and "LISTENING" in line:
+                            parts = line.split()
+                            if parts:
+                                addr_parts = parts[1].split(":")
+                                if len(addr_parts) == 2:
+                                    try:
+                                        port = int(addr_parts[1])
+                                        pid = int(parts[-1])
+                                        if 7200 <= port <= 7299 and pid != 0:
+                                            giljo_ports[port] = pid
+                                    except (ValueError, IndexError):
+                                        pass
+                else:
+                    # Linux/macOS: use ss (preferred) or lsof
+                    result = subprocess.run(
+                        ["ss", "-tlnp"], check=False, capture_output=True, text=True, timeout=5
+                    )
+                    for line in result.stdout.splitlines():
+                        if ":72" in line:
+                            # ss output: LISTEN 0 128 0.0.0.0:7272 ... users:(("python3",pid=1234,...))
+                            parts = line.split()
+                            for part in parts:
+                                if ":72" in part and "." in part:
+                                    try:
+                                        port = int(part.rsplit(":", 1)[1])
+                                        if 7200 <= port <= 7299:
+                                            # Extract PID from users:(...pid=NNNN...)
+                                            import re
+                                            pid_match = re.search(r"pid=(\d+)", line)
+                                            pid = int(pid_match.group(1)) if pid_match else None
+                                            if pid:
+                                                giljo_ports[port] = pid
+                                    except (ValueError, IndexError):
+                                        pass
             except Exception:
                 pass
 
@@ -1257,23 +1281,50 @@ class GiljoDevControlPanel:
 
     def get_db_credentials(self) -> dict[str, Any]:
         """
-        Get database credentials from config and environment.
+        Get database credentials from .env or prompt.
 
-        Multi-PC Support:
-        - C: drive and F: drive both use localhost PostgreSQL
-        - Hardcoded development password: 4010
+        Cross-platform support:
+        - Reads PG_SUPERUSER_PASSWORD from .env (set per dev station)
+        - Falls back to prompting via dialog if not found
+        - Caches the password for the session
         - Always connects to localhost:5432
         """
+        password = getattr(self, "_cached_pg_password", None)
+
+        if not password:
+            # Try reading from .env
+            env_file = self.project_root / ".env"
+            if env_file.exists():
+                try:
+                    for line in env_file.read_text().splitlines():
+                        line = line.strip()
+                        if line.startswith("PG_SUPERUSER_PASSWORD="):
+                            password = line.split("=", 1)[1].strip().strip("'\"")
+                            break
+                except Exception:
+                    pass
+
+            # Prompt if not found
+            if not password:
+                from tkinter import simpledialog
+                password = simpledialog.askstring(
+                    "PostgreSQL Password",
+                    "Enter postgres superuser password:\n\n"
+                    "(Add PG_SUPERUSER_PASSWORD=<pwd> to .env to skip this prompt)",
+                    show="*",
+                    parent=self.root,
+                )
+
+            if password:
+                self._cached_pg_password = password
+
         credentials = {
             "host": "localhost",
             "port": 5432,
             "user": "postgres",
-            "password": "4010",  # Hardcoded for development (both C: and F: systems)
-            "database": "postgres",  # Connect to postgres DB to check/create giljo_mcp
+            "password": password,
+            "database": "postgres",
         }
-
-        # Note: Config and .env are gitignored and system-specific
-        # We use hardcoded localhost:5432 since both dev systems use local PostgreSQL
 
         return credentials
 
@@ -1364,9 +1415,9 @@ class GiljoDevControlPanel:
         Delete giljo_mcp database after confirmation with proper ownership handling.
 
         Multi-PC Support:
-        - Uses hardcoded password 4010 (same on both C: and F: systems)
+        - Reads postgres password from .env (PG_SUPERUSER_PASSWORD) or prompts
         - Always connects to localhost PostgreSQL
-        - Fallback to psql.exe command-line if psycopg2 fails
+        - Fallback to psql command-line if psycopg2 fails
         """
         # Confirmation dialog
         confirm = messagebox.askyesno(
@@ -1388,15 +1439,15 @@ class GiljoDevControlPanel:
 
         self.update_status_message("Deleting giljo_mcp database...")
 
-        # Try psycopg2 first, fallback to psql.exe command-line
+        # Try psycopg2 first, fallback to psql command-line
         if psycopg2 is not None:
             success = self._delete_database_with_psycopg2()
             if success:
                 return
             # psycopg2 failed, try fallback
-            self.update_status_message("psycopg2 failed, trying psql.exe fallback...")
+            self.update_status_message("psycopg2 failed, trying psql CLI fallback...")
 
-        # Fallback to Windows psql.exe command-line
+        # Fallback to psql command-line
         self._delete_database_with_psql_cli()
 
     def _delete_database_with_psycopg2(self) -> bool:
@@ -1587,16 +1638,43 @@ class GiljoDevControlPanel:
             print(f"psycopg2 error: {e}")
             return False
 
+    def _get_pg_install_hint(self) -> str:
+        """Return platform-specific PostgreSQL installation hint."""
+        system = platform.system()
+        if system == "Windows":
+            return (
+                "Searched:\n"
+                "- PATH environment variable\n"
+                "- C:\\Program Files\\PostgreSQL\\*\\bin\\\n\n"
+                "Please ensure PostgreSQL is installed."
+            )
+        elif system == "Darwin":
+            return (
+                "Searched:\n"
+                "- PATH environment variable\n"
+                "- Homebrew (/opt/homebrew/bin, /usr/local/bin)\n"
+                "- /Library/PostgreSQL/*/bin/\n\n"
+                "Install with: brew install postgresql"
+            )
+        else:
+            return (
+                "Searched:\n"
+                "- PATH environment variable\n"
+                "- /usr/bin/, /usr/local/bin/\n"
+                "- /usr/lib/postgresql/*/bin/\n\n"
+                "Install with: sudo apt install postgresql"
+            )
+
     def _find_psql_path(self) -> Optional[str]:
         """
-        Find psql.exe path on Windows.
+        Find psql path (cross-platform).
 
         Search order:
         1. PATH environment variable
-        2. Common PostgreSQL installation locations (C:/Program Files/PostgreSQL/*/bin/)
+        2. Common platform-specific PostgreSQL installation locations
 
         Returns:
-            Path to psql.exe if found, None otherwise
+            Path to psql if found, None otherwise
         """
 
         # Method 1: Check PATH
@@ -1605,35 +1683,70 @@ class GiljoDevControlPanel:
             self.logger.info(f"Found psql in PATH: {psql_in_path}")
             return psql_in_path
 
-        # Method 2: Scan common Windows locations
-        program_files_locations = [
-            Path("C:/Program Files/PostgreSQL"),
-            Path("C:/Program Files (x86)/PostgreSQL"),
-        ]
+        # Method 2: Scan platform-specific locations
+        system = platform.system()
+        search_locations = []
 
-        for base in program_files_locations:
-            if base.exists():
-                # Sort versions in reverse order (newest first: 18, 17, 16, etc.)
-                for version_dir in sorted(base.glob("*"), reverse=True):
-                    if version_dir.is_dir():
-                        psql_path = version_dir / "bin" / "psql.exe"
+        if system == "Windows":
+            search_locations = [
+                Path("C:/Program Files/PostgreSQL"),
+                Path("C:/Program Files (x86)/PostgreSQL"),
+            ]
+        elif system == "Darwin":  # macOS
+            search_locations = [
+                Path("/Library/PostgreSQL"),
+                Path("/opt/homebrew/opt/postgresql/bin").parent.parent,
+                Path("/usr/local/opt/postgresql/bin").parent.parent,
+            ]
+            # Check Homebrew directly
+            for brew_path in [
+                Path("/opt/homebrew/bin/psql"),
+                Path("/usr/local/bin/psql"),
+            ]:
+                if brew_path.exists():
+                    self.logger.info(f"Found psql at: {brew_path}")
+                    return str(brew_path)
+        else:  # Linux
+            for linux_path in [
+                Path("/usr/bin/psql"),
+                Path("/usr/local/bin/psql"),
+                Path("/usr/lib/postgresql"),
+            ]:
+                if linux_path.name == "psql" and linux_path.exists():
+                    self.logger.info(f"Found psql at: {linux_path}")
+                    return str(linux_path)
+                elif linux_path.is_dir():
+                    # Scan /usr/lib/postgresql/*/bin/psql
+                    for version_dir in sorted(linux_path.glob("*"), reverse=True):
+                        psql_path = version_dir / "bin" / "psql"
                         if psql_path.exists():
                             self.logger.info(f"Found psql at: {psql_path}")
                             return str(psql_path)
 
-        self.logger.warning("Could not find psql.exe in PATH or common locations")
+        psql_name = "psql.exe" if system == "Windows" else "psql"
+        for base in search_locations:
+            if base.exists():
+                # Sort versions in reverse order (newest first: 18, 17, 16, etc.)
+                for version_dir in sorted(base.glob("*"), reverse=True):
+                    if version_dir.is_dir():
+                        psql_path = version_dir / "bin" / psql_name
+                        if psql_path.exists():
+                            self.logger.info(f"Found psql at: {psql_path}")
+                            return str(psql_path)
+
+        self.logger.warning("Could not find psql in PATH or common locations")
         return None
 
     def _find_pg_dump_path(self) -> Optional[str]:
         """
-        Find pg_dump.exe path on Windows.
+        Find pg_dump path (cross-platform).
 
         Search order:
         1. PATH environment variable
-        2. Common PostgreSQL installation locations (C:/Program Files/PostgreSQL/*/bin/)
+        2. Common platform-specific PostgreSQL installation locations
 
         Returns:
-            Path to pg_dump.exe if found, None otherwise
+            Path to pg_dump if found, None otherwise
         """
 
         # Method 1: Check PATH
@@ -1642,55 +1755,89 @@ class GiljoDevControlPanel:
             self.logger.info(f"Found pg_dump in PATH: {pg_dump_in_path}")
             return pg_dump_in_path
 
-        # Method 2: Scan common Windows locations
-        program_files_locations = [
-            Path("C:/Program Files/PostgreSQL"),
-            Path("C:/Program Files (x86)/PostgreSQL"),
-        ]
+        # Method 2: Scan platform-specific locations
+        system = platform.system()
+        search_locations = []
 
-        for base in program_files_locations:
-            if base.exists():
-                # Sort versions in reverse order (newest first: 18, 17, 16, etc.)
-                for version_dir in sorted(base.glob("*"), reverse=True):
-                    if version_dir.is_dir():
-                        pg_dump_path = version_dir / "bin" / "pg_dump.exe"
+        if system == "Windows":
+            search_locations = [
+                Path("C:/Program Files/PostgreSQL"),
+                Path("C:/Program Files (x86)/PostgreSQL"),
+            ]
+        elif system == "Darwin":  # macOS
+            search_locations = [
+                Path("/Library/PostgreSQL"),
+            ]
+            for brew_path in [
+                Path("/opt/homebrew/bin/pg_dump"),
+                Path("/usr/local/bin/pg_dump"),
+            ]:
+                if brew_path.exists():
+                    self.logger.info(f"Found pg_dump at: {brew_path}")
+                    return str(brew_path)
+        else:  # Linux
+            for linux_path in [
+                Path("/usr/bin/pg_dump"),
+                Path("/usr/local/bin/pg_dump"),
+                Path("/usr/lib/postgresql"),
+            ]:
+                if linux_path.name == "pg_dump" and linux_path.exists():
+                    self.logger.info(f"Found pg_dump at: {linux_path}")
+                    return str(linux_path)
+                elif linux_path.is_dir():
+                    for version_dir in sorted(linux_path.glob("*"), reverse=True):
+                        pg_dump_path = version_dir / "bin" / "pg_dump"
                         if pg_dump_path.exists():
                             self.logger.info(f"Found pg_dump at: {pg_dump_path}")
                             return str(pg_dump_path)
 
-        self.logger.warning("Could not find pg_dump.exe in PATH or common locations")
+        bin_name = "pg_dump.exe" if system == "Windows" else "pg_dump"
+        for base in search_locations:
+            if base.exists():
+                for version_dir in sorted(base.glob("*"), reverse=True):
+                    if version_dir.is_dir():
+                        pg_dump_path = version_dir / "bin" / bin_name
+                        if pg_dump_path.exists():
+                            self.logger.info(f"Found pg_dump at: {pg_dump_path}")
+                            return str(pg_dump_path)
+
+        self.logger.warning("Could not find pg_dump in PATH or common locations")
         return None
 
     def _delete_database_with_psql_cli(self) -> bool:
         """
-        Delete database using Windows psql.exe command-line (fallback method).
+        Delete database using psql command-line (fallback method).
 
         This method:
-        1. Finds psql.exe (PATH or common locations)
-        2. Uses PGPASSWORD environment variable (password: 4010)
+        1. Finds psql (PATH or common platform-specific locations)
+        2. Uses PGPASSWORD environment variable (from .env or prompt)
         3. Runs the same SQL sequence as psycopg2 method
         4. Includes User/ApiKey counting via DO block with RAISE NOTICE
 
         Returns:
             True if successful, False otherwise
         """
-        self.update_status_message("Using psql.exe command-line fallback...")
+        self.update_status_message("Using psql command-line fallback...")
 
-        # Find psql.exe first
+        # Find psql first
         psql_path = self._find_psql_path()
         if not psql_path:
-            self.update_status_message("psql.exe not found")
+            self.update_status_message("psql not found")
             messagebox.showerror(
                 "Error",
-                "psql.exe not found!\n\n"
-                "Could not find PostgreSQL in:\n"
-                "- PATH environment variable\n"
-                "- C:\\Program Files\\PostgreSQL\\*\\bin\\\n\n"
-                "Please ensure PostgreSQL is installed.",
+                "psql not found!\n\n"
+                "Could not find PostgreSQL command-line tools.\n\n"
+                + self._get_pg_install_hint()
             )
             return False
 
         self.update_status_message(f"Found psql at: {psql_path}")
+
+        # Get credentials (reads from .env or prompts)
+        credentials = self.get_db_credentials()
+        if not credentials.get("password"):
+            messagebox.showerror("Error", "No PostgreSQL password provided.")
+            return False
 
         try:
             # First, audit User/ApiKey counts via psql
@@ -1722,7 +1869,7 @@ END $$;
 
             try:
                 env = os.environ.copy()
-                env["PGPASSWORD"] = "4010"
+                env["PGPASSWORD"] = credentials["password"]
 
                 # Run audit against giljo_mcp database
                 audit_result = subprocess.run(
@@ -1792,7 +1939,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
             try:
                 # Execute psql with password in environment
                 env = os.environ.copy()
-                env["PGPASSWORD"] = "4010"
+                env["PGPASSWORD"] = credentials["password"]
 
                 result = subprocess.run(
                     [psql_path, "-U", "postgres", "-h", "localhost", "-p", "5432", "-d", "postgres", "-f", sql_file],
@@ -1810,10 +1957,10 @@ DROP DATABASE IF EXISTS giljo_mcp;
                     self.db_exists_indicator.config(foreground="red")
                     self.db_exists_label.config(text="Deleted")
                     self.db_exists_status.set(False)
-                    self.update_status_message("Database deleted via psql.exe")
+                    self.update_status_message("Database deleted via psql CLI")
                     messagebox.showinfo(
                         "Success",
-                        "Database deletion complete (using psql.exe)!\n\n"
+                        "Database deletion complete (using psql CLI)!\n\n"
                         "Removed:\n"
                         "- giljo_mcp database\n"
                         f"- {user_count} users\n"
@@ -1823,7 +1970,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                         "- All projects, agents, tasks, and data",
                     )
                     return True
-                raise Exception(f"psql.exe failed: {result.stderr}")
+                raise Exception(f"psql failed: {result.stderr}")
 
             finally:
                 # Ensure temp file is cleaned up
@@ -1831,7 +1978,7 @@ DROP DATABASE IF EXISTS giljo_mcp;
                     os.unlink(sql_file)
 
         except Exception as e:
-            self.update_status_message(f"psql.exe deletion failed: {e}")
+            self.update_status_message(f"psql CLI deletion failed: {e}")
             messagebox.showerror("Error", f"Database deletion failed:\n\n{e}")
             return False
 
@@ -1907,10 +2054,8 @@ DROP DATABASE IF EXISTS giljo_mcp;
                 messagebox.showerror(
                     "Error",
                     "pg_dump not found!\n\n"
-                    "Could not find PostgreSQL in:\n"
-                    "- PATH environment variable\n"
-                    "- C:\\Program Files\\PostgreSQL\\*\\bin\\\n\n"
-                    "Please ensure PostgreSQL is installed.",
+                    "Could not find PostgreSQL command-line tools.\n\n"
+                    + self._get_pg_install_hint(),
                 )
                 return
 
@@ -2117,8 +2262,9 @@ pg_restore -l {backup_file.name} | head -20
             psql_path = self._find_psql_path()
             if psql_path:
                 try:
+                    credentials = self.get_db_credentials()
                     env = os.environ.copy()
-                    env["PGPASSWORD"] = "4010"
+                    env["PGPASSWORD"] = credentials.get("password", "")
 
                     # Check if database exists
                     db_result = subprocess.run(
@@ -2520,9 +2666,9 @@ pg_restore -l {backup_file.name} | head -20
             if psycopg2:
                 db_deleted = self._delete_database_with_psycopg2()
                 if not db_deleted:
-                    self.update_status_message("psycopg2 failed, trying psql.exe fallback...")
+                    self.update_status_message("psycopg2 failed, trying psql CLI fallback...")
 
-            # Fallback to psql.exe CLI if psycopg2 unavailable or failed
+            # Fallback to psql CLI if psycopg2 unavailable or failed
             if not db_deleted:
                 db_deleted = self._delete_database_with_psql_cli()
 
@@ -2530,7 +2676,7 @@ pg_restore -l {backup_file.name} | head -20
                 deleted.append("Database (giljo_mcp)")
                 deleted.append("PostgreSQL roles")
             else:
-                errors.append("Database deletion failed (both psycopg2 and psql.exe)")
+                errors.append("Database deletion failed (both psycopg2 and psql CLI)")
 
         except Exception as e:
             errors.append(f"Database deletion: {e}")
@@ -2624,7 +2770,7 @@ pg_restore -l {backup_file.name} | head -20
                 f"Deleted {len(deleted)} components:\n"
                 + "\n".join(f"✓ {d}" for d in deleted[:8])
                 + (f"\n  ... and {len(deleted) - 8} more" if len(deleted) > 8 else "")
-                + "\n\nYou can now run install.bat to set up from scratch.\n\n"
+                + "\n\nYou can now run 'python install.py' to set up from scratch.\n\n"
                 "This simulates a fresh GitHub download.",
             )
 
