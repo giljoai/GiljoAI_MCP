@@ -1017,16 +1017,26 @@ class GiljoDevControlPanel:
                 command=command, title="GiljoAI Backend API", cwd=self.project_root
             )
 
-            time.sleep(2)  # Wait for startup
+            # Wait for API to start listening on port
+            # Note: On Linux, gnome-terminal exits immediately after spawning
+            # the window (poll() returns 0), so process.poll() is unreliable.
+            # Instead, check if the port becomes occupied.
+            self.update_status_message(f"Waiting for backend on port {api_port}...")
+            started = False
+            for _ in range(10):  # Wait up to 5 seconds
+                time.sleep(0.5)
+                if not self._is_port_available(api_port):
+                    started = True
+                    break
 
-            # Check if process started (None on macOS is acceptable)
-            if self.backend_process is None or self.backend_process.poll() is None:
+            if started:
                 self.update_status_message(f"Backend started in terminal on port {api_port}")
             else:
-                self.update_status_message("Backend failed to start")
-                messagebox.showerror(
-                    "Error",
-                    "Backend service failed to start\n\nCheck the terminal window for error details.",
+                self.update_status_message("Backend may still be starting...")
+                messagebox.showwarning(
+                    "Slow Start",
+                    f"Backend has not responded on port {api_port} yet.\n\n"
+                    "It may still be starting - check the terminal window.",
                 )
 
         except Exception as e:
@@ -1148,16 +1158,25 @@ class GiljoDevControlPanel:
                 command=command, title=f"GiljoAI Frontend Dev Server (Port {frontend_port})", cwd=frontend_dir
             )
 
-            time.sleep(2)  # Wait for startup
+            # Wait for frontend to start listening on port
+            # Note: On Linux, gnome-terminal exits immediately after spawning
+            # the window (poll() returns 0), so process.poll() is unreliable.
+            self.update_status_message(f"Waiting for frontend on port {frontend_port}...")
+            started = False
+            for _ in range(10):  # Wait up to 5 seconds
+                time.sleep(0.5)
+                if not self._is_port_available(frontend_port):
+                    started = True
+                    break
 
-            # Check if process started (None on macOS is acceptable)
-            if self.frontend_process is None or self.frontend_process.poll() is None:
+            if started:
                 self.update_status_message(f"Frontend started on port {frontend_port} (strict)")
             else:
-                self.update_status_message("Frontend failed to start")
-                messagebox.showerror(
-                    "Error",
-                    "Frontend service failed to start\n\nCheck the terminal window for error details.",
+                self.update_status_message("Frontend may still be starting...")
+                messagebox.showwarning(
+                    "Slow Start",
+                    f"Frontend has not responded on port {frontend_port} yet.\n\n"
+                    "It may still be starting - check the terminal window.",
                 )
 
         except Exception as e:
