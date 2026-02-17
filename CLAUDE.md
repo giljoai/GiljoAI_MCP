@@ -355,7 +355,8 @@ python startup.py --dev        # Development mode
 
 # Development
 ruff src/; black src/          # Python linting & formatting
-pytest tests/                  # Run tests
+python run_tests.py --no-cov   # Run tests (with hang protection)
+python run_tests.py            # Run tests with coverage
 cd frontend/; npm run dev      # Frontend dev server
 
 # Database (Password: 4010)
@@ -473,17 +474,33 @@ PGPASSWORD=$DB_PASSWORD /f/PostgreSQL/bin/psql.exe -U postgres -d giljo_mcp -c "
 
 **Coverage Target**: >80% across all services and endpoints (verified via pytest-cov)
 
+**CRITICAL: Always use `run_tests.py`** instead of bare `pytest`. It provides per-test timeouts (30s default), suite-level timeouts, and structured logs to `logs/test_run_*.log` that identify hanging tests. Bare `pytest` still gets per-test timeouts via `pyproject.toml` but lacks suite kill-switch and diagnostics.
+
 **Running Tests**:
 ```bash
-# All tests with coverage
-pytest tests/ --cov=src/giljo_mcp --cov-report=html
+# All tests with coverage + hang protection
+python run_tests.py
 
-# Service layer only
-pytest tests/services/ -v
+# Fast (no coverage)
+python run_tests.py --no-cov
 
-# Integration tests only
-pytest tests/integration/ -v
+# Specific directory
+python run_tests.py tests/services/ --no-cov
+
+# Integration tests (longer timeout)
+python run_tests.py tests/integration/ --timeout 60
+
+# Kill entire suite after 10 minutes
+python run_tests.py --suite-timeout 600 --no-cov
+
+# Stop on first failure
+python run_tests.py -x --no-cov
+
+# Re-run only last-failed tests
+python run_tests.py --last-failed --no-cov
 ```
+
+**After a test run**: Check `logs/test_run_*_summary.log` for timed-out tests, failures, and the top 20 slowest tests.
 
 ## Handover Format & Tool Selection
 
