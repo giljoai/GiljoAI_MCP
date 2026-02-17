@@ -276,22 +276,16 @@ def create_app() -> FastAPI:
     )
 
     # Configure CORS - use explicit origins from config.yaml security section
-    import yaml
+    from src.giljo_mcp._config_io import read_config as _read_app_config
 
     cors_origins = []
 
     # Try to load from config.yaml security section
     try:
-        config_path = Path(__file__).parent.parent / "config.yaml"
-        if config_path.exists():
-            with open(config_path) as f:
-                config = yaml.safe_load(f)
-                security_config = config.get("security", {})
-                cors_config = security_config.get("cors", {})
-                cors_origins = cors_config.get("allowed_origins", [])
-
-                if cors_origins:
-                    logger.info(f"Loaded CORS origins from config.yaml security section: {cors_origins}")
+        config = _read_app_config()
+        cors_origins = config.get("security", {}).get("cors", {}).get("allowed_origins", [])
+        if cors_origins:
+            logger.info(f"Loaded CORS origins from config.yaml security section: {cors_origins}")
     except (OSError, ValueError, KeyError) as e:
         logger.warning(f"Could not load CORS config from config.yaml: {e}")
 

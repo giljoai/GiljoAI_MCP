@@ -19,12 +19,10 @@ async def get_tenant_key(request: Request) -> str:
     In server mode (LAN/WAN), missing tenant key returns 401.
     In localhost mode, defaults to predefined tenant key.
     """
-    from pathlib import Path
-
-    import yaml
     from fastapi import HTTPException
 
     from api.app import state
+    from src.giljo_mcp._config_io import read_config
 
     # Check if we're in setup mode first
     if hasattr(state, "api_state") and hasattr(state.api_state, "config"):
@@ -57,17 +55,14 @@ async def get_tenant_key(request: Request) -> str:
 
     # Check deployment mode to determine fallback behavior
     try:
-        config_path = Path(__file__).parent.parent / "config.yaml"
-        if config_path.exists():
-            with open(config_path) as f:
-                config = yaml.safe_load(f)
-                mode = config.get("installation", {}).get("mode", "localhost")
+        config = read_config()
+        mode = config.get("installation", {}).get("mode", "localhost")
 
-            # In server mode (LAN/WAN), missing tenant key is a security error
-            if mode in ("server", "lan", "wan"):
-                raise HTTPException(
-                    status_code=401, detail=f"Tenant key required for {mode} mode. Include X-Tenant-Key header."
-                )
+        # In server mode (LAN/WAN), missing tenant key is a security error
+        if mode in ("server", "lan", "wan"):
+            raise HTTPException(
+                status_code=401, detail=f"Tenant key required for {mode} mode. Include X-Tenant-Key header."
+            )
     except HTTPException:
         raise
     except (OSError, ValueError, KeyError):
