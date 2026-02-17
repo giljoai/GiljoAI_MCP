@@ -64,14 +64,24 @@ def upgrade() -> None:
 
     # Step 1: Migrate 'failed' executions to 'blocked'
     # Copy failure_reason to block_reason where it exists
-    result = conn.execute(
-        text("""
-            UPDATE agent_executions
-            SET status = 'blocked',
-                block_reason = COALESCE(block_reason, failure_reason, 'Migrated from failed status')
-            WHERE status = 'failed'
-        """)
-    )
+    if _column_exists(conn, "agent_executions", "failure_reason"):
+        result = conn.execute(
+            text("""
+                UPDATE agent_executions
+                SET status = 'blocked',
+                    block_reason = COALESCE(block_reason, failure_reason, 'Migrated from failed status')
+                WHERE status = 'failed'
+            """)
+        )
+    else:
+        result = conn.execute(
+            text("""
+                UPDATE agent_executions
+                SET status = 'blocked',
+                    block_reason = COALESCE(block_reason, 'Migrated from failed status')
+                WHERE status = 'failed'
+            """)
+        )
     logger.info(f"Migrated {result.rowcount} 'failed' executions to 'blocked'")
 
     # Step 2: Migrate 'cancelled' executions to 'decommissioned'
