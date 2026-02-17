@@ -6,12 +6,11 @@ Removed advanced settings for 99% token reduction.
 """
 
 import logging
-from pathlib import Path
-from typing import Any
 
-import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
+from src.giljo_mcp._config_io import read_config, write_config
 
 
 logger = logging.getLogger(__name__)
@@ -22,36 +21,6 @@ class SerenaToggleRequest(BaseModel):
     """Request model for Serena toggle"""
 
     use_in_prompts: bool
-
-
-def get_config_path() -> Path:
-    """Get path to config.yaml."""
-    return Path.cwd() / "config.yaml"
-
-
-def read_config() -> dict[str, Any]:
-    """Read config.yaml."""
-    config_path = get_config_path()
-    if not config_path.exists():
-        return {}
-
-    try:
-        with open(config_path, encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except (OSError, ValueError):
-        logger.exception("Failed to read config")
-        return {}
-
-
-def write_config(config: dict[str, Any]) -> None:
-    """Write config.yaml."""
-    config_path = get_config_path()
-    try:
-        with open(config_path, "w", encoding="utf-8") as f:
-            yaml.dump(config, f, default_flow_style=False, sort_keys=False)
-    except (OSError, ValueError) as e:
-        logger.exception("Failed to write config")
-        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/settings")
@@ -85,7 +54,10 @@ async def toggle_serena(request: SerenaToggleRequest):
     # Update flag
     config["features"]["serena_mcp"]["use_in_prompts"] = request.use_in_prompts
 
-    write_config(config)
+    try:
+        write_config(config)
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
     logger.info(f"Serena prompts {'enabled' if request.use_in_prompts else 'disabled'}")
 
