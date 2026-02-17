@@ -14,10 +14,10 @@ const statusConfig = {
     chipColor: 'warning',
   },
   working: {
-    label: 'Working...',
-    color: '#ffd700', // Yellow
+    label: 'Working',
+    color: '#ffffff', // White
     italic: true,
-    chipColor: 'warning',
+    chipColor: 'default',
   },
   blocked: {
     label: 'Needs Input',
