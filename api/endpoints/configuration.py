@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-import yaml
 from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel, Field
 
@@ -58,19 +57,12 @@ async def get_system_configuration():
 
     Sensitive data (passwords, API keys) are masked for security.
     """
-    # Read config.yaml directly for accurate structure
-    # __file__ is api/endpoints/configuration.py
-    # .parent = api/endpoints, .parent.parent = api, .parent.parent.parent = project root
-    config_path = Path(__file__).parent.parent.parent / "config.yaml"
+    from src.giljo_mcp._config_io import read_config
 
-    if not config_path.exists():
-        raise HTTPException(status_code=404, detail=f"config.yaml not found at {config_path}")
-
-    with open(config_path, encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+    config = read_config()
 
     if not config:
-        raise HTTPException(status_code=500, detail="config.yaml is empty")
+        raise HTTPException(status_code=500, detail="config.yaml is empty or not found")
 
     # Mask sensitive data for security
     if "database" in config and "password" in config.get("database", {}):
@@ -469,32 +461,19 @@ async def get_frontend_configuration():
         and the frontend connects via the configured external_host (set during installation).
         OS firewall controls network access (defense in depth).
     """
-    # Read config.yaml directly
-    config_path = Path(__file__).parent.parent.parent / "config.yaml"
+    from api.app import state
 
-    if not config_path.exists():
-        raise HTTPException(status_code=404, detail=f"config.yaml not found at {config_path}")
+    if not state.config:
+        raise HTTPException(status_code=503, detail="Configuration manager not available")
 
-    with open(config_path, encoding="utf-8") as f:
-        config = yaml.safe_load(f)
-
-    if not config:
-        raise HTTPException(status_code=500, detail="config.yaml is empty")
-
-    # Extract frontend-needed configuration
-    api_port = config.get("services", {}).get("api", {}).get("port", 7272)
-    api_keys_required = config.get("features", {}).get("api_keys_required", False)
-
-    # Get external host configuration (from install.py network configuration)
-    # This is what the frontend should use to connect to the API
-    external_host = config.get("services", {}).get("external_host", "localhost")
-
-    # Use external_host for frontend connections
-    # This was configured during installation based on user's network selection
-    frontend_host = external_host
+    # Extract frontend-needed configuration via ConfigManager
+    api_port = state.config.get_nested("services.api.port", 7272)
+    api_keys_required = state.config.get_nested("features.api_keys_required", default=False)
+    frontend_host = state.config.get_nested("services.external_host", "localhost")
+    ssl_enabled = state.config.get_nested("features.ssl_enabled", default=False)
 
     # Build WebSocket URL (use ws:// for http, wss:// for https)
-    ws_protocol = "wss" if config.get("features", {}).get("ssl_enabled", False) else "ws"
+    ws_protocol = "wss" if ssl_enabled else "ws"
     ws_url = f"{ws_protocol}://{frontend_host}:{api_port}"
 
     # v3.0 Unified Architecture: No 'mode' field in response

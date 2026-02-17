@@ -256,6 +256,9 @@ class ConfigManager:
         self.app_name = "GiljoAI MCP Coding Orchestrator"
         self.app_version = "0.1.0"
 
+        # Raw config dict cache (populated by _load_from_file, used by get_nested)
+        self._raw_config: dict = {}
+
         # Setup mode flag (allows placeholder passwords during wizard)
         self.setup_mode = False
 
@@ -354,6 +357,9 @@ class ConfigManager:
 
             # Migrate v2.x config if needed
             data = self._migrate_v2_config(data)
+
+            # Cache the raw config dict for get_nested() access
+            self._raw_config = data
 
             # Warn about deprecated mode field (after migration removes it)
             if "server" in data and "mode" in data["server"]:
@@ -792,6 +798,35 @@ class ConfigManager:
             return value
         except (AttributeError, TypeError, KeyError):
             return default
+
+    def get_nested(self, dotted_key: str, default: Any = None) -> Any:
+        """Access nested config.yaml values using dot notation.
+
+        Walks the raw config dict (not the typed dataclass attributes).
+        Use this when you need YAML key paths that aren't mapped into the
+        typed ConfigManager attributes (e.g., ``features.serena_mcp.use_in_prompts``,
+        ``health_monitoring.timeouts.waiting_timeout``).
+
+        The implementation can be changed later (e.g., check env vars first,
+        then file config) without changing any caller.
+
+        Args:
+            dotted_key: Dot-separated key path (e.g., "database.host")
+            default: Value to return if key path doesn't exist
+
+        Returns:
+            The config value, or *default* if any segment is missing.
+        """
+        _missing = object()
+        current: Any = self._raw_config
+        for segment in dotted_key.split("."):
+            if isinstance(current, dict):
+                current = current.get(segment, _missing)
+                if current is _missing:
+                    return default
+            else:
+                return default
+        return current
 
 
 # Module-level configuration holder

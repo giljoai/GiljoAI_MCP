@@ -7,7 +7,6 @@ Extracted from api/app.py lifespan function (lines ~461-507).
 import logging
 
 from api.app import APIState
-from src.giljo_mcp._config_io import read_config
 
 
 logger = logging.getLogger(__name__)
@@ -30,37 +29,35 @@ async def init_validation(state: APIState) -> None:
             # Get current version from config
             from src.giljo_mcp.setup.state_manager import SetupStateManager
 
-            config_data = read_config()
-            if config_data:
-                current_version = config_data.get("installation", {}).get("version", "2.0.0")
-                db_version = "18"  # PostgreSQL 18
+            current_version = state.config.get_nested("installation.version", "2.0.0")
+            db_version = "18"  # PostgreSQL 18
 
-                # Initialize state manager with versions
-                state_manager = SetupStateManager.get_instance(
-                    tenant_key="default",
-                    current_version=current_version,
-                    required_db_version=db_version,
-                )
+            # Initialize state manager with versions
+            state_manager = SetupStateManager.get_instance(
+                tenant_key="default",
+                current_version=current_version,
+                required_db_version=db_version,
+            )
 
-                # Check if migration needed
-                if state_manager.requires_migration():
-                    logger.warning("⚠️ Setup state version mismatch detected!")
-                    logger.warning(f"Current version: {current_version}")
-                    setup_state = state_manager.get_state()
-                    logger.warning(f"Stored version: {setup_state.get('setup_version')}")
-                    logger.warning("Run POST /api/setup/migrate to update state")
-                else:
-                    logger.info("Setup state version is current")
+            # Check if migration needed
+            if state_manager.requires_migration():
+                logger.warning("Setup state version mismatch detected!")
+                logger.warning(f"Current version: {current_version}")
+                setup_state = state_manager.get_state()
+                logger.warning(f"Stored version: {setup_state.get('setup_version')}")
+                logger.warning("Run POST /api/setup/migrate to update state")
+            else:
+                logger.info("Setup state version is current")
 
-                # Validate current state
-                valid, failures = state_manager.validate_state()
-                if not valid:
-                    logger.warning("⚠️ Setup validation failures detected:")
-                    for failure in failures:
-                        logger.warning(f"  - {failure}")
-                    logger.warning("Review setup configuration or run migration")
-                else:
-                    logger.info("Setup state validation passed")
+            # Validate current state
+            valid, failures = state_manager.validate_state()
+            if not valid:
+                logger.warning("Setup validation failures detected:")
+                for failure in failures:
+                    logger.warning(f"  - {failure}")
+                logger.warning("Review setup configuration or run migration")
+            else:
+                logger.info("Setup state validation passed")
 
         except Exception as e:
             logger.error(f"Startup setup check failed: {e}", exc_info=True)
