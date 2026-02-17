@@ -151,7 +151,9 @@ def getpass_with_asterisks(prompt: str = "Password: ") -> str:
                 char = sys.stdin.read(1)
                 # Enter key
                 if char in ("\r", "\n"):
-                    print()
+                    # Raw mode: \n only moves down, need \r to return to column 0
+                    sys.stdout.write("\r\n")
+                    sys.stdout.flush()
                     break
                 # Backspace (DEL or BS)
                 if char in ("\x7f", "\x08"):
