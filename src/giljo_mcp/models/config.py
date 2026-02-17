@@ -5,6 +5,8 @@ This module contains models for system configuration, git settings, setup state,
 optimization rules and metrics, download tokens, and API metrics.
 """
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from typing import Any
 
@@ -398,7 +400,7 @@ class SetupState(Base):
         }
 
     @classmethod
-    async def get_by_tenant(cls, session: AsyncSession, tenant_key: str) -> "SetupState" | None:
+    async def get_by_tenant(cls, session: AsyncSession, tenant_key: str) -> SetupState | None:
         """
         Retrieve SetupState for a specific tenant.
 
@@ -415,7 +417,7 @@ class SetupState(Base):
         return result.scalar_one_or_none()
 
     @classmethod
-    def create_or_update(cls, session: Session, tenant_key: str, **kwargs) -> "SetupState":
+    def create_or_update(cls, session: Session, tenant_key: str, **kwargs) -> SetupState:
         """
         Create or update SetupState for a tenant.
 

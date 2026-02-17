@@ -5,6 +5,8 @@ Handover 0017: Provides agent job coordination and lifecycle management.
 Separate from user tasks - handles agent-to-agent job coordination for agentic orchestration.
 """
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from typing import Any
 
@@ -332,7 +334,7 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         agent_id: str,
-    ) -> "AgentExecution" | None:
+    ) -> AgentExecution | None:
         """
         Get agent execution by agent_id with tenant isolation.
 
@@ -362,7 +364,7 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> "AgentExecution" | None:
+    ) -> AgentExecution | None:
         """
         Get agent execution by job_id with tenant isolation (fallback lookup).
 
@@ -390,7 +392,7 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> "AgentJob" | None:
+    ) -> AgentJob | None:
         """
         Get agent job by job_id with tenant isolation.
 
@@ -420,7 +422,7 @@ class AgentJobRepository:
         session: AsyncSession,
         tenant_key: str,
         job_id: str,
-    ) -> "AgentExecution" | None:
+    ) -> AgentExecution | None:
         """
         Get the latest execution instance for a job (by started_at desc).
 
