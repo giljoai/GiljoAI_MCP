@@ -14,9 +14,10 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+from src.giljo_mcp._config_io import get_config_path, read_config, write_config
 
 
 router = APIRouter()
@@ -174,7 +175,7 @@ async def setup_database(request: DatabaseSetupRequest) -> dict:
 
         # Update config.yaml with validated credentials
         logger.info("Updating config.yaml with database credentials...")
-        config_path = Path.cwd() / "config.yaml"
+        config_path = get_config_path()
 
         if not config_path.exists():
             return {
@@ -184,8 +185,7 @@ async def setup_database(request: DatabaseSetupRequest) -> dict:
             }
 
         # Read current config
-        with open(config_path, encoding="utf-8") as f:
-            config_data = yaml.safe_load(f)
+        config_data = read_config(config_path)
 
         # Update database section with application user credentials
         if "database" not in config_data:
@@ -210,8 +210,7 @@ async def setup_database(request: DatabaseSetupRequest) -> dict:
         backup_path = config_path.with_suffix(f".yaml.backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}")
         shutil.copy(config_path, backup_path)
 
-        with open(config_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(config_data, f, default_flow_style=False, sort_keys=False)
+        write_config(config_data, config_path)
 
         logger.info("Database setup completed successfully")
 

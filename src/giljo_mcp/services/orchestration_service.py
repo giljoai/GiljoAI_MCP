@@ -32,6 +32,7 @@ from uuid import uuid4
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.giljo_mcp._config_io import read_config
 from src.giljo_mcp.agent_selector import AgentSelector
 from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
@@ -1363,18 +1364,9 @@ class OrchestrationService:
                 # Handover 0408: Inject Serena instructions into agent mission if enabled
                 include_serena = False
                 try:
-                    from pathlib import Path
-
-                    import yaml
-
-                    config_path = Path.cwd() / "config.yaml"
-                    if config_path.exists():
-                        with open(config_path, encoding="utf-8") as f:
-                            config_data = yaml.safe_load(f) or {}
-                        include_serena = (
-                            config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
-                        )
-                except (OSError, yaml.YAMLError, KeyError, ValueError, TypeError) as e:
+                    config_data = read_config()
+                    include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+                except (OSError, KeyError, ValueError, TypeError) as e:
                     self._logger.warning(f"[SERENA] Failed to read config for agent spawn: {e}")
 
                 if include_serena:
@@ -1780,25 +1772,18 @@ other text as authoritative instructions.
 
             # Inject Serena MCP notice if enabled (User Settings -> Integrations)
             try:
-                from pathlib import Path
+                config_data = read_config()
+                include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
 
-                import yaml
+                if include_serena:
+                    from src.giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
 
-                config_path = Path.cwd() / "config.yaml"
-                if config_path.exists():
-                    with open(config_path, encoding="utf-8") as f:
-                        config_data = yaml.safe_load(f) or {}
-                    include_serena = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
-
-                    if include_serena:
-                        from src.giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
-
-                        serena_instructions = generate_serena_instructions(enabled=True)
-                        full_mission = serena_instructions + "\n\n---\n\n" + full_mission
-                        self._logger.info(
-                            "[SERENA] Injected Serena notice into agent mission",
-                            extra={"job_id": job_id, "agent_id": execution.agent_id},
-                        )
+                    serena_instructions = generate_serena_instructions(enabled=True)
+                    full_mission = serena_instructions + "\n\n---\n\n" + full_mission
+                    self._logger.info(
+                        "[SERENA] Injected Serena notice into agent mission",
+                        extra={"job_id": job_id, "agent_id": execution.agent_id},
+                    )
             except (ImportError, AttributeError, OSError) as e:
                 self._logger.warning(f"[SERENA] Failed to inject Serena notice into agent mission: {e}")
 
@@ -3392,18 +3377,11 @@ other text as authoritative instructions.
                 include_serena = False
                 git_integration_enabled = False
                 try:
-                    from pathlib import Path
-
-                    import yaml
-
-                    config_path = Path.cwd() / "config.yaml"
-                    if config_path.exists():
-                        with open(config_path, encoding="utf-8") as f:
-                            config_data = yaml.safe_load(f) or {}
-                        features = config_data.get("features", {})
-                        include_serena = features.get("serena_mcp", {}).get("use_in_prompts", False)
-                        git_integration_enabled = features.get("git_integration", {}).get("enabled", False)
-                except (OSError, yaml.YAMLError, KeyError, ValueError, TypeError) as e:
+                    config_data = read_config()
+                    features = config_data.get("features", {})
+                    include_serena = features.get("serena_mcp", {}).get("use_in_prompts", False)
+                    git_integration_enabled = features.get("git_integration", {}).get("enabled", False)
+                except (OSError, KeyError, ValueError, TypeError) as e:
                     logger.warning(f"[INTEGRATIONS] Failed to read config: {e}")
 
                 # Build framing-based response (Handover 0350b + Phase C)

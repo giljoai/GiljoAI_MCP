@@ -20,6 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ._config_io import read_config
 from .config.defaults import DEFAULT_FIELD_PRIORITY
 from .database import DatabaseManager
 from .json_context_builder import JSONContextBuilder
@@ -2995,16 +2996,9 @@ Once dependencies are confirmed met, proceed with your mission tasks below.
         # NOT in user.field_priority_config (that was old implementation)
         serena_enabled = False
         try:
-            from pathlib import Path
-
-            import yaml
-
-            config_path = Path.cwd() / "config.yaml"
-            if config_path.exists():
-                with open(config_path, encoding="utf-8") as f:
-                    config_data = yaml.safe_load(f) or {}
-                serena_enabled = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
-        except (OSError, yaml.YAMLError, KeyError, ValueError, TypeError) as e:
+            config_data = read_config()
+            serena_enabled = config_data.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
+        except (OSError, KeyError, ValueError, TypeError) as e:
             logger.warning(f"Failed to read Serena config: {e}")
             serena_enabled = False
 
