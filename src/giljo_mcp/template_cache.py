@@ -100,7 +100,7 @@ class TemplateCache:
             try:
                 redis_data = await self._get_from_redis(cache_key)
                 if redis_data:
-                    template = pickle.loads(redis_data)
+                    template = pickle.loads(redis_data)  # nosec B301 - trusted local Redis cache
                     # Populate memory cache
                     self._memory_cache[cache_key] = template
                     self._cache_hits += 1
