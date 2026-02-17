@@ -145,24 +145,17 @@ def get_default_host() -> str:
         Firewall, iptables, etc.) for proper defense-in-depth security.
     """
     try:
-        # Import here to avoid circular dependencies
-        import yaml
+        from src.giljo_mcp._config_io import read_config
 
-        config_path = Path(__file__).parent.parent / "config.yaml"
+        config = read_config()
+        configured_host = config.get("services", {}).get("api", {}).get("host")
+        if configured_host:
+            logging.info(f"Using explicitly configured API host: {configured_host}")
+            return configured_host
 
-        if config_path.exists():
-            with open(config_path) as f:
-                config = yaml.safe_load(f)
-
-                # Check if user explicitly configured a specific host
-                configured_host = config.get("services", {}).get("api", {}).get("host")
-                if configured_host:
-                    logging.info(f"Using explicitly configured API host: {configured_host}")
-                    return configured_host
-
-                # v3.0 default: bind to all interfaces (firewall controls access)
-                logging.info("No host configured, using v3.0 default: 0.0.0.0 (all interfaces)")
-                return "0.0.0.0"
+        # v3.0 default: bind to all interfaces (firewall controls access)
+        logging.info("No host configured, using v3.0 default: 0.0.0.0 (all interfaces)")
+        return "0.0.0.0"
     except (OSError, ValueError, KeyError) as e:
         logging.warning(f"Could not read config: {e}, using v3.0 default: 0.0.0.0")
 
