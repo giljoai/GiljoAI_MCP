@@ -53,6 +53,69 @@ This is a **commercial product** that ships to real users. Every shortcut become
 
 ---
 
+## Entity Hierarchy & Cascading Impact (CRITICAL)
+
+Every handover plan must account for the full ownership hierarchy and its cascading implications. Changes are never made in pure isolation.
+
+### Ownership Hierarchy
+
+```
+Organization
+  └── User (admin or member of org)
+        └── Product (belongs to user)
+              ├── Project (belongs to product)
+              │     └── Job (belongs to project)
+              │           └── Agent (belongs to assigned job)
+              └── Task (belongs to product)
+```
+
+**Key relationships:**
+- **Organization** is the top-level tenant boundary
+- **User** belongs to an organization (admin or regular member)
+- **Product** is owned by a user and is the primary work container
+- **Project** and **Task** both belong to a product (Task.product_id is NOT NULL)
+- **Job** belongs to a project and represents an agent assignment
+- **Agent** is bound to a specific job for its lifecycle
+
+**Future considerations (not yet implemented):**
+- Admin retirement flow: admins may retire users and reassign their products to a new user
+- Collaboration: users may invite viewers and contributors to products
+- These are NOT in the system yet, but designs should not paint us into a corner
+
+### Upstream & Downstream Cascading
+
+**Every plan must answer these questions:**
+
+1. **Downstream impact** — If I change entity X, what happens to everything below it?
+   - Deleting/deactivating a user: what happens to their products, projects, jobs, agents?
+   - Modifying a product: do its projects, tasks, and active jobs remain consistent?
+   - Changing a project: do running jobs and their agents break?
+
+2. **Upstream impact** — If I change entity X, does anything above it need updating?
+   - Adding a constraint on tasks: does the product or project layer need migration?
+   - Changing job behavior: does the project or product need new state tracking?
+
+3. **Sibling impact** — If I change one child, do its siblings stay consistent?
+   - Modifying one project under a product: do other projects or tasks conflict?
+   - Changing one job in a project: do parallel jobs or agents collide?
+
+**Non-negotiable:** Handover plans that touch any layer of this hierarchy must explicitly document the cascading analysis. "I only changed the task layer" is not sufficient — you must confirm the product, project, and job layers are unaffected.
+
+### Installation Flow Protection
+
+A customer downloading GiljoAI originates with `install.py`. The installation flow is the front door to the product and **must never break**.
+
+**Before finalizing any handover plan, verify:**
+- **Schema changes**: Does `install.py` create the correct baseline schema? Does the migration path handle both fresh installs and upgrades?
+- **New dependencies**: Are they added to `install.py`'s dependency installation step?
+- **Configuration changes**: Does `config.yaml` generation in `install.py` account for new fields with sensible defaults?
+- **First-run flow**: Does `/welcome` → `/first-login` still work after your changes? New required fields need defaults or wizard steps.
+- **Idempotency**: Can `install.py` be run twice without errors? Migrations must be idempotent.
+
+**If your handover touches models, config, dependencies, or auth flow — the installation impact section is mandatory, not optional.**
+
+---
+
 ## Commercial-Grade Code Quality Gate (Non-Negotiable)
 
 This is a professional product built to community-facing standards. Code quality minimum: **7/10 or better**. Every commit should maintain or improve the 0700 cleanup baseline (8/10 architecture score, zero lint issues).
