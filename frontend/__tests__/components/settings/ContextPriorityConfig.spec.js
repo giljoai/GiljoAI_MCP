@@ -24,7 +24,7 @@ describe('ContextPriorityConfig.vue', () => {
         priorities: {
           product_core: 1,
           vision_documents: 2,
-          project_context: 2,
+          project_description: 2,
           memory_360: 3,
           git_history: 3,
           agent_templates: 2,
@@ -190,7 +190,7 @@ describe('ContextPriorityConfig.vue', () => {
     // Verify mappings
     expect(backendFormat.product_core).toBe(2) // product_description=2 and tech_stack=3, so min=2
     expect(backendFormat.vision_documents).toBe(1)
-    expect(backendFormat.project_context).toBe(2) // architecture=2 and testing=3, so min=2
+    expect(backendFormat.project_description).toBe(2) // architecture=2 and testing=3, so min=2
     expect(backendFormat.agent_templates).toBe(1)
     expect(backendFormat.memory_360).toBe(3)
     expect(backendFormat.git_history).toBe(4) // disabled, so 4
