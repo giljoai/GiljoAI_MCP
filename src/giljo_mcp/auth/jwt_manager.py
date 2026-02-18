@@ -87,7 +87,7 @@ class JWTManager:
         return secret_key
 
     @classmethod
-    def create_access_token(cls, user_id: UUID, username: str, role: str, tenant_key: str = "default") -> str:
+    def create_access_token(cls, user_id: UUID, username: str, role: str, tenant_key: str) -> str:
         """
         Create JWT access token for authenticated user.
 
@@ -95,7 +95,7 @@ class JWTManager:
             user_id: User's UUID
             username: User's username
             role: User's role (admin, developer, viewer)
-            tenant_key: Tenant key for multi-tenant isolation
+            tenant_key: Tenant key for multi-tenant isolation (required)
 
         Returns:
             Encoded JWT token string
@@ -105,7 +105,7 @@ class JWTManager:
             ...     user_id=UUID("123e4567-e89b-12d3-a456-426614174000"),
             ...     username="admin",
             ...     role="admin",
-            ...     tenant_key="default"
+            ...     tenant_key="tk_abc123"
             ... )
             >>> token.startswith("eyJ")  # JWT format
             True
