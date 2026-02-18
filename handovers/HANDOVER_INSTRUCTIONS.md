@@ -31,6 +31,28 @@ Follow these principles " "Use Test-Driven Development (TDD):
 
 ---
 
+## Code Discipline: Fold, Don't Reinvent (CRITICAL)
+
+This is a **commercial product** that ships to real users. Every shortcut becomes a support ticket. Every parallel implementation becomes a maintenance burden. The 0700 cleanup series (Feb 2026) removed ~15,800 lines of accumulated drift across ~110 files. We do not go backwards.
+
+**Before writing ANY new code, verify these exist and USE them:**
+- **Service layer** (`src/giljo_mcp/services/`) - Business logic lives here, not in endpoints or tools
+- **WebSocket events** (`api/websocket_manager.py`) - Real-time updates use the existing broadcast system
+- **AgentJobManager** - Agent lifecycle, not ad-hoc status updates
+- **TenantManager** - Tenant filtering, not manual WHERE clauses
+- **UnifiedTemplateManager** - Template operations, not direct DB queries
+- **ProductMemoryRepository** - Memory entries, not raw JSONB manipulation
+- **Exception-based error handling** (post-0480) - Raise, don't return dicts
+
+**The discipline:**
+1. **Search before you build.** Use Serena `find_symbol` and `get_symbols_overview` to check if the functionality already exists.
+2. **Extend, don't duplicate.** Add a method to an existing service rather than creating a new module.
+3. **Root-cause fixes only.** If something is broken, find out WHY and fix that. No workarounds, no "good enough" patches.
+4. **Leave the codebase cleaner than you found it.** If you touch a file and see dead code or a bandaid fix, clean it up.
+5. **Measure against the 0700 baseline.** If your change adds complexity, justify it. If it adds lines without adding capability, rethink it.
+
+---
+
 ## Commercial-Grade Code Quality Gate (Non-Negotiable)
 
 This is a professional product built to community-facing standards. Code quality minimum: **7/10 or better**. Every commit should maintain or improve the 0700 cleanup baseline (8/10 architecture score, zero lint issues).
