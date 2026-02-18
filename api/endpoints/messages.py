@@ -145,11 +145,7 @@ async def list_messages(
     current_user: User = Depends(get_current_active_user),
     message_service: MessageService = Depends(get_message_service),
 ):
-    """List all messages with optional filters
-
-    Messages are retrieved from MessageService which handles both
-    Message table and agent_executions.messages JSONB.
-    """
+    """List all messages with optional filters."""
     from api.app import state
 
     # Check if database is available (not in setup mode)
