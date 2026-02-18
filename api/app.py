@@ -520,7 +520,15 @@ def create_app() -> FastAPI:
 
                 # STEP 3: Store connection with authentication context
                 user_info = auth_result.get("user", {})
-                tenant_key_from_user = user_info.get("tenant_key", "default")
+                is_setup = auth_result.get("context") == "setup"
+                tenant_key_from_user = user_info.get("tenant_key")
+
+                # Reject non-setup connections missing tenant_key (Handover 0054)
+                if not tenant_key_from_user and not is_setup:
+                    logger.error(f"WebSocket rejected for {client_id}: missing tenant_key in auth context")
+                    await websocket.close(code=1008, reason="Missing tenant key")
+                    return
+
                 logger.info(
                     f"[WS AUTH DEBUG] auth_result keys: {list(auth_result.keys())}, user_info keys: {list(user_info.keys())}, tenant_key={tenant_key_from_user}"
                 )

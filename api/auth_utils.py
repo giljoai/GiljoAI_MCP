@@ -150,7 +150,7 @@ async def authenticate_websocket(websocket: WebSocket, db: AsyncSession = None) 
                 "authenticated": True,
                 "user": {
                     "user_id": validated_key.get("name"),
-                    "tenant_key": validated_key.get("tenant_key", "default"),
+                    "tenant_key": validated_key["tenant_key"],
                     "permissions": validated_key.get("permissions", ["*"]),
                 },
             }
@@ -182,9 +182,14 @@ async def validate_jwt_token(token: str, db: AsyncSession = None) -> Optional[di
         if not payload:
             return None
 
+        # Reject JWTs missing tenant_key claim (Handover 0054)
+        if "tenant_key" not in payload:
+            logger.warning("JWT rejected: missing tenant_key claim")
+            return None
+
         return {
             "user_id": payload.get("username"),
-            "tenant_key": payload.get("tenant_key", "default"),
+            "tenant_key": payload["tenant_key"],
             "role": payload.get("role"),
             "permissions": ["*"],  # JWT users have full permissions
         }
@@ -264,7 +269,12 @@ def check_subscription_permission(
 
     # Get user info from auth context
     user_info = auth_context.get("user", {})
-    user_tenant_key = user_info.get("tenant_key", "default")
+    user_tenant_key = user_info.get("tenant_key")
+
+    # Reject subscription if tenant_key is missing (Handover 0054)
+    if not user_tenant_key:
+        logger.warning(f"Subscription denied: missing tenant_key in user info for {entity_type}:{entity_id}")
+        return False
 
     # Multi-tenant isolation: Check tenant_key match
     if tenant_key and user_tenant_key != tenant_key:
