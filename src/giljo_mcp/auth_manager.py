@@ -275,7 +275,7 @@ class AuthManager:
                     "authenticated": True,
                     "user": token_info.get("username"),
                     "user_id": token_info.get("username"),
-                    "tenant_key": token_info.get("tenant_key", "default"),
+                    "tenant_key": token_info.get("tenant_key"),
                     "is_auto_login": False,
                     "permissions": ["*"],
                     "exp": token_info.get("exp"),
@@ -297,6 +297,11 @@ class AuthManager:
                                 jwt_result["tenant_key"] = user_obj.tenant_key
                     except SQLAlchemyError as e:
                         logger.warning(f"Failed to load user object for JWT: {e}")
+
+                # Reject if tenant_key is still None after DB lookup attempt
+                if not jwt_result.get("tenant_key"):
+                    logger.warning("JWT authentication rejected: no tenant_key in token or user record")
+                    return {"authenticated": False, "error": "Missing tenant key"}
 
                 return jwt_result
 
@@ -335,7 +340,7 @@ class AuthManager:
             "authenticated": True,
             "user": key_info["name"],
             "user_id": key_info["name"],
-            "tenant_key": "default",  # API keys use default tenant for now
+            "tenant_key": key_info.get("tenant_key"),  # Resolved from key or DB lookup below
             "is_auto_login": False,
             "permissions": key_info.get("permissions", ["*"]),
         }
@@ -356,5 +361,10 @@ class AuthManager:
                         result["tenant_key"] = user_obj.tenant_key
             except SQLAlchemyError as e:
                 logger.debug(f"No user object found for API key: {e}")
+
+        # Reject if tenant_key is still None after DB lookup attempt
+        if not result.get("tenant_key"):
+            logger.warning("API key authentication rejected: no tenant_key resolved")
+            return {"authenticated": False, "error": "Missing tenant key"}
 
         return result
