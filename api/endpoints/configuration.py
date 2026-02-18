@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel, Field
 
 
@@ -170,27 +170,14 @@ async def reload_configuration():
     return {"success": True, "message": "Configuration reloaded successfully"}
 
 
-@router.get("/tenants", response_model=list[str])
-async def list_tenant_configurations():
-    """List all tenants with custom configurations"""
+@router.get("/tenant", response_model=dict[str, Any])
+async def get_tenant_configuration(request: Request):
+    """Get configuration for the authenticated user's tenant"""
     from api.app import state
 
-    if not state.db_manager:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    async with state.db_manager.get_session_async() as session:
-        from src.giljo_mcp.repositories import ConfigurationRepository
-
-        repo = ConfigurationRepository(state.db_manager)
-        tenants = await repo.list_tenant_keys(session)
-
-        return tenants
-
-
-@router.get("/tenant/{tenant_key}", response_model=dict[str, Any])
-async def get_tenant_configuration(tenant_key: str):
-    """Get tenant-specific configuration"""
-    from api.app import state
+    tenant_key = getattr(request.state, "tenant_key", None)
+    if not tenant_key:
+        raise HTTPException(status_code=401, detail="Tenant key not available from authentication")
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -202,7 +189,7 @@ async def get_tenant_configuration(tenant_key: str):
         configs = await repo.get_tenant_configurations(session, tenant_key)
 
         if not configs:
-            raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
+            raise HTTPException(status_code=404, detail="No configuration found for your tenant")
 
         tenant_config = {}
         for config in configs:
@@ -211,13 +198,17 @@ async def get_tenant_configuration(tenant_key: str):
         return tenant_config
 
 
-@router.put("/tenant/{tenant_key}")
+@router.put("/tenant")
 async def set_tenant_configuration(
-    tenant_key: str,
+    request: Request,
     configurations: dict[str, Any] = Body(..., description="Tenant-specific configurations"),
 ):
-    """Set tenant-specific configuration"""
+    """Set configuration for the authenticated user's tenant"""
     from api.app import state
+
+    tenant_key = getattr(request.state, "tenant_key", None)
+    if not tenant_key:
+        raise HTTPException(status_code=401, detail="Tenant key not available from authentication")
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -244,16 +235,19 @@ async def set_tenant_configuration(
 
         return {
             "success": True,
-            "tenant_key": tenant_key,
             "configurations_updated": len(configurations),
-            "message": f"Tenant configuration updated for '{tenant_key}'",
+            "message": "Tenant configuration updated",
         }
 
 
-@router.delete("/tenant/{tenant_key}")
-async def delete_tenant_configuration(tenant_key: str):
-    """Delete all tenant-specific configurations"""
+@router.delete("/tenant")
+async def delete_tenant_configuration(request: Request):
+    """Delete all configurations for the authenticated user's tenant"""
     from api.app import state
+
+    tenant_key = getattr(request.state, "tenant_key", None)
+    if not tenant_key:
+        raise HTTPException(status_code=401, detail="Tenant key not available from authentication")
 
     if not state.db_manager:
         raise HTTPException(status_code=503, detail="Database not available")
@@ -267,13 +261,12 @@ async def delete_tenant_configuration(tenant_key: str):
         await session.commit()
 
         if deleted_count == 0:
-            raise HTTPException(status_code=404, detail=f"No configuration found for tenant '{tenant_key}'")
+            raise HTTPException(status_code=404, detail="No configuration found for your tenant")
 
         return {
             "success": True,
-            "tenant_key": tenant_key,
             "configurations_deleted": deleted_count,
-            "message": f"Deleted {deleted_count} configurations for tenant '{tenant_key}'",
+            "message": f"Deleted {deleted_count} configurations",
         }
 
 
