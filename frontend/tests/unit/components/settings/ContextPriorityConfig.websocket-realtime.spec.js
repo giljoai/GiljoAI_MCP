@@ -77,7 +77,7 @@ describe('ContextPriorityConfig.vue - WebSocket Real-Time Sync', () => {
       data: {
         priorities: {
           product_core: 1,
-          project_context: 2,
+          project_description: 2,
           vision_documents: 2,
           agent_templates: 2,
           memory_360: 3,
