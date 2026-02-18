@@ -293,12 +293,10 @@ class TestAPIEndpoints:
         assert data["success"]
 
     def test_tenant_configuration(self):
-        """Test tenant-specific configuration"""
-        tenant_key = "test_tenant_123"
-
-        # Set tenant config
+        """Test tenant-scoped configuration (uses authenticated tenant_key)"""
+        # Set tenant config (tenant_key comes from auth middleware via request.state)
         response = self.client.put(
-            f"/api/v1/config/tenant/{tenant_key}",
+            "/api/v1/config/tenant",
             json={"max_agents": 20, "features.custom": True},
         )
 
@@ -307,19 +305,13 @@ class TestAPIEndpoints:
         assert data["success"]
 
         # Get tenant config
-        response = self.client.get(f"/api/v1/config/tenant/{tenant_key}")
+        response = self.client.get("/api/v1/config/tenant")
         assert response.status_code == 200
         data = response.json()
         assert "max_agents" in data
 
-        # List tenants
-        response = self.client.get("/api/v1/config/tenants")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-
         # Delete tenant config
-        response = self.client.delete(f"/api/v1/config/tenant/{tenant_key}")
+        response = self.client.delete("/api/v1/config/tenant")
         assert response.status_code == 200
 
     # ==================== STATISTICS ENDPOINTS ====================
