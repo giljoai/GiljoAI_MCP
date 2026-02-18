@@ -110,7 +110,7 @@ async def get_call_counts(request: Request):
     """Get total API and MCP call counts."""
     from api.app import state
 
-    tenant_key = getattr(request.state, "tenant_key", "default")
+    tenant_key = getattr(request.state, "tenant_key", None)
     if not tenant_key:
         raise HTTPException(status_code=400, detail="Tenant key not found in request state")
 
