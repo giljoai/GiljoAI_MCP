@@ -21,7 +21,7 @@ class APIMetricsMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         """Increment API and MCP call counters."""
-        tenant_key = getattr(request.state, "tenant_key", "default")
+        tenant_key = getattr(request.state, "tenant_key", None)
         if tenant_key:
             request.app.state.api_state.api_call_count[tenant_key] = (
                 request.app.state.api_state.api_call_count.get(tenant_key, 0) + 1
