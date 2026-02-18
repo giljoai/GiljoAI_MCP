@@ -615,8 +615,14 @@ class GiljoDevControlPanel:
         work_dir = str(cwd if cwd else self.project_root)
 
         if system == "Windows":
-            # Windows: Use CREATE_NEW_CONSOLE flag
-            return subprocess.Popen(command, cwd=work_dir, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            # Windows: Use cmd /k so the terminal stays open on error (user can read the message).
+            # Without this, CREATE_NEW_CONSOLE closes the window instantly when the command fails.
+            cmd_str = subprocess.list2cmdline(command)
+            return subprocess.Popen(
+                ["cmd", "/k", cmd_str],
+                cwd=work_dir,
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
 
         if system == "Linux":
             # Linux: Try terminal emulators in order of preference
@@ -1017,13 +1023,13 @@ class GiljoDevControlPanel:
                 command=command, title="GiljoAI Backend API", cwd=self.project_root
             )
 
-            # Wait for API to start listening on port
-            # Note: On Linux, gnome-terminal exits immediately after spawning
-            # the window (poll() returns 0), so process.poll() is unreliable.
-            # Instead, check if the port becomes occupied.
+            # Wait for API to start listening on port.
+            # On Windows, cmd /k keeps the terminal open on error so the user can read it.
+            # On Linux, gnome-terminal stays open naturally.
+            # Port check is the only cross-platform reliable signal.
             self.update_status_message(f"Waiting for backend on port {api_port}...")
             started = False
-            for _ in range(10):  # Wait up to 5 seconds
+            for _ in range(30):  # Wait up to 15 seconds
                 time.sleep(0.5)
                 if not self._is_port_available(api_port):
                     started = True
@@ -1035,8 +1041,8 @@ class GiljoDevControlPanel:
                 self.update_status_message("Backend may still be starting...")
                 messagebox.showwarning(
                     "Slow Start",
-                    f"Backend has not responded on port {api_port} yet.\n\n"
-                    "It may still be starting - check the terminal window.",
+                    f"Backend has not responded on port {api_port} after 15s.\n\n"
+                    "Check the terminal window for status or errors.",
                 )
 
         except Exception as e:
@@ -1141,6 +1147,37 @@ class GiljoDevControlPanel:
             if not frontend_dir.exists():
                 raise FileNotFoundError(f"Frontend directory not found: {frontend_dir}")
 
+            # Check node_modules exists - offer to install if missing
+            if not (frontend_dir / "node_modules").exists():
+                response = messagebox.askyesno(
+                    "Dependencies Missing",
+                    "frontend/node_modules not found.\n\n"
+                    "Run 'npm install' now?",
+                    icon="warning",
+                )
+                if response:
+                    self.update_status_message("Running npm install...")
+                    npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
+                    install_result = subprocess.run(
+                        [npm_cmd, "install"],
+                        cwd=str(frontend_dir),
+                        capture_output=True,
+                        text=True,
+                        timeout=120,
+                    )
+                    if install_result.returncode != 0:
+                        messagebox.showerror(
+                            "npm install failed",
+                            f"npm install exited with code {install_result.returncode}\n\n"
+                            f"{install_result.stderr[:500]}",
+                        )
+                        self.update_status_message("npm install failed")
+                        return
+                    self.update_status_message("npm install complete, starting frontend...")
+                else:
+                    self.update_status_message("Frontend start cancelled - missing node_modules")
+                    return
+
             # Build command with strict port enforcement
             npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
             command = [
@@ -1158,12 +1195,13 @@ class GiljoDevControlPanel:
                 command=command, title=f"GiljoAI Frontend Dev Server (Port {frontend_port})", cwd=frontend_dir
             )
 
-            # Wait for frontend to start listening on port
-            # Note: On Linux, gnome-terminal exits immediately after spawning
-            # the window (poll() returns 0), so process.poll() is unreliable.
+            # Wait for frontend to start listening on port.
+            # On Windows, cmd /k keeps the terminal open on error so the user can read it.
+            # On Linux, gnome-terminal stays open naturally.
+            # Port check is the only cross-platform reliable signal.
             self.update_status_message(f"Waiting for frontend on port {frontend_port}...")
             started = False
-            for _ in range(10):  # Wait up to 5 seconds
+            for _ in range(30):  # Wait up to 15 seconds (Vite is slow on Windows)
                 time.sleep(0.5)
                 if not self._is_port_available(frontend_port):
                     started = True
@@ -1175,8 +1213,8 @@ class GiljoDevControlPanel:
                 self.update_status_message("Frontend may still be starting...")
                 messagebox.showwarning(
                     "Slow Start",
-                    f"Frontend has not responded on port {frontend_port} yet.\n\n"
-                    "It may still be starting - check the terminal window.",
+                    f"Frontend has not responded on port {frontend_port} after 15s.\n\n"
+                    "Check the terminal window for status or errors.",
                 )
 
         except Exception as e:
