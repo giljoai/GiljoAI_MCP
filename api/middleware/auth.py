@@ -102,9 +102,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
             request.state.user_id = auth_result.get("user_id") or auth_result.get("user")
             request.state.user = auth_result.get("user_obj")  # User object or None
             request.state.is_auto_login = auth_result.get("is_auto_login", False)
-            request.state.tenant_key = auth_result.get(
-                "tenant_key", os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
-            )
+            tenant_key = auth_result.get("tenant_key")
+            if not tenant_key:
+                logger.warning(
+                    "authenticated_missing_tenant_key",
+                    user_id=request.state.user_id,
+                    path=request.url.path,
+                )
+                # Fall back to env var for setup/localhost mode only
+                tenant_key = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
+            request.state.tenant_key = tenant_key
             # Stash token expiry for downstream use and response header
             request.state.token_exp = auth_result.get("exp")
         else:
