@@ -191,7 +191,7 @@ Response: {
   priorities: {
     product_core: 1,
     vision_documents: 2,
-    project_context: 2,
+    project_description: 2,
     testing: 3,
     agent_templates: 2,
     memory_360: 3,

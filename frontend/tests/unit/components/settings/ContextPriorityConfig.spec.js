@@ -575,7 +575,7 @@ describe('ContextPriorityConfig.vue', () => {
       expect(savedPriorities.fieldPriority.product_core).toBe(1)
     })
 
-    it('should save architecture priority independently from project_context', async () => {
+    it('should save architecture priority independently from project_description', async () => {
       // Arrange: Track what's sent to backend
       const savedPriorities = {}
       axiosMock.put.mockImplementation((url, data) => {
@@ -596,10 +596,10 @@ describe('ContextPriorityConfig.vue', () => {
       // Act: Disable architecture (should set priority to 4)
       await wrapper.vm.toggleContext('architecture')
 
-      // Assert: Backend should receive architecture = 4, project_context shouldn't exist
+      // Assert: Backend should receive architecture = 4, project_description shouldn't change
       expect(savedPriorities.fieldPriority).toBeDefined()
       expect(savedPriorities.fieldPriority.architecture).toBe(4)
-      expect(savedPriorities.fieldPriority.project_context).toBeUndefined()
+      expect(savedPriorities.fieldPriority.project_description).toBeUndefined()
     })
 
     it('should save testing priority independently', async () => {

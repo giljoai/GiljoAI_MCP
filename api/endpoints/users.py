@@ -282,28 +282,6 @@ def user_to_response(user: User) -> UserResponse:
     )
 
 
-def migrate_project_context_to_description(user_config: dict[str, Any]) -> dict[str, Any]:
-    """
-    Migrate old 'project_context' field name to 'project_description'.
-
-    Handles backward compatibility for existing user configurations created
-    before Handover 0350c renamed this field.
-
-    Args:
-        user_config: User's field priority configuration dict
-
-    Returns:
-        Updated config with project_context renamed to project_description
-    """
-    if "priorities" in user_config:
-        priorities = user_config["priorities"]
-        if "project_context" in priorities and "project_description" not in priorities:
-            priorities["project_description"] = priorities.pop("project_context")
-    elif "project_context" in user_config and "project_description" not in user_config:
-        user_config["project_description"] = user_config.pop("project_context")
-    return user_config
-
-
 # API Endpoints
 
 
