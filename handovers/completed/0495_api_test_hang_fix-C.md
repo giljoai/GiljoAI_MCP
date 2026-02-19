@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-19
 **Priority:** P0 (Blocks all API tests, blocks 0484)
-**Status:** Not Started
+**Status:** Completed
 **Estimated Complexity:** 1-2 hours
 
 ## Problem
@@ -112,3 +112,23 @@ python run_tests.py tests/unit/ tests/services/ --no-cov --timeout 30
 ## Rollback
 
 Single file change: `git checkout master -- tests/api/conftest.py`
+
+---
+
+## Implementation Summary
+
+### 2026-02-18 - Completed
+**Implementation commit:** `d48beecb` - "fix: replace TRUNCATE CASCADE with DELETE to prevent API test hangs (Handover 0495)"
+**Fix chosen:** Option A (DELETE) + fixture restructuring
+
+**What was done:**
+- Replaced autouse TRUNCATE CASCADE with opt-in DELETE in FK-reverse order
+- Overrode parent conftest autouse fixtures (`setup_agent_coordination`, `setup_project_tools`, `setup_context_module`) as no-ops to prevent transaction deadlocks
+- Fixed `admin_user` fixture: `flush()+expunge()` instead of `commit()+refresh()`
+- Rewrote `test_admin_fixtures.py` as pure unit tests (no DB dependency)
+
+**Files modified (2):**
+- `tests/api/conftest.py`
+- `tests/api/test_admin_fixtures.py`
+
+**Impact:** 20/20 API tests pass in 1.77s (was infinite hang). Net 0 lines changed (120 added, 120 removed).

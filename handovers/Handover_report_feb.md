@@ -10,11 +10,11 @@
 
 | Action | Count |
 |--------|-------|
-| Closed out to `completed/` | 14 |
+| Closed out to `completed/` | 16 |
 | Moved to `Reference_docs/` | 11 |
 | Restored to root (still actionable) | 5 |
 | Moved to `0700_series/` | 1 |
-| **Total files processed** | **31** |
+| **Total files processed** | **33** |
 
 ---
 
@@ -130,6 +130,22 @@ All files renamed with `-C` suffix per close-out protocol.
 - **Implemented**: 2025-12-27 (closure)
 - **What it was**: Final status report for Greptile series: 12/15 handovers done covering bare except fixes, path sanitization, secure cookies, CSP nonces, rate limiting, repository pattern, Bandit linting, structured logging.
 - **Original intent**: Closure documentation companion to the 1000 roadmap.
+
+### 0484_api_test_fixture_remediation.md
+- **Destination**: `completed/0484_api_test_fixture_remediation-C.md`
+- **Created**: 2026-01-27 (original), 2026-02-18 (rewritten)
+- **Implemented**: 2026-02-18
+- **Implementation commit**: `452f9635` - "fix: remediate test fixtures for dual-model and JSONB cleanup (Handover 0484)"
+- **What it was**: Fixed test files using removed `AgentExecution.messages` JSONB column and tests passing AgentJob fields to AgentExecution constructors. 8 files modified, 1 deleted.
+- **Original intent**: Test fixture remediation to match dual-model architecture (AgentJob + AgentExecution) and counter-based messaging (post-0700c).
+
+### 0495_api_test_hang_fix.md
+- **Destination**: `completed/0495_api_test_hang_fix-C.md`
+- **Created**: 2026-02-19
+- **Implemented**: 2026-02-18
+- **Implementation commit**: `d48beecb` - "fix: replace TRUNCATE CASCADE with DELETE to prevent API test hangs (Handover 0495)"
+- **What it was**: Fixed API test suite hanging indefinitely due to TRUNCATE CASCADE requiring exclusive locks while stale PostgreSQL connections held competing locks. Replaced with DELETE in FK-reverse order.
+- **Original intent**: P0 blocker fix. 20/20 API tests pass in 1.77s (was infinite hang).
 
 ---
 
@@ -251,11 +267,11 @@ These were initially moved to Reference_docs/ but contain work items not yet com
 
 ---
 
-## Active Handover Debt (15 remaining in root)
+## Active Handover Debt (13 remaining in root)
 
 | Tier | Handovers | Focus |
 |------|-----------|-------|
-| 1 - Foundation | 0489, 0484 | API/MCP cleanup, test fixture remediation |
+| 1 - Foundation | 0489 | API/MCP cleanup |
 | 2 - Orchestrator | Instruction cleanup, handover injection, staging broadcast, message optimization |
 | 2a - 0254, 
 | about 0254: Audit: 0254 (Three-Layer Instruction Cleanup)
