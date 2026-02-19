@@ -5,7 +5,9 @@
 **To Agent:** orchestrator-coordinator
 **Priority:** HIGH
 **Estimated Complexity:** 3-4 hours
-**Status:** Not Started
+**Status:** COMPLETE
+**Commit:** `739e77d2`
+**Completed:** 2026-02-19
 **Merges:** 0397 (Deprecate stdio proxy) + original 0489 (Cleanup API MCP)
 
 ---
@@ -397,3 +399,37 @@ gemini mcp add -t http -H "X-API-Key: YOUR_KEY" giljo-mcp http://localhost:7272/
 
 - **0397** (Deprecate stdio proxy): RETIRED -- merged into this handover. Proxy already deleted by 0725b; this handover cleans the residual references.
 - **Original 0489** (Cleanup API MCP): SUPERSEDED -- 85% was completed by 0700 series. Remaining items folded into this handover.
+
+---
+
+## Completion Summary (2026-02-19)
+
+**Commit:** `739e77d2` on `master`
+**Execution time:** ~45 minutes (Phase 1+2 parallel, Phase 3 sequential, Phase 4 verify)
+**Net change:** 94 insertions, 1018 deletions across 19 files (3 deleted, 16 modified)
+
+### All Success Criteria Met
+
+- [x] `codexPrompt()` generates correct TOML config block with `experimental_use_rmcp_client`
+- [x] `claudePrompt()` unchanged (already correct)
+- [x] `geminiPrompt()` unchanged (already correct)
+- [x] Zero Cursor references in frontend, backend, tests, and docs
+- [x] `CodexCliIntegration.vue` deleted, imports removed from `UserSettings.vue`
+- [x] `CodexConfigModal.vue` shows correct Codex TOML format
+- [x] `GeminiConfigModal.vue` shows correct Gemini JSON format (`httpUrl`, flat `headers`)
+- [x] `download_proxy_wheel()` endpoint removed from `mcp_installer.py`
+- [x] `mcp_tools.py` deleted (confirmed unused, zero-auth security gap closed)
+- [x] `mcp==1.12.3` removed from `pyproject.toml` (zero imports, GHSA-9h52-p55h-vw2f eliminated)
+- [x] No stale stdio/proxy references in active code
+- [x] Error leakage fixed in `mcp_http.py` (generic "Internal server error" message)
+- [x] Inline imports moved to module level in `mcp_http.py` (except `api.app.state` kept inline for circular import avoidance)
+- [x] Docstrings added to all 6 `MCPSessionManager` methods
+- [x] TODO resolved in `mcp_installer.py` (placeholder for unhashable API keys)
+- [x] Ruff clean, frontend builds, pre-commit hooks pass
+- [x] Cascading test cleanup: deleted `test_mcp_tool_metadata_standalone.py`, removed test classes referencing deleted files
+
+### Additional Work (Beyond Spec)
+
+- Fixed second `getattr(current_user, "api_key", ...)` in `download_unix_installer()` (same pattern as Windows)
+- Updated `devpanel_index.py` docstring referencing deleted `mcp_tools.py`
+- Cleaned up `TestToolMapExposure` and `TestMCPToolAccessibility` test classes that read deleted files by path
