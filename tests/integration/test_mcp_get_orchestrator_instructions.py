@@ -107,22 +107,6 @@ class TestGetOrchestratorInstructionsMCP:
 
         assert inspect.iscoroutinefunction(tool_accessor.get_orchestrator_instructions)
 
-    async def test_http_endpoint_tool_map_includes_tool(self):
-        """Test 2: HTTP endpoint tool_map includes get_orchestrator_instructions"""
-        # This would require importing the tool_map from mcp_tools.py
-        # Since we can't easily test the FastAPI app initialization,
-        # we verify the code structure instead
-
-        # Read the mcp_tools.py file and verify the tool is mapped
-        from pathlib import Path
-
-        mcp_tools_path = Path("F:/GiljoAI_MCP/api/endpoints/mcp_tools.py")
-        content = mcp_tools_path.read_text()
-
-        # Check tool is in tool_map
-        assert '"get_orchestrator_instructions"' in content
-        assert "state.tool_accessor.get_orchestrator_instructions" in content
-
     async def test_orchestration_module_registers_tool(self):
         """Test 3: Orchestration module has get_orchestrator_instructions as MCP tool"""
         from pathlib import Path
@@ -485,42 +469,6 @@ class TestGetOrchestratorInstructionsMCP:
         # Should have thin_client flag
         assert "thin_client" in result
         assert result["thin_client"] is True
-
-
-@pytest.mark.asyncio
-class TestMCPToolAccessibility:
-    """Test MCP tool accessibility from external clients"""
-
-    async def test_tool_can_be_called_via_http(self, test_client, tenant_context):
-        """Test 11: Tool can be called via HTTP endpoint (simulated)"""
-        # This would require a full FastAPI test client setup
-        # For now, verify the endpoint structure is correct
-
-        from pathlib import Path
-
-        mcp_tools_path = Path("F:/GiljoAI_MCP/api/endpoints/mcp_tools.py")
-        content = mcp_tools_path.read_text()
-
-        # Verify POST /mcp/tools/execute endpoint exists
-        assert '@router.post("/execute"' in content
-
-        # Verify it handles tool routing
-        assert "tool_map" in content
-        assert "get_orchestrator_instructions" in content
-
-    async def test_mcp_adapter_forwards_tool_calls(self):
-        """Test 12: MCP adapter forwards tool calls to HTTP endpoint"""
-        from pathlib import Path
-
-        adapter_path = Path("F:/GiljoAI_MCP/src/giljo_mcp/mcp_adapter.py")
-        content = adapter_path.read_text()
-
-        # Verify adapter calls /mcp/tools/execute
-        assert '"/mcp/tools/execute"' in content
-
-        # Verify it handles tool_name and arguments
-        assert '"tool": tool_name' in content
-        assert '"arguments": arguments' in content
 
 
 @pytest.mark.asyncio

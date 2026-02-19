@@ -50,15 +50,12 @@
 
             <v-card variant="outlined" class="mb-3">
               <v-card-text>
-                <pre class="text-caption"><code>[giljo-mcp]
-endpoint = "http://your-server-ip:7272"
-api_key = "{your-api-key-here}"
-description = "GiljoAI Agent Orchestration MCP Server"
+                <pre class="text-caption"><code># ~/.codex/config.toml
+experimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions
 
-[agents]
-orchestrator_enabled = true
-subagent_coordination = true
-context_sharing = true</code></pre>
+[mcp_servers.giljo-mcp]
+url = "http://your-server-ip:7272/mcp"
+http_headers = { "X-API-Key" = "your-api-key-here" }</code></pre>
               </v-card-text>
               <v-card-actions>
                 <v-btn
@@ -74,7 +71,7 @@ context_sharing = true</code></pre>
             </v-card>
 
             <p class="text-body-2">
-              Replace <code>{your-api-key-here}</code> with your actual API key from your user
+              Replace <code>your-api-key-here</code> with your actual API key from your user
               profile.
             </p>
           </v-window-item>
@@ -119,15 +116,12 @@ const emit = defineEmits(['update:modelValue'])
 const activeTab = ref('manual')
 
 const copyConfig = () => {
-  const config = `[giljo-mcp]
-endpoint = "http://your-server-ip:7272"
-api_key = "{your-api-key-here}"
-description = "GiljoAI Agent Orchestration MCP Server"
+  const config = `# ~/.codex/config.toml
+experimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions
 
-[agents]
-orchestrator_enabled = true
-subagent_coordination = true
-context_sharing = true`
+[mcp_servers.giljo-mcp]
+url = "http://your-server-ip:7272/mcp"
+http_headers = { "X-API-Key" = "your-api-key-here" }`
   navigator.clipboard.writeText(config)
 }
 
@@ -149,26 +143,16 @@ const downloadInstructions = () => {
 
 Add to your Codex CLI configuration file:
 
-[giljo-mcp]
-endpoint = "http://your-server-ip:7272"
-api_key = "YOUR_API_KEY_HERE"
-description = "GiljoAI Agent Orchestration MCP Server"
+# ~/.codex/config.toml
+experimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions
 
-[agents]
-orchestrator_enabled = true
-subagent_coordination = true
-context_sharing = true
-
-## Sub-Agent Workflow
-1. Codex spawns specialized sub-agents for different tasks
-2. GiljoAI MCP coordinates agent state and memory
-3. Context sharing enables seamless handoffs
-4. context prioritization and orchestration through intelligent coordination
+[mcp_servers.giljo-mcp]
+url = "http://your-server-ip:7272/mcp"
+http_headers = { "X-API-Key" = "YOUR_API_KEY_HERE" }
 
 ## Verification
 - Restart Codex CLI
-- Verify GiljoAI MCP connection
-- Test sub-agent coordination
+- Verify GiljoAI MCP connection with: codex mcp list
 
 ## Support
 Visit your GiljoAI dashboard for additional configuration help.`

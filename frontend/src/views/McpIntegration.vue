@@ -20,7 +20,7 @@
       <v-card-text>
         <p class="text-body-1 mb-4">
           Download a pre-configured installer script that automatically sets up GiljoAI MCP
-          integration in supported coding tools (Claude Code, Cursor, Windsurf, etc.). The script
+          integration in supported coding tools (Claude Code, Codex CLI, Gemini CLI, etc.). The script
           includes your API credentials and server connection details.
         </p>
 
@@ -55,7 +55,7 @@
             <ol class="mt-2 ml-4">
               <li>Run the downloaded script in your terminal</li>
               <li>The script will automatically configure your MCP tools</li>
-              <li>Restart your coding tool (Claude Code, Cursor, etc.)</li>
+              <li>Restart your coding tool (Claude Code, Codex CLI, etc.)</li>
               <li>GiljoAI MCP commands will be available immediately</li>
             </ol>
           </div>
@@ -250,7 +250,6 @@ Questions? Let me know!
                   <strong>Configuration file locations:</strong>
                   <ul class="mt-2 ml-4">
                     <li><strong>Claude Code:</strong> <code>~/.claude.json</code></li>
-                    <li><strong>Cursor:</strong> <code>~/.cursor/mcp.json</code></li>
                     <li><strong>Windsurf:</strong> <code>~/.windsurf/mcp.json</code></li>
                     <li>
                       <strong>VSCode (Continue):</strong> <code>~/.continue/config.json</code>
