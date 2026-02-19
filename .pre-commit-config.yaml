@@ -7,7 +7,7 @@
 # RE-ENABLED after 0700 cleanup series (2026-02-07)
 #
 # ============================================================================
-# CRITICAL: AI AGENT INSTRUCTIONS (Claude Code, Cursor, etc.)
+# CRITICAL: AI AGENT INSTRUCTIONS (Claude Code, etc.)
 # ============================================================================
 #
 # When pre-commit hooks BLOCK a commit:

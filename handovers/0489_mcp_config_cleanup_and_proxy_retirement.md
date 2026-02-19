@@ -56,11 +56,12 @@ function codexPrompt(serverUrl, apiKey) {
 ```javascript
 function codexPrompt(serverUrl, apiKey) {
   // Codex CLI does not support --header flag. Generate TOML config block.
-  return `# Add to ~/.codex/config.toml\n[mcp_servers.giljo-mcp]\nurl = "${serverUrl}/mcp"\nhttp_headers = { "X-API-Key" = "${apiKey}" }`
+  // experimental_use_rmcp_client may be needed on older Codex versions for HTTP transport.
+  return `# Add to ~/.codex/config.toml\nexperimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions\n\n[mcp_servers.giljo-mcp]\nurl = "${serverUrl}/mcp"\nhttp_headers = { "X-API-Key" = "${apiKey}" }`
 }
 ```
 
-**Why:** Codex CLI v0.44.0+ supports native HTTP but has no `--header` CLI flag. The `http_headers` TOML field is the official way to set custom headers. See [Codex Config Reference](https://developers.openai.com/codex/config-reference/).
+**Why:** Codex CLI v0.44.0+ supports native HTTP but has no `--header` CLI flag. The `http_headers` TOML field is the official way to set custom headers. The `experimental_use_rmcp_client = true` flag enables the RMCP client for Streamable HTTP -- it was required pre-v0.46.0 and auto-enabled in later versions, but including it ensures compatibility across Codex versions. See [Codex Config Reference](https://developers.openai.com/codex/config-reference/).
 
 ### 1.2 Remove Cursor from AiToolConfigWizard.vue
 
@@ -141,6 +142,7 @@ This is better than the frontend but still uses `--bearer-token-env-var` which s
 def get_codex_config(server_url: str, api_key: str) -> str:
     return (
         f"# Add to ~/.codex/config.toml\n"
+        f"experimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions\n\n"
         f"[mcp_servers.giljo-mcp]\n"
         f'url = "{server_url}/mcp"\n'
         f'http_headers = {{ "X-API-Key" = "{api_key}" }}'
@@ -354,6 +356,8 @@ claude mcp add --transport http giljo-mcp http://localhost:7272/mcp --header "X-
 ### Codex CLI (NEW -- TOML config block)
 ```toml
 # Add to ~/.codex/config.toml
+experimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions
+
 [mcp_servers.giljo-mcp]
 url = "http://localhost:7272/mcp"
 http_headers = { "X-API-Key" = "YOUR_KEY" }
