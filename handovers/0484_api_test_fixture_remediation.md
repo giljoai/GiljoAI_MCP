@@ -1,197 +1,209 @@
-# Handover 0484: API Test Fixture Remediation
+# Handover 0484: Test Fixture Remediation (Dual-Model & JSONB Cleanup)
 
-## Mission
-Fix remaining 90 API test failures caused by SQLAlchemy session issues and outdated test fixtures that don't follow the AgentJob + AgentExecution dual-model architecture.
+**Date:** 2026-02-18
+**From Agent:** Research session (Feb 17-18 audit)
+**To Agent:** tdd-implementor
+**Priority:** High
+**Estimated Complexity:** 3-5 hours
+**Status:** Not Started
 
-## Context
-Branch: `0480-exception-handling-remediation`
-Previous handover: 0483 (service layer bug fixes)
+## Task Summary
 
-### What Was Already Fixed (Handover 0483)
-1. **Production code bugs**:
-   - `api/endpoints/messages.py` - nested data structure handling
-   - `api/endpoints/templates/crud.py` - HTTPException swallowing
-   - `api/endpoints/templates/history.py` - tenant isolation
-   - `api/endpoints/users.py` - per-user tenancy
-   - `api/exception_handlers.py` - JSON serialization
+Fix test files that still use the removed `AgentExecution.messages` JSONB column (removed in 0700c) and test files that pass `AgentJob` fields (`project_id`, `mission`) to `AgentExecution` constructors. These violations cause runtime errors when tests attempt to use non-existent columns or invalid constructor arguments.
 
-2. **Test files already fixed**:
-   - `test_messages_api.py` - 29 passed, 2 skipped
-   - `test_users_api.py` - 38 passed
-   - `test_templates_api.py` - 26 passed, 21 skipped
-   - `test_unified_message_send.py` - mostly passing
+## Context and Background
 
-### Current Test Status
+**Origin:** Originally written Jan 27, 2026, targeting 90 API test failures across 8 files. Since then, the 0700 cleanup series and 0480 exception handling remediation deleted or rewrote 5 of those 8 files. This rewrite (Feb 18) scopes the handover to only what remains broken.
+
+**What changed since original 0484:**
+- 2 target files **deleted**: `test_project_execution_mode_api.py`, `test_prompts_execution_mode.py` (commit abc8c289)
+- 4 target files **rewritten from scratch**: `test_mcp_security.py`, `test_messages_api.py`, `test_priority_system.py`, `test_slash_commands_api.py` (commit 5691fc04)
+- `AgentExecution.messages` JSONB column **removed** (Handover 0700c) - replaced by counter columns
+- 0700 cleanup series removed ~15,800 lines of drift across ~110 files
+
+**Branch:** `master` (original `0480-exception-handling-remediation` branch was merged)
+
+**Hierarchy model (cascade chain):**
 ```
-423 passed, 90 failed, 50 skipped, 75 errors
-```
+Organization
+├─→ Product.org_id     (ondelete="SET NULL")  -- products SURVIVE org deletion
+├─→ User.org_id        (ondelete="SET NULL")  -- users SURVIVE org deletion
+└─→ OrgMembership      (cascade="all, delete-orphan")
 
-## Root Causes of Remaining Failures
+Product  (tenant_key scoped, org_id FK)
+├─→ Project            (cascade="all, delete-orphan")
+├─→ Task               (cascade="all, delete-orphan")
+├─→ VisionDocument     (cascade="all, delete-orphan")
+└─→ ProductMemoryEntry (cascade="all, delete-orphan")
 
-### 1. SQLAlchemy Session Issues (Most Common)
-**Error Pattern:**
-```
-sqlalchemy.exc.InvalidRequestError: Instance '<AgentExecution at 0x...>' is not persistent within this Session
-```
+Project  (product_id FK, CASCADE from Product)
+├─→ AgentJob           (cascade="all, delete-orphan")
+├─→ Message            (cascade="all, delete-orphan")
+└─→ Task               (cascade="all, delete-orphan")
 
-**Cause:** Fixtures create database objects in one session, but tests try to `refresh()` or access them in a different session.
+AgentJob  (project_id FK nullable, CASCADE from Project)
+├─→ AgentExecution     (cascade="all, delete-orphan")
+└─→ AgentTodoItem      (cascade="all, delete-orphan")
 
-**Affected Tests:**
-- `test_simple_handover.py` - All 7 tests fail with this error
-- Several other tests that try to verify database state after API calls
-
-**Fix Pattern:**
-Instead of:
-```python
-await db_session.refresh(orchestrator_execution)
-assert orchestrator_execution.context_used == 0
-```
-
-Do:
-```python
-async with db_manager.get_session_async() as session:
-    result = await session.execute(
-        select(AgentExecution).where(AgentExecution.agent_id == orchestrator_execution.agent_id)
-    )
-    refreshed = result.scalar_one()
-    assert refreshed.context_used == 0
+AgentExecution  (job_id FK, CASCADE from AgentJob) -- leaf node
 ```
 
-### 2. Dual-Model Architecture Not Followed
-**Error Pattern:**
-```
-TypeError: 'project_id' is an invalid keyword argument for AgentExecution
-TypeError: 'mission' is an invalid keyword argument for AgentExecution
-```
-
-**Cause:** Old tests create `AgentExecution` with fields that belong to `AgentJob`.
-
-**Correct Model Structure:**
+**Dual-model architecture:**
 - **AgentJob** (work order): `job_id`, `tenant_key`, `project_id`, `job_type`, `mission`, `status`, `job_metadata`
-- **AgentExecution** (executor): `agent_id`, `job_id` (FK), `tenant_key`, `agent_display_name`, `status`
+- **AgentExecution** (executor): `agent_id`, `job_id` (FK), `tenant_key`, `agent_display_name`, `status`, `messages_sent_count`, `messages_waiting_count`, `messages_read_count`
 
-**Fix Pattern:**
+**Why this matters for test fixes:** Tests that put `project_id` directly on `AgentExecution` bypass the cascade chain. In production, deleting a Project cascades through AgentJob to AgentExecution. Tests that skip AgentJob create phantom relationships that don't cascade-delete, meaning those tests can never validate real deletion behavior.
+
+**tenant_key consistency:** Every level of the chain must use the same `tenant_key`. The broken tests that skip AgentJob also skip this propagation step. The fix naturally enforces it.
+
+**Future considerations (not in scope for 0484 but documented for awareness):**
+- Product has `tenant_key` + `org_id` but **no `user_id` FK**. Per-user tenancy is enforced via unique `tenant_key` per user, not a direct FK.
+- "Admin retires user and moves products" would require `tenant_key` migration -- a cross-cutting change affecting all tenant-scoped queries.
+- "Invite viewer/contributor" would need a new permission model (e.g., `UserProductPermission` join table).
+- None of these future features are affected by 0484 since it only fixes test files to match the existing production model.
+
+## Technical Details
+
+### Issue 1: Dual-Model Violations (AgentExecution with AgentJob fields)
+
+Tests passing `project_id` or `mission` to `AgentExecution()`:
+
+| File | Lines | Invalid Fields |
+|------|-------|---------------|
+| `tests/e2e/test_multi_terminal_mode_workflow.py` | 89-92, 151-154, 207-210 | `project_id` |
+| `tests/e2e/test_claude_code_mode_workflow.py` | 89-92, 150-153 | `project_id` |
+| `tests/fixtures/e2e_closeout_fixtures.py` | 281-284 | `project_id` |
+| `tests/fixtures/base_test.py` | 132 | `AgentExecution(**job_data)` feeds AgentJob fields |
+
+**Fix pattern:** Create an `AgentJob` first with `project_id`/`mission`, then create `AgentExecution` with only executor fields referencing `job.job_id`. Use `TestDataFactory.build_with_execution()` from `tests/helpers/test_factories.py` where possible.
+
+### Issue 2: Deprecated `messages` JSONB Column Usage
+
+Tests assigning to or reading from `execution.messages` or `job.messages` as a JSONB array. This column was removed in 0700c.
+
+| File | Occurrences | Notes |
+|------|-------------|-------|
+| `tests/integration/test_websocket_unified_platform.py` | 11 | Entire test logic based on JSONB messages |
+| `tests/integration/test_message_counter_persistence.py` | 9+ | Sets `messages=[]` in constructors, assigns JSONB arrays |
+| `tests/test_job_coordinator.py` | 5 | `job.messages = [...]` pattern |
+| `tests/models/test_job_execution_integration.py` | 3 | Direct JSONB assignment |
+| `tests/test_agent_jobs_api.py` | 2 | `test_job.messages = [...]` |
+| `tests/integration/test_project_deletion_cascade.py` | 1 | `messages=[...]` in constructor |
+
+**Fix pattern:** Replace JSONB `messages` usage with counter columns (`messages_sent_count`, `messages_waiting_count`, `messages_read_count`) or `Message` table records where test logic requires actual message content.
+
+### Surviving API Test Files (From Original 0484)
+
+These 3 files from the original handover still exist and may have residual issues:
+- `tests/api/test_simple_handover.py` - session refresh patterns (verify still failing)
+- `tests/api/test_products_api.py` - vision document tests (verify still failing)
+- `tests/api/test_projects_api.py` - project lifecycle tests (verify still failing)
+
+Run these first to check current pass/fail status before investing time.
+
+## Implementation Plan
+
+### Phase 1: Assess Current Failures (30 min)
+- Run `python run_tests.py tests/api/test_simple_handover.py tests/api/test_products_api.py tests/api/test_projects_api.py --no-cov` to get current status of surviving API test files
+- Run `python run_tests.py tests/e2e/ --no-cov --suite-timeout 120` to check E2E tests
+- Document which tests actually fail vs. which have been indirectly fixed
+- **Testing:** Compare before/after counts
+
+### Phase 2: Fix Dual-Model Violations (1-2 hours)
+- Fix `tests/e2e/test_multi_terminal_mode_workflow.py` (3 constructors)
+- Fix `tests/e2e/test_claude_code_mode_workflow.py` (2 constructors)
+- Fix `tests/fixtures/e2e_closeout_fixtures.py` (1 constructor)
+- Fix `tests/fixtures/base_test.py` line 132 (uses `AgentExecution(**job_data)`)
+- **Pattern:** Create AgentJob first with `project_id`/`mission`/`tenant_key`, then AgentExecution with `job_id` FK and matching `tenant_key`. Never shortcut the chain.
+- **Hierarchy validation:** After fixing each file, confirm the test creates the full chain: Project → AgentJob (project_id) → AgentExecution (job_id). If a test deletes any parent in the chain, verify cascade behavior still works.
+- **Testing:** Each file must pass after fix; run `python run_tests.py <file> --no-cov`
+
+### Phase 3: Fix Deprecated JSONB Messages Usage (1.5-2.5 hours)
+- Fix `tests/integration/test_websocket_unified_platform.py` - rewrite to use counter columns
+- Fix `tests/integration/test_message_counter_persistence.py` - migrate from JSONB to counters
+- Fix `tests/test_job_coordinator.py` - replace `job.messages` assignments
+- Fix `tests/models/test_job_execution_integration.py` - remove JSONB references
+- Fix `tests/test_agent_jobs_api.py` - replace `test_job.messages` assignments
+- Fix `tests/integration/test_project_deletion_cascade.py` - remove `messages` kwarg
+  - **CASCADE-SENSITIVE:** This file validates the hierarchy cascade chain (Project → AgentJob → AgentExecution). When removing JSONB `messages`, preserve the cascade validation logic. Verify that deleting a Project still cascades through AgentJob to AgentExecution. Switch assertions from checking JSONB content to checking counter columns or Message table records. Do NOT simplify away the cascade assertions.
+- **Decision point:** Tests heavily dependent on JSONB message content (like `test_websocket_unified_platform.py`) may need full rewrites or deletion if the underlying feature was rearchitected
+- **Testing:** Each file must pass; run full integration suite after all fixes
+
+### Phase 4: Verify & Cleanup (30 min)
+- Run `python run_tests.py --no-cov --suite-timeout 600` for full suite
+- Remove any dead imports or unused fixtures exposed by the fixes
+- Verify no regressions in passing tests
+
+**Recommended Sub-Agent:** tdd-implementor for systematic test fixes with TDD discipline.
+
+## Testing Requirements
+
+**Unit Tests:** Each modified test file must pass individually
+**Integration Tests:** `python run_tests.py tests/integration/ --no-cov --timeout 60`
+**Full Suite:** `python run_tests.py --no-cov --suite-timeout 600` must show improvement over baseline
+
+## Dependencies and Blockers
+
+**Dependencies:**
+- None - all prerequisite handovers (0480, 0483, 0700c) are already merged
+
+**Known Blockers:**
+- API test suite hangs on `tests/api/endpoints/test_users_category_validation.py` (first test). This is a separate infrastructure issue (database connection/fixture setup). **Workaround:** Run specific test files/directories rather than the full `tests/api/` directory until the hang is resolved separately.
+
+## Success Criteria
+
+- All dual-model violations eliminated (0 tests passing `project_id`/`mission` to `AgentExecution`)
+- All deprecated JSONB `messages` column usage removed from test files
+- Cascade chain integrity preserved: `test_project_deletion_cascade.py` still validates Project → AgentJob → AgentExecution cascade
+- Every test fixture creates the full hierarchy chain with consistent `tenant_key` at every level
+- Modified test files pass individually
+- No regression in currently-passing tests
+- `ruff check` clean on all modified files
+
+## Rollback Plan
+
+All changes are test-only files. Rollback via `git checkout master -- tests/` if needed. No production code or database changes involved.
+
+## Reference
+
+**Model Imports:**
 ```python
-# WRONG - Old pattern
-execution = AgentExecution(
-    job_id=str(uuid4()),
-    project_id=project.id,  # INVALID
-    mission="Test mission",  # INVALID
-    agent_display_name="worker",
-    status="working",
-)
+from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
+from src.giljo_mcp.models import Message, Project, Product, User
+from tests.helpers.test_factories import TestDataFactory
+from datetime import datetime, timezone
+from uuid import uuid4
+```
 
-# CORRECT - Dual-model pattern
-job_id = str(uuid4())
-agent_job = AgentJob(
-    job_id=job_id,
-    tenant_key=user._test_tenant_key,
-    project_id=project.id,
-    job_type="worker",
-    mission="Test mission",
-    status="active",
-    created_at=datetime.now(timezone.utc),
-    job_metadata={},
+**Correct dual-model pattern:**
+```python
+job = AgentJob(
+    job_id=str(uuid4()), tenant_key=tenant_key,
+    project_id=project.id, job_type="worker",
+    mission="Test", status="active",
+    created_at=datetime.now(timezone.utc), job_metadata={},
 )
-session.add(agent_job)
+session.add(job)
 await session.flush()
 
 execution = AgentExecution(
-    job_id=job_id,
-    tenant_key=user._test_tenant_key,
-    agent_display_name="worker",
-    status="working",
+    job_id=job.job_id, tenant_key=tenant_key,
+    agent_display_name="worker", status="working",
 )
 session.add(execution)
 await session.commit()
 ```
 
-### 3. Deprecated JSONB Column Usage
-**Error Pattern:** Tests create messages in `AgentExecution.messages` JSONB but endpoint reads from `Message` table.
-
-**Fix Pattern:**
+**Counter-based messages (replaces JSONB):**
 ```python
-# WRONG - Deprecated
-job.messages = [{"id": "...", "content": "..."}]
-
-# CORRECT - Use Message table
-msg = Message(
-    id=str(uuid4()),
-    project_id=project.id,
-    tenant_key=user._test_tenant_key,
-    to_agents=["worker"],
-    content="Test message",
-    message_type="direct",
-    priority="normal",
-    status="pending",
-    meta_data={"_from_agent": "orchestrator"},
-)
-session.add(msg)
+execution.messages_sent_count = 2
+execution.messages_waiting_count = 1
+execution.messages_read_count = 1
 ```
 
-### 4. Missing Endpoints
-Some tests expect endpoints that don't exist:
-- `/messages/{id}/acknowledge` - doesn't exist (use agent_jobs endpoint)
-
-**Fix:** Skip these tests with explanation, or rewrite to use existing endpoints.
-
-## Files Requiring Fixes
-
-### High Priority (Multiple Failures)
-1. **`tests/api/test_simple_handover.py`** - 7 failures
-   - All session refresh issues
-   - Need to query fresh from database instead of refreshing fixture objects
-
-2. **`tests/api/test_project_execution_mode_api.py`** - 8 failures
-   - Likely fixture issues with project/execution setup
-
-3. **`tests/api/test_products_api.py`** - 6 failures (vision document tests)
-   - May need proper product/tenant setup
-
-4. **`tests/api/test_projects_api.py`** - 6 failures
-   - Project lifecycle tests may need fixture updates
-
-### Medium Priority
-5. **`tests/api/test_prompts_execution_mode.py`** - 5 failures
-6. **`tests/api/test_mcp_security.py`** - 2 failures
-7. **`tests/api/test_slash_commands_api.py`** - 1 failure
-8. **`tests/api/test_priority_system.py`** - 1 failure
-
-### Low Priority (Skip Candidates)
-- Tests for features that may not exist or are deprecated
-- Cross-tenant tests that may need architectural review
-
-## Execution Strategy
-
-1. **Start with test_simple_handover.py** - Fix session issues as a pattern
-2. **Apply dual-model fix** to remaining fixtures
-3. **Update deprecated JSONB usage** to Message table
-4. **Skip tests for missing endpoints** with clear documentation
-5. **Run full test suite** after each file fix to track progress
-
-## Success Criteria
-- Reduce failures from 90 to < 20
-- No errors (currently 75)
-- Document any skipped tests with clear reasons
-
-## Commands
-
+**Run tests:**
 ```bash
-# Run specific test file
-python -m pytest tests/api/test_simple_handover.py -v --tb=short --no-cov
-
-# Run all API tests
-python -m pytest tests/api/ -v --tb=line --no-cov
-
-# Quick summary
-python -m pytest tests/api/ -q --tb=no --no-cov
-```
-
-## Reference: Model Imports
-
-```python
-from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
-from src.giljo_mcp.models import Message, Project, Product, User
-from datetime import datetime, timezone
-from uuid import uuid4
+python run_tests.py tests/e2e/ --no-cov
+python run_tests.py tests/integration/ --no-cov --timeout 60
+python run_tests.py --no-cov --suite-timeout 600
 ```

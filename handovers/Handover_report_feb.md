@@ -256,7 +256,44 @@ These were initially moved to Reference_docs/ but contain work items not yet com
 | Tier | Handovers | Focus |
 |------|-----------|-------|
 | 1 - Foundation | 0489, 0484 | API/MCP cleanup, test fixture remediation |
-| 2 - Orchestrator | 0254, 0365, 0488, 0410 | Instruction cleanup, handover injection, staging broadcast, message optimization |
+| 2 - Orchestrator | Instruction cleanup, handover injection, staging broadcast, message optimization |
+| 2a - 0254, 
+| about 0254: Audit: 0254 (Three-Layer Instruction Cleanup)
+
+  Verdict: VALID but STALE. Needs line-number refresh, not full rewrite.
+
+  - Core concept still valid: 3-layer architecture (spawn prompt, GenericAgentTemplate, DB templates) still has the same
+   issues - conflicting instructions, obsolete MCP commands in templates
+  - Target files all exist: generic_agent_template.py, template_seeder.py, thin_prompt_generator.py
+  - Line numbers are stale: Written Nov 28, 2025. The 0700 cleanup series removed ~15,800 lines. Every line reference
+  (e.g., "lines 88-92", "lines 1172-1226") is wrong.
+  - MCP command references need verification: Commands like acknowledge_job(), report_progress(), get_next_instruction()
+   - signatures may have changed since 0700
+  - No references to removed classes (good - doesn't mention OrchestratorPromptGenerator)
+  - Risk if executed as-is: Agent would waste time finding code that moved, or edit wrong lines
+
+  Recommendation: A fresh agent should re-verify all line numbers and code snippets against current source before
+  executing. The implementation plan structure is sound.
+
+| 2b - 0365, 
+| about 0365:  Audit: 0365 (Orchestrator Handover Behavior Injection)
+
+  Verdict: VALID but MODERATELY STALE. Core design sound, details need refresh.
+
+  - Core concept still valid: Successor orchestrators getting staging instructions instead of execution-phase
+  instructions is still the problem
+  - Dependencies likely met: 0364, 0366a/b/c are completed (AgentJob/AgentExecution model exists)
+  - OrchestratorSuccessionManager: Still exists in codebase (found in 23 files)
+  - get_orchestrator_instructions: Still exists in production code (orchestration_service.py, tool_accessor.py)
+  - instance_number: Still exists on AgentExecution (169 file references)
+  - Stale MCP commands: Uses receive_messages(agent_id, tenant_key) as CURRENT command name - should be
+  get_next_instruction(). The implementation would use the wrong command names.
+  - File paths correct: tools/orchestration.py, thin_prompt_generator.py, agent_job_manager.py all still exist
+  - No structural issues: The conditional logic approach (Option C) is reasonable
+
+  Recommendation: Needs MCP command name refresh. Otherwise executable as-is.
+
+| 2c - 0488, 0410 | Instruction cleanup, handover injection, staging broadcast, message optimization |
 | 3 - Taxonomy | 0440a, 0440b, 0440c | DB+backend, frontend UI, display integration |
 | 4 - Agent Exec | 0419, 0486 | Long-polling monitoring, continuation workflow |
 | 5 - Polish | 0397, 0732 | Deprecate stdio proxy, API consistency |
