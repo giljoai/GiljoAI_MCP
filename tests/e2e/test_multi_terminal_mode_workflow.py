@@ -19,7 +19,7 @@ import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
@@ -85,14 +85,25 @@ class TestMultiTerminalModeWorkflow:
         await db_session.commit()
         await db_session.refresh(project)
 
-        # Create orchestrator
-        orchestrator = AgentExecution(
+        # Create AgentJob first (AgentExecution requires job_id FK)
+        job = AgentJob(
+            job_id=str(uuid4()),
+            tenant_key=tenant_key,
             project_id=project.id,
+            job_type="orchestrator",
+            mission="Test message passing",
+            status="active",
+            job_metadata={"user_id": test_user.id, "execution_mode": "multi-terminal"},
+        )
+        db_session.add(job)
+        await db_session.flush()
+
+        # Create orchestrator execution
+        orchestrator = AgentExecution(
+            job_id=job.job_id,
             tenant_key=tenant_key,
             agent_display_name="orchestrator",
-            status="active",
-            mission="Test message passing",
-            job_metadata={"user_id": test_user.id, "execution_mode": "multi-terminal"},
+            status="working",
         )
         db_session.add(orchestrator)
         await db_session.commit()
@@ -118,10 +129,10 @@ class TestMultiTerminalModeWorkflow:
         # send_message(to_agent="...", message="...")
         assert "spawn" in prompt.lower() or "agent_job" in prompt, "Prompt should include agent spawning instructions"
 
-        print("\n✓ Multi-Terminal mode agent communication validated:")
-        print("  - Uses message passing: ✓")
-        print("  - Discovers/spawns agents: ✓")
-        print("  - Includes communication instructions: ✓")
+        print("\n- Multi-Terminal mode agent communication validated:")
+        print("  - Uses message passing: yes")
+        print("  - Discovers/spawns agents: yes")
+        print("  - Includes communication instructions: yes")
 
     async def test_multi_terminal_mode_token_efficiency(
         self, db_session, db_manager, tenant_manager, test_user, test_product
@@ -147,14 +158,25 @@ class TestMultiTerminalModeWorkflow:
         await db_session.commit()
         await db_session.refresh(project)
 
-        # Create orchestrator
-        orchestrator = AgentExecution(
+        # Create AgentJob first (AgentExecution requires job_id FK)
+        job = AgentJob(
+            job_id=str(uuid4()),
+            tenant_key=tenant_key,
             project_id=project.id,
+            job_type="orchestrator",
+            mission="Test",
+            status="active",
+            job_metadata={"user_id": test_user.id, "execution_mode": "multi-terminal"},
+        )
+        db_session.add(job)
+        await db_session.flush()
+
+        # Create orchestrator execution
+        orchestrator = AgentExecution(
+            job_id=job.job_id,
             tenant_key=tenant_key,
             agent_display_name="orchestrator",
             status="waiting",
-            mission="Test",
-            job_metadata={"user_id": test_user.id, "execution_mode": "multi-terminal"},
         )
         db_session.add(orchestrator)
         await db_session.commit()
@@ -174,7 +196,7 @@ class TestMultiTerminalModeWorkflow:
         # Ideally should be around 450 tokens
         is_ideal = 400 <= token_count <= 500
 
-        print("\n✓ Multi-Terminal mode token efficiency:")
+        print("\n- Multi-Terminal mode token efficiency:")
         print(f"  - Token count: ~{token_count} tokens")
         print("  - Target: <600 tokens")
         print(f"  - Ideal range (400-500): {is_ideal}")
@@ -203,17 +225,25 @@ class TestMultiTerminalModeWorkflow:
         await db_session.commit()
         await db_session.refresh(legacy_project)
 
-        # Create orchestrator for legacy project
-        orchestrator = AgentExecution(
+        # Create AgentJob first (AgentExecution requires job_id FK)
+        job = AgentJob(
+            job_id=str(uuid4()),
+            tenant_key=tenant_key,
             project_id=legacy_project.id,
+            job_type="orchestrator",
+            mission="Legacy test",
+            status="active",
+            job_metadata={"user_id": test_user.id},
+        )
+        db_session.add(job)
+        await db_session.flush()
+
+        # Create orchestrator execution for legacy project
+        orchestrator = AgentExecution(
+            job_id=job.job_id,
             tenant_key=tenant_key,
             agent_display_name="orchestrator",
             status="waiting",
-            mission="Legacy test",
-            job_metadata={
-                "user_id": test_user.id
-                # NO execution_mode set
-            },
         )
         db_session.add(orchestrator)
         await db_session.commit()
@@ -233,7 +263,7 @@ class TestMultiTerminalModeWorkflow:
         has_message_tools = any(tool in prompt for tool in message_tools)
         assert has_message_tools, "Legacy projects must default to multi-terminal mode (message passing)"
 
-        print("\n✓ Legacy project defaults validated:")
-        print("  - Project has no execution_mode set: ✓")
-        print("  - Defaults to multi-terminal mode: ✓")
-        print("  - Uses message passing: ✓")
+        print("\n- Legacy project defaults validated:")
+        print("  - Project has no execution_mode set: yes")
+        print("  - Defaults to multi-terminal mode: yes")
+        print("  - Uses message passing: yes")

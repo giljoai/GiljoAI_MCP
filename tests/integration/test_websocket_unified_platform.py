@@ -1,17 +1,17 @@
 """
-Integration Tests for Handover 0401: Unified WebSocket Platform
+Integration Tests for Counter-Based Message System
 
-TDD RED PHASE: These tests should FAIL initially until implementation.
-
-Test BEHAVIOR, not implementation:
-- Message acknowledgment persists to AgentExecution.messages JSONB
-- agent_id resolution works for message handlers
-- Both job_id and agent_id included in WebSocket payloads
+Tests validate the counter-based messaging architecture (Handover 0700c):
+- Message counter columns (messages_sent_count, messages_waiting_count, messages_read_count)
+- MessageService.send_message() increments sender sent_count and recipient waiting_count
+- MessageService.receive_messages() decrements waiting_count and increments read_count
+- Multi-tenant isolation for message counters
 
 Coverage Targets:
-- _update_jsonb_message_status() queries AgentExecution (not AgentJob)
-- receive_messages() correctly updates JSONB message status
-- Message read counts persist across page refresh (API reload)
+- MessageRepository counter increment/decrement operations
+- MessageService send_message() counter updates
+- MessageService receive_messages() counter updates
+- Tenant isolation across counter operations
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -45,39 +45,15 @@ def mock_websocket_manager():
 
 
 @pytest.fixture
-async def test_tenant_key(tenant_manager) -> str:
-    """Generate valid tenant key for test isolation using TenantManager."""
-    # Use generate_tenant_key() to create properly formatted key
-    return tenant_manager.generate_tenant_key(project_name="Test0401")
-
-
-@pytest.fixture
-async def message_service_factory(db_manager, db_session, mock_websocket_manager, tenant_manager, test_tenant_key):
-    """Factory fixture to create MessageService instances with proper dependencies."""
-
-    def _create(tenant_key: str = None):
-        # Use provided tenant_key or default to test_tenant_key
-        key = tenant_key or test_tenant_key
-        # Set tenant context before creating service
-        tenant_manager.set_current_tenant(key)
-        return MessageService(
-            db_manager=db_manager,
-            tenant_manager=tenant_manager,
-            websocket_manager=mock_websocket_manager,
-            test_session=db_session,
-        )
-
-    return _create
-
-
-@pytest.fixture
-async def test_product(db_session: AsyncSession, test_tenant_key: str) -> Product:
-    """Create a test product."""
+async def ws_test_product(
+    db_session: AsyncSession,
+    test_tenant_key: str,
+) -> Product:
+    """Create a test product for WebSocket platform tests."""
     product = Product(
-        id=str(uuid4()),
         tenant_key=test_tenant_key,
-        name="Test Product 0401",
-        description="Test product for unified WebSocket platform tests",
+        name="Test Product WS",
+        description="Test product for WebSocket platform tests",
         product_memory={},
     )
     db_session.add(product)
@@ -87,19 +63,18 @@ async def test_product(db_session: AsyncSession, test_tenant_key: str) -> Produc
 
 
 @pytest.fixture
-async def test_project(
+async def ws_test_project(
     db_session: AsyncSession,
     test_tenant_key: str,
-    test_product: Product,
+    ws_test_product: Product,
 ) -> Project:
-    """Create a test project."""
+    """Create a test project for WebSocket platform tests."""
     project = Project(
-        id=str(uuid4()),
         tenant_key=test_tenant_key,
-        product_id=test_product.id,
-        name="Test Project 0401",
-        description="Test project for message persistence tests",  # Required field
-        mission="Test the unified WebSocket platform",
+        product_id=ws_test_product.id,
+        name="Test Project WS",
+        description="Test project for message counter tests",
+        mission="Test the counter-based message platform",
         status="active",
     )
     db_session.add(project)
@@ -112,30 +87,26 @@ async def test_project(
 async def test_agent_with_execution(
     db_session: AsyncSession,
     test_tenant_key: str,
-    test_project: Project,
+    ws_test_project: Project,
 ) -> tuple[AgentJob, AgentExecution]:
     """
     Create an agent with both AgentJob (work order) and AgentExecution (executor).
 
     Returns tuple of (job, execution) for testing the agent_id/job_id separation.
     """
-    # Create work order (AgentJob)
-    # Note: AgentJob uses job_type (not agent_display_name), mission is required
     job = AgentJob(
         job_id=str(uuid4()),
         tenant_key=test_tenant_key,
-        project_id=test_project.id,
-        job_type="implementer",  # AgentJob uses job_type, not agent_display_name
+        project_id=ws_test_project.id,
+        job_type="implementer",
         status="active",
-        mission="Test agent for message persistence",
+        mission="Test agent for message counter tests",
     )
     db_session.add(job)
     await db_session.flush()
 
-    # Create executor (AgentExecution) - this holds the messages
-    # Note: AgentExecution uses agent_display_name and agent_name
     execution = AgentExecution(
-        agent_id=str(uuid4()),  # Different from job_id - this is executor UUID
+        agent_id=str(uuid4()),
         job_id=job.job_id,
         tenant_key=test_tenant_key,
         agent_display_name="implementer",
@@ -157,14 +128,14 @@ async def test_agent_with_execution(
 async def test_sender_agent(
     db_session: AsyncSession,
     test_tenant_key: str,
-    test_project: Project,
+    ws_test_project: Project,
 ) -> tuple[AgentJob, AgentExecution]:
     """Create a sender agent (orchestrator) for message tests."""
     job = AgentJob(
         job_id=str(uuid4()),
         tenant_key=test_tenant_key,
-        project_id=test_project.id,
-        job_type="orchestrator",  # AgentJob uses job_type
+        project_id=ws_test_project.id,
+        job_type="orchestrator",
         status="active",
         mission="Test sender agent",
     )
@@ -178,7 +149,9 @@ async def test_sender_agent(
         agent_display_name="orchestrator",
         agent_name="test-orchestrator",
         status="working",
-        messages=[],
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
     )
     db_session.add(execution)
     await db_session.commit()
@@ -188,234 +161,311 @@ async def test_sender_agent(
     return job, execution
 
 
+@pytest.fixture
+async def message_service_factory(
+    db_manager,
+    db_session,
+    mock_websocket_manager,
+    tenant_manager,
+    test_tenant_key,
+):
+    """Factory fixture to create MessageService instances with proper dependencies."""
+
+    def _create(tenant_key: str = None):
+        key = tenant_key or test_tenant_key
+        tenant_manager.set_current_tenant(key)
+        return MessageService(
+            db_manager=db_manager,
+            tenant_manager=tenant_manager,
+            websocket_manager=mock_websocket_manager,
+            test_session=db_session,
+        )
+
+    return _create
+
+
 # ============================================================================
 # Test Classes
 # ============================================================================
 
 
 @pytest.mark.asyncio
-class TestUnifiedWebSocketPlatform:
+class TestMessageCounterUpdates:
     """
-    Integration tests for Handover 0401: Unified WebSocket Platform.
+    Integration tests for counter-based message system.
 
-    These tests validate the JSONB persistence fix and agent_id resolution.
+    These tests validate that send_message() and receive_messages()
+    correctly update the counter columns on AgentExecution.
     """
 
-    async def test_jsonb_update_targets_agent_execution_not_agent_job(
+    async def test_send_message_increments_sender_sent_count(
         self,
         db_session: AsyncSession,
         test_tenant_key: str,
-        test_project: Project,
+        ws_test_project: Project,
         test_agent_with_execution: tuple[AgentJob, AgentExecution],
         test_sender_agent: tuple[AgentJob, AgentExecution],
         message_service_factory,
     ):
         """
-        CRITICAL: _update_jsonb_message_status() should query AgentExecution.
-
-        Bug: Previously queried AgentJob.messages which doesn't exist.
-        Fix: Query AgentExecution.messages (where messages are actually stored).
+        send_message() should increment sender's messages_sent_count.
         """
-        job, execution = test_agent_with_execution
-        sender_job, sender_execution = test_sender_agent
+        _job, execution = test_agent_with_execution
+        _sender_job, sender_execution = test_sender_agent
 
-        # Create message service using factory
         message_service = message_service_factory(test_tenant_key)
 
-        # Step 1: Send a message to the agent
-        send_result = await message_service.send_message(
+        # Verify initial state
+        assert sender_execution.messages_sent_count == 0
+
+        # Send a message
+        result = await message_service.send_message(
             from_agent=sender_execution.agent_id,
-            to_agents=[execution.agent_id],  # Send to agent_id (executor)
-            content="Test message for JSONB persistence",
+            to_agents=[execution.agent_id],
+            content="Test message for counter verification",
             message_type="direct",
-            project_id=test_project.id,
+            project_id=ws_test_project.id,
         )
-        assert send_result["success"], f"Failed to send message: {send_result.get('error')}"
-        message_id = send_result["data"]["message_id"]
+        assert result.message_id is not None
 
-        # Step 2: Verify message is persisted to AgentExecution.messages JSONB
-        await db_session.refresh(execution)
-        assert execution.messages is not None, "Messages should be persisted to execution"
-        assert len(execution.messages) > 0, "Should have at least one message in JSONB"
-
-        # Find the message in JSONB
-        jsonb_message = next((m for m in execution.messages if m.get("id") == message_id), None)
-        assert jsonb_message is not None, "Message should exist in JSONB"
-        assert jsonb_message.get("status") == "waiting", "Initial status should be 'waiting'"
-
-        # Step 3: Agent reads message (this should update JSONB status)
-        receive_result = await message_service.receive_messages(
-            agent_id=execution.agent_id,  # Use agent_id, not job_id
-            limit=10,
-        )
-        assert receive_result["success"], f"Failed to receive messages: {receive_result.get('error')}"
-
-        # Step 4: CRITICAL ASSERTION - Verify JSONB status updated
-        await db_session.refresh(execution)
-        jsonb_message_after = next((m for m in execution.messages if m.get("id") == message_id), None)
-        assert jsonb_message_after is not None, "Message should still exist in JSONB"
-        # Status should be 'acknowledged' after receive_messages
-        assert jsonb_message_after.get("status") == "acknowledged", (
-            f"JSONB status should be 'acknowledged' after read, got: {jsonb_message_after.get('status')}"
+        # Verify sender's sent_count was incremented
+        await db_session.refresh(sender_execution)
+        assert sender_execution.messages_sent_count == 1, (
+            f"Sender sent_count should be 1, got {sender_execution.messages_sent_count}"
         )
 
-    async def test_message_read_count_persists_across_refresh(
+    async def test_send_message_increments_recipient_waiting_count(
         self,
         db_session: AsyncSession,
         test_tenant_key: str,
-        test_project: Project,
+        ws_test_project: Project,
         test_agent_with_execution: tuple[AgentJob, AgentExecution],
         test_sender_agent: tuple[AgentJob, AgentExecution],
         message_service_factory,
     ):
         """
-        Message read count should persist across page refresh.
-
-        Simulates: Send 3 messages → Agent reads 2 → Refresh page → Counts accurate.
+        send_message() should increment recipient's messages_waiting_count.
         """
-        job, execution = test_agent_with_execution
-        sender_job, sender_execution = test_sender_agent
+        _job, execution = test_agent_with_execution
+        _sender_job, sender_execution = test_sender_agent
 
         message_service = message_service_factory(test_tenant_key)
 
-        # Step 1: Send 3 messages to the agent
-        message_ids = []
+        # Verify initial state
+        assert execution.messages_waiting_count == 0
+
+        # Send a message
+        result = await message_service.send_message(
+            from_agent=sender_execution.agent_id,
+            to_agents=[execution.agent_id],
+            content="Test message for waiting count",
+            message_type="direct",
+            project_id=ws_test_project.id,
+        )
+        assert result.message_id is not None
+
+        # Verify recipient's waiting_count was incremented
+        await db_session.refresh(execution)
+        assert execution.messages_waiting_count == 1, (
+            f"Recipient waiting_count should be 1, got {execution.messages_waiting_count}"
+        )
+
+    async def test_receive_messages_updates_counters(
+        self,
+        db_session: AsyncSession,
+        test_tenant_key: str,
+        ws_test_project: Project,
+        test_agent_with_execution: tuple[AgentJob, AgentExecution],
+        test_sender_agent: tuple[AgentJob, AgentExecution],
+        message_service_factory,
+    ):
+        """
+        receive_messages() should decrement waiting_count and increment read_count.
+        """
+        _job, execution = test_agent_with_execution
+        _sender_job, sender_execution = test_sender_agent
+
+        message_service = message_service_factory(test_tenant_key)
+
+        # Send 3 messages
         for i in range(3):
-            result = await message_service.send_message(
+            await message_service.send_message(
                 from_agent=sender_execution.agent_id,
                 to_agents=[execution.agent_id],
                 content=f"Test message {i + 1}",
                 message_type="direct",
-                project_id=test_project.id,
+                project_id=ws_test_project.id,
             )
-            assert result["success"]
-            message_ids.append(result["data"]["message_id"])
 
-        # Step 2: Verify initial state - 3 waiting, 0 read
+        # Verify waiting_count after sends
         await db_session.refresh(execution)
-        waiting_count = sum(1 for m in execution.messages if m.get("status") == "waiting")
-        read_count = sum(1 for m in execution.messages if m.get("status") in ("acknowledged", "read"))
-        assert waiting_count == 3, f"Should have 3 waiting messages, got {waiting_count}"
-        assert read_count == 0, f"Should have 0 read messages, got {read_count}"
+        assert execution.messages_waiting_count == 3
+        assert execution.messages_read_count == 0
 
-        # Step 3: Agent reads messages (auto-acknowledge)
+        # Receive messages (auto-acknowledge)
         receive_result = await message_service.receive_messages(
             agent_id=execution.agent_id,
-            limit=2,  # Only read 2 of 3
+            limit=3,
         )
-        assert receive_result["success"]
+        assert receive_result.count == 3
 
-        # Step 4: CRITICAL - Refresh and verify persistence
+        # Verify counters updated after receive
         await db_session.refresh(execution)
-
-        waiting_after = sum(1 for m in execution.messages if m.get("status") == "waiting")
-        read_after = sum(1 for m in execution.messages if m.get("status") in ("acknowledged", "read"))
-
-        # Expected: 1 waiting (unread), 2 acknowledged (read)
-        assert waiting_after == 1, f"Should have 1 waiting after reading 2, got {waiting_after}"
-        assert read_after == 2, f"Should have 2 read after reading 2, got {read_after}"
-
-    async def test_agent_id_used_for_message_persistence(
-        self,
-        db_session: AsyncSession,
-        test_tenant_key: str,
-        test_project: Project,
-        test_agent_with_execution: tuple[AgentJob, AgentExecution],
-        test_sender_agent: tuple[AgentJob, AgentExecution],
-        message_service_factory,
-    ):
-        """
-        Messages should be keyed by agent_id (executor), not job_id (work order).
-
-        This validates the Handover 0381 contract:
-        - job_id = "what am I working on" (persists across succession)
-        - agent_id = "who am I" (changes on succession)
-        - Messaging uses agent_id because messages are between executors
-        """
-        job, execution = test_agent_with_execution
-        sender_job, sender_execution = test_sender_agent
-
-        message_service = message_service_factory(test_tenant_key)
-
-        # Send message to agent_id
-        result = await message_service.send_message(
-            from_agent=sender_execution.agent_id,
-            to_agents=[execution.agent_id],  # Must use agent_id
-            content="Message to executor, not work order",
-            message_type="direct",
-            project_id=test_project.id,
+        assert execution.messages_waiting_count == 0, (
+            f"Waiting count should be 0 after reading all, got {execution.messages_waiting_count}"
         )
-        assert result["success"]
-
-        # Verify: Message stored on AgentExecution (by agent_id), not AgentJob
-        await db_session.refresh(execution)
-        assert len(execution.messages) == 1, "Message should be on AgentExecution"
-
-        # AgentJob should NOT have the message (it doesn't have messages column)
-        await db_session.refresh(job)
-        # AgentJob model may not even have a messages attribute
-        assert not hasattr(job, "messages") or job.messages is None, (
-            "AgentJob should not have messages - they belong on AgentExecution"
+        assert execution.messages_read_count == 3, (
+            f"Read count should be 3 after reading all, got {execution.messages_read_count}"
         )
 
 
 @pytest.mark.asyncio
-class TestWebSocketPayloadIntegrity:
+class TestCounterPersistenceAcrossRefresh:
     """
-    Tests that WebSocket event payloads include both job_id and agent_id.
+    Tests that counter values persist across session refresh (simulating page reload).
     """
 
-    async def test_message_send_includes_both_identifiers(
+    async def test_counters_persist_after_partial_read(
         self,
         db_session: AsyncSession,
         test_tenant_key: str,
-        test_project: Project,
+        ws_test_project: Project,
         test_agent_with_execution: tuple[AgentJob, AgentExecution],
         test_sender_agent: tuple[AgentJob, AgentExecution],
         message_service_factory,
     ):
         """
-        WebSocket message:sent event should include both job_id and agent_id.
-
-        This allows frontend to resolve by either identifier.
+        Send 3 messages, read 2, refresh session, verify counters are accurate.
         """
-        job, execution = test_agent_with_execution
-        sender_job, sender_execution = test_sender_agent
+        _job, execution = test_agent_with_execution
+        _sender_job, sender_execution = test_sender_agent
 
         message_service = message_service_factory(test_tenant_key)
 
-        # Send message - capture the result which should have both IDs
-        result = await message_service.send_message(
-            from_agent=sender_execution.agent_id,
-            to_agents=[execution.agent_id],
-            content="Test for payload structure",
-            message_type="direct",
-            project_id=test_project.id,
+        # Send 3 messages
+        for i in range(3):
+            result = await message_service.send_message(
+                from_agent=sender_execution.agent_id,
+                to_agents=[execution.agent_id],
+                content=f"Persistence test message {i + 1}",
+                message_type="direct",
+                project_id=ws_test_project.id,
+            )
+            assert result.message_id is not None
+
+        # Read only 2 of 3 messages
+        receive_result = await message_service.receive_messages(
+            agent_id=execution.agent_id,
+            limit=2,
         )
-        assert result["success"]
+        assert receive_result.count == 2
 
-        # The send_message result should contain message data
-        message_data = result.get("data", {})
+        # Simulate page refresh by expiring and refreshing
+        db_session.expire_all()
+        await db_session.refresh(execution)
 
-        # For complete verification, we'd need to intercept WebSocket events
-        # Here we verify the service returns proper data structure
-        assert message_data.get("message_id"), "Should have message_id"
-        # Note: Full WebSocket payload testing requires E2E test with actual WebSocket
+        # Verify counters persist correctly
+        assert execution.messages_waiting_count == 1, (
+            f"Should have 1 waiting after reading 2 of 3, got {execution.messages_waiting_count}"
+        )
+        assert execution.messages_read_count == 2, (
+            f"Should have 2 read after reading 2, got {execution.messages_read_count}"
+        )
 
-    async def test_receive_messages_returns_correct_counts(
+    async def test_sender_sent_count_persists(
         self,
         db_session: AsyncSession,
         test_tenant_key: str,
-        test_project: Project,
+        ws_test_project: Project,
         test_agent_with_execution: tuple[AgentJob, AgentExecution],
         test_sender_agent: tuple[AgentJob, AgentExecution],
         message_service_factory,
     ):
         """
-        receive_messages() should return accurate waiting/read counts.
+        Sender's sent_count should persist across session refresh.
         """
-        job, execution = test_agent_with_execution
-        sender_job, sender_execution = test_sender_agent
+        _job, execution = test_agent_with_execution
+        _sender_job, sender_execution = test_sender_agent
+
+        message_service = message_service_factory(test_tenant_key)
+
+        # Send 5 messages
+        for i in range(5):
+            await message_service.send_message(
+                from_agent=sender_execution.agent_id,
+                to_agents=[execution.agent_id],
+                content=f"Sent count test {i + 1}",
+                message_type="direct",
+                project_id=ws_test_project.id,
+            )
+
+        # Simulate page refresh
+        db_session.expire_all()
+        await db_session.refresh(sender_execution)
+
+        assert sender_execution.messages_sent_count == 5, (
+            f"Sender sent_count should be 5 after refresh, got {sender_execution.messages_sent_count}"
+        )
+
+
+@pytest.mark.asyncio
+class TestAgentIdentifierRouting:
+    """
+    Tests that messages route by agent_id (executor) not job_id (work order).
+    """
+
+    async def test_message_counters_keyed_by_agent_id(
+        self,
+        db_session: AsyncSession,
+        test_tenant_key: str,
+        ws_test_project: Project,
+        test_agent_with_execution: tuple[AgentJob, AgentExecution],
+        test_sender_agent: tuple[AgentJob, AgentExecution],
+        message_service_factory,
+    ):
+        """
+        Counter updates should be keyed by agent_id (executor UUID), not job_id.
+
+        This validates the Handover 0381 contract:
+        - job_id = "what am I working on" (persists across succession)
+        - agent_id = "who am I" (changes on succession)
+        - Counters track per-executor, not per-job
+        """
+        _job, execution = test_agent_with_execution
+        _sender_job, sender_execution = test_sender_agent
+
+        message_service = message_service_factory(test_tenant_key)
+
+        # Send message to agent_id (executor)
+        result = await message_service.send_message(
+            from_agent=sender_execution.agent_id,
+            to_agents=[execution.agent_id],
+            content="Message to executor, not work order",
+            message_type="direct",
+            project_id=ws_test_project.id,
+        )
+        assert result.message_id is not None
+
+        # Verify counter is on AgentExecution (by agent_id)
+        await db_session.refresh(execution)
+        assert execution.messages_waiting_count == 1, (
+            "Counter should be on AgentExecution keyed by agent_id"
+        )
+
+    async def test_receive_messages_returns_message_content(
+        self,
+        db_session: AsyncSession,
+        test_tenant_key: str,
+        ws_test_project: Project,
+        test_agent_with_execution: tuple[AgentJob, AgentExecution],
+        test_sender_agent: tuple[AgentJob, AgentExecution],
+        message_service_factory,
+    ):
+        """
+        receive_messages() should return message content and update counters.
+        """
+        _job, execution = test_agent_with_execution
+        _sender_job, sender_execution = test_sender_agent
 
         message_service = message_service_factory(test_tenant_key)
 
@@ -426,7 +476,7 @@ class TestWebSocketPayloadIntegrity:
                 to_agents=[execution.agent_id],
                 content=f"Count test message {i + 1}",
                 message_type="direct",
-                project_id=test_project.id,
+                project_id=ws_test_project.id,
             )
 
         # Read 3 messages
@@ -434,50 +484,44 @@ class TestWebSocketPayloadIntegrity:
             agent_id=execution.agent_id,
             limit=3,
         )
-        assert result["success"]
+        assert result.count == 3
+        assert len(result.messages) == 3
 
-        # Result should include count information
-        messages = result.get("data", {}).get("messages", [])
-        assert len(messages) == 3, f"Should receive 3 messages, got {len(messages)}"
-
-        # Verify JSONB persistence
+        # Verify counter state
         await db_session.refresh(execution)
-        waiting = sum(1 for m in execution.messages if m.get("status") == "waiting")
-        acknowledged = sum(1 for m in execution.messages if m.get("status") == "acknowledged")
-
-        assert waiting == 2, f"Should have 2 waiting, got {waiting}"
-        assert acknowledged == 3, f"Should have 3 acknowledged, got {acknowledged}"
+        assert execution.messages_waiting_count == 2, (
+            f"Should have 2 waiting, got {execution.messages_waiting_count}"
+        )
+        assert execution.messages_read_count == 3, (
+            f"Should have 3 read, got {execution.messages_read_count}"
+        )
 
 
 @pytest.mark.asyncio
 class TestMultiTenantIsolation:
     """
-    Verify multi-tenant isolation is maintained in the unified platform.
+    Verify multi-tenant isolation is maintained for message counters.
     """
 
-    async def test_message_persistence_respects_tenant_isolation(
+    async def test_message_counters_respect_tenant_isolation(
         self,
         db_session: AsyncSession,
         db_manager,
         mock_websocket_manager,
-        tenant_manager,
     ):
         """
-        Messages from one tenant should not affect another tenant's data.
+        Messages from one tenant should not affect another tenant's counters.
         """
-        # Generate valid tenant keys using TenantManager
-        tenant_a = tenant_manager.generate_tenant_key(project_name="IsolationA")
-        tenant_b = tenant_manager.generate_tenant_key(project_name="IsolationB")
+        tenant_a = TenantManager.generate_tenant_key()
+        tenant_b = TenantManager.generate_tenant_key()
 
         # Create products for each tenant
         product_a = Product(
-            id=str(uuid4()),
             tenant_key=tenant_a,
             name="Product A",
             product_memory={},
         )
         product_b = Product(
-            id=str(uuid4()),
             tenant_key=tenant_b,
             name="Product B",
             product_memory={},
@@ -485,64 +529,96 @@ class TestMultiTenantIsolation:
         db_session.add_all([product_a, product_b])
         await db_session.flush()
 
-        # Create projects (mission is required)
+        # Create projects
         project_a = Project(
-            id=str(uuid4()),
             tenant_key=tenant_a,
             product_id=product_a.id,
             name="Project A",
-            description="Test project A for tenant isolation",
+            description="Tenant A isolation test",
             mission="Test tenant isolation A",
             status="active",
         )
         project_b = Project(
-            id=str(uuid4()),
             tenant_key=tenant_b,
             product_id=product_b.id,
             name="Project B",
-            description="Test project B for tenant isolation",
+            description="Tenant B isolation test",
             mission="Test tenant isolation B",
             status="active",
         )
         db_session.add_all([project_a, project_b])
         await db_session.flush()
 
-        # Create agents for each tenant
+        # Create agents for tenant A
         job_a = AgentJob(
             job_id=str(uuid4()),
             tenant_key=tenant_a,
             project_id=project_a.id,
-            job_type="implementer",  # AgentJob uses job_type
+            job_type="implementer",
             status="active",
             mission="Test agent A",
         )
+        db_session.add(job_a)
+        await db_session.flush()
+
         exec_a = AgentExecution(
             agent_id=str(uuid4()),
             job_id=job_a.job_id,
             tenant_key=tenant_a,
             agent_display_name="implementer",
             status="working",
-            messages=[],
+            messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
 
+        # Create sender for tenant A
+        sender_job_a = AgentJob(
+            job_id=str(uuid4()),
+            tenant_key=tenant_a,
+            project_id=project_a.id,
+            job_type="orchestrator",
+            status="active",
+            mission="Sender A",
+        )
+        db_session.add(sender_job_a)
+        await db_session.flush()
+
+        sender_exec_a = AgentExecution(
+            agent_id=str(uuid4()),
+            job_id=sender_job_a.job_id,
+            tenant_key=tenant_a,
+            agent_display_name="orchestrator",
+            status="working",
+            messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
+        )
+
+        # Create agent for tenant B
         job_b = AgentJob(
             job_id=str(uuid4()),
             tenant_key=tenant_b,
             project_id=project_b.id,
-            job_type="implementer",  # AgentJob uses job_type
+            job_type="implementer",
             status="active",
             mission="Test agent B",
         )
+        db_session.add(job_b)
+        await db_session.flush()
+
         exec_b = AgentExecution(
             agent_id=str(uuid4()),
             job_id=job_b.job_id,
             tenant_key=tenant_b,
             agent_display_name="implementer",
             status="working",
-            messages=[],
+            messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
         )
 
-        db_session.add_all([job_a, exec_a, job_b, exec_b])
+        db_session.add_all([exec_a, sender_exec_a, exec_b])
         await db_session.commit()
 
         # Send message in tenant A
@@ -554,17 +630,29 @@ class TestMultiTenantIsolation:
             websocket_manager=mock_websocket_manager,
             test_session=db_session,
         )
-        await service_a.send_message(
-            from_agent=exec_a.agent_id,
-            to_agents=[exec_a.agent_id],  # Self-message for test
+        result = await service_a.send_message(
+            from_agent=sender_exec_a.agent_id,
+            to_agents=[exec_a.agent_id],
             content="Tenant A message",
             message_type="direct",
             project_id=project_a.id,
         )
+        assert result.message_id is not None
 
-        # Verify: Tenant B's agent should NOT have tenant A's message
+        # Verify: Tenant A agent has waiting_count incremented
         await db_session.refresh(exec_a)
-        await db_session.refresh(exec_b)
+        assert exec_a.messages_waiting_count >= 1, (
+            "Tenant A agent should have waiting_count incremented"
+        )
 
-        assert len(exec_a.messages) >= 1, "Tenant A should have message"
-        assert len(exec_b.messages) == 0, "Tenant B should NOT have tenant A's message"
+        # Verify: Tenant B agent counters untouched
+        await db_session.refresh(exec_b)
+        assert exec_b.messages_waiting_count == 0, (
+            "Tenant B agent should NOT be affected by tenant A messages"
+        )
+        assert exec_b.messages_sent_count == 0, (
+            "Tenant B agent sent_count should remain 0"
+        )
+        assert exec_b.messages_read_count == 0, (
+            "Tenant B agent read_count should remain 0"
+        )

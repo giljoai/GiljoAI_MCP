@@ -1,446 +1,507 @@
 """
-Integration test for message counter persistence across page refresh.
+Integration tests for message counter persistence.
 
-Handover 0294 - Database Expert Agent
+Handover 0484 - Validates that message counter columns on AgentExecution
+persist correctly across session operations.
 
-Tests that message counters persist in the database and can be recomputed
-on page refresh by loading agent data with JSONB message arrays.
+Counter columns (Handover 0700c - replaced JSONB messages):
+- messages_sent_count: Integer, default 0
+- messages_waiting_count: Integer, default 0
+- messages_read_count: Integer, default 0
+
+Tests verify:
+1. Counter columns persist after session expire/refresh
+2. Counter values are correctly stored and retrieved
+3. Multiple agents maintain independent counters
+4. Counter columns default to 0 on new AgentExecution
 """
 
-from datetime import datetime, timezone
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.models.agent_identity import AgentExecution
-from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 
 
 @pytest.mark.asyncio
-async def test_message_counters_persist_after_page_refresh(async_db_session: AsyncSession):
+async def test_counter_columns_persist_after_refresh(db_session: AsyncSession):
     """
-    Test that message counters are correctly computed from database after page refresh.
-
-    Scenario:
-    1. Create project with agents
-    2. Send messages (stored in AgentExecution.messages JSONB)
-    3. Simulate page refresh by re-querying agents
-    4. Verify counters are correctly computed from JSONB data
-
-    EXPECTED TO FAIL INITIALLY - This test documents the desired behavior.
+    Test that counter columns persist correctly after session expire and refresh.
     """
-    # ============================================================================
-    # Setup: Create test data
-    # ============================================================================
-    tenant_key = "test_tenant_294"
+    tenant_key = f"test_tenant_{uuid4().hex[:8]}"
 
-    # Create user
-    user = User(
-        id="user-294",
-        username="testuser",
-        email="test@example.com",
-        hashed_password="hashed",
-        tenant_key=tenant_key,
-        role="admin",
-    )
-    async_db_session.add(user)
-
-    # Create product
     product = Product(
-        id="product-294",
-        name="Test Product",
-        description="Test product for counter persistence",
+        name="Counter Persist Product",
         tenant_key=tenant_key,
-        created_by="user-294",
+        product_memory={},
     )
-    async_db_session.add(product)
+    db_session.add(product)
+    await db_session.flush()
 
-    # Create project
     project = Project(
-        id="project-294",
-        name="Test Project",
+        name="Counter Persist Project",
         description="Test project for counter persistence",
-        product_id="product-294",
+        mission="Test counter persistence",
         tenant_key=tenant_key,
-        created_by="user-294",
+        product_id=product.id,
+        status="active",
     )
-    async_db_session.add(project)
+    db_session.add(project)
+    await db_session.flush()
 
-    # Create orchestrator agent (sender)
-    orchestrator = AgentExecution(
-        job_id="orchestrator-294",
+    job = AgentJob(
+        job_id=str(uuid4()),
         tenant_key=tenant_key,
-        project_id="project-294",
+        project_id=project.id,
+        job_type="orchestrator",
+        mission="Test counter persistence",
+        status="active",
+    )
+    db_session.add(job)
+    await db_session.flush()
+
+    execution = AgentExecution(
+        job_id=job.job_id,
+        tenant_key=tenant_key,
         agent_display_name="orchestrator",
-        agent_name="Orchestrator",
-        mission="Orchestrate the project",
         status="working",
-        tool_type="claude-code",
-        messages_sent_count=0,
+        messages_sent_count=5,
+        messages_waiting_count=3,
+        messages_read_count=7,
+    )
+    db_session.add(execution)
+    await db_session.commit()
+
+    # Expire all cached state and refresh from database
+    db_session.expire_all()
+    await db_session.refresh(execution)
+
+    assert execution.messages_sent_count == 5, (
+        f"sent_count should be 5, got {execution.messages_sent_count}"
+    )
+    assert execution.messages_waiting_count == 3, (
+        f"waiting_count should be 3, got {execution.messages_waiting_count}"
+    )
+    assert execution.messages_read_count == 7, (
+        f"read_count should be 7, got {execution.messages_read_count}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_counter_columns_default_to_zero(db_session: AsyncSession):
+    """
+    Test that counter columns default to 0 when not explicitly set.
+    """
+    tenant_key = f"test_tenant_{uuid4().hex[:8]}"
+
+    product = Product(
+        name="Default Counter Product",
+        tenant_key=tenant_key,
+        product_memory={},
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    project = Project(
+        name="Default Counter Project",
+        description="Test default counter values",
+        mission="Test default counters",
+        tenant_key=tenant_key,
+        product_id=product.id,
+        status="active",
+    )
+    db_session.add(project)
+    await db_session.flush()
+
+    job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_key,
+        project_id=project.id,
+        job_type="implementer",
+        mission="Test default counters",
+        status="active",
+    )
+    db_session.add(job)
+    await db_session.flush()
+
+    # Create execution WITHOUT setting counter values
+    execution = AgentExecution(
+        job_id=job.job_id,
+        tenant_key=tenant_key,
+        agent_display_name="implementer",
+        status="waiting",
+    )
+    db_session.add(execution)
+    await db_session.commit()
+
+    await db_session.refresh(execution)
+
+    assert execution.messages_sent_count == 0, (
+        f"Default sent_count should be 0, got {execution.messages_sent_count}"
+    )
+    assert execution.messages_waiting_count == 0, (
+        f"Default waiting_count should be 0, got {execution.messages_waiting_count}"
+    )
+    assert execution.messages_read_count == 0, (
+        f"Default read_count should be 0, got {execution.messages_read_count}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_multiple_agents_independent_counters(db_session: AsyncSession):
+    """
+    Test that multiple agents in the same project maintain independent counters.
+
+    Simulates orchestrator sending messages to implementer and tester,
+    each with different counter states.
+    """
+    tenant_key = f"test_tenant_{uuid4().hex[:8]}"
+
+    product = Product(
+        name="Multi Agent Product",
+        tenant_key=tenant_key,
+        product_memory={},
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    project = Project(
+        name="Multi Agent Project",
+        description="Test independent counters",
+        mission="Test multi-agent counters",
+        tenant_key=tenant_key,
+        product_id=product.id,
+        status="active",
+    )
+    db_session.add(project)
+    await db_session.flush()
+
+    # Create orchestrator (sender - 2 sent, 0 waiting, 0 read)
+    orch_job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_key,
+        project_id=project.id,
+        job_type="orchestrator",
+        mission="Orchestrate project",
+        status="active",
+    )
+    db_session.add(orch_job)
+    await db_session.flush()
+
+    orchestrator = AgentExecution(
+        job_id=orch_job.job_id,
+        tenant_key=tenant_key,
+        agent_display_name="orchestrator",
+        status="working",
+        messages_sent_count=2,
         messages_waiting_count=0,
         messages_read_count=0,
     )
-    async_db_session.add(orchestrator)
 
-    # Create recipient agents
-    implementer = AgentExecution(
-        job_id="implementer-294",
+    # Create implementer (0 sent, 1 waiting, 0 read)
+    impl_job = AgentJob(
+        job_id=str(uuid4()),
         tenant_key=tenant_key,
-        project_id="project-294",
-        agent_display_name="implementer",
-        agent_name="Backend Implementer",
-        mission="Implement backend features",
-        status="waiting",
-        tool_type="claude-code",
-        messages=[],
+        project_id=project.id,
+        job_type="implementer",
+        mission="Implement features",
+        status="active",
     )
-    async_db_session.add(implementer)
+    db_session.add(impl_job)
+    await db_session.flush()
+
+    implementer = AgentExecution(
+        job_id=impl_job.job_id,
+        tenant_key=tenant_key,
+        agent_display_name="implementer",
+        status="waiting",
+        messages_sent_count=0,
+        messages_waiting_count=1,
+        messages_read_count=0,
+    )
+
+    # Create tester (0 sent, 0 waiting, 1 read)
+    tester_job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_key,
+        project_id=project.id,
+        job_type="tester",
+        mission="Run tests",
+        status="active",
+    )
+    db_session.add(tester_job)
+    await db_session.flush()
 
     tester = AgentExecution(
-        job_id="tester-294",
+        job_id=tester_job.job_id,
         tenant_key=tenant_key,
-        project_id="project-294",
         agent_display_name="tester",
-        agent_name="Integration Tester",
-        mission="Run integration tests",
         status="waiting",
-        tool_type="claude-code",
-        messages=[],
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=1,
     )
-    async_db_session.add(tester)
 
-    await async_db_session.commit()
+    db_session.add_all([orchestrator, implementer, tester])
+    await db_session.commit()
 
-    # ============================================================================
-    # Action 1: Send messages (simulating message_service.send_message())
-    # ============================================================================
-    now = datetime.now(timezone.utc).isoformat()
+    # Simulate page refresh - expire and re-query from database
+    db_session.expire_all()
 
-    # Orchestrator sends 2 messages
-    orchestrator.messages = [
-        {
-            "id": "msg-1",
-            "from": "orchestrator",
-            "to": "implementer-294",
-            "direction": "outbound",
-            "status": "sent",
-            "text": "Please implement the feature",
-            "priority": "high",
-            "timestamp": now,
-        },
-        {
-            "id": "msg-2",
-            "from": "orchestrator",
-            "to": "tester-294",
-            "direction": "outbound",
-            "status": "sent",
-            "text": "Please test the feature",
-            "priority": "normal",
-            "timestamp": now,
-        },
-    ]
-
-    # Implementer receives 1 message (waiting to read)
-    implementer.messages = [
-        {
-            "id": "msg-1",
-            "from": "orchestrator",
-            "to": "implementer-294",
-            "direction": "inbound",
-            "status": "pending",  # UNREAD
-            "text": "Please implement the feature",
-            "priority": "high",
-            "timestamp": now,
-        }
-    ]
-
-    # Tester receives 1 message and acknowledges it
-    tester.messages = [
-        {
-            "id": "msg-2",
-            "from": "orchestrator",
-            "to": "tester-294",
-            "direction": "inbound",
-            "status": "acknowledged",  # READ
-            "text": "Please test the feature",
-            "priority": "normal",
-            "timestamp": now,
-        }
-    ]
-
-    await async_db_session.commit()
-
-    # ============================================================================
-    # Action 2: Simulate page refresh - re-query agents from database
-    # ============================================================================
-    await async_db_session.expire_all()  # Clear session cache
-
-    result = await async_db_session.execute(
+    result = await db_session.execute(
         select(AgentExecution)
-        .where(AgentExecution.project_id == "project-294")
         .where(AgentExecution.tenant_key == tenant_key)
         .order_by(AgentExecution.agent_display_name)
     )
     refreshed_agents = result.scalars().all()
 
-    # ============================================================================
-    # Assertions: Verify counters can be computed from JSONB data
-    # ============================================================================
+    assert len(refreshed_agents) == 3, (
+        f"Should find 3 agents, found {len(refreshed_agents)}"
+    )
 
-    # Helper function (mimics frontend logic)
-    def compute_counters(agent: AgentExecution):
-        messages = agent.messages or []
-        sent = sum(1 for m in messages if m.get("direction") == "outbound")
-        waiting = sum(1 for m in messages if m.get("status") == "pending")
-        acknowledged = sum(1 for m in messages if m.get("status") == "acknowledged")
-        return {"sent": sent, "waiting": waiting, "acknowledged": acknowledged}
-
-    # Find agents
+    # Find agents by display name
     orch = next(a for a in refreshed_agents if a.agent_display_name == "orchestrator")
     impl = next(a for a in refreshed_agents if a.agent_display_name == "implementer")
-    test = next(a for a in refreshed_agents if a.agent_display_name == "tester")
+    test_agent = next(a for a in refreshed_agents if a.agent_display_name == "tester")
 
     # Verify orchestrator counters
-    orch_counters = compute_counters(orch)
-    assert orch_counters["sent"] == 2, f"Orchestrator should have 2 sent messages, got {orch_counters['sent']}"
-    assert orch_counters["waiting"] == 0, f"Orchestrator should have 0 waiting messages, got {orch_counters['waiting']}"
-    assert orch_counters["acknowledged"] == 0, (
-        f"Orchestrator should have 0 acknowledged messages, got {orch_counters['acknowledged']}"
+    assert orch.messages_sent_count == 2, (
+        f"Orchestrator sent should be 2, got {orch.messages_sent_count}"
     )
+    assert orch.messages_waiting_count == 0
+    assert orch.messages_read_count == 0
 
     # Verify implementer counters
-    impl_counters = compute_counters(impl)
-    assert impl_counters["sent"] == 0, f"Implementer should have 0 sent messages, got {impl_counters['sent']}"
-    assert impl_counters["waiting"] == 1, f"Implementer should have 1 waiting message, got {impl_counters['waiting']}"
-    assert impl_counters["acknowledged"] == 0, (
-        f"Implementer should have 0 acknowledged messages, got {impl_counters['acknowledged']}"
+    assert impl.messages_sent_count == 0
+    assert impl.messages_waiting_count == 1, (
+        f"Implementer waiting should be 1, got {impl.messages_waiting_count}"
     )
+    assert impl.messages_read_count == 0
 
     # Verify tester counters
-    test_counters = compute_counters(test)
-    assert test_counters["sent"] == 0, f"Tester should have 0 sent messages, got {test_counters['sent']}"
-    assert test_counters["waiting"] == 0, f"Tester should have 0 waiting messages, got {test_counters['waiting']}"
-    assert test_counters["acknowledged"] == 1, (
-        f"Tester should have 1 acknowledged message, got {test_counters['acknowledged']}"
+    assert test_agent.messages_sent_count == 0
+    assert test_agent.messages_waiting_count == 0
+    assert test_agent.messages_read_count == 1, (
+        f"Tester read should be 1, got {test_agent.messages_read_count}"
     )
 
 
 @pytest.mark.asyncio
-async def test_table_view_endpoint_computes_message_counters(async_db_session: AsyncSession):
+async def test_counter_query_by_tenant_key(db_session: AsyncSession):
     """
-    Test that table_view endpoint correctly computes message counters from JSONB.
+    Test that counter queries filter correctly by tenant_key.
 
-    This verifies the backend logic that powers the /table-view API endpoint
-    which is used by the frontend to populate agent data.
+    Agents with waiting messages should be found only within their tenant.
     """
-    # ============================================================================
-    # Setup: Create test data
-    # ============================================================================
-    tenant_key = "test_tenant_294_tv"
+    tenant_key_a = f"test_tenant_a_{uuid4().hex[:8]}"
+    tenant_key_b = f"test_tenant_b_{uuid4().hex[:8]}"
 
-    # Create user
-    user = User(
-        id="user-294-tv",
-        username="testuser_tv",
-        email="test_tv@example.com",
-        hashed_password="hashed",
-        tenant_key=tenant_key,
-        role="admin",
+    # Create hierarchy for tenant A
+    product_a = Product(
+        name="Product A Counter",
+        tenant_key=tenant_key_a,
+        product_memory={},
     )
-    async_db_session.add(user)
+    db_session.add(product_a)
+    await db_session.flush()
 
-    # Create product
-    product = Product(
-        id="product-294-tv",
-        name="Test Product TV",
-        description="Test product for table view",
-        tenant_key=tenant_key,
-        created_by="user-294-tv",
+    project_a = Project(
+        name="Project A Counter",
+        description="Tenant A counter test",
+        mission="Test A",
+        tenant_key=tenant_key_a,
+        product_id=product_a.id,
+        status="active",
     )
-    async_db_session.add(product)
+    db_session.add(project_a)
+    await db_session.flush()
 
-    # Create project
-    project = Project(
-        id="project-294-tv",
-        name="Test Project TV",
-        description="Test project for table view",
-        product_id="product-294-tv",
-        tenant_key=tenant_key,
-        created_by="user-294-tv",
+    job_a = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_key_a,
+        project_id=project_a.id,
+        job_type="implementer",
+        mission="Agent A",
+        status="active",
     )
-    async_db_session.add(project)
+    db_session.add(job_a)
+    await db_session.flush()
 
-    # Create agent with messages
-    now = datetime.now(timezone.utc).isoformat()
-    agent = AgentExecution(
-        job_id="agent-294-tv",
-        tenant_key=tenant_key,
-        project_id="project-294-tv",
+    # Agent A: has waiting messages
+    agent_a = AgentExecution(
+        job_id=job_a.job_id,
+        tenant_key=tenant_key_a,
         agent_display_name="implementer",
-        agent_name="Test Implementer",
-        mission="Test mission",
         status="working",
-        tool_type="claude-code",
-        messages=[
-            {"id": "msg-1", "status": "pending", "direction": "inbound", "timestamp": now},
-            {"id": "msg-2", "status": "pending", "direction": "inbound", "timestamp": now},
-            {"id": "msg-3", "status": "acknowledged", "direction": "inbound", "timestamp": now},
-            {"id": "msg-4", "status": "sent", "direction": "outbound", "timestamp": now},
-        ],
+        messages_waiting_count=3,
     )
-    async_db_session.add(agent)
 
-    await async_db_session.commit()
-
-    # ============================================================================
-    # Action: Query agent and compute counters (mimics table_view endpoint)
-    # ============================================================================
-    result = await async_db_session.execute(
-        select(AgentExecution)
-        .where(AgentExecution.project_id == "project-294-tv")
-        .where(AgentExecution.tenant_key == tenant_key)
+    # Create hierarchy for tenant B
+    product_b = Product(
+        name="Product B Counter",
+        tenant_key=tenant_key_b,
+        product_memory={},
     )
-    agents = result.scalars().all()
+    db_session.add(product_b)
+    await db_session.flush()
 
-    assert len(agents) == 1, "Should have 1 agent"
-
-    agent = agents[0]
-
-    # Compute counters (mimics table_view.py lines 194-200)
-    unread_count = 0
-    acknowledged_count = 0
-    total_messages = len(agent.messages) if agent.messages else 0
-
-    if agent.messages:
-        for msg in agent.messages:
-            if msg.get("status") == "pending":
-                unread_count += 1
-            elif msg.get("status") == "acknowledged":
-                acknowledged_count += 1
-
-    # ============================================================================
-    # Assertions: Verify counters match expected values
-    # ============================================================================
-    assert total_messages == 4, f"Should have 4 total messages, got {total_messages}"
-    assert unread_count == 2, f"Should have 2 unread messages, got {unread_count}"
-    assert acknowledged_count == 1, f"Should have 1 acknowledged message, got {acknowledged_count}"
-
-
-@pytest.mark.asyncio
-async def test_jsonb_query_filtering_for_unread_messages(async_db_session: AsyncSession):
-    """
-    Test JSONB path query filtering for agents with unread messages.
-
-    This tests the database-level JSONB query capability used in table_view
-    endpoint for filtering agents with unread messages (has_unread filter).
-    """
-    from sqlalchemy import and_, func
-
-    tenant_key = "test_tenant_294_jsonb"
-
-    # Create user
-    user = User(
-        id="user-294-jsonb",
-        username="testuser_jsonb",
-        email="test_jsonb@example.com",
-        hashed_password="hashed",
-        tenant_key=tenant_key,
-        role="admin",
+    project_b = Project(
+        name="Project B Counter",
+        description="Tenant B counter test",
+        mission="Test B",
+        tenant_key=tenant_key_b,
+        product_id=product_b.id,
+        status="active",
     )
-    async_db_session.add(user)
+    db_session.add(project_b)
+    await db_session.flush()
 
-    # Create product
-    product = Product(
-        id="product-294-jsonb",
-        name="Test Product JSONB",
-        description="Test product for JSONB queries",
-        tenant_key=tenant_key,
-        created_by="user-294-jsonb",
+    job_b = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_key_b,
+        project_id=project_b.id,
+        job_type="tester",
+        mission="Agent B",
+        status="active",
     )
-    async_db_session.add(product)
+    db_session.add(job_b)
+    await db_session.flush()
 
-    # Create project
-    project = Project(
-        id="project-294-jsonb",
-        name="Test Project JSONB",
-        description="Test project for JSONB queries",
-        product_id="product-294-jsonb",
-        tenant_key=tenant_key,
-        created_by="user-294-jsonb",
-    )
-    async_db_session.add(project)
-
-    now = datetime.now(timezone.utc).isoformat()
-
-    # Agent 1: Has unread messages
-    agent_with_unread = AgentExecution(
-        job_id="agent-with-unread",
-        tenant_key=tenant_key,
-        project_id="project-294-jsonb",
-        agent_display_name="implementer",
-        agent_name="Agent With Unread",
-        mission="Test mission",
-        status="working",
-        tool_type="claude-code",
-        messages=[
-            {"id": "msg-1", "status": "pending", "direction": "inbound", "timestamp": now},
-            {"id": "msg-2", "status": "acknowledged", "direction": "inbound", "timestamp": now},
-        ],
-    )
-    async_db_session.add(agent_with_unread)
-
-    # Agent 2: All messages acknowledged
-    agent_all_read = AgentExecution(
-        job_id="agent-all-read",
-        tenant_key=tenant_key,
-        project_id="project-294-jsonb",
+    # Agent B: no waiting messages
+    agent_b = AgentExecution(
+        job_id=job_b.job_id,
+        tenant_key=tenant_key_b,
         agent_display_name="tester",
-        agent_name="Agent All Read",
-        mission="Test mission",
         status="working",
-        tool_type="claude-code",
-        messages=[
-            {"id": "msg-3", "status": "acknowledged", "direction": "inbound", "timestamp": now},
-            {"id": "msg-4", "status": "acknowledged", "direction": "inbound", "timestamp": now},
-        ],
+        messages_waiting_count=0,
     )
-    async_db_session.add(agent_all_read)
 
-    # Agent 3: No messages
-    agent_no_messages = AgentExecution(
-        job_id="agent-no-messages",
-        tenant_key=tenant_key,
-        project_id="project-294-jsonb",
-        agent_display_name="documenter",
-        agent_name="Agent No Messages",
-        mission="Test mission",
-        status="working",
-        tool_type="claude-code",
-        messages=[],
-    )
-    async_db_session.add(agent_no_messages)
+    db_session.add_all([agent_a, agent_b])
+    await db_session.commit()
 
-    await async_db_session.commit()
-
-    # ============================================================================
-    # Test JSONB path query (from table_view.py line 145-150)
-    # ============================================================================
-    query = select(AgentExecution).where(
-        and_(
-            AgentExecution.tenant_key == tenant_key,
-            AgentExecution.project_id == "project-294-jsonb",
-            func.jsonb_path_exists(AgentExecution.messages, '$[*] ? (@.status == "pending")'),
+    # Query agents with waiting messages in tenant A only
+    result = await db_session.execute(
+        select(AgentExecution).where(
+            AgentExecution.tenant_key == tenant_key_a,
+            AgentExecution.messages_waiting_count > 0,
         )
     )
+    agents_with_waiting = result.scalars().all()
 
-    result = await async_db_session.execute(query)
-    agents_with_unread = result.scalars().all()
+    assert len(agents_with_waiting) == 1, (
+        f"Should find 1 agent with waiting messages in tenant A, found {len(agents_with_waiting)}"
+    )
+    assert agents_with_waiting[0].tenant_key == tenant_key_a
+    assert agents_with_waiting[0].messages_waiting_count == 3
 
-    # ============================================================================
-    # Assertions: Only agent with pending messages should match
-    # ============================================================================
-    assert len(agents_with_unread) == 1, f"Should find 1 agent with unread messages, found {len(agents_with_unread)}"
-    assert agents_with_unread[0].job_id == "agent-with-unread", "Should find the agent with unread messages"
+    # Verify tenant B query returns no agents with waiting messages
+    result_b = await db_session.execute(
+        select(AgentExecution).where(
+            AgentExecution.tenant_key == tenant_key_b,
+            AgentExecution.messages_waiting_count > 0,
+        )
+    )
+    agents_b_waiting = result_b.scalars().all()
+    assert len(agents_b_waiting) == 0, (
+        "Should find 0 agents with waiting messages in tenant B"
+    )
+
+
+@pytest.mark.asyncio
+async def test_counter_update_and_requery(db_session: AsyncSession):
+    """
+    Test updating counters and re-querying to verify persistence.
+
+    Simulates the full lifecycle: initial state -> increment -> verify -> decrement -> verify.
+    """
+    tenant_key = f"test_tenant_{uuid4().hex[:8]}"
+
+    product = Product(
+        name="Update Requery Product",
+        tenant_key=tenant_key,
+        product_memory={},
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    project = Project(
+        name="Update Requery Project",
+        description="Test counter update and requery",
+        mission="Test lifecycle",
+        tenant_key=tenant_key,
+        product_id=product.id,
+        status="active",
+    )
+    db_session.add(project)
+    await db_session.flush()
+
+    job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_key,
+        project_id=project.id,
+        job_type="implementer",
+        mission="Test lifecycle",
+        status="active",
+    )
+    db_session.add(job)
+    await db_session.flush()
+
+    execution = AgentExecution(
+        job_id=job.job_id,
+        tenant_key=tenant_key,
+        agent_display_name="implementer",
+        status="working",
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
+    )
+    db_session.add(execution)
+    await db_session.commit()
+
+    agent_id = execution.agent_id
+
+    # Step 1: Simulate sending (increment sent_count)
+    execution.messages_sent_count += 2
+    await db_session.commit()
+
+    db_session.expire_all()
+    result = await db_session.execute(
+        select(AgentExecution).where(AgentExecution.agent_id == agent_id)
+    )
+    refreshed = result.scalar_one()
+    assert refreshed.messages_sent_count == 2
+
+    # Step 2: Simulate receiving messages (increment waiting_count)
+    refreshed.messages_waiting_count += 3
+    await db_session.commit()
+
+    db_session.expire_all()
+    result = await db_session.execute(
+        select(AgentExecution).where(AgentExecution.agent_id == agent_id)
+    )
+    refreshed = result.scalar_one()
+    assert refreshed.messages_waiting_count == 3
+
+    # Step 3: Simulate reading (decrement waiting, increment read)
+    refreshed.messages_waiting_count -= 2
+    refreshed.messages_read_count += 2
+    await db_session.commit()
+
+    db_session.expire_all()
+    result = await db_session.execute(
+        select(AgentExecution).where(AgentExecution.agent_id == agent_id)
+    )
+    refreshed = result.scalar_one()
+    assert refreshed.messages_waiting_count == 1, (
+        f"Should have 1 waiting after reading 2 of 3, got {refreshed.messages_waiting_count}"
+    )
+    assert refreshed.messages_read_count == 2, (
+        f"Should have 2 read, got {refreshed.messages_read_count}"
+    )
+    assert refreshed.messages_sent_count == 2, (
+        f"Sent count should remain 2, got {refreshed.messages_sent_count}"
+    )
