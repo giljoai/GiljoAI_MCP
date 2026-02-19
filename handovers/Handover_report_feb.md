@@ -10,11 +10,11 @@
 
 | Action | Count |
 |--------|-------|
-| Closed out to `completed/` | 18 |
+| Closed out to `completed/` | 19 |
 | Moved to `Reference_docs/` | 11 |
 | Restored to root (still actionable) | 5 |
 | Moved to `0700_series/` | 1 |
-| **Total files processed** | **35** |
+| **Total files processed** | **36** |
 
 ---
 
@@ -146,6 +146,13 @@ All files renamed with `-C` suffix per close-out protocol.
 - **Implementation commit**: `d48beecb` - "fix: replace TRUNCATE CASCADE with DELETE to prevent API test hangs (Handover 0495)"
 - **What it was**: Fixed API test suite hanging indefinitely due to TRUNCATE CASCADE requiring exclusive locks while stale PostgreSQL connections held competing locks. Replaced with DELETE in FK-reverse order.
 - **Original intent**: P0 blocker fix. 20/20 API tests pass in 1.77s (was infinite hang).
+
+### 0488_staging_broadcast_response_enforcement.md
+- **Destination**: `completed/0488_staging_broadcast_response_enforcement-C.md`
+- **Created**: 2026-02-05
+- **Implemented**: N/A (retired without implementation)
+- **What it was**: Planned enrichment of `send_message()` broadcast response with explicit STOP directive when staging orchestrator broadcasts to all agents. Defense-in-depth Layer 5.5 between prompt framing (Layers 1-5) and hard gates (Layers 6-8 from 0487).
+- **Original intent**: Reduce wasted tokens when staging orchestrators ignored protocol and continued into implementation. Parent 0487's hard gates already catch the agents, making this a nice-to-have reinforcement.
 
 ### 0489_mcp_config_cleanup_and_proxy_retirement.md (merged 0397+0489)
 - **Destination**: `completed/0489_mcp_config_cleanup_and_proxy_retirement-C.md`
@@ -282,11 +289,11 @@ These were initially moved to Reference_docs/ but contain work items not yet com
 
 ---
 
-## Active Handover Debt (11 remaining in root)
+## Active Handover Debt (10 remaining in root)
 
 | Tier | Handovers | Focus |
 |------|-----------|-------|
-| 1 - HIGH | **0486**, **0488** | Continuation workflow, staging broadcast enforcement |
+| 1 - HIGH | **0486** | Continuation workflow |
 | 2 - Orchestrator | 0254 (stale), 0365 (stale), 0410 | Instruction cleanup, handover injection, message optimization |
 | 3 - Taxonomy | 0440a, 0440b, 0440c | DB+backend, frontend UI, display integration |
 | 4 - Agent Exec | 0419 | Long-polling orchestrator monitoring |
