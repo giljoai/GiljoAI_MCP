@@ -10,11 +10,11 @@
 
 | Action | Count |
 |--------|-------|
-| Closed out to `completed/` | 16 |
+| Closed out to `completed/` | 18 |
 | Moved to `Reference_docs/` | 11 |
 | Restored to root (still actionable) | 5 |
 | Moved to `0700_series/` | 1 |
-| **Total files processed** | **33** |
+| **Total files processed** | **35** |
 
 ---
 
@@ -147,6 +147,21 @@ All files renamed with `-C` suffix per close-out protocol.
 - **What it was**: Fixed API test suite hanging indefinitely due to TRUNCATE CASCADE requiring exclusive locks while stale PostgreSQL connections held competing locks. Replaced with DELETE in FK-reverse order.
 - **Original intent**: P0 blocker fix. 20/20 API tests pass in 1.77s (was infinite hang).
 
+### 0489_mcp_config_cleanup_and_proxy_retirement.md (merged 0397+0489)
+- **Destination**: `completed/0489_mcp_config_cleanup_and_proxy_retirement-C.md`
+- **Created**: 2026-02-19
+- **Implemented**: 2026-02-19
+- **Implementation commits**: `739e77d2`, `115abd6c` - MCP config revamp, proxy retirement & security cleanup
+- **What it was**: Merged handover combining original 0489 (MCP cleanup) and 0397 (stdio proxy deprecation). Fixed frontend config generators for Claude/Codex/Gemini, removed all Cursor references, deleted dead proxy code (CodexCliIntegration.vue, mcp_tools.py, download_proxy_wheel), removed mcp==1.12.3 dependency, fixed mcp_http.py error leakage.
+- **Original intent**: 0489 was MCP cleanup (85% done by 0700). 0397 was proxy deprecation (proxy already deleted by 0725b). Merged into one focused cleanup. 19 files, -924 lines net.
+
+### 0397_deprecate_stdio_proxy_codex_native_http.md
+- **Destination**: `completed/0397_deprecate_stdio_proxy_codex_native_http-C.md`
+- **Created**: 2026-02-07
+- **Implemented**: 2026-02-19 (merged into 0489)
+- **What it was**: Planned gradual deprecation of stdio proxy for Codex native HTTP. Became obsolete when proxy was deleted by 0725b before 0397 could execute. Residual cleanup merged into 0489.
+- **Original intent**: 5-phase deprecation plan. Superseded by events -- proxy deleted first, references cleaned up via 0489.
+
 ---
 
 ## Section 2: Moved to `Reference_docs/` (11 files - staying there)
@@ -267,11 +282,10 @@ These were initially moved to Reference_docs/ but contain work items not yet com
 
 ---
 
-## Active Handover Debt (13 remaining in root)
+## Active Handover Debt (11 remaining in root)
 
 | Tier | Handovers | Focus |
 |------|-----------|-------|
-| 1 - Foundation | 0489 | API/MCP cleanup |
 | 2 - Orchestrator | Instruction cleanup, handover injection, staging broadcast, message optimization |
 | 2a - 0254, 
 | about 0254: Audit: 0254 (Three-Layer Instruction Cleanup)
