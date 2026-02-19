@@ -19,7 +19,7 @@ import pytest
 import pytest_asyncio
 
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 
@@ -85,14 +85,25 @@ class TestClaudeCodeModeWorkflow:
         await db_session.commit()
         await db_session.refresh(project)
 
-        # Create orchestrator
-        orchestrator = AgentExecution(
+        # Create AgentJob first (AgentExecution requires job_id FK)
+        job = AgentJob(
+            job_id=str(uuid4()),
+            tenant_key=tenant_key,
             project_id=project.id,
+            job_type="orchestrator",
+            mission="Test agent spawning",
+            status="active",
+            job_metadata={"user_id": test_user.id, "execution_mode": "claude-code"},
+        )
+        db_session.add(job)
+        await db_session.flush()
+
+        # Create orchestrator execution
+        orchestrator = AgentExecution(
+            job_id=job.job_id,
             tenant_key=tenant_key,
             agent_display_name="orchestrator",
-            status="active",
-            mission="Test agent spawning",
-            job_metadata={"user_id": test_user.id, "execution_mode": "claude-code"},
+            status="working",
         )
         db_session.add(orchestrator)
         await db_session.commit()
@@ -117,10 +128,10 @@ class TestClaudeCodeModeWorkflow:
             "Prompt should include agent spawning instructions"
         )
 
-        print("\n✓ Claude Code mode agent spawning validated:")
-        print("  - Uses Task tool: ✓")
-        print("  - Discovers agents dynamically: ✓")
-        print("  - Includes spawning instructions: ✓")
+        print("\n- Claude Code mode agent spawning validated:")
+        print("  - Uses Task tool: yes")
+        print("  - Discovers agents dynamically: yes")
+        print("  - Includes spawning instructions: yes")
 
     async def test_claude_code_mode_token_efficiency(
         self, db_session, db_manager, tenant_manager, test_user, test_product
@@ -146,14 +157,25 @@ class TestClaudeCodeModeWorkflow:
         await db_session.commit()
         await db_session.refresh(project)
 
-        # Create orchestrator
-        orchestrator = AgentExecution(
+        # Create AgentJob first (AgentExecution requires job_id FK)
+        job = AgentJob(
+            job_id=str(uuid4()),
+            tenant_key=tenant_key,
             project_id=project.id,
+            job_type="orchestrator",
+            mission="Test",
+            status="active",
+            job_metadata={"user_id": test_user.id, "execution_mode": "claude-code"},
+        )
+        db_session.add(job)
+        await db_session.flush()
+
+        # Create orchestrator execution
+        orchestrator = AgentExecution(
+            job_id=job.job_id,
             tenant_key=tenant_key,
             agent_display_name="orchestrator",
             status="waiting",
-            mission="Test",
-            job_metadata={"user_id": test_user.id, "execution_mode": "claude-code"},
         )
         db_session.add(orchestrator)
         await db_session.commit()
@@ -173,7 +195,7 @@ class TestClaudeCodeModeWorkflow:
         # Ideally should be around 450 tokens
         is_ideal = 400 <= token_count <= 500
 
-        print("\n✓ Claude Code mode token efficiency:")
+        print("\n- Claude Code mode token efficiency:")
         print(f"  - Token count: ~{token_count} tokens")
         print("  - Target: <600 tokens")
         print(f"  - Ideal range (400-500): {is_ideal}")
