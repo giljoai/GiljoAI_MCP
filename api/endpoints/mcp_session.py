@@ -42,6 +42,12 @@ class MCPSessionManager:
         self.db = db
 
     async def authenticate_api_key(self, api_key_value: str):
+        """Validate an API key and return the associated (APIKey, User) tuple.
+
+        Iterates over active, non-expired keys and verifies the provided value
+        against stored hashes. Returns None if no match is found or if the
+        owning user is inactive.
+        """
         try:
             stmt = select(APIKey).where(
                 APIKey.is_active, or_(APIKey.expires_at > func.now(), APIKey.expires_at.is_(None))
@@ -115,6 +121,12 @@ class MCPSessionManager:
             logger.warning("Failed to log IP for API key %s: %s", api_key_id, e)
 
     async def get_or_create_session(self, api_key_value: str, project_id: str | None = None) -> MCPSession | None:
+        """Authenticate and return an existing or newly created MCP session.
+
+        Looks up an active session for the authenticated user's API key and
+        tenant. If a valid session exists it is extended; otherwise a new one
+        is created. Duplicate sessions are cleaned up automatically.
+        """
         auth_result = await self.authenticate_api_key(api_key_value)
         if not auth_result:
             return None
@@ -179,6 +191,7 @@ class MCPSessionManager:
         return new_session
 
     async def get_session(self, session_id: str) -> MCPSession | None:
+        """Retrieve a session by ID, returning None if expired or not found."""
         stmt = select(MCPSession).where(MCPSession.session_id == session_id)
         result = await self.db.execute(stmt)
         session = result.scalar_one_or_none()
@@ -190,6 +203,11 @@ class MCPSessionManager:
         return session
 
     async def update_session_data(self, session_id: str, data: dict[str, Any], merge: bool = True) -> bool:
+        """Update the JSON session_data blob for a session.
+
+        When merge is True (default), new keys are merged into existing data.
+        When False, the entire blob is replaced.
+        """
         session = await self.get_session(session_id)
         if not session:
             return False
@@ -208,6 +226,10 @@ class MCPSessionManager:
         return True
 
     async def cleanup_expired_sessions(self) -> int:
+        """Delete sessions inactive beyond SESSION_CLEANUP_THRESHOLD_HOURS.
+
+        Returns the number of sessions removed.
+        """
         threshold = datetime.now(timezone.utc) - timedelta(hours=self.SESSION_CLEANUP_THRESHOLD_HOURS)
 
         stmt = delete(MCPSession).where(MCPSession.last_accessed < threshold)
@@ -222,6 +244,7 @@ class MCPSessionManager:
         return count
 
     async def delete_session(self, session_id: str) -> bool:
+        """Delete a specific session by ID. Returns True if a session was removed."""
         stmt = delete(MCPSession).where(MCPSession.session_id == session_id)
         result = await self.db.execute(stmt)
         await self.db.commit()

@@ -48,14 +48,10 @@
                 <pre class="text-caption"><code>{
   "mcpServers": {
     "giljo-mcp": {
-      "url": "http://your-server-ip:7272",
-      "apiKey": "{your-api-key-here}",
-      "description": "GiljoAI Agent Orchestration MCP Server",
-      "capabilities": [
-        "agent_coordination",
-        "context_sharing",
-        "memory_persistence"
-      ]
+      "httpUrl": "http://your-server-ip:7272/mcp",
+      "headers": {
+        "X-API-Key": "your-api-key-here"
+      }
     }
   }
 }</code></pre>
@@ -74,7 +70,7 @@
             </v-card>
 
             <p class="text-body-2">
-              Replace <code>{your-api-key-here}</code> with your actual API key from your user
+              Replace <code>your-api-key-here</code> with your actual API key from your user
               profile.
             </p>
           </v-window-item>
@@ -122,14 +118,10 @@ const copyConfig = () => {
   const config = `{
   "mcpServers": {
     "giljo-mcp": {
-      "url": "http://your-server-ip:7272",
-      "apiKey": "{your-api-key-here}",
-      "description": "GiljoAI Agent Orchestration MCP Server",
-      "capabilities": [
-        "agent_coordination",
-        "context_sharing",
-        "memory_persistence"
-      ]
+      "httpUrl": "http://your-server-ip:7272/mcp",
+      "headers": {
+        "X-API-Key": "your-api-key-here"
+      }
     }
   }
 }`
@@ -162,36 +154,17 @@ Add to your Gemini CLI settings.json file:
 {
   "mcpServers": {
     "giljo-mcp": {
-      "url": "http://your-server-ip:7272",
-      "apiKey": "YOUR_API_KEY_HERE",
-      "description": "GiljoAI Agent Orchestration MCP Server",
-      "capabilities": [
-        "agent_coordination",
-        "context_sharing",
-        "memory_persistence"
-      ]
+      "httpUrl": "http://your-server-ip:7272/mcp",
+      "headers": {
+        "X-API-Key": "YOUR_API_KEY_HERE"
+      }
     }
   }
 }
 
-## Sub-Agent Workflow
-1. Gemini CLI spawns specialized sub-agents for different tasks
-2. GiljoAI MCP coordinates agent state and memory
-3. Enhanced reasoning with multi-modal capabilities
-4. Context sharing enables seamless handoffs
-5. context prioritization and orchestration through intelligent coordination
-
-## Multi-Modal Features
-- Code analysis with visual diagrams
-- Image processing for UI development
-- Document analysis and generation
-- Advanced reasoning capabilities
-
 ## Verification
 - Restart Gemini CLI
-- Verify GiljoAI MCP connection
-- Test sub-agent coordination
-- Validate multi-modal capabilities
+- Verify GiljoAI MCP connection with: gemini mcp list
 
 ## Support
 Visit your GiljoAI dashboard for additional configuration help.`
