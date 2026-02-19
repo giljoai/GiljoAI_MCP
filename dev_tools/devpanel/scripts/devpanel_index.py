@@ -4,7 +4,7 @@ DevPanel Indexer (Phase 1001)
 
 Generates machine-readable inventories for the Developer Panel without modifying the main app:
 - api_catalog.json: FastAPI routes, methods, tags, summaries
-- mcp_tool_catalog.json: from api/endpoints/mcp_tools.list_mcp_tools()
+- mcp_tool_catalog.json: MCP tool catalog (source removed in Handover 0489)
 - db_schema.json: SQLAlchemy models (tables, columns, FKs, indexes)
 - agent_template_catalog.json: Template defaults + metadata
 - tech_stack.json: Backend/frontend dependencies + deprecations
