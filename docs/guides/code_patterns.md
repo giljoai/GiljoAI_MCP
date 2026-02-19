@@ -538,7 +538,7 @@ async def download_unix_installer(
     Generate macOS/Linux .sh installer with embedded credentials.
     
     This endpoint generates a Unix shell script that:
-    - Auto-detects MCP-compatible tools (Claude Code, Cursor, Windsurf)
+    - Auto-detects MCP-compatible tools (Claude Code, Windsurf)
     - Configures them with the user's server URL and API key
     - Creates backups before modifying config files
     - Provides detailed installation feedback

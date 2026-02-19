@@ -31,6 +31,8 @@ Example Usage (Claude Code):
       --header "X-API-Key: gk_YOUR_API_KEY_HERE"
 """
 
+import inspect
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -40,6 +42,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_db_session
+from src.giljo_mcp.exceptions import ValidationError
+from src.giljo_mcp.services.silence_detector import auto_clear_silent
 
 from .mcp_session import MCPSessionManager
 
@@ -73,8 +77,6 @@ def validate_and_override_tenant_key(
     Returns:
         Modified arguments with session tenant_key (for tools that need it)
     """
-    import inspect
-
     # Check if tool accepts tenant_key by inspecting its signature
     accepts_tenant_key = False
     if tool_func is not None:
@@ -781,7 +783,7 @@ async def handle_tools_call(
     if not session:
         raise HTTPException(status_code=401, detail="Session expired")
 
-    # Get tool_accessor from app state
+    # Get tool_accessor from app state (inline import to avoid circular dependency with api.app)
     from api.app import state
 
     if not state.tool_accessor:
@@ -911,8 +913,6 @@ async def handle_tools_call(
         job_id = arguments.get("job_id") or arguments.get("agent_job_id")
         if job_id and state.websocket_manager:
             try:
-                from src.giljo_mcp.services.silence_detector import auto_clear_silent
-
                 async with state.db_manager.get_session_async() as silence_session:
                     await auto_clear_silent(
                         session=silence_session,
@@ -924,20 +924,14 @@ async def handle_tools_call(
 
         # Return result in MCP format
         # Convert result to JSON string for proper formatting
-        import json
-
-        from pydantic import BaseModel as PydanticBaseModel
-
         # Handover 0731c: Convert Pydantic models to dicts for JSON serialization
-        serializable_result = result.model_dump() if isinstance(result, PydanticBaseModel) else result
+        serializable_result = result.model_dump() if isinstance(result, BaseModel) else result
         result_text = json.dumps(serializable_result, indent=2, ensure_ascii=False)
 
         return {"content": [{"type": "text", "text": result_text}], "isError": False}
 
     except Exception as e:
         # Suppress expected validation errors from console logs (they're returned to agent)
-        from src.giljo_mcp.exceptions import ValidationError
-
         if isinstance(e, ValidationError) and "COMPLETION_BLOCKED" in str(e):
             # This is expected behavior - agent tried to complete without finishing TODOs
             # Log at DEBUG level instead of ERROR to avoid console pollution
@@ -1040,8 +1034,6 @@ async def mcp_endpoint(
         return JSONRPCErrorResponse(
             error=JSONRPCError(code=-32603, message=e.detail, data={"status_code": e.status_code}), id=rpc_request.id
         )
-    except Exception as e:
-        logger.error(f"MCP endpoint error: {e}", exc_info=True)
-        return JSONRPCErrorResponse(
-            error=JSONRPCError(code=-32603, message=f"Internal error: {e!s}"), id=rpc_request.id
-        )
+    except Exception:
+        logger.exception("Unexpected MCP endpoint error")
+        return JSONRPCErrorResponse(error=JSONRPCError(code=-32603, message="Internal server error"), id=rpc_request.id)

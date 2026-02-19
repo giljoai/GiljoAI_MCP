@@ -44,9 +44,6 @@ dependencies = [
     "python-multipart>=0.0.6",
     "PyJWT>=2.8.0",
 
-    # MCP SDK (Model Context Protocol)
-    "mcp==1.12.3",
-
     # Core Utilities
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0.0",
