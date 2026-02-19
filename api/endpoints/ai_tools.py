@@ -69,25 +69,19 @@ def get_claude_code_config(server_url: str, api_key: str) -> str:
 
 def get_codex_config(server_url: str, api_key: str) -> str:
     """
-    Generate Codex CLI TOML configuration block.
+    Generate Codex CLI command using --bearer-token-env-var.
 
-    Codex CLI does not support a --header flag, so the config must be
-    added to ~/.codex/config.toml manually.
+    The server accepts Authorization: Bearer as a fallback to X-API-Key,
+    so we can use Codex CLI's native --bearer-token-env-var flag.
 
     Args:
         server_url: GiljoAI server URL
         api_key: User's API key
 
     Returns:
-        TOML configuration block for ~/.codex/config.toml
+        Shell commands to export the key and register the MCP server
     """
-    return (
-        f"# Add to ~/.codex/config.toml\n"
-        f"experimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions\n\n"
-        f"[mcp_servers.giljo-mcp]\n"
-        f'url = "{server_url}/mcp"\n'
-        f'http_headers = {{ "X-API-Key" = "{api_key}" }}'
-    )
+    return f"codex mcp add giljo-mcp --url {server_url}/mcp --bearer-token-env-var GILJO_API_KEY"
 
 
 def get_gemini_config(server_url: str, api_key: str) -> str:
@@ -127,9 +121,9 @@ def get_http_tool_instructions(tool_id: str) -> list[str]:
         ]
     if tool_id == "codex":
         return [
-            "Open ~/.codex/config.toml (create it if it does not exist)",
-            "Paste the TOML configuration block shown above",
-            "Replace the API key placeholder with your actual key",
+            "Run the export command to set your API key as an environment variable",
+            "Run the codex mcp add command to register the MCP server",
+            "The --bearer-token-env-var flag tells Codex to read the key from the environment",
             "Restart Codex CLI to pick up the new configuration",
             "Verify connection with: codex mcp list",
         ]
@@ -163,7 +157,7 @@ async def list_supported_tools():
             supported=True,
         ),
         AIToolInfo(
-            id="codex", name="Codex CLI", config_format="toml", file_location="~/.codex/config.toml", supported=True
+            id="codex", name="Codex CLI", config_format="command", file_location="Terminal/PowerShell", supported=True
         ),
         AIToolInfo(
             id="gemini", name="Gemini CLI", config_format="command", file_location="Terminal/PowerShell", supported=True
@@ -229,8 +223,8 @@ async def generate_ai_tool_config(
         },
         "codex": {
             "generator": get_codex_config,
-            "format": "toml",
-            "file_location": "~/.codex/config.toml",
+            "format": "command",
+            "file_location": "Terminal/PowerShell",
             "filename": "giljo-codex-setup.md",
         },
         "gemini": {
