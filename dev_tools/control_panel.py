@@ -700,22 +700,29 @@ class GiljoDevControlPanel:
             "Expected one of:\n" + "\n".join(str(path) for path in candidates)
         )
 
-    def _is_port_available(self, port: int) -> bool:
+    def _is_service_listening(self, port: int) -> bool:
         """
-        Check if a port is available for binding.
+        Check if a service is actively listening on the given port.
+
+        Uses socket.connect_ex() which works reliably across Windows, Linux,
+        and macOS regardless of which interface (0.0.0.0 vs 127.0.0.1) the
+        service binds to. This avoids the Windows-specific issue where
+        socket.bind("127.0.0.1", port) succeeds even when another process
+        is bound to 0.0.0.0:port.
 
         Args:
             port: Port number to check
 
         Returns:
-            True if port is available, False if already in use
+            True if a service is listening, False otherwise
         """
         import socket
 
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(("127.0.0.1", port))
-                return True
+                s.settimeout(1)
+                result = s.connect_ex(("127.0.0.1", port))
+                return result == 0
         except OSError:
             return False
 
@@ -909,8 +916,8 @@ class GiljoDevControlPanel:
             # Wait for processes to die
             time.sleep(1)
 
-            # Verify port is now free
-            if self._is_port_available(port):
+            # Verify port is now free (connect-based check)
+            if not self._is_service_listening(port):
                 # Success! Port is free
                 if pids_killed_this_round:
                     print(f"Port {port} cleared after round {round_num + 1} (killed PIDs: {pids_killed_this_round})")
@@ -929,8 +936,8 @@ class GiljoDevControlPanel:
         """Check what's running on port 7272 and scan ALL 72xxx ports."""
         port = 7272
 
-        # Check specific port
-        port_available = self._is_port_available(port)
+        # Check specific port (connect-based, reliable on all OSes)
+        port_available = not self._is_service_listening(port)
         pid = self._find_process_on_port(port)
 
         # Scan ALL 72xxx ports
@@ -964,8 +971,8 @@ class GiljoDevControlPanel:
         """Check what's running on port 7274 and scan ALL 72xxx ports."""
         port = 7274
 
-        # Check specific port
-        port_available = self._is_port_available(port)
+        # Check specific port (connect-based, reliable on all OSes)
+        port_available = not self._is_service_listening(port)
         pid = self._find_process_on_port(port)
 
         # Scan ALL 72xxx ports
@@ -1001,14 +1008,17 @@ class GiljoDevControlPanel:
             messagebox.showinfo("Already Running", "Backend service is already running.")
             return
 
+        # Also check port directly (covers macOS where process ref is None)
+        api_port = 7272
+        if self.config:
+            api_port = self.config.get("services", {}).get("api", {}).get("port", 7272)
+        if self._is_service_listening(api_port):
+            messagebox.showinfo("Already Running", f"Backend is already listening on port {api_port}.")
+            return
+
         self.update_status_message("Starting backend service in terminal window...")
 
         try:
-            # Get API port from config
-            api_port = 7272
-            if self.config:
-                api_port = self.config.get("services", {}).get("api", {}).get("port", 7272)
-
             # Check if api/run_api.py exists
             api_script = self.project_root / "api" / "run_api.py"
             if not api_script.exists():
@@ -1024,14 +1034,13 @@ class GiljoDevControlPanel:
             )
 
             # Wait for API to start listening on port.
-            # On Windows, cmd /k keeps the terminal open on error so the user can read it.
-            # On Linux, gnome-terminal stays open naturally.
-            # Port check is the only cross-platform reliable signal.
+            # Uses connect() instead of bind() for detection - bind("127.0.0.1")
+            # can falsely succeed on Windows when a service binds to 0.0.0.0.
             self.update_status_message(f"Waiting for backend on port {api_port}...")
             started = False
             for _ in range(30):  # Wait up to 15 seconds
                 time.sleep(0.5)
-                if not self._is_port_available(api_port):
+                if self._is_service_listening(api_port):
                     started = True
                     break
 
@@ -1097,8 +1106,8 @@ class GiljoDevControlPanel:
             # Strict port enforcement - MUST use port 7274
             frontend_port = 7274
 
-            # Check if port 7274 is available
-            if not self._is_port_available(frontend_port):
+            # Check if port 7274 is in use (connect-based, reliable on all OSes)
+            if self._is_service_listening(frontend_port):
                 # Port is in use - check if we can find the process
                 existing_pid = self._find_process_on_port(frontend_port)
 
@@ -1116,8 +1125,8 @@ class GiljoDevControlPanel:
                         self._kill_process(existing_pid)
                         time.sleep(1)  # Wait for port to be released
 
-                        # Re-check port availability
-                        if not self._is_port_available(frontend_port):
+                        # Re-check if service is still listening
+                        if self._is_service_listening(frontend_port):
                             messagebox.showerror(
                                 "Port Still In Use",
                                 f"Port {frontend_port} is still in use after killing process.\n\n"
@@ -1196,14 +1205,13 @@ class GiljoDevControlPanel:
             )
 
             # Wait for frontend to start listening on port.
-            # On Windows, cmd /k keeps the terminal open on error so the user can read it.
-            # On Linux, gnome-terminal stays open naturally.
-            # Port check is the only cross-platform reliable signal.
+            # Uses connect() instead of bind() for detection - bind("127.0.0.1")
+            # can falsely succeed on Windows when a service binds to 0.0.0.0.
             self.update_status_message(f"Waiting for frontend on port {frontend_port}...")
             started = False
             for _ in range(30):  # Wait up to 15 seconds (Vite is slow on Windows)
                 time.sleep(0.5)
-                if not self._is_port_available(frontend_port):
+                if self._is_service_listening(frontend_port):
                     started = True
                     break
 
