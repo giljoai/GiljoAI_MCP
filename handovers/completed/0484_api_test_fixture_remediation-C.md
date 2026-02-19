@@ -5,7 +5,7 @@
 **To Agent:** tdd-implementor
 **Priority:** High
 **Estimated Complexity:** 3-5 hours
-**Status:** Not Started
+**Status:** Completed
 
 ## Task Summary
 
@@ -207,3 +207,29 @@ python run_tests.py tests/e2e/ --no-cov
 python run_tests.py tests/integration/ --no-cov --timeout 60
 python run_tests.py --no-cov --suite-timeout 600
 ```
+
+---
+
+## Implementation Summary
+
+### 2026-02-18 - Completed
+**Implementation commit:** `452f9635` - "fix: remediate test fixtures for dual-model and JSONB cleanup (Handover 0484)"
+
+**What was done:**
+- Fixed dual-model violations in 4 files: e2e tests, base fixtures, closeout fixtures
+- Removed all `AgentExecution.messages` JSONB references from 6 test files
+- Rewrote `test_message_counter_persistence.py` and `test_websocket_unified_platform.py` to use counter columns
+- Fixed cascade test (`test_project_deletion_cascade.py`) to preserve hierarchy validation without JSONB
+- Deleted `test_job_execution_integration.py` (functionality covered by counter persistence tests)
+
+**Files modified (8):**
+- `tests/e2e/test_claude_code_mode_workflow.py`
+- `tests/e2e/test_multi_terminal_mode_workflow.py`
+- `tests/fixtures/base_test.py`
+- `tests/fixtures/e2e_closeout_fixtures.py`
+- `tests/integration/test_message_counter_persistence.py`
+- `tests/integration/test_project_deletion_cascade.py`
+- `tests/integration/test_websocket_unified_platform.py`
+- `tests/models/test_job_execution_integration.py` (deleted)
+
+**Impact:** -182 lines net (974 added, 1156 removed). All success criteria met.
