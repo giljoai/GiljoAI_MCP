@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-19 (0489 merged with 0397, 0484/0495 completed)
+**Last Updated:** 2026-02-19 (0489 completed, 0397 merged+retired, 0484/0495 completed)
 
 ---
 
@@ -61,7 +61,7 @@
 | 0464 | Empty State API Resilience | Ready | Medium | - |
 | **0486** | **Continuation Workflow Enhancements** | **Ready** | **HIGH** | Job reactivation, mission versioning, todo append |
 | **0488** | **Staging Broadcast Response Enforcement** | **Ready** | **HIGH** | STOP directive for staging completion |
-| **0489** | **MCP Config Revamp, Proxy Retirement & Backend Cleanup** | **Ready** | **HIGH** | Merged 0397+0489: config generators, Cursor removal, proxy cleanup, mcp_tools.py auth |
+| ~~0489~~ | ~~MCP Config Revamp, Proxy Retirement & Backend Cleanup~~ | **COMPLETE** | - | Merged 0397+0489. Completed 2026-02-19 (3 commits, 19 files, -924 lines) |
 | ~~0492~~ | ~~API Key Security Hardening~~ | **COMPLETE** | - | Moved to completed/ |
 | 0732 | API Consistency Fixes | Ready | Low | Minor API polish from 0725 audit |
 
@@ -142,6 +142,7 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0489 | MCP Config Revamp, Proxy Retirement & Backend Cleanup | **COMPLETE** (2026-02-19) |
 | 0495 | Fix API Test Suite Hang (TRUNCATE->DELETE) | **COMPLETE** (2026-02-18) |
 | 0484 | Test Fixture Remediation (Dual-Model & JSONB) | **COMPLETE** (2026-02-18) |
 | 0492 | API Key Security Hardening | **COMPLETE** (2026-02-13) |
