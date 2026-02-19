@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-13 (0492 API Key Security Hardening completed)
+**Last Updated:** 2026-02-18 (0054 Auth Default Tenant Key Hardening completed)
 
 ---
 
@@ -392,7 +392,7 @@ completed/reference/
 
 ### Used Numbers by Range (Full Inventory)
 
-**0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0053, 0060-0067, 0069-0096, 0100
+**0001-0100** (Foundation): 0001-0020, 0022-0032, 0034-0054, 0060-0067, 0069-0096, 0100
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0397
@@ -417,7 +417,7 @@ completed/reference/
 - **0413, 0418, 0435-0439**: Gaps in 0401-0500 range
 - **0441-0449, 0454-0459, 0465-0469, 0471-0479, 0493-0499**: Additional 0401-0500 gaps
 - **0259, 0277, 0290**: Gaps in 0201-0300 range
-- **0021, 0033, 0039, 0054-0059, 0068, 0097-0099**: Gaps in 0001-0100 range
+- **0021, 0033, 0039, 0055-0059, 0068, 0097-0099**: Gaps in 0001-0100 range (0054 filled)
 - **0133-0134**: Gaps in 0101-0200 range
 
 ### Naming Format
