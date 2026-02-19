@@ -106,11 +106,6 @@ class TestWindowsTemplateSyntax:
         """Test template detects Claude Code config"""
         assert "%APPDATA%\\.claude.json" in windows_template, "Must detect Claude Code at %APPDATA%\\.claude.json"
 
-    def test_cursor_detection(self, windows_template):
-        """Test template detects Cursor config"""
-        assert "Cursor" in windows_template, "Must detect Cursor"
-        assert "globalStorage" in windows_template, "Must check Cursor globalStorage path"
-
     def test_windsurf_detection(self, windows_template):
         """Test template detects Windsurf config"""
         assert "Windsurf" in windows_template, "Must detect Windsurf"
@@ -158,13 +153,6 @@ class TestUnixTemplateSyntax:
         """Test template detects Claude Code config"""
         assert "~/.claude.json" in unix_template or "$HOME/.claude.json" in unix_template, (
             "Must detect Claude Code at ~/.claude.json"
-        )
-
-    def test_cursor_detection_linux(self, unix_template):
-        """Test template detects Cursor on Linux"""
-        assert "Cursor" in unix_template, "Must detect Cursor"
-        assert ".config/Cursor" in unix_template or "Library/Application Support/Cursor" in unix_template, (
-            "Must check Linux or macOS Cursor paths"
         )
 
     def test_windsurf_detection(self, unix_template):

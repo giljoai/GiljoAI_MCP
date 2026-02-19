@@ -157,7 +157,6 @@ function detectAITool() {
   const ua = navigator.userAgent || ''
 
   if (/Claude/i.test(ua)) return 'claude'
-  if (/Cursor/i.test(ua)) return 'cursor'
   if (/Codex|GitHub/i.test(ua)) return 'codex'
   if (/Gemini|Google/i.test(ua)) return 'gemini'
   return 'claude'
@@ -174,7 +173,6 @@ const aiTools = [
   { name: 'Claude Code', value: 'claude' },
   { name: 'Codex CLI', value: 'codex' },
   { name: 'Gemini Code Assist', value: 'gemini' },
-  { name: 'Cursor', value: 'cursor' },
 ]
 
 const detectedToolName = computed(
@@ -191,7 +189,6 @@ const toolLogo = computed(() => {
     claude: '/claude_pix.svg',
     codex: '/icons/codex_mark.svg',
     gemini: '/gemini-icon.svg',
-    cursor: '/claude_pix.svg', // Using Claude pix for Cursor too
   }
   return logos[selectedTool.value] || logos.claude
 })
@@ -201,7 +198,6 @@ function makeKeyName(tool) {
     claude: 'Claude Code',
     codex: 'Codex CLI',
     gemini: 'Gemini',
-    cursor: 'Cursor',
   }
   return `${map[tool] || 'AI Tool'} prompt key`
 }
@@ -235,20 +231,14 @@ function claudePrompt(serverUrl, apiKey) {
 }
 
 function codexPrompt(serverUrl, apiKey) {
-  // StdIO proxy with env managed by Codex (no shell restart required)
-  // Proxy module is provided by the giljo-mcp wheel installed via pip.
-  return `codex mcp add giljo-mcp --env GILJO_MCP_SERVER_URL="${serverUrl}" --env GILJO_API_KEY="${apiKey}" -- python -m giljo_mcp.mcp_http_stdin_proxy`
+  // Codex CLI does not support --header flag. Generate TOML config block.
+  // experimental_use_rmcp_client may be needed on older Codex versions for HTTP transport.
+  return `# Add to ~/.codex/config.toml\nexperimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions\n\n[mcp_servers.giljo-mcp]\nurl = "${serverUrl}/mcp"\nhttp_headers = { "X-API-Key" = "${apiKey}" }`
 }
 
 function geminiPrompt(serverUrl, apiKey) {
   // HTTP transport with explicit header; order is <name> <url>
   return `gemini mcp add -t http -H "X-API-Key: ${apiKey}" giljo-mcp ${serverUrl}/mcp`
-}
-
-function cursorPrompt(serverUrl, apiKey) {
-  // Cursor needs manual config, so just return the values
-  return `Base URL: ${serverUrl}/mcp
-API Key: ${apiKey}`
 }
 
 function buildPromptFor(tool, serverUrl, apiKey) {
@@ -259,8 +249,6 @@ function buildPromptFor(tool, serverUrl, apiKey) {
       return codexPrompt(serverUrl, apiKey)
     case 'gemini':
       return geminiPrompt(serverUrl, apiKey)
-    case 'cursor':
-      return cursorPrompt(serverUrl, apiKey)
     default:
       return `Use these values with your tool:\n- Base URL: ${serverUrl}\n- Header: X-API-Key: ${apiKey}`
   }

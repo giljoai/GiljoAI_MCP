@@ -227,10 +227,10 @@ async def download_windows_installer(current_user: Optional[User] = Depends(get_
     # Get organization name or default to "Personal"
     organization = current_user.organization.name if current_user.organization else "Personal"
 
-    # Get or create API key for user
-    # For now, assume user has api_key attribute (Phase 1 implementation)
-    # TODO: Query from APIKey table if needed
-    api_key = getattr(current_user, "api_key", f"gk_{current_user.username}_default")
+    # API keys are stored hashed in the APIKey table and cannot be recovered.
+    # The installer template uses a placeholder that the user replaces with
+    # their actual key from the dashboard API Keys page.
+    api_key = "<YOUR_API_KEY>"
 
     # Render template
     try:
@@ -295,8 +295,8 @@ async def download_unix_installer(current_user: Optional[User] = Depends(get_cur
     # Get organization name or default to "Personal"
     organization = current_user.organization.name if current_user.organization else "Personal"
 
-    # Get or create API key for user
-    api_key = getattr(current_user, "api_key", f"gk_{current_user.username}_default")
+    # API keys are hashed and cannot be recovered from the database.
+    api_key = "<YOUR_API_KEY>"
 
     # Render template
     try:
@@ -321,42 +321,6 @@ async def download_unix_installer(current_user: Optional[User] = Depends(get_cur
         content=script_content,
         media_type="application/x-sh",
         headers={"Content-Disposition": "attachment; filename=giljo-mcp-setup.sh"},
-    )
-
-
-@router.get("/proxy-wheel", tags=["MCP Integration"])
-async def download_proxy_wheel(current_user: Optional[User] = Depends(get_current_user)):
-    """
-    Download the GiljoAI MCP proxy wheel for Codex integration.
-
-    This endpoint serves the built wheel from the local dist/ directory.
-    It assumes the wheel has been built during release packaging.
-    """
-    if current_user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required for MCP proxy download",
-        )
-
-    project_root = Path(__file__).parent.parent.parent
-    dist_dir = project_root / "dist"
-
-    # NOTE: Keep this in sync with the version in pyproject.toml / build pipeline.
-    wheel_name = "giljo_mcp-1.0.2-py3-none-any.whl"
-    wheel_path = dist_dir / wheel_name
-
-    if not wheel_path.exists():
-        logger.error(f"MCP proxy wheel not found at: {wheel_path}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="MCP proxy package is not available on the server. Please contact the administrator.",
-        )
-
-    content = wheel_path.read_bytes()
-    return Response(
-        content=content,
-        media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{wheel_name}"'},
     )
 
 

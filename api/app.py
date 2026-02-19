@@ -82,7 +82,6 @@ try:
         git,
         mcp_http,
         mcp_installer,
-        mcp_tools,
         messages,
         network,
         products,
@@ -443,9 +442,6 @@ def create_app() -> FastAPI:
 
     # MCP Installer endpoints for downloadable script generation (Phase 2.1)
     app.include_router(mcp_installer.router, prefix="/api/mcp-installer", tags=["MCP Integration"])
-
-    # MCP tool endpoints for stdio-to-HTTP bridge
-    app.include_router(mcp_tools.router, prefix="/mcp/tools", tags=["mcp_tools"])
 
     # Pure MCP JSON-RPC 2.0 over HTTP endpoint (Handover 0032)
     app.include_router(mcp_http.router, tags=["mcp"])

@@ -168,9 +168,6 @@
             <!-- Claude Code Agent Export -->
             <ClaudeCodeExport />
 
-            <!-- Codex CLI Integration -->
-            <CodexCliIntegration />
-
             <!-- Serena MCP Integration (Handover 0277: Simplified to toggle only) -->
             <SerenaIntegrationCard
               :enabled="serenaEnabled"
@@ -214,7 +211,6 @@ import { useWebSocketV2 } from '@/composables/useWebSocket'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
-import CodexCliIntegration from '@/components/CodexCliIntegration.vue'
 import SlashCommandSetup from '@/components/SlashCommandSetup.vue'
 import GitAdvancedSettingsDialog from '@/components/GitAdvancedSettingsDialog.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
