@@ -18,37 +18,55 @@ from passlib.hash import bcrypt
 from sqlalchemy import text
 
 
+# Override parent conftest autouse fixtures that open db_session transactions.
+# API tests use db_manager directly via their own fixtures (api_client, auth_headers)
+# and don't need the agent_coordination/project_tools/context module injections.
+# These open transactions cause deadlocks with the cleanup fixture (Handover 0495).
 @pytest_asyncio.fixture(scope="function", autouse=True)
-async def cleanup_api_test_data(db_manager):
-    """
-    Cleanup fixture that truncates all tables before each API test.
+async def setup_agent_coordination():
+    """No-op override for API tests (parent conftest opens db_session transactions)."""
+    yield
 
-    This prevents test pollution where data from one test affects another.
-    Runs automatically before each test in the api/ directory.
 
-    Uses TRUNCATE CASCADE for fast cleanup while respecting FK constraints.
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def setup_project_tools():
+    """No-op override for API tests (parent conftest opens db_session transactions)."""
+    yield
+
+
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def setup_context_module():
+    """No-op override for API tests (parent conftest opens db_session transactions)."""
+    yield
+
+
+@pytest_asyncio.fixture(scope="function")
+async def clean_db(db_manager):
     """
-    # Cleanup BEFORE test runs (ensures clean slate)
+    Opt-in cleanup fixture that deletes all table data before a test.
+
+    Uses DELETE in FK-reverse order (child tables first) to respect foreign
+    key constraints. Replaces the original autouse TRUNCATE CASCADE which
+    required exclusive table locks and deadlocked on stale connections from
+    killed test runs (Handover 0495).
+
+    Tests that need a clean database should explicitly request this fixture:
+        async def test_something(api_client, clean_db):
+            ...
+
+    Non-DB tests (e.g., Pydantic validation) skip this entirely and avoid
+    the overhead of creating a database connection pool.
+    """
     async with db_manager.get_session_async() as session:
         try:
-            # Get all table names from metadata
             from src.giljo_mcp.models import Base
-            table_names = [table.name for table in Base.metadata.sorted_tables]
-
-            if table_names:
-                # Disable FK checks, truncate all, re-enable
-                await session.execute(text("SET session_replication_role = 'replica'"))
-                for table_name in table_names:
-                    await session.execute(text(f"TRUNCATE TABLE {table_name} CASCADE"))
-                await session.execute(text("SET session_replication_role = 'origin'"))
-                await session.commit()
+            for table in reversed(Base.metadata.sorted_tables):
+                await session.execute(text(f"DELETE FROM {table.name}"))
+            await session.commit()
         except Exception:
-            # If cleanup fails, rollback and continue - test isolation may be compromised
             await session.rollback()
 
-    yield  # Test runs here
-
-    # No post-test cleanup needed - next test will clean up before it runs
+    yield
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -269,8 +287,10 @@ async def admin_user(db_manager):
             org_id=org.id,
         )
         session.add(user)
+        await session.flush()  # Populate server-side defaults (id, created_at)
+        # Expunge before commit so object is usable outside session context
+        session.expunge(user)
         await session.commit()
-        await session.refresh(user)
         return user
 
 
