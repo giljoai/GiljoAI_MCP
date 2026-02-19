@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-18 (0054 Auth Default Tenant Key Hardening completed)
+**Last Updated:** 2026-02-19 (0489 merged with 0397, 0484/0495 completed)
 
 ---
 
@@ -52,7 +52,7 @@
 | 0373 | Template Adapter Migration | Ready | Medium | - |
 | 0374 | Vision Summary Field Migration | Ready | Medium | - |
 | 0382 | Orchestrator Prompt Improvements | Ready | Medium | - |
-| 0397 | Deprecate stdio Proxy for Codex Native HTTP | Ready | Medium | Codex v0.44.0+ supports native HTTP |
+| ~~0397~~ | ~~Deprecate stdio Proxy for Codex Native HTTP~~ | **MERGED** | - | Merged into 0489 (proxy already deleted by 0725b) |
 | 0408 | Serena Toggle Injection | Ready | Medium | - |
 | 0409 | Unified Client Quick Setup | Ready | Medium | - |
 | 0410 | Message Optimization & Agent Name Display | Ready | Medium | - |
@@ -61,7 +61,7 @@
 | 0464 | Empty State API Resilience | Ready | Medium | - |
 | **0486** | **Continuation Workflow Enhancements** | **Ready** | **HIGH** | Job reactivation, mission versioning, todo append |
 | **0488** | **Staging Broadcast Response Enforcement** | **Ready** | **HIGH** | STOP directive for staging completion |
-| **0489** | **Cleanup API MCP (CRITICAL)** | **Ready** | **CRITICAL** | mcp_http.py cleanup |
+| **0489** | **MCP Config Revamp, Proxy Retirement & Backend Cleanup** | **Ready** | **HIGH** | Merged 0397+0489: config generators, Cursor removal, proxy cleanup, mcp_tools.py auth |
 | ~~0492~~ | ~~API Key Security Hardening~~ | **COMPLETE** | - | Moved to completed/ |
 | 0732 | API Consistency Fixes | Ready | Low | Minor API polish from 0725 audit |
 
@@ -76,13 +76,14 @@
 > **Origin**: TinyContacts project trial (2026-02-05/06) identified gaps in continuation workflow
 > **Phases**: 5 implementation phases (P0: Job Reactivation, P1: Mission Versioning, P2: Todo/Duration, P5: Integration)
 
-### Test Suite & Remediation (0481-0484) - In Progress
+### Test Suite & Remediation (0481-0484) - Mostly Complete
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0481 | Test Remediation Session Summary | In Progress | Medium | 2 files with same number |
-| 0483 | Service Layer Bug Fixes | Ready | Medium | - |
-| 0484 | API Test Fixture Remediation | Ready | Medium | - |
+| 0483 | Service Layer Bug Fixes | **COMPLETE** | - | Moved to completed/ |
+| 0484 | API Test Fixture Remediation | **COMPLETE** | - | Moved to completed/ (2026-02-18) |
+| 0495 | Fix API Test Suite Hang | **COMPLETE** | - | Moved to completed/ (2026-02-18) |
 
 ### In Progress / Partial
 
@@ -141,6 +142,8 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0495 | Fix API Test Suite Hang (TRUNCATE->DELETE) | **COMPLETE** (2026-02-18) |
+| 0484 | Test Fixture Remediation (Dual-Model & JSONB) | **COMPLETE** (2026-02-18) |
 | 0492 | API Key Security Hardening | **COMPLETE** (2026-02-13) |
 | 0750a-d | Post-Cleanup Audit & Scrub Series | **COMPLETE** (2026-02-11) |
 | 0731a-d | Typed Service Returns Series | **COMPLETE** (2026-02-11) |
