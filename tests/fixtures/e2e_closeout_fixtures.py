@@ -16,6 +16,7 @@ import asyncio
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 
 # Add src to path for imports
@@ -27,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, Project, User
-from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -39,7 +40,7 @@ class E2ECloseoutFixtures:
     - Test user with known credentials
     - Test product (active)
     - Test project (active)
-    - 3 completed agent jobs
+    - 3 completed agent jobs with executions
     """
 
     # Test user credentials (consistent across tests)
@@ -77,7 +78,7 @@ class E2ECloseoutFixtures:
         # Create test project
         project = await self._create_test_project(session, tenant_key, product.id)
 
-        # Create 3 completed agents
+        # Create 3 completed agents (AgentJob + AgentExecution pairs)
         agents = await self._create_test_agents(session, tenant_key, project.id)
 
         await session.commit()
@@ -248,7 +249,7 @@ class E2ECloseoutFixtures:
         self, session: AsyncSession, tenant_key: str, project_id: str
     ) -> list[AgentExecution]:
         """
-        Create 3 completed test agents.
+        Create 3 completed test agents (AgentJob + AgentExecution pairs).
 
         Args:
             session: Database session
@@ -256,9 +257,9 @@ class E2ECloseoutFixtures:
             project_id: Project ID to associate with
 
         Returns:
-            list[AgentExecution]: List of created agent jobs
+            list[AgentExecution]: List of created agent executions
         """
-        agents = []
+        executions = []
         agent_configs = [
             {
                 "name": "Agent 1",
@@ -278,31 +279,44 @@ class E2ECloseoutFixtures:
         ]
 
         for config in agent_configs:
-            agent = AgentExecution(
+            # Create AgentJob (holds project_id and mission)
+            agent_job = AgentJob(
+                job_id=str(uuid4()),
                 tenant_key=tenant_key,
                 project_id=project_id,
+                job_type=config["type"],
+                mission=config["mission"],
+                status="completed",
+                created_at=datetime.now(timezone.utc),
+                completed_at=datetime.now(timezone.utc),
+            )
+            session.add(agent_job)
+            await session.flush()
+
+            # Create AgentExecution (FK to AgentJob)
+            execution = AgentExecution(
+                job_id=agent_job.job_id,
+                tenant_key=tenant_key,
                 agent_display_name=config["type"],
                 agent_name=config["name"],
-                mission=config["mission"],
-                status="complete",  # All agents marked as completed
+                status="complete",
                 progress=100,
-                created_at=datetime.now(timezone.utc),
                 started_at=datetime.now(timezone.utc),
                 completed_at=datetime.now(timezone.utc),
                 tool_type="claude-code",
                 health_status="healthy",
             )
 
-            session.add(agent)
-            agents.append(agent)
+            session.add(execution)
+            executions.append(execution)
 
-        await session.flush()  # Flush to get agent IDs
+        await session.flush()  # Flush to get execution IDs
 
-        print(f"[OK] Created {len(agents)} test agents:")
-        for agent in agents:
-            print(f"  - {agent.agent_name} ({agent.agent_display_name}) - Status: {agent.status}")
+        print(f"[OK] Created {len(executions)} test agents:")
+        for execution in executions:
+            print(f"  - {execution.agent_name} ({execution.agent_display_name}) - Status: {execution.status}")
 
-        return agents
+        return executions
 
     async def verify_fixtures(self, session: AsyncSession, tenant_key: str) -> bool:
         """
@@ -347,19 +361,35 @@ class E2ECloseoutFixtures:
             return False
         print(f"[OK] Project verified: {project.name}")
 
-        # Verify agents
-        stmt = select(AgentExecution).where(
-            AgentExecution.tenant_key == tenant_key,
-            AgentExecution.project_id == project.id,
-            AgentExecution.status == "complete",
+        # Verify agents via AgentJob -> AgentExecution chain
+        stmt = select(AgentJob).where(
+            AgentJob.tenant_key == tenant_key,
+            AgentJob.project_id == project.id,
+            AgentJob.status == "completed",
         )
         result = await session.execute(stmt)
-        agents = result.scalars().all()
+        jobs = result.scalars().all()
 
-        if len(agents) != 3:
-            print(f"[FAIL] Expected 3 agents, found {len(agents)}")
+        if len(jobs) != 3:
+            print(f"[FAIL] Expected 3 agent jobs, found {len(jobs)}")
             return False
-        print(f"[OK] Agents verified: {len(agents)} completed agents")
+
+        # Verify corresponding executions exist
+        execution_count = 0
+        for job in jobs:
+            stmt = select(AgentExecution).where(
+                AgentExecution.job_id == job.job_id,
+                AgentExecution.status == "complete",
+            )
+            result = await session.execute(stmt)
+            exec_result = result.scalar_one_or_none()
+            if exec_result:
+                execution_count += 1
+
+        if execution_count != 3:
+            print(f"[FAIL] Expected 3 completed executions, found {execution_count}")
+            return False
+        print(f"[OK] Agents verified: {len(jobs)} completed agent jobs with executions")
 
         print("\n=== All Fixtures Valid ===")
         return True
@@ -374,13 +404,21 @@ class E2ECloseoutFixtures:
         """
         print(f"\n=== Cleaning up fixtures for tenant: {tenant_key} ===")
 
-        # Delete agents
+        # Delete agent executions first (FK child of agent_jobs)
         stmt = select(AgentExecution).where(AgentExecution.tenant_key == tenant_key)
         result = await session.execute(stmt)
-        agents = result.scalars().all()
-        for agent in agents:
-            await session.delete(agent)
-        print(f"[OK] Deleted {len(agents)} agents")
+        executions = result.scalars().all()
+        for execution in executions:
+            await session.delete(execution)
+        print(f"[OK] Deleted {len(executions)} agent executions")
+
+        # Delete agent jobs (FK child of projects)
+        stmt = select(AgentJob).where(AgentJob.tenant_key == tenant_key)
+        result = await session.execute(stmt)
+        jobs = result.scalars().all()
+        for job in jobs:
+            await session.delete(job)
+        print(f"[OK] Deleted {len(jobs)} agent jobs")
 
         # Delete projects
         stmt = select(Project).where(Project.tenant_key == tenant_key)
