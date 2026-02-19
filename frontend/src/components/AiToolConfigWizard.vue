@@ -10,127 +10,128 @@
       <v-card-title class="d-flex align-center justify-space-between">
         <div class="d-flex align-center">
           <v-img src="/giljo_YW_Face.svg" width="32" height="32" class="mr-2" />
-          <span>AI Tool Configuration</span>
+          <span>MCP Configuration Tool</span>
         </div>
         <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="showWizard = false" />
       </v-card-title>
 
-      <!-- Quick Path -->
-      <v-card-text v-if="!showAdvanced">
-        <v-alert type="info" variant="tonal" class="mb-4">
-          Auto-detected settings from your browser
+      <v-card-text>
+        <!-- Tool Selection: Logo + Name + Radio -->
+        <v-radio-group v-model="selectedTool" inline class="tool-radios mb-2" hide-details @update:model-value="onToolChange">
+          <div v-for="tool in aiTools" :key="tool.value" class="tool-option text-center">
+            <v-img
+              :src="toolLogos[tool.value]"
+              width="36"
+              height="36"
+              class="mx-auto mb-1"
+              contain
+            />
+            <div class="text-caption mb-1">{{ tool.name }}</div>
+            <v-radio :value="tool.value" density="compact" />
+          </div>
+        </v-radio-group>
+
+        <v-divider class="mb-4" style="opacity: 0.3" />
+
+        <!-- Server Info (centered, inline edit) -->
+        <div class="d-flex align-center justify-center mb-1">
+          <v-expand-transition>
+            <v-row v-if="editingServer" dense class="server-edit-row" style="max-width: 420px">
+              <v-col cols="8">
+                <v-text-field
+                  v-model="serverIp"
+                  label="Hostname / IP"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="3">
+                <v-text-field
+                  v-model="serverPort"
+                  label="Port"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="1" class="d-flex align-center">
+                <v-btn icon="mdi-check" size="x-small" variant="text" @click="editingServer = false" />
+              </v-col>
+            </v-row>
+          </v-expand-transition>
+          <div v-if="!editingServer" class="d-flex align-center text-body-2">
+            <v-icon size="small" class="mr-2">mdi-server</v-icon>
+            <span>{{ buildServerUrl() }}</span>
+            <v-btn
+              icon="mdi-pencil-outline"
+              size="x-small"
+              variant="text"
+              class="ml-1"
+              @click="editingServer = true"
+            />
+          </div>
+        </div>
+
+        <v-divider class="mb-4 mt-2" style="opacity: 0.3" />
+
+        <!-- Error Alert -->
+        <v-alert v-if="errorMsg" type="error" variant="tonal" density="compact" class="mb-3" closable @click:close="errorMsg = ''">
+          {{ errorMsg }}
         </v-alert>
 
-        <v-list density="compact" class="mb-2">
-          <v-list-item>
-            <template #prepend>
-              <v-img :src="toolLogo" width="28" height="28" class="mr-2" contain />
-            </template>
-            <v-list-item-title>AI Tool: {{ detectedToolName }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <template #prepend><v-icon>mdi-server</v-icon></template>
-            <v-list-item-title>Server: {{ detectedServer }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
+        <!-- Generate Button (centered, default yellow) -->
+        <div class="d-flex justify-center mb-2">
+          <v-btn
+            :loading="busy"
+            color="primary"
+            prepend-icon="mdi-wand"
+            @click="generatePrompt"
+          >
+            Generate Configuration Prompt
+          </v-btn>
+        </div>
 
-        <v-btn
-          :loading="busy"
-          block
-          color="success"
-          prepend-icon="mdi-wand"
-          @click="generateQuickPrompt"
-        >
-          Generate Configuration Prompt
-        </v-btn>
-
-        <v-btn variant="text" block class="mt-2" @click="showAdvanced = true">
-          Customize Settings
-        </v-btn>
-
-        <div v-if="generatedPrompt" class="mt-6">
-          <v-alert type="info" class="mb-4">
-            Copy and paste this command in your terminal to configure {{ detectedToolName }}:
+        <!-- Generated Prompt Output -->
+        <div v-if="generatedPrompt" class="mt-4">
+          <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+            Copy and paste {{ selectedTool === 'codex' ? 'these commands' : 'this' }} in your terminal to configure {{ selectedToolName }}:
           </v-alert>
+
+          <!-- C+D) Codex: Platform selector + Environment Variable command -->
+          <template v-if="selectedTool === 'codex'">
+            <v-radio-group v-model="selectedPlatform" inline hide-details class="platform-radios mb-2">
+              <v-radio label="Windows" value="windows" density="compact" />
+              <v-radio label="Linux / macOS" value="unix" density="compact" />
+            </v-radio-group>
+            <v-textarea
+              :model-value="envVarCommand"
+              label="Environment Variable"
+              readonly
+              rows="1"
+              auto-grow
+              variant="outlined"
+              class="font-monospace no-resize mb-3"
+              append-inner-icon="mdi-content-copy"
+              :messages="copiedEnv ? 'Copied!' : ''"
+              @click:append-inner="copyEnvVar"
+            />
+          </template>
+
+          <!-- E) Configuration Command -->
           <v-textarea
             v-model="generatedPrompt"
             label="Configuration Command"
             readonly
-            rows="2"
+            rows="3"
+            auto-grow
             variant="outlined"
             class="font-monospace no-resize"
             append-inner-icon="mdi-content-copy"
-            :messages="
-              copied ? 'Command copied to clipboard!' : 'Click the copy icon to copy the command'
-            "
+            :messages="copied ? 'Copied!' : ''"
             @click:append-inner="copyPrompt"
           />
         </div>
-      </v-card-text>
-
-      <!-- Advanced Path -->
-      <v-card-text v-else>
-        <h3 class="text-h6 mb-3">Customize Configuration</h3>
-        <v-select
-          v-model="selectedTool"
-          :items="aiTools"
-          item-title="name"
-          item-value="value"
-          label="AI coding tool"
-          variant="outlined"
-          class="mb-3"
-        />
-
-        <v-row>
-          <v-col cols="12" md="8">
-            <v-text-field v-model="serverIp" label="Server Hostname or IP" variant="outlined" />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-text-field v-model="serverPort" label="Port" variant="outlined" />
-          </v-col>
-        </v-row>
-
-        <v-btn :loading="busy" color="primary" block class="mb-3" @click="generateApiKey">
-          Generate API Key for {{ selectedToolName }}
-        </v-btn>
-
-        <v-text-field
-          v-if="generatedKey"
-          v-model="generatedKey"
-          label="Generated API Key"
-          readonly
-          prepend-inner-icon="mdi-key"
-          variant="outlined"
-          class="mb-3"
-        />
-
-        <v-btn :disabled="!generatedKey" color="success" block @click="generateAdvancedPrompt">
-          Build Configuration Prompt
-        </v-btn>
-
-        <div v-if="generatedPrompt" class="mt-6">
-          <v-alert type="info" class="mb-4">
-            Copy and paste this command in your terminal to configure {{ detectedToolName }}:
-          </v-alert>
-          <v-textarea
-            v-model="generatedPrompt"
-            label="Configuration Command"
-            readonly
-            rows="2"
-            variant="outlined"
-            class="font-monospace no-resize"
-            append-inner-icon="mdi-content-copy"
-            :messages="
-              copied ? 'Command copied to clipboard!' : 'Click the copy icon to copy the command'
-            "
-            @click:append-inner="copyPrompt"
-          />
-        </div>
-
-        <v-divider class="my-4" />
-        <v-btn variant="text" block prepend-icon="mdi-arrow-left" @click="showAdvanced = false"
-          >Back</v-btn
-        >
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -141,29 +142,22 @@ import { ref, computed } from 'vue'
 import api from '@/services/api'
 
 const showWizard = ref(false)
-const showAdvanced = ref(false)
+const editingServer = ref(false)
 const busy = ref(false)
 const copied = ref(false)
+const copiedEnv = ref(false)
+const errorMsg = ref('')
+const selectedPlatform = ref('windows')
 
-// Detection
+// Server detection
 function detectServerInfo() {
   const hostname = window.location.hostname
-  // Prefer API port 7272 by default
   const port = '7272'
   return { hostname, port }
 }
 
-function detectAITool() {
-  const ua = navigator.userAgent || ''
-
-  if (/Claude/i.test(ua)) return 'claude'
-  if (/Codex|GitHub/i.test(ua)) return 'codex'
-  if (/Gemini|Google/i.test(ua)) return 'gemini'
-  return 'claude'
-}
-
 // State
-const selectedTool = ref(detectAITool())
+const selectedTool = ref('claude')
 const serverIp = ref(detectServerInfo().hostname)
 const serverPort = ref(detectServerInfo().port)
 const generatedKey = ref('')
@@ -172,26 +166,31 @@ const generatedPrompt = ref('')
 const aiTools = [
   { name: 'Claude Code', value: 'claude' },
   { name: 'Codex CLI', value: 'codex' },
-  { name: 'Gemini Code Assist', value: 'gemini' },
+  { name: 'Gemini CLI', value: 'gemini' },
 ]
 
-const detectedToolName = computed(
-  () => aiTools.find((t) => t.value === selectedTool.value)?.name || 'Claude Code',
-)
+const toolLogos = {
+  claude: '/claude_pix.svg',
+  codex: '/icons/codex_mark_white.svg',
+  gemini: '/gemini-icon.svg',
+}
+
 const selectedToolName = computed(
   () => aiTools.find((t) => t.value === selectedTool.value)?.name || 'AI Tool',
 )
-const detectedServer = computed(() => `${serverIp.value}:${serverPort.value}`)
 
-// Get the appropriate logo for the selected tool
-const toolLogo = computed(() => {
-  const logos = {
-    claude: '/claude_pix.svg',
-    codex: '/icons/codex_mark.svg',
-    gemini: '/gemini-icon.svg',
+const envVarCommand = computed(() => {
+  const key = generatedKey.value || 'YOUR_API_KEY'
+  if (selectedPlatform.value === 'windows') {
+    return `setx GILJO_API_KEY "${key}"`
   }
-  return logos[selectedTool.value] || logos.claude
+  return `export GILJO_API_KEY="${key}"`
 })
+
+function onToolChange() {
+  generatedPrompt.value = ''
+  errorMsg.value = ''
+}
 
 function makeKeyName(tool) {
   const map = {
@@ -203,21 +202,13 @@ function makeKeyName(tool) {
 }
 
 async function generateApiKey() {
+  const keyName = makeKeyName(selectedTool.value)
+  const resp = await api.apiKeys.create(keyName)
+  generatedKey.value = resp.data.api_key
   try {
-    busy.value = true
-    const keyName = makeKeyName(selectedTool.value)
-    const resp = await api.apiKeys.create(keyName)
-    // Backend returns APIKeyCreateResponse with 'api_key'
-    generatedKey.value = resp.data.api_key
-    try {
-      window.dispatchEvent(new CustomEvent('api-key-created', { detail: { name: keyName } }))
-    } catch (_) {
-      /* no-op */
-    }
-  } catch (e) {
-    console.error('[Wizard] Failed to generate API key', e)
-  } finally {
-    busy.value = false
+    window.dispatchEvent(new CustomEvent('api-key-created', { detail: { name: keyName } }))
+  } catch (_) {
+    /* no-op */
   }
 }
 
@@ -226,18 +217,16 @@ function buildServerUrl() {
 }
 
 function claudePrompt(serverUrl, apiKey) {
-  // Return ONLY the command - adds to user profile by default (available in all projects)
   return `claude mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
 }
 
-function codexPrompt(serverUrl, apiKey) {
-  // Codex CLI does not support --header flag. Generate TOML config block.
-  // experimental_use_rmcp_client may be needed on older Codex versions for HTTP transport.
-  return `# Add to ~/.codex/config.toml\nexperimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions\n\n[mcp_servers.giljo-mcp]\nurl = "${serverUrl}/mcp"\nhttp_headers = { "X-API-Key" = "${apiKey}" }`
+function codexPrompt(serverUrl) {
+  // Codex CLI reads bearer token from env var at runtime.
+  // Env var value shown separately in the UI alert above.
+  return `codex mcp add giljo-mcp --url ${serverUrl}/mcp --bearer-token-env-var GILJO_API_KEY`
 }
 
 function geminiPrompt(serverUrl, apiKey) {
-  // HTTP transport with explicit header; order is <name> <url>
   return `gemini mcp add -t http -H "X-API-Key: ${apiKey}" giljo-mcp ${serverUrl}/mcp`
 }
 
@@ -246,7 +235,7 @@ function buildPromptFor(tool, serverUrl, apiKey) {
     case 'claude':
       return claudePrompt(serverUrl, apiKey)
     case 'codex':
-      return codexPrompt(serverUrl, apiKey)
+      return codexPrompt(serverUrl)
     case 'gemini':
       return geminiPrompt(serverUrl, apiKey)
     default:
@@ -254,57 +243,39 @@ function buildPromptFor(tool, serverUrl, apiKey) {
   }
 }
 
-async function generateQuickPrompt() {
+async function generatePrompt() {
   try {
     busy.value = true
-    // Always generate a fresh key for quick prompt
+    errorMsg.value = ''
+    generatedPrompt.value = ''
     await generateApiKey()
     const serverUrl = buildServerUrl()
     generatedPrompt.value = buildPromptFor(selectedTool.value, serverUrl, generatedKey.value)
+  } catch (e) {
+    const msg = e?.response?.data?.message || e?.message || 'Failed to generate API key'
+    errorMsg.value = msg
+    console.error('[Wizard] Failed to generate API key', e)
   } finally {
     busy.value = false
   }
 }
 
-function generateAdvancedPrompt() {
-  const serverUrl = buildServerUrl()
-  generatedPrompt.value = buildPromptFor(selectedTool.value, serverUrl, generatedKey.value)
-}
-
-async function copyPrompt() {
+function copyPrompt() {
   const text = String(generatedPrompt.value || '').trim()
   if (!text) return
+  navigator.clipboard.writeText(text).then(() => {
+    copied.value = true
+    setTimeout(() => (copied.value = false), 3000)
+  })
+}
 
-  // Simple approach - just select the text in the textarea
-  try {
-    // Find the textarea and select its content
-    const textarea = document.querySelector('.font-monospace textarea')
-    if (textarea) {
-      textarea.focus()
-      textarea.select()
-
-      // Try to copy
-      const success = document.execCommand('copy')
-
-      if (success) {
-        copied.value = true
-        setTimeout(() => (copied.value = false), 3000)
-      } else {
-        // If copy fails, at least the text is selected for manual copy
-        copied.value = true
-        setTimeout(() => (copied.value = false), 3000)
-      }
-    }
-  } catch (e) {
-    // Fallback - just select the text for manual copy
-    const textarea = document.querySelector('.font-monospace textarea')
-    if (textarea) {
-      textarea.focus()
-      textarea.select()
-      copied.value = true
-      setTimeout(() => (copied.value = false), 3000)
-    }
-  }
+function copyEnvVar() {
+  const text = envVarCommand.value
+  if (!text) return
+  navigator.clipboard.writeText(text).then(() => {
+    copiedEnv.value = true
+    setTimeout(() => (copiedEnv.value = false), 3000)
+  })
 }
 
 // Expose method to programmatically open the wizard
@@ -316,6 +287,16 @@ defineExpose({
 </script>
 
 <style scoped>
+.tool-radios :deep(.v-selection-control-group) {
+  gap: 0;
+  justify-content: center;
+}
+
+.tool-option {
+  min-width: 120px;
+  padding: 8px 16px;
+}
+
 .font-monospace :deep(textarea) {
   font-family: 'Courier New', Courier, monospace !important;
   font-size: 14px !important;
@@ -323,5 +304,10 @@ defineExpose({
 
 .no-resize :deep(textarea) {
   resize: none !important;
+}
+
+.platform-radios :deep(.v-selection-control-group) {
+  gap: 10px;
+  justify-content: center;
 }
 </style>

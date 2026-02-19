@@ -361,6 +361,8 @@ class AuthService:
             async with self._get_session() as session:
                 return await self._create_api_key_impl(session, user_id, tenant_key, name, permissions)
 
+        except BaseGiljoError:
+            raise
         except Exception as e:
             self._logger.exception("Failed to create API key")
             raise BaseGiljoError(

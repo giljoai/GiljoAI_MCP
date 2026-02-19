@@ -14,7 +14,7 @@
       <v-card-text>
         <v-alert type="info" variant="tonal" class="mb-4">
           <v-icon start>mdi-information</v-icon>
-          First, generate an API key under your User Profile -> Settings -> API and Integrations
+          First, generate an API key under your User Profile -> Settings -> API and Integrations, then set it as environment variable <code>GILJO_API_KEY</code>
         </v-alert>
 
         <v-tabs v-model="activeTab" class="mb-4">
@@ -50,12 +50,7 @@
 
             <v-card variant="outlined" class="mb-3">
               <v-card-text>
-                <pre class="text-caption"><code># ~/.codex/config.toml
-experimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions
-
-[mcp_servers.giljo-mcp]
-url = "http://your-server-ip:7272/mcp"
-http_headers = { "X-API-Key" = "your-api-key-here" }</code></pre>
+                <pre class="text-caption"><code>codex mcp add giljo-mcp --url http://your-server-ip:7272/mcp --bearer-token-env-var GILJO_API_KEY</code></pre>
               </v-card-text>
               <v-card-actions>
                 <v-btn
@@ -116,12 +111,7 @@ const emit = defineEmits(['update:modelValue'])
 const activeTab = ref('manual')
 
 const copyConfig = () => {
-  const config = `# ~/.codex/config.toml
-experimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions
-
-[mcp_servers.giljo-mcp]
-url = "http://your-server-ip:7272/mcp"
-http_headers = { "X-API-Key" = "your-api-key-here" }`
+  const config = `codex mcp add giljo-mcp --url http://your-server-ip:7272/mcp --bearer-token-env-var GILJO_API_KEY`
   navigator.clipboard.writeText(config)
 }
 
@@ -141,17 +131,11 @@ const downloadInstructions = () => {
 - MCP Integration: https://developers.openai.com/codex/mcp
 - CLI Configuration: https://developers.openai.com/codex/local-config#cli
 
-Add to your Codex CLI configuration file:
+Set environment variable GILJO_API_KEY to your API key, then run:
 
-# ~/.codex/config.toml
-experimental_use_rmcp_client = true  # needed for HTTP transport on some Codex versions
-
-[mcp_servers.giljo-mcp]
-url = "http://your-server-ip:7272/mcp"
-http_headers = { "X-API-Key" = "YOUR_API_KEY_HERE" }
+codex mcp add giljo-mcp --url http://your-server-ip:7272/mcp --bearer-token-env-var GILJO_API_KEY
 
 ## Verification
-- Restart Codex CLI
 - Verify GiljoAI MCP connection with: codex mcp list
 
 ## Support
