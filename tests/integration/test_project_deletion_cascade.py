@@ -2,7 +2,7 @@
 TDD Tests for Project Deletion Cascade (Handover 0329).
 
 Tests verify that _purge_project_records() deletes ALL related data:
-- MCPAgentJob (currently works)
+- AgentJob -> AgentExecution (cascade via FK)
 - Task (currently works)
 - Message (currently works)
 - ContextIndex (MISSING - this test should FAIL initially)
@@ -17,12 +17,13 @@ TDD Phase: RED - These tests should FAIL until _purge_project_records() is fixed
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
 
 from src.giljo_mcp.models import Message, Product, Project, Task
-from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
@@ -47,10 +48,10 @@ async def cascade_test_product(db_session, cascade_test_tenant_key):
 @pytest.fixture
 async def project_with_all_relations(db_session, cascade_test_tenant_key, cascade_test_product):
     """
-    Create a project with ALL 6 related record types that should be cascade deleted.
+    Create a project with ALL related record types that should be cascade deleted.
 
     This fixture creates:
-    1. MCPAgentJob - Agent job with embedded messages
+    1. AgentJob + AgentExecution - Agent job with execution (cascade: Project -> AgentJob -> AgentExecution)
     2. Task - A task record
     3. Message - A standalone message
     4. ContextIndex - Context index record
@@ -73,15 +74,25 @@ async def project_with_all_relations(db_session, cascade_test_tenant_key, cascad
     await db_session.commit()
     await db_session.refresh(project)
 
-    # 1. Create MCPAgentJob
-    agent_job = AgentExecution(
+    # 1. Create AgentJob (holds project_id and mission) then AgentExecution (FK to AgentJob)
+    agent_job = AgentJob(
+        job_id=str(uuid4()),
         tenant_key=cascade_test_tenant_key,
         project_id=project.id,
-        agent_display_name="implementer",
+        job_type="implementer",
         mission="Test agent mission",
-        messages=[{"content": "Embedded message", "status": "pending"}],
+        status="active",
     )
     db_session.add(agent_job)
+    await db_session.flush()
+
+    execution = AgentExecution(
+        job_id=agent_job.job_id,
+        tenant_key=cascade_test_tenant_key,
+        agent_display_name="implementer",
+        status="waiting",
+    )
+    db_session.add(execution)
 
     # 2. Create Task
     task = Task(
@@ -126,6 +137,7 @@ async def project_with_all_relations(db_session, cascade_test_tenant_key, cascad
 
     # Refresh to get IDs
     await db_session.refresh(agent_job)
+    await db_session.refresh(execution)
     await db_session.refresh(task)
     await db_session.refresh(message)
     await db_session.refresh(context_index)
@@ -134,6 +146,7 @@ async def project_with_all_relations(db_session, cascade_test_tenant_key, cascad
     return {
         "project": project,
         "agent_job": agent_job,
+        "execution": execution,
         "task": task,
         "message": message,
         "context_index": context_index,
@@ -234,7 +247,7 @@ class TestPurgeProjectRecordsCascade:
         self, db_session, cascade_test_tenant_key, project_with_all_relations
     ):
         """
-        Comprehensive test that ALL 7 related record types are deleted.
+        Comprehensive test that ALL related record types are deleted.
 
         This is the key test for Handover 0329.
         Expected: FAIL (RED) until _purge_project_records() is fixed.
@@ -247,7 +260,12 @@ class TestPurgeProjectRecordsCascade:
             "project": (await db_session.execute(select(Project).where(Project.id == project.id))).scalar_one_or_none(),
             "agent_job": (
                 await db_session.execute(
-                    select(AgentExecution).where(AgentExecution.agent_id == data["agent_job"].agent_id)
+                    select(AgentJob).where(AgentJob.job_id == data["agent_job"].job_id)
+                )
+            ).scalar_one_or_none(),
+            "execution": (
+                await db_session.execute(
+                    select(AgentExecution).where(AgentExecution.agent_id == data["execution"].agent_id)
                 )
             ).scalar_one_or_none(),
             "task": (await db_session.execute(select(Task).where(Task.id == data["task"].id))).scalar_one_or_none(),
@@ -290,7 +308,12 @@ class TestPurgeProjectRecordsCascade:
             "project": (await db_session.execute(select(Project).where(Project.id == project.id))).scalar_one_or_none(),
             "agent_job": (
                 await db_session.execute(
-                    select(AgentExecution).where(AgentExecution.agent_id == data["agent_job"].agent_id)
+                    select(AgentJob).where(AgentJob.job_id == data["agent_job"].job_id)
+                )
+            ).scalar_one_or_none(),
+            "execution": (
+                await db_session.execute(
+                    select(AgentExecution).where(AgentExecution.agent_id == data["execution"].agent_id)
                 )
             ).scalar_one_or_none(),
             "task": (await db_session.execute(select(Task).where(Task.id == data["task"].id))).scalar_one_or_none(),
@@ -380,7 +403,7 @@ class TestNuclearDeleteConsistency:
         self, db_session, cascade_test_tenant_key, cascade_test_product
     ):
         """
-        Verify nuclear_delete_project() deletes all 7 record types.
+        Verify nuclear_delete_project() deletes all record types.
 
         This test should PASS (nuclear_delete already works correctly).
         Used as reference for what _purge_project_records() should do.
@@ -399,11 +422,23 @@ class TestNuclearDeleteConsistency:
         await db_session.refresh(project)
 
         # Create all related records
-        agent_job = AgentExecution(
+        # AgentJob (holds project_id and mission) then AgentExecution (FK to AgentJob)
+        agent_job = AgentJob(
+            job_id=str(uuid4()),
             tenant_key=cascade_test_tenant_key,
             project_id=project.id,
-            agent_display_name="implementer",
+            job_type="implementer",
             mission="Nuclear test agent",
+            status="active",
+        )
+        db_session.add(agent_job)
+        await db_session.flush()
+
+        execution = AgentExecution(
+            job_id=agent_job.job_id,
+            tenant_key=cascade_test_tenant_key,
+            agent_display_name="implementer",
+            status="waiting",
         )
         task = Task(
             title="Nuclear Test Task",
@@ -431,12 +466,13 @@ class TestNuclearDeleteConsistency:
         # NOTE: ProjectSession removed (Handover 0423 - Session model deleted)
         # NOTE: Vision removed (Handover 0728 - replaced by VisionDocument)
 
-        db_session.add_all([agent_job, task, message, context_index, doc_index])
+        db_session.add_all([execution, task, message, context_index, doc_index])
         await db_session.commit()
 
-        # Get IDs
+        # Get IDs for post-delete assertions
         project_id = project.id
-        job_id = agent_job.id
+        agent_job_id = agent_job.job_id
+        execution_agent_id = execution.agent_id
         task_id = task.id
         message_id = message.id
         context_index_id = context_index.id
@@ -465,8 +501,12 @@ class TestNuclearDeleteConsistency:
         ).scalar_one_or_none() is None, "Project should be deleted"
 
         assert (
-            await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == job_id))
-        ).scalar_one_or_none() is None, "MCPAgentJob should be deleted"
+            await db_session.execute(select(AgentJob).where(AgentJob.job_id == agent_job_id))
+        ).scalar_one_or_none() is None, "AgentJob should be deleted"
+
+        assert (
+            await db_session.execute(select(AgentExecution).where(AgentExecution.agent_id == execution_agent_id))
+        ).scalar_one_or_none() is None, "AgentExecution should be deleted"
 
         assert (await db_session.execute(select(Task).where(Task.id == task_id))).scalar_one_or_none() is None, (
             "Task should be deleted"
