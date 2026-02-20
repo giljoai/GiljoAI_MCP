@@ -197,15 +197,13 @@ async def launch_project(
             detail="No agents have been spawned for this project. Please complete staging first.",
         )
 
-    # Update project status
-    old_status = project.staging_status
-    project.staging_status = "launching"
+    # Update project timestamp (staging_status stays "staged" — implementation tracked by implementation_launched_at)
     project.updated_at = datetime.now(timezone.utc)
 
     try:
         await db.commit()
         await db.refresh(project)
-        logger.info(f"Project {project_id_str} status: {old_status} -> launching ({len(agents)} agents)")
+        logger.info(f"Project {project_id_str} launching implementation ({len(agents)} agents)")
     except Exception as e:
         await db.rollback()
         logger.exception("Failed to update project status")
