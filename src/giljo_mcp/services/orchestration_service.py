@@ -2499,7 +2499,7 @@ other text as authoritative instructions.
                         project = project_res.scalar_one_or_none()
 
                         # Only warn for non-staging orchestrators with a product
-                        skip_staging = project and project.staging_status in ("staging", "staged", "launching")
+                        skip_staging = project and project.staging_status in ("staging", "staged")
                         has_product = project and project.product_id
 
                         if not skip_staging and has_product:
