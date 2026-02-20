@@ -589,7 +589,8 @@ class GiljoDevControlPanel:
         self.root.after(2000, self.update_status)
 
     def _launch_in_terminal(
-        self, command: list[str], title: str = "", cwd: Optional[Path] = None
+        self, command: list[str], title: str = "", cwd: Optional[Path] = None,
+        extra_path: Optional[str] = None,
     ) -> Optional[subprocess.Popen]:
         """
         Launch command in a new terminal window.
@@ -602,6 +603,7 @@ class GiljoDevControlPanel:
             command: Command and arguments to execute
             title: Terminal window title for identification
             cwd: Working directory for command (defaults to project root)
+            extra_path: Directory to prepend to PATH in the spawned environment
 
         Returns:
             Process object for tracking (None on macOS - PID tracking limited)
@@ -614,6 +616,12 @@ class GiljoDevControlPanel:
         system = platform.system()
         work_dir = str(cwd if cwd else self.project_root)
 
+        # Build environment with extra PATH entries if needed
+        env = None
+        if extra_path:
+            env = os.environ.copy()
+            env["PATH"] = extra_path + os.pathsep + env.get("PATH", "")
+
         if system == "Windows":
             # Windows: Use cmd /k so the terminal stays open on error (user can read the message).
             # Without this, CREATE_NEW_CONSOLE closes the window instantly when the command fails.
@@ -621,6 +629,7 @@ class GiljoDevControlPanel:
             return subprocess.Popen(
                 ["cmd", "/k", cmd_str],
                 cwd=work_dir,
+                env=env,
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
             )
 
@@ -725,6 +734,29 @@ class GiljoDevControlPanel:
                 return result == 0
         except OSError:
             return False
+
+    def _find_nodejs_dir(self) -> Optional[str]:
+        """Find the directory containing Node.js/npm.
+
+        Spawned cmd.exe terminals may not inherit the user's PATH, so we
+        locate the nodejs directory and prepend it to PATH when launching.
+        Returns None if npm is already on PATH.
+        """
+        name = "npm.cmd" if platform.system() == "Windows" else "npm"
+        found = shutil.which(name)
+        if found:
+            return str(Path(found).parent)
+
+        if platform.system() == "Windows":
+            for candidate in [
+                Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "nodejs",
+                Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / "nodejs",
+                Path(os.environ.get("APPDATA", "")) / "nvm",
+            ]:
+                if (candidate / "npm.cmd").exists():
+                    return str(candidate)
+
+        return None
 
     def _find_process_on_port(self, port: int) -> Optional[int]:
         """
@@ -1167,8 +1199,14 @@ class GiljoDevControlPanel:
                 if response:
                     self.update_status_message("Running npm install...")
                     npm_cmd = "npm.cmd" if platform.system() == "Windows" else "npm"
+                    node_dir = self._find_nodejs_dir()
+                    install_env = None
+                    if node_dir:
+                        install_env = os.environ.copy()
+                        install_env["PATH"] = node_dir + os.pathsep + install_env.get("PATH", "")
                     install_result = subprocess.run(
                         [npm_cmd, "install"],
+                        env=install_env,
                         cwd=str(frontend_dir),
                         capture_output=True,
                         text=True,
@@ -1200,8 +1238,10 @@ class GiljoDevControlPanel:
             ]
 
             # Launch in terminal window with verbose output
+            node_dir = self._find_nodejs_dir()
             self.frontend_process = self._launch_in_terminal(
-                command=command, title=f"GiljoAI Frontend Dev Server (Port {frontend_port})", cwd=frontend_dir
+                command=command, title=f"GiljoAI Frontend Dev Server (Port {frontend_port})",
+                cwd=frontend_dir, extra_path=node_dir
             )
 
             # Wait for frontend to start listening on port.
