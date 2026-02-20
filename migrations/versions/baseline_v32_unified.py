@@ -431,7 +431,7 @@ def upgrade() -> None:
     sa.Column('description', sa.Text(), nullable=False),
     sa.Column('mission', sa.Text(), nullable=False),
     sa.Column('status', sa.String(length=50), nullable=True),
-    sa.Column('staging_status', sa.String(length=50), nullable=True, comment='Staging workflow status: null, staging, staged, cancelled, launching, active'),
+    sa.Column('staging_status', sa.String(length=50), nullable=True, comment='Staging workflow status: null (not staged) or staged'),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
