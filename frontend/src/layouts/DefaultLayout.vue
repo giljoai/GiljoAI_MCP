@@ -33,7 +33,6 @@ import { initWebsocketEventRouter } from '@/stores/websocketEventRouter'
 import AppBar from '@/components/navigation/AppBar.vue'
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
 import ToastManager from '@/components/ToastManager.vue'
-import api from '@/services/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -47,16 +46,18 @@ const currentUser = ref(null)
 
 const loadCurrentUser = async () => {
   try {
-    const response = await api.auth.me()
-    currentUser.value = response.data
-    userStore.currentUser = response.data
-    return true
+    const success = await userStore.fetchCurrentUser()
+    if (success) {
+      currentUser.value = userStore.currentUser
+      return true
+    }
+    // fetchCurrentUser returned false (API failed internally)
+    currentUser.value = null
+    router.push('/login')
+    return false
   } catch (error) {
     console.error('[DefaultLayout] Failed to load user:', error)
     currentUser.value = null
-    userStore.currentUser = null
-
-    // If auth fails in app context, redirect to login
     router.push('/login')
     return false
   }
