@@ -60,7 +60,7 @@ class Project(Base):
     staging_status = Column(
         String(50),
         nullable=True,
-        comment="Staging workflow status: null, staging, staged, cancelled, launching, active",
+        comment="Staging workflow status: null (not staged) or staged",
     )
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
