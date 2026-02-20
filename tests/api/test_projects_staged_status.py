@@ -304,11 +304,7 @@ async def test_staging_status_field_schema_validation(
         # If string, should be valid status value
         if staging_status:
             valid_statuses = [
-                "staging",
                 "staged",
-                "cancelled",
-                "launching",
-                "active",
             ]
             assert staging_status in valid_statuses, f"staging_status '{staging_status}' not in valid statuses"
 

@@ -888,10 +888,8 @@ class ToolAccessor:
                         "success": False,
                         "error": "No agents have been spawned for this project. Please complete staging first.",
                     }
-                if hasattr(project, "staging_status"):
-                    project.staging_status = "launching"
-                    project.updated_at = datetime.now(timezone.utc)
-                    await session.commit()
+                project.updated_at = datetime.now(timezone.utc)
+                await session.commit()
             return {"success": True, "project_id": project_id, "agent_count": len(agents)}
         except Exception as e:
             logger.exception("gil_launch failed")
