@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import setupService from '@/services/setupService'
 import { useUserStore } from '@/stores/user'
-import api from '@/services/api'
 
 // Route definitions - views will be implemented after analyzer results
 const routes = [
@@ -293,13 +292,10 @@ router.beforeEach(async (to, from, next) => {
 
   if (requiresAuth) {
     try {
-      // Use API client to get current user
-      const response = await api.auth.me()
-      const userData = response.data
-
-      // Update user store if needed
+      // Use store's fetchCurrentUser to ensure org fields (orgRole, etc.) are set
       if (!userStore.currentUser) {
-        userStore.currentUser = userData
+        const success = await userStore.fetchCurrentUser()
+        if (!success) throw new Error('Auth check failed')
       }
     } catch (error) {
       // Not authenticated, redirect to login
