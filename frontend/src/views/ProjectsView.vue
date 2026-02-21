@@ -92,21 +92,6 @@
           </v-col>
         </v-row>
 
-        <!-- Status Filter Chips -->
-        <div class="d-flex gap-2 flex-wrap align-center">
-          <v-chip
-            v-for="status in filterOptions"
-            :key="status.value"
-            :color="filterStatus === status.value ? 'primary' : 'default'"
-            :variant="filterStatus === status.value ? 'tonal' : 'outlined'"
-            :aria-label="`Filter by ${status.label}`"
-            class="cursor-pointer"
-            @click="filterStatus = status.value"
-          >
-            {{ status.label }} ({{ status.count }})
-          </v-chip>
-        </div>
-
         <!-- Type Filter Chips (Handover 0440c) -->
         <div v-if="projectTypes.length > 0" class="d-flex gap-2 flex-wrap align-center mt-3">
           <span class="text-caption text-medium-emphasis mr-2">Type:</span>
@@ -731,7 +716,6 @@ const tabsStore = useProjectTabsStore()
 
 // Reactive state
 const searchQuery = ref('')
-const filterStatus = ref('all')
 const filterType = ref('all')  // Handover 0440c: Type filter
 const projectTypes = ref([])  // Handover 0440c: Available project types
 const showCreateDialog = ref(false)
@@ -769,17 +753,6 @@ const projectData = ref({
 })
 
 // Filter options computed
-const filterOptions = computed(() => {
-  const counts = statusCounts.value
-  return [
-    { label: 'All', value: 'all', count: filteredBySearch.value.length },
-    { label: 'Active', value: 'active', count: counts.active },
-    { label: 'Inactive', value: 'inactive', count: counts.inactive },
-    { label: 'Completed', value: 'completed', count: counts.completed },
-    { label: 'Cancelled', value: 'cancelled', count: counts.cancelled },
-  ]
-})
-
 // Table headers
 const headers = [
   { title: 'Name', key: 'name', sortable: true, width: '24%' },
@@ -998,10 +971,7 @@ const filteredBySearch = computed(() => {
 })
 
 // Filter by status
-const filteredProjects = computed(() => {
-  if (filterStatus.value === 'all') return filteredBySearch.value
-  return filteredBySearch.value.filter((p) => p.status === filterStatus.value)
-})
+const filteredProjects = computed(() => filteredBySearch.value)
 
 // Sort projects - active projects always on top (Handover 0440c: series-aware sorting)
 const sortedProjects = computed(() => {
