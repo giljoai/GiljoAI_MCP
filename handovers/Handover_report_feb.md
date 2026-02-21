@@ -289,21 +289,24 @@ These were initially moved to Reference_docs/ but contain work items not yet com
 
 ---
 
-## Active Handover Debt (10 remaining in root)
+## Active Handover Debt (Updated 2026-02-21)
 
 | Tier | Handovers | Focus |
 |------|-----------|-------|
-| 1 - Orchestrator | 0254 (stale), 0365 (stale), 0410 | Instruction cleanup, handover injection, message optimization |
-| 2 - Taxonomy | 0440a, 0440b, 0440c | DB+backend, frontend UI, display integration |
+| 1 - Dead Code | **0371a (NEW)**, 0371 | Template dead code, 50 stale tests, spawn prompt prefix fix |
+| 2 - Orchestrator | 0365 (stale), 0410 | Handover injection, message optimization |
 | 3 - Agent Exec | 0419 | Long-polling orchestrator monitoring |
 | 4 - Polish | 0732 | API consistency fixes |
 | 5 - Future | 0409, 0250 | Unified client setup, HTTPS enablement |
 
+### Closed Since Report
+
+- **0254** (Three-Layer Instruction Cleanup): CLOSED 2026-02-21. Core problem resolved by organic evolution (0700 series, 0431, 0407, 0334). Remaining dead code + stale tests captured in 0371a.
+- **0440a-d** (Project Taxonomy): ALL COMPLETE 2026-02-21. All 4 phases archived to completed/.
+
 ### Audit Notes on Stale Orchestrator Handovers
 
-**0254 (Three-Layer Instruction Cleanup):** VALID but STALE. Core concept sound (3-layer architecture still has conflicting instructions, obsolete MCP commands). All target files exist. Line numbers wrong (pre-0700). MCP command signatures need verification. Recommendation: re-verify all line numbers before executing.
-
-**0365 (Orchestrator Handover Behavior Injection):** VALID but MODERATELY STALE. Core design sound (successor orchestrators still get staging instructions instead of execution-phase). Dependencies met. Stale MCP commands (uses `receive_messages` instead of `get_next_instruction`). Recommendation: refresh MCP command names before executing.
+**0365 (Orchestrator Handover Behavior Injection):** VALID but MODERATELY STALE. Core design sound (successor orchestrators still get staging instructions instead of execution-phase). Dependencies met. Note: `receive_messages` IS the correct current tool (not `get_next_instruction` which never existed). Recommendation: refresh line numbers and MCP command details before executing.
 
 ## Deferred Handovers (6 remaining)
 

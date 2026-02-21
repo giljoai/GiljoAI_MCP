@@ -623,12 +623,11 @@ class GiljoDevControlPanel:
             env["PATH"] = extra_path + os.pathsep + env.get("PATH", "")
 
         if system == "Windows":
-            # Windows: Use powershell -NoExit so the terminal stays open on error
-            # (user can read the message) while preserving the user's default
-            # terminal profile appearance (PowerShell icon, colors).
+            # Windows: Use pwsh (PowerShell 7+) -NoExit so the terminal stays
+            # open on error (user can read the message).
             cmd_str = subprocess.list2cmdline(command)
             return subprocess.Popen(
-                ["powershell", "-NoExit", "-Command", f"& {{{cmd_str}}}"],
+                ["pwsh", "-NoExit", "-Command", f"& {{{cmd_str}}}"],
                 cwd=work_dir,
                 env=env,
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
