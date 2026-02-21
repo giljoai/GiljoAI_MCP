@@ -293,20 +293,23 @@ These were initially moved to Reference_docs/ but contain work items not yet com
 
 | Tier | Handovers | Focus |
 |------|-----------|-------|
-| 1 - Dead Code | **0371a (NEW)**, 0371 | Template dead code, 50 stale tests, spawn prompt prefix fix |
-| 2 - Orchestrator | 0365 (stale), 0410 | Handover injection, message optimization |
+| ~~1 - Dead Code~~ | ~~0371, 0371a~~ | ~~Dead code cleanup + template dead code + stale tests~~ **ALL COMPLETE** |
+| ~~2 - Orchestrator~~ | ~~0365~~, 0410 | ~~0365 SUPERSEDED~~ (UI handover + `build_continuation_prompt()`), 0410 Fix 2 COMPLETE (agent name display), Fix 1 NOT IMPLEMENTED (message_check) |
 | 3 - Agent Exec | 0419 | Long-polling orchestrator monitoring |
 | 4 - Polish | 0732 | API consistency fixes |
 | 5 - Future | 0409, 0250 | Unified client setup, HTTPS enablement |
 
 ### Closed Since Report
 
+- **0371** (Dead Code Cleanup Project): COMPLETE 2026-02-21. Phases 1-3 done 2025-12-22, Phase 4.6 completed 2026-02-21 (`project_type` column dropped, `preferred_tool` alias removed). Phases 5-7 completed by subsequent work (cleanup.md, 0601, 0745/0750). ~15K+ lines total. Children 0372-0374 + 0371a all complete.
+- **0371a** (Template Dead Code & Stale Test Remediation): COMPLETE 2026-02-21. Dead GenericAgentTemplate removed, 50 stale tests fixed, spawn prompt prefix normalized.
 - **0254** (Three-Layer Instruction Cleanup): CLOSED 2026-02-21. Core problem resolved by organic evolution (0700 series, 0431, 0407, 0334). Remaining dead code + stale tests captured in 0371a.
 - **0440a-d** (Project Taxonomy): ALL COMPLETE 2026-02-21. All 4 phases archived to completed/.
+- **0365** (Orchestrator Handover Behavior Injection): SUPERSEDED 2026-02-21. UI-triggered handover flow + `build_continuation_prompt()` replaced the need for conditional `get_orchestrator_instructions`. Moved to `completed/superseded/`.
 
 ### Audit Notes on Stale Orchestrator Handovers
 
-**0365 (Orchestrator Handover Behavior Injection):** VALID but MODERATELY STALE. Core design sound (successor orchestrators still get staging instructions instead of execution-phase). Dependencies met. Note: `receive_messages` IS the correct current tool (not `get_next_instruction` which never existed). Recommendation: refresh line numbers and MCP command details before executing.
+**0365 (Orchestrator Handover Behavior Injection):** **SUPERSEDED** (2026-02-21). The problem 0365 was designed to solve (successor orchestrators getting staging instructions) was addressed through a different architecture: UI-triggered handover via `simple_handover.py` + `build_continuation_prompt()` + `build_retirement_prompt()`. `OrchestratorSuccessionManager` was never built; `create_successor_orchestrator` MCP tool was removed. `instance_number` removed from model. Moved to `completed/superseded/`.
 
 ## Deferred Handovers (6 remaining)
 
