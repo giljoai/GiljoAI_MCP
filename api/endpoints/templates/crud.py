@@ -82,13 +82,11 @@ def _convert_to_response(template: AgentTemplate) -> TemplateResponse:
         last_exported_at=template.last_exported_at,
         may_be_stale=may_be_stale,
         category=template.category,
-        project_type=template.project_type,
         variables=template.variables or [],
         version=template.version or "1.0.0",
         usage_count=template.usage_count or 0,
         avg_generation_ms=template.avg_generation_ms,
         created_by=template.created_by,
-        preferred_tool=getattr(template, "preferred_tool", template.cli_tool or "claude"),
         is_system_role=_is_system_managed_role(template.role),
     )
 
