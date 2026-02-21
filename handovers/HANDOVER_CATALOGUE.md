@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-21 (0254 closed, 0440a-d ALL COMPLETE, 0371a created)
+**Last Updated:** 2026-02-21 (0365 SUPERSEDED, 0371a COMPLETE, 0254 closed, 0440a-d ALL COMPLETE)
 
 ---
 
@@ -13,8 +13,8 @@
 | 0001-0100 | Foundation & Installation | Mostly Complete |
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
-| 0301-0400 | Context Management & Services | 0371 IN PROGRESS, 0365/0373/0374/0382/0397 Ready |
-| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0492 COMPLETE, 0440a-d ALL COMPLETE, 0481-0484 Ready, 0486 CANCELLED |
+| 0301-0400 | Context Management & Services | 0371 COMPLETE, 0365 SUPERSEDED, 0382 Ready |
+| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0492 COMPLETE, 0440a-d ALL COMPLETE, 0481-0484 COMPLETE, 0486 CANCELLED |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy + 0732 DEFERRED/READY |
@@ -27,10 +27,9 @@
 
 | ID | Title | Status | Priority |
 |----|-------|--------|----------|
-| 0365 | Orchestrator Handover Behavior Injection | Ready | MEDIUM |
+| ~~0365~~ | ~~Orchestrator Handover Behavior Injection~~ | **SUPERSEDED** | - |
 
-> **Status**: 9/10 COMPLETE. Only 0365 (handover behavior) remains.
-> See `completed/alpha_trial_remediation_roadmap-C.md` for full context.
+> **Status**: 10/10 COMPLETE. 0365 superseded by UI-triggered handover flow (`simple_handover.py` + `build_continuation_prompt()`).
 
 ### Project Organization Series (0440) - COMPLETE
 
@@ -48,19 +47,19 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0365 | Orchestrator Handover Behavior Injection | Ready | Medium | Alpha Trial remnant |
-| 0371 | Dead Code Cleanup Project | **IN PROGRESS** | Medium | Phases 1-4 partial; 4.6, 5-7 pending |
-| **0371a** | **Template Dead Code & Stale Test Remediation** | **Ready** | **Medium** | Child of 0371. 50 stale tests, dead GenericAgentTemplate, prefix fix |
-| 0373 | Template Adapter Migration | Ready | Medium | - |
-| 0374 | Vision Summary Field Migration | Ready | Medium | - |
-| 0382 | Orchestrator Prompt Improvements | Ready | Medium | - |
+| ~~0365~~ | ~~Orchestrator Handover Behavior Injection~~ | **SUPERSEDED** | - | Superseded by UI handover flow + `build_continuation_prompt()` |
+| ~~0371~~ | ~~Dead Code Cleanup Project~~ | **COMPLETE** | - | All 7 phases done (2026-02-21). Phase 4.6 final cleanup. Children 0372-0374, 0371a all complete |
+| ~~0371a~~ | ~~Template Dead Code & Stale Test Remediation~~ | **COMPLETE** | - | Child of 0371. Dead GenericAgentTemplate, 50 stale tests fixed, prefix fix |
+| ~~0373~~ | ~~Template Adapter Migration~~ | **COMPLETE** | - | Child of 0371. Completed 2026-02-07 |
+| ~~0374~~ | ~~Vision Summary Field Migration~~ | **COMPLETE** | - | Child of 0371. Completed 2025-12-22 |
+| ~~0382~~ | ~~Orchestrator Prompt Improvements~~ | **COMPLETE** | - | Completed 2026-01-01, commit `54dccbce` |
 | ~~0397~~ | ~~Deprecate stdio Proxy for Codex Native HTTP~~ | **MERGED** | - | Merged into 0489 (proxy already deleted by 0725b) |
-| 0408 | Serena Toggle Injection | Ready | Medium | - |
+| ~~0408~~ | ~~Serena Toggle Injection~~ | **COMPLETE** | - | Completed 2026-01-04, commit `14310d3b` |
 | 0409 | Unified Client Quick Setup | Ready | Medium | - |
 | 0410 | Message Optimization & Agent Name Display | Ready | Medium | - |
 | 0411 | Windows Terminal Agent Spawning | Ready | Medium | Note: 0411 also used for completed "Jobs Tab Duration UX" |
 | 0419 | Long Polling Orchestrator Monitoring | Ready | Medium | - |
-| 0464 | Empty State API Resilience | Ready | Medium | - |
+| ~~0464~~ | ~~Empty State API Resilience~~ | **COMPLETE** | - | Completed 2026-01-26, commit `be56241c` |
 | ~~0486~~ | ~~Continuation Workflow Enhancements~~ | **CANCELLED** | - | Cancelled 2026-02-20: Complexity not justified; 360 Memory already bridges context across projects |
 | ~~0488~~ | ~~Staging Broadcast Response Enforcement~~ | **RETIRED** | - | Moved to completed/ (2026-02-19) |
 | ~~0489~~ | ~~MCP Config Revamp, Proxy Retirement & Backend Cleanup~~ | **COMPLETE** | - | Merged 0397+0489. Completed 2026-02-19 (3 commits, 19 files, -924 lines) |
@@ -71,7 +70,7 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0481 | Test Remediation Session Summary | In Progress | Medium | 2 files with same number |
+| ~~0481~~ | ~~Test Remediation Session Summary~~ | **COMPLETE** | - | Both files archived to completed/ (session summaries) |
 | 0483 | Service Layer Bug Fixes | **COMPLETE** | - | Moved to completed/ |
 | 0484 | API Test Fixture Remediation | **COMPLETE** | - | Moved to completed/ (2026-02-18) |
 | 0495 | Fix API Test Suite Hang | **COMPLETE** | - | Moved to completed/ (2026-02-18) |
@@ -81,7 +80,7 @@
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | ~~0254~~ | ~~Three Layer Instruction Cleanup~~ | **CLOSED** | - | Resolved by organic evolution (0700, 0431, 0407, 0334). Remaining scraps -> 0371a |
-| **0371** | **Dead Code Cleanup Project** | **IN PROGRESS** | **MEDIUM** | Phases 1-4 (partial) done; Phase 4.6, 5-7 pending (~6K lines) |
+| ~~0371~~ | ~~Dead Code Cleanup Project~~ | **COMPLETE** | - | All 7 phases done (2026-02-21). ~15K+ lines removed. Children: 0372, 0373, 0374, 0371a |
 
 ### Greptile Security Series (1000-1014) - SECURITY
 
@@ -133,6 +132,7 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0371a | Template Dead Code & Stale Test Remediation | **COMPLETE** (2026-02-21) |
 | 0440a-d | Project Taxonomy Series (DB, Frontend, Display, Hardening) | **COMPLETE** (2026-02-21) |
 | 0254 | Three Layer Instruction Cleanup | **CLOSED** (2026-02-21, resolved organically -> 0371a) |
 | 0489 | MCP Config Revamp, Proxy Retirement & Backend Cleanup | **COMPLETE** (2026-02-19) |
@@ -310,9 +310,9 @@ Located in `handovers/cancelled/`:
 - **Result**: Production-grade exception handling, proper HTTP status codes
 
 ### Alpha Trial Remediation Series (0356-0366)
-**Status:** 90% Complete (9/10 handovers, December 2025 - January 2026)
+**Status:** 100% Complete (10/10 handovers, December 2025 - February 2026)
 - 0356-0362, 0364, 0366: All complete
-- **Remaining**: 0365 (handover behavior injection)
+- 0365: **SUPERSEDED** (2026-02-21). Replaced by UI-triggered handover + `build_continuation_prompt()`
 
 ### MCPAgentJob Cleanup Migration (0367 Series)
 **Status:** 100% Complete (December 2025)
@@ -348,6 +348,7 @@ Located in `handovers/cancelled/`:
 
 | ID | Title | Superseded By |
 |----|-------|---------------|
+| 0365 | Orchestrator Handover Behavior Injection | UI-triggered handover flow + `build_continuation_prompt()` |
 | 0726 | Tenant Isolation Remediation | 0433 (24/25 findings were false positives) |
 | 0348 | Product Context Gap Analysis | 0350 series (On-Demand Context Fetch) |
 | 0246b | Vision Document Storage Simplification | 0352 (Vision Document Depth Refactor) |
