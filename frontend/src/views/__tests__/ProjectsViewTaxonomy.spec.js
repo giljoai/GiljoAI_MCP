@@ -16,6 +16,7 @@ vi.mock('@/services/api', () => ({
     },
     projects: {
       checkSeries: vi.fn(() => Promise.resolve({ data: { available: true } })),
+      usedSubseries: vi.fn(() => Promise.resolve({ data: { used_subseries: [] } })),
     },
     get: vi.fn(() => Promise.resolve({ data: {} })),
     post: vi.fn(() => Promise.resolve({ data: { success: true } })),
@@ -523,7 +524,7 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
   })
 
   // ----------------------------------------------------------------
-  // 6. Inline Taxonomy Row (replaces expansion panel - Handover 0440c)
+  // 6. Inline Taxonomy Row (Handover 0440c)
   // ----------------------------------------------------------------
   describe('Inline Taxonomy Row', () => {
     it('typeDropdownItems includes project types plus "Add custom type..." option', async () => {
@@ -540,19 +541,72 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
 
     it('typeDropdownItems is empty when no project types loaded', async () => {
       const wrapper = await createWrapper()
-      // projectTypes defaults to []
       const items = wrapper.vm.typeDropdownItems
-      // Should still have the "Add custom type..." entry
       expect(items.length).toBe(1)
       expect(items[0].id).toBe('__add_custom__')
     })
 
-    it('subseriesItems contains a-z letters', async () => {
+    it('subseriesItems contains a-z letters when none are used', async () => {
       const wrapper = await createWrapper()
       const items = wrapper.vm.subseriesItems
       expect(items.length).toBe(26)
       expect(items[0]).toEqual({ title: 'a', value: 'a' })
       expect(items[25]).toEqual({ title: 'z', value: 'z' })
+    })
+
+    it('subseriesItems excludes used letters', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.usedSubseries = ['a', 'c', 'f']
+      await wrapper.vm.$nextTick()
+
+      const items = wrapper.vm.subseriesItems
+      expect(items.length).toBe(23) // 26 - 3 used
+      expect(items.find((i) => i.value === 'a')).toBeUndefined()
+      expect(items.find((i) => i.value === 'c')).toBeUndefined()
+      expect(items.find((i) => i.value === 'f')).toBeUndefined()
+      expect(items.find((i) => i.value === 'b')).toBeTruthy()
+      expect(items.find((i) => i.value === 'd')).toBeTruthy()
+    })
+
+    it('taxonomyPrefix shows correct alias when type and serial are set', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.projectTypes = mockProjectTypes
+      wrapper.vm.projectData.project_type_id = 'type-feat'
+      wrapper.vm.projectData.series_number = 440
+      wrapper.vm.projectData.subseries = 'c'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.taxonomyPrefix).toBe('FEAT-0440c')
+    })
+
+    it('taxonomyPrefix is empty when type is not set', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.projectData.project_type_id = null
+      wrapper.vm.projectData.series_number = 440
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.taxonomyPrefix).toBe('')
+    })
+
+    it('taxonomyPrefix is empty when serial is not set', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.projectTypes = mockProjectTypes
+      wrapper.vm.projectData.project_type_id = 'type-feat'
+      wrapper.vm.projectData.series_number = null
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.taxonomyPrefix).toBe('')
+    })
+
+    it('taxonomyPrefix omits subseries when not set', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.projectTypes = mockProjectTypes
+      wrapper.vm.projectData.project_type_id = 'type-bug'
+      wrapper.vm.projectData.series_number = 501
+      wrapper.vm.projectData.subseries = null
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.taxonomyPrefix).toBe('BUG-0501')
     })
 
     it('seriesNumberInput is populated when editing a taxonomy project', async () => {
@@ -574,18 +628,20 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
       expect(wrapper.vm.seriesCheckResult).toBeNull()
     })
 
-    it('resetForm clears inline taxonomy state', async () => {
+    it('resetForm clears inline taxonomy state including usedSubseries', async () => {
       const wrapper = await createWrapper()
 
       wrapper.vm.seriesNumberInput = '0500'
       wrapper.vm.seriesCheckResult = true
       wrapper.vm.seriesCheckMessage = 'Available'
+      wrapper.vm.usedSubseries = ['a', 'b']
 
       wrapper.vm.resetForm()
 
       expect(wrapper.vm.seriesNumberInput).toBe('')
       expect(wrapper.vm.seriesCheckResult).toBeNull()
       expect(wrapper.vm.seriesCheckMessage).toBe('')
+      expect(wrapper.vm.usedSubseries).toEqual([])
     })
   })
 })
