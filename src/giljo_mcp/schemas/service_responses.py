@@ -626,6 +626,17 @@ class TemplateUpdateResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class ProjectTypeInfo(BaseModel):
+    """Minimal project type info for embedding in project responses (Handover 0440c)."""
+
+    id: str
+    abbreviation: str
+    label: str
+    color: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ProjectDetail(BaseModel):
     """Full project detail with agent information.
 
@@ -650,6 +661,7 @@ class ProjectDetail(BaseModel):
     message_count: int = 0
     # Handover 0440a: Project taxonomy fields
     project_type_id: Optional[str] = None
+    project_type: Optional[ProjectTypeInfo] = None  # Handover 0440c: Nested type info
     series_number: Optional[int] = None
     subseries: Optional[str] = None
     taxonomy_alias: Optional[str] = None
@@ -675,6 +687,7 @@ class ProjectListItem(BaseModel):
     updated_at: str
     # Handover 0440a: Project taxonomy fields
     project_type_id: Optional[str] = None
+    project_type: Optional[ProjectTypeInfo] = None  # Handover 0440c: Nested type info
     series_number: Optional[int] = None
     subseries: Optional[str] = None
     taxonomy_alias: Optional[str] = None
@@ -703,6 +716,7 @@ class ActiveProjectDetail(BaseModel):
     message_count: int = 0
     # Handover 0440a: Project taxonomy fields
     project_type_id: Optional[str] = None
+    project_type: Optional[ProjectTypeInfo] = None  # Handover 0440c: Nested type info
     series_number: Optional[int] = None
     subseries: Optional[str] = None
     taxonomy_alias: Optional[str] = None
@@ -769,6 +783,7 @@ class ProjectData(BaseModel):
     product_id: Optional[str] = None
     # Handover 0440a: Project taxonomy fields
     project_type_id: Optional[str] = None
+    project_type: Optional[ProjectTypeInfo] = None  # Handover 0440c: Nested type info
     series_number: Optional[int] = None
     subseries: Optional[str] = None
     taxonomy_alias: Optional[str] = None
