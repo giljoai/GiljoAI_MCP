@@ -243,6 +243,7 @@ async def get_next_series_number(session: AsyncSession, tenant_key: str, type_id
         select(func.max(Project.series_number)).where(
             Project.project_type_id == type_id,
             Project.tenant_key == tenant_key,
+            Project.deleted_at.is_(None),
         )
     )
     max_num = result.scalar()
@@ -271,6 +272,7 @@ async def get_available_series_numbers(
             Project.project_type_id == type_id,
             Project.tenant_key == tenant_key,
             Project.series_number.is_not(None),
+            Project.deleted_at.is_(None),
         )
         .order_by(Project.series_number)
     )
@@ -323,6 +325,7 @@ async def check_series_available(
         Project.project_type_id == type_id,
         Project.tenant_key == tenant_key,
         Project.series_number == series_number,
+        Project.deleted_at.is_(None),
     )
     if subseries is not None:
         query = query.where(Project.subseries == subseries)
@@ -361,6 +364,7 @@ async def get_used_subseries(
         Project.tenant_key == tenant_key,
         Project.series_number == series_number,
         Project.subseries.isnot(None),
+        Project.deleted_at.is_(None),
     )
 
     if exclude_project_id:
