@@ -325,6 +325,31 @@ async def check_series_number(
     return result
 
 
+@router.get("/used-subseries")
+async def used_subseries(
+    type_id: str,
+    series_number: int,
+    exclude_project_id: str | None = None,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+):
+    """Get subseries letters already used for a type + series_number.
+
+    Handover 0440c: Smart suffix dropdown filtering.
+    """
+    from api.endpoints.project_types.crud_ops import get_used_subseries
+
+    async with project_service.db_manager.get_session_async() as session:
+        result = await get_used_subseries(
+            session,
+            current_user.tenant_key,
+            type_id,
+            series_number,
+            exclude_project_id,
+        )
+    return result
+
+
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(
     project_id: str,
