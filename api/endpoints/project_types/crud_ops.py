@@ -335,3 +335,37 @@ async def check_series_available(
     result = await session.execute(query)
     existing_id = result.scalar_one_or_none()
     return {"available": existing_id is None}
+
+
+async def get_used_subseries(
+    session: AsyncSession,
+    tenant_key: str,
+    type_id: str,
+    series_number: int,
+    exclude_project_id: str | None = None,
+) -> dict[str, Any]:
+    """Get all subseries letters already used for a type + series_number combo.
+
+    Args:
+        session: Async database session
+        tenant_key: Tenant identifier for isolation
+        type_id: Project type ID
+        series_number: The series number to check
+        exclude_project_id: Exclude this project ID (for edit mode)
+
+    Returns:
+        {"used_subseries": list[str]}
+    """
+    query = select(Project.subseries).where(
+        Project.project_type_id == type_id,
+        Project.tenant_key == tenant_key,
+        Project.series_number == series_number,
+        Project.subseries.isnot(None),
+    )
+
+    if exclude_project_id:
+        query = query.where(Project.id != exclude_project_id)
+
+    result = await session.execute(query)
+    used = sorted([row[0] for row in result.all()])
+    return {"used_subseries": used}
