@@ -371,10 +371,10 @@
 
           <!-- Form -->
           <v-form ref="projectForm" v-model="formValid">
-            <!-- Inline Taxonomy Row (Handover 0440c) -->
+            <!-- Taxonomy Row: Type | Serial # | Suffix (Handover 0440c) -->
             <v-row dense class="mb-1" align="start">
               <!-- Type Dropdown -->
-              <v-col cols="3">
+              <v-col cols="5">
                 <v-select
                   v-model="projectData.project_type_id"
                   :items="typeDropdownItems"
@@ -410,7 +410,7 @@
               </v-col>
 
               <!-- Serial Number Text Input -->
-              <v-col cols="3">
+              <v-col cols="4">
                 <v-text-field
                   v-model="seriesNumberInput"
                   label="Serial #"
@@ -432,8 +432,8 @@
                 </v-text-field>
               </v-col>
 
-              <!-- Suffix Dropdown -->
-              <v-col cols="2">
+              <!-- Suffix Dropdown (only shows available letters) -->
+              <v-col cols="3">
                 <v-select
                   v-model="projectData.subseries"
                   :items="subseriesItems"
@@ -449,21 +449,24 @@
                   @update:model-value="onSubseriesChange"
                 />
               </v-col>
-
-              <!-- Project Name -->
-              <v-col cols="4">
-                <v-text-field
-                  v-model="projectData.name"
-                  label="Project Name"
-                  :rules="[(v) => !!v || 'Name is required']"
-                  required
-                  density="compact"
-                  variant="outlined"
-                  hide-details="auto"
-                  aria-label="Project name"
-                />
-              </v-col>
             </v-row>
+
+            <!-- Project Name with taxonomy prefix -->
+            <v-text-field
+              v-model="projectData.name"
+              label="Project Name"
+              :rules="[(v) => !!v || 'Name is required']"
+              required
+              density="compact"
+              variant="outlined"
+              hide-details="auto"
+              class="mb-3"
+              aria-label="Project name"
+            >
+              <template v-if="taxonomyPrefix" #prepend-inner>
+                <span class="text-caption font-weight-bold text-medium-emphasis mr-1" style="white-space: nowrap;">{{ taxonomyPrefix }}</span>
+              </template>
+            </v-text-field>
 
             <v-textarea
               v-model="projectData.description"
@@ -781,6 +784,7 @@ const seriesNumberInput = ref('')
 const seriesChecking = ref(false)
 const seriesCheckResult = ref(null) // null = unchecked, true = available, false = taken
 const seriesCheckMessage = ref('')
+const usedSubseries = ref([]) // letters already taken for current type+serial
 let seriesCheckTimer = null
 
 // Type dropdown items (with "Add custom type..." appended)
@@ -795,14 +799,28 @@ const typeDropdownItems = computed(() => {
   return items
 })
 
-// Subseries items (a-z)
+// Subseries items (a-z, excluding already-used letters)
 const subseriesItems = computed(() => {
   const items = []
   for (let i = 0; i < 26; i++) {
     const letter = String.fromCharCode(97 + i)
-    items.push({ title: letter, value: letter })
+    if (!usedSubseries.value.includes(letter)) {
+      items.push({ title: letter, value: letter })
+    }
   }
   return items
+})
+
+// Taxonomy prefix shown in project name field (e.g. "FEAT-0440c")
+const taxonomyPrefix = computed(() => {
+  const typeId = projectData.value.project_type_id
+  const serial = projectData.value.series_number
+  if (!typeId || !serial) return ''
+  const type = projectTypes.value.find((t) => t.id === typeId)
+  if (!type) return ''
+  const padded = String(serial).padStart(4, '0')
+  const suffix = projectData.value.subseries || ''
+  return `${type.abbreviation}-${padded}${suffix}`
 })
 
 // Handle type change: reset series + subseries
@@ -817,6 +835,7 @@ function handleTypeChange(typeId) {
   seriesNumberInput.value = ''
   seriesCheckResult.value = null
   seriesCheckMessage.value = ''
+  usedSubseries.value = []
 }
 
 // Handle type created from AddTypeModal
@@ -826,6 +845,7 @@ function handleTypeCreated(newType) {
   projectData.value.series_number = null
   projectData.value.subseries = null
   seriesNumberInput.value = ''
+  usedSubseries.value = []
 }
 
 // Debounced series number input handler
@@ -835,6 +855,8 @@ function onSeriesInput(val) {
   const trimmed = (val || '').trim()
   if (!trimmed) {
     projectData.value.series_number = null
+    projectData.value.subseries = null
+    usedSubseries.value = []
     seriesCheckResult.value = null
     seriesCheckMessage.value = ''
     return
@@ -843,37 +865,50 @@ function onSeriesInput(val) {
   const num = parseInt(trimmed, 10)
   if (isNaN(num) || num < 1 || num > 9999) {
     projectData.value.series_number = null
+    projectData.value.subseries = null
+    usedSubseries.value = []
     seriesCheckResult.value = false
     seriesCheckMessage.value = 'Enter 1-9999'
     return
   }
 
   projectData.value.series_number = num
+  projectData.value.subseries = null
 
   seriesChecking.value = true
   seriesCheckTimer = setTimeout(() => checkSeriesAvailability(num), 300)
 }
 
-// API call to check series availability
+// API call to check series availability + fetch used subseries
 async function checkSeriesAvailability(num) {
   if (!projectData.value.project_type_id || !num) {
     seriesChecking.value = false
     return
   }
+  const excludeId = editingProject.value?.id || null
   try {
-    const { data } = await api.projects.checkSeries(
-      projectData.value.project_type_id,
-      num,
-      projectData.value.subseries,
-      editingProject.value?.id || null,
-    )
-    seriesCheckResult.value = data.available
-    seriesCheckMessage.value = data.available
+    const [checkRes, usedRes] = await Promise.all([
+      api.projects.checkSeries(
+        projectData.value.project_type_id,
+        num,
+        projectData.value.subseries,
+        excludeId,
+      ),
+      api.projects.usedSubseries(
+        projectData.value.project_type_id,
+        num,
+        excludeId,
+      ),
+    ])
+    seriesCheckResult.value = checkRes.data.available
+    seriesCheckMessage.value = checkRes.data.available
       ? `${String(num).padStart(4, '0')} available`
       : `${String(num).padStart(4, '0')} taken`
+    usedSubseries.value = usedRes.data.used_subseries || []
   } catch {
     seriesCheckResult.value = null
     seriesCheckMessage.value = ''
+    usedSubseries.value = []
   } finally {
     seriesChecking.value = false
   }
@@ -1133,9 +1168,19 @@ function editProject(project) {
   if (project.series_number && project.project_type_id) {
     seriesCheckResult.value = true
     seriesCheckMessage.value = 'Current value'
+    // Fetch used subseries so suffix dropdown is filtered
+    api.projects
+      .usedSubseries(project.project_type_id, project.series_number, project.id)
+      .then(({ data }) => {
+        usedSubseries.value = data.used_subseries || []
+      })
+      .catch(() => {
+        usedSubseries.value = []
+      })
   } else {
     seriesCheckResult.value = null
     seriesCheckMessage.value = ''
+    usedSubseries.value = []
   }
   showCreateDialog.value = true
 }
@@ -1292,6 +1337,7 @@ function resetForm() {
   seriesCheckResult.value = null
   seriesCheckMessage.value = ''
   seriesChecking.value = false
+  usedSubseries.value = []
   if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
 }
 
