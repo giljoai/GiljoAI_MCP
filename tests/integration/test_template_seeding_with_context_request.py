@@ -24,24 +24,24 @@ class TestTemplateSeededWithContextRequest:
 
         # Seed templates (simulates first-time tenant setup)
         count = await seed_tenant_templates(db_session, tenant_key)
-        assert count == 6, "Should seed all 6 agent templates"
+        assert count == 5, "Should seed 5 agent templates (orchestrator is system-managed)"
 
         # Fetch all templates
         result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
-        assert len(templates) == 6
+        assert len(templates) == 5
 
         # Verify all templates have complete system_instructions
         for template in templates:
             sys_inst = template.system_instructions
 
             # Must have all three sections in order
-            assert "MCP COMMUNICATION PROTOCOL" in sys_inst
+            assert "MCP Tool Usage" in sys_inst
             assert "REQUESTING BROADER CONTEXT" in sys_inst
             assert "CHECK-IN PROTOCOL" in sys_inst
 
             # Verify proper ordering (MCP before Context Request before Check-In)
-            mcp_pos = sys_inst.index("MCP COMMUNICATION PROTOCOL")
+            mcp_pos = sys_inst.index("MCP Tool Usage")
             ctx_pos = sys_inst.index("REQUESTING BROADER CONTEXT")
             chk_pos = sys_inst.index("CHECK-IN PROTOCOL")
 
@@ -50,27 +50,20 @@ class TestTemplateSeededWithContextRequest:
                 f"Expected: MCP ({mcp_pos}) < Context ({ctx_pos}) < Check-In ({chk_pos})"
             )
 
-    async def test_orchestrator_has_response_instructions(self, db_session: AsyncSession):
-        """Verify orchestrator template has context response instructions."""
-        tenant_key = "integration_test_orchestrator"
+    async def test_orchestrator_response_section_helper(self, db_session: AsyncSession):
+        """Verify orchestrator context response section has required content.
 
-        await seed_tenant_templates(db_session, tenant_key)
+        Note: Orchestrator is a SYSTEM_MANAGED_ROLE and not seeded via seed_tenant_templates.
+        We test the helper function directly that generates the content.
+        """
+        from src.giljo_mcp.template_seeder import _get_orchestrator_context_response_section
 
-        # Fetch orchestrator template
-        result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "orchestrator")
-        )
-        orchestrator = result.scalar_one()
+        response_section = _get_orchestrator_context_response_section()
 
-        # Orchestrator should have response instructions in user_instructions
-        user_inst = orchestrator.user_instructions
-        assert "RESPONDING TO CONTEXT REQUESTS" in user_inst
-        assert "CONTEXT_RESPONSE:" in user_inst
-        assert "filtered excerpt" in user_inst.lower()
-
-        # Should also have standard context request in system_instructions
-        sys_inst = orchestrator.system_instructions
-        assert "REQUESTING BROADER CONTEXT" in sys_inst
+        # Orchestrator should have response instructions
+        assert "RESPONDING TO CONTEXT REQUESTS" in response_section
+        assert "CONTEXT_RESPONSE:" in response_section
+        assert "filtered excerpt" in response_section.lower()
 
     async def test_non_orchestrator_agents_lack_response_instructions(self, db_session: AsyncSession):
         """Verify non-orchestrator agents don't have response instructions."""
@@ -98,8 +91,8 @@ class TestTemplateSeededWithContextRequest:
             sys_inst = template.system_instructions
             assert "REQUESTING BROADER CONTEXT" in sys_inst
 
-    async def test_legacy_template_includes_new_sections(self, db_session: AsyncSession):
-        """Verify legacy template includes context request sections."""
+    async def test_seeded_templates_include_context_request_sections(self, db_session: AsyncSession):
+        """Verify seeded templates include context request sections in system_instructions."""
         tenant_key = "integration_test_legacy"
 
         await seed_tenant_templates(db_session, tenant_key)
@@ -109,13 +102,15 @@ class TestTemplateSeededWithContextRequest:
         templates = result.scalars().all()
 
         for template in templates:
-            # Legacy field should have context request section
-            legacy = template.system_instructions
-            assert "REQUESTING BROADER CONTEXT" in legacy
+            # system_instructions should have context request section
+            sys_inst = template.system_instructions
+            assert "REQUESTING BROADER CONTEXT" in sys_inst
 
-            # Verify composition: system_instructions = user + system
-            expected = f"{template.user_instructions}\n\n{template.system_instructions}"
-            assert legacy.strip() == expected.strip()
+            # user_instructions should be separate (no MCP content)
+            user_inst = template.user_instructions
+            assert "MCP Tool Usage" not in user_inst, (
+                f"{template.role} user_instructions should not contain MCP Tool Usage (that's in system_instructions)"
+            )
 
     async def test_context_request_mcp_tools_syntax(self, db_session: AsyncSession):
         """Verify context request section uses correct MCP tool syntax."""
@@ -130,9 +125,8 @@ class TestTemplateSeededWithContextRequest:
 
         # Verify MCP tool references
         assert "mcp__giljo-mcp__send_message" in sys_inst
-        assert "mcp__giljo-mcp__get_next_instruction" in sys_inst
+        assert "mcp__giljo-mcp__receive_messages" in sys_inst
         assert "REQUEST_CONTEXT:" in sys_inst
-        assert "tenant_key=" in sys_inst
 
     async def test_idempotent_seeding_preserves_sections(self, db_session: AsyncSession):
         """Verify idempotent seeding doesn't duplicate or lose sections."""
@@ -140,7 +134,7 @@ class TestTemplateSeededWithContextRequest:
 
         # First seeding
         count1 = await seed_tenant_templates(db_session, tenant_key)
-        assert count1 == 6
+        assert count1 == 5
 
         # Fetch templates after first seeding
         result1 = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))

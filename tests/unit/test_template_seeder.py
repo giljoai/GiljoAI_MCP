@@ -33,14 +33,14 @@ class TestTemplateSeederDualField:
         count = await seed_tenant_templates(db_session, tenant_key)
 
         # Verify count
-        assert count == 6, "Should seed 6 default templates"
+        assert count == 5, "Should seed 5 default templates (orchestrator is system-managed)"
 
         # Fetch all templates
         result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
         # Verify all have system_instructions
-        assert len(templates) == 6, "Should have 6 templates"
+        assert len(templates) == 5, "Should have 5 templates"
 
         for template in templates:
             assert template.system_instructions is not None, f"{template.role} missing system_instructions"
@@ -55,7 +55,7 @@ class TestTemplateSeederDualField:
         count = await seed_tenant_templates(db_session, tenant_key)
 
         # Verify count
-        assert count == 6
+        assert count == 5
 
         # Fetch all templates
         result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
@@ -67,9 +67,7 @@ class TestTemplateSeederDualField:
             assert len(template.user_instructions) > 0, f"{template.role} has empty user_instructions"
 
             # Verify role-specific content (each role should have unique instructions)
-            if template.role == "orchestrator":
-                assert "orchestrator" in template.user_instructions.lower()
-            elif template.role == "implementer":
+            if template.role == "implementer":
                 assert (
                     "implementation" in template.user_instructions.lower()
                     or "implementer" in template.user_instructions.lower()
@@ -77,22 +75,22 @@ class TestTemplateSeederDualField:
             elif template.role == "tester":
                 assert "test" in template.user_instructions.lower()
 
-    async def test_system_instructions_identical(self, db_session: AsyncSession):
-        """Verify all templates get same system_instructions."""
+    async def test_system_instructions_consistent_for_non_orchestrator(self, db_session: AsyncSession):
+        """Verify all non-orchestrator templates get same system_instructions."""
         tenant_key = "test_tenant_identical"
 
         # Seed templates
         await seed_tenant_templates(db_session, tenant_key)
 
-        # Fetch all templates
+        # Fetch all templates (all are non-orchestrator since orchestrator is system-managed)
         result = await db_session.execute(
             select(AgentTemplate.system_instructions).where(AgentTemplate.tenant_key == tenant_key)
         )
         system_instructions_list = [row[0] for row in result.fetchall()]
 
-        # Verify all system instructions are identical
-        assert len(system_instructions_list) == 6, "Should have 6 templates"
-        assert len(set(system_instructions_list)) == 1, "All templates should have identical system_instructions"
+        # Verify all non-orchestrator system instructions are identical
+        assert len(system_instructions_list) == 5, "Should have 5 templates"
+        assert len(set(system_instructions_list)) == 1, "All non-orchestrator templates should have identical system_instructions"
 
     async def test_user_instructions_unique(self, db_session: AsyncSession):
         """Verify each role gets unique user_instructions."""
@@ -107,15 +105,14 @@ class TestTemplateSeederDualField:
         )
         user_instructions_by_role = {row[0]: row[1] for row in result.fetchall()}
 
-        # Verify each role has unique user instructions
-        assert len(user_instructions_by_role) == 6, "Should have 6 unique roles"
+        # Verify each role has unique user instructions (orchestrator is system-managed, not seeded)
+        assert len(user_instructions_by_role) == 5, "Should have 5 unique roles"
 
         # Verify no duplicates (all user_instructions are unique)
         user_instructions_values = list(user_instructions_by_role.values())
-        assert len(set(user_instructions_values)) == 6, "All user_instructions should be unique per role"
+        assert len(set(user_instructions_values)) == 5, "All user_instructions should be unique per role"
 
         # Verify each role has content matching its role
-        assert "orchestrator" in user_instructions_by_role["orchestrator"].lower()
         assert (
             "analyzer" in user_instructions_by_role["analyzer"].lower()
             or "analysis" in user_instructions_by_role["analyzer"].lower()
@@ -157,14 +154,13 @@ class TestTemplateSeederDualField:
             actual = template.system_instructions.strip()
             assert len(actual) > 0, f"Template {template.role} system_instructions should not be empty"
 
-            assert actual == expected, (
-                f"{template.role} system_instructions doesn't match system + user\n"
-                f"Expected: {expected[:100]}...\n"
-                f"Actual: {actual[:100]}..."
+            # Verify MCP content is present in system_instructions
+            assert "MCP" in actual.upper(), (
+                f"{template.role} system_instructions should contain MCP content"
             )
 
-    async def test_required_mcp_tools_in_system(self, db_session: AsyncSession):
-        """Verify all MCP tools present in system_instructions."""
+    async def test_required_mcp_content_in_system(self, db_session: AsyncSession):
+        """Verify key MCP content present in system_instructions."""
         tenant_key = "test_tenant_mcp_tools"
 
         # Seed templates
@@ -174,26 +170,24 @@ class TestTemplateSeederDualField:
         result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
-        # Required MCP tools that MUST be in system_instructions
-        # Note: Tool names use underscores (_) not dashes (-)
-        required_tools = [
-            "mcp__giljo_mcp__get_pending_jobs",
-            "mcp__giljo_mcp__acknowledge_job",
-            "mcp__giljo_mcp__report_progress",
-            "mcp__giljo_mcp__get_next_instruction",
-            "mcp__giljo_mcp__complete_job",
-            "mcp__giljo_mcp__report_error",
-            "mcp__giljo_mcp__update_job_status",
-        ]
-
-        # Verify all templates have all required MCP tools
+        # After Handover 0431 slimming, system_instructions contain the slim MCP section
+        # with tool call format guidance, plus check-in, messaging, and context request sections.
+        # Individual tool names are in full_protocol (returned by get_agent_mission), not in templates.
         for template in templates:
             system_inst = template.system_instructions
 
-            for tool in required_tools:
-                assert tool in system_inst, (
-                    f"{template.role} missing required MCP tool: {tool}\nSystem instructions: {system_inst[:200]}..."
-                )
+            # MCP Tool Usage section should be present
+            assert "MCP Tool Usage" in system_inst, (
+                f"{template.role} missing MCP Tool Usage section"
+            )
+            # Should reference mcp__giljo-mcp__ prefix
+            assert "mcp__giljo-mcp__" in system_inst, (
+                f"{template.role} should reference mcp__giljo-mcp__ tool prefix"
+            )
+            # Should have messaging section
+            assert "MESSAGING" in system_inst or "send_message" in system_inst, (
+                f"{template.role} should have messaging content"
+            )
 
     async def test_system_instructions_not_in_user(self, db_session: AsyncSession):
         """Verify system_instructions content NOT duplicated in user_instructions."""
@@ -224,16 +218,16 @@ class TestTemplateSeederDualField:
 
         # Seed first time
         count1 = await seed_tenant_templates(db_session, tenant_key)
-        assert count1 == 6, "First seed should create 6 templates"
+        assert count1 == 5, "First seed should create 5 templates (orchestrator is system-managed)"
 
         # Seed second time (should skip)
         count2 = await seed_tenant_templates(db_session, tenant_key)
         assert count2 == 0, "Second seed should skip (idempotent)"
 
-        # Verify still only 6 templates
+        # Verify still only 5 templates
         result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
-        assert len(templates) == 6, "Should still have exactly 6 templates after idempotent run"
+        assert len(templates) == 5, "Should still have exactly 5 templates after idempotent run"
 
     async def test_system_instructions_non_null(self, db_session: AsyncSession):
         """Verify system_instructions is never NULL."""
@@ -299,8 +293,8 @@ class TestTemplateSeederDualField:
         count1 = await seed_tenant_templates(db_session, tenant1)
         count2 = await seed_tenant_templates(db_session, tenant2)
 
-        assert count1 == 6, "Tenant A should have 6 templates"
-        assert count2 == 6, "Tenant B should have 6 templates"
+        assert count1 == 5, "Tenant A should have 5 templates"
+        assert count2 == 5, "Tenant B should have 5 templates"
 
         # Verify isolation
         result1 = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant1))
@@ -309,8 +303,8 @@ class TestTemplateSeederDualField:
         result2 = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant2))
         templates2 = result2.scalars().all()
 
-        assert len(templates1) == 6, "Tenant A should have 6 templates"
-        assert len(templates2) == 6, "Tenant B should have 6 templates"
+        assert len(templates1) == 5, "Tenant A should have 5 templates"
+        assert len(templates2) == 5, "Tenant B should have 5 templates"
 
         # Verify no cross-tenant contamination
         tenant1_ids = {t.id for t in templates1}
@@ -321,47 +315,34 @@ class TestTemplateSeederDualField:
 class TestMCPCoordinationSection:
     """Test MCP coordination section generation."""
 
-    def test_mcp_section_contains_required_tools(self):
-        """Verify MCP section contains all required tools."""
+    def test_mcp_section_has_tool_call_guidance(self):
+        """Verify MCP section has tool call format guidance."""
         mcp_section = _get_mcp_coordination_section()
 
-        # Note: Tool names use underscores (_) not dashes (-)
-        required_tools = [
-            "mcp__giljo_mcp__get_pending_jobs",
-            "mcp__giljo_mcp__acknowledge_job",
-            "mcp__giljo_mcp__report_progress",
-            "mcp__giljo_mcp__get_next_instruction",
-            "mcp__giljo_mcp__complete_job",
-            "mcp__giljo_mcp__report_error",
-            "mcp__giljo_mcp__update_job_status",
-        ]
-
-        for tool in required_tools:
-            assert tool in mcp_section, f"MCP section missing required tool: {tool}"
+        # After Handover 0431 slimming, the MCP section only contains the
+        # "MCP tools are native calls" warning and an example tool call.
+        assert "mcp__giljo-mcp__" in mcp_section, "Should show mcp__giljo-mcp__ prefix"
+        assert "get_agent_mission" in mcp_section, "Should have example tool call"
 
     def test_mcp_section_has_proper_structure(self):
         """Verify MCP section has proper markdown structure."""
         mcp_section = _get_mcp_coordination_section()
 
-        # Should have proper markdown headers
-        assert "## MCP COMMUNICATION PROTOCOL" in mcp_section.upper()
-        assert "### " in mcp_section, "Should have subsections"
+        # Should have proper markdown header (slimmed in 0431)
+        assert "## MCP Tool Usage" in mcp_section, "Should have MCP Tool Usage header"
 
-        # Should have checkpoint instructions
-        assert "CHECKPOINT" in mcp_section.upper()
-        assert "Phase 1" in mcp_section or "PHASE 1" in mcp_section.upper()
+        # Should mention native tool calls
+        assert "native tool calls" in mcp_section.lower(), "Should explain MCP tools are native calls"
 
-    def test_mcp_section_includes_status_updates(self):
-        """Verify MCP section includes job status update instructions."""
+        # Should mention tenant_key auto-injection
+        assert "tenant_key" in mcp_section, "Should mention tenant_key auto-injection"
+
+    def test_mcp_section_mentions_full_protocol(self):
+        """Verify MCP section references full_protocol for detailed tool signatures."""
         mcp_section = _get_mcp_coordination_section()
 
-        # Should include status update tool
-        assert "mcp__giljo_mcp__update_job_status" in mcp_section
-
-        # Should include status values
-        assert "active" in mcp_section.lower()
-        assert "blocked" in mcp_section.lower()
-        assert "completed" in mcp_section.lower()
+        # Should reference full_protocol for detailed information
+        assert "full_protocol" in mcp_section, "Should reference full_protocol for tool signatures"
 
 
 class TestDefaultTemplatesV103:
@@ -388,7 +369,7 @@ class TestDefaultTemplatesV103:
             "cli_tool",
             "background_color",
             "description",
-            "system_instructions",
+            "user_instructions",
             "model",
             "behavioral_rules",
             "success_criteria",
@@ -403,13 +384,13 @@ class TestDefaultTemplatesV103:
 
             assert not missing_fields, f"{template['role']} missing fields: {missing_fields}"
 
-    def test_system_instructions_not_empty(self):
-        """Verify system_instructions is not empty for all roles."""
+    def test_user_instructions_not_empty(self):
+        """Verify user_instructions is not empty for all roles."""
         templates = _get_default_templates_v103()
 
         for template in templates:
-            assert template["system_instructions"], f"{template['role']} has empty system_instructions"
-            assert len(template["system_instructions"]) > 100, f"{template['role']} system_instructions too short"
+            assert template["user_instructions"], f"{template['role']} has empty user_instructions"
+            assert len(template["user_instructions"]) > 100, f"{template['role']} user_instructions too short"
 
     def test_behavioral_rules_not_empty(self):
         """Verify behavioral_rules is not empty for all roles."""
