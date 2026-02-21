@@ -623,11 +623,12 @@ class GiljoDevControlPanel:
             env["PATH"] = extra_path + os.pathsep + env.get("PATH", "")
 
         if system == "Windows":
-            # Windows: Use cmd /k so the terminal stays open on error (user can read the message).
-            # Without this, CREATE_NEW_CONSOLE closes the window instantly when the command fails.
+            # Windows: Use powershell -NoExit so the terminal stays open on error
+            # (user can read the message) while preserving the user's default
+            # terminal profile appearance (PowerShell icon, colors).
             cmd_str = subprocess.list2cmdline(command)
             return subprocess.Popen(
-                ["cmd", "/k", cmd_str],
+                ["powershell", "-NoExit", "-Command", f"& {{{cmd_str}}}"],
                 cwd=work_dir,
                 env=env,
                 creationflags=subprocess.CREATE_NEW_CONSOLE,

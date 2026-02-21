@@ -249,3 +249,32 @@ class OrchestratorResponse(BaseModel):
 
     success: bool
     orchestrator: OrchestratorJobResponse | None = None  # Handover 0506: Optional when no orchestrator exists
+
+
+# ============================================================================
+# Taxonomy Endpoint Response Models (Handover 0440d)
+# ============================================================================
+
+
+class SeriesCheckResponse(BaseModel):
+    """Response for GET /check-series."""
+
+    available: bool
+
+
+class UsedSubseriesResponse(BaseModel):
+    """Response for GET /used-subseries."""
+
+    used_subseries: list[str]
+
+
+class NextSeriesResponse(BaseModel):
+    """Response for GET /next-series."""
+
+    next_series_number: int
+
+
+class AvailableSeriesResponse(BaseModel):
+    """Response for GET /available-series."""
+
+    available_series_numbers: list[int]
