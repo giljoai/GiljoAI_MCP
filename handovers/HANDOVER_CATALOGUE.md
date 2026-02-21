@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-19 (0488 retired, 0489 completed, 0397 merged+retired, 0484/0495 completed)
+**Last Updated:** 2026-02-21 (0254 closed, 0440a-d ALL COMPLETE, 0371a created)
 
 ---
 
@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | 0371 IN PROGRESS, 0365/0373/0374/0382/0397 Ready |
-| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0492 COMPLETE, 0440a-c COMPLETE, 0440d/0481-0484/0489 Ready, 0486 CANCELLED |
+| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0492 COMPLETE, 0440a-d ALL COMPLETE, 0481-0484 Ready, 0486 CANCELLED |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy + 0732 DEFERRED/READY |
@@ -32,17 +32,17 @@
 > **Status**: 9/10 COMPLETE. Only 0365 (handover behavior) remains.
 > See `completed/alpha_trial_remediation_roadmap-C.md` for full context.
 
-### Project Organization Series (0440) - IN PROGRESS
+### Project Organization Series (0440) - COMPLETE
 
 | ID | Title | Status | Priority | Est. Hours |
 |----|-------|--------|----------|------------|
 | ~~0440a~~ | ~~Project Taxonomy Database & Backend~~ | **Complete** | MEDIUM | 8-12h |
 | ~~0440b~~ | ~~Project Taxonomy Frontend UI~~ | **Complete** | MEDIUM | TBD |
 | ~~0440c~~ | ~~Project Taxonomy Display Integration~~ | **Complete** | MEDIUM | TBD |
-| **0440d** | **Taxonomy Production Hardening** | **Ready** | **HIGH** | 4-6h |
+| ~~0440d~~ | ~~Taxonomy Production Hardening~~ | **Complete** | HIGH | 4-6h |
 
 > **Purpose**: Organize projects with types/series (e.g., "BE-0042a" for Backend #42, subseries 'a')
-> **Phase 1a**: Database schema + Backend API (project_types table, taxonomy fields, CRUD endpoints)
+> **Status**: ALL COMPLETE. All 4 phases archived to completed/.
 
 ### Ready for Implementation
 
@@ -50,6 +50,7 @@
 |----|-------|--------|----------|-------|
 | 0365 | Orchestrator Handover Behavior Injection | Ready | Medium | Alpha Trial remnant |
 | 0371 | Dead Code Cleanup Project | **IN PROGRESS** | Medium | Phases 1-4 partial; 4.6, 5-7 pending |
+| **0371a** | **Template Dead Code & Stale Test Remediation** | **Ready** | **Medium** | Child of 0371. 50 stale tests, dead GenericAgentTemplate, prefix fix |
 | 0373 | Template Adapter Migration | Ready | Medium | - |
 | 0374 | Vision Summary Field Migration | Ready | Medium | - |
 | 0382 | Orchestrator Prompt Improvements | Ready | Medium | - |
@@ -79,7 +80,7 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0254 | Three Layer Instruction Cleanup | Partial | Medium | Some work done, not complete |
+| ~~0254~~ | ~~Three Layer Instruction Cleanup~~ | **CLOSED** | - | Resolved by organic evolution (0700, 0431, 0407, 0334). Remaining scraps -> 0371a |
 | **0371** | **Dead Code Cleanup Project** | **IN PROGRESS** | **MEDIUM** | Phases 1-4 (partial) done; Phase 4.6, 5-7 pending (~6K lines) |
 
 ### Greptile Security Series (1000-1014) - SECURITY
@@ -132,6 +133,8 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0440a-d | Project Taxonomy Series (DB, Frontend, Display, Hardening) | **COMPLETE** (2026-02-21) |
+| 0254 | Three Layer Instruction Cleanup | **CLOSED** (2026-02-21, resolved organically -> 0371a) |
 | 0489 | MCP Config Revamp, Proxy Retirement & Backend Cleanup | **COMPLETE** (2026-02-19) |
 | 0488 | Staging Broadcast Response Enforcement | **RETIRED** (2026-02-19) |
 | 0495 | Fix API Test Suite Hang (TRUNCATE->DELETE) | **COMPLETE** (2026-02-18) |
