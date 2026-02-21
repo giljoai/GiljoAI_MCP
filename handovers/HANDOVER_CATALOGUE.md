@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | 0371 IN PROGRESS, 0365/0373/0374/0382/0397 Ready |
-| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0492 COMPLETE, 0440/0481-0484/0486/0489 Ready |
+| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0492 COMPLETE, 0440/0481-0484/0489 Ready, 0486 CANCELLED |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy + 0732 DEFERRED/READY |
@@ -59,22 +59,11 @@
 | 0411 | Windows Terminal Agent Spawning | Ready | Medium | Note: 0411 also used for completed "Jobs Tab Duration UX" |
 | 0419 | Long Polling Orchestrator Monitoring | Ready | Medium | - |
 | 0464 | Empty State API Resilience | Ready | Medium | - |
-| **0486** | **Continuation Workflow Enhancements** | **Ready** | **HIGH** | Job reactivation, mission versioning, todo append |
+| ~~0486~~ | ~~Continuation Workflow Enhancements~~ | **CANCELLED** | - | Cancelled 2026-02-20: Complexity not justified; 360 Memory already bridges context across projects |
 | ~~0488~~ | ~~Staging Broadcast Response Enforcement~~ | **RETIRED** | - | Moved to completed/ (2026-02-19) |
 | ~~0489~~ | ~~MCP Config Revamp, Proxy Retirement & Backend Cleanup~~ | **COMPLETE** | - | Merged 0397+0489. Completed 2026-02-19 (3 commits, 19 files, -924 lines) |
 | ~~0492~~ | ~~API Key Security Hardening~~ | **COMPLETE** | - | Moved to completed/ |
 | 0732 | API Consistency Fixes | Ready | Low | Minor API polish from 0725 audit |
-
-### Continuation Workflow Series (0486) - READY
-
-| ID | Title | Status | Priority | Est. Hours |
-|----|-------|--------|----------|------------|
-| **0486** | **Continuation Workflow Enhancements** | **Ready** | **HIGH** | 16-24h total |
-
-> **Purpose**: Enable seamless multi-phase project continuation
-> **Key Features**: Job reactivation (`reopen_job`), mission versioning, todo list append mode, duration timer resumption
-> **Origin**: TinyContacts project trial (2026-02-05/06) identified gaps in continuation workflow
-> **Phases**: 5 implementation phases (P0: Job Reactivation, P1: Mission Versioning, P2: Todo/Duration, P5: Integration)
 
 ### Test Suite & Remediation (0481-0484) - Mostly Complete
 
@@ -401,7 +390,7 @@ completed/reference/
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0397
-**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0492 (0480/0485/0487-0492 complete/retired, 0481-0484/0486 ready)
+**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0492 (0480/0485/0487-0492 complete/retired, 0481-0484 ready, 0486 cancelled)
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
