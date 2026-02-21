@@ -103,8 +103,8 @@ class TestContextRequestSection:
 
         for template in templates:
             system_inst = template.system_instructions
-            assert "get_next_instruction" in system_inst, (
-                f"{template.role} should mention get_next_instruction for checking responses"
+            assert "receive_messages" in system_inst, (
+                f"{template.role} should mention receive_messages for checking responses"
             )
             assert "wait" in system_inst.lower() or "check" in system_inst.lower(), (
                 f"{template.role} should instruct to wait/check for response"
@@ -208,8 +208,8 @@ class TestContextRequestSection:
         assert "mcp__giljo-mcp__send_message" in section or "send_message" in section, (
             "Should reference send_message tool"
         )
-        assert "to_agent=" in section or "orchestrator" in section.lower(), "Should show targeting orchestrator"
-        assert "tenant_key" in section, "Should mention tenant_key parameter"
+        assert "to_agents=" in section or "orchestrator" in section.lower(), "Should show targeting orchestrator"
+        assert "project_id" in section, "Should mention project_id parameter"
 
     def test_context_request_section_placement(self):
         """Verify section is placed after MCP coordination and before check-in protocol."""
