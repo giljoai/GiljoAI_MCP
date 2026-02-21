@@ -2,25 +2,25 @@
 
 **Date**: 2025-12-22
 **Priority**: MEDIUM
-**Status**: IN PROGRESS
+**Status**: COMPLETE
 **Estimated Effort**: 8-12 hours (can be parallelized)
 **Related**: Handover 0370 (agent_id/job_id audit)
 
 ---
 
-## Execution Status (Updated 2025-12-22)
+## Execution Status (Updated 2026-02-21)
 
 | Phase | Status | Lines Removed | Notes |
 |-------|--------|---------------|-------|
 | **Phase 1** | ✅ COMPLETE | ~340 | All 3 items fixed |
 | **Phase 2** | ✅ COMPLETE | ~6,600 | 12 test files deleted; 2.1 deferred to 0372 |
 | **Phase 3** | ✅ COMPLETE | ~1,944 | 5 tool files + 1 test file deleted |
-| **Phase 4** | 🔄 IN PROGRESS | ~618 | 4.1→0373, 4.2 deprecated, 4.3 fixed, 4.4 DONE, 4.5→0374 DONE, 4.6 pending |
-| **Phase 5** | ⏳ PENDING | - | SQL files |
-| **Phase 6** | ⏳ PENDING | - | Frontend (~5,500 lines) |
-| **Phase 7** | ⏳ PENDING | - | Migration cleanup |
+| **Phase 4** | ✅ COMPLETE | ~618 | 4.1→0373, 4.2 deprecated, 4.3 fixed, 4.4 DONE, 4.5→0374 DONE, 4.6 DONE (2026-02-21) |
+| **Phase 5** | ✅ COMPLETE | - | SQL files moved/deleted by cleanup.md (2026-01-18) |
+| **Phase 6** | ✅ COMPLETE | ~5,470 | Frontend dead code removed by 0745/0750 series (~30 lines residual) |
+| **Phase 7** | ✅ COMPLETE | - | 7.1: Migrations archived by 0601 baseline. 7.2: MCPAgentJob fully removed, hook low-value |
 
-**Total Removed So Far**: ~9,502 lines
+**Total Removed**: ~15,000+ lines (across original phases + subsequent cleanup series)
 
 ### Spawned Handovers
 - **0372**: MessageService Unification (from Phase 2.1) - merge message_service_0366b.py
@@ -35,7 +35,7 @@
 | 4.3 Duplicate User Endpoint | ✅ DONE | **BUG FIX** - frontend was calling non-existent endpoints! Fixed api.js, removed duplicate from auth.py |
 | 4.4 GitHub Router | ✅ DONE | Deleted github.py (145 lines), removed router, cleaned frontend WS handler + tests (~464 lines total) |
 | 4.5 Vision Document Fields | ✅ DONE | → Handover 0374 (migration created, code updated) |
-| 4.6 Template Fields | ⏳ PENDING | Schema cleanup |
+| 4.6 Template Fields | ✅ DONE | `project_type` column dropped, `preferred_tool` alias removed, frontend migrated to `cli_tool` (2026-02-21) |
 
 ### Commits
 - `4f31844b` - Phase 1-2: fix install.py, delete 13 test files
@@ -45,6 +45,17 @@
 - `ac4bd88d` - Phase 4.4: remove deprecated GitHub router + frontend cleanup
 - `ca5e11d0` - Phase 4.5/0374: remove deprecated vision summary fields
 - `35237890` - Phase 4.5/0374: sync baseline migration with models
+- `952466f1` - Phase 4.6: TDD tests for vestigial field removal
+- `1e02b300` - Phase 4.6: frontend preferred_tool -> cli_tool migration
+- `eeceeaa4` - Phase 4.6: drop project_type column + remove preferred_tool alias
+
+### 2026-02-21 - Final Completion
+**Status:** Completed
+**Work Done:**
+- Phase 4.6: Removed `project_type` column (Alembic migration) and `preferred_tool` alias from backend (14 files, 15 TDD tests)
+- Phases 5-7: Verified completed by subsequent work (cleanup.md, 0601 baseline, 0745/0750 series)
+- All spawned children complete: 0372, 0373, 0374, 0371a
+- 39 tests passing, zero regressions
 
 ---
 
