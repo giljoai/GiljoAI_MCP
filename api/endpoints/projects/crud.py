@@ -12,14 +12,22 @@ All operations use ProjectService (no direct DB access where possible).
 
 import logging
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.project_service import ProjectService
 
 from .dependencies import get_project_service
-from .models import ProjectCreate, ProjectResponse, ProjectUpdate
+from .models import (
+    AvailableSeriesResponse,
+    NextSeriesResponse,
+    ProjectCreate,
+    ProjectResponse,
+    ProjectUpdate,
+    SeriesCheckResponse,
+    UsedSubseriesResponse,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -262,7 +270,7 @@ async def get_active_project(
     )
 
 
-@router.get("/next-series")
+@router.get("/next-series", response_model=NextSeriesResponse)
 async def next_series_number(
     type_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -280,7 +288,7 @@ async def next_series_number(
     return {"next_series_number": next_num}
 
 
-@router.get("/available-series")
+@router.get("/available-series", response_model=AvailableSeriesResponse)
 async def available_series_numbers(
     type_id: str,
     limit: int = 5,
@@ -298,11 +306,11 @@ async def available_series_numbers(
     return {"available_series_numbers": available}
 
 
-@router.get("/check-series")
+@router.get("/check-series", response_model=SeriesCheckResponse)
 async def check_series_number(
     type_id: str,
-    series_number: int,
-    subseries: str | None = None,
+    series_number: int = Query(ge=1, le=9999),
+    subseries: str | None = Query(default=None, pattern=r"^[a-z]$"),
     exclude_project_id: str | None = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),
@@ -325,10 +333,10 @@ async def check_series_number(
     return result
 
 
-@router.get("/used-subseries")
+@router.get("/used-subseries", response_model=UsedSubseriesResponse)
 async def used_subseries(
     type_id: str,
-    series_number: int,
+    series_number: int = Query(ge=1, le=9999),
     exclude_project_id: str | None = None,
     current_user: User = Depends(get_current_active_user),
     project_service: ProjectService = Depends(get_project_service),

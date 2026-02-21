@@ -12,9 +12,12 @@ Tests cover:
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.endpoints.projects.models import (
     ProjectResponse,
+)
+from api.endpoints.projects.models import (
     ProjectTypeInfo as ApiProjectTypeInfo,
 )
 from src.giljo_mcp.schemas.service_responses import (
@@ -22,6 +25,8 @@ from src.giljo_mcp.schemas.service_responses import (
     ProjectData,
     ProjectDetail,
     ProjectListItem,
+)
+from src.giljo_mcp.schemas.service_responses import (
     ProjectTypeInfo as ServiceProjectTypeInfo,
 )
 
@@ -38,13 +43,13 @@ SAMPLE_TYPE_DATA = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def type_info_dict():
     """Return a plain dict representing a ProjectTypeInfo."""
     return dict(SAMPLE_TYPE_DATA)
 
 
-@pytest.fixture()
+@pytest.fixture
 def type_info_orm():
     """Return a MagicMock that behaves like a SQLAlchemy ORM ProjectType row."""
     obj = MagicMock()
@@ -397,3 +402,523 @@ class TestServiceProjectDataWithType:
         assert restored.project_type is not None
         assert restored.project_type.id == original.project_type.id
         assert restored.project_type.color == original.project_type.color
+
+
+# ---------------------------------------------------------------------------
+# Handover 0440d - Taxonomy Production Hardening Tests
+# ---------------------------------------------------------------------------
+
+
+class TestDeletedProjectExclusion:
+    """Verify that soft-deleted projects are excluded from taxonomy namespace queries.
+
+    The four query functions in api/endpoints/project_types/crud_ops.py now filter
+    on Project.deleted_at.is_(None) so that deleting a project frees its taxonomy
+    slot for reuse. These tests validate that behaviour by inspecting the SQL
+    queries built by each function.
+    """
+
+    @pytest.fixture
+    def mock_session(self):
+        """Return an AsyncMock that behaves like a SQLAlchemy AsyncSession.
+
+        The session.execute() call returns a mock result whose methods
+        (.scalar_one_or_none, .scalar, .scalars, .all) are pre-wired.
+        """
+        from unittest.mock import AsyncMock, MagicMock
+
+        session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalar.return_value = None
+        mock_result.scalars.return_value.all.return_value = []
+        mock_result.all.return_value = []
+        session.execute.return_value = mock_result
+        return session
+
+    @pytest.mark.asyncio
+    async def test_check_series_available_filters_deleted(self, mock_session):
+        """check_series_available should include deleted_at IS NULL in query."""
+        from api.endpoints.project_types.crud_ops import check_series_available
+
+        result = await check_series_available(
+            session=mock_session,
+            tenant_key="tenant-abc",
+            type_id="type-001",
+            series_number=1,
+            subseries=None,
+        )
+
+        assert result == {"available": True}
+        mock_session.execute.assert_awaited_once()
+        compiled_sql = str(
+            mock_session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        )
+        assert "deleted_at IS NULL" in compiled_sql
+
+    @pytest.mark.asyncio
+    async def test_check_series_available_with_subseries_filters_deleted(
+        self, mock_session
+    ):
+        """check_series_available with a subseries still filters deleted_at."""
+        from api.endpoints.project_types.crud_ops import check_series_available
+
+        result = await check_series_available(
+            session=mock_session,
+            tenant_key="tenant-abc",
+            type_id="type-001",
+            series_number=1,
+            subseries="a",
+        )
+
+        assert result == {"available": True}
+        compiled_sql = str(
+            mock_session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        )
+        assert "deleted_at IS NULL" in compiled_sql
+
+    @pytest.mark.asyncio
+    async def test_check_series_available_excludes_project_id(self, mock_session):
+        """check_series_available with exclude_project_id adds id != clause."""
+        from api.endpoints.project_types.crud_ops import check_series_available
+
+        await check_series_available(
+            session=mock_session,
+            tenant_key="tenant-abc",
+            type_id="type-001",
+            series_number=1,
+            subseries=None,
+            exclude_project_id="proj-existing",
+        )
+
+        compiled_sql = str(
+            mock_session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        )
+        assert "deleted_at IS NULL" in compiled_sql
+        assert "proj-existing" in compiled_sql
+
+    @pytest.mark.asyncio
+    async def test_get_used_subseries_filters_deleted(self, mock_session):
+        """get_used_subseries should include deleted_at IS NULL in query."""
+        from api.endpoints.project_types.crud_ops import get_used_subseries
+
+        result = await get_used_subseries(
+            session=mock_session,
+            tenant_key="tenant-abc",
+            type_id="type-001",
+            series_number=1,
+        )
+
+        assert result == {"used_subseries": []}
+        mock_session.execute.assert_awaited_once()
+        compiled_sql = str(
+            mock_session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        )
+        assert "deleted_at IS NULL" in compiled_sql
+
+    @pytest.mark.asyncio
+    async def test_get_used_subseries_excludes_project_id(self, mock_session):
+        """get_used_subseries with exclude_project_id adds id != clause."""
+        from api.endpoints.project_types.crud_ops import get_used_subseries
+
+        await get_used_subseries(
+            session=mock_session,
+            tenant_key="tenant-abc",
+            type_id="type-001",
+            series_number=1,
+            exclude_project_id="proj-existing",
+        )
+
+        compiled_sql = str(
+            mock_session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        )
+        assert "deleted_at IS NULL" in compiled_sql
+        assert "proj-existing" in compiled_sql
+
+    @pytest.mark.asyncio
+    async def test_get_next_series_number_filters_deleted(self, mock_session):
+        """get_next_series_number should include deleted_at IS NULL in query."""
+        from api.endpoints.project_types.crud_ops import get_next_series_number
+
+        result = await get_next_series_number(
+            session=mock_session,
+            tenant_key="tenant-abc",
+            type_id="type-001",
+        )
+
+        # With no existing projects (scalar returns None), next is 1
+        assert result == 1
+        mock_session.execute.assert_awaited_once()
+        compiled_sql = str(
+            mock_session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        )
+        assert "deleted_at IS NULL" in compiled_sql
+
+    @pytest.mark.asyncio
+    async def test_get_available_series_numbers_filters_deleted(self, mock_session):
+        """get_available_series_numbers should include deleted_at IS NULL in query."""
+        from api.endpoints.project_types.crud_ops import get_available_series_numbers
+
+        result = await get_available_series_numbers(
+            session=mock_session,
+            tenant_key="tenant-abc",
+            type_id="type-001",
+            limit=5,
+        )
+
+        # With no used numbers, returns [1, 2, 3, 4, 5]
+        assert result == [1, 2, 3, 4, 5]
+        mock_session.execute.assert_awaited_once()
+        compiled_sql = str(
+            mock_session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        )
+        assert "deleted_at IS NULL" in compiled_sql
+
+    @pytest.mark.asyncio
+    async def test_get_available_series_numbers_custom_limit(self, mock_session):
+        """get_available_series_numbers respects the limit parameter."""
+        from api.endpoints.project_types.crud_ops import get_available_series_numbers
+
+        result = await get_available_series_numbers(
+            session=mock_session,
+            tenant_key="tenant-abc",
+            type_id="type-001",
+            limit=3,
+        )
+
+        assert result == [1, 2, 3]
+        assert len(result) == 3
+
+    @pytest.mark.asyncio
+    async def test_check_series_available_returns_unavailable(self, mock_session):
+        """check_series_available returns available=False when a matching row exists."""
+        from api.endpoints.project_types.crud_ops import check_series_available
+
+        mock_session.execute.return_value.scalar_one_or_none.return_value = (
+            "existing-proj-id"
+        )
+
+        result = await check_series_available(
+            session=mock_session,
+            tenant_key="tenant-abc",
+            type_id="type-001",
+            series_number=1,
+            subseries=None,
+        )
+
+        assert result == {"available": False}
+
+
+class TestInputValidation:
+    """Verify that FastAPI Query constraints and Pydantic response models exist.
+
+    Handover 0440d added:
+    - series_number = Query(ge=1, le=9999) on check_series_number endpoint
+    - subseries = Query(default=None, pattern=r"^[a-z]$") on check_series_number
+    - Four Pydantic response models for series endpoints
+    """
+
+    def test_series_check_response_model_exists(self):
+        """SeriesCheckResponse should be importable and have an 'available' bool field."""
+        from api.endpoints.projects.models import SeriesCheckResponse
+
+        resp = SeriesCheckResponse(available=True)
+        assert resp.available is True
+
+        resp_false = SeriesCheckResponse(available=False)
+        assert resp_false.available is False
+
+    def test_series_check_response_rejects_missing_fields(self):
+        """SeriesCheckResponse should reject construction without 'available'."""
+        from pydantic import ValidationError
+
+        from api.endpoints.projects.models import SeriesCheckResponse
+
+        with pytest.raises(ValidationError):
+            SeriesCheckResponse()
+
+    def test_used_subseries_response_model_exists(self):
+        """UsedSubseriesResponse should accept a list of strings."""
+        from api.endpoints.projects.models import UsedSubseriesResponse
+
+        resp = UsedSubseriesResponse(used_subseries=["a", "b", "c"])
+        assert resp.used_subseries == ["a", "b", "c"]
+
+    def test_used_subseries_response_empty_list(self):
+        """UsedSubseriesResponse should accept an empty list."""
+        from api.endpoints.projects.models import UsedSubseriesResponse
+
+        resp = UsedSubseriesResponse(used_subseries=[])
+        assert resp.used_subseries == []
+
+    def test_next_series_response_model_exists(self):
+        """NextSeriesResponse should accept a next_series_number int."""
+        from api.endpoints.projects.models import NextSeriesResponse
+
+        resp = NextSeriesResponse(next_series_number=42)
+        assert resp.next_series_number == 42
+
+    def test_next_series_response_rejects_missing_fields(self):
+        """NextSeriesResponse should reject construction without next_series_number."""
+        from pydantic import ValidationError
+
+        from api.endpoints.projects.models import NextSeriesResponse
+
+        with pytest.raises(ValidationError):
+            NextSeriesResponse()
+
+    def test_available_series_response_model_exists(self):
+        """AvailableSeriesResponse should accept a list of integers."""
+        from api.endpoints.projects.models import AvailableSeriesResponse
+
+        resp = AvailableSeriesResponse(available_series_numbers=[1, 3, 5, 7])
+        assert resp.available_series_numbers == [1, 3, 5, 7]
+
+    def test_available_series_response_empty_list(self):
+        """AvailableSeriesResponse should accept an empty list."""
+        from api.endpoints.projects.models import AvailableSeriesResponse
+
+        resp = AvailableSeriesResponse(available_series_numbers=[])
+        assert resp.available_series_numbers == []
+
+    def test_series_check_response_serialization(self):
+        """SeriesCheckResponse should round-trip through model_dump."""
+        from api.endpoints.projects.models import SeriesCheckResponse
+
+        resp = SeriesCheckResponse(available=True)
+        dumped = resp.model_dump()
+        assert dumped == {"available": True}
+
+    def test_used_subseries_response_serialization(self):
+        """UsedSubseriesResponse should round-trip through model_dump."""
+        from api.endpoints.projects.models import UsedSubseriesResponse
+
+        resp = UsedSubseriesResponse(used_subseries=["a", "z"])
+        dumped = resp.model_dump()
+        assert dumped == {"used_subseries": ["a", "z"]}
+
+    def test_next_series_response_serialization(self):
+        """NextSeriesResponse should round-trip through model_dump."""
+        from api.endpoints.projects.models import NextSeriesResponse
+
+        resp = NextSeriesResponse(next_series_number=1)
+        dumped = resp.model_dump()
+        assert dumped == {"next_series_number": 1}
+
+    def test_available_series_response_serialization(self):
+        """AvailableSeriesResponse should round-trip through model_dump."""
+        from api.endpoints.projects.models import AvailableSeriesResponse
+
+        resp = AvailableSeriesResponse(available_series_numbers=[2, 4, 6])
+        dumped = resp.model_dump()
+        assert dumped == {"available_series_numbers": [2, 4, 6]}
+
+    def test_check_series_number_endpoint_has_query_constraints(self):
+        """check_series_number endpoint should define Query(ge=1, le=9999) for series_number."""
+        import inspect
+
+        from api.endpoints.projects.crud import check_series_number
+
+        sig = inspect.signature(check_series_number)
+
+        series_param = sig.parameters["series_number"]
+        # FastAPI Query constraints are stored in .metadata as Ge/Le objects
+        series_default = series_param.default
+        metadata_strs = [str(m) for m in series_default.metadata]
+        assert any("ge=1" in s for s in metadata_strs)
+        assert any("le=9999" in s for s in metadata_strs)
+
+    def test_check_series_number_endpoint_subseries_pattern(self):
+        """check_series_number endpoint should define Query(pattern=r'^[a-z]$') for subseries."""
+        import inspect
+
+        from api.endpoints.projects.crud import check_series_number
+
+        sig = inspect.signature(check_series_number)
+
+        subseries_param = sig.parameters["subseries"]
+        subseries_default = subseries_param.default
+        metadata_strs = [str(m) for m in subseries_default.metadata]
+        assert any("pattern='^[a-z]$'" in s for s in metadata_strs)
+
+    def test_check_series_number_endpoint_subseries_default_none(self):
+        """check_series_number endpoint should default subseries to None."""
+        import inspect
+
+        from api.endpoints.projects.crud import check_series_number
+
+        sig = inspect.signature(check_series_number)
+
+        subseries_param = sig.parameters["subseries"]
+        subseries_default = subseries_param.default
+        assert subseries_default.default is None
+
+
+class TestIntegrityErrorHandling:
+    """Verify that ProjectService.create_project handles duplicate taxonomy gracefully.
+
+    Handover 0440d added a unique constraint (uq_project_taxonomy) on
+    (tenant_key, project_type_id, series_number, subseries). When an
+    IntegrityError referencing that constraint is raised, the service
+    should raise AlreadyExistsError with a user-friendly message.
+    """
+
+    @pytest.fixture
+    def mock_db_manager(self):
+        """Return a MagicMock DatabaseManager."""
+        from unittest.mock import MagicMock
+
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_tenant_manager(self):
+        """Return a MagicMock TenantManager."""
+        from unittest.mock import MagicMock
+
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_session(self):
+        """Return an AsyncMock session that can simulate IntegrityError on commit."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        session = AsyncMock(spec=AsyncSession)
+        session.add = MagicMock()
+        return session
+
+    @pytest.fixture
+    def project_service(self, mock_db_manager, mock_tenant_manager, mock_session):
+        """Create a ProjectService with injected test session."""
+        from src.giljo_mcp.services.project_service import ProjectService
+
+        return ProjectService(
+            db_manager=mock_db_manager,
+            tenant_manager=mock_tenant_manager,
+            test_session=mock_session,
+        )
+
+    @pytest.mark.asyncio
+    async def test_duplicate_taxonomy_raises_already_exists_error(
+        self, project_service, mock_session
+    ):
+        """create_project should raise AlreadyExistsError for uq_project_taxonomy violation."""
+        from sqlalchemy.exc import IntegrityError
+
+        from src.giljo_mcp.exceptions import AlreadyExistsError
+
+        mock_session.commit.side_effect = IntegrityError(
+            statement="INSERT INTO projects ...",
+            params={},
+            orig=Exception(
+                'duplicate key value violates unique constraint "uq_project_taxonomy"'
+            ),
+        )
+
+        with pytest.raises(AlreadyExistsError) as exc_info:
+            await project_service.create_project(
+                name="Duplicate Taxonomy Project",
+                mission="Test mission",
+                tenant_key="tenant-abc",
+                project_type_id="type-001",
+                series_number=1,
+                subseries="a",
+            )
+
+        assert "Taxonomy combination already in use" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_duplicate_taxonomy_error_includes_context(
+        self, project_service, mock_session
+    ):
+        """AlreadyExistsError should include name and tenant_key in context."""
+        from sqlalchemy.exc import IntegrityError
+
+        from src.giljo_mcp.exceptions import AlreadyExistsError
+
+        mock_session.commit.side_effect = IntegrityError(
+            statement="INSERT INTO projects ...",
+            params={},
+            orig=Exception(
+                'duplicate key value violates unique constraint "uq_project_taxonomy"'
+            ),
+        )
+
+        with pytest.raises(AlreadyExistsError) as exc_info:
+            await project_service.create_project(
+                name="Context Check",
+                mission="Test mission",
+                tenant_key="tenant-xyz",
+                project_type_id="type-002",
+                series_number=5,
+                subseries=None,
+            )
+
+        assert exc_info.value.context["name"] == "Context Check"
+        assert exc_info.value.context["tenant_key"] == "tenant-xyz"
+
+    @pytest.mark.asyncio
+    async def test_non_taxonomy_integrity_error_raises_base_error(
+        self, project_service, mock_session
+    ):
+        """IntegrityError without uq_project_taxonomy should raise BaseGiljoError."""
+        from sqlalchemy.exc import IntegrityError
+
+        from src.giljo_mcp.exceptions import BaseGiljoError
+
+        mock_session.commit.side_effect = IntegrityError(
+            statement="INSERT INTO projects ...",
+            params={},
+            orig=Exception(
+                'duplicate key value violates unique constraint "uq_projects_name"'
+            ),
+        )
+
+        with pytest.raises(BaseGiljoError) as exc_info:
+            await project_service.create_project(
+                name="Other Constraint",
+                mission="Test mission",
+                tenant_key="tenant-abc",
+                project_type_id="type-001",
+                series_number=1,
+            )
+
+        # Should NOT be AlreadyExistsError specifically
+        assert type(exc_info.value) is BaseGiljoError
+
+    @pytest.mark.asyncio
+    async def test_already_exists_error_status_code(self):
+        """AlreadyExistsError should have status code 409."""
+        from src.giljo_mcp.exceptions import AlreadyExistsError
+
+        err = AlreadyExistsError(message="duplicate", context={"name": "test"})
+        assert err.default_status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_already_exists_error_to_dict(self):
+        """AlreadyExistsError.to_dict() should return structured error info."""
+        from src.giljo_mcp.exceptions import AlreadyExistsError
+
+        err = AlreadyExistsError(
+            message="Taxonomy combination already in use.",
+            context={"name": "Test", "tenant_key": "t-1"},
+        )
+        d = err.to_dict()
+        assert d["message"] == "Taxonomy combination already in use."
+        assert d["status_code"] == 409
+        assert d["context"]["name"] == "Test"
+        assert "error_code" in d
+        assert "timestamp" in d
