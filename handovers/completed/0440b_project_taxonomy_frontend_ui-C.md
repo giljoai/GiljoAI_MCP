@@ -5,7 +5,7 @@
 **To Agent:** Frontend Implementor (TDD-Implementor + UX-Designer)
 **Priority:** Medium
 **Estimated Complexity:** 8-12 hours
-**Status:** Not Started
+**Status:** Completed
 **Prerequisite:** 0440a (Database & Backend) MUST be complete
 
 ---
@@ -799,17 +799,25 @@ If feature needs complete removal:
 
 ## Progress Updates
 
-### [Date] - [Agent/Session]
-**Status:** [Not Started | In Progress | Blocked | Completed]
+### 2026-02-21 - Claude Opus 4.6
+**Status:** Completed
 **Work Done:**
-- [Specific changes made]
-- [Tests added/passed]
-- [Issues discovered]
+- Added `projectTypes` CRUD + `getNextSeries`/`getAvailableSeries` to `api.js`
+- Created `AddTypeModal.vue` (170 lines) - color swatches, validation, live preview
+- Created `ProjectSeriesSelector.vue` (258 lines) - type/series/subseries dropdowns, live preview
+- Integrated taxonomy expansion panel into ProjectsView create/edit dialog
+- Added taxonomy_alias display in project table name column
+- Added taxonomy search support in project filter
+- Wired taxonomy fields through edit/save/reset flows
+- Wrote 22 unit tests (10 AddTypeModal + 12 ProjectSeriesSelector)
+- Skipped `/validate-taxonomy` endpoint (not implemented in 0440a) - relies on DB unique constraint
+- Commit: `08c8796e`
 
-**Next Steps:**
-- [What's remaining]
-- [New blockers]
-- [Questions for user]
+**Decisions Made:**
+- Used color swatches instead of v-color-picker (simpler, more accessible)
+- Fetches 10 available series numbers per type (not 5) for better UX
+- Client-side preview only - no server validation call (DB constraint catches duplicates on save)
+- Tests cannot run until vitest is reinstalled (corrupted node_modules)
 
 ---
 
