@@ -296,3 +296,42 @@ async def get_available_series_numbers(
         next_num += 1
 
     return available
+
+
+async def check_series_available(
+    session: AsyncSession,
+    tenant_key: str,
+    type_id: str,
+    series_number: int,
+    subseries: str | None = None,
+    exclude_project_id: str | None = None,
+) -> dict[str, Any]:
+    """Check if a specific series number combination is available.
+
+    Args:
+        session: Async database session
+        tenant_key: Tenant identifier for isolation
+        type_id: Project type ID
+        series_number: The series number to check
+        subseries: Optional subseries letter (a-z)
+        exclude_project_id: Exclude this project ID (for edit mode)
+
+    Returns:
+        {"available": bool}
+    """
+    query = select(Project.id).where(
+        Project.project_type_id == type_id,
+        Project.tenant_key == tenant_key,
+        Project.series_number == series_number,
+    )
+    if subseries is not None:
+        query = query.where(Project.subseries == subseries)
+    else:
+        query = query.where(Project.subseries.is_(None))
+
+    if exclude_project_id:
+        query = query.where(Project.id != exclude_project_id)
+
+    result = await session.execute(query)
+    existing_id = result.scalar_one_or_none()
+    return {"available": existing_id is None}
