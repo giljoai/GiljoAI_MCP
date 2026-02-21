@@ -25,11 +25,13 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import and_, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
+    AlreadyExistsError,
     BaseGiljoError,
     ProjectStateError,
     ResourceNotFoundError,
@@ -225,6 +227,16 @@ class ProjectService:
 
                 return project
 
+        except IntegrityError as e:
+            if "uq_project_taxonomy" in str(e):
+                raise AlreadyExistsError(
+                    message="Taxonomy combination already in use. Please choose a different series number or suffix.",
+                    context={"name": name, "tenant_key": tenant_key},
+                ) from e
+            self._logger.exception("Failed to create project")
+            raise BaseGiljoError(
+                message=f"Failed to create project: {e!s}", context={"name": name, "tenant_key": tenant_key}
+            ) from e
         except Exception as e:
             self._logger.exception("Failed to create project")
             raise BaseGiljoError(
@@ -1846,7 +1858,15 @@ class ProjectService:
 
             project.updated_at = datetime.now(timezone.utc)
 
-            await session.commit()
+            try:
+                await session.commit()
+            except IntegrityError as e:
+                if "uq_project_taxonomy" in str(e):
+                    raise AlreadyExistsError(
+                        message="Taxonomy combination already in use. Please choose a different series number or suffix.",
+                        context={"project_id": project_id},
+                    ) from e
+                raise
             await session.refresh(project)
 
             self._logger.info(f"Updated project {project_id}")

@@ -345,6 +345,19 @@
         </v-card-title>
 
         <v-card-text>
+          <!-- Save Error Alert (Handover 0440d) -->
+          <v-alert
+            v-if="saveError"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+            closable
+            @click:close="saveError = ''"
+          >
+            {{ saveError }}
+          </v-alert>
+
           <!-- Success Alert -->
           <v-alert
             v-if="createdProjectId"
@@ -696,7 +709,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
@@ -733,6 +746,7 @@ const formValid = ref(false)
 const editingProject = ref(null)
 const projectToDelete = ref(null)
 const createdProjectId = ref(null)
+const saveError = ref('')
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
 const purgingProjectId = ref(null)
@@ -786,6 +800,7 @@ const seriesCheckResult = ref(null) // null = unchecked, true = available, false
 const seriesCheckMessage = ref('')
 const usedSubseries = ref([]) // letters already taken for current type+serial
 let seriesCheckTimer = null
+let seriesAbortController = null // H-1: AbortController for in-flight series checks
 
 // Type dropdown items (with "Add custom type..." appended)
 const typeDropdownItems = computed(() => {
@@ -885,27 +900,38 @@ async function checkSeriesAvailability(num) {
     seriesChecking.value = false
     return
   }
+  // H-1: Abort previous in-flight request
+  if (seriesAbortController) seriesAbortController.abort()
+  seriesAbortController = new AbortController()
+  const { signal } = seriesAbortController
+
+  const requestedTypeId = projectData.value.project_type_id
   const excludeId = editingProject.value?.id || null
   try {
     const [checkRes, usedRes] = await Promise.all([
       api.projects.checkSeries(
-        projectData.value.project_type_id,
+        requestedTypeId,
         num,
         projectData.value.subseries,
         excludeId,
+        { signal },
       ),
       api.projects.usedSubseries(
-        projectData.value.project_type_id,
+        requestedTypeId,
         num,
         excludeId,
+        { signal },
       ),
     ])
+    // H-4: Guard against stale responses (type changed while request was in-flight)
+    if (projectData.value.project_type_id !== requestedTypeId) return
     seriesCheckResult.value = checkRes.data.available
     seriesCheckMessage.value = checkRes.data.available
       ? `${String(num).padStart(4, '0')} available`
       : `${String(num).padStart(4, '0')} taken`
     usedSubseries.value = usedRes.data.used_subseries || []
-  } catch {
+  } catch (err) {
+    if (err?.name === 'AbortError' || err?.name === 'CanceledError') return
     seriesCheckResult.value = null
     seriesCheckMessage.value = ''
     usedSubseries.value = []
@@ -1149,9 +1175,10 @@ function clearMission() {
   }
 }
 
-function editProject(project) {
+async function editProject(project) {
   editingProject.value = project
   createdProjectId.value = null
+  saveError.value = ''
   projectData.value = {
     name: project.name,
     description: project.description || '',
@@ -1168,15 +1195,17 @@ function editProject(project) {
   if (project.series_number && project.project_type_id) {
     seriesCheckResult.value = true
     seriesCheckMessage.value = 'Current value'
-    // Fetch used subseries so suffix dropdown is filtered
-    api.projects
-      .usedSubseries(project.project_type_id, project.series_number, project.id)
-      .then(({ data }) => {
-        usedSubseries.value = data.used_subseries || []
-      })
-      .catch(() => {
-        usedSubseries.value = []
-      })
+    // H-3: Await usedSubseries fetch before opening dialog to prevent flash
+    try {
+      const { data } = await api.projects.usedSubseries(
+        project.project_type_id,
+        project.series_number,
+        project.id,
+      )
+      usedSubseries.value = data.used_subseries || []
+    } catch {
+      usedSubseries.value = []
+    }
   } else {
     seriesCheckResult.value = null
     seriesCheckMessage.value = ''
@@ -1338,6 +1367,7 @@ function resetForm() {
   seriesCheckMessage.value = ''
   seriesChecking.value = false
   usedSubseries.value = []
+  saveError.value = ''
   if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
 }
 
@@ -1391,7 +1421,7 @@ async function saveProject() {
     }
   } catch (error) {
     console.error('[PROJECTS][CreateProject] Failed to save project:', error)
-    alert(`Failed to save project: ${error.response?.data?.error || error.message}`)
+    saveError.value = error.response?.data?.error || error.message || 'Failed to save project'
   }
 }
 
@@ -1415,6 +1445,12 @@ onMounted(async () => {
   } catch (error) {
     console.error('Failed to load data:', error)
   }
+})
+
+// H-2: Clean up timer and abort controller on unmount
+onBeforeUnmount(() => {
+  if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
+  if (seriesAbortController) seriesAbortController.abort()
 })
 </script>
 
