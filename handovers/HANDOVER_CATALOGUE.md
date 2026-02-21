@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | 0371 IN PROGRESS, 0365/0373/0374/0382/0397 Ready |
-| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0492 COMPLETE, 0440/0481-0484/0489 Ready, 0486 CANCELLED |
+| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0492 COMPLETE, 0440a-c COMPLETE, 0440d/0481-0484/0489 Ready, 0486 CANCELLED |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy + 0732 DEFERRED/READY |
@@ -32,13 +32,14 @@
 > **Status**: 9/10 COMPLETE. Only 0365 (handover behavior) remains.
 > See `completed/alpha_trial_remediation_roadmap-C.md` for full context.
 
-### Project Organization Series (0440) - READY
+### Project Organization Series (0440) - IN PROGRESS
 
 | ID | Title | Status | Priority | Est. Hours |
 |----|-------|--------|----------|------------|
-| **0440a** | **Project Taxonomy Database & Backend** | **Ready** | **MEDIUM** | 8-12h |
-| **0440b** | **Project Taxonomy Frontend UI** | **Ready** | **MEDIUM** | TBD |
-| **0440c** | **Project Taxonomy Display Integration** | **Ready** | **MEDIUM** | TBD |
+| ~~0440a~~ | ~~Project Taxonomy Database & Backend~~ | **Complete** | MEDIUM | 8-12h |
+| ~~0440b~~ | ~~Project Taxonomy Frontend UI~~ | **Complete** | MEDIUM | TBD |
+| ~~0440c~~ | ~~Project Taxonomy Display Integration~~ | **Complete** | MEDIUM | TBD |
+| **0440d** | **Taxonomy Production Hardening** | **Ready** | **HIGH** | 4-6h |
 
 > **Purpose**: Organize projects with types/series (e.g., "BE-0042a" for Backend #42, subseries 'a')
 > **Phase 1a**: Database schema + Backend API (project_types table, taxonomy fields, CRUD endpoints)
@@ -390,7 +391,7 @@ completed/reference/
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0397
-**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-c (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0492 (0480/0485/0487-0492 complete/retired, 0481-0484 ready, 0486 cancelled)
+**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-c (complete), 0440d (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0492 (0480/0485/0487-0492 complete/retired, 0481-0484 ready, 0486 cancelled)
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
