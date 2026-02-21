@@ -371,14 +371,99 @@
 
           <!-- Form -->
           <v-form ref="projectForm" v-model="formValid">
-            <v-text-field
-              v-model="projectData.name"
-              label="Project Name"
-              :rules="[(v) => !!v || 'Name is required']"
-              required
-              class="mb-3"
-              aria-label="Project name"
-            ></v-text-field>
+            <!-- Inline Taxonomy Row (Handover 0440c) -->
+            <v-row dense class="mb-1" align="start">
+              <!-- Type Dropdown -->
+              <v-col cols="3">
+                <v-select
+                  v-model="projectData.project_type_id"
+                  :items="typeDropdownItems"
+                  label="Type"
+                  item-title="display"
+                  item-value="id"
+                  density="compact"
+                  variant="outlined"
+                  clearable
+                  hide-details
+                  aria-label="Project type"
+                  @update:model-value="handleTypeChange"
+                >
+                  <template #item="{ props: itemProps, item }">
+                    <v-list-item v-if="item.raw.id === '__add_custom__'" v-bind="itemProps" @click.stop="showAddTypeModal = true">
+                      <template #prepend>
+                        <v-icon size="small">mdi-plus-circle</v-icon>
+                      </template>
+                    </v-list-item>
+                    <v-list-item v-else v-bind="itemProps">
+                      <template #prepend>
+                        <div :style="{ backgroundColor: item.raw.color, width: '12px', height: '12px', borderRadius: '50%' }" />
+                      </template>
+                    </v-list-item>
+                  </template>
+                  <template #selection="{ item }">
+                    <div class="d-flex align-center">
+                      <div :style="{ backgroundColor: item.raw.color, width: '10px', height: '10px', borderRadius: '50%', marginRight: '6px' }" />
+                      {{ item.raw.abbreviation }}
+                    </div>
+                  </template>
+                </v-select>
+              </v-col>
+
+              <!-- Serial Number Text Input -->
+              <v-col cols="3">
+                <v-text-field
+                  v-model="seriesNumberInput"
+                  label="Serial #"
+                  density="compact"
+                  variant="outlined"
+                  :disabled="!projectData.project_type_id"
+                  :error="seriesCheckResult === false"
+                  :color="seriesCheckResult === true ? 'success' : undefined"
+                  :messages="seriesCheckMessage"
+                  :loading="seriesChecking"
+                  placeholder="0001"
+                  aria-label="Series number"
+                  @update:model-value="onSeriesInput"
+                >
+                  <template #append-inner>
+                    <v-icon v-if="seriesCheckResult === true" color="success" size="small">mdi-check-circle</v-icon>
+                    <v-icon v-else-if="seriesCheckResult === false" color="error" size="small">mdi-close-circle</v-icon>
+                  </template>
+                </v-text-field>
+              </v-col>
+
+              <!-- Suffix Dropdown -->
+              <v-col cols="2">
+                <v-select
+                  v-model="projectData.subseries"
+                  :items="subseriesItems"
+                  label="Suffix"
+                  item-title="title"
+                  item-value="value"
+                  density="compact"
+                  variant="outlined"
+                  clearable
+                  hide-details
+                  :disabled="!projectData.series_number"
+                  aria-label="Subseries suffix"
+                  @update:model-value="onSubseriesChange"
+                />
+              </v-col>
+
+              <!-- Project Name -->
+              <v-col cols="4">
+                <v-text-field
+                  v-model="projectData.name"
+                  label="Project Name"
+                  :rules="[(v) => !!v || 'Name is required']"
+                  required
+                  density="compact"
+                  variant="outlined"
+                  hide-details="auto"
+                  aria-label="Project name"
+                />
+              </v-col>
+            </v-row>
 
             <v-textarea
               v-model="projectData.description"
@@ -429,30 +514,11 @@
               </template>
             </v-textarea>
 
-            <!-- Project Series / Taxonomy (Handover 0440b) -->
-            <v-expansion-panels variant="accordion" class="mb-3">
-              <v-expansion-panel>
-                <v-expansion-panel-title>
-                  <div class="d-flex align-center">
-                    <v-icon start size="small">mdi-file-tree</v-icon>
-                    <span>Project Series (Optional)</span>
-                    <span v-if="projectData.project_type_id" class="ml-2 text-caption text-medium-emphasis">
-                      &mdash; {{ taxonomyPreviewInline }}
-                    </span>
-                  </div>
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <ProjectSeriesSelector
-                    v-model:projectTypeId="projectData.project_type_id"
-                    v-model:seriesNumber="projectData.series_number"
-                    v-model:subseries="projectData.subseries"
-                  />
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-            </v-expansion-panels>
-
             <!-- Status removed - always defaults to inactive (Handover 0062) -->
           </v-form>
+
+          <!-- Add Type Modal (Handover 0440c) -->
+          <AddTypeModal v-model="showAddTypeModal" @type-created="handleTypeCreated" />
         </v-card-text>
 
         <v-card-actions>
@@ -627,7 +693,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
@@ -636,8 +702,8 @@ import { useProjectTabsStore } from '@/stores/projectTabs'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import ProjectSeriesSelector from '@/components/projects/ProjectSeriesSelector.vue'
-import api from '@/services/api'  // Handover 0440c: For fetching project types
+import AddTypeModal from '@/components/projects/AddTypeModal.vue'
+import api from '@/services/api'
 
 // Router
 const router = useRouter()
@@ -709,13 +775,121 @@ const headers = [
   { title: 'Actions', key: 'menu', sortable: false, width: '11%', align: 'center' },
 ]
 
-// Taxonomy preview for expansion panel header (Handover 0440b)
-const taxonomyPreviewInline = computed(() => {
-  if (!projectData.value.project_type_id || !projectData.value.series_number) return ''
-  const series = String(projectData.value.series_number).padStart(4, '0')
-  const sub = projectData.value.subseries || ''
-  return `${series}${sub}`
+// --- Inline taxonomy state and logic (Handover 0440c) ---
+const showAddTypeModal = ref(false)
+const seriesNumberInput = ref('')
+const seriesChecking = ref(false)
+const seriesCheckResult = ref(null) // null = unchecked, true = available, false = taken
+const seriesCheckMessage = ref('')
+let seriesCheckTimer = null
+
+// Type dropdown items (with "Add custom type..." appended)
+const typeDropdownItems = computed(() => {
+  const items = projectTypes.value.map((t) => ({
+    id: t.id,
+    display: `${t.abbreviation} - ${t.label}`,
+    abbreviation: t.abbreviation,
+    color: t.color,
+  }))
+  items.push({ id: '__add_custom__', display: 'Add custom type...', color: 'transparent', abbreviation: '' })
+  return items
 })
+
+// Subseries items (a-z)
+const subseriesItems = computed(() => {
+  const items = []
+  for (let i = 0; i < 26; i++) {
+    const letter = String.fromCharCode(97 + i)
+    items.push({ title: letter, value: letter })
+  }
+  return items
+})
+
+// Handle type change: reset series + subseries
+function handleTypeChange(typeId) {
+  if (typeId === '__add_custom__') {
+    showAddTypeModal.value = true
+    projectData.value.project_type_id = null
+    return
+  }
+  projectData.value.series_number = null
+  projectData.value.subseries = null
+  seriesNumberInput.value = ''
+  seriesCheckResult.value = null
+  seriesCheckMessage.value = ''
+}
+
+// Handle type created from AddTypeModal
+function handleTypeCreated(newType) {
+  projectTypes.value.push(newType)
+  projectData.value.project_type_id = newType.id
+  projectData.value.series_number = null
+  projectData.value.subseries = null
+  seriesNumberInput.value = ''
+}
+
+// Debounced series number input handler
+function onSeriesInput(val) {
+  if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
+
+  const trimmed = (val || '').trim()
+  if (!trimmed) {
+    projectData.value.series_number = null
+    seriesCheckResult.value = null
+    seriesCheckMessage.value = ''
+    return
+  }
+
+  const num = parseInt(trimmed, 10)
+  if (isNaN(num) || num < 1 || num > 9999) {
+    projectData.value.series_number = null
+    seriesCheckResult.value = false
+    seriesCheckMessage.value = 'Enter 1-9999'
+    return
+  }
+
+  projectData.value.series_number = num
+
+  seriesChecking.value = true
+  seriesCheckTimer = setTimeout(() => checkSeriesAvailability(num), 300)
+}
+
+// API call to check series availability
+async function checkSeriesAvailability(num) {
+  if (!projectData.value.project_type_id || !num) {
+    seriesChecking.value = false
+    return
+  }
+  try {
+    const { data } = await api.projects.checkSeries(
+      projectData.value.project_type_id,
+      num,
+      projectData.value.subseries,
+      editingProject.value?.id || null,
+    )
+    seriesCheckResult.value = data.available
+    seriesCheckMessage.value = data.available
+      ? `${String(num).padStart(4, '0')} available`
+      : `${String(num).padStart(4, '0')} taken`
+  } catch {
+    seriesCheckResult.value = null
+    seriesCheckMessage.value = ''
+  } finally {
+    seriesChecking.value = false
+  }
+}
+
+// Re-check when subseries changes
+function onSubseriesChange() {
+  if (projectData.value.series_number && projectData.value.project_type_id) {
+    if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
+    seriesChecking.value = true
+    seriesCheckTimer = setTimeout(
+      () => checkSeriesAvailability(projectData.value.series_number),
+      300,
+    )
+  }
+}
 
 // Computed properties
 const activeProduct = computed(() => productStore.activeProduct)
@@ -952,6 +1126,17 @@ function editProject(project) {
     series_number: project.series_number || null,
     subseries: project.subseries || null,
   }
+  // Populate inline taxonomy state (Handover 0440c)
+  seriesNumberInput.value = project.series_number
+    ? String(project.series_number).padStart(4, '0')
+    : ''
+  if (project.series_number && project.project_type_id) {
+    seriesCheckResult.value = true
+    seriesCheckMessage.value = 'Current value'
+  } else {
+    seriesCheckResult.value = null
+    seriesCheckMessage.value = ''
+  }
   showCreateDialog.value = true
 }
 
@@ -1102,6 +1287,12 @@ function resetForm() {
     series_number: null,
     subseries: null,
   }
+  // Reset inline taxonomy state (Handover 0440c)
+  seriesNumberInput.value = ''
+  seriesCheckResult.value = null
+  seriesCheckMessage.value = ''
+  seriesChecking.value = false
+  if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
 }
 
 async function saveProject() {

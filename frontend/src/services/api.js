@@ -251,6 +251,10 @@ export const api = {
       apiClient.get('/api/v1/projects/next-series', { params: { type_id: typeId } }),
     getAvailableSeries: (typeId, limit = 5) =>
       apiClient.get('/api/v1/projects/available-series', { params: { type_id: typeId, limit } }),
+    checkSeries: (typeId, seriesNumber, subseries = null, excludeProjectId = null) =>
+      apiClient.get('/api/v1/projects/check-series', {
+        params: { type_id: typeId, series_number: seriesNumber, subseries: subseries, exclude_project_id: excludeProjectId },
+      }),
     // Specific action endpoints (Handover 0507: Added force and reason parameters)
     activate: (id, force = false) => apiClient.post(`/api/v1/projects/${id}/activate`, { force }),
     deactivate: (id, reason = null) =>
