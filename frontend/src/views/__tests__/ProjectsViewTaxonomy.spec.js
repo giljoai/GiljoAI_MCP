@@ -579,23 +579,23 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
       expect(wrapper.vm.taxonomyPrefix).toBe('FEAT-0440c')
     })
 
-    it('taxonomyPrefix is empty when type is not set', async () => {
+    it('taxonomyPrefix shows serial-only when type is not set', async () => {
       const wrapper = await createWrapper()
       wrapper.vm.projectData.project_type_id = null
       wrapper.vm.projectData.series_number = 440
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.vm.taxonomyPrefix).toBe('')
+      expect(wrapper.vm.taxonomyPrefix).toBe('0440')
     })
 
-    it('taxonomyPrefix is empty when serial is not set', async () => {
+    it('taxonomyPrefix shows type-only when serial is not set', async () => {
       const wrapper = await createWrapper()
       wrapper.vm.projectTypes = mockProjectTypes
       wrapper.vm.projectData.project_type_id = 'type-feat'
       wrapper.vm.projectData.series_number = null
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.vm.taxonomyPrefix).toBe('')
+      expect(wrapper.vm.taxonomyPrefix).toBe('FEAT')
     })
 
     it('taxonomyPrefix omits subseries when not set', async () => {
@@ -649,7 +649,7 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
   // 7. Handover 0440d: handleTypeChange resets taxonomy state
   // ----------------------------------------------------------------
   describe('Handover 0440d: handleTypeChange resets taxonomy state', () => {
-    it('handleTypeChange resets all taxonomy state including usedSubseries', async () => {
+    it('handleTypeChange preserves serial/subseries and re-validates', async () => {
       const wrapper = await createWrapper()
       wrapper.vm.projectTypes = mockProjectTypes
 
@@ -663,15 +663,16 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
       wrapper.vm.usedSubseries = ['a', 'b']
       await wrapper.vm.$nextTick()
 
-      // Change to a different type
+      // Change to a different type — serial/subseries preserved, validation reset
       wrapper.vm.handleTypeChange('type-bug')
 
-      expect(wrapper.vm.projectData.series_number).toBeNull()
-      expect(wrapper.vm.projectData.subseries).toBeNull()
-      expect(wrapper.vm.seriesNumberInput).toBe('')
+      expect(wrapper.vm.projectData.series_number).toBe(440)
+      expect(wrapper.vm.projectData.subseries).toBe('c')
+      expect(wrapper.vm.seriesNumberInput).toBe('0440')
       expect(wrapper.vm.seriesCheckResult).toBeNull()
       expect(wrapper.vm.seriesCheckMessage).toBe('')
       expect(wrapper.vm.usedSubseries).toEqual([])
+      expect(wrapper.vm.seriesChecking).toBe(true) // re-validation triggered
     })
 
     it('handleTypeChange with __add_custom__ opens modal and clears type', async () => {
@@ -706,10 +707,10 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
       expect(wrapper.vm.seriesChecking).toBe(true)
     })
 
-    it('onSubseriesChange does nothing when no type is set', async () => {
+    it('onSubseriesChange triggers re-check even without type (serial-only)', async () => {
       const wrapper = await createWrapper()
 
-      // No type set, only series_number
+      // No type set, only series_number — still triggers validation
       wrapper.vm.projectData.project_type_id = null
       wrapper.vm.projectData.series_number = 440
       wrapper.vm.seriesChecking = false
@@ -717,7 +718,7 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
 
       wrapper.vm.onSubseriesChange()
 
-      expect(wrapper.vm.seriesChecking).toBe(false)
+      expect(wrapper.vm.seriesChecking).toBe(true)
     })
 
     it('onSubseriesChange does nothing when no series_number is set', async () => {

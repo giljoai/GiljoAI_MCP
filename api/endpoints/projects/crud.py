@@ -308,7 +308,7 @@ async def available_series_numbers(
 
 @router.get("/check-series", response_model=SeriesCheckResponse)
 async def check_series_number(
-    type_id: str,
+    type_id: str | None = None,
     series_number: int = Query(ge=1, le=9999),
     subseries: str | None = Query(default=None, pattern=r"^[a-z]$"),
     exclude_project_id: str | None = None,
@@ -335,7 +335,7 @@ async def check_series_number(
 
 @router.get("/used-subseries", response_model=UsedSubseriesResponse)
 async def used_subseries(
-    type_id: str,
+    type_id: str | None = None,
     series_number: int = Query(ge=1, le=9999),
     exclude_project_id: str | None = None,
     current_user: User = Depends(get_current_active_user),
