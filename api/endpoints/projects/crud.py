@@ -298,6 +298,33 @@ async def available_series_numbers(
     return {"available_series_numbers": available}
 
 
+@router.get("/check-series")
+async def check_series_number(
+    type_id: str,
+    series_number: int,
+    subseries: str | None = None,
+    exclude_project_id: str | None = None,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+):
+    """Check if a specific series number is available for a project type.
+
+    Handover 0440c: Real-time series validation for inline taxonomy input.
+    """
+    from api.endpoints.project_types.crud_ops import check_series_available
+
+    async with project_service.db_manager.get_session_async() as session:
+        result = await check_series_available(
+            session,
+            current_user.tenant_key,
+            type_id,
+            series_number,
+            subseries,
+            exclude_project_id,
+        )
+    return result
+
+
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(
     project_id: str,
