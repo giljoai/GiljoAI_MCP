@@ -429,7 +429,6 @@
                   label="Serial #"
                   density="compact"
                   variant="outlined"
-                  :disabled="!projectData.project_type_id"
                   :error="seriesCheckResult === false"
                   :color="seriesCheckResult === true ? 'success' : undefined"
                   :messages="seriesCheckMessage"
@@ -826,41 +825,50 @@ const subseriesItems = computed(() => {
   return items
 })
 
-// Taxonomy prefix shown in project name field (e.g. "FEAT-0440c")
+// Taxonomy prefix shown in project name field (e.g. "BE-0042a")
 const taxonomyPrefix = computed(() => {
   const typeId = projectData.value.project_type_id
   const serial = projectData.value.series_number
-  if (!typeId || !serial) return ''
-  const type = projectTypes.value.find((t) => t.id === typeId)
-  if (!type) return ''
-  const padded = String(serial).padStart(4, '0')
-  const suffix = projectData.value.subseries || ''
-  return `${type.abbreviation}-${padded}${suffix}`
+  const type = typeId ? projectTypes.value.find((t) => t.id === typeId) : null
+  const parts = []
+  if (type) parts.push(type.abbreviation)
+  if (serial) {
+    if (parts.length) parts.push('-')
+    parts.push(String(serial).padStart(4, '0'))
+    if (projectData.value.subseries) parts.push(projectData.value.subseries)
+  }
+  return parts.join('')
 })
 
-// Handle type change: reset series + subseries
+// Handle type change: re-check availability with new type context
 function handleTypeChange(typeId) {
   if (typeId === '__add_custom__') {
     showAddTypeModal.value = true
     projectData.value.project_type_id = null
     return
   }
-  projectData.value.series_number = null
-  projectData.value.subseries = null
-  seriesNumberInput.value = ''
+  // Re-validate existing serial against new type context
   seriesCheckResult.value = null
   seriesCheckMessage.value = ''
   usedSubseries.value = []
+  if (projectData.value.series_number) {
+    seriesChecking.value = true
+    if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
+    seriesCheckTimer = setTimeout(() => checkSeriesAvailability(projectData.value.series_number), 300)
+  }
 }
 
 // Handle type created from AddTypeModal
 function handleTypeCreated(newType) {
   projectTypes.value.push(newType)
   projectData.value.project_type_id = newType.id
-  projectData.value.series_number = null
-  projectData.value.subseries = null
-  seriesNumberInput.value = ''
+  // Re-validate existing serial against new type context
   usedSubseries.value = []
+  if (projectData.value.series_number) {
+    seriesChecking.value = true
+    if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
+    seriesCheckTimer = setTimeout(() => checkSeriesAvailability(projectData.value.series_number), 300)
+  }
 }
 
 // Debounced series number input handler
@@ -870,7 +878,6 @@ function onSeriesInput(val) {
   const trimmed = (val || '').trim()
   if (!trimmed) {
     projectData.value.series_number = null
-    projectData.value.subseries = null
     usedSubseries.value = []
     seriesCheckResult.value = null
     seriesCheckMessage.value = ''
@@ -880,7 +887,6 @@ function onSeriesInput(val) {
   const num = parseInt(trimmed, 10)
   if (isNaN(num) || num < 1 || num > 9999) {
     projectData.value.series_number = null
-    projectData.value.subseries = null
     usedSubseries.value = []
     seriesCheckResult.value = false
     seriesCheckMessage.value = 'Enter 1-9999'
@@ -888,7 +894,7 @@ function onSeriesInput(val) {
   }
 
   projectData.value.series_number = num
-  projectData.value.subseries = null
+  usedSubseries.value = []
 
   seriesChecking.value = true
   seriesCheckTimer = setTimeout(() => checkSeriesAvailability(num), 300)
@@ -896,7 +902,7 @@ function onSeriesInput(val) {
 
 // API call to check series availability + fetch used subseries
 async function checkSeriesAvailability(num) {
-  if (!projectData.value.project_type_id || !num) {
+  if (!num) {
     seriesChecking.value = false
     return
   }
@@ -942,7 +948,7 @@ async function checkSeriesAvailability(num) {
 
 // Re-check when subseries changes
 function onSubseriesChange() {
-  if (projectData.value.series_number && projectData.value.project_type_id) {
+  if (projectData.value.series_number) {
     if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
     seriesChecking.value = true
     seriesCheckTimer = setTimeout(
