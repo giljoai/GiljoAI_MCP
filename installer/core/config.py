@@ -735,7 +735,6 @@ def seed_default_orchestrator_template(db_manager, tenant_key: str) -> Dict[str,
                     "Handoffs completed successfully",
                     "Three documentation artifacts created",
                 ],
-                preferred_tool="claude",
                 is_default=True,  # Default orchestrator template
                 is_active=True,
                 description="Enhanced orchestrator template with discovery-first workflow, 30-80-10 principle, and 3-tool delegation rule",
