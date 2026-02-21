@@ -228,6 +228,14 @@ export const api = {
       apiClient.get(`/api/v1/products/${productId}/memory-entries`, { params }),
   },
 
+  // Project Types (Handover 0440b: Taxonomy system)
+  projectTypes: {
+    list: () => apiClient.get('/api/v1/project-types/'),
+    create: (data) => apiClient.post('/api/v1/project-types/', data),
+    update: (id, data) => apiClient.put(`/api/v1/project-types/${id}`, data),
+    delete: (id) => apiClient.delete(`/api/v1/project-types/${id}`),
+  },
+
   // Projects
   projects: {
     list: (params) => apiClient.get('/api/v1/projects/', { params }),
@@ -238,6 +246,11 @@ export const api = {
     update: (id, data) => apiClient.patch(`/api/v1/projects/${id}`, data),
     delete: (id) => apiClient.delete(`/api/v1/projects/${id}`),
     fetchDeleted: () => apiClient.get('/api/v1/projects/deleted'),
+    // Taxonomy helpers (Handover 0440b)
+    getNextSeries: (typeId) =>
+      apiClient.get('/api/v1/projects/next-series', { params: { type_id: typeId } }),
+    getAvailableSeries: (typeId, limit = 5) =>
+      apiClient.get('/api/v1/projects/available-series', { params: { type_id: typeId, limit } }),
     // Specific action endpoints (Handover 0507: Added force and reason parameters)
     activate: (id, force = false) => apiClient.post(`/api/v1/projects/${id}/activate`, { force }),
     deactivate: (id, reason = null) =>
