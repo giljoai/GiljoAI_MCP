@@ -75,56 +75,85 @@
     <!-- Filters & Search Section -->
     <v-card v-if="activeProduct" class="mb-4">
       <v-card-text class="pb-2">
-        <!-- Search Bar -->
-        <v-row align="center" class="mb-4">
-          <v-col>
-            <v-text-field
-              v-model="searchQuery"
-              prepend-inner-icon="mdi-magnify"
-              label="Search Projects..."
-              single-line
-              hide-details
-              density="compact"
-              variant="outlined"
-              clearable
-              aria-label="Search projects by name"
-            ></v-text-field>
-          </v-col>
-        </v-row>
-
-        <!-- Type Filter Chips (Handover 0440c) -->
-        <div v-if="projectTypes.length > 0" class="d-flex gap-2 flex-wrap align-center mt-3">
-          <span class="text-caption text-medium-emphasis mr-2">Type:</span>
-          <v-chip
-            :color="filterType === 'all' ? 'primary' : 'default'"
-            :variant="filterType === 'all' ? 'tonal' : 'outlined'"
-            size="small"
-            class="cursor-pointer"
-            @click="filterType = 'all'"
+        <!-- Search Bar + Filter Toggle -->
+        <div class="d-flex align-center ga-3">
+          <v-text-field
+            v-model="searchQuery"
+            prepend-inner-icon="mdi-magnify"
+            label="Search Projects..."
+            single-line
+            hide-details
+            density="compact"
+            variant="outlined"
+            clearable
+            class="flex-grow-1"
+            aria-label="Search projects by name"
+          ></v-text-field>
+          <v-btn
+            v-if="projectTypes.length > 0"
+            variant="outlined"
+            density="compact"
+            :color="showFilterRow || filterType !== 'all' || filterStatus !== 'all' ? 'primary' : undefined"
+            prepend-icon="mdi-filter-variant"
+            class="flex-shrink-0"
+            @click="showFilterRow = !showFilterRow"
           >
-            All
-          </v-chip>
-          <v-chip
-            v-for="ptype in projectTypes"
-            :key="ptype.id"
-            :color="filterType === ptype.id ? ptype.color : 'default'"
-            :variant="filterType === ptype.id ? 'flat' : 'outlined'"
-            size="small"
-            class="cursor-pointer"
-            @click="filterType = ptype.id"
-          >
-            {{ ptype.abbreviation }}
-          </v-chip>
-          <v-chip
-            :color="filterType === 'none' ? 'grey' : 'default'"
-            :variant="filterType === 'none' ? 'tonal' : 'outlined'"
-            size="small"
-            class="cursor-pointer"
-            @click="filterType = 'none'"
-          >
-            No Type
-          </v-chip>
+            Filters
+          </v-btn>
         </div>
+
+        <!-- Collapsible Filter Pills -->
+        <v-expand-transition>
+          <div v-if="showFilterRow" class="mt-3">
+            <!-- Status Pills -->
+            <div class="d-flex gap-2 flex-wrap justify-center">
+              <v-chip
+                v-for="status in statusFilterOptions"
+                :key="status.value"
+                :color="filterStatus === status.value ? 'primary' : 'default'"
+                :variant="filterStatus === status.value ? 'tonal' : 'outlined'"
+                size="small"
+                class="cursor-pointer"
+                @click="filterStatus = status.value"
+              >
+                {{ status.label }} ({{ status.count }})
+              </v-chip>
+            </div>
+
+            <!-- Type Pills -->
+            <div v-if="projectTypes.length > 0" class="d-flex gap-2 flex-wrap justify-center mt-2">
+              <v-chip
+                :color="filterType === 'all' ? 'primary' : 'default'"
+                :variant="filterType === 'all' ? 'tonal' : 'outlined'"
+                size="small"
+                class="cursor-pointer"
+                @click="filterType = 'all'"
+              >
+                All Types
+              </v-chip>
+              <v-chip
+                v-for="ptype in projectTypes"
+                :key="ptype.id"
+                :color="filterType === ptype.id ? ptype.color : 'default'"
+                :variant="filterType === ptype.id ? 'flat' : 'outlined'"
+                size="small"
+                class="cursor-pointer"
+                @click="filterType = ptype.id"
+              >
+                {{ ptype.abbreviation }}
+              </v-chip>
+              <v-chip
+                :color="filterType === 'none' ? 'grey' : 'default'"
+                :variant="filterType === 'none' ? 'tonal' : 'outlined'"
+                size="small"
+                class="cursor-pointer"
+                @click="filterType = 'none'"
+              >
+                No Type
+              </v-chip>
+            </div>
+          </div>
+        </v-expand-transition>
       </v-card-text>
     </v-card>
 
@@ -716,8 +745,10 @@ const tabsStore = useProjectTabsStore()
 
 // Reactive state
 const searchQuery = ref('')
-const filterType = ref('all')  // Handover 0440c: Type filter
-const projectTypes = ref([])  // Handover 0440c: Available project types
+const filterType = ref('all')
+const filterStatus = ref('all')
+const showFilterRow = ref(false)
+const projectTypes = ref([])
 const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showDeletedDialog = ref(false)
@@ -752,7 +783,14 @@ const projectData = ref({
   subseries: null,
 })
 
-// Filter options computed
+const statusFilterOptions = computed(() => [
+  { label: 'All', value: 'all', count: activeProductProjects.value.length },
+  { label: 'Active', value: 'active', count: statusCounts.value.active },
+  { label: 'Inactive', value: 'inactive', count: statusCounts.value.inactive },
+  { label: 'Completed', value: 'completed', count: statusCounts.value.completed },
+  { label: 'Cancelled', value: 'cancelled', count: statusCounts.value.cancelled },
+])
+
 // Table headers
 const headers = [
   { title: 'Name', key: 'name', sortable: true, width: '24%' },
@@ -971,7 +1009,10 @@ const filteredBySearch = computed(() => {
 })
 
 // Filter by status
-const filteredProjects = computed(() => filteredBySearch.value)
+const filteredProjects = computed(() => {
+  if (filterStatus.value === 'all') return filteredBySearch.value
+  return filteredBySearch.value.filter((p) => p.status === filterStatus.value)
+})
 
 // Sort projects - active projects always on top (Handover 0440c: series-aware sorting)
 const sortedProjects = computed(() => {
