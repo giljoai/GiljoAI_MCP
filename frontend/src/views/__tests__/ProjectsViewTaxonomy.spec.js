@@ -255,17 +255,20 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
   // 2. Type filter chip rendering
   // ----------------------------------------------------------------
   describe('Type Filter Chips Rendering', () => {
-    it('renders type filter chips when projectTypes data is populated', async () => {
+    it('renders filter button and collapsible pills when projectTypes populated', async () => {
       const wrapper = await createWrapper()
 
-      // Simulate the onMounted loading of project types
       wrapper.vm.projectTypes = mockProjectTypes
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.text()).toContain('Type:')
+      expect(wrapper.text()).toContain('Filter')
+
+      // Expand the filter row
+      wrapper.vm.showFilterRow = true
+      await wrapper.vm.$nextTick()
+
       expect(wrapper.text()).toContain('FEAT')
       expect(wrapper.text()).toContain('BUG')
-      expect(wrapper.text()).toContain('No Type')
     })
 
     it('does not render type filter section when projectTypes is empty', async () => {
@@ -279,9 +282,11 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
     it('shows all expected type filter labels including All and No Type', async () => {
       const wrapper = await createWrapper()
       wrapper.vm.projectTypes = mockProjectTypes
+      wrapper.vm.showFilterRow = true
       await wrapper.vm.$nextTick()
 
       const text = wrapper.text()
+      expect(text).toContain('All')
       expect(text).toContain('FEAT')
       expect(text).toContain('BUG')
       expect(text).toContain('No Type')
