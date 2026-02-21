@@ -41,54 +41,34 @@ class TestMCPBehavioralRules:
         result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
-        expected_mcp_rules = [
-            "CRITICAL: Call MCP tools at each checkpoint",
-            "Report progress after each completed todo",
-            "Check for orchestrator feedback via get_next_instruction()",
-            "On ANY error: IMMEDIATELY call report_error()",
-            "Include context usage in all progress reports",
-            "Mark job complete with detailed result summary",
-        ]
-
         for template in templates:
             # Each template should have behavioral_rules list
             assert isinstance(template.behavioral_rules, list), f"{template.role} behavioral_rules should be a list"
             assert len(template.behavioral_rules) > 0, f"{template.role} should have behavioral rules"
 
-            # Check for MCP-specific rules (should contain key phrases)
-            rules_text = " ".join(template.behavioral_rules)
+            # After Handover 0431/0103, behavioral_rules are role-specific (not MCP-specific).
+            # MCP coordination is now in system_instructions, not behavioral_rules.
+            # Verify rules are meaningful and non-empty strings.
+            for rule in template.behavioral_rules:
+                assert isinstance(rule, str), f"{template.role} has non-string behavioral rule"
+                assert len(rule) > 5, f"{template.role} has empty/trivial behavioral rule: {rule}"
 
-            # Critical MCP checkpoint rule
-            assert any(keyword in rules_text.lower() for keyword in ["mcp tools", "checkpoint", "mcp tool"]), (
-                f"{template.role} should have MCP checkpoint rule"
-            )
-
-            # Progress reporting rule
-            assert any(keyword in rules_text.lower() for keyword in ["report progress", "report_progress"]), (
-                f"{template.role} should have progress reporting rule"
-            )
-
-            # Error handling rule
-            assert any(keyword in rules_text.lower() for keyword in ["report_error", "error handling"]), (
-                f"{template.role} should have error reporting rule"
-            )
-
-    async def test_orchestrator_has_coordination_rules(self, db_session: AsyncSession, tenant_key: str):
-        """Test that orchestrator template has coordination-specific rules"""
-        # Act
+    async def test_implementer_has_coding_standard_rules(self, db_session: AsyncSession, tenant_key: str):
+        """Test that implementer template has coding standard rules"""
+        # Act (orchestrator is system-managed, not seeded; test implementer instead)
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "orchestrator")
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "implementer")
         )
         template = result.scalar_one()
 
         rules_text = " ".join(template.behavioral_rules).lower()
 
-        # Orchestrator should have agent coordination rules
-        assert "coordinate" in rules_text or "send_message" in rules_text, (
-            "Orchestrator should have agent coordination rules"
+        # Implementer should have coding-related rules
+        assert "code" in rules_text or "standard" in rules_text or "path" in rules_text, (
+            "Implementer should have coding standard rules"
         )
 
     async def test_implementer_has_file_tracking_rules(self, db_session: AsyncSession, tenant_key: str):
@@ -126,18 +106,12 @@ class TestMCPSuccessCriteria:
             assert isinstance(template.success_criteria, list), f"{template.role} success_criteria should be a list"
             assert len(template.success_criteria) > 0, f"{template.role} should have success criteria"
 
-            # Check for MCP-specific criteria (should contain key phrases)
-            criteria_text = " ".join(template.success_criteria).lower()
-
-            # MCP checkpoint execution
-            assert any(keyword in criteria_text for keyword in ["mcp checkpoint", "mcp tools", "checkpoints"]), (
-                f"{template.role} should have MCP checkpoint success criteria"
-            )
-
-            # Progress reporting
-            assert any(keyword in criteria_text for keyword in ["progress", "incremental"]), (
-                f"{template.role} should have progress reporting success criteria"
-            )
+            # After Handover 0431/0103, success_criteria are role-specific.
+            # MCP coordination is now in system_instructions, not success_criteria.
+            # Verify criteria are meaningful and non-empty strings.
+            for criterion in template.success_criteria:
+                assert isinstance(criterion, str), f"{template.role} has non-string success criterion"
+                assert len(criterion) > 5, f"{template.role} has empty/trivial success criterion: {criterion}"
 
     async def test_tester_has_test_results_criteria(self, db_session: AsyncSession, tenant_key: str):
         """Test that tester template has test results reporting criteria"""
@@ -174,22 +148,21 @@ class TestMCPCoordinationSection:
         for template in templates:
             content = template.system_instructions
 
-            # Check for MCP coordination section header
-            assert "MCP COMMUNICATION PROTOCOL" in content or "MCP Communication Protocol" in content, (
-                f"{template.role} should have MCP coordination section"
+            # After Handover 0431 slimming, the MCP section is "## MCP Tool Usage"
+            # Phases and detailed protocol moved to full_protocol (returned by get_agent_mission)
+            assert "MCP Tool Usage" in content, (
+                f"{template.role} should have MCP Tool Usage section"
             )
 
-            # Check for phase headers
-            assert "Phase 1: Job Acknowledgment" in content or "Job Acknowledgment" in content, (
-                f"{template.role} should have job acknowledgment phase"
+            # Should have check-in protocol section
+            assert "CHECK-IN PROTOCOL" in content, (
+                f"{template.role} should have CHECK-IN PROTOCOL section"
             )
-            assert "Phase 2: Incremental Progress" in content or "Incremental Progress" in content, (
-                f"{template.role} should have progress reporting phase"
+
+            # Should have messaging section
+            assert "MESSAGING" in content, (
+                f"{template.role} should have MESSAGING section"
             )
-            assert "Phase 3: Completion" in content or "Completion" in content, (
-                f"{template.role} should have completion phase"
-            )
-            assert "Error Handling" in content, f"{template.role} should have error handling section"
 
     async def test_templates_reference_mcp_tools(self, db_session: AsyncSession, tenant_key: str):
         """Test that templates reference the correct MCP tool names"""
@@ -200,25 +173,19 @@ class TestMCPCoordinationSection:
         result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
-        mcp_tools = [
-            "get_pending_jobs",
-            "acknowledge_job",
-            "report_progress",
-            "get_next_instruction",
-            "complete_job",
-            "report_error",
-        ]
-
         for template in templates:
             content = template.system_instructions.lower()
 
-            # Check for key MCP tools mentioned
-            assert "get_pending_jobs" in content or "acknowledge_job" in content, (
-                f"{template.role} should reference job acknowledgment tools"
+            # After Handover 0431 slimming, individual tool names are in full_protocol,
+            # not in template system_instructions. The template just has MCP Tool Usage
+            # section with the tool call format and messaging tools.
+            assert "mcp__giljo-mcp__" in content, (
+                f"{template.role} should reference mcp__giljo-mcp__ tool prefix"
             )
-            assert "report_progress" in content, f"{template.role} should reference report_progress"
-            assert "complete_job" in content, f"{template.role} should reference complete_job"
-            assert "report_error" in content, f"{template.role} should reference report_error"
+            # Messaging section references send_message and receive_messages
+            assert "send_message" in content or "receive_messages" in content, (
+                f"{template.role} should reference messaging tools"
+            )
 
     async def test_templates_use_correct_placeholders(self, db_session: AsyncSession, tenant_key: str):
         """Test that MCP instructions use correct placeholders for orchestrator"""
@@ -232,39 +199,35 @@ class TestMCPCoordinationSection:
         for template in templates:
             content = template.system_instructions
 
-            # Check for placeholder format (orchestrator will fill these in)
-            # Placeholders should be in angle brackets: <AGENT_TYPE>, <TENANT_KEY>
-            if "mcp__giljo_mcp__" in content.lower():
-                # If MCP tools are referenced, placeholders should be present
-                assert "<AGENT_TYPE>" in content or "agent_display_name=" in content.lower(), (
-                    f"{template.role} should use AGENT_TYPE placeholder or parameter"
-                )
-                assert "<TENANT_KEY>" in content or "tenant_key=" in content.lower(), (
-                    f"{template.role} should use TENANT_KEY placeholder or parameter"
-                )
+            # After Handover 0431 slimming, placeholders like <AGENT_TYPE> and <TENANT_KEY>
+            # are no longer in template system_instructions. The MCP section now just notes
+            # that tenant_key is auto-injected by the server.
+            assert "tenant_key" in content.lower(), (
+                f"{template.role} should mention tenant_key auto-injection"
+            )
 
 
 @pytest.mark.asyncio
 class TestTemplateSpecificCustomizations:
     """Tests for role-specific MCP customizations"""
 
-    async def test_orchestrator_has_coordination_instructions(self, db_session: AsyncSession, tenant_key: str):
-        """Test that orchestrator template has multi-agent coordination instructions"""
-        # Act
+    async def test_analyzer_has_analysis_instructions(self, db_session: AsyncSession, tenant_key: str):
+        """Test that analyzer template has analysis-related instructions"""
+        # Act (orchestrator is system-managed, not seeded; test analyzer instead)
         await seed_tenant_templates(db_session, tenant_key)
 
         # Assert
         result = await db_session.execute(
-            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "orchestrator")
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key, AgentTemplate.role == "analyzer")
         )
         template = result.scalar_one()
 
-        content = template.system_instructions.lower()
+        content = template.user_instructions.lower()
         rules_text = " ".join(template.behavioral_rules).lower()
 
-        # Should have coordination-specific instructions
-        assert "coordinate" in content or "coordinate" in rules_text, (
-            "Orchestrator should have coordination instructions"
+        # Should have analysis-specific instructions
+        assert "analy" in content or "analy" in rules_text, (
+            "Analyzer should have analysis instructions"
         )
 
     async def test_implementer_has_file_modification_tracking(self, db_session: AsyncSession, tenant_key: str):
@@ -316,11 +279,11 @@ class TestTemplateSpecificCustomizations:
         )
         template = result.scalar_one()
 
-        content = template.system_instructions.lower()
+        user_inst = template.user_instructions.lower()
         rules_text = " ".join(template.behavioral_rules).lower()
 
-        # Should mention review findings
-        assert "review" in content or "review" in rules_text, (
+        # Should mention review findings in user_instructions or behavioral_rules
+        assert "review" in user_inst or "review" in rules_text, (
             "Reviewer should have review findings reporting instructions"
         )
 
@@ -335,11 +298,11 @@ class TestTemplateSpecificCustomizations:
         )
         template = result.scalar_one()
 
-        content = template.system_instructions.lower()
+        user_inst = template.user_instructions.lower()
         rules_text = " ".join(template.behavioral_rules).lower()
 
-        # Should mention analysis and findings
-        assert "analys" in content or "analys" in rules_text, "Analyzer should have analysis reporting instructions"
+        # Should mention analysis and findings in user_instructions or behavioral_rules
+        assert "analys" in user_inst or "analys" in rules_text, "Analyzer should have analysis reporting instructions"
 
     async def test_documenter_has_documentation_tracking(self, db_session: AsyncSession, tenant_key: str):
         """Test that documenter template has documentation tracking instructions"""
@@ -369,7 +332,7 @@ class TestIdempotencyWithEnhancements:
         """Test that seeding enhanced templates twice doesn't create duplicates"""
         # Act - First seed
         count1 = await seed_tenant_templates(db_session, tenant_key)
-        assert count1 == 6
+        assert count1 == 5
 
         # Act - Second seed
         count2 = await seed_tenant_templates(db_session, tenant_key)
@@ -377,12 +340,12 @@ class TestIdempotencyWithEnhancements:
         # Assert - Second seed should return 0 (skipped)
         assert count2 == 0, "Second seed should skip and return 0"
 
-        # Verify still only 6 templates
+        # Verify still only 5 templates
         result = await db_session.execute(
             select(func.count(AgentTemplate.id)).where(AgentTemplate.tenant_key == tenant_key)
         )
         db_count = result.scalar()
-        assert db_count == 6, "Should still have exactly 6 templates, no duplicates"
+        assert db_count == 5, "Should still have exactly 5 templates, no duplicates"
 
     async def test_enhanced_templates_preserve_metadata_structure(self, db_session: AsyncSession, tenant_key: str):
         """Test that enhanced templates maintain proper metadata structure"""
@@ -400,12 +363,12 @@ class TestIdempotencyWithEnhancements:
             assert isinstance(template.variables, list)
             assert isinstance(template.tags, list)
 
-            # Verify enhanced rules didn't break existing structure
-            assert len(template.behavioral_rules) >= 6, (
-                f"{template.role} should have at least 6 behavioral rules (original + MCP)"
+            # Verify role-specific rules are present (MCP rules moved to system_instructions)
+            assert len(template.behavioral_rules) >= 3, (
+                f"{template.role} should have at least 3 behavioral rules"
             )
-            assert len(template.success_criteria) >= 4, (
-                f"{template.role} should have at least 4 success criteria (original + MCP)"
+            assert len(template.success_criteria) >= 3, (
+                f"{template.role} should have at least 3 success criteria"
             )
 
 
@@ -459,28 +422,28 @@ class TestProductionQuality:
         templates = result.scalars().all()
 
         for template in templates:
-            # Templates should have substantial content
+            # system_instructions should have substantial MCP content
             assert len(template.system_instructions) > 500, (
-                f"{template.role} template should have substantial content (>500 chars)"
+                f"{template.role} system_instructions should have substantial content (>500 chars)"
             )
 
-            # Should have clear role definition (check for role-related keywords)
+            # user_instructions should have role-specific content
             role_keywords = {
-                "orchestrator": "orchestrator",
-                "analyzer": "analyzer",
-                "implementer": "implementer",
-                "tester": "tester",
-                "reviewer": "reviewer",
-                "documenter": "document",  # "Documentation Agent" contains "document"
+                "analyzer": "analys",
+                "implementer": "implement",
+                "tester": "test",
+                "reviewer": "review",
+                "documenter": "document",
             }
             expected_keyword = role_keywords.get(template.role, template.role)
-            assert expected_keyword in template.system_instructions.lower(), (
-                f"{template.role} should define its role (expected '{expected_keyword}')"
+            # Check user_instructions for role-specific content
+            assert expected_keyword in template.user_instructions.lower(), (
+                f"{template.role} should define its role in user_instructions (expected '{expected_keyword}')"
             )
 
-            # Should have actionable instructions (imperative verbs)
+            # Should have actionable instructions (imperative verbs) in user_instructions
             action_verbs = ["analyze", "implement", "test", "review", "document", "coordinate", "create", "write"]
-            content_lower = template.system_instructions.lower()
+            content_lower = template.user_instructions.lower()
             assert any(verb in content_lower for verb in action_verbs), (
                 f"{template.role} should have actionable instructions"
             )
@@ -528,10 +491,10 @@ class TestProductionQuality:
             assert template.role, f"{template.role} should have role"
             assert template.version, f"{template.role} should have version"
 
-            # Lists should be non-empty
+            # Lists should be present and typed correctly
             assert template.behavioral_rules, f"{template.role} should have behavioral rules"
             assert template.success_criteria, f"{template.role} should have success criteria"
-            assert template.variables, f"{template.role} should have variables"
+            assert isinstance(template.variables, list), f"{template.role} variables should be a list"
             assert template.tags, f"{template.role} should have tags"
 
             # Status flags
@@ -555,14 +518,15 @@ class TestMCPInstructionQuality:
         for template in templates:
             content = template.system_instructions
 
-            # MCP section should have numbered phases
-            if "MCP COMMUNICATION PROTOCOL" in content:
-                assert "Phase 1" in content or "1." in content, (
-                    f"{template.role} MCP instructions should have clear phases"
-                )
-                assert "Phase 2" in content or "2." in content, (
-                    f"{template.role} MCP instructions should have multiple phases"
-                )
+            # After Handover 0431 slimming, MCP section is "## MCP Tool Usage"
+            # Detailed phases are in full_protocol, not in template system_instructions
+            assert "MCP Tool Usage" in content, (
+                f"{template.role} should have MCP Tool Usage section"
+            )
+            # Should have clear instructions about tool call format
+            assert "native tool calls" in content.lower() or "mcp__giljo-mcp__" in content, (
+                f"{template.role} MCP instructions should explain tool call format"
+            )
 
     async def test_mcp_instructions_include_error_handling(self, db_session: AsyncSession, tenant_key: str):
         """Test that all MCP instruction sections include error handling"""
@@ -598,15 +562,15 @@ class TestMCPInstructionQuality:
         result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
-        required_tools = [
-            "acknowledge_job",
-            "report_progress",
-            "complete_job",
-            "report_error",
-        ]
-
         for template in templates:
             content = template.system_instructions.lower()
 
-            for tool in required_tools:
-                assert tool in content, f"{template.role} should mention {tool} in MCP instructions"
+            # After Handover 0431, individual tool names are in full_protocol,
+            # not in template system_instructions. Templates reference messaging tools.
+            assert "send_message" in content or "receive_messages" in content, (
+                f"{template.role} should mention messaging tools in system_instructions"
+            )
+            # Should reference the MCP tool prefix
+            assert "mcp__giljo-mcp__" in content, (
+                f"{template.role} should reference MCP tool prefix"
+            )
