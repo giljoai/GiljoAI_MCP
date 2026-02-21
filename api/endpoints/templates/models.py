@@ -35,8 +35,6 @@ class TemplateCreate(BaseModel):
     is_active: bool = Field(default=False, description="Set template as active")
     # Legacy fields
     category: Optional[str] = Field(None, description="Template category (deprecated)")
-    project_type: Optional[str] = Field(None, description="Project type (deprecated)")
-    preferred_tool: Optional[str] = Field(None, description="Preferred AI tool (deprecated)")
 
     @field_validator("system_instructions")
     @classmethod
@@ -66,8 +64,6 @@ class TemplateUpdate(BaseModel):
     tags: Optional[list[str]] = None
     is_default: Optional[bool] = None
     is_active: Optional[bool] = None
-    # Legacy support
-    preferred_tool: Optional[str] = None
 
     @field_validator("user_instructions")
     @classmethod
@@ -106,13 +102,11 @@ class TemplateResponse(BaseModel):
     may_be_stale: bool = Field(default=False, description="True if template modified after last export")
     # Legacy fields
     category: Optional[str] = None
-    project_type: Optional[str] = None
     variables: list[str] = []
     version: str = "1.0.0"
     usage_count: int = 0
     avg_generation_ms: Optional[float] = None
     created_by: Optional[str] = None
-    preferred_tool: str = "claude"
     is_system_role: bool = Field(default=False, description="True when template is system managed")
 
 

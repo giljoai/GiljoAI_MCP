@@ -34,7 +34,7 @@ async def test_templates(db_session: AsyncSession) -> list[AgentTemplate]:
             system_instructions="You are the Orchestrator agent responsible for coordinating complex tasks.",
             behavioral_rules=["Always validate inputs", "Coordinate with other agents"],
             success_criteria=["All sub-tasks completed", "No errors in workflow"],
-            preferred_tool="claude",
+
             is_active=True,
         ),
         AgentTemplate(
@@ -47,7 +47,7 @@ async def test_templates(db_session: AsyncSession) -> list[AgentTemplate]:
             system_instructions="You are the Analyzer agent responsible for code analysis.",
             behavioral_rules=["Focus on code quality", "Report security issues"],
             success_criteria=["Complete analysis report", "All vulnerabilities identified"],
-            preferred_tool="claude",
+
             is_active=True,
         ),
         AgentTemplate(
@@ -59,7 +59,7 @@ async def test_templates(db_session: AsyncSession) -> list[AgentTemplate]:
             system_instructions="You are the Implementor agent responsible for writing code.",
             behavioral_rules=["Follow TDD principles", "Write clean code"],
             success_criteria=["All tests pass", "Code is well-documented"],
-            preferred_tool="claude",
+
             is_active=True,
         ),
         AgentTemplate(
@@ -71,7 +71,7 @@ async def test_templates(db_session: AsyncSession) -> list[AgentTemplate]:
             system_instructions="Inactive template",
             behavioral_rules=[],
             success_criteria=[],
-            preferred_tool="claude",
+
             is_active=False,  # Inactive template
         ),
     ]
@@ -681,7 +681,6 @@ async def test_template_with_empty_behavioral_rules(
         system_instructions="Minimal template content.",
         behavioral_rules=[],  # Empty
         success_criteria=[],  # Empty
-        preferred_tool="claude",
         is_active=True,
     )
     db_session.add(minimal_template)
