@@ -213,19 +213,22 @@ class Project(Base):
 
     @property
     def taxonomy_alias(self) -> str:
-        """Generate a structured taxonomy alias like BE-0001 or BE-0001a.
+        """Generate a structured taxonomy alias from independent fields.
 
-        Falls back to the random 6-char alias if no series_number is assigned.
+        Supports any combination: type-only ("BE"), serial-only ("0042"),
+        type+serial ("BE-0042"), or full ("BE-0042a").
+        Falls back to the random 6-char alias if no taxonomy fields are set.
         """
-        if not self.series_number:
-            return self.alias
-        series = f"{self.series_number:04d}"
-        if self.subseries:
-            series += self.subseries
+        parts = []
         if self.project_type_id and self.project_type:
-            abbr = self.project_type.abbreviation
-            return f"{abbr}-{series}" if abbr else series
-        return series
+            parts.append(self.project_type.abbreviation)
+        if self.series_number:
+            if parts:
+                parts.append("-")
+            parts.append(f"{self.series_number:04d}")
+            if self.subseries:
+                parts.append(self.subseries)
+        return "".join(parts) if parts else self.alias
 
     def __repr__(self) -> str:
         return f"<Project(id={self.id}, name='{self.name}', product_id='{self.product_id}')>"

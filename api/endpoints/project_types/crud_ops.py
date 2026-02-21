@@ -303,7 +303,7 @@ async def get_available_series_numbers(
 async def check_series_available(
     session: AsyncSession,
     tenant_key: str,
-    type_id: str,
+    type_id: str | None,
     series_number: int,
     subseries: str | None = None,
     exclude_project_id: str | None = None,
@@ -313,7 +313,7 @@ async def check_series_available(
     Args:
         session: Async database session
         tenant_key: Tenant identifier for isolation
-        type_id: Project type ID
+        type_id: Project type ID (None checks untyped projects)
         series_number: The series number to check
         subseries: Optional subseries letter (a-z)
         exclude_project_id: Exclude this project ID (for edit mode)
@@ -322,11 +322,15 @@ async def check_series_available(
         {"available": bool}
     """
     query = select(Project.id).where(
-        Project.project_type_id == type_id,
         Project.tenant_key == tenant_key,
         Project.series_number == series_number,
         Project.deleted_at.is_(None),
     )
+    if type_id:
+        query = query.where(Project.project_type_id == type_id)
+    else:
+        query = query.where(Project.project_type_id.is_(None))
+
     if subseries is not None:
         query = query.where(Project.subseries == subseries)
     else:
@@ -343,7 +347,7 @@ async def check_series_available(
 async def get_used_subseries(
     session: AsyncSession,
     tenant_key: str,
-    type_id: str,
+    type_id: str | None,
     series_number: int,
     exclude_project_id: str | None = None,
 ) -> dict[str, Any]:
@@ -352,7 +356,7 @@ async def get_used_subseries(
     Args:
         session: Async database session
         tenant_key: Tenant identifier for isolation
-        type_id: Project type ID
+        type_id: Project type ID (None checks untyped projects)
         series_number: The series number to check
         exclude_project_id: Exclude this project ID (for edit mode)
 
@@ -360,12 +364,15 @@ async def get_used_subseries(
         {"used_subseries": list[str]}
     """
     query = select(Project.subseries).where(
-        Project.project_type_id == type_id,
         Project.tenant_key == tenant_key,
         Project.series_number == series_number,
         Project.subseries.isnot(None),
         Project.deleted_at.is_(None),
     )
+    if type_id:
+        query = query.where(Project.project_type_id == type_id)
+    else:
+        query = query.where(Project.project_type_id.is_(None))
 
     if exclude_project_id:
         query = query.where(Project.id != exclude_project_id)
