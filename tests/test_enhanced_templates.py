@@ -376,8 +376,8 @@ class TestIdempotencyWithEnhancements:
 class TestOrchestratorRouting:
     """Tests that templates work with orchestrator routing"""
 
-    async def test_all_templates_have_preferred_tool_field(self, db_session: AsyncSession, tenant_key: str):
-        """Test that all templates have preferred_tool field for routing"""
+    async def test_all_templates_have_tool_field(self, db_session: AsyncSession, tenant_key: str):
+        """Test that all templates have tool field set for routing"""
         # Act
         await seed_tenant_templates(db_session, tenant_key)
 

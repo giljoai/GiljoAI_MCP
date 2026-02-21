@@ -74,7 +74,6 @@ async def orchestrator_template(db_session: AsyncSession, test_user: User) -> Ag
         is_default=False,
         tags=["default", "role"],
         usage_count=0,
-        preferred_tool="claude",
         created_at=datetime.now(timezone.utc),
     )
     db_session.add(template)
@@ -103,7 +102,6 @@ async def system_orchestrator_template(db_session: AsyncSession) -> AgentTemplat
         is_default=True,
         tags=["system"],
         usage_count=0,
-        preferred_tool="claude",
         created_at=datetime.now(timezone.utc),
     )
     db_session.add(template)
@@ -173,7 +171,7 @@ class TestTemplatesCRUD:
             "success_criteria": ["Analysis complete", "Patterns documented"],
             "tags": ["custom", "analyzer"],
             "is_default": False,
-            "preferred_tool": "claude",
+
         }
 
         response = await async_client.post("/api/v1/templates/", json=template_data, headers=auth_headers)
@@ -416,7 +414,6 @@ class TestTemplatesSecurity:
             is_active=True,
             is_default=False,
             tags=[],
-            preferred_tool="claude",
             created_at=datetime.now(timezone.utc),
         )
         db_session.add(other_template)
@@ -455,7 +452,6 @@ class TestTemplatesSecurity:
             is_active=True,
             is_default=False,
             tags=[],
-            preferred_tool="claude",
             created_at=datetime.now(timezone.utc),
         )
         db_session.add(other_template)
@@ -667,7 +663,7 @@ class TestTemplatesIntegration:
             "success_criteria": ["All tests pass"],
             "tags": ["test"],
             "is_default": False,
-            "preferred_tool": "claude",
+
         }
         create_response = await async_client.post("/api/v1/templates/", json=create_data, headers=auth_headers)
         assert create_response.status_code == status.HTTP_201_CREATED

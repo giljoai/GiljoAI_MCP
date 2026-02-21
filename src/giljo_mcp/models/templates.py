@@ -54,9 +54,8 @@ class AgentTemplate(Base):
         nullable=False,
         default="role",
         server_default="role",
-    )  # 'role', 'project_type', 'custom'
+    )  # 'role', 'custom'
     role = Column(String(50), nullable=True)  # AgentRole enum value
-    project_type = Column(String(50), nullable=True)  # ProjectType enum value
 
     # Template content (Handover 0106: Dual-field system)
     system_instructions = Column(
