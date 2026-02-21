@@ -644,4 +644,183 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
       expect(wrapper.vm.usedSubseries).toEqual([])
     })
   })
+
+  // ----------------------------------------------------------------
+  // 7. Handover 0440d: handleTypeChange resets taxonomy state
+  // ----------------------------------------------------------------
+  describe('Handover 0440d: handleTypeChange resets taxonomy state', () => {
+    it('handleTypeChange resets all taxonomy state including usedSubseries', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.projectTypes = mockProjectTypes
+
+      // Pre-populate taxonomy state as if user had previously selected a type and serial
+      wrapper.vm.projectData.project_type_id = 'type-feat'
+      wrapper.vm.projectData.series_number = 440
+      wrapper.vm.projectData.subseries = 'c'
+      wrapper.vm.seriesNumberInput = '0440'
+      wrapper.vm.seriesCheckResult = true
+      wrapper.vm.seriesCheckMessage = '0440 available'
+      wrapper.vm.usedSubseries = ['a', 'b']
+      await wrapper.vm.$nextTick()
+
+      // Change to a different type
+      wrapper.vm.handleTypeChange('type-bug')
+
+      expect(wrapper.vm.projectData.series_number).toBeNull()
+      expect(wrapper.vm.projectData.subseries).toBeNull()
+      expect(wrapper.vm.seriesNumberInput).toBe('')
+      expect(wrapper.vm.seriesCheckResult).toBeNull()
+      expect(wrapper.vm.seriesCheckMessage).toBe('')
+      expect(wrapper.vm.usedSubseries).toEqual([])
+    })
+
+    it('handleTypeChange with __add_custom__ opens modal and clears type', async () => {
+      const wrapper = await createWrapper()
+
+      wrapper.vm.projectData.project_type_id = 'type-feat'
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.handleTypeChange('__add_custom__')
+
+      expect(wrapper.vm.showAddTypeModal).toBe(true)
+      expect(wrapper.vm.projectData.project_type_id).toBeNull()
+    })
+  })
+
+  // ----------------------------------------------------------------
+  // 8. Handover 0440d: onSubseriesChange triggers re-validation
+  // ----------------------------------------------------------------
+  describe('Handover 0440d: onSubseriesChange triggers re-validation', () => {
+    it('onSubseriesChange triggers re-check when type and serial are set', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.projectTypes = mockProjectTypes
+
+      // Set up state so both type and series_number are present
+      wrapper.vm.projectData.project_type_id = 'type-feat'
+      wrapper.vm.projectData.series_number = 440
+      await wrapper.vm.$nextTick()
+
+      // Call onSubseriesChange -- it synchronously sets seriesChecking = true
+      wrapper.vm.onSubseriesChange()
+
+      expect(wrapper.vm.seriesChecking).toBe(true)
+    })
+
+    it('onSubseriesChange does nothing when no type is set', async () => {
+      const wrapper = await createWrapper()
+
+      // No type set, only series_number
+      wrapper.vm.projectData.project_type_id = null
+      wrapper.vm.projectData.series_number = 440
+      wrapper.vm.seriesChecking = false
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.onSubseriesChange()
+
+      expect(wrapper.vm.seriesChecking).toBe(false)
+    })
+
+    it('onSubseriesChange does nothing when no series_number is set', async () => {
+      const wrapper = await createWrapper()
+
+      // Type set but no series_number
+      wrapper.vm.projectData.project_type_id = 'type-feat'
+      wrapper.vm.projectData.series_number = null
+      wrapper.vm.seriesChecking = false
+      await wrapper.vm.$nextTick()
+
+      wrapper.vm.onSubseriesChange()
+
+      expect(wrapper.vm.seriesChecking).toBe(false)
+    })
+  })
+
+  // ----------------------------------------------------------------
+  // 9. Handover 0440d: Unmount cleanup
+  // ----------------------------------------------------------------
+  describe('Handover 0440d: Unmount cleanup', () => {
+    it('unmount clears seriesCheckTimer', async () => {
+      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
+
+      const wrapper = await createWrapper()
+      wrapper.vm.projectTypes = mockProjectTypes
+
+      // Trigger onSeriesInput to set up a timer (300ms debounce)
+      wrapper.vm.projectData.project_type_id = 'type-feat'
+      await wrapper.vm.$nextTick()
+      wrapper.vm.onSeriesInput('0500')
+      await wrapper.vm.$nextTick()
+
+      // Unmount should invoke clearTimeout for the pending timer
+      wrapper.unmount()
+
+      expect(clearTimeoutSpy).toHaveBeenCalled()
+      clearTimeoutSpy.mockRestore()
+    })
+  })
+
+  // ----------------------------------------------------------------
+  // 10. Handover 0440d: taxonomyPrefix edge cases
+  // ----------------------------------------------------------------
+  describe('Handover 0440d: taxonomyPrefix edge cases', () => {
+    it('taxonomyPrefix pads single-digit serial to 4 digits', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.projectTypes = mockProjectTypes
+
+      wrapper.vm.projectData.project_type_id = 'type-feat'
+      wrapper.vm.projectData.series_number = 1
+      wrapper.vm.projectData.subseries = null
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.taxonomyPrefix).toBe('FEAT-0001')
+    })
+
+    it('taxonomyPrefix handles 4-digit serial without extra padding', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.projectTypes = mockProjectTypes
+
+      wrapper.vm.projectData.project_type_id = 'type-feat'
+      wrapper.vm.projectData.series_number = 9999
+      wrapper.vm.projectData.subseries = null
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.taxonomyPrefix).toBe('FEAT-9999')
+    })
+
+    it('taxonomyPrefix includes subseries suffix when set', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.projectTypes = mockProjectTypes
+
+      wrapper.vm.projectData.project_type_id = 'type-feat'
+      wrapper.vm.projectData.series_number = 1
+      wrapper.vm.projectData.subseries = 'a'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.taxonomyPrefix).toBe('FEAT-0001a')
+    })
+
+    it('taxonomyPrefix pads 2-digit serial correctly', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.projectTypes = mockProjectTypes
+
+      wrapper.vm.projectData.project_type_id = 'type-bug'
+      wrapper.vm.projectData.series_number = 42
+      wrapper.vm.projectData.subseries = null
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.taxonomyPrefix).toBe('BUG-0042')
+    })
+
+    it('taxonomyPrefix pads 3-digit serial correctly', async () => {
+      const wrapper = await createWrapper()
+      wrapper.vm.projectTypes = mockProjectTypes
+
+      wrapper.vm.projectData.project_type_id = 'type-bug'
+      wrapper.vm.projectData.series_number = 501
+      wrapper.vm.projectData.subseries = 'z'
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.vm.taxonomyPrefix).toBe('BUG-0501z')
+    })
+  })
 })
