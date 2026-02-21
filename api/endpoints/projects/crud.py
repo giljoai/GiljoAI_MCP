@@ -86,6 +86,7 @@ async def create_project(
         execution_mode=created_project.execution_mode or "multi_terminal",  # Handover 0260
         # Handover 0440a: Taxonomy fields
         project_type_id=created_project.project_type_id,
+        project_type=created_project.project_type,  # Handover 0440c: Nested type info
         series_number=created_project.series_number,
         subseries=created_project.subseries,
         taxonomy_alias=created_project.taxonomy_alias,
@@ -136,6 +137,7 @@ async def list_projects(
             execution_mode="multi_terminal",  # Handover 0260
             # Handover 0440a: Taxonomy fields
             project_type_id=proj.project_type_id,
+            project_type=proj.project_type,  # Handover 0440c: Nested type info
             series_number=proj.series_number,
             subseries=proj.subseries,
             taxonomy_alias=proj.taxonomy_alias,
@@ -194,6 +196,7 @@ async def get_deleted_projects(
             agents=[],
             # Handover 0440a: Taxonomy fields
             project_type_id=proj.project_type_id,
+            project_type=proj.project_type,  # Handover 0440c: Nested type info
             series_number=proj.series_number,
             subseries=proj.subseries,
             taxonomy_alias=proj.taxonomy_alias,
@@ -252,6 +255,7 @@ async def get_active_project(
         execution_mode="multi_terminal",  # Handover 0260
         # Handover 0440a: Taxonomy fields
         project_type_id=proj.project_type_id,
+        project_type=proj.project_type,  # Handover 0440c: Nested type info
         series_number=proj.series_number,
         subseries=proj.subseries,
         taxonomy_alias=proj.taxonomy_alias,
@@ -342,6 +346,7 @@ async def get_project(
         agents=agents_from_service,  # Fixed: Use agents from ProjectService, not hardcoded []
         # Handover 0440a: Taxonomy fields
         project_type_id=proj.project_type_id,
+        project_type=proj.project_type,  # Handover 0440c: Nested type info
         series_number=proj.series_number,
         subseries=proj.subseries,
         taxonomy_alias=proj.taxonomy_alias,
@@ -398,6 +403,7 @@ async def update_project(
         proj_mode = detail.execution_mode or "multi_terminal"
         # Handover 0440a: Taxonomy fields from ProjectDetail
         proj_type_id = detail.project_type_id
+        proj_type = detail.project_type  # Handover 0440c: Nested type info
         proj_series = detail.series_number
         proj_subseries = detail.subseries
         proj_tax_alias = detail.taxonomy_alias
@@ -420,6 +426,7 @@ async def update_project(
         proj_mode = proj.execution_mode or "multi_terminal"
         # Handover 0440a: Taxonomy fields from ProjectData
         proj_type_id = proj.project_type_id
+        proj_type = proj.project_type  # Handover 0440c: Nested type info
         proj_series = proj.series_number
         proj_subseries = proj.subseries
         proj_tax_alias = proj.taxonomy_alias
@@ -444,6 +451,7 @@ async def update_project(
         agents=[],
         # Handover 0440a: Taxonomy fields
         project_type_id=proj_type_id,
+        project_type=proj_type,  # Handover 0440c: Nested type info
         series_number=proj_series,
         subseries=proj_subseries,
         taxonomy_alias=proj_tax_alias,
