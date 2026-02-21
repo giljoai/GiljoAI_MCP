@@ -1,8 +1,9 @@
 """
 Project and session-related models for GiljoAI MCP.
 
-This module contains models for projects and development sessions.
-Projects are work initiatives that belong to products.
+This module contains models for projects, project types, and development sessions.
+Projects are work initiatives that belong to products. Project types define
+taxonomy categories (e.g., Backend, Frontend, API) for structured project naming.
 """
 
 from sqlalchemy import (
@@ -11,8 +12,10 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -22,12 +25,49 @@ from sqlalchemy.sql import func
 from .base import Base, generate_project_alias, generate_uuid
 
 
+class ProjectType(Base):
+    """
+    Project type model - taxonomy categories for structured project naming.
+
+    Each project type defines an abbreviation (e.g., "BE" for Backend, "FE" for Frontend)
+    that is used to generate taxonomy aliases like BE-0001, FE-0002a.
+
+    Handover 0440a: Initial implementation for project taxonomy system.
+    """
+
+    __tablename__ = "project_types"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(36), nullable=False, index=True)
+    abbreviation = Column(
+        String(4),
+        nullable=False,
+        comment="2-4 uppercase letter abbreviation (e.g., BE, FE, API)",
+    )
+    label = Column(String(50), nullable=False, comment="Human-readable label (e.g., Backend, Frontend)")
+    color = Column(String(7), nullable=False, default="#607D8B", comment="Hex color for UI display")
+    sort_order = Column(Integer, default=0, comment="Display ordering in UI dropdowns")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    projects = relationship("Project", back_populates="project_type")
+
+    __table_args__ = (
+        UniqueConstraint("tenant_key", "abbreviation", name="uq_project_type_abbr"),
+        Index("idx_project_type_tenant", "tenant_key"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ProjectType(id={self.id}, abbreviation='{self.abbreviation}', label='{self.label}')>"
+
+
 class Project(Base):
     """
     Project model - work initiatives with vision documents.
     Projects belong to a Product and can be created from Tasks.
 
     Handover 0073: Enhanced with orchestrator closeout support for project completion tracking.
+    Handover 0440a: Added taxonomy fields (project_type_id, series_number, subseries).
     """
 
     __tablename__ = "projects"
@@ -61,6 +101,24 @@ class Project(Base):
         String(50),
         nullable=True,
         comment="Staging workflow status: null (not staged) or staged",
+    )
+
+    # Handover 0440a: Project taxonomy fields
+    project_type_id = Column(
+        String(36),
+        ForeignKey("project_types.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="FK to project_types for taxonomy classification",
+    )
+    series_number = Column(
+        Integer,
+        nullable=True,
+        comment="Sequential number within a project type (e.g., 1 in BE-0001)",
+    )
+    subseries = Column(
+        String(1),
+        nullable=True,
+        comment="Single-letter subseries suffix (e.g., 'a' in BE-0001a)",
     )
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -114,6 +172,7 @@ class Project(Base):
 
     # Relationships
     product = relationship("Product", back_populates="projects")
+    project_type = relationship("ProjectType", back_populates="projects")
     agent_jobs_v2 = relationship("AgentJob", back_populates="project", cascade="all, delete-orphan")  # Handover 0366a
     messages = relationship("Message", back_populates="project", cascade="all, delete-orphan")
     tasks = relationship(
@@ -124,6 +183,14 @@ class Project(Base):
     memory_entries = relationship("ProductMemoryEntry", back_populates="project")  # Handover 0390a
 
     __table_args__ = (
+        UniqueConstraint(
+            "tenant_key",
+            "project_type_id",
+            "series_number",
+            "subseries",
+            name="uq_project_taxonomy",
+            postgresql_nulls_not_distinct=True,
+        ),
         Index("idx_project_tenant", "tenant_key"),
         Index("idx_project_status", "status"),
         # Handover 0070: Soft delete support
@@ -143,6 +210,22 @@ class Project(Base):
             postgresql_where=text("status = 'active'"),
         ),
     )
+
+    @property
+    def taxonomy_alias(self) -> str:
+        """Generate a structured taxonomy alias like BE-0001 or BE-0001a.
+
+        Falls back to the random 6-char alias if no series_number is assigned.
+        """
+        if not self.series_number:
+            return self.alias
+        series = f"{self.series_number:04d}"
+        if self.subseries:
+            series += self.subseries
+        if self.project_type_id and self.project_type:
+            abbr = self.project_type.abbreviation
+            return f"{abbr}-{series}" if abbr else series
+        return series
 
     def __repr__(self) -> str:
         return f"<Project(id={self.id}, name='{self.name}', product_id='{self.product_id}')>"

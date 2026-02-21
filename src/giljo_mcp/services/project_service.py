@@ -26,6 +26,7 @@ from uuid import uuid4
 
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
@@ -156,6 +157,9 @@ class ProjectService:
         product_id: str | None = None,
         tenant_key: str | None = None,
         status: str = "inactive",
+        project_type_id: str | None = None,
+        series_number: int | None = None,
+        subseries: str | None = None,
     ) -> Project:
         """
         Create a new project.
@@ -167,6 +171,9 @@ class ProjectService:
             product_id: Parent product ID if project belongs to a product
             tenant_key: Tenant key for multi-tenancy (auto-generated if not provided)
             status: Initial project status (default: "inactive")
+            project_type_id: Project type ID for taxonomy classification (Handover 0440a)
+            series_number: Sequential number within a project type (Handover 0440a)
+            subseries: Single-letter subseries suffix (Handover 0440a)
 
         Returns:
             Project: The created project instance
@@ -197,12 +204,22 @@ class ProjectService:
                     tenant_key=tenant_key,
                     product_id=product_id,
                     status=status,
+                    project_type_id=project_type_id,
+                    series_number=series_number,
+                    subseries=subseries,
                     updated_at=now,  # Explicitly set since DB schema may not have DEFAULT
                 )
 
                 session.add(project)
                 await session.commit()
                 await session.refresh(project)  # Load DB-generated fields (created_at, updated_at)
+
+                # Handover 0440a: Eagerly load project_type relationship for taxonomy_alias
+                if project.project_type_id:
+                    result = await session.execute(
+                        select(Project).options(selectinload(Project.project_type)).where(Project.id == project.id)
+                    )
+                    project = result.scalar_one()
 
                 self._logger.info(f"Created project {project.id} with status '{status}' and tenant key {tenant_key}")
 
@@ -242,8 +259,11 @@ class ProjectService:
         try:
             async with self._get_session() as session:
                 # Get project with mandatory tenant isolation filter (Handover 0424 Phase 0)
+                # Handover 0440a: Eagerly load project_type for taxonomy_alias property
                 result = await session.execute(
-                    select(Project).where(Project.tenant_key == tenant_key, Project.id == project_id)
+                    select(Project)
+                    .options(selectinload(Project.project_type))
+                    .where(Project.tenant_key == tenant_key, Project.id == project_id)
                 )
                 project = result.scalar_one_or_none()
 
@@ -299,6 +319,11 @@ class ProjectService:
                     agents=agent_dicts,
                     agent_count=len(agent_dicts),
                     message_count=0,
+                    # Handover 0440a: Taxonomy fields
+                    project_type_id=project.project_type_id,
+                    series_number=project.series_number,
+                    subseries=project.subseries,
+                    taxonomy_alias=project.taxonomy_alias,
                 )
 
         except (ValueError, ResourceNotFoundError):
@@ -347,8 +372,12 @@ class ProjectService:
 
             async with self._get_session() as session:
                 # Query for active project (tenant-isolated)
+                # Handover 0440a: Eagerly load project_type for taxonomy_alias property
                 stmt = (
-                    select(Project).where(and_(Project.tenant_key == tenant_key, Project.status == "active")).limit(1)
+                    select(Project)
+                    .options(selectinload(Project.project_type))
+                    .where(and_(Project.tenant_key == tenant_key, Project.status == "active"))
+                    .limit(1)
                 )
 
                 result = await session.execute(stmt)
@@ -387,6 +416,11 @@ class ProjectService:
                     deleted_at=project.deleted_at.isoformat() if project.deleted_at else None,
                     agent_count=agent_count,
                     message_count=message_count,
+                    # Handover 0440a: Taxonomy fields
+                    project_type_id=project.project_type_id,
+                    series_number=project.series_number,
+                    subseries=project.subseries,
+                    taxonomy_alias=project.taxonomy_alias,
                 )
 
         except ValidationError:
@@ -426,7 +460,10 @@ class ProjectService:
 
             async with self.db_manager.get_tenant_session_async(tenant_key) as session:
                 # TENANT ISOLATION: Only return projects for the specified tenant
-                query = select(Project).where(Project.tenant_key == tenant_key)
+                # Handover 0440a: Eagerly load project_type for taxonomy_alias property
+                query = (
+                    select(Project).options(selectinload(Project.project_type)).where(Project.tenant_key == tenant_key)
+                )
 
                 if status:
                     # Explicit status filter, including deleted if requested
@@ -456,6 +493,11 @@ class ProjectService:
                         updated_at=(
                             project.updated_at.isoformat() if project.updated_at else project.created_at.isoformat()
                         ),
+                        # Handover 0440a: Taxonomy fields
+                        project_type_id=project.project_type_id,
+                        series_number=project.series_number,
+                        subseries=project.subseries,
+                        taxonomy_alias=project.taxonomy_alias,
                     )
                     for project in projects
                 ]
@@ -1766,10 +1808,11 @@ class ProjectService:
         """
         async with self._get_session() as session:
             # Fetch project
+            # Handover 0440a: Eagerly load project_type for taxonomy_alias property
             result = await session.execute(
-                select(Project).where(
-                    and_(Project.id == project_id, Project.tenant_key == self.tenant_manager.get_current_tenant())
-                )
+                select(Project)
+                .options(selectinload(Project.project_type))
+                .where(and_(Project.id == project_id, Project.tenant_key == self.tenant_manager.get_current_tenant()))
             )
             project = result.scalar_one_or_none()
 
@@ -1785,7 +1828,18 @@ class ProjectService:
 
             # Update allowed fields (Handover 0260: Added execution_mode)
             # Handover 0412: Added status, completed_at for archive endpoint
-            allowed_fields = {"name", "description", "mission", "execution_mode", "status", "completed_at"}
+            # Handover 0440a: Added project_type_id, series_number, subseries for taxonomy
+            allowed_fields = {
+                "name",
+                "description",
+                "mission",
+                "execution_mode",
+                "status",
+                "completed_at",
+                "project_type_id",
+                "series_number",
+                "subseries",
+            }
             for field, value in updates.items():
                 if field in allowed_fields:
                     setattr(project, field, value)
@@ -1821,6 +1875,11 @@ class ProjectService:
                 activated_at=project.activated_at.isoformat() if project.activated_at else None,
                 completed_at=project.completed_at.isoformat() if project.completed_at else None,
                 product_id=project.product_id,
+                # Handover 0440a: Taxonomy fields
+                project_type_id=project.project_type_id,
+                series_number=project.series_number,
+                subseries=project.subseries,
+                taxonomy_alias=project.taxonomy_alias,
             )
 
     async def launch_project(

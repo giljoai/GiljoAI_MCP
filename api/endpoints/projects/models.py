@@ -29,6 +29,10 @@ class ProjectCreate(BaseModel):
         default="multi_terminal",
         description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
     )
+    # Handover 0440a: Project taxonomy fields
+    project_type_id: str | None = Field(None, description="Project type ID for taxonomy classification")
+    series_number: int | None = Field(None, description="Sequential number within a project type (e.g., 1 in BE-0001)")
+    subseries: str | None = Field(None, description="Single-letter subseries suffix (e.g., 'a' in BE-0001a)")
 
 
 class ProjectUpdate(BaseModel):
@@ -43,6 +47,10 @@ class ProjectUpdate(BaseModel):
         None,
         description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
     )
+    # Handover 0440a: Project taxonomy fields
+    project_type_id: str | None = None
+    series_number: int | None = None
+    subseries: str | None = None
 
 
 class AgentSimple(BaseModel):
@@ -75,6 +83,11 @@ class ProjectResponse(BaseModel):
     agents: list[AgentSimple] = []
     # Handover 0260: Execution mode for Claude Code CLI toggle
     execution_mode: str = "multi_terminal"
+    # Handover 0440a: Project taxonomy fields
+    project_type_id: str | None = None
+    series_number: int | None = None
+    subseries: str | None = None
+    taxonomy_alias: str | None = None
 
 
 class DeletedProjectResponse(BaseModel):
