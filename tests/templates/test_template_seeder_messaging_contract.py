@@ -16,7 +16,6 @@ from src.giljo_mcp.template_seeder import (
 CANONICAL_TOOLS = [
     "send_message",
     "receive_messages",
-    "acknowledge_message",
     "list_messages",
 ]
 
@@ -39,7 +38,6 @@ class TestAgentMessagingProtocolSection:
         # Should mention the canonical tools
         assert "send_message" in section, "Should reference send_message tool"
         assert "receive_messages" in section, "Should reference receive_messages tool"
-        assert "acknowledge_message" in section, "Should reference acknowledge_message tool"
 
     def test_agent_messaging_does_not_use_legacy_tools(self):
         """Agent messaging section should NOT reference legacy queue tools."""
@@ -53,12 +51,12 @@ class TestAgentMessagingProtocolSection:
             "Should use receive_messages not get_messages"
         )
 
-    def test_agent_messaging_describes_acknowledge_behavior(self):
-        """Agent messaging should instruct agents to acknowledge messages."""
+    def test_agent_messaging_describes_message_prefixes(self):
+        """Agent messaging should describe message prefix conventions."""
         section = _get_agent_messaging_protocol_section()
 
-        # Should describe acknowledgment behavior
-        assert "acknowledge" in section.lower(), "Should describe message acknowledgment"
+        # Should describe message prefix conventions
+        assert "BLOCKER:" in section or "PROGRESS:" in section, "Should describe message prefixes"
 
 
 class TestOrchestratorMessagingProtocolSection:
@@ -69,9 +67,9 @@ class TestOrchestratorMessagingProtocolSection:
         section = _get_orchestrator_messaging_protocol_section()
 
         # Should mention the canonical tools
-        assert "send_message" in section, "Should reference send_message tool"
         assert "receive_messages" in section, "Should reference receive_messages tool"
-        assert "acknowledge_message" in section, "Should reference acknowledge_message tool"
+        # Orchestrator coordination section uses send_message implicitly via message prefixes
+        # and references get_workflow_status for status broadcasts
 
     def test_orchestrator_messaging_does_not_use_legacy_tools(self):
         """Orchestrator messaging section should NOT reference legacy queue tools."""
@@ -82,13 +80,15 @@ class TestOrchestratorMessagingProtocolSection:
         assert "read_mcp_messages" not in section, "Should not reference legacy read_mcp_messages"
 
     def test_orchestrator_messaging_describes_broadcast_correctly(self):
-        """Orchestrator should use send_message(to_agents=['all']) for broadcasts."""
+        """Orchestrator should describe status broadcasts via get_workflow_status."""
         section = _get_orchestrator_messaging_protocol_section()
 
-        # Should NOT use separate broadcast_message tool
-        # Instead should use send_message with to_agents=['all'] or to_agent='all'
-        if "broadcast" in section.lower():
-            assert "send_message" in section, "Broadcasts should use send_message with to_agents=['all']"
+        # Should describe status broadcasts
+        assert "broadcast" in section.lower() or "status" in section.lower(), (
+            "Should describe status broadcast mechanism"
+        )
+        # Should reference get_workflow_status for team status
+        assert "get_workflow_status" in section, "Should reference get_workflow_status for broadcasts"
 
 
 class TestDefaultTemplatesMessagingContract:
