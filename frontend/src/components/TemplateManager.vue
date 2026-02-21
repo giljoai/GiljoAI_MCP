@@ -121,21 +121,21 @@
           </v-chip>
         </template>
 
-        <template v-slot:item.preferred_tool="{ item }">
+        <template v-slot:item.cli_tool="{ item }">
           <v-chip size="small" variant="outlined">
             <template v-slot:prepend>
               <v-avatar
                 size="18"
                 class="mr-1"
-                :class="{ 'codex-icon': item.preferred_tool === 'codex' }"
+                :class="{ 'codex-icon': item.cli_tool === 'codex' }"
               >
                 <v-img
-                  :src="getToolLogo(item.preferred_tool || 'claude')"
-                  :alt="getToolName(item.preferred_tool || 'claude')"
+                  :src="getToolLogo(item.cli_tool || 'claude')"
+                  :alt="getToolName(item.cli_tool || 'claude')"
                 />
               </v-avatar>
             </template>
-            {{ getToolName(item.preferred_tool || 'claude') }}
+            {{ getToolName(item.cli_tool || 'claude') }}
           </v-chip>
         </template>
 
@@ -894,7 +894,6 @@ const editingTemplate = ref({
   tools: null, // NEW
   variables: [],
   augmentation_slots: '',
-  preferred_tool: 'claude', // KEEP for legacy
 })
 
 // Template being previewed
@@ -921,7 +920,7 @@ const diffViewTab = ref('unified')
 const headers = [
   { title: 'Agent Name', key: 'name', align: 'start' },
   { title: 'Role', key: 'role', align: 'start' },
-  { title: 'Tool', key: 'preferred_tool', align: 'start' },
+  { title: 'Tool', key: 'cli_tool', align: 'start' },
   { title: 'Variables', key: 'variables', align: 'center' },
   { title: 'Active', key: 'is_active', align: 'center' },
   { title: 'Export Status', key: 'export_status', align: 'center', sortable: false },
@@ -1150,7 +1149,6 @@ const openCreateDialog = () => {
     tools: null,
     variables: [],
     augmentation_slots: '',
-    preferred_tool: 'claude',
   }
   previewContent.value = ''
   editDialog.value = true
@@ -1202,7 +1200,6 @@ const closeEditDialog = () => {
     tools: null,
     variables: [],
     augmentation_slots: '',
-    preferred_tool: 'claude',
   }
 }
 
@@ -1235,7 +1232,6 @@ const saveTemplateAndPreview = async () => {
       system_instructions: editingTemplate.value.template,
       model: editingTemplate.value.cli_tool === 'claude' ? editingTemplate.value.model : null,
       tools: editingTemplate.value.tools,
-      preferred_tool: editingTemplate.value.cli_tool, // Sync with cli_tool
       behavioral_rules: editingTemplate.value.behavioral_rules || [],
       success_criteria: editingTemplate.value.success_criteria || [],
       tags: editingTemplate.value.tags || [],
@@ -1254,7 +1250,6 @@ const saveTemplateAndPreview = async () => {
         description: data.description,
         model: data.model,
         tools: data.tools,
-        preferred_tool: data.preferred_tool,
         behavioral_rules: data.behavioral_rules,
         success_criteria: data.success_criteria,
         tags: data.tags,
@@ -1307,7 +1302,7 @@ const saveTemplate = async () => {
       role: editingTemplate.value.role || null,
       description: editingTemplate.value.description,
       system_instructions: editingTemplate.value.template,
-      preferred_tool: editingTemplate.value.preferred_tool,
+      cli_tool: editingTemplate.value.cli_tool,
       behavioral_rules: editingTemplate.value.behavioral_rules || [],
       success_criteria: editingTemplate.value.success_criteria || [],
       tags: editingTemplate.value.tags || [],
@@ -1319,7 +1314,7 @@ const saveTemplate = async () => {
         name: data.name,
         system_instructions: data.system_instructions,
         description: data.description,
-        preferred_tool: data.preferred_tool,
+        cli_tool: data.cli_tool,
         behavioral_rules: data.behavioral_rules,
         success_criteria: data.success_criteria,
         tags: data.tags,
