@@ -106,6 +106,40 @@
             {{ status.label }} ({{ status.count }})
           </v-chip>
         </div>
+
+        <!-- Type Filter Chips (Handover 0440c) -->
+        <div v-if="projectTypes.length > 0" class="d-flex gap-2 flex-wrap align-center mt-3">
+          <span class="text-caption text-medium-emphasis mr-2">Type:</span>
+          <v-chip
+            :color="filterType === 'all' ? 'primary' : 'default'"
+            :variant="filterType === 'all' ? 'tonal' : 'outlined'"
+            size="small"
+            class="cursor-pointer"
+            @click="filterType = 'all'"
+          >
+            All
+          </v-chip>
+          <v-chip
+            v-for="ptype in projectTypes"
+            :key="ptype.id"
+            :color="filterType === ptype.id ? ptype.color : 'default'"
+            :variant="filterType === ptype.id ? 'flat' : 'outlined'"
+            size="small"
+            class="cursor-pointer"
+            @click="filterType = ptype.id"
+          >
+            {{ ptype.abbreviation }}
+          </v-chip>
+          <v-chip
+            :color="filterType === 'none' ? 'grey' : 'default'"
+            :variant="filterType === 'none' ? 'tonal' : 'outlined'"
+            size="small"
+            class="cursor-pointer"
+            @click="filterType = 'none'"
+          >
+            No Type
+          </v-chip>
+        </div>
       </v-card-text>
     </v-card>
 
@@ -184,13 +218,20 @@
           @update:sort-by="sortConfig = $event"
           @click:row="handleRowClick"
         >
-          <!-- Name Column with ID and Taxonomy -->
+          <!-- Name Column with ID and Taxonomy Chip (Handover 0440c) -->
           <template v-slot:item.name="{ item }">
             <div class="py-2">
               <div class="d-flex align-center">
-                <span v-if="item.taxonomy_alias && item.series_number" class="text-caption font-weight-bold mr-2" style="font-family: monospace; white-space: nowrap">
+                <v-chip
+                  v-if="item.taxonomy_alias && item.series_number"
+                  :color="item.project_type?.color || '#607D8B'"
+                  size="x-small"
+                  variant="flat"
+                  class="mr-2"
+                  :title="item.project_type?.label || 'Untyped'"
+                >
                   {{ item.taxonomy_alias }}
-                </span>
+                </v-chip>
                 <span
                   class="font-weight-bold text-body-2 project-name-link"
                   @click.stop="editProject(item)"
@@ -596,6 +637,7 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ProjectSeriesSelector from '@/components/projects/ProjectSeriesSelector.vue'
+import api from '@/services/api'  // Handover 0440c: For fetching project types
 
 // Router
 const router = useRouter()
@@ -609,6 +651,8 @@ const tabsStore = useProjectTabsStore()
 // Reactive state
 const searchQuery = ref('')
 const filterStatus = ref('all')
+const filterType = ref('all')  // Handover 0440c: Type filter
+const projectTypes = ref([])  // Handover 0440c: Available project types
 const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showDeletedDialog = ref(false)
@@ -686,16 +730,30 @@ const activeProductProjects = computed(() => {
 
 // Filter by search query
 const filteredBySearch = computed(() => {
-  if (!searchQuery.value) return activeProductProjects.value
+  let results = activeProductProjects.value
 
-  const query = searchQuery.value.toLowerCase()
-  return activeProductProjects.value.filter(
-    (p) =>
-      p.name.toLowerCase().includes(query) ||
-      p.mission?.toLowerCase().includes(query) ||
-      p.id.toLowerCase().includes(query) ||
-      p.taxonomy_alias?.toLowerCase().includes(query),
-  )
+  // Search filter
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    results = results.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.mission?.toLowerCase().includes(query) ||
+        p.id.toLowerCase().includes(query) ||
+        p.taxonomy_alias?.toLowerCase().includes(query),
+    )
+  }
+
+  // Type filter (Handover 0440c)
+  if (filterType.value !== 'all') {
+    if (filterType.value === 'none') {
+      results = results.filter((p) => !p.project_type_id)
+    } else {
+      results = results.filter((p) => p.project_type_id === filterType.value)
+    }
+  }
+
+  return results
 })
 
 // Filter by status
@@ -704,7 +762,7 @@ const filteredProjects = computed(() => {
   return filteredBySearch.value.filter((p) => p.status === filterStatus.value)
 })
 
-// Sort projects - active projects always on top
+// Sort projects - active projects always on top (Handover 0440c: series-aware sorting)
 const sortedProjects = computed(() => {
   const sorted = [...filteredProjects.value]
 
@@ -718,6 +776,33 @@ const sortedProjects = computed(() => {
     if (sortConfig.value && sortConfig.value.length > 0) {
       const { key, order } = sortConfig.value[0]
       const isAsc = order === 'asc'
+
+      // Series-aware sorting (Handover 0440c)
+      if (key === 'name') {
+        // Sort by: type abbreviation -> series number -> subseries -> name
+        const aType = a.project_type?.abbreviation || 'ZZZ'
+        const bType = b.project_type?.abbreviation || 'ZZZ'
+        if (aType !== bType) {
+          return isAsc ? aType.localeCompare(bType) : bType.localeCompare(aType)
+        }
+
+        const aSeries = a.series_number || 99999
+        const bSeries = b.series_number || 99999
+        if (aSeries !== bSeries) {
+          return isAsc ? aSeries - bSeries : bSeries - aSeries
+        }
+
+        const aSub = a.subseries || ''
+        const bSub = b.subseries || ''
+        if (aSub !== bSub) {
+          return isAsc ? aSub.localeCompare(bSub) : bSub.localeCompare(aSub)
+        }
+
+        // Fall through to name comparison
+        const aName = a.name.toLowerCase()
+        const bName = b.name.toLowerCase()
+        return isAsc ? aName.localeCompare(bName) : bName.localeCompare(aName)
+      }
 
       let aVal = a[key]
       let bVal = b[key]
@@ -1083,6 +1168,13 @@ onMounted(async () => {
       projectStore.fetchDeletedProjects(),
       agentStore.fetchAgents(),
     ])
+    // Handover 0440c: Fetch project types for filter chips
+    try {
+      const typesResponse = await api.projectTypes.list()
+      projectTypes.value = typesResponse.data || []
+    } catch {
+      console.error('Failed to load project types')
+    }
   } catch (error) {
     console.error('Failed to load data:', error)
   }

@@ -64,6 +64,15 @@ class AgentSimple(BaseModel):
     thin_client: bool = True
 
 
+class ProjectTypeInfo(BaseModel):
+    """Nested project type info for project responses (Handover 0440c)."""
+
+    id: str
+    abbreviation: str
+    label: str
+    color: str
+
+
 class ProjectResponse(BaseModel):
     """Response model for project details."""
 
@@ -85,6 +94,7 @@ class ProjectResponse(BaseModel):
     execution_mode: str = "multi_terminal"
     # Handover 0440a: Project taxonomy fields
     project_type_id: str | None = None
+    project_type: ProjectTypeInfo | None = None  # Handover 0440c: Nested type with color
     series_number: int | None = None
     subseries: str | None = None
     taxonomy_alias: str | None = None

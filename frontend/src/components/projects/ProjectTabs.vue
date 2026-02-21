@@ -4,7 +4,20 @@
     <div class="project-header">
       <div class="d-flex align-center gap-4">
         <h1 class="text-h4">Project:</h1>
-        <h2 class="project-name">{{ project?.name || 'Loading...' }}</h2>
+        <h2 class="project-name d-flex align-center">
+          <!-- Series Chip (Handover 0440c) -->
+          <v-chip
+            v-if="project?.taxonomy_alias && project?.series_number"
+            :color="project?.project_type?.color || '#607D8B'"
+            size="small"
+            variant="flat"
+            class="mr-3"
+            :title="project?.project_type?.label || 'Untyped'"
+          >
+            {{ project.taxonomy_alias }}
+          </v-chip>
+          <span>{{ project?.name || 'Loading...' }}</span>
+        </h2>
       </div>
       <p class="text-subtitle-1 text-medium-emphasis mb-0">
         Project ID: {{ project?.project_id || project?.id || 'N/A' }}
@@ -436,11 +449,25 @@ onMounted(() => {
   })
 })
 
+// Handover 0440c: Update browser tab title when project loads
+watch(
+  () => props.project,
+  (project) => {
+    if (project) {
+      const prefix = project.taxonomy_alias && project.series_number ? `${project.taxonomy_alias} ` : ''
+      document.title = `${prefix}${project.name} - GiljoAI`
+    }
+  },
+  { immediate: true },
+)
+
 onBeforeUnmount(() => {
   if (projectId.value) {
     wsStore.unsubscribe('project', projectId.value)
   }
   unsubscribeConnectionListener?.()
+  // Handover 0440c: Reset browser tab title
+  document.title = 'GiljoAI MCP'
 })
 
 /**
