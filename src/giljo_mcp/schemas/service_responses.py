@@ -648,6 +648,11 @@ class ProjectDetail(BaseModel):
     agents: list[dict] = Field(default_factory=list)
     agent_count: int = 0
     message_count: int = 0
+    # Handover 0440a: Project taxonomy fields
+    project_type_id: Optional[str] = None
+    series_number: Optional[int] = None
+    subseries: Optional[str] = None
+    taxonomy_alias: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -668,6 +673,11 @@ class ProjectListItem(BaseModel):
     product_id: Optional[str] = None
     created_at: str
     updated_at: str
+    # Handover 0440a: Project taxonomy fields
+    project_type_id: Optional[str] = None
+    series_number: Optional[int] = None
+    subseries: Optional[str] = None
+    taxonomy_alias: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -691,6 +701,11 @@ class ActiveProjectDetail(BaseModel):
     deleted_at: Optional[str] = None
     agent_count: int = 0
     message_count: int = 0
+    # Handover 0440a: Project taxonomy fields
+    project_type_id: Optional[str] = None
+    series_number: Optional[int] = None
+    subseries: Optional[str] = None
+    taxonomy_alias: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -752,6 +767,11 @@ class ProjectData(BaseModel):
     activated_at: Optional[str] = None
     completed_at: Optional[str] = None
     product_id: Optional[str] = None
+    # Handover 0440a: Project taxonomy fields
+    project_type_id: Optional[str] = None
+    series_number: Optional[int] = None
+    subseries: Optional[str] = None
+    taxonomy_alias: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

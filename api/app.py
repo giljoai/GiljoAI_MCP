@@ -85,6 +85,7 @@ try:
         messages,
         network,
         products,
+        project_types,
         projects,
         prompts,
         serena,
@@ -408,6 +409,8 @@ def create_app() -> FastAPI:
     app.include_router(vision_documents.router, prefix="/api/vision-documents", tags=["vision-documents"])
     # Handover 0125: Modular projects module (prefix and tags defined in module __init__.py)
     app.include_router(projects.router)
+    # Handover 0440a: Project type taxonomy module (prefix and tags defined in module __init__.py)
+    app.include_router(project_types.router)
     app.include_router(agent_management.router, tags=["Agent Management"])
     app.include_router(agent_templates.router, prefix="/api/v1/agents/templates", tags=["agent-templates"])
     app.include_router(claude_export.router, prefix="/api", tags=["claude-export"])
