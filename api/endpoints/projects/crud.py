@@ -59,6 +59,10 @@ async def create_project(
         product_id=project.product_id,
         tenant_key=current_user.tenant_key,
         status=project.status,
+        # Handover 0440a: Pass taxonomy fields
+        project_type_id=project.project_type_id,
+        series_number=project.series_number,
+        subseries=project.subseries,
     )
 
     logger.info(f"Created project {created_project.id} for tenant {current_user.tenant_key}")
@@ -80,6 +84,11 @@ async def create_project(
         message_count=0,
         agents=[],
         execution_mode=created_project.execution_mode or "multi_terminal",  # Handover 0260
+        # Handover 0440a: Taxonomy fields
+        project_type_id=created_project.project_type_id,
+        series_number=created_project.series_number,
+        subseries=created_project.subseries,
+        taxonomy_alias=created_project.taxonomy_alias,
     )
 
 
@@ -125,6 +134,11 @@ async def list_projects(
             message_count=0,
             agents=[],
             execution_mode="multi_terminal",  # Handover 0260
+            # Handover 0440a: Taxonomy fields
+            project_type_id=proj.project_type_id,
+            series_number=proj.series_number,
+            subseries=proj.subseries,
+            taxonomy_alias=proj.taxonomy_alias,
         )
         for proj in projects
     ]
@@ -178,6 +192,11 @@ async def get_deleted_projects(
             message_count=0,
             execution_mode="multi_terminal",  # Handover 0260
             agents=[],
+            # Handover 0440a: Taxonomy fields
+            project_type_id=proj.project_type_id,
+            series_number=proj.series_number,
+            subseries=proj.subseries,
+            taxonomy_alias=proj.taxonomy_alias,
         )
         for proj in projects
     ]
@@ -231,7 +250,48 @@ async def get_active_project(
         agent_count=proj.agent_count,
         message_count=proj.message_count,
         execution_mode="multi_terminal",  # Handover 0260
+        # Handover 0440a: Taxonomy fields
+        project_type_id=proj.project_type_id,
+        series_number=proj.series_number,
+        subseries=proj.subseries,
+        taxonomy_alias=proj.taxonomy_alias,
     )
+
+
+@router.get("/next-series")
+async def next_series_number(
+    type_id: str,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+):
+    """Get the next available series number for a project type.
+
+    Handover 0440a: Taxonomy series number helper.
+    """
+
+    from api.endpoints.project_types.crud_ops import get_next_series_number
+
+    async with project_service.db_manager.get_session_async() as session:
+        next_num = await get_next_series_number(session, current_user.tenant_key, type_id)
+    return {"next_series_number": next_num}
+
+
+@router.get("/available-series")
+async def available_series_numbers(
+    type_id: str,
+    limit: int = 5,
+    current_user: User = Depends(get_current_active_user),
+    project_service: ProjectService = Depends(get_project_service),
+):
+    """Get available series numbers (gaps + next) for a project type.
+
+    Handover 0440a: Taxonomy series number helper.
+    """
+    from api.endpoints.project_types.crud_ops import get_available_series_numbers
+
+    async with project_service.db_manager.get_session_async() as session:
+        available = await get_available_series_numbers(session, current_user.tenant_key, type_id, limit)
+    return {"available_series_numbers": available}
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
@@ -280,6 +340,11 @@ async def get_project(
         message_count=proj.message_count,
         execution_mode=proj.execution_mode or "multi_terminal",  # Handover 0260
         agents=agents_from_service,  # Fixed: Use agents from ProjectService, not hardcoded []
+        # Handover 0440a: Taxonomy fields
+        project_type_id=proj.project_type_id,
+        series_number=proj.series_number,
+        subseries=proj.subseries,
+        taxonomy_alias=proj.taxonomy_alias,
     )
 
 
@@ -331,6 +396,11 @@ async def update_project(
         proj_agents = detail.agent_count
         proj_messages = detail.message_count
         proj_mode = detail.execution_mode or "multi_terminal"
+        # Handover 0440a: Taxonomy fields from ProjectDetail
+        proj_type_id = detail.project_type_id
+        proj_series = detail.series_number
+        proj_subseries = detail.subseries
+        proj_tax_alias = detail.taxonomy_alias
     else:
         # Update via ProjectService (raises exceptions on error, returns ProjectData)
         proj = await project_service.update_project(project_id=project_id, updates=update_dict)
@@ -348,6 +418,11 @@ async def update_project(
         proj_agents = 0
         proj_messages = 0
         proj_mode = proj.execution_mode or "multi_terminal"
+        # Handover 0440a: Taxonomy fields from ProjectData
+        proj_type_id = proj.project_type_id
+        proj_series = proj.series_number
+        proj_subseries = proj.subseries
+        proj_tax_alias = proj.taxonomy_alias
 
     logger.info(f"Updated project {project_id}")
 
@@ -367,4 +442,9 @@ async def update_project(
         message_count=proj_messages,
         execution_mode=proj_mode,
         agents=[],
+        # Handover 0440a: Taxonomy fields
+        project_type_id=proj_type_id,
+        series_number=proj_series,
+        subseries=proj_subseries,
+        taxonomy_alias=proj_tax_alias,
     )
