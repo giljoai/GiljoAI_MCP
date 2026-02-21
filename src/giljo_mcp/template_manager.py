@@ -583,7 +583,6 @@ SUCCESS CRITERIA:
         tenant_key: str,
         variables: Optional[dict[str, Any]] = None,
         augmentations: Optional[list[dict[str, Any]]] = None,
-        project_type: Optional[str] = None,
         product_id: Optional[str] = None,
         use_cache: bool = True,
     ) -> str:
@@ -599,7 +598,6 @@ SUCCESS CRITERIA:
             tenant_key: Tenant identifier for multi-tenant isolation
             variables: Variables to substitute
             augmentations: Runtime augmentations to apply
-            project_type: Optional project type for specialized templates
             product_id: Optional product ID for product-specific templates
             use_cache: Whether to use cached templates
 

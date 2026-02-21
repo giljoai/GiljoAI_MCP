@@ -6,9 +6,6 @@ all Pydantic schemas and the CRUD response builder, and that `cli_tool`
 (the real field) remains intact.
 """
 
-import pytest
-from pydantic import ValidationError
-
 from api.endpoints.templates.models import (
     TemplateCreate,
     TemplateResponse,
