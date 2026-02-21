@@ -293,12 +293,11 @@ These were initially moved to Reference_docs/ but contain work items not yet com
 
 | Tier | Handovers | Focus |
 |------|-----------|-------|
-| 1 - HIGH | **0486** | Continuation workflow |
-| 2 - Orchestrator | 0254 (stale), 0365 (stale), 0410 | Instruction cleanup, handover injection, message optimization |
-| 3 - Taxonomy | 0440a, 0440b, 0440c | DB+backend, frontend UI, display integration |
-| 4 - Agent Exec | 0419 | Long-polling orchestrator monitoring |
-| 5 - Polish | 0732 | API consistency fixes |
-| 6 - Future | 0409, 0250 | Unified client setup, HTTPS enablement |
+| 1 - Orchestrator | 0254 (stale), 0365 (stale), 0410 | Instruction cleanup, handover injection, message optimization |
+| 2 - Taxonomy | 0440a, 0440b, 0440c | DB+backend, frontend UI, display integration |
+| 3 - Agent Exec | 0419 | Long-polling orchestrator monitoring |
+| 4 - Polish | 0732 | API consistency fixes |
+| 5 - Future | 0409, 0250 | Unified client setup, HTTPS enablement |
 
 ### Audit Notes on Stale Orchestrator Handovers
 
