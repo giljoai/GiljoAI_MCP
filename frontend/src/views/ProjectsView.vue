@@ -184,14 +184,19 @@
           @update:sort-by="sortConfig = $event"
           @click:row="handleRowClick"
         >
-          <!-- Name Column with ID -->
+          <!-- Name Column with ID and Taxonomy -->
           <template v-slot:item.name="{ item }">
             <div class="py-2">
-              <div
-                class="font-weight-bold text-body-2 project-name-link"
-                @click.stop="editProject(item)"
-              >
-                {{ item.name }}
+              <div class="d-flex align-center">
+                <span v-if="item.taxonomy_alias && item.series_number" class="text-caption font-weight-bold mr-2" style="font-family: monospace; white-space: nowrap">
+                  {{ item.taxonomy_alias }}
+                </span>
+                <span
+                  class="font-weight-bold text-body-2 project-name-link"
+                  @click.stop="editProject(item)"
+                >
+                  {{ item.name }}
+                </span>
               </div>
               <div class="text-caption text-medium-emphasis" style="font-family: monospace">
                 Project ID: {{ item.id }}
@@ -383,6 +388,28 @@
               </template>
             </v-textarea>
 
+            <!-- Project Series / Taxonomy (Handover 0440b) -->
+            <v-expansion-panels variant="accordion" class="mb-3">
+              <v-expansion-panel>
+                <v-expansion-panel-title>
+                  <div class="d-flex align-center">
+                    <v-icon start size="small">mdi-file-tree</v-icon>
+                    <span>Project Series (Optional)</span>
+                    <span v-if="projectData.project_type_id" class="ml-2 text-caption text-medium-emphasis">
+                      &mdash; {{ taxonomyPreviewInline }}
+                    </span>
+                  </div>
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <ProjectSeriesSelector
+                    v-model:projectTypeId="projectData.project_type_id"
+                    v-model:seriesNumber="projectData.series_number"
+                    v-model:subseries="projectData.subseries"
+                  />
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+
             <!-- Status removed - always defaults to inactive (Handover 0062) -->
           </v-form>
         </v-card-text>
@@ -568,6 +595,7 @@ import { useProjectTabsStore } from '@/stores/projectTabs'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import ProjectSeriesSelector from '@/components/projects/ProjectSeriesSelector.vue'
 
 // Router
 const router = useRouter()
@@ -609,6 +637,9 @@ const projectData = ref({
   description: '',
   mission: '',
   status: 'inactive',
+  project_type_id: null,
+  series_number: null,
+  subseries: null,
 })
 
 // Filter options computed
@@ -634,6 +665,14 @@ const headers = [
   { title: 'Actions', key: 'menu', sortable: false, width: '11%', align: 'center' },
 ]
 
+// Taxonomy preview for expansion panel header (Handover 0440b)
+const taxonomyPreviewInline = computed(() => {
+  if (!projectData.value.project_type_id || !projectData.value.series_number) return ''
+  const series = String(projectData.value.series_number).padStart(4, '0')
+  const sub = projectData.value.subseries || ''
+  return `${series}${sub}`
+})
+
 // Computed properties
 const activeProduct = computed(() => productStore.activeProduct)
 const projects = computed(() => projectStore.projects)
@@ -654,7 +693,8 @@ const filteredBySearch = computed(() => {
     (p) =>
       p.name.toLowerCase().includes(query) ||
       p.mission?.toLowerCase().includes(query) ||
-      p.id.toLowerCase().includes(query),
+      p.id.toLowerCase().includes(query) ||
+      p.taxonomy_alias?.toLowerCase().includes(query),
   )
 })
 
@@ -823,6 +863,9 @@ function editProject(project) {
     description: project.description || '',
     mission: project.mission,
     status: project.status,
+    project_type_id: project.project_type_id || null,
+    series_number: project.series_number || null,
+    subseries: project.subseries || null,
   }
   showCreateDialog.value = true
 }
@@ -970,6 +1013,9 @@ function resetForm() {
     description: '',
     mission: '',
     status: 'inactive',
+    project_type_id: null,
+    series_number: null,
+    subseries: null,
   }
 }
 
@@ -989,6 +1035,9 @@ async function saveProject() {
         description: projectData.value.description,
         mission: projectData.value.mission,
         status: projectData.value.status,
+        project_type_id: projectData.value.project_type_id,
+        series_number: projectData.value.series_number,
+        subseries: projectData.value.subseries,
       }
 
       await projectStore.updateProject(editingProject.value.id, updateData)
