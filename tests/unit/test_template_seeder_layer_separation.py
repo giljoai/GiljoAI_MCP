@@ -1,19 +1,18 @@
 """
 Tests for Template Seeder Layer 3 separation.
 
-This test verifies that database templates (Layer 3) focus on role-specific
-expertise and DO NOT contain MCP protocol details, which belong in Layer 2
-(GenericAgentTemplate).
+This test verifies that database templates focus on role-specific
+expertise and DO NOT contain MCP protocol details, which are handled
+separately by the MCP coordination section.
 
-Handover 0254: Three-Layer Instruction Architecture Cleanup
-Layer 3: Database Template Definitions
+Handover 0371a: Template Dead Code Removal & Test Remediation
 """
 
 from src.giljo_mcp.template_seeder import _get_template_metadata
 
 
 class TestLayer3TemplateSeparation:
-    """Test that Layer 3 templates don't contain Layer 2 (MCP protocol) details."""
+    """Test that templates don't contain MCP protocol details in role-specific content."""
 
     def test_templates_have_no_mcp_commands(self):
         """Database templates should NOT contain MCP command references.
@@ -23,9 +22,8 @@ class TestLayer3TemplateSeparation:
         - Success criteria for the role
         - Behavioral expectations
 
-        Layer 2 (GenericAgentTemplate) handles:
+        MCP coordination section handles:
         - HOW to communicate (MCP commands)
-        - Protocol phases (1-6)
         - Communication with orchestrator
         """
         templates = _get_template_metadata()
@@ -56,8 +54,8 @@ class TestLayer3TemplateSeparation:
             for command in mcp_commands:
                 assert command not in combined_text.lower(), (
                     f"Found MCP command '{command}' in {agent_display_name} template. "
-                    f"Layer 3 templates should focus on role expertise, not MCP protocol. "
-                    f"MCP commands belong in Layer 2 (GenericAgentTemplate)."
+                    f"Templates should focus on role expertise, not MCP protocol. "
+                    f"MCP commands belong in the MCP coordination section."
                 )
 
     def test_templates_focus_on_role_expertise(self):

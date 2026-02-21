@@ -160,10 +160,6 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
         logger.debug(f"Loading legacy templates for tenant '{tenant_key}'")
         UnifiedTemplateManager()
 
-        # Define comprehensive metadata for each template
-        # Extracted from original template content and handover requirements
-        _get_template_metadata()
-
         # Get MCP coordination section to append to all templates
         mcp_section = _get_mcp_coordination_section()
 
@@ -595,15 +591,6 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
         This is a private function used internally by seed_tenant_templates.
         Metadata is kept separate from template content for maintainability.
     """
-    # MCP coordination rules - MOVED TO LAYER 2 (GenericAgentTemplate)
-    # Handover 0254: Layer 3 should focus on role expertise, not MCP protocol
-    # All MCP commands now handled by GenericAgentTemplate (Layer 2)
-    mcp_rules = []  # Empty - protocol instructions moved to GenericAgentTemplate
-
-    # MCP success criteria - MOVED TO LAYER 2 (GenericAgentTemplate)
-    # Handover 0254: Layer 3 should focus on role-specific success, not protocol success
-    mcp_success = []  # Empty - protocol success criteria moved to GenericAgentTemplate
-
     return {
         "orchestrator": {
             "category": "role",
@@ -614,14 +601,12 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Create 3 documentation artifacts at project close",
                 "Coordinate multiple agents effectively",
                 "Monitor agent progress and respond to blockers",
-                *mcp_rules,
             ],
             "success_criteria": [
                 "All project objectives met",
                 "Clean handoff documentation created",
                 "Zero scope creep maintained",
                 "Effective team coordination achieved",
-                *mcp_success,
             ],
             "variables": ["project_name", "product_name", "project_mission"],
         },
@@ -634,14 +619,12 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Focus on architecture and patterns",
                 "Report analysis findings incrementally (don't wait until end)",
                 "Report file analysis progress incrementally",
-                *mcp_rules,
             ],
             "success_criteria": [
                 "Complete requirements documented",
                 "Architecture aligned with vision",
                 "All risks and dependencies identified",
                 "Clear specifications for implementer",
-                *mcp_success,
             ],
             "variables": ["project_name", "custom_mission"],
         },
@@ -654,14 +637,12 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Test changes incrementally",
                 "Report file modifications after each implementation step",
                 "Include token usage in progress reports (track context carefully)",
-                *mcp_rules,
             ],
             "success_criteria": [
                 "All specified features implemented correctly",
                 "Code follows project standards",
                 "Tests passing",
                 "No unauthorized scope changes",
-                *mcp_success,
             ],
             "variables": ["project_name", "custom_mission"],
         },
@@ -674,14 +655,12 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Validate against requirements",
                 "Report test results in completion summary (pass/fail counts, coverage)",
                 "Include test file paths in progress reports",
-                *mcp_rules,
             ],
             "success_criteria": [
                 "All features have test coverage",
                 "Tests validate requirements correctly",
                 "Coverage meets project standards",
                 "Test documentation complete",
-                *mcp_success,
             ],
             "variables": ["project_name", "custom_mission"],
         },
@@ -694,14 +673,12 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Validate architectural compliance",
                 "Document all findings with severity levels",
                 "Mark completion only after all review comments addressed",
-                *mcp_rules,
             ],
             "success_criteria": [
                 "Code meets quality standards",
                 "Security best practices followed",
                 "No critical issues remaining",
                 "All feedback is actionable",
-                *mcp_success,
             ],
             "variables": ["project_name", "custom_mission"],
         },
@@ -714,14 +691,12 @@ def _get_template_metadata() -> dict[str, dict[str, Any]]:
                 "Focus on implemented features only",
                 "Report documentation files created/updated in progress",
                 "Include documentation coverage in completion summary",
-                *mcp_rules,
             ],
             "success_criteria": [
                 "Documentation complete and accurate",
                 "Usage examples provided",
                 "All artifacts updated",
                 "Documentation follows project style",
-                *mcp_success,
             ],
             "variables": ["project_name", "custom_mission"],
         },
