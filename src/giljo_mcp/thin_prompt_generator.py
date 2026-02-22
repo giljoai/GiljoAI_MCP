@@ -150,6 +150,8 @@ def build_retirement_prompt(
     agent_id: str,
     job_id: str,
     project_name: str | None = None,
+    git_enabled: bool = False,
+    project_taxonomy: str = "",
 ) -> str:
     """
     Build a retirement prompt for the old orchestrator terminal session.
@@ -163,11 +165,30 @@ def build_retirement_prompt(
         agent_id: Agent execution ID (WHO - executor ID)
         job_id: Job ID (WHAT - work order ID)
         project_name: Optional project display name
+        git_enabled: Whether git integration is enabled for this product
+        project_taxonomy: Project taxonomy alias (e.g. "BE-0042a")
 
     Returns:
         Retirement prompt string for the old orchestrator
     """
     project_display = f' "{project_name}"' if project_name else ""
+
+    # Build git closeout commit instruction (only when git integration + git history enabled)
+    git_closeout_section = ""
+    if git_enabled:
+        tag = project_taxonomy or project_name or project_id[:8]
+        display_name = project_name or "this project"
+        git_closeout_section = f"""
+BEFORE writing 360 Memory, create a git closeout commit to preserve project history:
+
+git commit --allow-empty -m "closeout({tag}): {display_name}
+
+Completed: <today's date YYYY-MM-DD>
+Key outcomes:
+- <list each concrete outcome from this session>"
+
+This commit makes project history searchable via git log --grep="closeout" or git log --grep="{tag}".
+"""
 
     return f"""ORCHESTRATOR SESSION RETIREMENT{project_display}
 
@@ -177,7 +198,7 @@ YOUR IDENTITY:
   Agent ID: {agent_id}
   Job ID: {job_id}
   Project ID: {project_id}
-
+{git_closeout_section}
 REQUIRED ACTION - Write your session context to 360 Memory:
 
 mcp__giljo-mcp__write_360_memory(
@@ -1179,7 +1200,7 @@ START NOW:
             product_id=product_id,
         )
 
-    def _build_claude_code_execution_prompt(self, orchestrator_id: str, project, agent_jobs: list) -> str:
+    def _build_claude_code_execution_prompt(self, orchestrator_id: str, project, agent_jobs: list, product=None) -> str:
         """
         Build Claude Code subagent mode execution prompt.
 
@@ -1397,6 +1418,29 @@ START NOW:
         ]
 
         # SECTION 7: Completion Instructions
+        # Check git integration for closeout commit instruction
+        git_enabled = False
+        if product and getattr(product, "product_memory", None):
+            git_config = product.product_memory.get("git_integration", {})
+            git_enabled = git_config.get("enabled", False)
+
+        git_closeout_lines = []
+        if git_enabled:
+            tag = getattr(project, "taxonomy_alias", None) or project.name
+            git_closeout_lines = [
+                "### Git Closeout Commit",
+                "Before calling complete_job, create a closeout commit to preserve project history:",
+                "```bash",
+                f'git commit --allow-empty -m "closeout({tag}): {project.name}',
+                "",
+                "Completed: <today YYYY-MM-DD>",
+                "Key outcomes:",
+                '- <list each concrete outcome>"',
+                "```",
+                f'This makes project history searchable via `git log --grep="closeout"` or `git log --grep="{tag}"`.',
+                "",
+            ]
+
         completion_section = [
             "## When You're Done",
             "",
@@ -1405,6 +1449,7 @@ START NOW:
             "2. Ensure all have status='complete' (no failures or blockers)",
             "3. Review final deliverables",
             "",
+            *git_closeout_lines,
             "### Complete Your Orchestrator Job",
             "When all sub-agents are done and project is complete:",
             "```python",
