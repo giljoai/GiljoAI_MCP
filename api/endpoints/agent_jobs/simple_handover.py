@@ -18,9 +18,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import User
+from src.giljo_mcp.models import Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.thin_prompt_generator import build_continuation_prompt, build_retirement_prompt
 
@@ -116,6 +117,22 @@ async def simple_handover(
     if not job:
         raise HTTPException(status_code=500, detail="Job not found")
 
+    # Load project + product for git closeout commit gating
+    project_stmt = (
+        select(Project)
+        .options(joinedload(Project.product), joinedload(Project.project_type))
+        .where(Project.id == job.project_id, Project.tenant_key == current_user.tenant_key)
+    )
+    project_result = await db.execute(project_stmt)
+    project = project_result.scalar_one_or_none()
+
+    git_enabled = False
+    project_taxonomy = ""
+    if project and project.product and getattr(project.product, "product_memory", None):
+        git_config = project.product.product_memory.get("git_integration", {})
+        git_enabled = git_config.get("enabled", False)
+        project_taxonomy = project.taxonomy_alias
+
     await db.commit()
 
     # Generate retirement prompt (old orchestrator writes 360 Memory)
@@ -123,6 +140,9 @@ async def simple_handover(
         project_id=str(job.project_id),
         agent_id=execution.agent_id,
         job_id=execution.job_id,
+        project_name=project.name if project else None,
+        git_enabled=git_enabled,
+        project_taxonomy=project_taxonomy,
     )
 
     # Generate continuation prompt (new terminal reads 360 Memory)
