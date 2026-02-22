@@ -19,12 +19,15 @@ Design Principles:
 - Testability: Can be unit tested independently
 """
 
+import asyncio
 import logging
+import random
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import and_, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
@@ -32,6 +35,7 @@ from src.giljo_mcp.exceptions import (
     BaseGiljoError,
     MessageDeliveryError,
     ResourceNotFoundError,
+    RetryExhaustedError,
     ValidationError,
 )
 from src.giljo_mcp.models import Message, Project
@@ -49,6 +53,12 @@ from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
+
+# Deadlock retry configuration for concurrent counter updates
+_DEADLOCK_MAX_RETRIES = 3
+_DEADLOCK_BASE_DELAY = 0.1  # seconds
+_DEADLOCK_JITTER_MAX = 0.05  # seconds
+_PG_DEADLOCK_CODE = "40P01"
 
 
 class MessageService:
@@ -234,6 +244,10 @@ class MessageService:
                                 f"[RESOLVER] Could not resolve agent_display_name '{agent_ref}' to active execution in project {project_id}"
                             )
 
+                # Sort recipients for deterministic lock ordering (prevents deadlocks
+                # when concurrent broadcasts update the same AgentExecution counter rows)
+                resolved_to_agents.sort()
+
                 # Create individual messages for each recipient (Handover 0387 - Broadcast Fan-out)
                 messages = []
                 if len(resolved_to_agents) > 0:
@@ -271,54 +285,90 @@ class MessageService:
                 )
 
                 # Handover 0387f: Update message counters instead of JSONB persistence
+                # Wrapped in deadlock retry: concurrent broadcasts can deadlock when
+                # updating overlapping AgentExecution counter rows (PG SQLSTATE 40P01).
+                # Recipients are sorted above to ensure deterministic lock ordering.
+                sender_execution = None
                 if messages:
-                    try:
-                        # Step 1: Increment sender's sent_count by 1 (regardless of recipient count)
-                        sender_ref = from_agent or "orchestrator"
-
-                        # Resolve sender to agent_id for counter update
-                        # Handover 0429: Get latest instance when matching by agent_id
-                        sender_result = await session.execute(
-                            select(AgentExecution)
-                            .join(AgentJob)
-                            .where(
-                                and_(
-                                    AgentJob.project_id == project.id,
-                                    AgentExecution.tenant_key == project.tenant_key,
-                                    (AgentExecution.agent_display_name == sender_ref)
-                                    | (AgentExecution.agent_id == sender_ref),
+                    sender_ref = from_agent or "orchestrator"
+                    for _attempt in range(_DEADLOCK_MAX_RETRIES):
+                        try:
+                            # Step 1: Increment sender's sent_count by 1 (regardless of recipient count)
+                            # Handover 0429: Get latest instance when matching by agent_id
+                            sender_result = await session.execute(
+                                select(AgentExecution)
+                                .join(AgentJob)
+                                .where(
+                                    and_(
+                                        AgentJob.project_id == project.id,
+                                        AgentExecution.tenant_key == project.tenant_key,
+                                        (AgentExecution.agent_display_name == sender_ref)
+                                        | (AgentExecution.agent_id == sender_ref),
+                                    )
                                 )
+                                .order_by(AgentExecution.started_at.desc())
+                                .limit(1)
                             )
-                            .order_by(AgentExecution.started_at.desc())
-                            .limit(1)
-                        )
-                        sender_execution = sender_result.scalar_one_or_none()
+                            sender_execution = sender_result.scalar_one_or_none()
 
-                        if sender_execution:
-                            await self._repo.increment_sent_count(
-                                session=session,
-                                agent_id=sender_execution.agent_id,
-                                tenant_key=project.tenant_key,
-                            )
-                            self._logger.info(f"[COUNTER] Incremented sent_count for {sender_ref}")
-
-                        # Step 2: Increment each recipient's waiting_count by 1
-                        for msg in messages:
-                            recipient_id = msg.to_agents[0] if msg.to_agents else None
-                            if recipient_id:
-                                await self._repo.increment_waiting_count(
+                            if sender_execution:
+                                await self._repo.increment_sent_count(
                                     session=session,
-                                    agent_id=recipient_id,
+                                    agent_id=sender_execution.agent_id,
                                     tenant_key=project.tenant_key,
                                 )
 
-                        # Commit counter updates
-                        await session.commit()
-                        self._logger.info(
-                            f"[COUNTER] Updated counters: sender +1 sent, {len(messages)} recipients +1 waiting each"
-                        )
-                    except (ValueError, KeyError) as counter_error:
-                        self._logger.warning(f"Failed to update message counters: {counter_error}")
+                            # Step 2: Increment each recipient's waiting_count by 1
+                            # (recipients already sorted for consistent lock ordering)
+                            for msg in messages:
+                                recipient_id = msg.to_agents[0] if msg.to_agents else None
+                                if recipient_id:
+                                    await self._repo.increment_waiting_count(
+                                        session=session,
+                                        agent_id=recipient_id,
+                                        tenant_key=project.tenant_key,
+                                    )
+
+                            # Commit counter updates
+                            await session.commit()
+                            self._logger.info(
+                                f"[COUNTER] Updated counters: sender +1 sent, "
+                                f"{len(messages)} recipients +1 waiting each"
+                            )
+                            break  # Success — exit retry loop
+
+                        except OperationalError as db_err:
+                            pgcode = getattr(getattr(db_err, "orig", None), "pgcode", None)
+                            if pgcode == _PG_DEADLOCK_CODE and _attempt < _DEADLOCK_MAX_RETRIES - 1:
+                                await session.rollback()
+                                backoff = (_DEADLOCK_BASE_DELAY * (2**_attempt)) + random.uniform(
+                                    0, _DEADLOCK_JITTER_MAX
+                                )
+                                self._logger.warning(
+                                    "[DEADLOCK] Counter update deadlock on attempt %d/%d, "
+                                    "retrying in %.3fs (project_id=%s)",
+                                    _attempt + 1,
+                                    _DEADLOCK_MAX_RETRIES,
+                                    backoff,
+                                    project_id,
+                                )
+                                await asyncio.sleep(backoff)
+                                continue
+                            if pgcode == _PG_DEADLOCK_CODE:
+                                self._logger.exception(
+                                    "[DEADLOCK] Counter update failed after %d retries (project_id=%s)",
+                                    _DEADLOCK_MAX_RETRIES,
+                                    project_id,
+                                )
+                                raise RetryExhaustedError(
+                                    message=f"Deadlock retry exhausted after {_DEADLOCK_MAX_RETRIES} attempts",
+                                    context={"operation": "counter_update", "project_id": project_id},
+                                ) from db_err
+                            raise  # Non-deadlock OperationalError — propagate immediately
+
+                        except (ValueError, KeyError) as counter_error:
+                            self._logger.warning("Failed to update message counters: %s", counter_error)
+                            break  # Non-retriable — exit loop
 
                 # Emit WebSocket events if manager is available
                 if self._websocket_manager and messages:
