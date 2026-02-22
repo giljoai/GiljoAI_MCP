@@ -509,8 +509,12 @@ async def get_implementation_prompt(
     """
     from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
-    # 1. Fetch project with multi-tenant filtering
-    project_stmt = select(Project).where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
+    # 1. Fetch project with multi-tenant filtering (eager-load product + project_type for git closeout)
+    project_stmt = (
+        select(Project)
+        .options(joinedload(Project.product), joinedload(Project.project_type))
+        .where(Project.id == project_id, Project.tenant_key == current_user.tenant_key)
+    )
     project_result = await db.execute(project_stmt)
     project = project_result.scalar_one_or_none()
 
@@ -601,7 +605,10 @@ async def get_implementation_prompt(
     # Call the existing implementation prompt generator
     # Handover 0385: Use job_id (not agent_id) for mission retrieval
     prompt = generator._build_claude_code_execution_prompt(
-        orchestrator_id=orchestrator_execution.job_id, project=project, agent_jobs=agent_executions
+        orchestrator_id=orchestrator_execution.job_id,
+        project=project,
+        agent_jobs=agent_executions,
+        product=project.product,
     )
 
     logger.info(
