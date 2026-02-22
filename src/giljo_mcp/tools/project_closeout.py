@@ -10,10 +10,11 @@ from datetime import datetime, timezone
 from inspect import iscoroutine
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
@@ -35,11 +36,19 @@ async def close_project_and_update_memory(
     tenant_key: str,
     db_manager: DatabaseManager | None = None,
     session: AsyncSession | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     """
     Close project and update product memory with history entry.
 
     Adds a rich entry to the product_memory_entries table.
+
+    When force=False (default), verifies all agents are complete before
+    proceeding. Returns CLOSEOUT_BLOCKED with blocker details if any agents
+    are still active, have unread messages, or have incomplete TODOs.
+
+    When force=True, auto-decommissions any remaining active agents before
+    closing, and logs a warning with the affected agents.
     """
     if not project_id:
         return {"success": False, "error": "project_id is required"}
@@ -109,6 +118,28 @@ async def close_project_and_update_memory(
 
             if not product:
                 return {"success": False, "error": "Product not found for project"}
+
+            # Closeout readiness gate: verify all agents are finished
+            is_ready, blockers = await _check_agent_readiness(active_session, project_id, tenant_key)
+
+            if not is_ready and not force:
+                return {
+                    "success": False,
+                    "status": "CLOSEOUT_BLOCKED",
+                    "error": "Cannot close project: agents have unfinished work",
+                    "blockers": blockers,
+                    "hint": "Resolve all blockers or pass force=true to auto-decommission remaining agents.",
+                }
+
+            if not is_ready and force:
+                decommissioned = await _force_decommission_agents(active_session, project_id, tenant_key)
+                if decommissioned:
+                    logger.warning(
+                        "Force-closed project %s: auto-decommissioned %d agent(s): %s",
+                        project_id,
+                        len(decommissioned),
+                        ", ".join(decommissioned),
+                    )
 
             product_memory: dict[str, Any] = product.product_memory or {}
             if not isinstance(product_memory, dict):
@@ -190,6 +221,91 @@ async def close_project_and_update_memory(
     except Exception as exc:
         logger.exception("Failed to close project and update memory", extra={"error": str(exc)})
         return {"success": False, "error": str(exc)}
+
+
+# Statuses that do not block closeout (aligned with write_360_memory.SKIP_STATUSES)
+_SKIP_STATUSES = {"decommissioned"}
+# Statuses considered "active" — agents not yet finished
+_ACTIVE_STATUSES = {"waiting", "working", "blocked", "silent"}
+
+
+async def _check_agent_readiness(
+    session: AsyncSession,
+    project_id: str,
+    tenant_key: str,
+) -> tuple[bool, list[dict[str, Any]]]:
+    """
+    Check whether all agents in the project are ready for closeout.
+
+    Returns (is_ready, blockers) where blockers is a list of dicts
+    describing each non-complete agent.
+    """
+    exec_stmt = (
+        select(AgentExecution)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+        .where(
+            and_(
+                AgentJob.project_id == project_id,
+                AgentExecution.tenant_key == tenant_key,
+            )
+        )
+    )
+    result = await session.execute(exec_stmt)
+    executions = result.scalars().all()
+
+    blockers: list[dict[str, Any]] = []
+    for execution in executions:
+        if execution.status in _SKIP_STATUSES:
+            continue
+        if execution.status == "complete":
+            continue
+
+        blockers.append(
+            {
+                "agent_id": execution.agent_id,
+                "agent_name": execution.agent_name or execution.agent_display_name,
+                "status": execution.status,
+                "job_id": execution.job_id,
+                "messages_waiting": execution.messages_waiting_count or 0,
+            }
+        )
+
+    return (len(blockers) == 0, blockers)
+
+
+async def _force_decommission_agents(
+    session: AsyncSession,
+    project_id: str,
+    tenant_key: str,
+) -> list[str]:
+    """
+    Set all non-complete, non-decommissioned agents to 'decommissioned'.
+
+    Returns list of agent display names that were decommissioned.
+    """
+    exec_stmt = (
+        select(AgentExecution)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+        .where(
+            and_(
+                AgentJob.project_id == project_id,
+                AgentExecution.tenant_key == tenant_key,
+                AgentExecution.status.in_(_ACTIVE_STATUSES),
+            )
+        )
+    )
+    result = await session.execute(exec_stmt)
+    executions = result.scalars().all()
+
+    decommissioned_names: list[str] = []
+    for execution in executions:
+        execution.status = "decommissioned"
+        decommissioned_names.append(execution.agent_display_name or execution.agent_name or execution.agent_id)
+
+    if decommissioned_names:
+        await session.flush()
+
+    return decommissioned_names
 
 
 def _get_git_config(product_memory: dict[str, Any]) -> dict[str, Any]:

@@ -276,6 +276,7 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
         "key_outcomes",
         "decisions_made",
         "tenant_key",
+        "force",
     },
     # 360 Memory
     "write_360_memory": {
@@ -717,6 +718,11 @@ async def handle_tools_list(
                         "description": "List of architectural or technical decisions made during the project",
                     },
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
+                    "force": {
+                        "type": "boolean",
+                        "description": "If true, auto-decommission active agents and close anyway. Default false — blocks if agents still active.",
+                        "default": False,
+                    },
                 },
                 "required": ["project_id", "summary", "key_outcomes", "decisions_made"],
             },
