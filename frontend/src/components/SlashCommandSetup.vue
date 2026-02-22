@@ -146,11 +146,24 @@ async function copySlashCommandSetup() {
       throw new Error('No download URL received from server')
     }
 
-    // Construct curl command for CLI installation
-    const curlCommand = `curl -O ${downloadUrl} && unzip -o slash_commands.zip -d ~/.claude/commands/ && rm slash_commands.zip`
+    // Construct agent-friendly installation prompt (platform-agnostic)
+    const installPrompt = [
+      'Download and install the GiljoAI slash commands (/gil_get_claude_agents and /gil_add) from the GiljoAI MCP server.',
+      '',
+      `Download URL: ${downloadUrl}`,
+      'Target directory: ~/.claude/commands/',
+      '',
+      'Steps:',
+      '1. Download the zip file from the URL above.',
+      '2. Extract its contents into ~/.claude/commands/ (overwrite existing files).',
+      '3. Delete the downloaded zip file.',
+      'Adapt the commands for the OS platform you are currently running on.',
+      '',
+      'After installation is complete, instruct the user to restart Claude Code for the new commands to take effect.',
+    ].join('\n')
 
-    // Copy curl command to clipboard
-    await copyToClipboard(curlCommand)
+    // Copy install prompt to clipboard
+    await copyToClipboard(installPrompt)
 
     copied.value = true
     showCopyFeedback.value = true
