@@ -902,6 +902,7 @@ class ToolAccessor:
         key_outcomes: list[str],
         decisions_made: list[str],
         tenant_key: str,
+        force: bool = False,
     ) -> dict[str, Any]:
         """
         Close project and update product memory with sequential history entries (Handover 0138+).
@@ -915,6 +916,7 @@ class ToolAccessor:
             key_outcomes: List of key achievements/outcomes
             decisions_made: List of important decisions made
             tenant_key: Tenant isolation key
+            force: If True, auto-decommission active agents and close anyway
 
         Returns:
             Success/error response with learning_id and sequence number
@@ -929,6 +931,7 @@ class ToolAccessor:
             decisions_made=decisions_made,
             tenant_key=tenant_key,
             db_manager=self.db_manager,
+            force=force,
         )
 
     async def write_360_memory(
