@@ -354,8 +354,8 @@
       <v-card v-draggable>
         <v-card-title class="d-flex align-center">
           <span>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</span>
-          <AgentTipsDialog />
           <v-spacer />
+          <AgentTipsDialog />
           <v-btn icon="mdi-close" variant="text" aria-label="Close dialog" @click="cancelEdit" />
         </v-card-title>
 
