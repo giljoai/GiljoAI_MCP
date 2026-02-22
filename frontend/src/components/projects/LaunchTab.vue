@@ -7,7 +7,6 @@
         <div class="panel project-description-panel" data-testid="description-panel">
           <div class="panel-header">
             <span>Project Description</span>
-            <AgentTipsDialog />
             <v-btn
               icon="mdi-pencil"
               size="x-small"
@@ -16,6 +15,7 @@
               title="Edit description"
               @click="editDescription"
             />
+            <AgentTipsDialog />
           </div>
           <div class="panel-content">
             <p class="description-text">{{ project.description || 'No description available' }}</p>
