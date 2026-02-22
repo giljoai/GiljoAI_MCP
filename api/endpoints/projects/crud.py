@@ -94,7 +94,9 @@ async def create_project(
         execution_mode=created_project.execution_mode or "multi_terminal",  # Handover 0260
         # Handover 0440a: Taxonomy fields
         project_type_id=created_project.project_type_id,
-        project_type=created_project.project_type,  # Handover 0440c: Nested type info
+        project_type=created_project.project_type
+        if created_project.project_type_id
+        else None,  # Handover 0440c: Nested type info
         series_number=created_project.series_number,
         subseries=created_project.subseries,
         taxonomy_alias=created_project.taxonomy_alias,
