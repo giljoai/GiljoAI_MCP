@@ -7,6 +7,7 @@
         <div class="panel project-description-panel" data-testid="description-panel">
           <div class="panel-header">
             <span>Project Description</span>
+            <AgentTipsDialog />
             <v-btn
               icon="mdi-pencil"
               size="x-small"
@@ -176,6 +177,7 @@ import { useAgentJobsStore } from '@/stores/agentJobsStore'
 import { useProjectStateStore } from '@/stores/projectStateStore'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentMissionEditModal from '@/components/projects/AgentMissionEditModal.vue'
+import AgentTipsDialog from '@/components/common/AgentTipsDialog.vue'
 
 /**
  * LaunchTab Component - Complete Rewrite (Handover 0241)
