@@ -1200,7 +1200,9 @@ START NOW:
             product_id=product_id,
         )
 
-    def _build_claude_code_execution_prompt(self, orchestrator_id: str, project, agent_jobs: list, product=None) -> str:
+    def _build_claude_code_execution_prompt(
+        self, orchestrator_id: str, project, agent_jobs: list, git_enabled: bool = False
+    ) -> str:
         """
         Build Claude Code subagent mode execution prompt.
 
@@ -1418,12 +1420,6 @@ START NOW:
         ]
 
         # SECTION 7: Completion Instructions
-        # Check git integration for closeout commit instruction
-        git_enabled = False
-        if product and getattr(product, "product_memory", None):
-            git_config = product.product_memory.get("git_integration", {})
-            git_enabled = git_config.get("enabled", False)
-
         git_closeout_lines = []
         if git_enabled:
             tag = getattr(project, "taxonomy_alias", None) or project.name
