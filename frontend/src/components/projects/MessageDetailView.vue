@@ -16,8 +16,12 @@
         <code class="text-mono">{{ message.from_agent_id || 'User' }}</code>
       </div>
       <div class="meta-row">
+        <strong>To:</strong>
+        <span>{{ message.to || 'Unknown' }}</span>
+      </div>
+      <div class="meta-row">
         <strong>To Agent ID:</strong>
-        <code class="text-mono">{{ message.to_agent_id || 'Broadcast' }}</code>
+        <code class="text-mono">{{ message.to_agent_id || 'N/A' }}</code>
       </div>
       <div class="meta-row">
         <strong>Direction:</strong>

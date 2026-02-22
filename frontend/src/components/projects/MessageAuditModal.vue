@@ -226,7 +226,7 @@ async function fetchMessages() {
 // Match JobsTab helper semantics so counts stay aligned with the table
 const sentMessages = computed(() =>
   messages.value.filter(
-    (m) => m.from === 'developer' || m.direction === 'outbound',
+    (m) => m.direction === 'outbound',
   ),
 )
 
@@ -326,22 +326,7 @@ function formatTimestamp(message) {
 }
 
 function formatRecipient(message) {
-  // Check if broadcast message
-  const toBroadcast = message.to_agents?.includes('all') ||
-                      message.message_type === 'broadcast' ||
-                      !message.to_agent_id
-
-  if (toBroadcast) return 'Broadcast'
-
-  // Try to get agent name if available
-  // Note: The message object may not have agent names, only IDs
-  // In a future enhancement, we could look up the agent name from the jobs list
-  const toAgentId = message.to_agent_id
-  if (toAgentId) {
-    return `${toAgentId.slice(0, 8)  }...`
-  }
-
-  return 'Unknown'
+  return message.to || 'Unknown'
 }
 
 function getMessageContent(message) {
@@ -355,21 +340,6 @@ function getMessagePreview(message) {
   return `${text.slice(0, 77)}...`
 }
 
-function formatMessageMeta(message) {
-  const fromId = message.from_agent_id
-    ? `${message.from_agent_id.slice(0, 8)  }...`
-    : 'user'
-  const toId = message.to_agent_id
-    ? `${message.to_agent_id.slice(0, 8)  }...`
-    : 'broadcast'
-  const status = message.status || 'unknown'
-  const timestamp = message.timestamp || message.created_at
-  const date = timestamp ? new Date(timestamp) : null
-  const timePart =
-    date && !Number.isNaN(date.getTime()) ? date.toLocaleTimeString() : 'Unknown time'
-
-  return `${timePart} | ${fromId} → ${toId} (${status})`
-}
 </script>
 
 <style scoped>
