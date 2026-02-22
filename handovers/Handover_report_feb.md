@@ -289,18 +289,20 @@ These were initially moved to Reference_docs/ but contain work items not yet com
 
 ---
 
-## Active Handover Debt (Updated 2026-02-21)
+## Active Handover Debt (Updated 2026-02-22)
 
 | Tier | Handovers | Focus |
 |------|-----------|-------|
 | ~~1 - Dead Code~~ | ~~0371, 0371a~~ | ~~Dead code cleanup + template dead code + stale tests~~ **ALL COMPLETE** |
-| ~~2 - Orchestrator~~ | ~~0365~~, 0410 | ~~0365 SUPERSEDED~~ (UI handover + `build_continuation_prompt()`), 0410 Fix 2 COMPLETE (agent name display), Fix 1 NOT IMPLEMENTED (message_check) |
-| 3 - Agent Exec | 0419 | Long-polling orchestrator monitoring |
+| ~~2 - Orchestrator~~ | ~~0365~~, ~~0410~~ | ~~0365 SUPERSEDED~~ (UI handover + `build_continuation_prompt()`), ~~0410 COMPLETE~~ (2026-02-21, recipient name resolution + broadcast signal + field mismatch fix) |
+| ~~3 - Agent Exec~~ | ~~0419~~ | ~~Long-polling orchestrator monitoring~~ **SUPERSEDED** by Agent Lab feature (bash sleep polling via `AgentTipsDialog.vue`) |
 | 4 - Polish | 0732 | API consistency fixes |
 | 5 - Future | 0409, 0250 | Unified client setup, HTTPS enablement |
 
 ### Closed Since Report
 
+- **0419** (Long Polling Orchestrator Monitoring): SUPERSEDED 2026-02-22. Server-side long-polling approach (`wait_for_notifications()` MCP tool) replaced by Agent Lab feature -- a UI dialog (`AgentTipsDialog.vue`) where users copy-paste bash sleep polling instructions into project descriptions. Simpler, no backend changes needed, works across all CLI tools (Claude Code, Codex, Gemini). Commits: `fefbcc03` (initial), `4ae64aae` (rename + multi-tool), `5ab5c035` (cleanup).
+- **0410** (Message Display UX Fix): COMPLETE 2026-02-21. Recipient name resolution (`to` field with display names), broadcast signal preservation during fan-out (`message_type="broadcast"`), `to_agent_id` field mismatch fix. 4 files modified, no schema changes.
 - **0371** (Dead Code Cleanup Project): COMPLETE 2026-02-21. Phases 1-3 done 2025-12-22, Phase 4.6 completed 2026-02-21 (`project_type` column dropped, `preferred_tool` alias removed). Phases 5-7 completed by subsequent work (cleanup.md, 0601, 0745/0750). ~15K+ lines total. Children 0372-0374 + 0371a all complete.
 - **0371a** (Template Dead Code & Stale Test Remediation): COMPLETE 2026-02-21. Dead GenericAgentTemplate removed, 50 stale tests fixed, spawn prompt prefix normalized.
 - **0254** (Three-Layer Instruction Cleanup): CLOSED 2026-02-21. Core problem resolved by organic evolution (0700 series, 0431, 0407, 0334). Remaining dead code + stale tests captured in 0371a.

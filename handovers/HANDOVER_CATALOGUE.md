@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-21 (0365 SUPERSEDED, 0371a COMPLETE, 0254 closed, 0440a-d ALL COMPLETE)
+**Last Updated:** 2026-02-22 (0419 SUPERSEDED, 0410 COMPLETE, 0365 SUPERSEDED, 0371a COMPLETE, 0254 closed, 0440a-d ALL COMPLETE)
 
 ---
 
@@ -56,9 +56,9 @@
 | ~~0397~~ | ~~Deprecate stdio Proxy for Codex Native HTTP~~ | **MERGED** | - | Merged into 0489 (proxy already deleted by 0725b) |
 | ~~0408~~ | ~~Serena Toggle Injection~~ | **COMPLETE** | - | Completed 2026-01-04, commit `14310d3b` |
 | 0409 | Unified Client Quick Setup | Ready | Medium | - |
-| 0410 | Message Optimization & Agent Name Display | Ready | Medium | - |
+| ~~0410~~ | ~~Message Display UX Fix~~ | **COMPLETE** | - | Completed 2026-02-21. Recipient name resolution + broadcast signal + field mismatch fix |
 | 0411 | Windows Terminal Agent Spawning | Ready | Medium | Note: 0411 also used for completed "Jobs Tab Duration UX" |
-| 0419 | Long Polling Orchestrator Monitoring | Ready | Medium | - |
+| ~~0419~~ | ~~Long Polling Orchestrator Monitoring~~ | **SUPERSEDED** | - | Superseded by Agent Lab feature: bash sleep polling via UI copy-paste into project descriptions. Commits `fefbcc03`, `4ae64aae`, `5ab5c035` |
 | ~~0464~~ | ~~Empty State API Resilience~~ | **COMPLETE** | - | Completed 2026-01-26, commit `be56241c` |
 | ~~0486~~ | ~~Continuation Workflow Enhancements~~ | **CANCELLED** | - | Cancelled 2026-02-20: Complexity not justified; 360 Memory already bridges context across projects |
 | ~~0488~~ | ~~Staging Broadcast Response Enforcement~~ | **RETIRED** | - | Moved to completed/ (2026-02-19) |
@@ -132,6 +132,8 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0419 | Long Polling Orchestrator Monitoring | **SUPERSEDED** (2026-02-22, replaced by Agent Lab bash sleep polling) |
+| 0410 | Message Display UX Fix | **COMPLETE** (2026-02-21) |
 | 0371a | Template Dead Code & Stale Test Remediation | **COMPLETE** (2026-02-21) |
 | 0440a-d | Project Taxonomy Series (DB, Frontend, Display, Hardening) | **COMPLETE** (2026-02-21) |
 | 0254 | Three Layer Instruction Cleanup | **CLOSED** (2026-02-21, resolved organically -> 0371a) |
@@ -348,6 +350,7 @@ Located in `handovers/cancelled/`:
 
 | ID | Title | Superseded By |
 |----|-------|---------------|
+| 0419 | Long Polling Orchestrator Monitoring | Agent Lab feature: bash sleep polling via UI copy-paste (`AgentTipsDialog.vue`) |
 | 0365 | Orchestrator Handover Behavior Injection | UI-triggered handover flow + `build_continuation_prompt()` |
 | 0726 | Tenant Isolation Remediation | 0433 (24/25 findings were false positives) |
 | 0348 | Product Context Gap Analysis | 0350 series (On-Demand Context Fetch) |
