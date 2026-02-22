@@ -602,13 +602,21 @@ async def get_implementation_prompt(
     # 5. Generate implementation prompt using existing generator method
     generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
+    # Check both gates for git closeout commit: integration enabled + context priority enabled
+    git_enabled = False
+    if project.product and getattr(project.product, "product_memory", None):
+        git_config = project.product.product_memory.get("git_integration", {})
+        priorities = (getattr(current_user, "field_priority_config", None) or {}).get("priorities", {})
+        git_history_priority = priorities.get("git_history", 4)
+        git_enabled = git_config.get("enabled", False) and git_history_priority in (1, 2, 3)
+
     # Call the existing implementation prompt generator
     # Handover 0385: Use job_id (not agent_id) for mission retrieval
     prompt = generator._build_claude_code_execution_prompt(
         orchestrator_id=orchestrator_execution.job_id,
         project=project,
         agent_jobs=agent_executions,
-        product=project.product,
+        git_enabled=git_enabled,
     )
 
     logger.info(
