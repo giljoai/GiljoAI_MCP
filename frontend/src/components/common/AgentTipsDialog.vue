@@ -162,123 +162,6 @@
               </v-expansion-panel-text>
             </v-expansion-panel>
 
-            <!-- Chapter 3: Sample Prompts -->
-            <v-expansion-panel>
-              <v-expansion-panel-title>
-                <v-icon size="18" class="mr-2">mdi-text-box-outline</v-icon>
-                Sample Prompts
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <p class="mb-3 text-medium-emphasis">
-                  Copy these into your <strong>project description</strong> or agent missions.
-                  These are not auto-applied &mdash; paste them manually where needed.
-                </p>
-
-                <!-- Tool selector for prompts -->
-                <div class="tool-selector mb-3">
-                  <div class="tip-subtitle">Adapt for:</div>
-                  <v-chip-group v-model="selectedPromptTool" mandatory selected-class="tool-chip-active">
-                    <v-chip size="small" value="claude" variant="outlined">Claude Code</v-chip>
-                    <v-chip size="small" value="codex" variant="outlined">Codex</v-chip>
-                    <v-chip size="small" value="gemini" variant="outlined">Gemini</v-chip>
-                  </v-chip-group>
-                </div>
-
-                <div class="tip-box mb-3">
-                  <div class="tip-label">Subagent delegation:</div>
-                  <code class="tip-code">{{ subagentPrompt }}</code>
-                  <v-btn
-                    size="x-small"
-                    variant="text"
-                    class="copy-btn"
-                    @click="copyText(subagentPrompt)"
-                  >
-                    <v-icon size="14">mdi-content-copy</v-icon>
-                  </v-btn>
-                </div>
-
-                <div class="tip-box mb-3">
-                  <div class="tip-label">Prerequisite check:</div>
-                  <code class="tip-code">Before starting work, verify that all prerequisites from the previous phase are complete. Read the chain log and check git status for expected changes.</code>
-                  <v-btn
-                    size="x-small"
-                    variant="text"
-                    class="copy-btn"
-                    @click="copyText('Before starting work, verify that all prerequisites from the previous phase are complete. Read the chain log and check git status for expected changes.')"
-                  >
-                    <v-icon size="14">mdi-content-copy</v-icon>
-                  </v-btn>
-                </div>
-
-                <div class="tip-box mb-2">
-                  <div class="tip-label">Completion checklist:</div>
-                  <code class="tip-code">Before reporting completion: 1) Run all tests, 2) Check for lint errors, 3) Verify no untracked files left behind, 4) Update the chain log with your results.</code>
-                  <v-btn
-                    size="x-small"
-                    variant="text"
-                    class="copy-btn"
-                    @click="copyText('Before reporting completion: 1) Run all tests, 2) Check for lint errors, 3) Verify no untracked files left behind, 4) Update the chain log with your results.')"
-                  >
-                    <v-icon size="14">mdi-content-copy</v-icon>
-                  </v-btn>
-                </div>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-
-            <!-- Chapter 4: CLI Quick Reference -->
-            <v-expansion-panel>
-              <v-expansion-panel-title>
-                <v-icon size="18" class="mr-2">mdi-console</v-icon>
-                CLI Quick Reference
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <table class="ref-table">
-                  <thead>
-                    <tr>
-                      <th></th>
-                      <th>Claude Code</th>
-                      <th>Codex</th>
-                      <th>Gemini</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td class="ref-label">Prompt</td>
-                      <td><code>-p "..."</code></td>
-                      <td><code>exec "..."</code></td>
-                      <td><code>-p "..."</code></td>
-                    </tr>
-                    <tr>
-                      <td class="ref-label">Auto-approve</td>
-                      <td><code>--dangerously-skip-permissions</code></td>
-                      <td><code>--yolo</code></td>
-                      <td><code>--yolo</code> *</td>
-                    </tr>
-                    <tr>
-                      <td class="ref-label">Model</td>
-                      <td><code>--model sonnet</code></td>
-                      <td><code>--model gpt-5-codex</code></td>
-                      <td><code>-m gemini-2.5-pro</code></td>
-                    </tr>
-                    <tr>
-                      <td class="ref-label">Turn limit</td>
-                      <td><code>--max-turns N</code></td>
-                      <td>config-based</td>
-                      <td>N/A</td>
-                    </tr>
-                    <tr>
-                      <td class="ref-label">Windows</td>
-                      <td>Stable</td>
-                      <td>Experimental</td>
-                      <td>npm</td>
-                    </tr>
-                  </tbody>
-                </table>
-                <p class="text-caption text-medium-emphasis mt-2">
-                  * Gemini <code>--yolo</code> has a known bug &mdash; may still prompt for approval.
-                </p>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
           </v-expansion-panels>
         </v-card-text>
       </v-card>
@@ -293,20 +176,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
 const showDialog = ref(false)
 const showCopied = ref(false)
 const selectedTool = ref('claude')
-const selectedPromptTool = ref('claude')
-
-const subagentPrompts = {
-  claude: 'Use the Task tool to spawn specialized subagents for each phase. Do NOT do all work directly - delegate to database-expert, tdd-implementor, frontend-tester, etc. as appropriate.',
-  codex: 'Break the work into focused subtasks. Use multiple targeted prompts rather than one large prompt. Delegate distinct phases (database, backend, frontend, testing) to separate Codex sessions.',
-  gemini: 'Break the work into focused subtasks. Use separate Gemini sessions for distinct phases (database, backend, frontend, testing) to keep context clean and focused.',
-}
-
-const subagentPrompt = computed(() => subagentPrompts[selectedPromptTool.value])
 
 async function copyText(text) {
   try {
@@ -449,37 +323,4 @@ async function copyText(text) {
   }
 }
 
-.ref-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.78rem;
-
-  th, td {
-    padding: 6px 8px;
-    text-align: left;
-    border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  }
-
-  th {
-    font-weight: 600;
-    color: rgba(var(--v-theme-on-surface), 0.6);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .ref-label {
-    font-weight: 600;
-    color: rgba(var(--v-theme-on-surface), 0.6);
-    white-space: nowrap;
-  }
-
-  code {
-    font-size: 0.7rem;
-    background: rgba(var(--v-theme-on-surface), 0.08);
-    padding: 1px 4px;
-    border-radius: 3px;
-    word-break: break-all;
-  }
-}
 </style>
