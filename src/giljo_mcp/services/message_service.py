@@ -172,6 +172,9 @@ class MessageService:
                         context={"project_id": project_id, "tenant_key": tenant_key},
                     )
 
+                # Handover 0410: Detect broadcast intent before fan-out resolution
+                is_broadcast_fanout = "all" in to_agents
+
                 # Resolve agent_display_name strings to agent_id UUIDs (executor, not work order)
                 # Handover 0372: This enables succession - messages route to NEW executor after handover
                 resolved_to_agents = []
@@ -240,7 +243,7 @@ class MessageService:
                             tenant_key=project.tenant_key,
                             to_agents=[recipient_id],  # Single recipient per message (fan-out)
                             content=content,
-                            message_type=message_type,
+                            message_type="broadcast" if is_broadcast_fanout else message_type,
                             priority=priority,
                             status="pending",
                             # Store project_id as job_id for WebSocket consumers that key off job_id/project_id.

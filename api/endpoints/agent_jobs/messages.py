@@ -140,6 +140,15 @@ async def get_job_messages(
         resolved_from = _resolve_sender_display_name(raw_from_agent, agent_lookup)
         is_outbound = raw_from_agent == execution.agent_id
 
+        # Resolve recipient display name (Handover 0410)
+        to_agent_id = m.to_agents[0] if m.to_agents else None
+        if m.message_type == "broadcast":
+            resolved_to = "All Agents"
+        elif to_agent_id and to_agent_id in agent_lookup:
+            resolved_to = agent_lookup[to_agent_id]
+        else:
+            resolved_to = to_agent_id or "Unknown"
+
         message_list.append(
             {
                 "id": str(m.id),
@@ -147,6 +156,8 @@ async def get_job_messages(
                 "from_agent": raw_from_agent,  # Raw value for backward compat
                 "from_agent_id": raw_from_agent if raw_from_agent in agent_lookup else None,  # UUID if it's an agent
                 "to_agents": m.to_agents,
+                "to": resolved_to,
+                "to_agent_id": to_agent_id,
                 "content": m.content[:500] if m.content else "",  # Truncate for preview
                 "status": m.status,
                 "created_at": m.created_at.isoformat(),
