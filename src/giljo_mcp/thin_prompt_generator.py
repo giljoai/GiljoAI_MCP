@@ -1314,7 +1314,7 @@ START NOW:
                     "- Do NOT use agent_display_name (e.g., 'implementer') - it will fail",
                     "",
                     "### Spawning Strategy",
-                    "**CRITICAL**: NEVER use `run_in_background=true` - agents must run in foreground for observability.",
+                    "**DEFAULT**: Run agents in foreground for observability. Use `run_in_background=true` only when the user's project description explicitly requests background execution or parallel monitoring.",
                     "",
                     "Choose spawning approach based on job requirements:",
                     "- **Sequential**: Spawn one agent, wait for completion, then next (best for dependent tasks)",
