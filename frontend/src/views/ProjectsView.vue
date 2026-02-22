@@ -354,6 +354,7 @@
       <v-card v-draggable>
         <v-card-title class="d-flex align-center">
           <span>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</span>
+          <AgentTipsDialog />
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" aria-label="Close dialog" @click="cancelEdit" />
         </v-card-title>
@@ -732,6 +733,7 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import AddTypeModal from '@/components/projects/AddTypeModal.vue'
+import AgentTipsDialog from '@/components/common/AgentTipsDialog.vue'
 import api from '@/services/api'
 
 // Router
