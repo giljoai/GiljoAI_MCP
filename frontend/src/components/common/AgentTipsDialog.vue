@@ -1,5 +1,5 @@
 <template>
-  <div class="agent-tips-trigger">
+  <div class="agent-lab-trigger">
     <v-tooltip location="bottom">
       <template #activator="{ props: tooltipProps }">
         <v-btn
@@ -7,28 +7,35 @@
           icon
           size="small"
           variant="text"
-          class="tips-btn"
+          class="lab-btn"
           @click="showDialog = true"
         >
-          <v-icon size="20">mdi-book-open-page-variant-outline</v-icon>
+          <v-icon size="23">mdi-flask-outline</v-icon>
         </v-btn>
       </template>
-      <span>Agent Tips</span>
+      <span>Agent Lab</span>
     </v-tooltip>
 
-    <v-dialog v-model="showDialog" max-width="650" scrollable>
-      <v-card v-draggable class="tips-dialog-card">
-        <v-card-title class="d-flex align-center tips-header">
-          <v-icon class="mr-2" size="22">mdi-book-open-page-variant-outline</v-icon>
-          <span>Agent Tips</span>
+    <v-dialog v-model="showDialog" max-width="680" scrollable>
+      <v-card v-draggable class="lab-dialog-card">
+        <v-card-title class="d-flex align-center lab-header">
+          <v-icon class="mr-2" size="22" color="#ffc300">mdi-flask-outline</v-icon>
+          <span>Agent Lab</span>
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="showDialog = false" />
         </v-card-title>
 
         <v-divider />
 
-        <v-card-text class="tips-content pa-4">
-          <v-expansion-panels variant="accordion" class="tips-panels">
+        <v-card-text class="lab-content pa-4">
+          <!-- Manual paste disclaimer -->
+          <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+            <strong>Manual integration only.</strong> These are suggestions you copy-paste
+            into your <strong>project description</strong> or agent missions. Nothing here
+            is auto-applied.
+          </v-alert>
+
+          <v-expansion-panels variant="accordion" class="lab-panels">
             <!-- Chapter 1: Monitoring Agents -->
             <v-expansion-panel>
               <v-expansion-panel-title>
@@ -43,12 +50,8 @@
                 </p>
 
                 <div class="tip-box mb-3">
-                  <div class="tip-label">Add to project description:</div>
-                  <code class="tip-code">
-After staging, monitor all agents by polling their status every 30 seconds
-using bash sleep. Check for status changes, new messages, and blocked agents.
-Report a summary after each poll cycle.
-                  </code>
+                  <div class="tip-label">Paste into project description:</div>
+                  <code class="tip-code">After staging, monitor all agents by polling their status every 30 seconds using bash sleep. Check for status changes, new messages, and blocked agents. Report a summary after each poll cycle.</code>
                   <v-btn
                     size="x-small"
                     variant="text"
@@ -103,14 +106,43 @@ Report a summary after each poll cycle.
                   </div>
                 </div>
 
-                <div class="tip-box mb-3">
+                <!-- Tool selector -->
+                <div class="tool-selector mb-3">
+                  <div class="tip-subtitle">CLI tool:</div>
+                  <v-chip-group v-model="selectedTool" mandatory selected-class="tool-chip-active">
+                    <v-chip size="small" value="claude" variant="outlined">Claude Code</v-chip>
+                    <v-chip size="small" value="codex" variant="outlined">Codex</v-chip>
+                    <v-chip size="small" value="gemini" variant="outlined">
+                      Gemini
+                      <v-icon size="12" color="warning" class="ml-1">mdi-alert-circle</v-icon>
+                    </v-chip>
+                  </v-chip-group>
+                </div>
+
+                <!-- Claude Code spawn -->
+                <div v-if="selectedTool === 'claude'" class="tip-box mb-3">
                   <div class="tip-label">Spawn command (PowerShell):</div>
-                  <code class="tip-code">
-powershell.exe -Command "Start-Process wt -ArgumentList
-  '--title ""TITLE"" --tabColor ""#HEX"" -d ""WORKDIR""
-  cmd /k claude --dangerously-skip-permissions ""PROMPT""'
-  -Verb RunAs"
-                  </code>
+                  <code class="tip-code">powershell.exe -Command "Start-Process wt -ArgumentList '--title ""TITLE"" --tabColor ""#HEX"" -d ""WORKDIR"" cmd /k claude -p ""PROMPT"" --dangerously-skip-permissions' -Verb RunAs"</code>
+                </div>
+
+                <!-- Codex spawn -->
+                <div v-if="selectedTool === 'codex'" class="tip-box mb-3">
+                  <div class="tip-label">Spawn command (PowerShell):</div>
+                  <code class="tip-code">powershell.exe -Command "Start-Process wt -ArgumentList '--title ""TITLE"" --tabColor ""#HEX"" -d ""WORKDIR"" cmd /k codex exec ""PROMPT"" --yolo' -Verb RunAs"</code>
+                  <p class="text-caption text-medium-emphasis mt-2 mb-0">
+                    Codex sandbox is experimental on Windows. WSL2 recommended for reliability.
+                  </p>
+                </div>
+
+                <!-- Gemini spawn -->
+                <div v-if="selectedTool === 'gemini'" class="tip-box mb-3">
+                  <div class="tip-label">Spawn command (PowerShell):</div>
+                  <code class="tip-code">powershell.exe -Command "Start-Process wt -ArgumentList '--title ""TITLE"" --tabColor ""#HEX"" -d ""WORKDIR"" cmd /k gemini -p ""PROMPT"" --yolo' -Verb RunAs"</code>
+                  <v-alert type="warning" variant="tonal" density="compact" class="mt-2">
+                    <strong>Known bug:</strong> Gemini's <code>--yolo</code> flag still prompts
+                    for plan approval despite being enabled (issue #13561). Not reliable for
+                    unattended chains yet.
+                  </v-alert>
                 </div>
 
                 <div class="tip-section mb-2">
@@ -118,7 +150,12 @@ powershell.exe -Command "Start-Process wt -ArgumentList
                   <ul class="tip-list">
                     <li>Keep launch prompts slim &mdash; point to the handover document</li>
                     <li>Include "Use Bash tool to RUN" to prevent agents from just printing commands</li>
-                    <li>Use <code>--dangerously-skip-permissions</code> for autonomous execution</li>
+                    <li>
+                      Auto-approve flag:
+                      <code v-if="selectedTool === 'claude'">--dangerously-skip-permissions</code>
+                      <code v-else-if="selectedTool === 'codex'">--yolo</code>
+                      <code v-else>--yolo</code>
+                    </li>
                     <li>Store chain logs in <code>prompts/{project}_chain/chain_log.json</code></li>
                   </ul>
                 </div>
@@ -132,22 +169,29 @@ powershell.exe -Command "Start-Process wt -ArgumentList
                 Sample Prompts
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <p class="mb-3">
-                  Copy these into your project description or agent missions to enhance behavior.
+                <p class="mb-3 text-medium-emphasis">
+                  Copy these into your <strong>project description</strong> or agent missions.
+                  These are not auto-applied &mdash; paste them manually where needed.
                 </p>
+
+                <!-- Tool selector for prompts -->
+                <div class="tool-selector mb-3">
+                  <div class="tip-subtitle">Adapt for:</div>
+                  <v-chip-group v-model="selectedPromptTool" mandatory selected-class="tool-chip-active">
+                    <v-chip size="small" value="claude" variant="outlined">Claude Code</v-chip>
+                    <v-chip size="small" value="codex" variant="outlined">Codex</v-chip>
+                    <v-chip size="small" value="gemini" variant="outlined">Gemini</v-chip>
+                  </v-chip-group>
+                </div>
 
                 <div class="tip-box mb-3">
                   <div class="tip-label">Subagent delegation:</div>
-                  <code class="tip-code">
-Use the Task tool to spawn specialized subagents for each phase.
-Do NOT do all work directly &mdash; delegate to database-expert,
-tdd-implementor, frontend-tester, etc. as appropriate.
-                  </code>
+                  <code class="tip-code">{{ subagentPrompt }}</code>
                   <v-btn
                     size="x-small"
                     variant="text"
                     class="copy-btn"
-                    @click="copyText('Use the Task tool to spawn specialized subagents for each phase. Do NOT do all work directly - delegate to database-expert, tdd-implementor, frontend-tester, etc. as appropriate.')"
+                    @click="copyText(subagentPrompt)"
                   >
                     <v-icon size="14">mdi-content-copy</v-icon>
                   </v-btn>
@@ -155,11 +199,7 @@ tdd-implementor, frontend-tester, etc. as appropriate.
 
                 <div class="tip-box mb-3">
                   <div class="tip-label">Prerequisite check:</div>
-                  <code class="tip-code">
-Before starting work, verify that all prerequisites from the
-previous phase are complete. Read the chain log and check
-git status for expected changes.
-                  </code>
+                  <code class="tip-code">Before starting work, verify that all prerequisites from the previous phase are complete. Read the chain log and check git status for expected changes.</code>
                   <v-btn
                     size="x-small"
                     variant="text"
@@ -172,11 +212,7 @@ git status for expected changes.
 
                 <div class="tip-box mb-2">
                   <div class="tip-label">Completion checklist:</div>
-                  <code class="tip-code">
-Before reporting completion: 1) Run all tests, 2) Check for
-lint errors, 3) Verify no untracked files left behind,
-4) Update the chain log with your results.
-                  </code>
+                  <code class="tip-code">Before reporting completion: 1) Run all tests, 2) Check for lint errors, 3) Verify no untracked files left behind, 4) Update the chain log with your results.</code>
                   <v-btn
                     size="x-small"
                     variant="text"
@@ -186,6 +222,61 @@ lint errors, 3) Verify no untracked files left behind,
                     <v-icon size="14">mdi-content-copy</v-icon>
                   </v-btn>
                 </div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
+            <!-- Chapter 4: CLI Quick Reference -->
+            <v-expansion-panel>
+              <v-expansion-panel-title>
+                <v-icon size="18" class="mr-2">mdi-console</v-icon>
+                CLI Quick Reference
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <table class="ref-table">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Claude Code</th>
+                      <th>Codex</th>
+                      <th>Gemini</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="ref-label">Prompt</td>
+                      <td><code>-p "..."</code></td>
+                      <td><code>exec "..."</code></td>
+                      <td><code>-p "..."</code></td>
+                    </tr>
+                    <tr>
+                      <td class="ref-label">Auto-approve</td>
+                      <td><code>--dangerously-skip-permissions</code></td>
+                      <td><code>--yolo</code></td>
+                      <td><code>--yolo</code> *</td>
+                    </tr>
+                    <tr>
+                      <td class="ref-label">Model</td>
+                      <td><code>--model sonnet</code></td>
+                      <td><code>--model gpt-5-codex</code></td>
+                      <td><code>-m gemini-2.5-pro</code></td>
+                    </tr>
+                    <tr>
+                      <td class="ref-label">Turn limit</td>
+                      <td><code>--max-turns N</code></td>
+                      <td>config-based</td>
+                      <td>N/A</td>
+                    </tr>
+                    <tr>
+                      <td class="ref-label">Windows</td>
+                      <td>Stable</td>
+                      <td>Experimental</td>
+                      <td>npm</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p class="text-caption text-medium-emphasis mt-2">
+                  * Gemini <code>--yolo</code> has a known bug &mdash; may still prompt for approval.
+                </p>
               </v-expansion-panel-text>
             </v-expansion-panel>
           </v-expansion-panels>
@@ -202,17 +293,26 @@ lint errors, 3) Verify no untracked files left behind,
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const showDialog = ref(false)
 const showCopied = ref(false)
+const selectedTool = ref('claude')
+const selectedPromptTool = ref('claude')
+
+const subagentPrompts = {
+  claude: 'Use the Task tool to spawn specialized subagents for each phase. Do NOT do all work directly - delegate to database-expert, tdd-implementor, frontend-tester, etc. as appropriate.',
+  codex: 'Break the work into focused subtasks. Use multiple targeted prompts rather than one large prompt. Delegate distinct phases (database, backend, frontend, testing) to separate Codex sessions.',
+  gemini: 'Break the work into focused subtasks. Use separate Gemini sessions for distinct phases (database, backend, frontend, testing) to keep context clean and focused.',
+}
+
+const subagentPrompt = computed(() => subagentPrompts[selectedPromptTool.value])
 
 async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text)
     showCopied.value = true
   } catch {
-    // Fallback for non-HTTPS contexts
     const textarea = document.createElement('textarea')
     textarea.value = text
     document.body.appendChild(textarea)
@@ -225,35 +325,35 @@ async function copyText(text) {
 </script>
 
 <style scoped lang="scss">
-.agent-tips-trigger {
+.agent-lab-trigger {
   display: inline-flex;
   align-items: center;
 }
 
-.tips-btn {
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  transition: color 0.2s ease;
+.lab-btn {
+  color: #ffc300;
+  transition: opacity 0.2s ease;
 
   &:hover {
-    color: #ffc300;
+    opacity: 0.8;
   }
 }
 
-.tips-dialog-card {
+.lab-dialog-card {
   background: rgb(var(--v-theme-surface));
 }
 
-.tips-header {
+.lab-header {
   font-size: 1rem;
   font-weight: 600;
 }
 
-.tips-content {
+.lab-content {
   max-height: 70vh;
   overflow-y: auto;
 }
 
-.tips-panels {
+.lab-panels {
   :deep(.v-expansion-panel-title) {
     font-size: 0.875rem;
     font-weight: 600;
@@ -263,6 +363,14 @@ async function copyText(text) {
 
   :deep(.v-expansion-panel-text__wrapper) {
     padding: 12px 16px;
+  }
+}
+
+.tool-selector {
+  .tool-chip-active {
+    background: rgba(255, 195, 0, 0.15) !important;
+    border-color: #ffc300 !important;
+    color: #ffc300 !important;
   }
 }
 
@@ -338,6 +446,40 @@ async function copyText(text) {
     font-size: 0.7rem;
     font-weight: 600;
     color: white;
+  }
+}
+
+.ref-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+
+  th, td {
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  }
+
+  th {
+    font-weight: 600;
+    color: rgba(var(--v-theme-on-surface), 0.6);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .ref-label {
+    font-weight: 600;
+    color: rgba(var(--v-theme-on-surface), 0.6);
+    white-space: nowrap;
+  }
+
+  code {
+    font-size: 0.7rem;
+    background: rgba(var(--v-theme-on-surface), 0.08);
+    padding: 1px 4px;
+    border-radius: 3px;
+    word-break: break-all;
   }
 }
 </style>
