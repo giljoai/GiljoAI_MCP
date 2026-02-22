@@ -117,19 +117,10 @@ def _make_mock_project(name="Auth System", taxonomy="FE-0042a"):
     return project
 
 
-def _make_mock_product(git_enabled=True):
-    """Create a mock product with git_integration config."""
-    product = MagicMock()
-    product.product_memory = {
-        "git_integration": {"enabled": git_enabled},
-    }
-    return product
-
-
 class TestCLIModeGitCloseout:
     """Tests for git closeout commit in CLI execution prompt."""
 
-    def _build_prompt(self, product=None, project=None):
+    def _build_prompt(self, git_enabled=False, project=None):
         """Build CLI execution prompt with mocked dependencies."""
         from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
@@ -139,36 +130,29 @@ class TestCLIModeGitCloseout:
             orchestrator_id="orch-001",
             project=proj,
             agent_jobs=[],
-            product=product,
+            git_enabled=git_enabled,
         )
 
-    def test_no_product_no_closeout(self):
-        """When product is None, no closeout commit instruction."""
-        prompt = self._build_prompt(product=None)
-        assert "closeout(" not in prompt
-
     def test_git_disabled_no_closeout(self):
-        """When git_integration.enabled=False, no closeout commit."""
-        prompt = self._build_prompt(product=_make_mock_product(git_enabled=False))
+        """When git_enabled=False, no closeout commit instruction."""
+        prompt = self._build_prompt(git_enabled=False)
         assert "closeout(" not in prompt
 
     def test_git_enabled_includes_closeout(self):
-        """When git_integration.enabled=True, closeout commit appears."""
-        prompt = self._build_prompt(product=_make_mock_product(git_enabled=True))
+        """When git_enabled=True, closeout commit appears."""
+        prompt = self._build_prompt(git_enabled=True)
         assert "closeout(FE-0042a)" in prompt
         assert "git commit --allow-empty" in prompt
         assert "Auth System" in prompt
 
     def test_closeout_before_complete_job(self):
         """Git closeout instruction appears before complete_job call."""
-        prompt = self._build_prompt(product=_make_mock_product(git_enabled=True))
+        prompt = self._build_prompt(git_enabled=True)
         closeout_pos = prompt.index("Git Closeout Commit")
         complete_pos = prompt.index("Complete Your Orchestrator Job")
         assert closeout_pos < complete_pos
 
-    def test_product_without_product_memory(self):
-        """Product with no product_memory doesn't crash."""
-        product = MagicMock()
-        product.product_memory = None
-        prompt = self._build_prompt(product=product)
+    def test_default_is_disabled(self):
+        """Default git_enabled=False means no closeout."""
+        prompt = self._build_prompt()
         assert "closeout(" not in prompt
