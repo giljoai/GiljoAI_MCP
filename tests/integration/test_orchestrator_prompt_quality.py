@@ -473,23 +473,13 @@ class TestCLIModeRulesInclusion:
             orchestrator_id=orchestrator_id, tenant_key=tenant_key
         )
 
-        # ASSERT: Response includes agent_spawning_constraint for CLI mode
-        assert "agent_spawning_constraint" in result, "CLI mode should include agent_spawning_constraint field"
+        # ASSERT: agent_spawning_constraint removed (contradicted staging phase),
+        # Task tool instructions now live in thin_prompt_generator (implementation phase only).
+        # CLI mode rules (multi_agent_example, display_name_usage) should still be present.
+        assert "agent_spawning_constraint" not in result, "agent_spawning_constraint should not be in staging response"
+        assert "cli_mode_rules" in result, "CLI mode rules should still be present for staging"
 
-        constraint = result["agent_spawning_constraint"]
-        assert constraint["mode"] == "strict_task_tool", "CLI mode should enforce strict Task tool usage"
-
-        assert "allowed_agent_display_names" in constraint, "Constraint should include list of allowed agent types"
-
-        assert "instruction" in constraint, "Constraint should include instruction text for orchestrator"
-
-        # Verify instruction mentions Task tool
-        assert "Task tool" in constraint["instruction"], "Instruction should mention Claude Code's native Task tool"
-
-        print(
-            f"\n[CLI_MODE] Agent spawning constraint included with "
-            f"{len(constraint['allowed_agent_display_names'])} allowed types"
-        )
+        print("\n[CLI_MODE] agent_spawning_constraint correctly absent from staging response")
 
 
 @pytest.mark.asyncio
@@ -599,9 +589,8 @@ class TestPromptQualityRegression:
         assert "should be fully preserved" in mission, "Full context should be preserved"
         assert "[... vision truncated" not in mission.lower(), "No truncation markers in full context"
 
-        # 4. CLI mode rules included
-        assert "agent_spawning_constraint" in result, "CLI mode constraint present"
-        assert result["agent_spawning_constraint"]["mode"] == "strict_task_tool"
+        # 4. CLI mode rules included (agent_spawning_constraint removed — staging-phase conflict)
+        assert "cli_mode_rules" in result, "CLI mode rules present"
 
         print(
             f"\n[COMPREHENSIVE] All quality checks passed:\n"
