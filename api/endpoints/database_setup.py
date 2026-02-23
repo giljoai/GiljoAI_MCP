@@ -100,23 +100,21 @@ async def test_database_connection(request: DatabaseSetupRequest) -> dict:
     except psycopg2.OperationalError as e:
         error_msg = str(e).lower()
         if "password authentication failed" in error_msg:
-            return {
-                "success": False,
-                "status": "auth_failed",
-                "message": "Invalid PostgreSQL admin password",
-            }
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid PostgreSQL admin password",
+            ) from e
         if "could not connect" in error_msg or "connection refused" in error_msg:
-            return {
-                "success": False,
-                "status": "connection_refused",
-                "message": "Cannot connect to PostgreSQL server. Is PostgreSQL running?",
-            }
-        return {"success": False, "status": "error", "message": f"Connection failed: {e!s}"}
+            raise HTTPException(
+                status_code=503,
+                detail="Cannot connect to PostgreSQL server. Is PostgreSQL running?",
+            ) from e
+        raise HTTPException(status_code=503, detail=f"Connection failed: {e!s}") from e
 
     except (ImportError, OSError, ValueError) as e:
         if isinstance(e, ImportError):
             raise HTTPException(status_code=500, detail="psycopg2 not installed") from None
-        return {"success": False, "status": "error", "message": f"Connection test failed: {e!s}"}
+        raise HTTPException(status_code=500, detail=f"Connection test failed: {e!s}") from e
 
 
 @router.post("/setup")
@@ -156,13 +154,11 @@ async def setup_database(request: DatabaseSetupRequest) -> dict:
         setup_result = db_installer.setup()
 
         if not setup_result.get("success"):
-            # Setup failed - return errors
-            return {
-                "success": False,
-                "status": "error",
-                "errors": setup_result.get("errors", ["Unknown error during database setup"]),
-                "warnings": setup_result.get("warnings", []),
-            }
+            errors = setup_result.get("errors", ["Unknown error during database setup"])
+            raise HTTPException(
+                status_code=500,
+                detail=f"Database setup failed: {'; '.join(errors)}",
+            )
 
         # Setup succeeded - run migrations
         logger.info("Running Alembic migrations...")
@@ -178,11 +174,10 @@ async def setup_database(request: DatabaseSetupRequest) -> dict:
         config_path = get_config_path()
 
         if not config_path.exists():
-            return {
-                "success": False,
-                "status": "error",
-                "errors": ["config.yaml not found - cannot update credentials"],
-            }
+            raise HTTPException(
+                status_code=500,
+                detail="config.yaml not found - cannot update credentials",
+            )
 
         # Read current config
         config_data = read_config(config_path)
@@ -275,12 +270,10 @@ async def verify_database_setup() -> dict:
             if not db_password:
                 missing_vars.append("POSTGRES_PASSWORD/DB_PASSWORD")
 
-            return {
-                "success": False,
-                "status": "missing_credentials",
-                "message": "Database credentials not found in .env file. Please run CLI installer first.",
-                "errors": [f"Missing environment variables: {', '.join(missing_vars)}"],
-            }
+            raise HTTPException(
+                status_code=400,
+                detail=f"Database credentials not found in .env file. Missing: {', '.join(missing_vars)}",
+            )
 
         # Test connection using psycopg2 (raw connection test)
         try:
@@ -334,32 +327,24 @@ async def verify_database_setup() -> dict:
             error_msg = str(e).lower()
 
             if "password authentication failed" in error_msg:
-                return {
-                    "success": False,
-                    "status": "auth_failed",
-                    "message": "Database authentication failed. Credentials in .env may be incorrect.",
-                    "error": str(e),
-                }
+                raise HTTPException(
+                    status_code=401,
+                    detail="Database authentication failed. Credentials in .env may be incorrect.",
+                ) from e
             if "database" in error_msg and "does not exist" in error_msg:
-                return {
-                    "success": False,
-                    "status": "database_missing",
-                    "message": f"Database '{db_name}' does not exist. Please run CLI installer first.",
-                    "error": str(e),
-                }
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Database '{db_name}' does not exist. Please run CLI installer first.",
+                ) from e
             if "could not connect" in error_msg or "connection refused" in error_msg:
-                return {
-                    "success": False,
-                    "status": "connection_refused",
-                    "message": "Cannot connect to PostgreSQL server. Is PostgreSQL running?",
-                    "error": str(e),
-                }
-            return {
-                "success": False,
-                "status": "connection_error",
-                "message": f"Database connection failed: {e!s}",
-                "error": str(e),
-            }
+                raise HTTPException(
+                    status_code=503,
+                    detail="Cannot connect to PostgreSQL server. Is PostgreSQL running?",
+                ) from e
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database connection failed: {e!s}",
+            ) from e
 
     except (ImportError, OSError, ValueError) as e:
         if isinstance(e, ImportError):
