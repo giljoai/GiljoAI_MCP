@@ -2,8 +2,8 @@
 API Integration Tests for Execution Mode Endpoints - Handover 0248c
 
 Tests the following endpoints:
-- GET /api/users/me/settings/execution_mode
-- PUT /api/users/me/settings/execution_mode
+- GET /api/users/me/settings/execution-mode
+- PUT /api/users/me/settings/execution-mode
 
 Test Coverage:
 - Default value (claude_code) for new users
@@ -66,18 +66,18 @@ async def execution_mode_user(api_client: AsyncClient, db_manager):
 
 
 # ============================================================================
-# EXECUTION MODE TESTS - GET /users/me/settings/execution_mode
+# EXECUTION MODE TESTS - GET /users/me/settings/execution-mode
 # ============================================================================
 
 
 class TestGetExecutionMode:
-    """Test GET /users/me/settings/execution_mode - Retrieve execution mode"""
+    """Test GET /users/me/settings/execution-mode - Retrieve execution mode"""
 
     @pytest.mark.asyncio
     async def test_get_execution_mode_default_value(self, api_client: AsyncClient, execution_mode_user: str):
-        """Test GET /users/me/settings/execution_mode - New user defaults to claude_code."""
+        """Test GET /users/me/settings/execution-mode - New user defaults to claude_code."""
         response = await api_client.get(
-            "/api/v1/users/me/settings/execution_mode", cookies={"access_token": execution_mode_user}
+            "/api/v1/users/me/settings/execution-mode", cookies={"access_token": execution_mode_user}
         )
 
         assert response.status_code == 200
@@ -87,13 +87,13 @@ class TestGetExecutionMode:
 
     @pytest.mark.asyncio
     async def test_get_execution_mode_requires_authentication(self, api_client: AsyncClient):
-        """Test GET /users/me/settings/execution_mode - 401 without authentication."""
-        response = await api_client.get("/api/v1/users/me/settings/execution_mode")
+        """Test GET /users/me/settings/execution-mode - 401 without authentication."""
+        response = await api_client.get("/api/v1/users/me/settings/execution-mode")
         assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_get_execution_mode_multi_user_isolation(self, api_client: AsyncClient, db_manager):
-        """Test GET /users/me/settings/execution_mode - Each user has independent setting."""
+        """Test GET /users/me/settings/execution-mode - Each user has independent setting."""
         from passlib.hash import bcrypt
 
         from src.giljo_mcp.auth.jwt_manager import JWTManager
@@ -159,29 +159,29 @@ class TestGetExecutionMode:
             )
 
         # User 1 sees their own setting (claude_code)
-        response1 = await api_client.get("/api/v1/users/me/settings/execution_mode", cookies={"access_token": token1})
+        response1 = await api_client.get("/api/v1/users/me/settings/execution-mode", cookies={"access_token": token1})
         assert response1.status_code == 200
         assert response1.json()["execution_mode"] == "claude_code"
 
         # User 2 sees their own setting (multi_terminal)
-        response2 = await api_client.get("/api/v1/users/me/settings/execution_mode", cookies={"access_token": token2})
+        response2 = await api_client.get("/api/v1/users/me/settings/execution-mode", cookies={"access_token": token2})
         assert response2.status_code == 200
         assert response2.json()["execution_mode"] == "multi_terminal"
 
 
 # ============================================================================
-# EXECUTION MODE TESTS - PUT /users/me/settings/execution_mode
+# EXECUTION MODE TESTS - PUT /users/me/settings/execution-mode
 # ============================================================================
 
 
 class TestUpdateExecutionMode:
-    """Test PUT /users/me/settings/execution_mode - Update execution mode"""
+    """Test PUT /users/me/settings/execution-mode - Update execution mode"""
 
     @pytest.mark.asyncio
     async def test_update_execution_mode_to_multi_terminal(self, api_client: AsyncClient, execution_mode_user: str):
-        """Test PUT /users/me/settings/execution_mode - Update to multi_terminal succeeds."""
+        """Test PUT /users/me/settings/execution-mode - Update to multi_terminal succeeds."""
         response = await api_client.put(
-            "/api/v1/users/me/settings/execution_mode",
+            "/api/v1/users/me/settings/execution-mode",
             cookies={"access_token": execution_mode_user},
             json={"execution_mode": "multi_terminal"},
         )
@@ -193,10 +193,10 @@ class TestUpdateExecutionMode:
 
     @pytest.mark.asyncio
     async def test_update_execution_mode_persistence(self, api_client: AsyncClient, execution_mode_user: str):
-        """Test PUT /users/me/settings/execution_mode - Update persists after GET."""
+        """Test PUT /users/me/settings/execution-mode - Update persists after GET."""
         # Update to multi_terminal
         update_response = await api_client.put(
-            "/api/v1/users/me/settings/execution_mode",
+            "/api/v1/users/me/settings/execution-mode",
             cookies={"access_token": execution_mode_user},
             json={"execution_mode": "multi_terminal"},
         )
@@ -204,7 +204,7 @@ class TestUpdateExecutionMode:
 
         # Verify persistence via GET
         get_response = await api_client.get(
-            "/api/v1/users/me/settings/execution_mode", cookies={"access_token": execution_mode_user}
+            "/api/v1/users/me/settings/execution-mode", cookies={"access_token": execution_mode_user}
         )
         assert get_response.status_code == 200
         assert get_response.json()["execution_mode"] == "multi_terminal"
@@ -213,17 +213,17 @@ class TestUpdateExecutionMode:
     async def test_update_execution_mode_switch_back_to_claude_code(
         self, api_client: AsyncClient, execution_mode_user: str
     ):
-        """Test PUT /users/me/settings/execution_mode - Can switch back to claude_code."""
+        """Test PUT /users/me/settings/execution-mode - Can switch back to claude_code."""
         # First change to multi_terminal
         await api_client.put(
-            "/api/v1/users/me/settings/execution_mode",
+            "/api/v1/users/me/settings/execution-mode",
             cookies={"access_token": execution_mode_user},
             json={"execution_mode": "multi_terminal"},
         )
 
         # Switch back to claude_code
         switch_response = await api_client.put(
-            "/api/v1/users/me/settings/execution_mode",
+            "/api/v1/users/me/settings/execution-mode",
             cookies={"access_token": execution_mode_user},
             json={"execution_mode": "claude_code"},
         )
@@ -232,16 +232,16 @@ class TestUpdateExecutionMode:
 
         # Verify persistence
         get_response = await api_client.get(
-            "/api/v1/users/me/settings/execution_mode", cookies={"access_token": execution_mode_user}
+            "/api/v1/users/me/settings/execution-mode", cookies={"access_token": execution_mode_user}
         )
         assert get_response.status_code == 200
         assert get_response.json()["execution_mode"] == "claude_code"
 
     @pytest.mark.asyncio
     async def test_update_execution_mode_invalid_value(self, api_client: AsyncClient, execution_mode_user: str):
-        """Test PUT /users/me/settings/execution_mode - 422 for invalid mode."""
+        """Test PUT /users/me/settings/execution-mode - 422 for invalid mode."""
         response = await api_client.put(
-            "/api/v1/users/me/settings/execution_mode",
+            "/api/v1/users/me/settings/execution-mode",
             cookies={"access_token": execution_mode_user},
             json={"execution_mode": "invalid_mode"},
         )
@@ -251,9 +251,9 @@ class TestUpdateExecutionMode:
 
     @pytest.mark.asyncio
     async def test_update_execution_mode_missing_field(self, api_client: AsyncClient, execution_mode_user: str):
-        """Test PUT /users/me/settings/execution_mode - 422 for missing execution_mode field."""
+        """Test PUT /users/me/settings/execution-mode - 422 for missing execution_mode field."""
         response = await api_client.put(
-            "/api/v1/users/me/settings/execution_mode",
+            "/api/v1/users/me/settings/execution-mode",
             cookies={"access_token": execution_mode_user},
             json={},  # Missing execution_mode
         )
@@ -263,18 +263,18 @@ class TestUpdateExecutionMode:
 
     @pytest.mark.asyncio
     async def test_update_execution_mode_requires_authentication(self, api_client: AsyncClient):
-        """Test PUT /users/me/settings/execution_mode - 401 without authentication."""
+        """Test PUT /users/me/settings/execution-mode - 401 without authentication."""
         response = await api_client.put(
-            "/api/v1/users/me/settings/execution_mode", json={"execution_mode": "multi_terminal"}
+            "/api/v1/users/me/settings/execution-mode", json={"execution_mode": "multi_terminal"}
         )
         assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_update_execution_mode_idempotent(self, api_client: AsyncClient, execution_mode_user: str):
-        """Test PUT /users/me/settings/execution_mode - Idempotent (same value twice)."""
+        """Test PUT /users/me/settings/execution-mode - Idempotent (same value twice)."""
         # Set to multi_terminal
         response1 = await api_client.put(
-            "/api/v1/users/me/settings/execution_mode",
+            "/api/v1/users/me/settings/execution-mode",
             cookies={"access_token": execution_mode_user},
             json={"execution_mode": "multi_terminal"},
         )
@@ -282,7 +282,7 @@ class TestUpdateExecutionMode:
 
         # Set to multi_terminal again
         response2 = await api_client.put(
-            "/api/v1/users/me/settings/execution_mode",
+            "/api/v1/users/me/settings/execution-mode",
             cookies={"access_token": execution_mode_user},
             json={"execution_mode": "multi_terminal"},
         )
@@ -300,7 +300,7 @@ class TestExecutionModeUserIsolation:
 
     @pytest.mark.asyncio
     async def test_execution_mode_user_isolation(self, api_client: AsyncClient, db_manager):
-        """Test PUT /users/me/settings/execution_mode - Changes don't affect other users."""
+        """Test PUT /users/me/settings/execution-mode - Changes don't affect other users."""
         from passlib.hash import bcrypt
 
         from src.giljo_mcp.auth.jwt_manager import JWTManager
@@ -366,20 +366,20 @@ class TestExecutionModeUserIsolation:
 
         # User A changes to multi_terminal
         response_a = await api_client.put(
-            "/api/v1/users/me/settings/execution_mode",
+            "/api/v1/users/me/settings/execution-mode",
             cookies={"access_token": token_a},
             json={"execution_mode": "multi_terminal"},
         )
         assert response_a.status_code == 200
 
         # User B's setting should remain unchanged
-        response_b = await api_client.get("/api/v1/users/me/settings/execution_mode", cookies={"access_token": token_b})
+        response_b = await api_client.get("/api/v1/users/me/settings/execution-mode", cookies={"access_token": token_b})
         assert response_b.status_code == 200
         assert response_b.json()["execution_mode"] == "claude_code"  # Still default
 
         # Verify User A's change persisted
         response_a_verify = await api_client.get(
-            "/api/v1/users/me/settings/execution_mode", cookies={"access_token": token_a}
+            "/api/v1/users/me/settings/execution-mode", cookies={"access_token": token_a}
         )
         assert response_a_verify.status_code == 200
         assert response_a_verify.json()["execution_mode"] == "multi_terminal"
