@@ -1,8 +1,9 @@
 # Handover Reconciliation Report - February 2026
 
-**Date**: 2026-02-17
-**Commit**: `9e5743ea` (reconciliation) + restoration amendments
-**Scope**: Full audit of `handovers/` root - 31 files triaged
+**Created**: 2026-02-17
+**Last Updated**: 2026-02-23 (reconciled with git history + catalogue sync)
+**Commit**: `9e5743ea` (original reconciliation) + restoration amendments
+**Scope**: Full audit of `handovers/` root - 31 files triaged + complete February completion record
 
 ---
 
@@ -18,7 +19,7 @@
 
 ---
 
-## Section 1: Closed Out to `completed/` (14 handovers)
+## Section 1: Closed Out to `completed/` (19 handovers)
 
 All files renamed with `-C` suffix per close-out protocol.
 
@@ -289,15 +290,67 @@ These were initially moved to Reference_docs/ but contain work items not yet com
 
 ---
 
-## Active Handover Debt (Updated 2026-02-22)
+## Section 5: Additional February Completions (Not in Original Reconciliation)
+
+The Feb 17 reconciliation (Sections 1-4) covered the 36 files in the `handovers/` root at that time. The following handovers were also completed during February 2026 but were already archived to `completed/` or `0700_series/` before the reconciliation. Listed here for a complete February record.
+
+### Code Cleanup Series (0700-0750) - ALL COMPLETE
+
+| ID | Title | Completed | Key Commit |
+|----|-------|-----------|------------|
+| 0700a-i | Pre-release deprecation purge (9 phases) | 2026-02-07 | `0f4e7bcf` through `cd31033b` |
+| 0709 | Implementation phase gate (staging enforcement) | 2026-02-06 | `b4c6b5c2` |
+| 0720 | Complete delint (zero lint errors) | 2026-02-07 | `9f863e4e` |
+| 0725 | Code Health Audit | 2026-02-07 | `62b6aff0` |
+| 0725b | Code Health Re-Audit | 2026-02-07 | `02698523` |
+| 0727 | Test Fixes | 2026-02-08 | `02698523` |
+| 0728 | Remove Deprecated Vision Model | 2026-02-08 | `daf76894` |
+| 0729 | Orphan Code Removal | 2026-02-08 | `2ef68408` |
+| 0730a-e | Service Response Models (5 phases) | 2026-02-08 | `36d830db` |
+| 0731a-d | Typed Service Returns (4 sessions) | 2026-02-11 | `edeef972` |
+| 0733 | Tenant Isolation API Security Patch | 2026-02-09 | `24aa6f64` |
+| 0740 | Post-Cleanup Audit | 2026-02-10 | `ea498c66` |
+| 0745a-f | Audit Follow-Up (6 phases) | 2026-02-11 | Through `2209c2b3` |
+| 0750a-d | Final Scrub (4 phases) | 2026-02-11 | `549fbd25` |
+
+> **Result**: ~15,800 lines removed, architecture score 8/10. 314 completed handovers in archive.
+
+### Feature & Security Handovers
+
+| ID | Title | Completed | Key Commit |
+|----|-------|-----------|------------|
+| 0054 | Auth Default Tenant Key Hardening | 2026-02-16 | `96ffafbd` |
+| 0433 | Task Product Binding & Tenant Isolation Fix | 2026-02-02 | `6dffbc09` |
+| 0434 | Admin Settings UI Consolidation | 2026-02-03 | `361b7448` |
+| 0485 | Product Creation UI Reset & Orchestrator Dedup | 2026-02-05 | `686df974` |
+| 0487 | Implementation Phase Gate | 2026-02-06 | `b4c6b5c2` |
+| 0490 | 360 Memory UI Closeout Modal Fix | 2026-02-07 | `5f94587b` |
+| 0491 | Agent Status Simplification & Silent Detection | 2026-02-13 | `5d5dda99` |
+| 0492 | API Key Security Hardening | 2026-02-13 | `b175605e` |
+
+### Tenant Isolation Audit (Phases A-E)
+
+Completed 2026-02-15. 5 CRITICAL + 20 HIGH findings identified and fixed across 4 commits:
+- `2b51c20f` Phase A+B+C: ProjectService, TaskService, MessageService
+- `6c6c7221` BATCH 1: OrchestrationService (7 fixes), MessageService (4 fixes), 14 regression tests
+- `9afff7ec` BATCH 2: tools/agent.py, tool_accessor.py, message_service, agent_job_manager
+- `308ffa68` BATCH 3: TenantManager hardened, mission_planner session.get replaced
+- `56221d76` Phase E: MEDIUM defense-in-depth fixes
+
+> **Result**: 61 tenant isolation regression tests passing.
+
+---
+
+## Active Handover Debt (Updated 2026-02-23)
 
 | Tier | Handovers | Focus |
 |------|-----------|-------|
 | ~~1 - Dead Code~~ | ~~0371, 0371a~~ | ~~Dead code cleanup + template dead code + stale tests~~ **ALL COMPLETE** |
 | ~~2 - Orchestrator~~ | ~~0365~~, ~~0410~~ | ~~0365 SUPERSEDED~~ (UI handover + `build_continuation_prompt()`), ~~0410 COMPLETE~~ (2026-02-21, recipient name resolution + broadcast signal + field mismatch fix) |
 | ~~3 - Agent Exec~~ | ~~0419~~ | ~~Long-polling orchestrator monitoring~~ **SUPERSEDED** by Agent Lab feature (bash sleep polling via `AgentTipsDialog.vue`) |
-| 4 - Polish | 0732 | API consistency fixes |
-| 5 - Future | 0409, 0250 | Unified client setup, HTTPS enablement |
+| 4 - Polish | 0732 | API consistency fixes (minor, 2-4h) |
+| 5 - Ready | 0411 | Windows Terminal agent spawning (multi-tab orchestration) |
+| 6 - Future | 0409, 0250 | Unified client setup, HTTPS enablement |
 
 ### Closed Since Report
 
@@ -309,17 +362,130 @@ These were initially moved to Reference_docs/ but contain work items not yet com
 - **0440a-d** (Project Taxonomy): ALL COMPLETE 2026-02-21. All 4 phases archived to completed/.
 - **0365** (Orchestrator Handover Behavior Injection): SUPERSEDED 2026-02-21. UI-triggered handover flow + `build_continuation_prompt()` replaced the need for conditional `get_orchestrator_instructions`. Moved to `completed/superseded/`.
 
+### Post-Report Commits (2026-02-22 to 2026-02-23)
+
+Not tied to specific handovers:
+- `a654ec90` feat: Inject structured git closeout commit in orchestrator prompts
+- `d670d7b2` fix: Require both git integration AND context priority git_history toggles
+- `6f9d7d49` fix: Group edit + lab icons together on launch page panel header
+
 ### Audit Notes on Stale Orchestrator Handovers
 
 **0365 (Orchestrator Handover Behavior Injection):** **SUPERSEDED** (2026-02-21). The problem 0365 was designed to solve (successor orchestrators getting staging instructions) was addressed through a different architecture: UI-triggered handover via `simple_handover.py` + `build_continuation_prompt()` + `build_retirement_prompt()`. `OrchestratorSuccessionManager` was never built; `create_successor_orchestrator` MCP tool was removed. `instance_number` removed from model. Moved to `completed/superseded/`.
 
-## Deferred Handovers (6 remaining)
+---
 
-| Handover | Reason Deferred |
-|----------|-----------------|
-| 0083 | Post-v1.0 (release packaging) |
-| 0284 | Low priority |
-| 0731 | Legacy code removal (post-v1.0) |
-| 0732 (release) | Release packaging (post-v1.0) |
-| 1014 | Security auditing (enterprise compliance) |
-| 9999 | Parking lot / future ideas |
+## Remaining Handovers (Updated 2026-02-23)
+
+### Ready for Implementation
+
+| Handover | Title | Priority | Est. Hours |
+|----------|-------|----------|------------|
+| 0411 | Windows Terminal Agent Spawning | HIGH | 2-3h |
+| 0732 (fixes) | API Consistency Fixes | LOW | 2-4h |
+
+### Deferred (7 remaining)
+
+| Handover | Title | Reason Deferred |
+|----------|-------|-----------------|
+| 0083 | Harmonize Slash Commands | Post-v1.0 |
+| 0250 | HTTPS Enablement | Future (optional feature) |
+| 0284 | Address get_available_agents | Low priority |
+| 0731 | Legacy Code Removal | Post-v1.0 (separate from completed 0731a-d typed returns) |
+| 0732 (release) | Open Source Release Packaging | Post-v1.0 |
+| 1014 | Security Auditing | Enterprise compliance |
+| 9999 | One-Liner Installation System | Parking lot / future ideas |
+
+> **Note**: Two files use the `0732` number: `0732_API_CONSISTENCY_FIXES.md` (ready, minor polish) and `0732_release_packaging_sprint.md` (deferred, post-v1.0). Different scopes.
+
+---
+
+## February 2026 Final Scorecard
+
+| Metric | Value |
+|--------|-------|
+| Handovers completed in February | ~50+ (0054, 0433, 0434, 0440a-d, 0485, 0487, 0489-0493, 0495, 0700 series, 0709, 0720-0733, 0740, 0745a-f, 0750a-d, tenant isolation, 0371/0371a, 0410, etc.) |
+| Handovers remaining (ready) | 2 (0411, 0732 fixes) |
+| Handovers deferred | 7 (post-v1.0 or low priority) |
+| Total in completed/ archive | 314 |
+| Lines removed (0700-0750 series alone) | ~15,800 |
+| Tenant isolation regression tests | 61 passing |
+
+---
+
+## Proposed Execution Order (Post-February)
+
+Sequenced to avoid rework -- earlier items affect surfaces that later items build on.
+
+### Dependency Map
+
+```
+0732 API Fixes ──┐
+                  ├──→ 0409 Unified Client Setup ──→ 0732 Release Packaging
+0411 WT Spawning ─┤                                          │
+                  │                                          ▼
+0284 Agent Disc. ─┘                                   0731 Legacy Removal
+                                                             │
+0250 HTTPS ──────────────────────────────────────────────────┘
+```
+
+**Key dependencies:**
+- **0732 API Fixes before 0409**: Setup prompts reference API endpoints -- fix the surface before generating prompts for it
+- **0411 before 0409**: Spawning mechanics may affect what the setup flow needs to configure
+- **0250 before 0409** (ideally): Setup prompts should offer HTTPS option if it exists
+- **0409 before 0732 Release**: Onboarding flow must work before packaging for release
+- **0731 after release**: Explicitly designed to break backward compat after users migrate
+
+### Phase 1: API Cleanup (before new features)
+
+| # | Handover | Title | Hours | Rationale |
+|---|----------|-------|-------|-----------|
+| 1 | 0732 (fixes) | API Consistency Fixes | 2-4h | Fix 1 URL naming violation + 2 inconsistent error handlers from 0725 audit. Quick win. Clean API surface before anything builds on it. |
+| 2 | TECHNICAL_DEBT_v2 | Triage stale debt register | 1-2h | Created Oct 2025, most "CRITICAL blockers" (agent monitoring UI, task-agent integration) resolved by 0400-0500 series. Retire resolved items, capture any survivors as new handovers. |
+
+### Phase 2: Feature Completion
+
+| # | Handover | Title | Hours | Rationale |
+|---|----------|-------|-------|-----------|
+| 3 | 0411 | Windows Terminal Agent Spawning | 2-3h | Highest priority remaining feature. Enables orchestrators to auto-spawn agent teams in colored WT tabs. Template updates + testing. Independent -- no handover blocks it. |
+| 4 | 0284 | Address get_available_agents | 4-6h | Enhances agent discovery MCP tool (expose via HTTP, improve descriptions, add version validation). Complements 0411's spawning with proper discovery. |
+
+### Phase 3: Production Readiness
+
+| # | Handover | Title | Hours | Rationale |
+|---|----------|-------|-------|-----------|
+| 5 | 0250 | HTTPS Enablement | 6-8h | Optional but should exist before 0409 generates setup prompts. Certificate generation helpers, WebSocket protocol switching (ws->wss), config persistence. Backend SSL flags already exist. |
+| 6 | 0409 | Unified Client Quick Setup | 8-12h | Generate copy-paste setup prompts for Claude/Codex/Gemini from the intro tour. Must come AFTER 0732 fixes (clean API), 0411 (spawning), and ideally 0250 (HTTPS option) so prompts are accurate. |
+
+### Phase 4: Pre-Release Polish
+
+| # | Handover | Title | Hours | Rationale |
+|---|----------|-------|-------|-----------|
+| 7 | 0083 | Harmonize Slash Commands | 2-4h | **Needs triage first.** Was deferred to 0512 (completed as "claude_md update cleanup"). Some `/gil_*` harmonization happened organically (`/gil_add` exists). Check if remaining scope is still relevant or can be retired. |
+| 8 | TODO_vision | Vision Summarizer LLM Upgrade | TBD | Phase 1 (consolidated summaries) partially done via 0377. Remaining: consolidation trigger, updated `get_vision_document()`, regeneration button. Phase 2 (LLM-native) is future. |
+
+### Phase 5: Release Gate
+
+| # | Handover | Title | Hours | Rationale |
+|---|----------|-------|-------|-----------|
+| 9 | 0732 (release) | Open Source Release Packaging | 3-5h | GitHub issue/PR templates, screenshots, Docker compose, changelog, test badge. The "first 60 seconds" experience. After all features are merged. |
+
+### Phase 6: Post-Release
+
+| # | Handover | Title | Hours | Rationale |
+|---|----------|-------|-------|-----------|
+| 10 | 0731 | Legacy Code Removal | 16-24h | Remove 89+ backward compat layers, deprecated fields, method stubs. Explicitly post-v1.0 to allow migration period. |
+| 11 | 1014 | Security Auditing | TBD | Enterprise compliance audit trail. Deferred until compliance requirements are defined. |
+| 12 | 9999 | One-Liner Installation System | TBD | Parking lot. curl-pipe-bash installer for instant setup. |
+
+### Estimated Total
+
+| Phase | Hours | Notes |
+|-------|-------|-------|
+| Phase 1 (API Cleanup) | 3-6h | Can start immediately |
+| Phase 2 (Features) | 6-9h | Highest impact |
+| Phase 3 (Production) | 14-20h | Largest phase |
+| Phase 4 (Polish) | 2-8h | Depends on triage |
+| Phase 5 (Release) | 3-5h | Gating step |
+| **Pre-release total** | **28-48h** | |
+| Phase 6 (Post-release) | 16-24h+ | No rush |

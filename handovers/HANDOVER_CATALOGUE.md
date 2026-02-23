@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-22 (0419 SUPERSEDED, 0410 COMPLETE, 0365 SUPERSEDED, 0371a COMPLETE, 0254 closed, 0440a-d ALL COMPLETE)
+**Last Updated:** 2026-02-23 (reconciliation with git history + Feb report sync)
 
 ---
 
@@ -13,8 +13,8 @@
 | 0001-0100 | Foundation & Installation | Mostly Complete |
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
-| 0301-0400 | Context Management & Services | 0371 COMPLETE, 0365 SUPERSEDED, 0382 Ready |
-| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0492 COMPLETE, 0440a-d ALL COMPLETE, 0481-0484 COMPLETE, 0486 CANCELLED |
+| 0301-0400 | Context Management & Services | 0371 COMPLETE, 0365 SUPERSEDED, 0382 COMPLETE |
+| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0495 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409, 0411 |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy + 0732 DEFERRED/READY |
@@ -23,64 +23,36 @@
 
 ## Active Handovers (In Root Folder)
 
-### Alpha Trial Remediation Series (0356-0366) - MOSTLY COMPLETE
-
-| ID | Title | Status | Priority |
-|----|-------|--------|----------|
-| ~~0365~~ | ~~Orchestrator Handover Behavior Injection~~ | **SUPERSEDED** | - |
-
-> **Status**: 10/10 COMPLETE. 0365 superseded by UI-triggered handover flow (`simple_handover.py` + `build_continuation_prompt()`).
-
-### Project Organization Series (0440) - COMPLETE
-
-| ID | Title | Status | Priority | Est. Hours |
-|----|-------|--------|----------|------------|
-| ~~0440a~~ | ~~Project Taxonomy Database & Backend~~ | **Complete** | MEDIUM | 8-12h |
-| ~~0440b~~ | ~~Project Taxonomy Frontend UI~~ | **Complete** | MEDIUM | TBD |
-| ~~0440c~~ | ~~Project Taxonomy Display Integration~~ | **Complete** | MEDIUM | TBD |
-| ~~0440d~~ | ~~Taxonomy Production Hardening~~ | **Complete** | HIGH | 4-6h |
-
-> **Purpose**: Organize projects with types/series (e.g., "BE-0042a" for Backend #42, subseries 'a')
-> **Status**: ALL COMPLETE. All 4 phases archived to completed/.
-
 ### Ready for Implementation
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| ~~0365~~ | ~~Orchestrator Handover Behavior Injection~~ | **SUPERSEDED** | - | Superseded by UI handover flow + `build_continuation_prompt()` |
-| ~~0371~~ | ~~Dead Code Cleanup Project~~ | **COMPLETE** | - | All 7 phases done (2026-02-21). Phase 4.6 final cleanup. Children 0372-0374, 0371a all complete |
-| ~~0371a~~ | ~~Template Dead Code & Stale Test Remediation~~ | **COMPLETE** | - | Child of 0371. Dead GenericAgentTemplate, 50 stale tests fixed, prefix fix |
-| ~~0373~~ | ~~Template Adapter Migration~~ | **COMPLETE** | - | Child of 0371. Completed 2026-02-07 |
-| ~~0374~~ | ~~Vision Summary Field Migration~~ | **COMPLETE** | - | Child of 0371. Completed 2025-12-22 |
-| ~~0382~~ | ~~Orchestrator Prompt Improvements~~ | **COMPLETE** | - | Completed 2026-01-01, commit `54dccbce` |
-| ~~0397~~ | ~~Deprecate stdio Proxy for Codex Native HTTP~~ | **MERGED** | - | Merged into 0489 (proxy already deleted by 0725b) |
-| ~~0408~~ | ~~Serena Toggle Injection~~ | **COMPLETE** | - | Completed 2026-01-04, commit `14310d3b` |
-| 0409 | Unified Client Quick Setup | Ready | Medium | - |
-| ~~0410~~ | ~~Message Display UX Fix~~ | **COMPLETE** | - | Completed 2026-02-21. Recipient name resolution + broadcast signal + field mismatch fix |
-| 0411 | Windows Terminal Agent Spawning | Ready | Medium | Note: 0411 also used for completed "Jobs Tab Duration UX" |
-| ~~0419~~ | ~~Long Polling Orchestrator Monitoring~~ | **SUPERSEDED** | - | Superseded by Agent Lab feature: bash sleep polling via UI copy-paste into project descriptions. Commits `fefbcc03`, `4ae64aae`, `5ab5c035` |
-| ~~0464~~ | ~~Empty State API Resilience~~ | **COMPLETE** | - | Completed 2026-01-26, commit `be56241c` |
-| ~~0486~~ | ~~Continuation Workflow Enhancements~~ | **CANCELLED** | - | Cancelled 2026-02-20: Complexity not justified; 360 Memory already bridges context across projects |
-| ~~0488~~ | ~~Staging Broadcast Response Enforcement~~ | **RETIRED** | - | Moved to completed/ (2026-02-19) |
-| ~~0489~~ | ~~MCP Config Revamp, Proxy Retirement & Backend Cleanup~~ | **COMPLETE** | - | Merged 0397+0489. Completed 2026-02-19 (3 commits, 19 files, -924 lines) |
-| ~~0492~~ | ~~API Key Security Hardening~~ | **COMPLETE** | - | Moved to completed/ |
-| 0732 | API Consistency Fixes | Ready | Low | Minor API polish from 0725 audit |
+| 0409 | Unified Client Quick Setup | Ready | Medium | Future enhancement |
+| 0411 | Windows Terminal Agent Spawning | Ready | HIGH | Multi-tab orchestration. Note: 0411 also used for completed "Jobs Tab Duration UX" |
+| 0732 | API Consistency Fixes | Ready | Low | Minor API polish from 0725 audit (2-4h) |
 
-### Test Suite & Remediation (0481-0484) - Mostly Complete
+### Recently Closed (February 2026 - from Active)
 
-| ID | Title | Status | Priority | Notes |
-|----|-------|--------|----------|-------|
-| ~~0481~~ | ~~Test Remediation Session Summary~~ | **COMPLETE** | - | Both files archived to completed/ (session summaries) |
-| 0483 | Service Layer Bug Fixes | **COMPLETE** | - | Moved to completed/ |
-| 0484 | API Test Fixture Remediation | **COMPLETE** | - | Moved to completed/ (2026-02-18) |
-| 0495 | Fix API Test Suite Hang | **COMPLETE** | - | Moved to completed/ (2026-02-18) |
-
-### In Progress / Partial
-
-| ID | Title | Status | Priority | Notes |
-|----|-------|--------|----------|-------|
-| ~~0254~~ | ~~Three Layer Instruction Cleanup~~ | **CLOSED** | - | Resolved by organic evolution (0700, 0431, 0407, 0334). Remaining scraps -> 0371a |
-| ~~0371~~ | ~~Dead Code Cleanup Project~~ | **COMPLETE** | - | All 7 phases done (2026-02-21). ~15K+ lines removed. Children: 0372, 0373, 0374, 0371a |
+| ID | Title | Closed | How |
+|----|-------|--------|-----|
+| 0054 | Auth Default Tenant Key Hardening | 2026-02-16 | COMPLETE (`96ffafbd`) |
+| 0254 | Three Layer Instruction Cleanup | 2026-02-21 | CLOSED (resolved organically via 0700, 0431, 0407, 0334) |
+| 0365 | Orchestrator Handover Behavior Injection | 2026-02-21 | SUPERSEDED (UI handover flow + `build_continuation_prompt()`) |
+| 0371 | Dead Code Cleanup Project | 2026-02-21 | COMPLETE (all 7 phases, ~15K+ lines, children 0372-0374 + 0371a) |
+| 0371a | Template Dead Code & Stale Test Remediation | 2026-02-21 | COMPLETE (dead GenericAgentTemplate, 50 stale tests) |
+| 0382 | Orchestrator Prompt Improvements | 2026-01-01 | COMPLETE (`54dccbce`) |
+| 0397 | Deprecate stdio Proxy | 2026-02-19 | MERGED into 0489 |
+| 0408 | Serena Toggle Injection | 2026-01-04 | COMPLETE (`14310d3b`) |
+| 0410 | Message Display UX Fix | 2026-02-21 | COMPLETE (recipient names + broadcast signal + field fix) |
+| 0419 | Long Polling Orchestrator Monitoring | 2026-02-22 | SUPERSEDED (Agent Lab bash sleep polling) |
+| 0440a-d | Project Taxonomy (4 phases) | 2026-02-21 | ALL COMPLETE |
+| 0464 | Empty State API Resilience | 2026-01-26 | COMPLETE (`be56241c`) |
+| 0484 | API Test Fixture Remediation | 2026-02-18 | COMPLETE (`452f9635`) |
+| 0486 | Continuation Workflow Enhancements | 2026-02-20 | CANCELLED (360 Memory bridges context) |
+| 0488 | Staging Broadcast Response Enforcement | 2026-02-19 | RETIRED (0487 hard gates sufficient) |
+| 0489 | MCP Config Revamp & Proxy Retirement | 2026-02-19 | COMPLETE (merged 0397+0489, -924 lines) |
+| 0492 | API Key Security Hardening | 2026-02-13 | COMPLETE (5-key limit, 90-day expiry, IP logging) |
+| 0495 | Fix API Test Suite Hang | 2026-02-18 | COMPLETE (`d48beecb`) |
 
 ### Greptile Security Series (1000-1014) - SECURITY
 
@@ -97,14 +69,13 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0083 | Harmonize Slash Commands | Deferred | Low | Future enhancement |
+| 0083 | Harmonize Slash Commands | Deferred | Low | Post-v1.0 |
 | 0250 | HTTPS Enablement | Deferred | Low | Optional feature |
-| 0254 | Three Layer Instruction Cleanup | Partial | Medium | Some work done |
-| 0284 | Address get_available_agents | Not Started | Medium | Enhancement |
-| 0298 | Legacy Messaging Queue Cleanup | Not Started | Medium | Cleanup task |
-| 0731 | Legacy Code Removal | Deferred | Medium | Post v1.0 (separate from 0731a-d typed returns) |
-| 0732 | Open Source Release Packaging | Deferred | Medium | After remaining features, before public release |
-| 9999 | One-Liner Installation System | Deferred | Low | Explicitly deferred |
+| 0284 | Address get_available_agents | Deferred | Low | Enhancement |
+| 0731 | Legacy Code Removal | Deferred | Medium | Post-v1.0 (separate from completed 0731a-d typed returns) |
+| 0732 | Open Source Release Packaging | Deferred | Medium | Post-v1.0 (separate from 0732 API Consistency Fixes which is Ready) |
+| 1014 | Security Auditing | Deferred | Medium | Enterprise compliance |
+| 9999 | One-Liner Installation System | Deferred | Low | Parking lot / future ideas |
 
 ### Reference Documents (Not Actionable)
 
@@ -133,16 +104,25 @@
 | ID | Title | Status |
 |----|-------|--------|
 | 0419 | Long Polling Orchestrator Monitoring | **SUPERSEDED** (2026-02-22, replaced by Agent Lab bash sleep polling) |
-| 0410 | Message Display UX Fix | **COMPLETE** (2026-02-21) |
+| 0371 | Dead Code Cleanup Project (all 7 phases) | **COMPLETE** (2026-02-21, ~15K+ lines) |
 | 0371a | Template Dead Code & Stale Test Remediation | **COMPLETE** (2026-02-21) |
+| 0410 | Message Display UX Fix | **COMPLETE** (2026-02-21) |
 | 0440a-d | Project Taxonomy Series (DB, Frontend, Display, Hardening) | **COMPLETE** (2026-02-21) |
 | 0254 | Three Layer Instruction Cleanup | **CLOSED** (2026-02-21, resolved organically -> 0371a) |
+| 0365 | Orchestrator Handover Behavior Injection | **SUPERSEDED** (2026-02-21, UI handover flow) |
 | 0489 | MCP Config Revamp, Proxy Retirement & Backend Cleanup | **COMPLETE** (2026-02-19) |
+| 0397 | Deprecate stdio Proxy | **MERGED** into 0489 (2026-02-19) |
 | 0488 | Staging Broadcast Response Enforcement | **RETIRED** (2026-02-19) |
 | 0495 | Fix API Test Suite Hang (TRUNCATE->DELETE) | **COMPLETE** (2026-02-18) |
 | 0484 | Test Fixture Remediation (Dual-Model & JSONB) | **COMPLETE** (2026-02-18) |
+| 0054 | Auth Default Tenant Key Hardening | **COMPLETE** (2026-02-16) |
+| Tenant Isolation | Phases A-E audit (5 CRITICAL + 20 HIGH) | **COMPLETE** (2026-02-15, 61 regression tests) |
+| 0493 | Vision Document Token Harmonization | **COMPLETE** (2026-02-16) |
 | 0492 | API Key Security Hardening | **COMPLETE** (2026-02-13) |
+| 0491 | Agent Status Simplification & Silent Detection | **COMPLETE** (2026-02-13) |
 | 0750a-d | Post-Cleanup Audit & Scrub Series | **COMPLETE** (2026-02-11) |
+| 0745a-f | Audit Follow-Up (6 phases) | **COMPLETE** (2026-02-11) |
+| 0740 | Post-Cleanup Audit | **COMPLETE** (2026-02-10) |
 | 0731a-d | Typed Service Returns Series | **COMPLETE** (2026-02-11) |
 | 0733 | Tenant Isolation API Security Patch | **COMPLETE** (2026-02-09) |
 | 0730a-e | Service Response Models Series | **COMPLETE** (2026-02-08) |
@@ -153,9 +133,11 @@
 | 0725b | Code Health Re-Audit | **COMPLETE** (2026-02-07) |
 | 0725 | Code Health Audit | **COMPLETE** (2026-02-07, first audit invalidated) |
 | 0720 | Complete Delint | **COMPLETE** (2026-02-07) |
-| 0491 | Agent Status Simplification & Silent Detection | **COMPLETE** (2026-02-13) |
+| 0700a-i | Pre-Release Deprecation Purge (9 phases) | **COMPLETE** (2026-02-07) |
+| 0709 | Implementation Phase Gate (Staging Enforcement) | **COMPLETE** (2026-02-06) |
 | 0490 | 360 Memory UI Closeout Modal Fix | **COMPLETE** (2026-02-07) |
 | 0487 | Implementation Phase Gate | **COMPLETE** (2026-02-06) |
+| 0486 | Continuation Workflow Enhancements | **CANCELLED** (2026-02-20) |
 | 0485 | Product Creation UI Reset & Orchestrator Dedup | **COMPLETE** (2026-02-05) |
 | 0434 | Admin Settings UI Consolidation | **COMPLETE** (2026-02-03) |
 | 0433 | Task Product Binding & Tenant Isolation Fix | **COMPLETE** (2026-02-02) |
@@ -398,7 +380,7 @@ completed/reference/
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0397
-**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-c (complete), 0440d (ready), 0460-0463 (complete), 0464 (ready), 0470 (complete), 0480-0492 (0480/0485/0487-0492 complete/retired, 0481-0484 ready, 0486 cancelled)
+**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-d (complete), 0460-0464 (complete), 0470 (complete), 0480-0495 (all complete/retired/cancelled). Active: 0409, 0411
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
@@ -436,6 +418,17 @@ completed/reference/
 ## History
 
 ### February 2026
+- **Git History Reconciliation (2026-02-23)**: Cross-validated catalogue + Feb report against all February git commits
+  - Removed 0254 and 0298 from Deferred (both COMPLETE)
+  - Added 0054, 0493, tenant isolation audit, 0700a-i, 0745a-f to Recently Completed
+  - Cleaned up "Ready for Implementation" (removed 15 struck-through completed entries, kept 3 active)
+  - Added 0411 as HIGH priority ready item
+  - Fixed Quick Reference statuses (0382 COMPLETE, 0401-0500 range)
+  - Added "Recently Closed" section consolidating all Feb closures
+  - Separated 0731 (Legacy Code Removal, deferred) from 0731a-d (Typed Returns, complete)
+  - Separated 0732 (API Fixes, ready) from 0732 (Release Packaging, deferred)
+  - Total: 314 completed handovers in archive, 3 ready, 7 deferred
+
 - **Full Catalogue Reconciliation (2026-02-12)**: Major cleanup - 60+ files archived
   - Moved 15 completed 0424 series files (f-n + overview/planning/status) to completed/
   - Moved 0433 (5 files), 0434 (2), 0485 (2), 0487 (1), 0490 (2) to completed/
