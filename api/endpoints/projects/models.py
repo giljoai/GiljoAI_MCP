@@ -6,7 +6,7 @@ Request/response models for project operations with validation.
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ============================================================================
@@ -71,6 +71,8 @@ class ProjectTypeInfo(BaseModel):
     abbreviation: str
     label: str
     color: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectResponse(BaseModel):

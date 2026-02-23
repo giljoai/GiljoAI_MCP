@@ -197,6 +197,28 @@ class ProjectService:
                 if not tenant_key:
                     tenant_key = f"tk_{uuid4().hex}"
 
+                # Application-level duplicate check before insert
+                if series_number is not None:
+                    dup_query = select(Project.id).where(
+                        Project.tenant_key == tenant_key,
+                        Project.series_number == series_number,
+                        Project.deleted_at.is_(None),
+                    )
+                    if project_type_id:
+                        dup_query = dup_query.where(Project.project_type_id == project_type_id)
+                    else:
+                        dup_query = dup_query.where(Project.project_type_id.is_(None))
+                    if subseries is not None:
+                        dup_query = dup_query.where(Project.subseries == subseries)
+                    else:
+                        dup_query = dup_query.where(Project.subseries.is_(None))
+                    dup_result = await session.execute(dup_query)
+                    if dup_result.scalar_one_or_none():
+                        raise AlreadyExistsError(
+                            message="Taxonomy combination already in use. Please choose a different series number or suffix.",
+                            context={"name": name, "tenant_key": tenant_key},
+                        )
+
                 # Create project entity
                 now = datetime.now(timezone.utc)
                 project = Project(
@@ -333,6 +355,7 @@ class ProjectService:
                     message_count=0,
                     # Handover 0440a: Taxonomy fields
                     project_type_id=project.project_type_id,
+                    project_type=project.project_type,
                     series_number=project.series_number,
                     subseries=project.subseries,
                     taxonomy_alias=project.taxonomy_alias,
@@ -507,6 +530,7 @@ class ProjectService:
                         ),
                         # Handover 0440a: Taxonomy fields
                         project_type_id=project.project_type_id,
+                        project_type=project.project_type,
                         series_number=project.series_number,
                         subseries=project.subseries,
                         taxonomy_alias=project.taxonomy_alias,
@@ -1869,6 +1893,13 @@ class ProjectService:
                 raise
             await session.refresh(project)
 
+            # Reload project_type relationship (expired after commit)
+            if project.project_type_id:
+                result = await session.execute(
+                    select(Project).options(selectinload(Project.project_type)).where(Project.id == project.id)
+                )
+                project = result.scalar_one()
+
             self._logger.info(f"Updated project {project_id}")
 
             # Broadcast WebSocket event
@@ -1897,6 +1928,7 @@ class ProjectService:
                 product_id=project.product_id,
                 # Handover 0440a: Taxonomy fields
                 project_type_id=project.project_type_id,
+                project_type=project.project_type,
                 series_number=project.series_number,
                 subseries=project.subseries,
                 taxonomy_alias=project.taxonomy_alias,
