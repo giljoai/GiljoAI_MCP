@@ -480,7 +480,7 @@
               </v-col>
             </v-row>
 
-            <!-- Project Name with taxonomy prefix -->
+            <!-- Project Name -->
             <v-text-field
               v-model="projectData.name"
               label="Project Name"
@@ -491,11 +491,7 @@
               hide-details="auto"
               class="mb-3"
               aria-label="Project name"
-            >
-              <template v-if="taxonomyPrefix" #prepend-inner>
-                <span class="text-caption font-weight-bold text-medium-emphasis mr-1" style="white-space: nowrap;">{{ taxonomyPrefix }}</span>
-              </template>
-            </v-text-field>
+            />
 
             <v-textarea
               v-model="projectData.description"
@@ -838,21 +834,6 @@ const subseriesItems = computed(() => {
     }
   }
   return items
-})
-
-// Taxonomy prefix shown in project name field (e.g. "BE-0042a")
-const taxonomyPrefix = computed(() => {
-  const typeId = projectData.value.project_type_id
-  const serial = projectData.value.series_number
-  const type = typeId ? projectTypes.value.find((t) => t.id === typeId) : null
-  const parts = []
-  if (type) parts.push(type.abbreviation)
-  if (serial) {
-    if (parts.length) parts.push('-')
-    parts.push(String(serial).padStart(4, '0'))
-    if (projectData.value.subseries) parts.push(projectData.value.subseries)
-  }
-  return parts.join('')
 })
 
 // Handle type change: re-check availability with new type context
