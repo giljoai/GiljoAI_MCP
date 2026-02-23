@@ -389,19 +389,15 @@
             </div>
           </v-alert>
 
-          <!-- Project ID Info Alert -->
-          <v-alert v-if="editingProject" type="info" variant="tonal" density="compact" class="mb-4">
-            <div class="text-caption">
-              <strong>Project ID:</strong>
-              <span class="ml-2" style="font-family: monospace">{{ editingProject.id }}</span>
+          <!-- Project metadata (plain text, no alert box) -->
+          <div v-if="editingProject" class="text-caption text-medium-emphasis mb-4">
+            <div style="font-family: monospace">{{ editingProject.id }}</div>
+            <div class="mt-1">
+              Created {{ formatDateFull(editingProject.created_at) }}
+              <span class="mx-2">|</span>
+              Updated {{ formatDateFull(editingProject.updated_at) }}
             </div>
-            <div class="text-caption mt-1">
-              <strong>Created:</strong>
-              <span class="ml-2">{{ formatDateFull(editingProject.created_at) }}</span>
-              <span class="ml-4"><strong>Updated:</strong></span>
-              <span class="ml-2">{{ formatDateFull(editingProject.updated_at) }}</span>
-            </div>
-          </v-alert>
+          </div>
 
           <!-- Form -->
           <v-form ref="projectForm" v-model="formValid">
