@@ -395,6 +395,12 @@
               <strong>Project ID:</strong>
               <span class="ml-2" style="font-family: monospace">{{ editingProject.id }}</span>
             </div>
+            <div class="text-caption mt-1">
+              <strong>Created:</strong>
+              <span class="ml-2">{{ formatDateFull(editingProject.created_at) }}</span>
+              <span class="ml-4"><strong>Updated:</strong></span>
+              <span class="ml-2">{{ formatDateFull(editingProject.updated_at) }}</span>
+            </div>
           </v-alert>
 
           <!-- Form -->
@@ -795,13 +801,13 @@ const statusFilterOptions = computed(() => [
 
 // Table headers
 const headers = [
-  { title: 'Name', key: 'name', sortable: true, width: '24%' },
+  { title: 'Name', key: 'name', sortable: true, width: '33%' },
   { title: 'Product', key: 'product', sortable: false, width: '12%' },
-  { title: 'Staged', key: 'staging_status', sortable: true, width: '12%' },
-  { title: 'Created', key: 'created_at', sortable: true, width: '14%' },
-  { title: 'Completed', key: 'completed_at', sortable: true, width: '14%', align: 'center' },
+  { title: 'Staged', key: 'staging_status', sortable: true, width: '7%' },
+  { title: 'Created', key: 'created_at', sortable: true, width: '11%' },
+  { title: 'Completed', key: 'completed_at', sortable: true, width: '11%', align: 'center' },
   { title: 'Status', key: 'status', sortable: true, width: '13%', align: 'center' },
-  { title: 'Actions', key: 'menu', sortable: false, width: '11%', align: 'center' },
+  { title: '', key: 'menu', sortable: false, width: '4%', align: 'center' },
 ]
 
 // --- Inline taxonomy state and logic (Handover 0440c) ---
@@ -1111,8 +1117,24 @@ const activeProject = computed(() => {
   return activeProductProjects.value.find((p) => p.status === 'active')
 })
 
-// Format date with locale support (US: MM-DD-YYYY HH:MM, EU: DD-MM-YYYY HH:MM)
+// Format date with locale support (date only for table columns)
 function formatDateShort(dateStr) {
+  if (!dateStr) return '—'
+  const date = new Date(dateStr)
+
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const year = date.getFullYear()
+
+  if (dateLocale.value === 'EU') {
+    return `${day}-${month}-${year}`
+  } else {
+    return `${month}-${day}-${year}`
+  }
+}
+
+// Format date with time (for edit dialog details)
+function formatDateFull(dateStr) {
   if (!dateStr) return '—'
   const date = new Date(dateStr)
 
@@ -1122,12 +1144,10 @@ function formatDateShort(dateStr) {
   const hours = String(date.getHours()).padStart(2, '0')
   const minutes = String(date.getMinutes()).padStart(2, '0')
 
-  const time = `${hours}:${minutes}`
-
   if (dateLocale.value === 'EU') {
-    return `${day}-${month}-${year} ${time}`
+    return `${day}-${month}-${year} ${hours}:${minutes}`
   } else {
-    return `${month}-${day}-${year} ${time}`
+    return `${month}-${day}-${year} ${hours}:${minutes}`
   }
 }
 
