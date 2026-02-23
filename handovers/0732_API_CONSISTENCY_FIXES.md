@@ -3,342 +3,225 @@
 **Series:** 0700 Code Health Audit Follow-Up
 **Priority:** P3 - LOW (Minor Polish)
 **Risk Level:** LOW
-**Estimated Effort:** 2-4 hours
-**Prerequisites:** Handover 0725 Audit Complete
+**Estimated Effort:** ~1 hour
+**Prerequisites:** None (0725 Audit complete, this is the follow-up)
 **Status:** READY
+**Last Validated:** 2026-02-23
 
 ---
 
 ## Mission Statement
 
-Fix minor API inconsistencies identified in the 0725 audit to improve API design consistency.
+Fix the 2 remaining API inconsistencies from the 0725 audit. Two of the original four findings have been resolved by prior work; this handover covers only what remains.
 
-**Current Status:** 1 API URL naming violation, 2 endpoint files with inconsistent error handling.
+### Scope (2 items)
+
+| # | What | File | Effort |
+|---|------|------|--------|
+| 1 | URL naming: `execution_mode` -> `execution-mode` | `api/endpoints/users.py` + 1 test file | ~15 min |
+| 2 | Dict error returns -> HTTPException | `api/endpoints/database_setup.py` | ~45 min |
+
+### Dropped (already resolved)
+
+| Original Item | Why Dropped |
+|---------------|-------------|
+| Dict errors in `configuration.py` (old lines 573, 584, 587) | File refactored to 508 lines. All dict error returns already converted to HTTPException by prior work. |
+| HTTPException in service layer (`ProductService`) | Investigated: zero `raise HTTPException` in any of the 16 service files. Only a docstring example in `template_service.py:495`. |
 
 ---
 
-## Part 1: API URL Naming Convention Fix
+## Part 1: URL Naming Convention Fix
 
-**Severity:** LOW - Single violation
-**Breaking Change:** YES - Frontend must update
+**Severity:** LOW
+**Breaking Change:** NO - frontend does not call this endpoint directly
 
 ### The Violation
 
 **File:** `api/endpoints/users.py`
-**Lines:** 993, 1005
 
-**Current:**
 ```python
-@router.get("/me/settings/execution_mode")  # Line 993
-async def get_execution_mode(...)
+@router.get("/me/settings/execution_mode")   # Line 892 - underscore
+async def get_execution_mode(...)             # Lines 892-905
 
-@router.put("/me/settings/execution_mode")  # Line 1005
-async def update_execution_mode(...)
+@router.put("/me/settings/execution_mode")    # Line 909 - underscore
+async def update_execution_mode(...)          # Lines 908-926
 ```
 
-**Should Be:**
-```python
-@router.get("/me/settings/execution-mode")  # kebab-case
-async def get_execution_mode(...)
+**Convention:** All other API URLs use kebab-case (`/vision-documents`, `/close-out`, `/api-keys`, `/agent-jobs`, etc.). These two routes are the only violation in the entire API surface.
 
-@router.put("/me/settings/execution-mode")  # kebab-case
-async def update_execution_mode(...)
+### What to Change
+
+**1. Backend routes (2 lines)**
+
+File: `api/endpoints/users.py`
+
+```python
+# Line 892: change the route string only
+@router.get("/me/settings/execution-mode")    # was: execution_mode
+
+# Line 909: change the route string only
+@router.put("/me/settings/execution-mode")    # was: execution_mode
 ```
 
-**Standard:** API URLs use kebab-case (hyphen-separated)
+Do NOT rename the Python function names (`get_execution_mode`, `update_execution_mode`) - those are snake_case by Python convention and are correct.
 
-**Compliant Examples:**
-- `/api/vision-documents`
-- `/api/mcp-installer`
-- `/api/ai-tools`
-- `/{project_id}/close-out`
+**2. Test file URL strings (~30 occurrences)**
 
----
+File: `tests/api/test_execution_mode_endpoints.py`
 
-### Implementation Steps
+Global find-replace in this file only:
+```
+OLD: /api/v1/users/me/settings/execution_mode
+NEW: /api/v1/users/me/settings/execution-mode
+```
 
-1. **Update Backend Endpoint (5 minutes):**
-   ```python
-   # File: api/endpoints/users.py
-   # Change both lines 993 and 1005
-   @router.get("/me/settings/execution-mode")  # Fixed
-   async def get_execution_mode(...)
+Also update the docstring header (lines 5-6) and section comments (lines 69, 173) which reference the old URL.
 
-   @router.put("/me/settings/execution-mode")  # Fixed
-   async def update_execution_mode(...)
-   ```
+**3. Frontend: NO changes needed**
 
-2. **Find Frontend API Calls (10 minutes):**
-   ```bash
-   # Search frontend for execution_mode endpoint usage
-   grep -r "execution_mode" frontend/src/
+Verified: `grep -r "settings/execution_mode" frontend/src/` returns zero matches. The frontend does not call this endpoint. The `execution_mode` references in `ProjectTabs.vue` and `api.js` are query parameters and request body fields for *different* endpoints (staging prompts, project updates) - not this URL path.
 
-   # Likely in:
-   # - frontend/src/views/UserSettings.vue
-   # - frontend/src/stores/userSettings.js
-   # - frontend/src/api/settings.js (if exists)
-   ```
-
-3. **Update Frontend Calls (15 minutes):**
-   ```javascript
-   // BEFORE
-   await fetch('/api/me/settings/execution_mode')
-
-   // AFTER
-   await fetch('/api/me/settings/execution-mode')
-   ```
-
-4. **Update Integration Tests (15 minutes):**
-   ```bash
-   # Find test files
-   grep -r "execution_mode" tests/
-
-   # Update test URLs
-   # Likely in tests/api/test_users_api.py or similar
-   ```
-
----
-
-### Testing
+### Verification
 
 ```bash
-# Backend test
-curl -X GET http://localhost:7272/api/me/settings/execution-mode \
-  -H "Authorization: Bearer <token>"
+# Run the dedicated test file
+pytest tests/api/test_execution_mode_endpoints.py -v
 
-# Should return 200, not 404
-
-# Integration test
-pytest tests/api/test_users_api.py -k execution_mode
+# Confirm no stale references remain
+grep -rn "settings/execution_mode" api/ tests/
+# Should return 0 results after fix
 ```
 
 ---
 
-## Part 2: Inconsistent Error Response Formats
+## Part 2: database_setup.py Error Handling Standardization
 
-**Severity:** LOW - Architectural inconsistency
-**Count:** 2 endpoint files
+**Severity:** LOW
+**Breaking Change:** YES for any frontend code parsing these responses (see note below)
 
-### Files Affected
+### The Problem
 
-1. **api/endpoints/configuration.py**
-   - Lines 573, 584, 587
-   - Direct dict error returns
+`api/endpoints/database_setup.py` (369 lines, 3 endpoint functions) mixes two error patterns:
+- **Dict returns** for operational errors: `return {"success": False, "status": "error", "message": "..."}` (12 instances)
+- **HTTPException raises** for system errors: `raise HTTPException(status_code=500, detail="...")` (4 instances)
 
-2. **api/endpoints/database_setup.py**
-   - Lines 113, 118
-   - Direct dict error returns
+This means error responses sometimes return HTTP 200 with `{"success": False}` and sometimes return HTTP 500 with a proper error body. Frontend must handle both patterns, which is inconsistent with every other endpoint in the codebase.
 
----
+### Current State by Function
 
-### Current Pattern (Anti-pattern)
+#### Function 1: `test_database_connection` (lines 37-120)
+
+| Line(s) | Pattern | What | Target Status Code |
+|---------|---------|------|-------------------|
+| 91-98 | Dict success | Connected OK | KEEP (200) |
+| 103-107 | Dict error | Auth failed | -> 401 |
+| 109-113 | Dict error | Connection refused | -> 503 |
+| 114 | Dict error | Generic connection failure | -> 503 |
+| 118 | HTTPException 500 | psycopg2 not installed | KEEP (already correct) |
+| 119 | Dict error | Generic test failure (OSError/ValueError) | -> 500 |
+
+#### Function 2: `setup_database` (lines 122-233)
+
+| Line(s) | Pattern | What | Target Status Code |
+|---------|---------|------|-------------------|
+| 160-165 | Dict error | Setup failed | -> 500 |
+| 181-185 | Dict error | config.yaml not found | -> 500 |
+| 217-228 | Dict success | Setup completed OK | KEEP (200) |
+| 232 | HTTPException 500 | ImportError/OSError/ValueError | KEEP (already correct) |
+
+#### Function 3: `verify_database_setup` (lines 235-369)
+
+| Line(s) | Pattern | What | Target Status Code |
+|---------|---------|------|-------------------|
+| 278-283 | Dict error | Missing .env credentials | -> 400 |
+| 320-331 | Dict success | Verified OK | KEEP (200) |
+| 337-342 | Dict error | Auth failed | -> 401 |
+| 344-349 | Dict error | Database doesn't exist | -> 404 |
+| 351-356 | Dict error | Connection refused | -> 503 |
+| 357-362 | Dict error | Generic connection error | -> 503 |
+| 366 | HTTPException 500 | psycopg2 not installed | KEEP (already correct) |
+| 368 | HTTPException 500 | OSError/ValueError | KEEP (already correct) |
+
+### How to Fix
+
+Convert each dict error return to an HTTPException raise. Example transformation:
 
 ```python
-# configuration.py:573
-if not config_updated:
-    return {"error": "Configuration update failed"}  # ❌ Dict
+# BEFORE (line 103-107):
+return {
+    "success": False,
+    "status": "auth_failed",
+    "message": "Invalid PostgreSQL admin password",
+}
 
-# database_setup.py:113
-if not database_ready:
-    return {"error": "Database not ready", "status": "error"}  # ❌ Dict
+# AFTER:
+raise HTTPException(
+    status_code=401,
+    detail="Invalid PostgreSQL admin password"
+)
 ```
 
-### Target Pattern (HTTPException)
+**Rules:**
+- Keep all success dict returns unchanged (they return useful metadata the frontend needs)
+- Convert all `{"success": False, ...}` error returns to `raise HTTPException(...)`
+- Use semantically correct HTTP status codes (401 for auth, 503 for connection, 404 for missing DB, 400 for bad input, 500 for internal)
+- HTTPException is already imported in the file (used on lines 118, 232, 366, 368)
+- Do NOT touch the 4 existing HTTPException raises - they're already correct
 
-```python
-# Use HTTPException for errors
-if not config_updated:
-    raise HTTPException(
-        status_code=500,
-        detail="Configuration update failed"
-    )
+### Frontend Impact Note
 
-if not database_ready:
-    raise HTTPException(
-        status_code=503,
-        detail="Database not ready"
-    )
-```
+These endpoints are called during initial database setup (installer flow). Check if the installer frontend parses `response.json().success === false`. If so, it will need to switch to checking HTTP status codes (4xx/5xx). Search:
 
----
-
-### Implementation Steps
-
-1. **Update configuration.py (30 minutes):**
-   - Find lines 573, 584, 587
-   - Replace dict returns with HTTPException
-   - Import HTTPException from fastapi
-   - Choose appropriate status codes (400, 404, 500, etc.)
-
-2. **Update database_setup.py (30 minutes):**
-   - Find lines 113, 118
-   - Replace dict returns with HTTPException
-   - Use 503 for service unavailable
-
-3. **Update Tests (30 minutes):**
-   - Tests may expect dict responses
-   - Update to expect HTTP status codes
-   - Verify error handling still works
-
----
-
-### Example Refactoring
-
-**Before:**
-```python
-# configuration.py:573
-@router.post("/config/update")
-async def update_config(...):
-    result = await service.update_config(...)
-    if not result["success"]:
-        return {"error": result["message"]}  # ❌
-    return result["data"]
-```
-
-**After:**
-```python
-# configuration.py:573
-@router.post("/config/update")
-async def update_config(...):
-    result = await service.update_config(...)
-    if not result["success"]:
-        raise HTTPException(  # ✅
-            status_code=500,
-            detail=result["message"]
-        )
-    return result["data"]
-```
-
----
-
-## Part 3: Remove HTTPException from Service Layer (If Found)
-
-**Severity:** LOW - Architectural boundary violation
-
-**Note:** Audit findings mentioned `ProductService` has HTTPException usage (anti-pattern).
-
-**Pattern:**
-- Services should raise domain exceptions
-- Endpoints should catch and convert to HTTPException
-
-**Investigation Required:**
 ```bash
-# Find HTTPException in service layer
-grep -r "HTTPException" src/giljo_mcp/services/
-
-# If found, refactor to use domain exceptions
+grep -rn "test.database\|setup.database\|verify.database\|database_setup\|database-setup" frontend/src/
 ```
 
-**Example Refactoring:**
-```python
-# BEFORE (anti-pattern)
-class ProductService:
-    async def get_product(self, product_id: str):
-        product = await repo.get(product_id)
-        if not product:
-            raise HTTPException(404, "Product not found")  # ❌ Service layer
-        return product
+If the frontend checks `response.ok` or status codes already, no frontend changes are needed.
 
-# AFTER (correct)
-class ProductService:
-    async def get_product(self, product_id: str):
-        product = await repo.get(product_id)
-        if not product:
-            raise ResourceNotFoundError("Product not found")  # ✅ Domain exception
-        return product
+### Verification
 
-# Endpoint catches and converts
-@router.get("/products/{product_id}")
-async def get_product_endpoint(product_id: str):
-    try:
-        product = await service.get_product(product_id)
-        return product
-    except ResourceNotFoundError as e:
-        raise HTTPException(404, str(e))  # ✅ Endpoint layer
+```bash
+# Run database setup tests (if they exist)
+pytest tests/api/ -k database -v
+
+# Lint check
+ruff check api/endpoints/database_setup.py
 ```
+
+---
+
+## Implementation Order
+
+1. **Part 1 first** (URL rename) - smallest, zero risk, verifiable in isolation
+2. **Part 2 second** (database_setup.py) - mechanical but more lines to touch
 
 ---
 
 ## Success Criteria
 
-- [ ] API URL renamed to kebab-case (/execution-mode)
-- [ ] Frontend API calls updated
-- [ ] Integration tests updated
-- [ ] configuration.py error returns use HTTPException
-- [ ] database_setup.py error returns use HTTPException
-- [ ] HTTPException removed from service layer (if present)
-- [ ] All tests pass
-- [ ] Ruff linting clean
-- [ ] API documentation updated (if generated)
+- [ ] `execution_mode` URL paths renamed to `execution-mode` in users.py (2 routes)
+- [ ] Test file URLs updated in `test_execution_mode_endpoints.py`
+- [ ] `pytest tests/api/test_execution_mode_endpoints.py` passes
+- [ ] All dict error returns in `database_setup.py` converted to HTTPException
+- [ ] Success dict returns in `database_setup.py` left unchanged
+- [ ] `ruff check api/endpoints/` clean
+- [ ] Full test suite passes: `pytest tests/ -x`
 
 ---
 
 ## Files to Modify
 
-**Backend:**
-1. `api/endpoints/users.py` (Lines 993, 1005)
-2. `api/endpoints/configuration.py` (Lines 573, 584, 587)
-3. `api/endpoints/database_setup.py` (Lines 113, 118)
-4. `src/giljo_mcp/services/product_service.py` (if HTTPException found)
+| File | What | Changes |
+|------|------|---------|
+| `api/endpoints/users.py` | Route strings on lines 892, 909 | 2 string replacements |
+| `tests/api/test_execution_mode_endpoints.py` | URL strings throughout | ~30 string replacements (global find-replace) |
+| `api/endpoints/database_setup.py` | Error returns in 3 functions | 12 dict returns -> HTTPException |
 
-**Frontend:**
-- Files calling `/me/settings/execution_mode` endpoint
-- Likely `frontend/src/views/UserSettings.vue`
-- Likely `frontend/src/stores/` or `frontend/src/api/`
-
-**Tests:**
-- `tests/api/test_users_api.py` (execution_mode tests)
-- `tests/api/test_configuration.py` (error handling tests)
-- `tests/api/test_database_setup.py` (error handling tests)
-
----
-
-## Documentation Updates
-
-If API documentation is auto-generated (OpenAPI/Swagger):
-- Regenerate docs after URL changes
-- Verify error response schemas updated
-
----
-
-## Breaking Changes Coordination
-
-**API URL Change:**
-- **Version:** Should be in v2.0 or coordinate with frontend team
-- **Migration:** Add deprecation warning in v1.x
-- **Timeline:** Allow 1-2 release cycles for migration
-
-**Alternative (Backward Compatible):**
-Support both URLs temporarily:
-```python
-# Support both for transition
-@router.get("/me/settings/execution_mode")  # Legacy
-@router.get("/me/settings/execution-mode")  # New
-async def get_execution_mode(...):
-    # Same handler
-```
-
----
-
-## Testing Commands
-
-```bash
-# Backend tests
-pytest tests/api/test_users_api.py -k execution
-pytest tests/api/test_configuration.py
-pytest tests/api/test_database_setup.py
-
-# Lint check
-ruff check api/endpoints/
-
-# Full suite
-pytest tests/
-```
+**Files NOT modified:** `configuration.py` (already fixed), any service files (clean), any frontend files (Part 1 not called from frontend; Part 2 check installer flow).
 
 ---
 
 ## Reference
 
-**Audit Report:** `handovers/0725_AUDIT_REPORT.md` (Lines 244-262)
-**Naming Findings:** `handovers/0725_findings_naming.md` (Lines 126-146)
-**Architecture Findings:** `handovers/0725_findings_architecture.md` (Lines 130-143)
+- **Original audit:** 0725 Code Health Audit (completed 2026-02-07)
+- **Validation:** 2026-02-23 subagent research confirmed current line numbers and resolved/remaining status
