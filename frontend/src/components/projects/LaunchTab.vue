@@ -7,15 +7,17 @@
         <div class="panel project-description-panel" data-testid="description-panel">
           <div class="panel-header">
             <span>Project Description</span>
-            <v-btn
-              icon="mdi-pencil"
-              size="x-small"
-              variant="text"
-              class="header-edit-btn"
-              title="Edit description"
-              @click="editDescription"
-            />
-            <AgentTipsDialog />
+            <div class="header-actions">
+              <v-btn
+                icon="mdi-pencil"
+                size="x-small"
+                variant="text"
+                class="header-edit-btn"
+                title="Edit description"
+                @click="editDescription"
+              />
+              <AgentTipsDialog />
+            </div>
           </div>
           <div class="panel-content">
             <p class="description-text">{{ project.description || 'No description available' }}</p>
@@ -472,9 +474,15 @@ watch(missionText, (next, previous) => {
           text-transform: capitalize;
           flex-shrink: 0;
 
+          .header-actions {
+            display: flex;
+            align-items: center;
+            margin-left: 4px;
+          }
+
           .header-edit-btn {
             color: white;
-            margin-left: 8px;
+            margin-left: 4px;
             height: 32px;
             width: 32px;
 
