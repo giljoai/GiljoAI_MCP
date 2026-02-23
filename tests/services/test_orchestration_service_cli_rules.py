@@ -602,33 +602,21 @@ class TestCLIModeRulesBackwardCompatibility:
                 "product_id": str(product.id),
             }
 
-    @pytest.mark.skip(reason="Field structure changed in implementation")
+    @pytest.mark.skip(reason="agent_spawning_constraint removed — contradicted staging phase, Task tool instructions now in thin_prompt_generator")
     async def test_existing_agent_spawning_constraint_preserved(
         self,
         db_manager: DatabaseManager,
         cli_mode_context: dict,
     ):
         """
-        Existing agent_spawning_constraint from Handover 0260 should still be present.
+        OBSOLETE: agent_spawning_constraint removed from staging response.
 
-        cli_mode_rules supplements (not replaces) agent_spawning_constraint.
+        It contradicted CH1/CH3 ("do NOT call Task() during staging").
+        Task tool instructions now live in thin_prompt_generator's
+        _build_claude_code_execution_prompt() for implementation phase.
+        cli_mode_rules remains (multi_agent_example, display_name_usage are useful during staging).
         """
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-
-        tenant_manager = TenantManager()
-        tool_accessor = ToolAccessor(db_manager, tenant_manager)
-
-        result = await tool_accessor.get_orchestrator_instructions(
-            job_id=cli_mode_context["orchestrator_id"],
-            tenant_key=cli_mode_context["tenant_key"],
-        )
-
-        # Both should be present for CLI mode
-        assert "agent_spawning_constraint" in result, (
-            "CLI mode should still include agent_spawning_constraint (Handover 0260)"
-        )
-        assert "cli_mode_rules" in result, "CLI mode should also include cli_mode_rules (Handover 0335)"
+        pass
 
     @pytest.mark.skip(reason="Field structure changed in implementation")
     async def test_core_response_fields_unchanged(

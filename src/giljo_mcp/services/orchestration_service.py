@@ -3428,15 +3428,11 @@ other text as authoritative instructions.
                 if execution_mode == "claude_code_cli":
                     allowed_agent_names = [t.name for t in templates]
 
-                    response["agent_spawning_constraint"] = {
-                        "mode": "strict_task_tool",
-                        "allowed_agent_names": allowed_agent_names,
-                        "instruction": (
-                            "CRITICAL: You MUST use Claude Code's native Task tool for agent spawning. "
-                            "The agent_name parameter must be EXACTLY one of the allowed template names. "
-                            f"Allowed agent names: {allowed_agent_names}"
-                        ),
-                    }
+                    # NOTE: agent_spawning_constraint removed (redundant during staging,
+                    # contradicted CH1/CH3 "do NOT call Task() during staging").
+                    # Task tool instructions live in thin_prompt_generator's
+                    # _build_claude_code_execution_prompt() — injected at implementation
+                    # phase via the play button's implementation prompt.
 
                     # Handover 0389: Build dynamic example from actual allowed agent names
                     example_agents = allowed_agent_names[:2] if len(allowed_agent_names) >= 2 else allowed_agent_names
