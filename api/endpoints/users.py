@@ -890,7 +890,7 @@ async def update_depth_config(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/me/settings/execution_mode")
+@router.get("/me/settings/execution-mode")
 async def get_execution_mode(
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
@@ -906,7 +906,7 @@ async def get_execution_mode(
     return {"execution_mode": execution_mode}
 
 
-@router.put("/me/settings/execution_mode")
+@router.put("/me/settings/execution-mode")
 async def update_execution_mode(
     payload: ExecutionModeUpdate,
     current_user: User = Depends(get_current_active_user),
