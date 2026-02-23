@@ -391,11 +391,11 @@
 
           <!-- Project metadata (plain text, no alert box) -->
           <div v-if="editingProject" class="text-caption text-medium-emphasis mb-4">
-            <div style="font-family: monospace">{{ editingProject.id }}</div>
-            <div class="mt-1">
-              Created {{ formatDateFull(editingProject.created_at) }}
+            <div>Project ID: <span style="font-family: monospace">{{ editingProject.id }}</span></div>
+            <div>
+              Created: {{ formatDateFull(editingProject.created_at) }}
               <span class="mx-2">|</span>
-              Updated {{ formatDateFull(editingProject.updated_at) }}
+              Updated: {{ formatDateFull(editingProject.updated_at) }}
             </div>
           </div>
 
