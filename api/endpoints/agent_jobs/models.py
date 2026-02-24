@@ -124,6 +124,8 @@ class JobResponse(BaseModel):
     steps: Optional[dict[str, int]] = None
     # Handover 0423: TODO items for Plan tab display
     todo_items: list[TodoItemResponse] = Field(default_factory=list)
+    # Handover 0411a: Execution phase for multi-terminal ordering
+    phase: Optional[int] = None
 
 
 class PendingJobsResponse(BaseModel):
