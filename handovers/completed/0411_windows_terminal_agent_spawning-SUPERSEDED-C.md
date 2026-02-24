@@ -1,10 +1,13 @@
 # Handover 0411: Windows Terminal Agent Spawning
 
-**Status**: Ready for Implementation
-**Priority**: HIGH (Core multi-terminal architecture enablement)
-**Estimated Effort**: 2-3 hours (template updates + testing)
+**Status**: SUPERSEDED
+**Priority**: N/A
+**Estimated Effort**: N/A
 **Created**: 2026-01-08
 **Validated**: 2026-01-08 (all commands tested successfully)
+**Superseded**: 2026-02-24
+**Superseded By**: 0411a (Recommended Execution Order) + 0411b (Dead Code Cleanup)
+**Reason**: Auto-terminal spawning shelved in favor of advisory phase labels on AgentJob. The orchestrator recommends execution order during staging; the user remains the scheduler. Agent Lab (AgentTipsDialog.vue) retains the manual spawn command reference. See 0411a for full decision history.
 
 ---
 
