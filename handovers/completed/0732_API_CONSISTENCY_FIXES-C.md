@@ -5,8 +5,9 @@
 **Risk Level:** LOW
 **Estimated Effort:** ~1 hour
 **Prerequisites:** None (0725 Audit complete, this is the follow-up)
-**Status:** READY
-**Last Validated:** 2026-02-23
+**Status:** COMPLETE
+**Completed:** 2026-02-23
+**Implementation Commit:** `30072759`
 
 ---
 
@@ -218,6 +219,21 @@ ruff check api/endpoints/database_setup.py
 | `api/endpoints/database_setup.py` | Error returns in 3 functions | 12 dict returns -> HTTPException |
 
 **Files NOT modified:** `configuration.py` (already fixed), any service files (clean), any frontend files (Part 1 not called from frontend; Part 2 check installer flow).
+
+---
+
+## Implementation Summary
+
+### 2026-02-23 - Completed
+
+**Commit:** `30072759` - "fix: Standardize API consistency (execution-mode URLs + HTTPException errors)"
+
+**What was done:**
+- Part 1: Renamed `/me/settings/execution_mode` to `/me/settings/execution-mode` in `users.py` (2 routes) and updated all ~30 URL references in `test_execution_mode_endpoints.py`
+- Part 2: Converted 12 dict-style error returns in `database_setup.py` to `raise HTTPException(...)` with semantic status codes (401/400/404/500/503). Success dict returns preserved.
+- 3 files changed, +76/-91 lines net reduction
+
+**All success criteria met.** Ruff clean, tests passing.
 
 ---
 
