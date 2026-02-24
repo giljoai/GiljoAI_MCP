@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-23 (reconciliation with git history + Feb report sync)
+**Last Updated:** 2026-02-23 (0732 API Fixes closed out)
 
 ---
 
@@ -17,7 +17,7 @@
 | 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0495 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409, 0411 |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
-| 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy + 0732 DEFERRED/READY |
+| 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy DEFERRED, 0732 fixes COMPLETE |
 
 ---
 
@@ -29,7 +29,6 @@
 |----|-------|--------|----------|-------|
 | 0409 | Unified Client Quick Setup | Ready | Medium | Future enhancement |
 | 0411 | Windows Terminal Agent Spawning | Ready | HIGH | Multi-tab orchestration. Note: 0411 also used for completed "Jobs Tab Duration UX" |
-| 0732 | API Consistency Fixes | Ready | Low | Minor API polish from 0725 audit (2-4h) |
 
 ### Recently Closed (February 2026 - from Active)
 
@@ -53,6 +52,7 @@
 | 0489 | MCP Config Revamp & Proxy Retirement | 2026-02-19 | COMPLETE (merged 0397+0489, -924 lines) |
 | 0492 | API Key Security Hardening | 2026-02-13 | COMPLETE (5-key limit, 90-day expiry, IP logging) |
 | 0495 | Fix API Test Suite Hang | 2026-02-18 | COMPLETE (`d48beecb`) |
+| 0732 | API Consistency Fixes | 2026-02-23 | COMPLETE (`30072759`) - URL kebab-case + HTTPException standardization |
 
 ### Greptile Security Series (1000-1014) - SECURITY
 
@@ -73,7 +73,7 @@
 | 0250 | HTTPS Enablement | Deferred | Low | Optional feature |
 | 0284 | Address get_available_agents | Deferred | Low | Enhancement |
 | 0731 | Legacy Code Removal | Deferred | Medium | Post-v1.0 (separate from completed 0731a-d typed returns) |
-| 0732 | Open Source Release Packaging | Deferred | Medium | Post-v1.0 (separate from 0732 API Consistency Fixes which is Ready) |
+| 0732 | Open Source Release Packaging | Deferred | Medium | Post-v1.0 (0732 API Fixes now COMPLETE, this is the release packaging handover) |
 | 1014 | Security Auditing | Deferred | Medium | Enterprise compliance |
 | 9999 | One-Liner Installation System | Deferred | Low | Parking lot / future ideas |
 
@@ -103,6 +103,7 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0732 | API Consistency Fixes (URL kebab-case + HTTPException) | **COMPLETE** (2026-02-23, `30072759`) |
 | 0419 | Long Polling Orchestrator Monitoring | **SUPERSEDED** (2026-02-22, replaced by Agent Lab bash sleep polling) |
 | 0371 | Dead Code Cleanup Project (all 7 phases) | **COMPLETE** (2026-02-21, ~15K+ lines) |
 | 0371a | Template Dead Code & Stale Test Remediation | **COMPLETE** (2026-02-21) |
