@@ -741,6 +741,7 @@ class ToolAccessor:
         project_id: str,
         tenant_key: str,
         parent_job_id: str | None = None,
+        phase: int | None = None,
     ) -> dict[str, Any]:
         """Create an agent job (delegates to OrchestrationService)"""
         return await self._orchestration_service.spawn_agent_job(
@@ -750,6 +751,7 @@ class ToolAccessor:
             project_id=project_id,
             tenant_key=tenant_key,
             parent_job_id=parent_job_id,
+            phase=phase,
         )
 
     async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
