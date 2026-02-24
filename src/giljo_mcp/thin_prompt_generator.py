@@ -1241,7 +1241,7 @@ START NOW:
             "- Coordination checkpoints",
             "- Success criteria for each phase",
             "",
-            "Follow this plan to coordinate agents. If no plan was written during staging, proceed with best judgment.",
+            "Follow this plan to coordinate agents.",
             "",
             "## What You've Already Done",
             "In a PREVIOUS session, you completed staging:",
