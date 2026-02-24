@@ -159,7 +159,6 @@ class TestMCPToolSchemaPhase:
         # Since handle_tools_list is async and requires session_manager, we instead
         # directly inspect the static tools list defined in the function body.
         # The most reliable way is to search for the tool in the source module.
-        import ast
         from pathlib import Path
 
         mcp_http_path = Path(__file__).resolve().parent.parent.parent / "api" / "endpoints" / "mcp_http.py"
@@ -188,9 +187,7 @@ class TestMCPToolSchemaPhase:
         next_tool_idx = source.find('"name":', spawn_idx + 30)
         spawn_block = source[spawn_idx:next_tool_idx] if next_tool_idx != -1 else source[spawn_idx:]
 
-        assert '"phase"' in spawn_block, (
-            "phase property not found in spawn_agent_job inputSchema"
-        )
+        assert '"phase"' in spawn_block, "phase property not found in spawn_agent_job inputSchema"
 
     def test_phase_property_type_is_integer(self):
         """The phase property should be typed as integer in the schema."""
@@ -208,10 +205,8 @@ class TestMCPToolSchemaPhase:
         phase_idx = spawn_block.find('"phase"')
         assert phase_idx != -1
         # The type definition should be nearby
-        phase_section = spawn_block[phase_idx:phase_idx + 200]
-        assert '"integer"' in phase_section, (
-            "phase property should have type 'integer'"
-        )
+        phase_section = spawn_block[phase_idx : phase_idx + 200]
+        assert '"integer"' in phase_section, "phase property should have type 'integer'"
 
 
 # ---------------------------------------------------------------------------

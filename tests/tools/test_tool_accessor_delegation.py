@@ -112,7 +112,7 @@ async def test_spawn_agent_job_delegates_to_service(tool_accessor):
         parent_job_id=parent_job_id,
     )
 
-    # Verify service method was called with correct args
+    # Verify service method was called with correct args (Handover 0411a: phase=None default)
     tool_accessor._orchestration_service.spawn_agent_job.assert_called_once_with(
         agent_display_name=agent_display_name,
         agent_name=agent_name,
@@ -120,6 +120,7 @@ async def test_spawn_agent_job_delegates_to_service(tool_accessor):
         project_id=project_id,
         tenant_key=tenant_key,
         parent_job_id=parent_job_id,
+        phase=None,
     )
 
     # Verify result passed through

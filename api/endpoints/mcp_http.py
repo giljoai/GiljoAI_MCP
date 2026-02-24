@@ -256,6 +256,7 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
         "mission",
         "project_id",
         "tenant_key",
+        "phase",
     },
     "get_workflow_status": {"project_id", "tenant_key", "exclude_job_id"},
     # Context Tools
@@ -615,6 +616,10 @@ async def handle_tools_list(
                     "mission": {"type": "string", "description": "Agent mission"},
                     "project_id": {"type": "string", "description": "Project ID"},
                     "tenant_key": {"type": "string", "description": "Tenant key"},
+                    "phase": {
+                        "type": "integer",
+                        "description": "Execution phase number for multi-terminal ordering (1=first, same number=parallel, higher=later). Only used in multi-terminal mode.",
+                    },
                 },
                 "required": ["agent_display_name", "agent_name", "mission", "project_id"],
             },
