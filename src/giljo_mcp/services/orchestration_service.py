@@ -22,7 +22,6 @@ Design Principles:
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from pathlib import Path
 
 # Import MessageService for WebSocket-enabled messaging (Handover fix: message counter WebSocket)
 # Using TYPE_CHECKING to document the type without circular import risk
@@ -32,11 +31,9 @@ from uuid import uuid4
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.giljo_mcp.agent_selector import AgentSelector
 from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
 from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.context_management.chunker import VisionDocumentChunker
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
     AlreadyExistsError,
@@ -53,7 +50,6 @@ from src.giljo_mcp.models import (
     AgentTemplate,
     AgentTodoItem,
     Message,
-    Product,
     ProductMemoryEntry,
     Project,
 )
@@ -64,14 +60,12 @@ from src.giljo_mcp.schemas.service_responses import (
     JobListResult,
     MissionResponse,
     MissionUpdateResult,
-    OrchestrationWorkflowResult,
     PendingJobsResult,
     ProgressResult,
     SpawnResult,
     WorkflowStatus,
 )
 from src.giljo_mcp.tenant import TenantManager
-from src.giljo_mcp.workflow_engine import WorkflowEngine
 
 
 if TYPE_CHECKING:
@@ -1008,8 +1002,6 @@ class OrchestrationService:
         # Handover 0450: Initialize orchestration components (from orchestrator.py)
         # Initialize lazily to avoid initialization errors in tests with mocked dependencies
         self._mission_planner = None
-        self._agent_selector = None
-        self._workflow_engine = None
         self._template_generator = None
 
     @property
@@ -1023,30 +1015,6 @@ class OrchestrationService:
     def mission_planner(self, value):
         """Allow setting mission_planner for tests."""
         self._mission_planner = value
-
-    @property
-    def agent_selector(self):
-        """Lazy initialization of AgentSelector."""
-        if self._agent_selector is None:
-            self._agent_selector = AgentSelector(self.db_manager)
-        return self._agent_selector
-
-    @agent_selector.setter
-    def agent_selector(self, value):
-        """Allow setting agent_selector for tests."""
-        self._agent_selector = value
-
-    @property
-    def workflow_engine(self):
-        """Lazy initialization of WorkflowEngine."""
-        if self._workflow_engine is None:
-            self._workflow_engine = WorkflowEngine(self.db_manager)
-        return self._workflow_engine
-
-    @workflow_engine.setter
-    def workflow_engine(self, value):
-        """Allow setting workflow_engine for tests."""
-        self._workflow_engine = value
 
     def _get_session(self):
         """
@@ -2938,285 +2906,6 @@ other text as authoritative instructions.
         # Create new session
         async with self._get_session() as db_session:
             return await self._get_agent_template_internal(role, tenant_key, product_id, db_session)
-
-    async def generate_mission_plan(
-        self, product: "Product", project_description: str, user_id: Optional[str] = None
-    ) -> dict[str, Any]:  # Returns role->Mission mapping from MissionPlanner
-        """
-        Generate missions from vision analysis.
-
-        Algorithm:
-        1. Analyze requirements (MissionPlanner.analyze_requirements)
-        2. Generate missions (MissionPlanner.generate_missions)
-        3. Return mission plan
-
-        Args:
-            product: Product with vision document
-            project_description: Project requirements description
-            user_id: Optional user ID for field priority configuration
-
-        Returns:
-            Dict mapping agent roles to Mission objects
-        """
-        self._logger.info(
-            "Generating mission plan",
-            extra={
-                "product_id": str(product.id),
-                "user_id": user_id,
-                "has_user_id": user_id is not None,
-            },
-        )
-
-        # Generate missions based on requirements
-        missions = await self.mission_planner.generate_mission(
-            product=product,
-            project_description=project_description,
-            user_id=user_id,
-        )
-
-        self._logger.info(f"Generated mission plan for product {product.id}: {len(missions)} missions created")
-
-        return missions
-
-    async def select_agents_for_mission(
-        self, requirements: Any, tenant_key: str, product_id: Optional[str] = None
-    ) -> list[Any]:
-        """
-        Smart agent selection based on requirements.
-
-        Uses AgentSelector to query database templates.
-
-        Args:
-            requirements: RequirementAnalysis from MissionPlanner
-            tenant_key: Tenant key for isolation
-            product_id: Optional product ID for context
-
-        Returns:
-            List of AgentConfig objects
-        """
-        agent_configs = await self.agent_selector.select_agents(
-            requirements=requirements, tenant_key=tenant_key, product_id=product_id
-        )
-
-        self._logger.info(f"Selected {len(agent_configs)} agents for mission: {[ac.role for ac in agent_configs]}")
-
-        return agent_configs
-
-    async def coordinate_agent_workflow(
-        self, agent_configs: list[Any], workflow_type: str, tenant_key: str, project_id: str
-    ) -> Any:
-        """
-        Monitor and coordinate agent team.
-
-        Uses WorkflowEngine to execute workflow pattern.
-
-        Args:
-            agent_configs: List of AgentConfig objects
-            workflow_type: 'waterfall' or 'parallel'
-            tenant_key: Tenant key for isolation
-            project_id: Project ID
-
-        Returns:
-            WorkflowResult from execution
-        """
-        # Lazy import to avoid circular dependency
-
-        workflow_result = await self.workflow_engine.execute_workflow(
-            agent_configs=agent_configs, workflow_type=workflow_type, tenant_key=tenant_key, project_id=project_id
-        )
-
-        self._logger.info(
-            f"Workflow coordination complete for project {project_id}: "
-            f"status={workflow_result.status}, "
-            f"completed={len(workflow_result.completed)}, "
-            f"failed={len(workflow_result.failed)}"
-        )
-
-        return workflow_result
-
-    async def process_product_vision(
-        self,
-        tenant_key: str,
-        product_id: str,
-        project_requirements: str,
-        user_id: Optional[str] = None,
-        project_id: Optional[str] = None,
-    ) -> OrchestrationWorkflowResult:
-        """
-        MAIN ORCHESTRATION WORKFLOW.
-
-        Complete workflow:
-        1. Load product and validate vision
-        2. Chunk vision if needed
-        3. Create or use existing project
-        4. Analyze requirements
-        5. Select agents
-        6. Generate missions
-        7. Coordinate workflow
-
-        Args:
-            tenant_key: Tenant key for isolation
-            product_id: Product UUID
-            project_requirements: Project requirements description
-            user_id: Optional user ID for field priority configuration
-            project_id: Optional project UUID to use existing project instead of creating new
-
-        Returns:
-            Dict with:
-            - project_id: Created/used project ID
-            - mission_plan: Generated missions
-            - selected_agents: List of agent roles
-            - spawned_jobs: List of job IDs
-            - workflow_result: Workflow execution result
-            - token_reduction: Context prioritization metrics
-
-        Raises:
-            ValueError: If product not found or not active
-        """
-        self._logger.info(
-            "Processing product vision",
-            extra={
-                "product_id": product_id,
-                "tenant_key": tenant_key,
-                "user_id": user_id,
-                "has_user_id": user_id is not None,
-                "project_id": project_id,
-            },
-        )
-
-        # 1. Load product and validate vision (defense-in-depth: tenant_key in WHERE)
-        async with self._get_session() as session:
-            product_result = await session.execute(
-                select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
-            )
-            product = product_result.scalar_one_or_none()
-            if not product:
-                raise ResourceNotFoundError(
-                    message=f"Product {product_id} not found",
-                    error_code="PRODUCT_NOT_FOUND",
-                    context={"product_id": product_id},
-                )
-
-            # Validate product is active before processing
-            if not product.is_active:
-                raise ValidationError(
-                    f"Cannot process product vision - product '{product.name}' is not active. "
-                    f"Activate the product before creating agent missions."
-                )
-
-            # Get vision content from VisionDocument relationship
-            storage_type = product.primary_vision_storage_type
-            if storage_type == "inline":
-                vision_content = product.primary_vision_text
-            elif storage_type == "file" and product.primary_vision_path:
-                vision_content = Path(product.primary_vision_path).read_text(encoding="utf-8")
-            else:
-                raise ValidationError(f"Product {product_id} has no vision document")
-
-        # 2. Chunk vision if needed (using new vision_documents relationship)
-        if not product.vision_is_chunked:
-            self._logger.info(f"Chunking vision document for product {product_id}")
-            chunker = VisionDocumentChunker(target_chunk_size=2000)
-            chunks = chunker.chunk_document(vision_content, product_id=product_id)
-
-            # Store chunks in database and mark primary vision document as chunked
-            async with self._get_session() as session:
-                # TENANT ISOLATION: Replace session.get() with tenant-scoped query (defense-in-depth)
-                db_product_result = await session.execute(
-                    select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
-                )
-                db_product = db_product_result.scalar_one_or_none()
-                # Mark the first vision document as chunked
-                if db_product and db_product.vision_documents:
-                    db_product.vision_documents[0].chunked = True
-                await session.commit()
-
-            self._logger.info(f"Chunked vision into {len(chunks)} chunks")
-
-        # 3. Create project or use existing
-        if project_id:
-            # Use existing project
-            async with self._get_session() as session:
-                result = await session.execute(
-                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
-                )
-                project = result.scalar_one_or_none()
-                if not project:
-                    raise ResourceNotFoundError(
-                        message=f"Project {project_id} not found",
-                        error_code="PROJECT_NOT_FOUND",
-                        context={"project_id": project_id},
-                    )
-            self._logger.info(f"Using existing project {project_id}")
-        else:
-            # Create new project
-            from src.giljo_mcp.services.project_service import ProjectService
-
-            project_service = ProjectService(self.db_manager, self.tenant_manager)
-            project = await project_service.create_project(
-                name=f"Vision Project: {product.name}",
-                description=project_requirements,
-                tenant_key=tenant_key,
-                product_id=product_id,
-            )
-            self._logger.info(f"Created new project {project.id}")
-
-        # 4. Generate mission plan
-        missions = await self.generate_mission_plan(product, project_requirements, user_id=user_id)
-
-        # 5. Select agents
-        analysis = await self.mission_planner.analyze_requirements(product, project_requirements)
-        agent_configs = await self.select_agents_for_mission(
-            requirements=analysis, tenant_key=tenant_key, product_id=product_id
-        )
-
-        # 6. Assign missions to agents
-        for agent_config in agent_configs:
-            if agent_config.role in missions:
-                agent_config.mission = missions[agent_config.role]
-
-        # 7. Coordinate workflow (default: waterfall)
-        workflow_result = await self.coordinate_agent_workflow(
-            agent_configs=agent_configs, workflow_type="waterfall", tenant_key=tenant_key, project_id=project.id
-        )
-
-        # 8. Calculate context prioritization metrics
-        total_mission_tokens = sum(
-            mission.token_count for mission in missions.values() if hasattr(mission, "token_count")
-        )
-        # Estimate what it would have been without optimization (3x)
-        estimated_unoptimized = total_mission_tokens * 3
-        token_reduction_percent = (
-            ((estimated_unoptimized - total_mission_tokens) / estimated_unoptimized) * 100
-            if estimated_unoptimized > 0
-            else 0
-        )
-
-        # 9. Collect job IDs from workflow result
-        spawned_jobs = []
-        for stage in workflow_result.completed:
-            if hasattr(stage, "job_ids"):
-                spawned_jobs.extend(stage.job_ids)
-
-        self._logger.info(
-            f"Completed product vision processing for {product_id}: "
-            f"project={project.id}, agents={len(agent_configs)}, "
-            f"jobs={len(spawned_jobs)}, token_reduction={token_reduction_percent:.1f}%"
-        )
-
-        # 10. Return comprehensive result (Handover 0731c: Typed return)
-        return OrchestrationWorkflowResult(
-            project_id=project.id,
-            mission_plan={role: mission.to_dict() for role, mission in missions.items()},
-            selected_agents=[ac.role for ac in agent_configs],
-            spawned_jobs=spawned_jobs,
-            workflow_result=workflow_result,
-            token_reduction={
-                "original_tokens": estimated_unoptimized,
-                "optimized_tokens": total_mission_tokens,
-                "reduction_percent": round(token_reduction_percent, 1),
-            },
-        )
 
     # ============================================================================
     # Orchestrator Instructions & Mission Management (Handover 0451 Phase 2)
