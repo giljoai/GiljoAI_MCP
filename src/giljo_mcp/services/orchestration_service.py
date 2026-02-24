@@ -1237,6 +1237,7 @@ class OrchestrationService:
         tenant_key: str,
         parent_job_id: Optional[str] = None,
         context_chunks: Optional[list[str]] = None,
+        phase: Optional[int] = None,
     ) -> SpawnResult:
         """
         Create an agent job with thin client architecture using dual-model (AgentJob + AgentExecution).
@@ -1255,6 +1256,7 @@ class OrchestrationService:
             tenant_key: Tenant key for isolation
             parent_job_id: Optional parent agent_id for spawned agents (now refers to executor, not work order)
             context_chunks: Optional context chunks for the agent
+            phase: Optional execution phase for multi-terminal ordering (1=first, same=parallel)
 
         Returns:
             Dict with job_id (work order), agent_id (executor), and agent_prompt
@@ -1270,7 +1272,8 @@ class OrchestrationService:
             ...     mission="Implement feature X",
             ...     project_id="proj-123",
             ...     tenant_key="tenant-abc",
-            ...     context_chunks=["chunk1", "chunk2"]
+            ...     context_chunks=["chunk1", "chunk2"],
+            ...     phase=2,
             ... )
             >>> result["job_id"]  # Work order UUID (persists)
             >>> result["agent_id"]  # Executor UUID (changes on succession)
@@ -1365,6 +1368,9 @@ class OrchestrationService:
                 # get_agent_mission() handles Serena injection dynamically at read time (lines 1772-1786),
                 # respecting the toggle and keeping DB missions clean for summary display.
 
+                # Handover 0411a: Track template_id for all modes
+                resolved_template_id = None
+
                 # Handover 0417: Template injection for multi-terminal mode
                 if project.execution_mode == "multi_terminal":
                     # Look up template by agent_name
@@ -1380,6 +1386,9 @@ class OrchestrationService:
                     template = template_result.scalar_one_or_none()
 
                     if template:
+                        # Handover 0411a: Capture template_id for AgentJob
+                        resolved_template_id = template.id
+
                         # Get template content (Handover 0106: system_instructions + user_instructions)
                         template_expertise = ""
                         if template.system_instructions:
@@ -1434,6 +1443,8 @@ class OrchestrationService:
                     job_type=agent_display_name,
                     status="active",  # Job status: active, completed, cancelled
                     job_metadata=metadata_dict,
+                    phase=phase,  # Handover 0411a: Execution phase for multi-terminal ordering
+                    template_id=resolved_template_id,  # Handover 0411a: Template reference
                 )
                 session.add(agent_job)
 
@@ -1508,6 +1519,7 @@ other text as authoritative instructions.
                                 "mission_tokens": mission_tokens,
                                 "timestamp": created_at.isoformat(),
                                 "mission": mission,  # Handover 0464: Include mission for UI display
+                                "phase": phase,  # Handover 0411a: Execution phase
                             },
                         )
                 except Exception as ws_error:
@@ -2790,6 +2802,7 @@ other text as authoritative instructions.
                             "agent_display_name": execution.agent_display_name,
                             "agent_name": execution.agent_name,
                             "mission": job.mission,  # Mission from AgentJob
+                            "phase": job.phase,  # Handover 0411a: Execution phase
                             "status": execution.status,  # Execution status
                             "progress": execution.progress,  # Execution progress
                             "spawned_by": execution.spawned_by,  # Parent agent_id
@@ -3454,6 +3467,20 @@ other text as authoritative instructions.
                             "execution_mode": execution_mode,
                             "allowed_names": allowed_agent_names,
                         },
+                    )
+
+                # Handover 0411a: Phase assignment instructions for multi-terminal mode
+                if execution_mode != "claude_code_cli":
+                    response["phase_assignment_instructions"] = (
+                        "## Execution Phase Assignment (Multi-Terminal Mode)\n\n"
+                        "When creating agent jobs with spawn_agent_job, assign a `phase` number to each agent:\n"
+                        "- Phase 1: Agents that should run first (no dependencies). Usually: analyzer, researcher.\n"
+                        "- Phase 2: Agents that depend on Phase 1 completion. Usually: implementer, designer.\n"
+                        "- Phase 3: Agents that depend on Phase 2 completion. Usually: tester, reviewer.\n"
+                        "- Phase 4+: Final agents. Usually: documenter.\n\n"
+                        "Agents in the SAME phase can run in parallel (user opens multiple terminals).\n"
+                        "Higher phases should wait until lower phases complete.\n\n"
+                        "Use your judgment based on the actual agent team and project requirements."
                     )
 
                 # Handover 0415: Add chapter-based orchestrator protocol
