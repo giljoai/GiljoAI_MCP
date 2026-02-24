@@ -2,6 +2,10 @@
   <div class="implement-tab-wrapper">
     <!-- Agent Table Container -->
     <div class="table-container">
+      <!-- Handover 0411a: Proposed execution order (multi-terminal mode) -->
+      <div v-if="executionOrderText" class="execution-order-text" data-testid="execution-order">
+        {{ executionOrderText }}
+      </div>
       <table class="agents-table" data-testid="agent-status-table">
         <thead>
           <tr>
@@ -437,6 +441,36 @@ const { showToast } = useToast()
 const wsStore = useWebSocketStore()
 const theme = useTheme()
 const { sortedJobs: sortedAgents, loadJobs, store: agentJobsStore } = useAgentJobs()
+
+/**
+ * Handover 0411a: Proposed execution order text for multi-terminal mode.
+ * Shows a one-line summary like: "Proposed execution order: (1) Analyzer (2) FE-Impl + BE-Impl (3) Tester"
+ * Only visible when any agent has a non-null phase value.
+ */
+const executionOrderText = computed(() => {
+  const agents = sortedAgents.value
+  if (!agents.some(a => a.phase != null)) return null
+
+  // Group by phase
+  const groups = {}
+  for (const agent of agents) {
+    const phase = agent.phase ?? 999
+    if (!groups[phase]) groups[phase] = []
+    groups[phase].push(agent.agent_display_name || agent.agent_name || 'unknown')
+  }
+
+  // Build text: "(1) Name (2) Name + Name (3) Name"
+  const parts = Object.keys(groups)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map(phase => {
+      const names = groups[phase].join(' + ')
+      const label = phase === 999 ? '(?)' : `(${phase})`
+      return `${label} ${names}`
+    })
+
+  return `Proposed execution order: ${parts.join(' ')}`
+})
 
 /**
  * GiljoAI face icon (dark theme only)
@@ -1037,6 +1071,15 @@ async function copyToClipboard(text) {
   .table-container {
     padding: 16px;
     margin-bottom: 16px;
+
+    // Handover 0411a: Proposed execution order text
+    .execution-order-text {
+      font-size: 13px;
+      color: rgba(var(--v-theme-on-surface), 0.6);
+      padding: 4px 0 12px;
+      border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+      margin-bottom: 4px;
+    }
 
     .agents-table {
       width: 100%;
