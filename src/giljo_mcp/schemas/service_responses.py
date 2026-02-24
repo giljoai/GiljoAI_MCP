@@ -474,22 +474,6 @@ class SuccessionStatus(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class OrchestrationWorkflowResult(BaseModel):
-    """Full orchestration workflow result.
-
-    Fields match OrchestrationService.process_product_vision() output.
-    """
-
-    project_id: str
-    mission_plan: dict = Field(default_factory=dict)
-    selected_agents: list[str] = Field(default_factory=list)
-    spawned_jobs: list[str] = Field(default_factory=list)
-    workflow_result: Optional[object] = None
-    token_reduction: dict = Field(default_factory=dict)
-
-    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
-
-
 # Legacy aliases for backward compatibility with existing imports.
 # These models were replaced by more specific types but are kept as aliases
 # so that existing test files and __init__.py exports continue to work.
