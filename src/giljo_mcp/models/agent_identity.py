@@ -98,6 +98,14 @@ class AgentJob(Base):
         comment="Template used to create this job (if any)",
     )
 
+    # Execution phase for multi-terminal ordering (1=first, same=parallel)
+    phase = Column(
+        Integer,
+        nullable=True,
+        default=None,
+        comment="Execution phase for multi-terminal ordering (1=first, same=parallel)",
+    )
+
     # Relationships
     project = relationship("Project", back_populates="agent_jobs_v2")
     executions = relationship(
