@@ -1361,22 +1361,9 @@ class OrchestrationService:
                 if context_chunks:
                     metadata_dict["context_chunks"] = context_chunks
 
-                # Handover 0408: Inject Serena instructions into agent mission if enabled
-                include_serena = False
-                try:
-                    include_serena = get_config().get_nested("features.serena_mcp.use_in_prompts", default=False)
-                except (OSError, KeyError, ValueError, TypeError) as e:
-                    self._logger.warning(f"[SERENA] Failed to read config for agent spawn: {e}")
-
-                if include_serena:
-                    from src.giljo_mcp.prompt_generation.serena_instructions import generate_serena_instructions
-
-                    serena_notice = generate_serena_instructions(enabled=True)
-                    mission = serena_notice + "\n\n---\n\n" + mission
-                    self._logger.info(
-                        "[SERENA] Injected notice into agent mission",
-                        extra={"agent_name": agent_name, "agent_display_name": agent_display_name},
-                    )
+                # NOTE: Serena instructions removed from spawn-time injection (was double-injecting).
+                # get_agent_mission() handles Serena injection dynamically at read time (lines 1772-1786),
+                # respecting the toggle and keeping DB missions clean for summary display.
 
                 # Handover 0417: Template injection for multi-terminal mode
                 if project.execution_mode == "multi_terminal":

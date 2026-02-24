@@ -133,8 +133,8 @@ class TestSpawnAgentJobDualModel:
         job_result = await db_session.execute(job_stmt)
         job = job_result.scalar_one_or_none()
         assert job is not None
-        # Mission includes Serena MCP notice, so check it contains the original mission
-        assert "Implement authentication system" in job.mission
+        # DB stores pure mission (Serena injected at read time by get_agent_mission)
+        assert job.mission == "Implement authentication system"
         assert job.job_type == "implementer"
         assert job.tenant_key == test_tenant_key
         assert job.project_id == test_project.id
@@ -167,11 +167,11 @@ class TestSpawnAgentJobDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Verify mission in AgentJob (includes Serena MCP notice)
+        # Verify pure mission in AgentJob (Serena injected at read time by get_agent_mission)
         job_stmt = select(AgentJob).where(AgentJob.job_id == result.job_id)
         job_result = await db_session.execute(job_stmt)
         job = job_result.scalar_one()
-        assert mission in job.mission
+        assert job.mission == mission
 
         # Verify AgentExecution does NOT have mission field
         exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == result.agent_id)
