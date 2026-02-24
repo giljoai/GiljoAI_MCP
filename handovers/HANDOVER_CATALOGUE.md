@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-23 (0732 API Fixes closed out)
+**Last Updated:** 2026-02-24 (0411 superseded, 0411a+0411b created)
 
 ---
 
@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | 0371 COMPLETE, 0365 SUPERSEDED, 0382 COMPLETE |
-| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0495 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409, 0411 |
+| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0495 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409, 0411a, 0411b |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy DEFERRED, 0732 fixes COMPLETE |
@@ -28,7 +28,8 @@
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0409 | Unified Client Quick Setup | Ready | Medium | Future enhancement |
-| 0411 | Windows Terminal Agent Spawning | Ready | HIGH | Multi-tab orchestration. Note: 0411 also used for completed "Jobs Tab Duration UX" |
+| 0411a | Recommended Execution Order (Phase Labels) | Ready | Medium | Add `phase` to AgentJob, orchestrator assigns during multi-terminal staging, Jobs tab groups by phase |
+| 0411b | Dead Code Cleanup (WorkflowEngine, MissionPlanner) | Ready | Medium | Remove ~1,600 lines orphaned since 0470 removed `orchestrate_project` entry point |
 
 ### Recently Closed (February 2026 - from Active)
 
@@ -52,6 +53,7 @@
 | 0489 | MCP Config Revamp & Proxy Retirement | 2026-02-19 | COMPLETE (merged 0397+0489, -924 lines) |
 | 0492 | API Key Security Hardening | 2026-02-13 | COMPLETE (5-key limit, 90-day expiry, IP logging) |
 | 0495 | Fix API Test Suite Hang | 2026-02-18 | COMPLETE (`d48beecb`) |
+| 0411 | Windows Terminal Agent Spawning | 2026-02-24 | SUPERSEDED by 0411a (phase labels) + 0411b (dead code cleanup) |
 | 0732 | API Consistency Fixes | 2026-02-23 | COMPLETE (`30072759`) - URL kebab-case + HTTPException standardization |
 
 ### Greptile Security Series (1000-1014) - SECURITY
@@ -103,6 +105,7 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0411 | Windows Terminal Agent Spawning | **SUPERSEDED** (2026-02-24, split to 0411a + 0411b) |
 | 0732 | API Consistency Fixes (URL kebab-case + HTTPException) | **COMPLETE** (2026-02-23, `30072759`) |
 | 0419 | Long Polling Orchestrator Monitoring | **SUPERSEDED** (2026-02-22, replaced by Agent Lab bash sleep polling) |
 | 0371 | Dead Code Cleanup Project (all 7 phases) | **COMPLETE** (2026-02-21, ~15K+ lines) |
@@ -333,6 +336,7 @@ Located in `handovers/cancelled/`:
 
 | ID | Title | Superseded By |
 |----|-------|---------------|
+| 0411 | Windows Terminal Agent Spawning | 0411a (phase labels) + 0411b (dead code cleanup). Auto-spawn shelved; advisory phase labels instead |
 | 0419 | Long Polling Orchestrator Monitoring | Agent Lab feature: bash sleep polling via UI copy-paste (`AgentTipsDialog.vue`) |
 | 0365 | Orchestrator Handover Behavior Injection | UI-triggered handover flow + `build_continuation_prompt()` |
 | 0726 | Tenant Isolation Remediation | 0433 (24/25 findings were false positives) |
@@ -390,7 +394,7 @@ completed/reference/
 
 ### Known Duplicate Numbers
 
-- **0411**: "Jobs Tab Duration UX" (completed) vs "Windows Terminal Agent Spawning" (pending) - CONFLICT
+- **0411**: "Jobs Tab Duration UX" (completed Jan) vs "Windows Terminal Agent Spawning" (SUPERSEDED Feb 24, split to 0411a+0411b) - RESOLVED
 - **0481**: 2 files with same number - consolidate
 - **0731**: "Typed Service Returns a-d" (COMPLETE) vs "Legacy Code Removal" (DEFERRED) - different scope, acceptable
 - **1000**: Main roadmap + status report - acceptable (one is reference)
