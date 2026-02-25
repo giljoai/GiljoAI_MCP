@@ -23,7 +23,7 @@
       <table class="agents-table" data-testid="agent-status-table">
         <thead>
           <tr>
-            <th>Agent Display Name</th>
+            <th class="text-center">Agent Name</th>
             <th>Agent ID</th>
             <th>Agent Status</th>
             <th>Duration</th>
