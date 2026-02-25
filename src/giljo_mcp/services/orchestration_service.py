@@ -1282,6 +1282,38 @@ class OrchestrationService:
                             },
                         )
 
+                    # Duplicate agent_display_name prevention for non-orchestrator agents
+                    duplicate_result = await session.execute(
+                        select(AgentExecution)
+                        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                        .where(
+                            and_(
+                                AgentJob.project_id == project_id,
+                                AgentJob.tenant_key == tenant_key,
+                                AgentExecution.agent_display_name == agent_display_name,
+                                AgentExecution.status.in_(["waiting", "working", "blocked"]),
+                            )
+                        )
+                    )
+                    existing_agent = duplicate_result.scalar_one_or_none()
+
+                    if existing_agent:
+                        raise AlreadyExistsError(
+                            message=(
+                                f"Agent with display name '{agent_display_name}' already active "
+                                f"in this project (status: '{existing_agent.status}'). "
+                                f"Use a unique name (e.g., '{agent_display_name} 2')"
+                            ),
+                            context={
+                                "project_id": project_id,
+                                "tenant_key": tenant_key,
+                                "agent_display_name": agent_display_name,
+                                "existing_agent_id": existing_agent.agent_id,
+                                "existing_job_id": existing_agent.job_id,
+                                "existing_status": existing_agent.status,
+                            },
+                        )
+
                 # Duplicate orchestrator prevention (backported from tools layer)
                 if agent_display_name == "orchestrator":
                     existing_result = await session.execute(
@@ -1292,7 +1324,7 @@ class OrchestrationService:
                                 AgentJob.project_id == project_id,
                                 AgentJob.tenant_key == tenant_key,
                                 AgentExecution.agent_display_name == "orchestrator",
-                                AgentExecution.status.in_(["waiting", "working"]),
+                                AgentExecution.status.in_(["waiting", "working", "blocked"]),
                             )
                         )
                     )
