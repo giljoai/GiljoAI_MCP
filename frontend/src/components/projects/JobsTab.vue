@@ -859,13 +859,7 @@ async function handlePlay(agent) {
         return
       }
 
-      // Multi-terminal mode: Redirect to Launch tab
-      showLocalToast({
-        message: "Use 'Copy Orchestrator Prompt' button in Launch tab for universal prompt",
-        type: 'info',
-        duration: 3000
-      })
-      return
+      // Multi-terminal mode: Copy orchestrator prompt directly
     }
 
     // Specialist agent universal prompt
@@ -879,8 +873,6 @@ async function handlePlay(agent) {
 
     await copyToClipboard(promptText)
     showLocalToast({ message: 'Launch prompt copied to clipboard', type: 'success', duration: 3000 })
-
-    emit('launch-agent', agent)
   } catch (error) {
     console.error('[JobsTab] Failed to prepare launch prompt:', error)
     const msg = error.response?.data?.detail || error.message || 'Failed to prepare launch prompt'
