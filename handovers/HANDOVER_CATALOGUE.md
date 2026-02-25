@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-24 (0411 superseded, 0411a+0411b created)
+**Last Updated:** 2026-02-25 (0497a-e Multi-Terminal Production Parity chain created)
 
 ---
 
@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | 0371 COMPLETE, 0365 SUPERSEDED, 0382 COMPLETE |
-| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0495 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409, 0411a, 0411b |
+| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0495 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409, 0411a, 0411b, 0497a-e |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy DEFERRED, 0732 fixes COMPLETE |
@@ -30,6 +30,11 @@
 | 0409 | Unified Client Quick Setup | Ready | Medium | Future enhancement |
 | 0411a | Recommended Execution Order (Phase Labels) | Ready | Medium | Add `phase` to AgentJob, orchestrator assigns during multi-terminal staging, Jobs tab groups by phase |
 | 0411b | Dead Code Cleanup (WorkflowEngine, MissionPlanner) | Ready | Medium | Remove ~1,600 lines orphaned since 0470 removed `orchestrate_project` entry point |
+| 0497a | Multi-Terminal Agent Prompt Fix (Thin Prompt) | Ready | Critical | Replace stale bash-script `generate_agent_prompt` with thin prompt pattern. Chain: 0497a→e |
+| 0497b | Agent Completion Result Storage + Auto-Message | Ready | High | Persist `result` dict in AgentExecution, auto-message orchestrator on completion |
+| 0497c | Multi-Terminal Orchestrator Implementation Prompt | Ready | High | Build `_build_multi_terminal_orchestrator_prompt()`, mode-aware implementation endpoint |
+| 0497d | Agent Protocol Enhancements (Gil_add + Git Commit) | Ready | Medium | /gil_add guidance (multi-terminal only) + git commit instructions (when git enabled) in Phase 4 |
+| 0497e | Fresh Agent Recovery Flow (Successor Spawning) | Ready | Medium | `predecessor_job_id` on spawn, `get_agent_result` MCP tool, fresh context recovery |
 
 ### Recently Closed (February 2026 - from Active)
 
