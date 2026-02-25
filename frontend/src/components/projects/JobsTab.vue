@@ -870,7 +870,7 @@ async function handlePlay(agent) {
 
     // Specialist agent universal prompt
     let promptText = ''
-    const response = await api.prompts.agentPrompt(agent.job_id || agent.agent_id)
+    const response = await api.prompts.agentPrompt(agent.agent_id || agent.job_id)
     promptText = response.data?.prompt || ''
 
     if (!promptText) {
