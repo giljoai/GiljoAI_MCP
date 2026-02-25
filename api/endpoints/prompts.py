@@ -508,11 +508,11 @@ async def get_implementation_prompt(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found or not accessible"
         )
 
-    # 2. Validate CLI mode
-    if project.execution_mode != "claude_code_cli":
+    # 2. Validate execution mode (0497c: support both CLI and multi-terminal)
+    if project.execution_mode not in ("claude_code_cli", "multi_terminal"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Project is not in CLI mode. Implementation prompts are only for claude_code_cli execution mode.",
+            detail=f"Unsupported execution mode: {project.execution_mode}",
         )
 
     # 3. Fetch orchestrator execution (waiting after staging, or working during execution)
@@ -595,14 +595,23 @@ async def get_implementation_prompt(
         git_history_priority = priorities.get("git_history", 4)
         git_enabled = git_config.get("enabled", False) and git_history_priority in (1, 2, 3)
 
-    # Call the existing implementation prompt generator
-    # Handover 0385: Use job_id (not agent_id) for mission retrieval
-    prompt = generator._build_claude_code_execution_prompt(
-        orchestrator_id=orchestrator_execution.job_id,
-        project=project,
-        agent_jobs=agent_executions,
-        git_enabled=git_enabled,
-    )
+    # Branch prompt generation by execution mode (0497c)
+    if project.execution_mode == "multi_terminal":
+        prompt = generator._build_multi_terminal_orchestrator_prompt(
+            orchestrator_id=orchestrator_execution.job_id,
+            project=project,
+            agent_jobs=agent_executions,
+            git_enabled=git_enabled,
+        )
+    else:
+        # CLI mode: existing implementation prompt
+        # Handover 0385: Use job_id (not agent_id) for mission retrieval
+        prompt = generator._build_claude_code_execution_prompt(
+            orchestrator_id=orchestrator_execution.job_id,
+            project=project,
+            agent_jobs=agent_executions,
+            git_enabled=git_enabled,
+        )
 
     logger.info(
         f"[IMPLEMENTATION PROMPT] Generated for project={project_id}, "

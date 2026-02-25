@@ -859,7 +859,32 @@ async function handlePlay(agent) {
         return
       }
 
-      // Multi-terminal mode: Copy orchestrator prompt directly
+      // Multi-terminal mode: implementation prompt with phase gate (0497c)
+      try {
+        const projectId = props.project.project_id || props.project.id
+        try {
+          await api.projects.launchImplementation(projectId)
+        } catch (gateError) {
+          console.warn('[JobsTab] launch-implementation call failed (non-blocking):', gateError)
+        }
+
+        const response = await api.prompts.implementation(projectId)
+        const prompt = response.data.prompt
+        await copyToClipboard(prompt)
+        showLocalToast({
+          message: `Orchestrator prompt copied! ${response.data.agent_count} agents ready for launch.`,
+          type: 'success',
+          duration: 5000
+        })
+      } catch (error) {
+        const errorMsg = error.response?.data?.detail || 'Failed to generate orchestrator prompt'
+        showLocalToast({
+          message: errorMsg,
+          type: 'error',
+          duration: 6000
+        })
+      }
+      return
     }
 
     // Specialist agent universal prompt
