@@ -38,8 +38,21 @@
         </thead>
         <tbody>
           <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
-            <!-- Agent Display Name: Avatar + Name -->
+            <!-- Agent Display Name: Play Button + Avatar + Name -->
             <td class="agent-display-name-cell">
+              <!-- Play button: circular, same size as avatar, positioned at left edge -->
+              <v-tooltip v-if="shouldShowCopyButton(agent)" text="Copy prompt">
+                <template #activator="{ props: tooltipProps }">
+                  <button
+                    v-bind="tooltipProps"
+                    type="button"
+                    class="play-circle-btn"
+                    @click="handlePlay(agent)"
+                  >
+                    <v-icon size="18">mdi-play</v-icon>
+                  </button>
+                </template>
+              </v-tooltip>
               <button
                 type="button"
                 class="agent-avatar-button"
@@ -214,20 +227,6 @@
 
             <!-- Actions -->
             <td class="actions-cell">
-              <!-- Play button: visibility controlled by Claude Code CLI toggle (Handover 0243d) -->
-              <v-tooltip v-if="shouldShowCopyButton(agent)" text="Copy prompt">
-                <template #activator="{ props: tooltipProps }">
-                  <v-btn
-                    v-bind="tooltipProps"
-                    icon="mdi-play"
-                    size="small"
-                    variant="text"
-                    :color="actionIconColor"
-                    @click="handlePlay(agent)"
-                  />
-                </template>
-              </v-tooltip>
-
               <!-- Messages button: opens Message Audit Modal (Handover 0358) -->
               <v-tooltip text="View messages">
                 <template #activator="{ props: tooltipProps }">
@@ -1191,6 +1190,36 @@ async function copyToClipboard(text) {
           display: flex;
           align-items: center;
           gap: 12px;
+
+          .play-circle-btn {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 215, 0, 0.7);
+            background: transparent;
+            color: rgba(255, 215, 0, 0.9);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: all 0.2s ease;
+
+            .v-icon {
+              color: rgba(255, 215, 0, 0.9);
+            }
+
+            &:hover {
+              border-color: #ffd700;
+              background: rgba(255, 215, 0, 0.1);
+              transform: scale(1.1);
+
+              .v-icon {
+                color: #ffd700;
+              }
+            }
+          }
 
           .agent-avatar {
             flex-shrink: 0;
