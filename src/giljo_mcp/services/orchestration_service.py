@@ -2468,6 +2468,8 @@ other text as authoritative instructions.
                     execution.status = "complete"
                     execution.completed_at = datetime.now(timezone.utc)
                     execution.progress = 100  # Set to 100% on completion
+                    # 0497b: Persist completion result
+                    execution.result = result
 
                     # Calculate duration if started_at exists
                     if execution.started_at and execution.completed_at:
@@ -2524,6 +2526,24 @@ other text as authoritative instructions.
                                     "knowledge for future orchestrators."
                                 )
 
+                    # 0497b: Auto-generate completion message to orchestrator
+                    if job.project_id and execution.agent_display_name != "orchestrator":
+                        orch_exec = await self._find_orchestrator_execution(session, str(job.project_id), tenant_key)
+                        if orch_exec and orch_exec.agent_id != execution.agent_id:
+                            summary = result.get("summary", "Work completed")
+                            auto_message = Message(
+                                tenant_key=tenant_key,
+                                project_id=str(job.project_id),
+                                meta_data={"_from_agent": str(execution.agent_id), "auto_generated": True},
+                                to_agents=[orch_exec.agent_id],
+                                content=f"COMPLETION REPORT from {execution.agent_display_name}: {summary}",
+                                message_type="completion_report",
+                                status="pending",
+                            )
+                            session.add(auto_message)
+                            orch_exec.messages_waiting_count = (orch_exec.messages_waiting_count or 0) + 1
+                            execution.messages_sent_count = (execution.messages_sent_count or 0) + 1
+
                     await session.commit()
                 else:
                     # No active execution found
@@ -2548,6 +2568,7 @@ other text as authoritative instructions.
                                 "status": "complete",
                                 "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
                                 "duration_seconds": duration_seconds,
+                                "has_result": True,
                             },
                         )
                         self._logger.info(f"[WEBSOCKET] Broadcasted complete_job status change for {job_id}")
@@ -2560,6 +2581,7 @@ other text as authoritative instructions.
                 job_id=job_id,
                 message="Job completed successfully",
                 warnings=warnings,
+                result_stored=True,
             )
         except (ValidationError, ResourceNotFoundError):
             raise
@@ -2568,6 +2590,59 @@ other text as authoritative instructions.
             raise OrchestrationError(
                 message="Failed to complete job", context={"job_id": job_id, "error": str(e)}
             ) from e
+
+    async def _find_orchestrator_execution(self, session, project_id: str, tenant_key: str):
+        """Find the active orchestrator execution for a project."""
+        from sqlalchemy import select
+
+        from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+
+        stmt = (
+            select(AgentExecution)
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .where(
+                AgentJob.project_id == project_id,
+                AgentJob.tenant_key == tenant_key,
+                AgentExecution.tenant_key == tenant_key,
+                AgentExecution.agent_display_name == "orchestrator",
+                AgentExecution.status.not_in(["complete", "decommissioned"]),
+            )
+            .limit(1)
+        )
+        res = await session.execute(stmt)
+        return res.scalar_one_or_none()
+
+    async def get_agent_result(self, job_id: str, tenant_key: str | None = None) -> dict | None:
+        """Fetch the completion result for a given job's latest execution.
+
+        Args:
+            job_id: Job UUID
+            tenant_key: Tenant key for isolation
+
+        Returns:
+            Result dict or None if no completed execution found
+        """
+        if not tenant_key:
+            tenant_key = self.tenant_manager.get_current_tenant()
+        if not tenant_key:
+            return None
+
+        async with self._get_session() as session:
+            stmt = (
+                select(AgentExecution)
+                .where(
+                    AgentExecution.job_id == job_id,
+                    AgentExecution.tenant_key == tenant_key,
+                    AgentExecution.status == "complete",
+                )
+                .order_by(AgentExecution.completed_at.desc())
+                .limit(1)
+            )
+            res = await session.execute(stmt)
+            execution = res.scalar_one_or_none()
+            if execution and execution.result:
+                return execution.result
+            return None
 
     async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> ErrorReportResult:
         """

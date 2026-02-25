@@ -400,6 +400,7 @@ class CompleteJobResult(BaseModel):
     job_id: str
     message: str = "Job completed successfully"
     warnings: list[str] = Field(default_factory=list)
+    result_stored: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
