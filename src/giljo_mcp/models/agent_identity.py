@@ -18,6 +18,7 @@ Data Normalization:
 """
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     Column,
     DateTime,
@@ -255,6 +256,13 @@ class AgentExecution(Base):
         default=0,
         nullable=False,
         comment="Count of inbound messages that have been acknowledged/read",
+    )
+
+    # Completion result (0497b)
+    result = Column(
+        JSON,
+        nullable=True,
+        comment="Structured completion result from agent (summary, artifacts, commits)",
     )
 
     # Display name (optional)
