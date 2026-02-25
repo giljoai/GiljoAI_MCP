@@ -3,8 +3,19 @@
     <!-- Agent Table Container -->
     <div class="table-container">
       <!-- Handover 0411a: Proposed execution order (multi-terminal mode) -->
-      <div v-if="executionOrderText" class="execution-order-text" data-testid="execution-order">
-        {{ executionOrderText }}
+      <div v-if="executionOrderPhases" class="execution-order-section" data-testid="execution-order">
+        <div class="execution-order-title">Proposed Execution Order:</div>
+        <div class="execution-order-phases">
+          <div v-for="(phase, idx) in executionOrderPhases" :key="idx" class="phase-entry">
+            <span class="phase-label">{{ phase.label }}</span>
+            <span class="phase-agents">
+              <template v-for="(agent, aidx) in phase.agents" :key="aidx">
+                <span v-if="aidx > 0" class="phase-separator">+</span>
+                <span class="agent-pill" :style="{ backgroundColor: agent.color, color: '#fff' }">{{ agent.displayName }}</span>
+              </template>
+            </span>
+          </div>
+        </div>
       </div>
       <table class="agents-table" data-testid="agent-status-table">
         <thead>
@@ -443,33 +454,44 @@ const theme = useTheme()
 const { sortedJobs: sortedAgents, loadJobs, store: agentJobsStore } = useAgentJobs()
 
 /**
- * Handover 0411a: Proposed execution order text for multi-terminal mode.
- * Shows a one-line summary like: "Proposed execution order: (1) Analyzer (2) FE-Impl + BE-Impl (3) Tester"
- * Only visible when any agent has a non-null phase value.
+ * Handover 0411a: Proposed execution order phases for multi-terminal mode.
+ * Returns structured phase data with labels like "(Start)", "(Phase 1 Parallel Execution)", "(Phase 2)".
+ * Hardcoded first entry: (Start) Orchestrator.
+ * Phases with '+' (multiple agents) get "Parallel Execution" suffix.
  */
-const executionOrderText = computed(() => {
-  const agents = sortedAgents.value
-  if (!agents.some(a => a.phase != null)) return null
+const executionOrderPhases = computed(() => {
+  const agentList = sortedAgents.value
+  if (!agentList.some(a => a.phase != null)) return null
 
-  // Group by phase
+  // Group by phase (skip orchestrator — hardcoded as Start)
   const groups = {}
-  for (const agent of agents) {
+  for (const agent of agentList) {
+    if (isOrchestrator(agent)) continue
     const phase = agent.phase ?? 999
     if (!groups[phase]) groups[phase] = []
-    groups[phase].push(agent.agent_display_name || agent.agent_name || 'unknown')
+    groups[phase].push({
+      displayName: agent.agent_display_name || agent.agent_name || 'unknown',
+      color: getAgentColor(agent.agent_name || agent.agent_display_name),
+    })
   }
 
-  // Build text: "(1) Name (2) Name + Name (3) Name"
-  const parts = Object.keys(groups)
+  // Build structured phases with hardcoded (Start) Orchestrator first
+  const phases = [{
+    label: '(Start)',
+    agents: [{ displayName: 'Orchestrator', color: getAgentColor('orchestrator') }],
+  }]
+
+  Object.keys(groups)
     .map(Number)
     .sort((a, b) => a - b)
-    .map(phase => {
-      const names = groups[phase].join(' + ')
-      const label = phase === 999 ? '(?)' : `(${phase})`
-      return `${label} ${names}`
+    .forEach(phase => {
+      const isParallel = groups[phase].length > 1
+      const phaseNum = phase === 999 ? '?' : phase
+      const label = isParallel ? `(Phase ${phaseNum} Parallel Execution)` : `(Phase ${phaseNum})`
+      phases.push({ label, agents: groups[phase] })
     })
 
-  return `Proposed execution order: ${parts.join(' ')}`
+  return phases
 })
 
 /**
@@ -1072,13 +1094,58 @@ async function copyToClipboard(text) {
     padding: 16px;
     margin-bottom: 16px;
 
-    // Handover 0411a: Proposed execution order text
-    .execution-order-text {
-      font-size: 13px;
-      color: rgba(var(--v-theme-on-surface), 0.6);
-      padding: 4px 0 12px;
+    // Handover 0411a: Proposed execution order display
+    .execution-order-section {
+      padding: 8px 0 14px;
       border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
       margin-bottom: 4px;
+      text-align: center;
+
+      .execution-order-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: #f5c542;
+        margin-bottom: 8px;
+      }
+
+      .execution-order-phases {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px 16px;
+
+        .phase-entry {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+
+          .phase-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+          }
+
+          .phase-agents {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+
+            .agent-pill {
+              display: inline-block;
+              padding: 2px 10px;
+              border-radius: 12px;
+              font-size: 12px;
+              font-weight: 600;
+              white-space: nowrap;
+            }
+
+            .phase-separator {
+              font-size: 13px;
+              color: rgba(255, 255, 255, 0.5);
+            }
+          }
+        }
+      }
     }
 
     .agents-table {
