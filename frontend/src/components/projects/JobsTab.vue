@@ -6,15 +6,18 @@
       <div v-if="executionOrderPhases" class="execution-order-section" data-testid="execution-order">
         <div class="execution-order-title">Proposed Execution Order:</div>
         <div class="execution-order-phases">
-          <div v-for="(phase, idx) in executionOrderPhases" :key="idx" class="phase-entry">
-            <span class="phase-label">{{ phase.label }}</span>
-            <span class="phase-agents">
-              <template v-for="(agent, aidx) in phase.agents" :key="aidx">
-                <span v-if="aidx > 0" class="phase-separator">+</span>
-                <span class="agent-pill" :style="{ backgroundColor: agent.color, color: '#fff' }">{{ agent.displayName }}</span>
-              </template>
-            </span>
-          </div>
+          <template v-for="(phase, idx) in executionOrderPhases" :key="idx">
+            <span v-if="idx > 0" class="phase-dot">&middot;</span>
+            <div class="phase-entry">
+              <span class="phase-label">{{ phase.label }}</span>
+              <span class="phase-agents">
+                <template v-for="(agent, aidx) in phase.agents" :key="aidx">
+                  <span v-if="aidx > 0" class="phase-separator">+</span>
+                  <span class="agent-pill" :style="{ backgroundColor: agent.color }">{{ agent.displayName }}</span>
+                </template>
+              </span>
+            </div>
+          </template>
         </div>
       </div>
       <table class="agents-table" data-testid="agent-status-table">
@@ -475,9 +478,9 @@ const executionOrderPhases = computed(() => {
     })
   }
 
-  // Build structured phases with hardcoded (Start) Orchestrator first
+  // Build structured phases with hardcoded Start > Orchestrator first
   const phases = [{
-    label: '(Start)',
+    label: 'Start',
     agents: [{ displayName: 'Orchestrator', color: getAgentColor('orchestrator') }],
   }]
 
@@ -487,7 +490,7 @@ const executionOrderPhases = computed(() => {
     .forEach(phase => {
       const isParallel = groups[phase].length > 1
       const phaseNum = phase === 999 ? '?' : phase
-      const label = isParallel ? `(Phase ${phaseNum} Parallel Execution)` : `(Phase ${phaseNum})`
+      const label = isParallel ? `Phase ${phaseNum} Parallel Execution` : `Phase ${phaseNum}`
       phases.push({ label, agents: groups[phase] })
     })
 
@@ -1112,7 +1115,15 @@ async function copyToClipboard(text) {
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 6px 16px;
+        align-items: center;
+        gap: 6px 8px;
+
+        .phase-dot {
+          font-size: 20px;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.4);
+          line-height: 1;
+        }
 
         .phase-entry {
           display: flex;
@@ -1137,11 +1148,13 @@ async function copyToClipboard(text) {
               font-size: 12px;
               font-weight: 600;
               white-space: nowrap;
+              color: #182739;
             }
 
             .phase-separator {
-              font-size: 13px;
-              color: rgba(255, 255, 255, 0.5);
+              font-size: 14px;
+              font-weight: 700;
+              color: #fff;
             }
           }
         }
