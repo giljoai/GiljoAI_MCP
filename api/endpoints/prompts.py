@@ -279,8 +279,8 @@ async def generate_agent_prompt(
     # Create missions directory if needed
     Path(project_path) / ".missions"
 
-    # Get tool type from agent execution metadata (default to "claude-code")
-    tool_type = agent.metadata.get("tool_type", "claude-code") if agent.metadata else "claude-code"
+    # Get tool type from agent execution column (default to "claude-code")
+    tool_type = agent.tool_type or "claude-code"
 
     # Generate universal prompt
     prompt = f"""# Agent: {agent_display_name}
