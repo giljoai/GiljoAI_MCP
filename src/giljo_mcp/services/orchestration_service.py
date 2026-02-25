@@ -1295,22 +1295,25 @@ class OrchestrationService:
                             )
                         )
                     )
-                    existing_agent = duplicate_result.scalar_one_or_none()
+                    existing_agents = duplicate_result.scalars().all()
 
-                    if existing_agent:
+                    if existing_agents:
+                        count = len(existing_agents)
+                        suggestion = f"{agent_display_name} {count + 1}"
                         raise AlreadyExistsError(
                             message=(
-                                f"Agent with display name '{agent_display_name}' already active "
-                                f"in this project (status: '{existing_agent.status}'). "
-                                f"Use a unique name (e.g., '{agent_display_name} 2')"
+                                f"DUPLICATE_DISPLAY_NAME: '{agent_display_name}' already has "
+                                f"{count} active instance(s) in this project. "
+                                f"Use a unique name (e.g., '{suggestion}')"
                             ),
                             context={
+                                "error": "DUPLICATE_DISPLAY_NAME",
                                 "project_id": project_id,
                                 "tenant_key": tenant_key,
                                 "agent_display_name": agent_display_name,
-                                "existing_agent_id": existing_agent.agent_id,
-                                "existing_job_id": existing_agent.job_id,
-                                "existing_status": existing_agent.status,
+                                "existing_count": count,
+                                "suggestion": suggestion,
+                                "existing_agent_ids": [a.agent_id for a in existing_agents],
                             },
                         )
 
