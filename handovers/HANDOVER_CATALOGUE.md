@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | 0371 COMPLETE, 0365 SUPERSEDED, 0382 COMPLETE |
-| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0495 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409, 0411a, 0411b, 0497a-e |
+| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0495 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409, 0411a, 0411b, 0497a-e, 0498 |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy DEFERRED, 0732 fixes COMPLETE |
@@ -35,6 +35,7 @@
 | 0497c | Multi-Terminal Orchestrator Implementation Prompt | Ready | High | Build `_build_multi_terminal_orchestrator_prompt()`, mode-aware implementation endpoint |
 | 0497d | Agent Protocol Enhancements (Gil_add + Git Commit) | Ready | Medium | /gil_add guidance (multi-terminal only) + git commit instructions (when git enabled) in Phase 4 |
 | 0497e | Fresh Agent Recovery Flow (Successor Spawning) | Ready | Medium | `predecessor_job_id` on spawn, `get_agent_result` MCP tool, fresh context recovery |
+| 0498 | Early Termination Protocol + Dashboard Reduction | Ready | High | Smart force-close (drain lifecycle), "skipped" TODO status, orchestrator protocol, Jobs table 9→5 columns |
 
 ### Recently Closed (February 2026 - from Active)
 
