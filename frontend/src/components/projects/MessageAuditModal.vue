@@ -232,7 +232,7 @@ const sentMessages = computed(() =>
 
 const waitingMessages = computed(() =>
   messages.value.filter(
-    (m) => m.status === 'pending' || m.status === 'waiting',
+    (m) => m.direction === 'inbound' && (m.status === 'pending' || m.status === 'waiting'),
   ),
 )
 
