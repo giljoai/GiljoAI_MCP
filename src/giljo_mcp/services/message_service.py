@@ -463,7 +463,10 @@ class MessageService:
                         # Event 2: Broadcast to RECIPIENT(S) (increments "Messages Waiting")
                         # Emit message:received event to recipients
                         # Handover 0407: Use sender's agent_id for from_job_id consistency
+                        # Only send waiting_count for single-recipient messages; for broadcasts
+                        # the count is per-recipient so omit it (frontend uses +1 fallback)
                         if recipient_agent_ids:
+                            ws_waiting_count = recipient_waiting_count if len(recipient_agent_ids) == 1 else None
                             await self._websocket_manager.broadcast_message_received(
                                 message_id=message_id,
                                 job_id=sender_execution.agent_id if sender_execution else "",
@@ -474,7 +477,7 @@ class MessageService:
                                 message_type=message_type,
                                 content_preview=content[:200] if content else "",
                                 priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
-                                waiting_count=recipient_waiting_count,
+                                waiting_count=ws_waiting_count,
                             )
                             self._logger.info(
                                 f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_agent_ids)} recipient(s)"
