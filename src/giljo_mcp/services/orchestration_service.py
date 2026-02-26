@@ -1234,6 +1234,7 @@ class OrchestrationService:
         parent_job_id: Optional[str] = None,
         context_chunks: Optional[list[str]] = None,
         phase: Optional[int] = None,
+        predecessor_job_id: Optional[str] = None,
     ) -> SpawnResult:
         """
         Create an agent job with thin client architecture using dual-model (AgentJob + AgentExecution).
@@ -1243,6 +1244,7 @@ class OrchestrationService:
         - AgentExecution: Executor instance (WHO) - changes on succession
 
         Handover 0730b: Exception-based error handling (no success wrapper).
+        Handover 0497e: predecessor_job_id for recovery spawning (successor agents).
 
         Args:
             agent_display_name: Display name of agent (UI label - what humans see)
@@ -1253,12 +1255,14 @@ class OrchestrationService:
             parent_job_id: Optional parent agent_id for spawned agents (now refers to executor, not work order)
             context_chunks: Optional context chunks for the agent
             phase: Optional execution phase for multi-terminal ordering (1=first, same=parallel)
+            predecessor_job_id: Optional job_id of a completed predecessor agent whose work needs fixing
 
         Returns:
             Dict with job_id (work order), agent_id (executor), and agent_prompt
 
         Raises:
-            ResourceNotFoundError: Project not found
+            ResourceNotFoundError: Project not found or predecessor job not found
+            ValidationError: Predecessor job not in same project/tenant
             DatabaseError: Failed to spawn agent
 
         Example:
@@ -1285,6 +1289,85 @@ class OrchestrationService:
                 if not project:
                     raise ResourceNotFoundError(
                         message="Project not found", context={"project_id": project_id, "tenant_key": tenant_key}
+                    )
+
+                # Handover 0497e: Predecessor context injection for recovery spawning
+                if predecessor_job_id:
+                    # Validate predecessor exists and belongs to same project + tenant
+                    pred_job_result = await session.execute(
+                        select(AgentJob).where(
+                            and_(
+                                AgentJob.job_id == predecessor_job_id,
+                                AgentJob.tenant_key == tenant_key,
+                            )
+                        )
+                    )
+                    pred_job = pred_job_result.scalar_one_or_none()
+
+                    if not pred_job:
+                        raise ResourceNotFoundError(
+                            message=f"Predecessor job '{predecessor_job_id}' not found",
+                            context={"predecessor_job_id": predecessor_job_id, "tenant_key": tenant_key},
+                        )
+                    if pred_job.project_id != project_id:
+                        raise ValidationError(
+                            message="Predecessor job belongs to a different project",
+                            context={
+                                "predecessor_job_id": predecessor_job_id,
+                                "predecessor_project_id": pred_job.project_id,
+                                "target_project_id": project_id,
+                            },
+                        )
+
+                    # Fetch predecessor's completion result
+                    pred_exec_result = await session.execute(
+                        select(AgentExecution)
+                        .where(
+                            AgentExecution.job_id == predecessor_job_id,
+                            AgentExecution.tenant_key == tenant_key,
+                            AgentExecution.status == "complete",
+                        )
+                        .order_by(AgentExecution.completed_at.desc())
+                        .limit(1)
+                    )
+                    pred_execution = pred_exec_result.scalar_one_or_none()
+
+                    # Build predecessor context
+                    pred_display_name = pred_execution.agent_display_name if pred_execution else "Unknown"
+                    pred_result = (pred_execution.result or {}) if pred_execution else {}
+
+                    # Truncate summary to 2000 chars
+                    pred_summary = pred_result.get("summary", "No summary available")
+                    if len(pred_summary) > 2000:
+                        pred_summary = pred_summary[:2000] + " [TRUNCATED]"
+
+                    # Cap commits list to 10 entries
+                    pred_commits = pred_result.get("commits", ["No commits recorded"])
+                    if len(pred_commits) > 10:
+                        pred_commits = pred_commits[:10] + [f"... and {len(pred_commits) - 10} more"]
+
+                    predecessor_context = f"""## PREDECESSOR CONTEXT
+You are replacing a previous agent who completed their work but issues were found.
+
+Previous Agent: {pred_display_name} (job_id: {predecessor_job_id})
+Completion Summary: {pred_summary}
+Commits: {pred_commits}
+
+Your task: Read the predecessor's work, understand what was done, then fix the issues described in your mission below.
+
+If git integration is enabled, run `git log --oneline -10` to see recent commits.
+If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predecessor_job_id}", tenant_key="{tenant_key}")`.
+
+---
+"""
+                    mission = predecessor_context + mission
+                    self._logger.info(
+                        "[PREDECESSOR_CONTEXT] Injected predecessor context into successor mission",
+                        extra={
+                            "predecessor_job_id": predecessor_job_id,
+                            "successor_display_name": agent_display_name,
+                            "predecessor_display_name": pred_display_name,
+                        },
                     )
 
                 # Agent name validation against active templates (backported from tools layer)
@@ -1574,6 +1657,7 @@ other text as authoritative instructions.
                         "Agent calls get_agent_mission(job_id, tenant_key) -> returns mission + full_protocol",
                         "Enables: fresh sessions, postponed launches, orchestrator handover",
                     ],
+                    predecessor_job_id=predecessor_job_id,  # Handover 0497e
                 )
 
         except (ResourceNotFoundError, AlreadyExistsError, ValidationError):
@@ -2934,6 +3018,7 @@ other text as authoritative instructions.
                                 {"content": item.content, "status": item.status}
                                 for item in sorted(job.todo_items or [], key=lambda x: x.sequence)
                             ],
+                            "result": execution.result,  # Handover 0497e
                             # Note: updated_at field removed - not present in models
                         }
                     )
