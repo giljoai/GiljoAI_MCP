@@ -27,7 +27,7 @@
             <th>Agent Status</th>
             <th>Duration</th>
             <th>Steps</th>
-            <th>Messages</th>
+            <th>Messages Waiting</th>
             <th></th>
             <!-- Actions -->
           </tr>
@@ -193,6 +193,24 @@
                     variant="text"
                     :color="actionIconColor"
                     @click="handleHandOver(agent)"
+                  />
+                </template>
+              </v-tooltip>
+
+              <!-- Stop button: only for working orchestrators (Handover 0498) -->
+              <v-tooltip
+                v-if="agent.agent_display_name === 'orchestrator' && agent.status === 'working'"
+                text="Stop project"
+              >
+                <template #activator="{ props: tooltipProps }">
+                  <v-btn
+                    v-bind="tooltipProps"
+                    icon="mdi-stop-circle-outline"
+                    size="small"
+                    variant="text"
+                    color="error"
+                    data-testid="jobs-stop-btn"
+                    @click="handleStopProject(agent)"
                   />
                 </template>
               </v-tooltip>
@@ -882,6 +900,36 @@ async function handleHandOver(agent) {
   } catch (error) {
     console.error('[JobsTab] Hand over failed:', error)
     const msg = error.response?.data?.detail || error.message || 'Hand over failed'
+    showLocalToast({
+      message: msg,
+      type: 'error',
+      duration: 5000,
+    })
+  }
+}
+
+/**
+ * Handle Stop Project button click (Handover 0498)
+ * Calls termination prompt endpoint and copies prompt to clipboard
+ */
+async function handleStopProject(agent) {
+  try {
+    const response = await api.prompts.termination(projectId.value)
+
+    if (response.data.prompt) {
+      await navigator.clipboard.writeText(response.data.prompt)
+
+      showLocalToast({
+        message: `Termination prompt copied! Paste into orchestrator terminal. (${response.data.agent_count} agents)`,
+        type: 'warning',
+        duration: 8000,
+      })
+    } else {
+      throw new Error('No prompt returned')
+    }
+  } catch (error) {
+    console.error('[JobsTab] Stop project failed:', error)
+    const msg = error.response?.data?.detail || error.message || 'Failed to generate termination prompt'
     showLocalToast({
       message: msg,
       type: 'error',
