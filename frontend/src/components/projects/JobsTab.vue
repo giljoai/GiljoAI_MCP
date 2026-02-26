@@ -40,19 +40,21 @@
           <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
             <!-- Agent Display Name: Play Button + Avatar + Name -->
             <td class="agent-display-name-cell">
-              <!-- Play button: circular, same size as avatar, positioned at left edge -->
-              <v-tooltip v-if="shouldShowCopyButton(agent)" text="Copy prompt">
-                <template #activator="{ props: tooltipProps }">
-                  <button
-                    v-bind="tooltipProps"
-                    type="button"
-                    class="play-circle-btn"
-                    @click="handlePlay(agent)"
-                  >
-                    <v-icon size="18">mdi-play</v-icon>
-                  </button>
-                </template>
-              </v-tooltip>
+              <!-- Fixed-width play button column: always reserves space -->
+              <div class="play-btn-slot">
+                <v-tooltip v-if="shouldShowCopyButton(agent)" text="Copy prompt">
+                  <template #activator="{ props: tooltipProps }">
+                    <button
+                      v-bind="tooltipProps"
+                      type="button"
+                      class="play-circle-btn"
+                      @click="handlePlay(agent)"
+                    >
+                      <v-icon size="18">mdi-play</v-icon>
+                    </button>
+                  </template>
+                </v-tooltip>
+              </div>
               <button
                 type="button"
                 class="agent-avatar-button"
@@ -1208,6 +1210,15 @@ async function copyToClipboard(text) {
           align-items: center;
           gap: 12px;
 
+          .play-btn-slot {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
           .play-circle-btn {
             flex-shrink: 0;
             width: 32px;
@@ -1251,6 +1262,8 @@ async function copyToClipboard(text) {
           .agent-info {
             display: flex;
             flex-direction: column;
+            flex: 1;
+            min-width: 0;
 
             .agent-name-primary {
               font-weight: 500;
