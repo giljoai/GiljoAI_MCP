@@ -401,7 +401,7 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       // Use server-provided counter from WebSocket event
       upsertJob({
         ...previous,
-        messages_waiting_count: payload.recipient_waiting_count ?? (previous.messages_waiting_count || 0) + 1,
+        messages_waiting_count: payload.waiting_count ?? (previous.messages_waiting_count || 0) + 1,
       })
     }
   }
