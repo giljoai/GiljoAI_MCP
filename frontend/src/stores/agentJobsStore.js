@@ -287,20 +287,25 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       updates.job_metadata = { todo_steps: payload.todo_steps }
 
       if (Array.isArray(payload.todo_steps)) {
-        // Array format: count completed vs total
+        // Array format: count completed, skipped vs total
         const completed = payload.todo_steps.filter(
           (s) => s.status === 'done' || s.status === 'completed'
         ).length
+        const skipped = payload.todo_steps.filter(
+          (s) => s.status === 'skipped'
+        ).length
         updates.steps = {
           completed,
+          skipped,
           total: payload.todo_steps.length,
         }
       } else if (typeof payload.todo_steps === 'object') {
-        // Object format from backend: { total_steps, completed_steps }
+        // Object format from backend: { total_steps, completed_steps, skipped_steps }
         const total = payload.todo_steps.total_steps
         const completed = payload.todo_steps.completed_steps
+        const skipped = payload.todo_steps.skipped_steps || 0
         if (typeof total === 'number' && typeof completed === 'number') {
-          updates.steps = { completed, total }
+          updates.steps = { completed, skipped, total }
         }
       }
     }
