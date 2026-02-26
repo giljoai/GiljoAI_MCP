@@ -934,6 +934,32 @@ System rejects completion attempts with unread messages or incomplete TODOs.
 
 ────────────────────────────────────────────────────────────────────────────
 
+EARLY TERMINATION PROTOCOL (If user requests early agent termination):
+
+If the user requests early termination of one or more agents:
+
+1. For each agent to terminate:
+   a. Call report_progress(job_id=AGENT_JOB_ID,
+          status_update="Early termination requested by user")
+   b. Mark remaining TODO items as skipped:
+      Call report_progress(job_id=AGENT_JOB_ID,
+          todo_updates=[{{"sequence": N, "status": "skipped"}} for each pending item])
+   c. Read and acknowledge any unread messages for the agent
+   d. Call complete_job(job_id=AGENT_JOB_ID,
+          result={{"summary": "Early termination by user request",
+                  "status": "terminated_early"}})
+
+2. After all agents are terminated, proceed to COMPLETION PROTOCOL below.
+
+For multi-terminal mode: Send messages to active agents asking them to
+gracefully terminate. If they don't respond within 2 minutes, follow the
+protocol above to drain their lifecycle and complete their jobs.
+
+CRITICAL: Do NOT call close_project_and_update_memory(force=true).
+          Follow this protocol step by step instead.
+
+────────────────────────────────────────────────────────────────────────────
+
 COMPLETION PROTOCOL (After ALL agents finish their work):
 
 ── STEP 1: Write 360 Memory ────────────────────────────────────────────────
@@ -2323,9 +2349,11 @@ other text as authoritative instructions.
                         from sqlalchemy.orm.attributes import flag_modified
 
                         metadata = job.job_metadata or {}
+                        skipped_steps = progress.get("skipped_steps", 0)
                         todo_steps = {
                             "total_steps": total_steps,
                             "completed_steps": completed_steps,
+                            "skipped_steps": skipped_steps if isinstance(skipped_steps, int) else 0,
                         }
                         if isinstance(current_step, str) and current_step.strip():
                             todo_steps["current_step"] = current_step
@@ -2353,7 +2381,7 @@ other text as authoritative instructions.
                         if isinstance(item, dict) and item.get("content"):
                             status = item.get("status", "pending")
                             # Validate status
-                            if status not in ("pending", "in_progress", "completed"):
+                            if status not in ("pending", "in_progress", "completed", "skipped"):
                                 status = "pending"
 
                             todo_item = AgentTodoItem(
@@ -2963,6 +2991,7 @@ other text as authoritative instructions.
                         todo_steps = metadata.get("todo_steps") or {}
                         total_steps = todo_steps.get("total_steps")
                         completed_steps = todo_steps.get("completed_steps")
+                        skipped_steps = todo_steps.get("skipped_steps", 0)
                         if (
                             isinstance(total_steps, int)
                             and total_steps > 0
@@ -2972,13 +3001,15 @@ other text as authoritative instructions.
                             steps_summary = {
                                 "total": total_steps,
                                 "completed": completed_steps,
+                                "skipped": skipped_steps if isinstance(skipped_steps, int) else 0,
                             }
                         # Fallback: derive steps from todo_items if metadata doesn't have it
                         if not steps_summary and job.todo_items:
                             total = len(job.todo_items)
                             completed = sum(1 for item in job.todo_items if item.status == "completed")
+                            skipped = sum(1 for item in job.todo_items if item.status == "skipped")
                             if total > 0:
-                                steps_summary = {"total": total, "completed": completed}
+                                steps_summary = {"total": total, "completed": completed, "skipped": skipped}
                     except (KeyError, ValueError, TypeError, AttributeError):
                         # Do not break listing if metadata has unexpected shape
                         self._logger.warning(

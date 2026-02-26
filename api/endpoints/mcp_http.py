@@ -559,7 +559,10 @@ async def handle_tools_list(
                             "type": "object",
                             "properties": {
                                 "content": {"type": "string", "description": "Task description"},
-                                "status": {"type": "string", "enum": ["pending", "in_progress", "completed"]},
+                                "status": {
+                                    "type": "string",
+                                    "enum": ["pending", "in_progress", "completed", "skipped"],
+                                },
                             },
                             "required": ["content", "status"],
                         },

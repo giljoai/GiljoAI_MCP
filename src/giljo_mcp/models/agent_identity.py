@@ -348,7 +348,7 @@ class AgentTodoItem(Base):
         String(20),
         nullable=False,
         default="pending",
-        comment="Item status: pending, in_progress, completed",
+        comment="Item status: pending, in_progress, completed, skipped",
     )
     sequence = Column(
         Integer,
@@ -372,7 +372,7 @@ class AgentTodoItem(Base):
         Index("idx_todo_items_tenant_status", "tenant_key", "status"),
         Index("idx_todo_items_job_sequence", "job_id", "sequence"),
         CheckConstraint(
-            "status IN ('pending', 'in_progress', 'completed')",
+            "status IN ('pending', 'in_progress', 'completed', 'skipped')",
             name="ck_agent_todo_item_status",
         ),
         CheckConstraint(
