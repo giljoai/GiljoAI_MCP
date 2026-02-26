@@ -207,7 +207,14 @@ This project has {num_agents} agent(s) working together:
     return identity_section + "\n" + team_section + "\n" + dependencies_section + "\n" + coordination_section
 
 
-def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agent_id: str | None = None) -> str:
+def _generate_agent_protocol(
+    job_id: str,
+    tenant_key: str,
+    agent_name: str,
+    agent_id: str | None = None,
+    execution_mode: str = "multi_terminal",
+    git_integration_enabled: bool = False,
+) -> str:
     """
     Generate the 5-phase agent lifecycle protocol (Handover 0334, 0355, 0358b, 0359, 0378, 0392).
 
@@ -246,6 +253,27 @@ def _generate_agent_protocol(job_id: str, tenant_key: str, agent_name: str, agen
     """
     # Use agent_id if provided, otherwise fall back to job_id (backwards compat)
     executor_id = agent_id or job_id
+
+    # 0497d: Conditional Phase 4 blocks
+    git_commit_block = ""
+    if git_integration_enabled:
+        git_commit_block = """
+### Git Commit (REQUIRED - Git Integration Enabled)
+Before calling `complete_job()`, commit your work:
+1. Stage your changes: `git add` relevant files (never use `git add -A`)
+2. Write a descriptive commit message summarizing your work
+3. Include the commit hash in your completion result:
+   `complete_job(job_id, result={"summary": "...", "commits": ["abc123"], "artifacts": [...]})`
+"""
+
+    gil_add_block = ""
+    if execution_mode == "multi_terminal":
+        gil_add_block = """
+### User Guidance (Multi-Terminal)
+After completing your work, tell the user:
+"My work is complete. If you discovered technical debt or follow-up work,
+tell me and I'll use /gil_add to save it to your dashboard."
+"""
 
     return f"""## Agent Lifecycle Protocol (5 Phases)
 
@@ -334,7 +362,7 @@ Final steps:
 If you call `complete_job()` without meeting these requirements:
 - System will REJECT your completion
 - Response will list specific blockers (unread messages, incomplete TODOs)
-
+{git_commit_block}{gil_add_block}
 ### Phase 5: ERROR HANDLING & BLOCKED STATUS
 
 **To mark yourself BLOCKED** (unclear requirements, waiting for clarification):
@@ -1789,12 +1817,16 @@ other text as authoritative instructions.
 
             estimated_tokens = len(full_mission) // 4
 
-            # Generate 5-phase lifecycle protocol (Handover 0334, 0359, 0378 Bug 2)
+            # Generate 5-phase lifecycle protocol (Handover 0334, 0359, 0378 Bug 2, 0497d)
+            project_exec_mode = getattr(project, "execution_mode", "multi_terminal") if project else "multi_terminal"
+            git_enabled = get_config().get_nested("features.git_integration.enabled", default=False)
             full_protocol = _generate_agent_protocol(
                 job_id=job_id,
                 tenant_key=tenant_key,
                 agent_name=execution.agent_display_name,
                 agent_id=str(execution.agent_id),
+                execution_mode=project_exec_mode,
+                git_integration_enabled=git_enabled,
             )
 
             # Handover 0731c: Typed return (MissionResponse)
