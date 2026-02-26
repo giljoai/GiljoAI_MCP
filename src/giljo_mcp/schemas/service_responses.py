@@ -322,6 +322,7 @@ class SpawnResult(BaseModel):
     total_tokens: int = 0
     thin_client: bool = True
     thin_client_note: list[str] = Field(default_factory=list)
+    predecessor_job_id: Optional[str] = None  # Handover 0497e: Recovery spawning
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -126,6 +126,8 @@ class JobResponse(BaseModel):
     todo_items: list[TodoItemResponse] = Field(default_factory=list)
     # Handover 0411a: Execution phase for multi-terminal ordering
     phase: Optional[int] = None
+    # Handover 0497e: Completion result for frontend display
+    result: Optional[dict] = None
 
 
 class PendingJobsResponse(BaseModel):

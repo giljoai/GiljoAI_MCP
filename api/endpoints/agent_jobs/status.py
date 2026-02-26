@@ -72,6 +72,7 @@ def job_to_response(job: dict) -> JobResponse:
         steps=job.get("steps"),
         todo_items=todo_items,  # Handover 0423
         phase=job.get("phase"),  # Handover 0411a
+        result=job.get("result"),  # Handover 0497e
     )
 
 
