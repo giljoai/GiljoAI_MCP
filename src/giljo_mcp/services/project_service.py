@@ -40,7 +40,7 @@ from src.giljo_mcp.exceptions import (
 
 # Import Pattern: Use modular imports from models package (Post-0128a)
 # See models/__init__.py for migration guidance
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Message, Task
 from src.giljo_mcp.schemas.service_responses import (
@@ -895,7 +895,7 @@ class ProjectService:
                 project.updated_at = datetime.now(timezone.utc)
                 project.closeout_executed_at = datetime.now(timezone.utc)
 
-                # Decommission associated agents (migrated to AgentExecution - Handover 0367a)
+                # Decommission associated agents with smart lifecycle drain (Handover 0498)
                 # Query AgentExecution records via join with AgentJob
                 agent_result = await session.execute(
                     select(AgentExecution)
@@ -912,6 +912,8 @@ class ProjectService:
                 decommissioned_ids = []
 
                 for execution in executions_to_decommission:
+                    # Drain lifecycle before decommissioning (Handover 0498)
+                    await self._drain_agent_lifecycle(session, execution, project_id, tenant_key)
                     execution.status = "decommissioned"
                     execution.updated_at = datetime.now(timezone.utc)
                     decommissioned_ids.append(execution.job_id)
@@ -938,6 +940,50 @@ class ProjectService:
                 message=f"Failed to close out project: {e!s}",
                 context={"project_id": project_id, "tenant_key": tenant_key},
             ) from e
+
+    async def _drain_agent_lifecycle(
+        self,
+        session: AsyncSession,
+        execution: AgentExecution,
+        project_id: str,
+        tenant_key: str,
+    ) -> None:
+        """
+        Drain an agent's lifecycle before decommissioning (Handover 0498).
+
+        1. Mark pending/in_progress TODO items as 'skipped'
+        2. Mark unread messages as read with '[SKIPPED - early termination]' prefix
+        """
+        # Mark incomplete TODO items as skipped
+        todo_result = await session.execute(
+            select(AgentTodoItem).where(
+                and_(
+                    AgentTodoItem.job_id == execution.job_id,
+                    AgentTodoItem.tenant_key == tenant_key,
+                    AgentTodoItem.status.in_(("pending", "in_progress")),
+                )
+            )
+        )
+        for todo in todo_result.scalars().all():
+            todo.status = "skipped"
+
+        # Mark unread messages as acknowledged with prefix
+        msg_result = await session.execute(
+            select(Message).where(
+                and_(
+                    Message.project_id == project_id,
+                    Message.tenant_key == tenant_key,
+                )
+            )
+        )
+        now = datetime.now(timezone.utc)
+        for msg in msg_result.scalars().all():
+            to_agents = msg.to_agents or []
+            acknowledged = msg.acknowledged_by or []
+            if execution.agent_id in to_agents and execution.agent_id not in acknowledged:
+                msg.content = f"[SKIPPED - early termination] {msg.content or ''}"
+                msg.acknowledged_by = [*acknowledged, execution.agent_id]
+                msg.acknowledged_at = now
 
     async def continue_working(self, project_id: str, tenant_key: str) -> ProjectResumeResult:
         """
