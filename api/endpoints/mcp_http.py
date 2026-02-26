@@ -257,7 +257,9 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
         "project_id",
         "tenant_key",
         "phase",
+        "predecessor_job_id",
     },
+    "get_agent_result": {"job_id", "tenant_key"},
     "get_workflow_status": {"project_id", "tenant_key", "exclude_job_id"},
     # Context Tools
     "fetch_context": {
@@ -620,8 +622,24 @@ async def handle_tools_list(
                         "type": "integer",
                         "description": "Execution phase number for multi-terminal ordering (1=first, same number=parallel, higher=later). Only used in multi-terminal mode.",
                     },
+                    "predecessor_job_id": {
+                        "type": "string",
+                        "description": "Optional job_id of a completed predecessor agent whose work needs fixing. Injects predecessor context (summary, commits) into the successor's mission.",
+                    },
                 },
                 "required": ["agent_display_name", "agent_name", "mission", "project_id"],
+            },
+        },
+        {
+            "name": "get_agent_result",
+            "description": "Fetch the completion result of a finished agent job. Returns the structured result dict (summary, artifacts, commits) stored when the agent called complete_job. Use this to read what a predecessor agent accomplished. Handover 0497e.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "Job UUID of the completed agent"},
+                    "tenant_key": {"type": "string", "description": "Tenant key"},
+                },
+                "required": ["job_id"],
             },
         },
         {
@@ -827,6 +845,7 @@ async def handle_tools_call(
         # Orchestration Tools (Handover 0088)
         "get_agent_mission": state.tool_accessor.get_agent_mission,
         "spawn_agent_job": state.tool_accessor.spawn_agent_job,
+        "get_agent_result": state.tool_accessor.get_agent_result,
         "get_workflow_status": state.tool_accessor.get_workflow_status,
         # Succession tools removed (0391/0461/0700d) - user triggers via UI button or /gil_handover slash command
         # Unified Context Tool (Handover 0350a)

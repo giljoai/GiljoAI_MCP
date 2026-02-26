@@ -742,6 +742,7 @@ class ToolAccessor:
         tenant_key: str,
         parent_job_id: str | None = None,
         phase: int | None = None,
+        predecessor_job_id: str | None = None,
     ) -> dict[str, Any]:
         """Create an agent job (delegates to OrchestrationService)"""
         return await self._orchestration_service.spawn_agent_job(
@@ -752,7 +753,15 @@ class ToolAccessor:
             tenant_key=tenant_key,
             parent_job_id=parent_job_id,
             phase=phase,
+            predecessor_job_id=predecessor_job_id,
         )
+
+    async def get_agent_result(self, job_id: str, tenant_key: str) -> dict[str, Any]:
+        """Fetch completion result for a completed agent job (delegates to OrchestrationService). Handover 0497e."""
+        result = await self._orchestration_service.get_agent_result(job_id=job_id, tenant_key=tenant_key)
+        if result is None:
+            return {"result": None, "message": "No completion result found for this job"}
+        return {"result": result}
 
     async def get_agent_mission(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """Get agent-specific mission (delegates to OrchestrationService). Handover 0381: job_id contract."""
