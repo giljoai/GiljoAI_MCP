@@ -938,6 +938,12 @@ Send ESCALATION: message to developer/user for intervention.
 - **normal** - Progress, questions, completions
 - **low** - Status broadcasts, informational
 
+### Early Termination
+If the user requests early termination of agents, do NOT use force close.
+Instead: mark remaining TODOs as "skipped" via report_progress, acknowledge
+unread messages, then complete_job for each agent before proceeding to your
+own completion protocol. See full_protocol for detailed steps.
+
 Tool signatures and full protocol in `full_protocol` from `get_agent_mission()`.
 """
 
