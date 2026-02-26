@@ -24,14 +24,10 @@
         <thead>
           <tr>
             <th class="text-center">Agent Name</th>
-            <th>Agent ID</th>
             <th>Agent Status</th>
             <th>Duration</th>
-            <th>Job Acknowledged</th>
             <th>Steps</th>
-            <th>Messages Sent</th>
-            <th>Messages waiting</th>
-            <th>Messages Read</th>
+            <th>Messages</th>
             <th></th>
             <!-- Actions -->
           </tr>
@@ -90,54 +86,6 @@
               </div>
             </td>
 
-            <!-- Agent ID: Dual display -->
-            <td class="agent-id-cell" data-testid="agent-id">
-              <div class="id-container">
-                <div class="id-row">
-                  <span class="id-label">Agent:</span>
-                  <v-tooltip
-                    :text="agent.agent_id || agent.job_id || '—'"
-                    location="top"
-                    open-on-hover
-                    open-on-click
-                  >
-                    <template #activator="{ props: tooltipProps }">
-                      <button
-                        type="button"
-                        class="id-value id-value-button"
-                        v-bind="tooltipProps"
-                        aria-label="Show full agent ID"
-                        @click="copyId(agent.agent_id || agent.job_id, 'Agent ID')"
-                      >
-                        {{ getShortId(agent.agent_id || agent.job_id) }}
-                      </button>
-                    </template>
-                  </v-tooltip>
-                </div>
-                <div class="id-row">
-                  <span class="id-label">Job:</span>
-                  <v-tooltip
-                    :text="agent.job_id || '—'"
-                    location="top"
-                    open-on-hover
-                    open-on-click
-                  >
-                    <template #activator="{ props: tooltipProps }">
-                      <button
-                        type="button"
-                        class="id-value id-value-button"
-                        v-bind="tooltipProps"
-                        aria-label="Show full job ID"
-                        @click="copyId(agent.job_id, 'Job ID')"
-                      >
-                        {{ getShortId(agent.job_id) }}
-                      </button>
-                    </template>
-                  </v-tooltip>
-                </div>
-              </div>
-            </td>
-
             <!-- Agent Status: Dynamic binding from agent.status -->
             <td
               class="status-cell"
@@ -155,28 +103,6 @@
               {{ formatDuration(agent) }}
             </td>
 
-            <!-- Job Acknowledged -->
-            <td class="checkbox-cell">
-              <!-- Checkmark when acknowledged -->
-              <v-icon
-                v-if="agent.mission_acknowledged_at"
-                icon="mdi-check"
-                color="success"
-                size="small"
-                :title="formatAcknowledgmentTooltip(agent.mission_acknowledged_at)"
-                :aria-label="formatAcknowledgmentTooltip(agent.mission_acknowledged_at)"
-              />
-              <!-- Dash when not acknowledged -->
-              <v-icon
-                v-else
-                icon="mdi-minus-circle-outline"
-                color="grey"
-                size="small"
-                title="Not yet acknowledged"
-                aria-label="Mission not yet acknowledged"
-              />
-            </td>
-
             <!-- Steps (numeric TODO progress) -->
             <td class="steps-cell text-center">
               <button
@@ -186,44 +112,20 @@
                 data-testid="steps-trigger"
                 @click="handleStepsClick(agent)"
               >
-                {{ agent.steps.completed }} / {{ agent.steps.total }}
+                {{ agent.steps.completed }}<span v-if="agent.steps.skipped" class="steps-skipped">({{ agent.steps.skipped }})</span> / {{ agent.steps.total }}
               </button>
               <span v-else>—</span>
             </td>
 
-            <!-- Messages Sent -->
-            <td class="messages-sent-cell text-center">
-              <button
-                type="button"
-                class="message-count-button"
-                aria-label="View messages sent"
-                @click="handleMessages(agent)"
-              >
-                <span class="message-count">{{ getMessagesSent(agent) }}</span>
-              </button>
-            </td>
-
-            <!-- Messages Waiting -->
+            <!-- Messages (waiting count) -->
             <td class="messages-waiting-cell text-center">
               <button
                 type="button"
                 class="message-count-button"
-                aria-label="View messages waiting"
+                aria-label="View messages"
                 @click="handleMessages(agent)"
               >
                 <span class="message-count message-waiting">{{ getMessagesWaiting(agent) }}</span>
-              </button>
-            </td>
-
-            <!-- Messages Read -->
-            <td class="messages-read-cell text-center">
-              <button
-                type="button"
-                class="message-count-button"
-                aria-label="View messages read"
-                @click="handleMessages(agent)"
-              >
-                <span class="message-count message-read">{{ getMessagesRead(agent) }}</span>
               </button>
             </td>
 
@@ -1354,8 +1256,9 @@ async function copyToClipboard(text) {
           color: rgba(var(--v-theme-on-surface), 0.7);
         }
 
-        &.checkbox-cell {
-          text-align: center;
+        .steps-skipped {
+          color: #ff9800;
+          font-weight: 600;
         }
 
         &.count-cell {
