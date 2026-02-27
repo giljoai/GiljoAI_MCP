@@ -490,6 +490,8 @@ export const api = {
     agentPrompt: (agentJobId) => apiClient.get(`/api/v1/prompts/agent/${agentJobId}`),
     // Handover 0344: CLI mode implementation prompt for orchestrator play button
     implementation: (projectId) => apiClient.get(`/api/v1/prompts/implementation/${projectId}`),
+    // Handover 0498: Termination prompt for early project shutdown
+    termination: (projectId) => apiClient.get(`/api/v1/prompts/termination/${projectId}`),
     // Handover 0396: Orchestrator prompt for copy-to-clipboard (Claude Code or Codex/Gemini)
     orchestrator: (tool, projectId) =>
       apiClient.get(`/api/v1/prompts/orchestrator/${tool}`, {

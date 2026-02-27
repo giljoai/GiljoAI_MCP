@@ -25,6 +25,7 @@ from api.schemas.prompt import (
     OrchestratorPromptRequest,
     OrchestratorPromptResponse,
     StagingPromptResponse,
+    TerminationPromptResponse,
     ThinOrchestratorPromptResponse,
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
@@ -624,4 +625,170 @@ async def get_implementation_prompt(
         "prompt": prompt,
         "orchestrator_job_id": orchestrator_execution.agent_id,
         "agent_count": len(agent_executions),
+    }
+
+
+@router.get("/termination/{project_id}", response_model=TerminationPromptResponse)
+async def get_termination_prompt(
+    project_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Generate termination prompt for early project shutdown (Handover 0498).
+
+    Returns a prompt the user pastes into the orchestrator's terminal to
+    gracefully terminate all agents and close out the project.
+
+    Args:
+        project_id: Project UUID
+        current_user: Authenticated user (ensures tenant isolation)
+        db: Database session
+
+    Returns:
+        TerminationPromptResponse with prompt text, orchestrator job ID, agent count
+
+    Raises:
+        HTTPException 404: Project not found or no working orchestrator
+    """
+    from sqlalchemy.orm.attributes import flag_modified
+
+    # 1. Fetch project with tenant isolation
+    project_stmt = select(Project).where(
+        Project.id == project_id,
+        Project.tenant_key == current_user.tenant_key,
+    )
+    project_result = await db.execute(project_stmt)
+    project = project_result.scalar_one_or_none()
+
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found or not accessible",
+        )
+
+    # 2. Fetch working orchestrator execution
+    orchestrator_stmt = (
+        select(AgentExecution)
+        .options(joinedload(AgentExecution.job))
+        .where(
+            AgentExecution.tenant_key == current_user.tenant_key,
+            AgentExecution.agent_display_name == "orchestrator",
+            AgentExecution.status == "working",
+        )
+        .join(
+            AgentJob,
+            (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key),
+        )
+        .where(AgentJob.project_id == project_id)
+        .order_by(AgentExecution.started_at.desc().nullslast())
+    )
+    orchestrator_result = await db.execute(orchestrator_stmt)
+    orchestrator = orchestrator_result.scalar_one_or_none()
+
+    if not orchestrator:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No working orchestrator found for this project.",
+        )
+
+    # 3. Fetch all spawned agent executions (any non-orchestrator)
+    agent_stmt = (
+        select(AgentExecution)
+        .options(joinedload(AgentExecution.job))
+        .where(
+            AgentExecution.tenant_key == current_user.tenant_key,
+            AgentExecution.agent_display_name != "orchestrator",
+        )
+        .join(
+            AgentJob,
+            (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key),
+        )
+        .where(AgentJob.project_id == project_id)
+        .order_by(AgentExecution.started_at.asc().nullsfirst())
+    )
+    agent_result = await db.execute(agent_stmt)
+    agents = agent_result.scalars().all()
+
+    # 4. Set early_termination flag on project metadata
+    meta = project.meta_data or {}
+    meta["early_termination"] = True
+    project.meta_data = meta
+    flag_modified(project, "meta_data")
+    await db.commit()
+
+    # 5. Build agent list for prompt
+    agent_lines = []
+    for agent in agents:
+        display = agent.agent_display_name or agent.agent_name or agent.agent_id
+        agent_lines.append(f"  - {display} | job_id: {agent.job_id} | status: {agent.status}")
+    agent_section = "\n".join(agent_lines) if agent_lines else "  (no spawned agents)"
+
+    # 6. Build termination prompt
+    prompt = f"""URGENT: USER-INITIATED PROJECT TERMINATION
+
+The user has requested early termination of this project.
+
+STEP 1: STOP ALL WORK IMMEDIATELY
+- Stop any work you are currently doing
+- If you have spawned subagents or subprocesses, stop them now
+- Do NOT start any new tasks
+
+STEP 2: WAIT FOR USER CONFIRMATION
+Tell the user:
+"I've stopped working. Please close any other agent terminals that are still
+running. Say 'proceed' once all agents are stopped and I will close out the
+project."
+
+Wait for the user to respond before continuing to Step 3.
+
+STEP 3: CLOSE OUT EACH AGENT
+Once the user confirms all agents are stopped, for each agent listed below:
+  a. Drain unread messages (required before complete_job):
+     receive_messages(agent_id=<AGENT_ID>)
+  b. Mark remaining TODOs as skipped:
+     report_progress(job_id=<AGENT_JOB_ID>,
+         todo_items=[...mark any pending/in_progress as "skipped"])
+  c. Complete the agent:
+     complete_job(job_id=<AGENT_JOB_ID>,
+         result={{"summary": "Early termination by user",
+                 "status": "terminated_early"}})
+
+Skip agents that are already in status "complete" or "decommissioned".
+
+STEP 4: CLOSE OUT YOURSELF
+After ALL agents are completed:
+  a. Drain your own unread messages:
+     receive_messages(agent_id="{orchestrator.agent_id}")
+  b. Write 360 Memory:
+     write_360_memory(project_id="{project_id}",
+         summary="Project terminated early by user request. <summarize what was accomplished>",
+         key_outcomes=[<what was done so far>],
+         decisions_made=["User terminated project before completion"])
+  c. Complete your own job (this MUST be the last call):
+     complete_job(job_id="{orchestrator.job_id}",
+         result={{"summary": "Project closeout after early termination",
+                 "status": "terminated_early"}})
+
+CRITICAL: Do NOT call close_project_and_update_memory(). Follow Steps 3-4 instead.
+          Calling it with force=true will decommission you before you can self-complete.
+
+AGENTS:
+{agent_section}
+
+YOUR IDENTITY:
+job_id: {orchestrator.job_id}
+agent_id: {orchestrator.agent_id}
+project_id: {project_id}"""
+
+    logger.info(
+        f"[TERMINATION PROMPT] Generated for project={project_id}, "
+        f"orchestrator={orchestrator.agent_id}, agents={len(agents)}, "
+        f"user={current_user.username}"
+    )
+
+    return {
+        "prompt": prompt,
+        "orchestrator_job_id": orchestrator.job_id,
+        "agent_count": len(agents),
     }

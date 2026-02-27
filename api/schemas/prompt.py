@@ -268,3 +268,16 @@ class ImplementationPromptResponse(BaseModel):
     agent_count: int = Field(..., description="Number of spawned agents ready to execute")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TerminationPromptResponse(BaseModel):
+    """
+    Schema for termination prompt response (Handover 0498).
+    GET /api/v1/prompts/termination/{project_id}
+    """
+
+    prompt: str = Field(..., description="Termination prompt for user to paste into orchestrator terminal")
+    orchestrator_job_id: str = Field(..., description="Orchestrator job UUID")
+    agent_count: int = Field(..., description="Number of agents included in termination prompt")
+
+    model_config = ConfigDict(from_attributes=True)

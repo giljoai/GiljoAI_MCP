@@ -934,32 +934,6 @@ System rejects completion attempts with unread messages or incomplete TODOs.
 
 ────────────────────────────────────────────────────────────────────────────
 
-EARLY TERMINATION PROTOCOL (If user requests early agent termination):
-
-If the user requests early termination of one or more agents:
-
-1. For each agent to terminate:
-   a. Call report_progress(job_id=AGENT_JOB_ID,
-          status_update="Early termination requested by user")
-   b. Mark remaining TODO items as skipped:
-      Call report_progress(job_id=AGENT_JOB_ID,
-          todo_updates=[{{"sequence": N, "status": "skipped"}} for each pending item])
-   c. Read and acknowledge any unread messages for the agent
-   d. Call complete_job(job_id=AGENT_JOB_ID,
-          result={{"summary": "Early termination by user request",
-                  "status": "terminated_early"}})
-
-2. After all agents are terminated, proceed to COMPLETION PROTOCOL below.
-
-For multi-terminal mode: Send messages to active agents asking them to
-gracefully terminate. If they don't respond within 2 minutes, follow the
-protocol above to drain their lifecycle and complete their jobs.
-
-CRITICAL: Do NOT call close_project_and_update_memory(force=true).
-          Follow this protocol step by step instead.
-
-────────────────────────────────────────────────────────────────────────────
-
 COMPLETION PROTOCOL (After ALL agents finish their work):
 
 ── STEP 1: Write 360 Memory ────────────────────────────────────────────────

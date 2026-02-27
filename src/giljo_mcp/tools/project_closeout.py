@@ -14,8 +14,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Message
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
@@ -274,62 +273,15 @@ async def _check_agent_readiness(
     return (len(blockers) == 0, blockers)
 
 
-async def _drain_agent_lifecycle(
-    session: AsyncSession,
-    execution: AgentExecution,
-    project_id: str,
-    tenant_key: str,
-) -> None:
-    """
-    Drain an agent's lifecycle before decommissioning (Handover 0498).
-
-    1. Mark pending/in_progress TODO items as 'skipped'
-    2. Mark unread messages as read with '[SKIPPED - early termination]' prefix
-    """
-    # Step 1: Mark incomplete TODO items as skipped
-    todo_stmt = select(AgentTodoItem).where(
-        and_(
-            AgentTodoItem.job_id == execution.job_id,
-            AgentTodoItem.tenant_key == tenant_key,
-            AgentTodoItem.status.in_(("pending", "in_progress")),
-        )
-    )
-    todo_result = await session.execute(todo_stmt)
-    for todo in todo_result.scalars().all():
-        todo.status = "skipped"
-
-    # Step 2: Mark unread messages as acknowledged with prefix
-    msg_stmt = select(Message).where(
-        and_(
-            Message.project_id == project_id,
-            Message.tenant_key == tenant_key,
-        )
-    )
-    msg_result = await session.execute(msg_stmt)
-    now = datetime.now(timezone.utc)
-    for msg in msg_result.scalars().all():
-        # Check if this agent is a recipient and hasn't acknowledged yet
-        to_agents = msg.to_agents or []
-        acknowledged = msg.acknowledged_by or []
-        if execution.agent_id in to_agents and execution.agent_id not in acknowledged:
-            msg.content = f"[SKIPPED - early termination] {msg.content or ''}"
-            msg.acknowledged_by = [*acknowledged, execution.agent_id]
-            msg.acknowledged_at = now
-
-
 async def _force_decommission_agents(
     session: AsyncSession,
     project_id: str,
     tenant_key: str,
 ) -> list[str]:
     """
-    Drain lifecycle then decommission all active agents (Handover 0498).
+    Decommission all active agents for project closeout.
 
-    For each active agent:
-    1. Mark pending/in_progress TODOs as 'skipped'
-    2. Mark unread messages as read with '[SKIPPED - early termination]' prefix
-    3. Set execution status to 'decommissioned'
-
+    Sets execution status to 'decommissioned' for any still-active agents.
     Returns list of agent display names that were decommissioned.
     """
     exec_stmt = (
@@ -348,7 +300,6 @@ async def _force_decommission_agents(
 
     decommissioned_names: list[str] = []
     for execution in executions:
-        await _drain_agent_lifecycle(session, execution, project_id, tenant_key)
         execution.status = "decommissioned"
         decommissioned_names.append(execution.agent_display_name or execution.agent_name or execution.agent_id)
 

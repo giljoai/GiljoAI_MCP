@@ -117,7 +117,7 @@ const props = defineProps({
     type: String,
     required: true,
     validator: (value) =>
-      ['inactive', 'active', 'completed', 'cancelled', 'deleted'].includes(value),
+      ['inactive', 'active', 'completed', 'cancelled', 'terminated', 'deleted'].includes(value),
   },
   projectId: {
     type: String,
@@ -159,6 +159,11 @@ const statusConfig = {
     label: 'Cancelled',
     color: 'warning',
     icon: 'mdi-cancel',
+  },
+  terminated: {
+    label: 'Terminated',
+    color: 'error',
+    icon: 'mdi-stop-circle',
   },
   deleted: {
     label: 'Deleted',
