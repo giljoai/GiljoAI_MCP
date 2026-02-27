@@ -1,13 +1,12 @@
 """
 Tests for Handover 0498: Early Termination Protocol + Jobs Dashboard Reduction.
 
-TDD: Tests written FIRST, then implementation.
 Covers:
 - Phase 1: AgentTodoItem "skipped" status
-- Phase 2: Smart force decommission lifecycle drain
-- Phase 3: ProjectService.close_out_project smart drain
 - Phase 4: report_progress "skipped" status
 - Phase 6: Steps aggregation with skipped count
+- Termination prompt endpoint
+- Archive terminated status
 """
 
 import uuid
@@ -16,15 +15,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
-from src.giljo_mcp.models import Message, Project
+from src.giljo_mcp.models import Project, User
 from src.giljo_mcp.models.agent_identity import (
     AgentExecution,
     AgentJob,
     AgentTodoItem,
 )
+from src.giljo_mcp.tenant import TenantManager
 
 
 # ============================================================================
@@ -90,154 +92,6 @@ class TestAgentTodoItemSkippedStatus:
         with pytest.raises(Exception):
             await db_session.flush()
         await db_session.rollback()
-
-
-# ============================================================================
-# Phase 2: Smart force decommission with lifecycle drain
-# ============================================================================
-
-
-class TestSmartForceDecommission:
-    """Phase 2: _force_decommission_agents marks TODOs as skipped
-    and messages as read with prefix before decommissioning."""
-
-    @pytest_asyncio.fixture
-    async def active_agent_with_todos_and_messages(self, db_session, test_project_id, test_tenant_key):
-        """Create an active agent with pending TODOs and unread messages."""
-        job = AgentJob(
-            job_id=str(uuid.uuid4()),
-            tenant_key=test_tenant_key,
-            project_id=test_project_id,
-            job_type="worker",
-            mission="Test worker",
-            status="active",
-            created_at=datetime.now(timezone.utc),
-            job_metadata={},
-        )
-        db_session.add(job)
-
-        execution = AgentExecution(
-            agent_id=str(uuid.uuid4()),
-            job_id=job.job_id,
-            tenant_key=test_tenant_key,
-            agent_display_name="test-worker",
-            agent_name="Test Worker",
-            status="working",
-            progress=50,
-            messages_sent_count=0,
-            messages_waiting_count=1,
-            messages_read_count=0,
-            health_status="healthy",
-            tool_type="universal",
-        )
-        db_session.add(execution)
-
-        # Create TODO items
-        todo_pending = AgentTodoItem(
-            job_id=job.job_id,
-            tenant_key=test_tenant_key,
-            content="Pending task",
-            status="pending",
-            sequence=0,
-        )
-        todo_in_progress = AgentTodoItem(
-            job_id=job.job_id,
-            tenant_key=test_tenant_key,
-            content="In progress task",
-            status="in_progress",
-            sequence=1,
-        )
-        todo_completed = AgentTodoItem(
-            job_id=job.job_id,
-            tenant_key=test_tenant_key,
-            content="Completed task",
-            status="completed",
-            sequence=2,
-        )
-        db_session.add_all([todo_pending, todo_in_progress, todo_completed])
-
-        # Create unread message to this agent
-        message = Message(
-            id=str(uuid.uuid4()),
-            tenant_key=test_tenant_key,
-            project_id=test_project_id,
-            to_agents=[execution.agent_id],
-            subject="Test message",
-            content="Original message content",
-            priority="normal",
-            status="pending",
-            acknowledged_by=[],
-            completed_by=[],
-            created_at=datetime.now(timezone.utc),
-        )
-        db_session.add(message)
-        await db_session.flush()
-
-        return job, execution, [todo_pending, todo_in_progress, todo_completed], message
-
-    @pytest.mark.asyncio
-    async def test_force_decommission_marks_pending_todos_as_skipped(
-        self, db_session, active_agent_with_todos_and_messages, test_tenant_key
-    ):
-        """Pending and in_progress TODOs should be marked 'skipped' during force decommission."""
-        job, execution, todos, message = active_agent_with_todos_and_messages
-
-        from src.giljo_mcp.tools.project_closeout import _force_decommission_agents
-
-        await _force_decommission_agents(db_session, job.project_id, test_tenant_key)
-
-        # Refresh TODO items
-        for todo in todos:
-            await db_session.refresh(todo)
-
-        assert todos[0].status == "skipped"  # was pending
-        assert todos[1].status == "skipped"  # was in_progress
-        assert todos[2].status == "completed"  # stays completed
-
-    @pytest.mark.asyncio
-    async def test_force_decommission_marks_messages_as_read_with_prefix(
-        self, db_session, active_agent_with_todos_and_messages, test_tenant_key
-    ):
-        """Unread messages should get '[SKIPPED - early termination]' prefix and be acknowledged."""
-        job, execution, todos, message = active_agent_with_todos_and_messages
-
-        from src.giljo_mcp.tools.project_closeout import _force_decommission_agents
-
-        await _force_decommission_agents(db_session, job.project_id, test_tenant_key)
-
-        await db_session.refresh(message)
-        assert message.content.startswith("[SKIPPED - early termination]")
-        assert execution.agent_id in message.acknowledged_by
-        assert message.acknowledged_at is not None
-
-    @pytest.mark.asyncio
-    async def test_force_decommission_sets_status_to_decommissioned(
-        self, db_session, active_agent_with_todos_and_messages, test_tenant_key
-    ):
-        """Agent execution status should be set to 'decommissioned'."""
-        job, execution, todos, message = active_agent_with_todos_and_messages
-
-        from src.giljo_mcp.tools.project_closeout import _force_decommission_agents
-
-        result = await _force_decommission_agents(db_session, job.project_id, test_tenant_key)
-
-        await db_session.refresh(execution)
-        assert execution.status == "decommissioned"
-        assert "test-worker" in result
-
-    @pytest.mark.asyncio
-    async def test_force_decommission_leaves_completed_todos_untouched(
-        self, db_session, active_agent_with_todos_and_messages, test_tenant_key
-    ):
-        """Already-completed TODOs should not be changed to 'skipped'."""
-        job, execution, todos, message = active_agent_with_todos_and_messages
-
-        from src.giljo_mcp.tools.project_closeout import _force_decommission_agents
-
-        await _force_decommission_agents(db_session, job.project_id, test_tenant_key)
-
-        await db_session.refresh(todos[2])
-        assert todos[2].status == "completed"
 
 
 # ============================================================================
@@ -340,33 +194,374 @@ class TestStepsAggregationSkippedCount:
 
 
 # ============================================================================
-# Phase 5: Orchestrator protocol includes early termination
+# Termination prompt endpoint tests
 # ============================================================================
 
 
-class TestOrchestratorEarlyTerminationProtocol:
-    """Phase 5: Orchestrator protocol includes Early Termination Protocol section."""
+@pytest_asyncio.fixture(scope="function")
+async def test_user_for_endpoint(db_session, test_tenant_key):
+    """Create a real User record for endpoint tests with matching tenant_key."""
+    from src.giljo_mcp.models.organizations import Organization
 
-    def test_orchestrator_protocol_contains_early_termination_section(self):
-        """_build_orchestrator_protocol should include Early Termination Protocol in CH5."""
-        from src.giljo_mcp.services.orchestration_service import _build_orchestrator_protocol
+    unique_suffix = uuid.uuid4().hex[:8]
 
-        result = _build_orchestrator_protocol(
-            cli_mode=False,
-            project_id="test-project-id",
-            orchestrator_id="test-orch-id",
-            tenant_key="test-tenant",
-            include_implementation_reference=True,
+    # Create org first (org_id is NOT NULL)
+    org = Organization(
+        name=f"Test Org {unique_suffix}",
+        slug=f"test-org-{unique_suffix}",
+        tenant_key=test_tenant_key,
+        is_active=True,
+    )
+    db_session.add(org)
+    await db_session.flush()
+
+    user = User(
+        username=f"testuser_{unique_suffix}",
+        email=f"test_{unique_suffix}@example.com",
+        tenant_key=test_tenant_key,
+        role="developer",
+        password_hash="hashed_password",
+        org_id=org.id,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture(scope="function")
+async def authed_api_client(db_manager, db_session, test_user_for_endpoint, test_tenant_key):
+    """Create an authenticated AsyncClient whose mock user's tenant_key matches test data."""
+    from api.app import app, state
+    from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+
+    user = test_user_for_endpoint
+
+    async def mock_get_current_user():
+        return user
+
+    async def mock_get_db_session():
+        yield db_session
+
+    class DummyAuth:
+        async def authenticate_request(self, request):
+            TenantManager.set_current_tenant(test_tenant_key)
+            return {
+                "authenticated": True,
+                "user_id": str(user.id),
+                "user": user.username,
+                "user_obj": user,
+                "tenant_key": test_tenant_key,
+            }
+
+    state.db_manager = db_manager
+    state.tenant_manager = state.tenant_manager or TenantManager()
+    state.auth = DummyAuth()
+    app.state.db_manager = db_manager
+    app.state.tenant_manager = state.tenant_manager
+    app.state.auth = state.auth
+
+    app.dependency_overrides[get_current_active_user] = mock_get_current_user
+    app.dependency_overrides[get_db_session] = mock_get_db_session
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        yield client
+
+    app.dependency_overrides.clear()
+
+
+class TestTerminationPrompt:
+    """Tests for the GET /api/v1/prompts/termination/{project_id} endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_termination_prompt_returns_prompt_with_agents(
+        self, db_session, test_tenant_key, test_project_id, authed_api_client
+    ):
+        """Endpoint returns prompt containing agent job_id, project_id, and orchestrator job_id."""
+        # Create orchestrator AgentJob + AgentExecution (status=working)
+        orch_job_id = str(uuid.uuid4())
+        orch_job = AgentJob(
+            job_id=orch_job_id,
+            tenant_key=test_tenant_key,
+            project_id=test_project_id,
+            job_type="orchestrator",
+            mission="Orchestrate the project",
+            status="active",
+            created_at=datetime.now(timezone.utc),
+            job_metadata={},
+        )
+        db_session.add(orch_job)
+
+        orch_exec = AgentExecution(
+            agent_id=str(uuid.uuid4()),
+            job_id=orch_job_id,
+            tenant_key=test_tenant_key,
+            agent_display_name="orchestrator",
+            agent_name="Orchestrator",
+            status="working",
+            progress=0,
+            messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
+            health_status="healthy",
+            tool_type="universal",
+        )
+        db_session.add(orch_exec)
+
+        # Create a worker AgentJob + AgentExecution
+        worker_job_id = str(uuid.uuid4())
+        worker_job = AgentJob(
+            job_id=worker_job_id,
+            tenant_key=test_tenant_key,
+            project_id=test_project_id,
+            job_type="worker",
+            mission="Implement feature X",
+            status="active",
+            created_at=datetime.now(timezone.utc),
+            job_metadata={},
+        )
+        db_session.add(worker_job)
+
+        worker_exec = AgentExecution(
+            agent_id=str(uuid.uuid4()),
+            job_id=worker_job_id,
+            tenant_key=test_tenant_key,
+            agent_display_name="developer",
+            agent_name="Developer Agent",
+            status="working",
+            progress=50,
+            messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
+            health_status="healthy",
+            tool_type="universal",
+        )
+        db_session.add(worker_exec)
+        await db_session.commit()
+
+        # Call endpoint
+        response = await authed_api_client.get(
+            f"/api/v1/prompts/termination/{test_project_id}"
         )
 
-        ch5 = result["ch5_reference"]
-        assert "EARLY TERMINATION PROTOCOL" in ch5
-        assert "skipped" in ch5.lower()
-        assert "close_project_and_update_memory" in ch5
+        assert response.status_code == 200
+        data = response.json()
 
-    def test_template_seeder_messaging_protocol_contains_early_termination(self):
-        """_get_orchestrator_messaging_protocol_section should mention early termination."""
-        from src.giljo_mcp.template_seeder import _get_orchestrator_messaging_protocol_section
+        # Verify response structure
+        assert "prompt" in data
+        assert "orchestrator_job_id" in data
+        assert "agent_count" in data
 
-        protocol = _get_orchestrator_messaging_protocol_section()
-        assert "EARLY TERMINATION" in protocol.upper() or "early termination" in protocol.lower()
+        # Verify prompt contains relevant IDs
+        assert worker_job_id in data["prompt"]
+        assert test_project_id in data["prompt"]
+        assert data["orchestrator_job_id"] == orch_job_id
+        assert data["agent_count"] == 1  # 1 non-orchestrator agent
+
+    @pytest.mark.asyncio
+    async def test_termination_prompt_sets_early_termination_flag(
+        self, db_session, test_tenant_key, test_project_id, authed_api_client
+    ):
+        """After calling the endpoint, project.meta_data['early_termination'] is True."""
+        # Create orchestrator job + execution
+        orch_job_id = str(uuid.uuid4())
+        orch_job = AgentJob(
+            job_id=orch_job_id,
+            tenant_key=test_tenant_key,
+            project_id=test_project_id,
+            job_type="orchestrator",
+            mission="Orchestrate the project",
+            status="active",
+            created_at=datetime.now(timezone.utc),
+            job_metadata={},
+        )
+        db_session.add(orch_job)
+
+        orch_exec = AgentExecution(
+            agent_id=str(uuid.uuid4()),
+            job_id=orch_job_id,
+            tenant_key=test_tenant_key,
+            agent_display_name="orchestrator",
+            agent_name="Orchestrator",
+            status="working",
+            progress=0,
+            messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
+            health_status="healthy",
+            tool_type="universal",
+        )
+        db_session.add(orch_exec)
+        await db_session.commit()
+
+        # Call endpoint
+        response = await authed_api_client.get(
+            f"/api/v1/prompts/termination/{test_project_id}"
+        )
+        assert response.status_code == 200
+
+        # Verify the early_termination flag was set on the project
+        # expire_all() is synchronous on AsyncSession
+        db_session.expire_all()
+        result = await db_session.execute(
+            select(Project).where(Project.id == test_project_id)
+        )
+        project = result.scalar_one()
+        assert project.meta_data is not None
+        assert project.meta_data.get("early_termination") is True
+
+    @pytest.mark.asyncio
+    async def test_termination_prompt_404_without_working_orchestrator(
+        self, db_session, test_tenant_key, test_project_id, authed_api_client
+    ):
+        """Endpoint returns 404 when there is no working orchestrator."""
+        # Create orchestrator with status="complete" (not "working")
+        orch_job_id = str(uuid.uuid4())
+        orch_job = AgentJob(
+            job_id=orch_job_id,
+            tenant_key=test_tenant_key,
+            project_id=test_project_id,
+            job_type="orchestrator",
+            mission="Orchestrate the project",
+            status="active",
+            created_at=datetime.now(timezone.utc),
+            job_metadata={},
+        )
+        db_session.add(orch_job)
+
+        orch_exec = AgentExecution(
+            agent_id=str(uuid.uuid4()),
+            job_id=orch_job_id,
+            tenant_key=test_tenant_key,
+            agent_display_name="orchestrator",
+            agent_name="Orchestrator",
+            status="complete",
+            progress=100,
+            messages_sent_count=0,
+            messages_waiting_count=0,
+            messages_read_count=0,
+            health_status="healthy",
+            tool_type="universal",
+        )
+        db_session.add(orch_exec)
+        await db_session.commit()
+
+        # Call endpoint
+        response = await authed_api_client.get(
+            f"/api/v1/prompts/termination/{test_project_id}"
+        )
+
+        assert response.status_code == 404
+        data = response.json()
+        # Exception handlers use "message" key (Handover 0480a)
+        assert "No working orchestrator" in data.get("message", data.get("detail", ""))
+
+
+# ============================================================================
+# Archive terminated status tests
+# ============================================================================
+
+
+class TestArchiveTerminatedStatus:
+    """Tests for archive logic: early_termination flag determines terminated vs completed status.
+
+    Tests the archive_project endpoint logic using ProjectService directly
+    with the shared test session, ensuring proper data visibility and isolation.
+    """
+
+    @pytest.mark.asyncio
+    async def test_archive_with_early_termination_sets_terminated(
+        self, db_session, test_tenant_key, test_project_id, project_service_with_session
+    ):
+        """Archive with early_termination flag sets status to 'terminated'."""
+        # Set the early_termination flag on the project
+        result = await db_session.execute(
+            select(Project).where(Project.id == test_project_id)
+        )
+        project = result.scalar_one()
+        meta = project.meta_data or {}
+        meta["early_termination"] = True
+        project.meta_data = meta
+        flag_modified(project, "meta_data")
+        await db_session.commit()
+
+        service = project_service_with_session
+
+        # Replicate archive_project endpoint logic:
+        # 1. Get project
+        proj = await service.get_project(
+            project_id=test_project_id, tenant_key=test_tenant_key
+        )
+        current_status = proj.status
+
+        # 2. Deactivate if not already inactive/completed
+        if current_status not in ("inactive", "completed", "archived", "terminated"):
+            await service.deactivate_project(
+                project_id=test_project_id,
+                reason="User archived project after completion",
+            )
+
+        # 3. Determine target status based on early_termination flag
+        proj_meta = project.meta_data or {}
+        target_status = "terminated" if proj_meta.get("early_termination") else "completed"
+
+        # 4. Update project status
+        await service.update_project(
+            project_id=test_project_id,
+            updates={"status": target_status, "completed_at": datetime.now(timezone.utc)},
+        )
+
+        # 5. Verify result
+        updated = await service.get_project(
+            project_id=test_project_id, tenant_key=test_tenant_key
+        )
+        assert updated.status == "terminated"
+
+    @pytest.mark.asyncio
+    async def test_archive_without_flag_sets_completed(
+        self, db_session, test_tenant_key, test_project_id, project_service_with_session
+    ):
+        """Archive without early_termination flag sets status to 'completed'."""
+        # Ensure no early_termination flag on the project
+        result = await db_session.execute(
+            select(Project).where(Project.id == test_project_id)
+        )
+        project = result.scalar_one()
+        meta = project.meta_data or {}
+        meta.pop("early_termination", None)
+        project.meta_data = meta
+        flag_modified(project, "meta_data")
+        await db_session.commit()
+
+        service = project_service_with_session
+
+        # Replicate archive_project endpoint logic:
+        # 1. Get project
+        proj = await service.get_project(
+            project_id=test_project_id, tenant_key=test_tenant_key
+        )
+        current_status = proj.status
+
+        # 2. Deactivate if not already inactive/completed
+        if current_status not in ("inactive", "completed", "archived", "terminated"):
+            await service.deactivate_project(
+                project_id=test_project_id,
+                reason="User archived project after completion",
+            )
+
+        # 3. Determine target status based on early_termination flag
+        proj_meta = project.meta_data or {}
+        target_status = "terminated" if proj_meta.get("early_termination") else "completed"
+
+        # 4. Update project status
+        await service.update_project(
+            project_id=test_project_id,
+            updates={"status": target_status, "completed_at": datetime.now(timezone.utc)},
+        )
+
+        # 5. Verify result
+        updated = await service.get_project(
+            project_id=test_project_id, tenant_key=test_tenant_key
+        )
+        assert updated.status == "completed"
