@@ -353,12 +353,13 @@ const showCloseoutButton = computed(() => {
   const jobs = sortedJobs.value || []
   if (!jobs.length) return false
 
-  const isComplete = (status) => status === 'complete' || status === 'completed'
-  const allComplete = jobs.every((job) => isComplete(job.status))
-  if (!allComplete) return false
+  // Accept complete, completed, and decommissioned as terminal states (Handover 0498)
+  const isTerminal = (status) => status === 'complete' || status === 'completed' || status === 'decommissioned'
+  const allTerminal = jobs.every((job) => isTerminal(job.status))
+  if (!allTerminal) return false
 
   const orchestrator = jobs.find((job) => job.agent_display_name === 'orchestrator')
-  return Boolean(orchestrator && isComplete(orchestrator.status))
+  return Boolean(orchestrator && isTerminal(orchestrator.status))
 })
 
 function showError(message) {

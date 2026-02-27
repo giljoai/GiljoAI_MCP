@@ -642,6 +642,7 @@ class ProjectDetail(BaseModel):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     completed_at: Optional[str] = None
+    meta_data: dict = Field(default_factory=dict)
     agents: list[dict] = Field(default_factory=list)
     agent_count: int = 0
     message_count: int = 0

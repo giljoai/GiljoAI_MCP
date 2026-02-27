@@ -350,12 +350,16 @@ async def archive_project(
     current_status = proj.status
 
     # Only deactivate if not already inactive/completed
-    if current_status not in ("inactive", "completed", "archived"):
+    if current_status not in ("inactive", "completed", "archived", "terminated"):
         await project_service.deactivate_project(project_id=project_id, reason="User archived project after completion")
+
+    # Check early_termination flag to determine target status (Handover 0498)
+    meta = proj.meta_data or {}
+    target_status = "terminated" if meta.get("early_termination") else "completed"
 
     # Set completed_at timestamp to mark as archived (raises exceptions on error)
     await project_service.update_project(
-        project_id=project_id, updates={"status": "completed", "completed_at": datetime.now(timezone.utc)}
+        project_id=project_id, updates={"status": target_status, "completed_at": datetime.now(timezone.utc)}
     )
 
     logger.info(f"Archived project {project_id}")
