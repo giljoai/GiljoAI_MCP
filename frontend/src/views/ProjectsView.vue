@@ -789,6 +789,7 @@ const statusFilterOptions = computed(() => [
   { label: 'Inactive', value: 'inactive', count: statusCounts.value.inactive },
   { label: 'Completed', value: 'completed', count: statusCounts.value.completed },
   { label: 'Cancelled', value: 'cancelled', count: statusCounts.value.cancelled },
+  { label: 'Terminated', value: 'terminated', count: statusCounts.value.terminated },
 ])
 
 // Table headers
@@ -1069,6 +1070,7 @@ const statusCounts = computed(() => {
     inactive: activeProductProjects.value.filter((p) => p.status === 'inactive').length,
     completed: activeProductProjects.value.filter((p) => p.status === 'completed').length,
     cancelled: activeProductProjects.value.filter((p) => p.status === 'cancelled').length,
+    terminated: activeProductProjects.value.filter((p) => p.status === 'terminated').length,
     staged: activeProductProjects.value.filter((p) => p.staging_status === 'staged').length,
   }
 })
