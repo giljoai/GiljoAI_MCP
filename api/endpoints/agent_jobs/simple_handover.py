@@ -153,6 +153,8 @@ async def simple_handover(
         project_id=str(job.project_id),
         agent_id=execution.agent_id,
         job_id=execution.job_id,
+        project_name=project.name if project else None,
+        product_id=str(project.product_id) if project and project.product_id else None,
     )
 
     # Emit WebSocket event
