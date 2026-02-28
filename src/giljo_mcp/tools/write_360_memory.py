@@ -307,9 +307,10 @@ async def write_360_memory(
             if not product:
                 return {"success": False, "error": "Product not found for project"}
 
-            # Handover 0431: Pre-closeout verification (only when author_job_id provided)
-            # This ensures all agents are ready before allowing project closeout
-            if author_job_id:
+            # Handover 0431: Pre-closeout verification
+            # Only enforce readiness check for project_completion (not handover_closeout).
+            # Handovers document incomplete work in 360 memory rather than requiring clean state.
+            if author_job_id and entry_type == "project_completion":
                 is_ready, verification_result = await _check_closeout_readiness(
                     session=active_session,
                     project_id=project_id,
