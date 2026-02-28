@@ -121,31 +121,39 @@ FIRST ACTIONS (DO NOT RE-STAGE):
 1. Verify MCP: mcp__giljo-mcp__health_check()
    -> Expected: {{"status": "healthy"}}
 
-2. Read 360 Memory for session context:
+2. Signal you are alive:
+   mcp__giljo-mcp__report_progress(
+       job_id="{job_id}",
+       todo_items=[{{"task": "Continuation startup", "status": "in_progress"}}]
+   )
+
+3. Read 360 Memory for session context:
    mcp__giljo-mcp__fetch_context(
        product_id="{product_param}",
        categories=["memory_360"]
    )
-   -> Look for "session_handover" entry with session context
-   -> Contains: previous progress, current_task
+   -> Look for the most recent "handover_closeout" entry (authored by job {job_id})
+   -> Contains: previous progress, current status, next steps
 
-3. Check messages from agents:
+4. Check messages + retrieve execution plan (can run in parallel):
    mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
-
-4. Retrieve execution plan:
    mcp__giljo-mcp__get_agent_mission(job_id="{job_id}")
-   -> Contains: team roster with agent_id UUIDs, execution strategy, completion criteria
+   -> Mission contains: team roster with agent_id UUIDs, execution strategy, completion criteria
 
 5. Check workflow status:
    mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
 
+AFTER CONTEXT GATHERING — decide next action based on workflow status:
+- If all agents completed: proceed to closeout (complete_job, write_360_memory)
+- If agents still working: resume monitoring loop (~20s intervals)
+- If agents blocked: send messages to resolve blockers
+- If agents failed: assess and re-spawn if needed
+
 CRITICAL RULES:
 - Do NOT call get_orchestrator_instructions() to re-stage
 - Do NOT re-write the project mission
-- Read 360 Memory session_handover for context from previous session
+- Read 360 Memory handover_closeout for context from previous session
 - You are CONTINUING work, not starting from scratch
-
-When ready, coordinate agents based on current status.
 """
 
 
@@ -203,26 +211,31 @@ YOUR IDENTITY:
   Job ID: {job_id}
   Project ID: {project_id}
 {git_closeout_section}
-BEFORE writing 360 Memory, drain active subagents:
+STEP 1 - Drain active subagents:
 
-1. Check workflow status:
-   mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
+mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
 
-   If any agents are still "working":
-   - Receive their final messages: mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
-   - Wait for them to complete (poll workflow status)
-   - Include their outcomes in your session summary
+If any agents are still "working":
+- Receive their final messages: mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
+- Wait for them to complete (poll workflow status every ~20s, timeout after 60s)
+- Include their outcomes in your session summary
 
-2. Once all agents are idle/complete, write your session context:
+STEP 2 - Signal you are alive before writing memory:
 
-REQUIRED ACTION - Write your session context to 360 Memory:
+mcp__giljo-mcp__report_progress(
+    job_id="{job_id}",
+    todo_items=[{{"task": "Session retirement", "status": "in_progress"}}]
+)
+
+STEP 3 - Write your session context to 360 Memory:
 
 mcp__giljo-mcp__write_360_memory(
     project_id="{project_id}",
     summary="<Summarize what you accomplished, what is in progress, and any blockers>",
     key_outcomes=["<list each concrete outcome>"],
     decisions_made=["<list decisions and rationale>"],
-    entry_type="session_handover"
+    entry_type="handover_closeout",
+    author_job_id="{job_id}"
 )
 
 YOUR SUMMARY MUST INCLUDE:
