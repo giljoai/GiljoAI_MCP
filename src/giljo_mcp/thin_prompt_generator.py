@@ -132,7 +132,11 @@ FIRST ACTIONS (DO NOT RE-STAGE):
 3. Check messages from agents:
    mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
 
-4. Check workflow status:
+4. Retrieve execution plan:
+   mcp__giljo-mcp__get_agent_mission(job_id="{job_id}")
+   -> Contains: team roster with agent_id UUIDs, execution strategy, completion criteria
+
+5. Check workflow status:
    mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
 
 CRITICAL RULES:
@@ -199,6 +203,18 @@ YOUR IDENTITY:
   Job ID: {job_id}
   Project ID: {project_id}
 {git_closeout_section}
+BEFORE writing 360 Memory, drain active subagents:
+
+1. Check workflow status:
+   mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
+
+   If any agents are still "working":
+   - Receive their final messages: mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
+   - Wait for them to complete (poll workflow status)
+   - Include their outcomes in your session summary
+
+2. Once all agents are idle/complete, write your session context:
+
 REQUIRED ACTION - Write your session context to 360 Memory:
 
 mcp__giljo-mcp__write_360_memory(
@@ -217,7 +233,8 @@ YOUR SUMMARY MUST INCLUDE:
 - Agent statuses and any pending coordination
 - Recommended next steps for the continuation session
 
-After writing memory, report: "Session context saved to 360 Memory. Ready for continuation."
+After writing memory, report to the user:
+"Session context saved to 360 Memory. You may now close this terminal and paste the continuation prompt in a new terminal."
 
 CRITICAL: Do NOT skip the memory write. The continuation session depends on this context.
 CRITICAL: Do NOT call complete_job(). You are NOT done - your work continues in a new terminal.

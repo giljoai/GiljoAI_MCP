@@ -180,9 +180,9 @@
                 </template>
               </v-tooltip>
 
-              <!-- Hand Over button: only for working orchestrators (Handover 0243d) -->
+              <!-- Hand Over button: for orchestrators in any active state (not decommissioned/handed_over) -->
               <v-tooltip
-                v-if="agent.agent_display_name === 'orchestrator' && ['working', 'complete', 'completed'].includes(agent.status)"
+                v-if="agent.agent_display_name === 'orchestrator' && !['decommissioned', 'handed_over', 'waiting'].includes(agent.status)"
                 text="Hand over"
               >
                 <template #activator="{ props: tooltipProps }">
@@ -296,6 +296,14 @@
       @close="showCloseoutModal = false"
     />
 
+    <!-- Handover Modal (Orchestrator session refresh) -->
+    <HandoverModal
+      :show="showHandoverModal"
+      :retirement-prompt="handoverData.retirement_prompt"
+      :continuation-prompt="handoverData.continuation_prompt"
+      @close="showHandoverModal = false"
+    />
+
     <!-- Local Snackbar for immediate feedback -->
     <v-snackbar
       v-model="localSnackbar.show"
@@ -322,6 +330,7 @@ import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentJobModal from '@/components/projects/AgentJobModal.vue'
 import MessageAuditModal from '@/components/projects/MessageAuditModal.vue'
 import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
+import HandoverModal from '@/components/projects/HandoverModal.vue'
 
 /**
  * JobsTab Component - Handover 0241 + 0243c + 0461d
@@ -487,6 +496,8 @@ const showAgentDetailsModal = ref(false)
 const showAgentJobModal = ref(false)
 const showMessageAuditModal = ref(false)
 const showCloseoutModal = ref(false)
+const showHandoverModal = ref(false)
+const handoverData = ref({ retirement_prompt: '', continuation_prompt: '' })
 const jobModalInitialTab = ref('mission')
 const messageAuditInitialTab = ref('sent')
 const selectedJobId = ref(null)
@@ -849,14 +860,12 @@ async function handleHandOver(agent) {
     const response = await api.agentJobs.simpleHandover(jobId)
 
     if (response.data.success) {
-      // Copy continuation prompt to clipboard
-      await navigator.clipboard.writeText(response.data.continuation_prompt)
-
-      showLocalToast({
-        message: 'Session refreshed! Continuation prompt copied to clipboard.',
-        type: 'success',
-        duration: 5000,
-      })
+      // Store both prompts and open the handover modal
+      handoverData.value = {
+        retirement_prompt: response.data.retirement_prompt,
+        continuation_prompt: response.data.continuation_prompt,
+      }
+      showHandoverModal.value = true
     } else {
       throw new Error(response.data.error || 'Session refresh failed')
     }
