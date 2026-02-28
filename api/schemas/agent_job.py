@@ -170,19 +170,6 @@ class JobHierarchyResponse(BaseModel):
 # Job Status Management Schemas
 
 
-class JobAcknowledgeResponse(BaseModel):
-    """
-    Schema for job acknowledge response (POST /api/agent-jobs/{job_id}/acknowledge).
-    """
-
-    job_id: str = Field(..., description="Acknowledged job ID")
-    status: str = Field(..., description="New status (active)")
-    started_at: datetime = Field(..., description="Job start timestamp")
-    message: str = Field(..., description="Success message")
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class JobCompleteRequest(BaseModel):
     """
     Schema for completing a job (POST /api/agent-jobs/{job_id}/complete).

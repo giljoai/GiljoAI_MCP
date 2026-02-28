@@ -4,8 +4,6 @@ Test suite for implementation phase gate (Handover 0709).
 Tests cover:
 - get_agent_mission blocked when implementation_launched_at is None
 - get_agent_mission succeeds when implementation_launched_at is set
-- acknowledge_job blocked when implementation_launched_at is None (raises ProjectStateError)
-- acknowledge_job succeeds when implementation_launched_at is set
 
 Updated for exception-based error handling (Handover 0730).
 """
@@ -16,7 +14,6 @@ from uuid import uuid4
 
 import pytest
 
-from src.giljo_mcp.exceptions import DatabaseError, ProjectStateError
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
@@ -205,88 +202,3 @@ class TestGetAgentMissionImplementationGate:
         assert response.mission is not None, "Mission should be present when not blocked"
         assert response.full_protocol is not None, "Protocol should be present when not blocked"
         assert response.job_id == job.job_id, "Response should include job_id (indicates success)"
-
-
-class TestAcknowledgeJobImplementationGate:
-    """Test suite for implementation phase gate in acknowledge_job."""
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_job_blocked_when_not_launched(
-        self, orchestration_service, mock_db_manager, mock_agent_job_and_execution, mock_project_not_launched
-    ):
-        """Test that acknowledge_job raises DatabaseError (wrapping ProjectStateError) when implementation_launched_at is None.
-
-        Updated for exception-based error handling (Handover 0730).
-        Note: ProjectStateError is wrapped in DatabaseError by the generic exception handler.
-        """
-        db_manager, session = mock_db_manager
-        job, execution, project_id = mock_agent_job_and_execution
-        project = mock_project_not_launched
-        project.id = project_id  # Link project to job
-
-        # Setup database mocks
-        exec_result = MagicMock()
-        exec_result.scalar_one_or_none = MagicMock(return_value=execution)
-
-        job_result = MagicMock()
-        job_result.scalar_one_or_none = MagicMock(return_value=job)
-
-        # Mock project lookup via session.execute (tenant-scoped query)
-        project_result = MagicMock()
-        project_result.scalar_one_or_none = MagicMock(return_value=project)
-
-        # Mock session.execute for execution, job, and project lookups
-        session.execute = AsyncMock(side_effect=[exec_result, job_result, project_result])
-
-        # Call acknowledge_job - should raise DatabaseError wrapping ProjectStateError
-        with pytest.raises(DatabaseError) as exc_info:
-            await orchestration_service.acknowledge_job(job_id=job.job_id, tenant_key="tenant-test")
-
-        # Verify exception details - the wrapped ProjectStateError message is in the DatabaseError message
-        assert "Implementation not launched" in str(exc_info.value), "Error should indicate implementation not launched"
-        assert "Implement" in str(exc_info.value), "Error should mention Implement button"
-
-        # Verify the original cause is ProjectStateError
-        assert isinstance(exc_info.value.__cause__, ProjectStateError), "Cause should be ProjectStateError"
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_job_succeeds_when_launched(
-        self, orchestration_service, mock_db_manager, mock_agent_job_and_execution, mock_project_launched
-    ):
-        """Test that acknowledge_job succeeds when implementation_launched_at is set."""
-        db_manager, session = mock_db_manager
-        job, execution, project_id = mock_agent_job_and_execution
-        project = mock_project_launched
-        project.id = project_id  # Link project to job
-
-        # Setup database mocks
-        exec_result = MagicMock()
-        exec_result.scalar_one_or_none = MagicMock(return_value=execution)
-
-        job_result = MagicMock()
-        job_result.scalar_one_or_none = MagicMock(return_value=job)
-
-        # Mock project lookup via session.execute (tenant-scoped query)
-        project_result = MagicMock()
-        project_result.scalar_one_or_none = MagicMock(return_value=project)
-
-        # Mock session.execute for execution, job, and project lookups
-        session.execute = AsyncMock(side_effect=[exec_result, job_result, project_result])
-
-        # Stub httpx to avoid real WebSocket bridge calls
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            # Call acknowledge_job
-            response = await orchestration_service.acknowledge_job(job_id=job.job_id, tenant_key="tenant-test")
-
-        # Handover 0731c: Returns AcknowledgeJobResult typed model
-        # Verify successful response (not blocked)
-        assert response.job, "Response should include job details"
-        assert response.job.get("status") == "working", "Job status should be working after acknowledgment"

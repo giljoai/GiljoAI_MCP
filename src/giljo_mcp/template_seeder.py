@@ -320,7 +320,7 @@ During staging, if project requirements have major gaps or conflicts:
 1. Call `report_error(job_id, "BLOCKED: <reason>")` to mark yourself blocked
 2. Ask the USER for clarification (not another agent)
 3. Wait for response via `receive_messages()`
-4. Call `acknowledge_job()` to resume (sets status back to working)
+4. Call `report_progress()` to resume (sets status back to working)
 
 Do not guess at major ambiguities - ask first.
 
@@ -895,7 +895,7 @@ def _get_agent_guidelines_section() -> str:
 1. Call `report_error(job_id, "BLOCKED: <reason>")` to mark yourself blocked
 2. Send BLOCKER: or REQUEST_CONTEXT: message to orchestrator
 3. Wait for response via `receive_messages()`
-4. Call `acknowledge_job()` to resume (sets status back to working)
+4. Call `report_progress()` to resume (sets status back to working)
 """
 
 

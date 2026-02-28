@@ -231,9 +231,8 @@ async def update_agent_job_status(
         return {"message": f"Job status updated to {status_update.status}"}
 
 
-# REMOVED: Duplicate acknowledge endpoint - use /api/agent-jobs/{job_id}/acknowledge from lifecycle.py instead
-# This legacy endpoint was superseded by Handover 0124 (api/endpoints/agent_jobs/lifecycle.py)
-# which returns proper JobAcknowledgeResponse with job_id, status, started_at, message fields.
+# REMOVED: acknowledge_job endpoint retired. Job acknowledgment is now implicit
+# in get_agent_mission() which auto-transitions waiting -> working on first fetch.
 
 
 @router.post("/agent-jobs/{job_id}/messages", response_model=dict)

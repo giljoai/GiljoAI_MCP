@@ -939,7 +939,6 @@ class TemplateService:
         # ORIGINAL QUERY: history.py line 264-270 (reset_system_instructions endpoint)
         template.system_instructions = (
             "# System Instructions\n\n"
-            "Use acknowledge_job() to claim tasks.\n"
             "Use report_progress() to send updates.\n"
             "Use complete_job() when the task is finished.\n"
             "Use receive_messages() to check for orchestrator messages.\n"

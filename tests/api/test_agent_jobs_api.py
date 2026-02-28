@@ -396,7 +396,7 @@ async def tenant_b_agent_job(api_client: AsyncClient, tenant_b_admin_token: str,
 
 
 class TestAgentJobLifecycle:
-    """Test lifecycle operations: spawn, acknowledge, complete, error"""
+    """Test lifecycle operations: spawn, complete, error"""
 
     @pytest.mark.asyncio
     async def test_spawn_agent_job_happy_path(
@@ -461,41 +461,6 @@ class TestAgentJobLifecycle:
         )
 
         assert response.status_code == 401
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason="Needs update: Service now requires project to be in 'launched' state via dashboard"
-    )
-    async def test_acknowledge_job_happy_path(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_a_agent_job
-    ):
-        """Test successful job acknowledgment."""
-        job_id = tenant_a_agent_job["job_id"]
-
-        response = await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge", cookies={"access_token": tenant_a_admin_token}
-        )
-
-        assert response.status_code == 200, f"Acknowledge failed: {response.text}"
-        data = response.json()
-        assert "job_id" in data, f"Missing job_id in response: {data}"
-        assert data["job_id"] == job_id
-        assert data["status"] in ["active", "working"]  # May vary based on implementation
-        assert data["started_at"] is not None
-        # Message content varies - just verify it exists and has content
-        assert "message" in data and len(data["message"]) > 0
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_job_not_found(self, api_client: AsyncClient, tenant_a_admin_token: str):
-        """Test acknowledging non-existent job returns error."""
-        fake_job_id = str(uuid4())
-
-        response = await api_client.post(
-            f"/api/agent-jobs/{fake_job_id}/acknowledge", cookies={"access_token": tenant_a_admin_token}
-        )
-
-        # Should return error (400 or 404 depending on implementation)
-        assert response.status_code in [400, 404]
 
     @pytest.mark.asyncio
     async def test_complete_job_happy_path(
@@ -815,19 +780,6 @@ class TestAgentJobMultiTenantIsolation:
         response = await api_client.get(f"/api/agent-jobs/{job_id}", cookies={"access_token": tenant_a_admin_token})
 
         # Should return 404 (not found) for isolation
-        assert response.status_code == 404
-
-    @pytest.mark.asyncio
-    async def test_cannot_acknowledge_other_tenant_job(
-        self, api_client: AsyncClient, tenant_a_admin_token: str, tenant_b_agent_job
-    ):
-        """Test that Tenant A cannot acknowledge Tenant B's jobs."""
-        job_id = tenant_b_agent_job["job_id"]
-
-        response = await api_client.post(
-            f"/api/agent-jobs/{job_id}/acknowledge", cookies={"access_token": tenant_a_admin_token}
-        )
-
         assert response.status_code == 404
 
     @pytest.mark.asyncio

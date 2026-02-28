@@ -4,7 +4,6 @@ Tenant isolation regression tests for OrchestrationService (BATCH 1 Security Fix
 Verifies that cross-tenant data leaks are prevented for:
 - report_progress() AgentJob lookup, AgentTodoItem DELETE/SELECT (requires tenant_key filter)
 - get_agent_mission() Project lookup (replaced session.get with tenant-scoped query)
-- acknowledge_job() AgentJob lookup + Project lookup (requires tenant_key filter)
 - complete_job() AgentExecution other_active_stmt (requires tenant_key filter)
 - report_error() AgentJob lookup (requires tenant_key filter)
 
@@ -251,49 +250,6 @@ async def test_get_agent_mission_same_tenant_succeeds(db_session, two_tenant_orc
 
 
 # ============================================================================
-# acknowledge_job() -- Cross-Tenant Tests
-# ============================================================================
-
-
-@pytest.mark.tenant_isolation
-@pytest.mark.asyncio
-async def test_acknowledge_job_blocks_cross_tenant(db_session, two_tenant_orchestration):
-    """
-    REGRESSION: acknowledge_job() must filter AgentJob AND Project by tenant_key.
-
-    Bug: AgentJob lookup and session.get(Project) had no tenant_key filter,
-    allowing cross-tenant job acknowledgment.
-    """
-    tenant_a = two_tenant_orchestration["tenant_a"]
-    job_b = two_tenant_orchestration["job_b"]
-    service = two_tenant_orchestration["service"]
-
-    with pytest.raises(ResourceNotFoundError):
-        await service.acknowledge_job(
-            job_id=job_b.job_id,
-            tenant_key=tenant_a,
-        )
-
-
-@pytest.mark.tenant_isolation
-@pytest.mark.asyncio
-async def test_acknowledge_job_same_tenant_succeeds(db_session, two_tenant_orchestration):
-    """
-    Verify that same-tenant acknowledge_job still works correctly.
-    """
-    tenant_a = two_tenant_orchestration["tenant_a"]
-    job_a = two_tenant_orchestration["job_a"]
-    service = two_tenant_orchestration["service"]
-
-    result = await service.acknowledge_job(
-        job_id=job_a.job_id,
-        tenant_key=tenant_a,
-    )
-
-    assert result.job is not None
-
-
-# ============================================================================
 # complete_job() -- Cross-Tenant Tests
 # ============================================================================
 
@@ -437,17 +393,7 @@ async def test_orchestration_service_cross_tenant_audit(db_session, two_tenant_o
     except (ResourceNotFoundError, ValidationError):
         pass
 
-    # 3. acknowledge_job cross-tenant
-    try:
-        await service.acknowledge_job(
-            job_id=job_b.job_id,
-            tenant_key=tenant_a,
-        )
-        violations.append("acknowledge_job() allowed cross-tenant acknowledgment")
-    except (ResourceNotFoundError, ValidationError):
-        pass
-
-    # 4. complete_job cross-tenant
+    # 3. complete_job cross-tenant
     try:
         await service.complete_job(
             job_id=job_b.job_id,
@@ -458,7 +404,7 @@ async def test_orchestration_service_cross_tenant_audit(db_session, two_tenant_o
     except (ResourceNotFoundError, ValidationError):
         pass
 
-    # 5. report_error cross-tenant
+    # 4. report_error cross-tenant
     try:
         await service.report_error(
             job_id=job_b.job_id,

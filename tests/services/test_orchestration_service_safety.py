@@ -7,25 +7,20 @@ Purpose: Verify OrchestrationService.spawn_agent_job() enforces:
 1. Duplicate orchestrator prevention (only one active orchestrator per project)
 2. Agent name validation (agent_name must match an active AgentTemplate)
 
-Also verifies:
-3. acknowledge_job sets mission_acknowledged_at on the AgentExecution
-
 Test Coverage:
 - test_spawn_duplicate_orchestrator_raises_error
 - test_spawn_orchestrator_succession_allowed
 - test_spawn_invalid_agent_name_raises_error
 - test_spawn_valid_agent_name_succeeds
-- test_acknowledge_sets_mission_acknowledged_at
 """
 
 import uuid
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 
 from src.giljo_mcp.exceptions import AlreadyExistsError, ValidationError
-from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Project
+from src.giljo_mcp.models import AgentTemplate, Project
 
 
 # ============================================================================
@@ -212,50 +207,3 @@ class TestAgentNameValidation:
         from src.giljo_mcp.schemas.service_responses import SpawnResult
 
         assert isinstance(result, SpawnResult)
-
-
-# ============================================================================
-# Test Class: Mission Acknowledgement
-# ============================================================================
-
-
-@pytest.mark.asyncio
-class TestMissionAcknowledgement:
-    """
-    Tests that acknowledge_job sets mission_acknowledged_at on the AgentExecution.
-
-    This confirms existing behavior (no changes needed) but provides explicit coverage.
-    """
-
-    async def test_acknowledge_sets_mission_acknowledged_at(
-        self, db_session, orchestration_service, test_project, test_tenant_key, test_agent_template
-    ):
-        """Verify mission_acknowledged_at is set after acknowledge_job."""
-        result = await orchestration_service.spawn_agent_job(
-            agent_display_name="implementer",
-            agent_name="tdd-implementor",
-            mission="Implement feature",
-            project_id=test_project.id,
-            tenant_key=test_tenant_key,
-        )
-        agent_id = result.agent_id
-        job_id = result.job_id
-
-        # Before acknowledge: mission_acknowledged_at should be None
-        exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == agent_id)
-        exec_result = await db_session.execute(exec_stmt)
-        execution = exec_result.scalar_one()
-        assert execution.mission_acknowledged_at is None
-
-        # Acknowledge the job
-        ack_result = await orchestration_service.acknowledge_job(
-            job_id=job_id, agent_id=agent_id, tenant_key=test_tenant_key
-        )
-
-        # After acknowledge: mission_acknowledged_at should be set
-        await db_session.commit()
-        exec_stmt2 = select(AgentExecution).where(AgentExecution.agent_id == agent_id)
-        exec_result2 = await db_session.execute(exec_stmt2)
-        execution2 = exec_result2.scalar_one()
-        assert execution2.mission_acknowledged_at is not None
-        assert execution2.status == "working"

@@ -58,8 +58,7 @@ const mockJobsData = [
     health_status: 'healthy',
     last_progress_at: new Date(Date.now() - 30000).toISOString(), // 30 seconds ago
     unread_count: 2,
-    mission_read_at: null,
-    mission_acknowledged_at: null
+    mission_read_at: null
   },
   {
     job_id: 'job-002',
@@ -69,8 +68,7 @@ const mockJobsData = [
     health_status: 'healthy',
     last_progress_at: new Date(Date.now() - 10000).toISOString(),
     unread_count: 0,
-    mission_read_at: new Date().toISOString(),
-    mission_acknowledged_at: null
+    mission_read_at: new Date().toISOString()
   },
   {
     job_id: 'job-003',
@@ -80,8 +78,7 @@ const mockJobsData = [
     health_status: 'healthy',
     last_progress_at: new Date(Date.now() - 60000).toISOString(),
     unread_count: 1,
-    mission_read_at: new Date().toISOString(),
-    mission_acknowledged_at: new Date().toISOString()
+    mission_read_at: new Date().toISOString()
   },
   {
     job_id: 'job-004',
@@ -91,8 +88,7 @@ const mockJobsData = [
     health_status: 'warning',
     last_progress_at: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
     unread_count: 0,
-    mission_read_at: null,
-    mission_acknowledged_at: null
+    mission_read_at: null
   }
 ]
 
@@ -763,27 +759,6 @@ describe('Status Board Integration - Message Flows', () => {
     expect(item.mission_read_at).not.toBeNull()
   })
 
-  it('displays mission acknowledged status indicators', async () => {
-    const jobWithMissionAck = mockJobsData.filter(j => j.mission_acknowledged_at)[0]
-
-    const wrapper = mount(AgentTableView, {
-      props: {
-        agents: [jobWithMissionAck],
-        mode: 'jobs',
-        usingClaudeCodeSubagents: false
-      },
-      global: {
-        plugins: [pinia, vuetify]
-      }
-    })
-
-    await wrapper.vm.$nextTick()
-
-    const dataTable = wrapper.findComponent({ name: 'VDataTable' })
-    const item = dataTable.props('items')[0]
-
-    expect(item.mission_acknowledged_at).not.toBeNull()
-  })
 })
 
 // ============================================

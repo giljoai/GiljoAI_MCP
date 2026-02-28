@@ -34,7 +34,6 @@ export const PROJECT_SCOPED_EVENTS = new Set([
   'agent:update',
   'agent_update',
   'job:progress_update',
-  'job:mission_acknowledged',
 ])
 
 export function defaultShouldRoute(type, payload) {
@@ -351,23 +350,6 @@ export const EVENT_MAP = {
     handler: async (payload) => dispatchWindowEvent('mission:completed', payload),
   },
   'mission:failed': { handler: async (payload) => dispatchWindowEvent('mission:failed', payload) },
-
-  'job:mission_acknowledged': {
-    handler: async (payload) => {
-      useAgentJobsStore().handleMissionAcknowledged?.(payload)
-      const agentsStore = useAgentStore()
-      agentsStore.updateAgentField?.(
-        payload.job_id,
-        'mission_acknowledged_at',
-        payload.mission_acknowledged_at,
-      )
-
-      dispatchWindowEvent('agent:mission_acknowledged', {
-        jobId: payload.job_id,
-        timestamp: payload.mission_acknowledged_at,
-      })
-    },
-  },
 
   // Handover 0386: Progress updates should NOT create messages
   // This handler receives direct WebSocket events from report_progress()

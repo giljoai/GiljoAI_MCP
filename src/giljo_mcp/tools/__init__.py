@@ -12,7 +12,7 @@ Messaging: send_message, receive_messages, list_messages
   - Database: Message table with multi-tenant isolation
   - Contract: Handover 0295
 
-Jobs: acknowledge_job, report_progress, complete_job, report_error
+Jobs: report_progress, complete_job, report_error
   - Implemented in: api/endpoints/mcp_http.py via AgentJobManager
   - Database: AgentJob (work orders) + AgentExecution (executors)
 
