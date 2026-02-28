@@ -447,9 +447,6 @@ export const api = {
     get: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}`),
     spawn: (data) => apiClient.post('/api/agent-jobs/spawn', data),
     status: (jobId) => apiClient.get(`/api/agent-jobs/${jobId}/status`),
-    // Additional job-specific endpoints (new functionality)
-    acknowledge: (jobId) => apiClient.post(`/api/agent-jobs/${jobId}/acknowledge`),
-
     // Mission update endpoint (Handover 0244b)
     updateMission: (jobId, data) => apiClient.patch(`/api/agent-jobs/${jobId}/mission`, data),
 
