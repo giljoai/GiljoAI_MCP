@@ -1,11 +1,10 @@
 """
 Unit tests for agent_jobs lifecycle endpoints - Handover 0124
 
-Tests spawn, acknowledge, complete, and error endpoints using OrchestrationService.
+Tests spawn, complete, and error endpoints using OrchestrationService.
 Updated: Handover 0731d - mock returns use typed Pydantic models.
 """
 
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -18,7 +17,6 @@ from api.endpoints.agent_jobs.models import (
     SpawnAgentRequest,
 )
 from src.giljo_mcp.schemas.service_responses import (
-    AcknowledgeJobResult,
     CompleteJobResult,
     ErrorReportResult,
     SpawnResult,
@@ -98,48 +96,6 @@ class TestSpawnAgentJob:
         with pytest.raises(OrchestrationError):
             await lifecycle.spawn_agent_job(
                 request=request, current_user=mock_user, orchestration_service=mock_service, ws_dep=AsyncMock()
-            )
-
-
-class TestAcknowledgeJob:
-    """Tests for acknowledge_job endpoint."""
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_job_success(self):
-        """Test successful job acknowledgment."""
-        mock_user = MagicMock()
-        mock_user.username = "test_user"
-        mock_user.tenant_key = "test_tenant"
-
-        mock_service = AsyncMock()
-        mock_service.acknowledge_job.return_value = AcknowledgeJobResult(
-            job={"status": "active", "started_at": datetime.now(timezone.utc).isoformat()},
-            next_instructions="Job acknowledged successfully",
-        )
-
-        response = await lifecycle.acknowledge_job(
-            job_id="job-123", current_user=mock_user, orchestration_service=mock_service
-        )
-
-        assert response.job_id == "job-123"
-        assert response.status == "active"
-        mock_service.acknowledge_job.assert_called_once_with(job_id="job-123", tenant_key="test_tenant")
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_job_not_found(self):
-        """Test acknowledge job when job not found (exception-based, Handover 0731d)."""
-        from src.giljo_mcp.exceptions import ResourceNotFoundError
-
-        mock_user = MagicMock()
-        mock_user.tenant_key = "test_tenant"
-
-        mock_service = AsyncMock()
-        mock_service.acknowledge_job.side_effect = ResourceNotFoundError("Job not found")
-
-        # Service raises ResourceNotFoundError, propagates to global exception handler
-        with pytest.raises(ResourceNotFoundError):
-            await lifecycle.acknowledge_job(
-                job_id="job-123", current_user=mock_user, orchestration_service=mock_service
             )
 
 

@@ -378,47 +378,12 @@ class TestUpdateMethodsDualModel:
     Tests that update methods target AgentExecution (not AgentJob).
 
     Expected Behavior:
-    - acknowledge_job updates AgentExecution.mission_acknowledged_at
     - complete_job updates AgentExecution.status, not AgentJob.status
     - report_progress updates AgentExecution fields
 
     HANDOVER 0422: Removed test_update_context_usage_updates_execution because update_context_usage()
     was removed from OrchestrationService (dead token budget cleanup).
     """
-
-    async def test_acknowledge_job_updates_execution(self, db_session, db_manager, test_project, test_tenant_key):
-        """Verify acknowledge_job updates AgentExecution.mission_acknowledged_at."""
-        from src.giljo_mcp.services.orchestration_service import OrchestrationService
-        from src.giljo_mcp.tenant import TenantManager
-
-        tenant_manager = TenantManager()
-        service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
-
-        result = await service.spawn_agent_job(
-            agent_display_name="implementer",
-            agent_name="impl-1",
-            mission="Implement feature",
-            project_id=test_project.id,
-            tenant_key=test_tenant_key,
-        )
-        agent_id = result.agent_id
-        job_id = result.job_id
-
-        # Acknowledge job (requires job_id and agent_id)
-        ack_result = await service.acknowledge_job(job_id=job_id, agent_id=agent_id, tenant_key=test_tenant_key)
-
-        # Handover 0731c: Returns AcknowledgeJobResult typed model
-        from src.giljo_mcp.schemas.service_responses import AcknowledgeJobResult
-
-        assert isinstance(ack_result, AcknowledgeJobResult)
-        assert ack_result.job
-        assert ack_result.next_instructions
-
-        # Verify AgentExecution.mission_acknowledged_at is set
-        exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == agent_id)
-        exec_result = await db_session.execute(exec_stmt)
-        execution = exec_result.scalar_one()
-        assert execution.mission_acknowledged_at is not None
 
     async def test_complete_job_updates_execution_status(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify complete_job updates AgentExecution.status, not AgentJob.status."""

@@ -42,15 +42,6 @@ class SpawnAgentResponse(BaseModel):
 # ============================================================================
 
 
-class JobAcknowledgeResponse(BaseModel):
-    """Response model for job acknowledgment."""
-
-    job_id: str
-    status: str
-    started_at: Optional[datetime]
-    message: str
-
-
 class JobCompleteRequest(BaseModel):
     """Request model for job completion."""
 
@@ -118,7 +109,6 @@ class JobResponse(BaseModel):
     completed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-    mission_acknowledged_at: Optional[datetime] = None  # Handover 0297
     # Numeric steps summary for TODO-style progress (Handover 0297)
     # When present, represents completed/total steps for dashboard Steps column.
     steps: Optional[dict[str, int]] = None

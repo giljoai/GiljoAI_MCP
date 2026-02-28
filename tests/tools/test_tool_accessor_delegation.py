@@ -53,7 +53,6 @@ def tool_accessor(mock_db_manager, mock_tenant_manager):
     accessor._orchestration_service.get_agent_mission = AsyncMock()
     accessor._orchestration_service.get_workflow_status = AsyncMock()
     accessor._orchestration_service.get_pending_jobs = AsyncMock()
-    accessor._orchestration_service.acknowledge_job = AsyncMock()
     accessor._orchestration_service.report_progress = AsyncMock()
     accessor._orchestration_service.complete_job = AsyncMock()
     accessor._orchestration_service.report_error = AsyncMock()
@@ -201,26 +200,6 @@ async def test_get_pending_jobs_delegates_to_service(tool_accessor):
 
 
 @pytest.mark.asyncio
-async def test_acknowledge_job_delegates_to_service(tool_accessor):
-    """ToolAccessor.acknowledge_job calls OrchestrationService.acknowledge_job"""
-    job_id = str(uuid4())
-    agent_id = str(uuid4())
-
-    # Setup mock response
-    expected_result = {"success": True, "data": {"status": "active"}}
-    tool_accessor._orchestration_service.acknowledge_job.return_value = expected_result
-
-    # Call accessor method
-    result = await tool_accessor.acknowledge_job(job_id, agent_id)
-
-    # Verify service method was called with correct args
-    tool_accessor._orchestration_service.acknowledge_job.assert_called_once_with(job_id=job_id, agent_id=agent_id)
-
-    # Verify result passed through
-    assert result == expected_result
-
-
-@pytest.mark.asyncio
 async def test_report_progress_delegates_to_service(tool_accessor):
     """ToolAccessor.report_progress calls OrchestrationService.report_progress"""
     job_id = str(uuid4())
@@ -329,7 +308,6 @@ async def test_all_orchestration_methods_delegate_without_modification(tool_acce
         "get_agent_mission",
         "get_workflow_status",
         "get_pending_jobs",
-        "acknowledge_job",
         "report_progress",
         "complete_job",
         "report_error",

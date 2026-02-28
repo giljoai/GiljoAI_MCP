@@ -7,7 +7,6 @@ These tests verify the tool accessor methods are properly wired into the HTTP en
 Key tests:
 - health_check
 - get_pending_jobs
-- acknowledge_job
 - complete_job
 """
 
@@ -66,22 +65,6 @@ class TestOrchestrationToolsHTTPExposure:
 
         assert result["status"] == "error"
         assert "agent_display_name" in result["error"]
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_job_validation(self, db_manager):
-        """Test acknowledge_job validates inputs"""
-        from src.giljo_mcp.tenant import TenantManager
-        from src.giljo_mcp.tools.tool_accessor import ToolAccessor
-
-        tenant_manager = TenantManager()
-        tenant_manager.set_current_tenant(f"tk_{uuid4().hex}")
-        tool_accessor = ToolAccessor(db_manager, tenant_manager)
-
-        # Call with empty job_id
-        result = await tool_accessor.acknowledge_job("", "agent_id")
-
-        assert result["status"] == "error"
-        assert "job_id" in result["error"]
 
     @pytest.mark.asyncio
     async def test_complete_job_validation(self, db_manager):

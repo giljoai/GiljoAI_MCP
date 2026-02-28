@@ -61,7 +61,6 @@ class MCPToolsPresenceRule(ValidationRule):
     CRITICAL_001: Verify required MCP tools are present in template.
 
     All agent templates must reference core MCP tools for job lifecycle:
-    - acknowledge_job: Acknowledge job assignment
     - report_progress: Report incremental progress
     - complete_job: Mark job as completed
     - send_message: Send messages to other agents
@@ -73,7 +72,6 @@ class MCPToolsPresenceRule(ValidationRule):
     severity = "critical"
 
     REQUIRED_TOOLS: ClassVar[list[str]] = [
-        "acknowledge_job",
         "report_progress",
         "complete_job",
         "send_message",

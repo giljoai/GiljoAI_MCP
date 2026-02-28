@@ -86,7 +86,7 @@ describe('JobsTab Agent Action Buttons (Handover 0243d)', () => {
       agent_id: 'agent-1',
       agent_type: 'orchestrator',
       status: 'working',
-      mission_acknowledged_at: null,
+
       messages_sent: 0,
       messages_waiting: 0,
       messages_read: 0,
@@ -96,7 +96,7 @@ describe('JobsTab Agent Action Buttons (Handover 0243d)', () => {
       agent_id: 'agent-2',
       agent_type: 'implementor',
       status: 'waiting',
-      mission_acknowledged_at: null,
+
       messages_sent: 0,
       messages_waiting: 0,
       messages_read: 0,
@@ -106,7 +106,7 @@ describe('JobsTab Agent Action Buttons (Handover 0243d)', () => {
       agent_id: 'agent-3',
       agent_type: 'tester',
       status: 'complete',
-      mission_acknowledged_at: null,
+
       messages_sent: 0,
       messages_waiting: 0,
       messages_read: 0,
@@ -306,7 +306,7 @@ describe('JobsTab Agent Action Buttons (Handover 0243d)', () => {
         agent_id: 'agent-4',
         agent_type: 'analyzer',
         status: 'working',
-        mission_acknowledged_at: null,
+
         messages_sent: 0,
         messages_waiting: 0,
         messages_read: 0,
