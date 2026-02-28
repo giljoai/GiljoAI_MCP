@@ -286,7 +286,7 @@
           <template v-slot:item.completed_at="{ item }">
             <div class="text-center">
               {{
-                item.status === 'completed' || item.status === 'cancelled'
+                item.status === 'completed' || item.status === 'cancelled' || item.status === 'terminated'
                   ? formatDateShort(item.completed_at || item.updated_at)
                   : '—'
               }}
