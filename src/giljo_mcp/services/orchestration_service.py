@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
@@ -53,6 +53,8 @@ from src.giljo_mcp.models import (
     Project,
 )
 from src.giljo_mcp.schemas.service_responses import (
+    AgentTodoCounts,
+    AgentWorkflowDetail,
     CompleteJobResult,
     ErrorReportResult,
     JobListResult,
@@ -1191,6 +1193,49 @@ class OrchestrationService:
                 else:
                     caller_note = "Note: You (the calling agent) are included in the active count above."
 
+                # Per-agent detail: todo counts and unread messages
+                agent_details: list[AgentWorkflowDetail] = []
+                if executions:
+                    job_ids = [ex.job_id for ex in executions]
+                    todo_stmt = (
+                        select(
+                            AgentTodoItem.job_id,
+                            AgentTodoItem.status,
+                            func.count().label("cnt"),
+                        )
+                        .where(
+                            AgentTodoItem.job_id.in_(job_ids),
+                            AgentTodoItem.tenant_key == tenant_key,
+                        )
+                        .group_by(AgentTodoItem.job_id, AgentTodoItem.status)
+                    )
+                    todo_result = await session.execute(todo_stmt)
+                    todo_rows = todo_result.all()
+
+                    # Build lookup: job_id -> {status: count}
+                    todo_map: dict[str, dict[str, int]] = {}
+                    for t_job_id, t_status, t_cnt in todo_rows:
+                        todo_map.setdefault(t_job_id, {})[t_status] = t_cnt
+
+                    for execution in executions:
+                        counts = todo_map.get(execution.job_id, {})
+                        agent_details.append(
+                            AgentWorkflowDetail(
+                                job_id=execution.job_id,
+                                agent_id=execution.agent_id,
+                                agent_name=execution.agent_name or "",
+                                display_name=execution.agent_display_name or "",
+                                status=execution.status or "",
+                                unread_messages=execution.messages_waiting_count or 0,
+                                todos=AgentTodoCounts(
+                                    completed=counts.get("completed", 0),
+                                    in_progress=counts.get("in_progress", 0),
+                                    pending=counts.get("pending", 0),
+                                    skipped=counts.get("skipped", 0),
+                                ),
+                            )
+                        )
+
                 return WorkflowStatus(
                     active_agents=active_count,
                     completed_agents=completed_count,
@@ -1202,6 +1247,7 @@ class OrchestrationService:
                     progress_percent=round(progress_percent, 2),
                     total_agents=total_count,
                     caller_note=caller_note,
+                    agents=agent_details,
                 )
 
         except ResourceNotFoundError:

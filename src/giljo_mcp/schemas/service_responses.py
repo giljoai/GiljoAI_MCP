@@ -290,6 +290,27 @@ class AcknowledgeMessageResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class AgentTodoCounts(BaseModel):
+    """Per-agent todo item counts by status."""
+
+    completed: int = 0
+    in_progress: int = 0
+    pending: int = 0
+    skipped: int = 0
+
+
+class AgentWorkflowDetail(BaseModel):
+    """Per-agent detail within workflow status."""
+
+    job_id: str
+    agent_id: str
+    agent_name: str = ""
+    display_name: str = ""
+    status: str = ""
+    unread_messages: int = 0
+    todos: AgentTodoCounts = AgentTodoCounts()
+
+
 class WorkflowStatus(BaseModel):
     """Workflow status for a project.
 
@@ -307,6 +328,7 @@ class WorkflowStatus(BaseModel):
     progress_percent: float = 0.0
     total_agents: int = 0
     caller_note: str = ""
+    agents: list[AgentWorkflowDetail] = []
 
     model_config = ConfigDict(from_attributes=True)
 
