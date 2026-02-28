@@ -783,12 +783,6 @@ class ToolAccessor:
             agent_display_name=agent_display_name, tenant_key=tenant_key
         )
 
-    async def acknowledge_job(self, job_id: str, agent_id: str, tenant_key: str | None = None) -> dict[str, Any]:
-        """Acknowledge job assignment (delegates to OrchestrationService)"""
-        return await self._orchestration_service.acknowledge_job(
-            job_id=job_id, agent_id=agent_id, tenant_key=tenant_key
-        )
-
     async def report_progress(
         self,
         job_id: str,

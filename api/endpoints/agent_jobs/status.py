@@ -68,7 +68,6 @@ def job_to_response(job: dict) -> JobResponse:
         completed_at=job.get("completed_at"),
         created_at=job["created_at"],
         updated_at=job.get("updated_at"),
-        mission_acknowledged_at=job.get("mission_acknowledged_at"),  # Handover 0297
         steps=job.get("steps"),
         todo_items=todo_items,  # Handover 0423
         phase=job.get("phase"),  # Handover 0411a

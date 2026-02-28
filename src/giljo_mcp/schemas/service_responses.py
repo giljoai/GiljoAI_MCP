@@ -225,6 +225,10 @@ class SendMessageResult(BaseModel):
 
     message_id: Optional[str] = None
     to_agents: list[str] = Field(default_factory=list)
+    excluded_agents: list[str] = Field(
+        default_factory=list, description="Agents excluded from delivery (completed/decommissioned)"
+    )
+    warnings: list[str] = Field(default_factory=list)
     message_type: str = "direct"
     staging_directive: Optional[StagingDirective] = None
 
@@ -240,6 +244,9 @@ class BroadcastResult(BaseModel):
 
     message_id: Optional[str] = None
     to_agents: list[str] = Field(default_factory=list)
+    excluded_agents: list[str] = Field(
+        default_factory=list, description="Agents excluded from delivery (completed/decommissioned)"
+    )
     message_type: str = "broadcast"
     recipients_count: int = 0
 
@@ -362,18 +369,6 @@ class PendingJobsResult(BaseModel):
 
     jobs: list[dict] = Field(default_factory=list)
     count: int = 0
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class AcknowledgeJobResult(BaseModel):
-    """Job acknowledgment result.
-
-    Fields match OrchestrationService.acknowledge_job() output.
-    """
-
-    job: dict = Field(default_factory=dict)
-    next_instructions: str = "Begin executing your mission"
 
     model_config = ConfigDict(from_attributes=True)
 

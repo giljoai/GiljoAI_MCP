@@ -3,7 +3,7 @@ Unit tests for OrchestrationService (Handover 0123 - Phase 2)
 
 Tests cover:
 - Project orchestration
-- Agent job lifecycle (spawn, acknowledge, complete, error)
+- Agent job lifecycle (spawn, complete, error)
 - Job progress reporting
 - Workflow status monitoring
 - Pending job retrieval
@@ -153,90 +153,6 @@ class TestOrchestrationServiceJobManagement:
         assert result["agent_display_name"] == "implementer"
         assert "Implement feature X" in result["mission"]
         assert result["thin_client"] is True
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_job_success(self, mock_db_manager):
-        """Test successful job acknowledgment"""
-        # Arrange
-        db_manager, session = mock_db_manager
-        tenant_manager = Mock()
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-
-        # Mock AgentExecution
-        mock_execution = Mock(spec=AgentExecution)
-        mock_execution.job_id = "job-123"
-        mock_execution.agent_id = "agent-456"
-        mock_execution.agent_display_name = "implementer"
-        mock_execution.agent_name = "implementer"
-        mock_execution.status = "waiting"
-        mock_execution.started_at = None
-        mock_execution.mission_acknowledged_at = None
-
-        # Mock AgentJob (contains mission)
-        mock_job = Mock(spec=AgentJob)
-        mock_job.job_id = "job-123"
-        mock_job.mission = "Test mission"
-
-        # Two queries: 1) fetch AgentExecution, 2) fetch AgentJob
-        session.execute.side_effect = [
-            Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
-            Mock(scalar_one_or_none=Mock(return_value=mock_job)),
-        ]
-
-        service = OrchestrationService(db_manager, tenant_manager)
-
-        # Act
-        result = await service.acknowledge_job(job_id="job-123", agent_id="agent-456")
-
-        # Assert - exception-based pattern: acknowledge_job returns {"job": {...}, "next_instructions": ...}
-        assert result["job"]["job_id"] == "job-123"
-        assert result["job"]["mission"] == "Test mission"
-        # acknowledge_job transitions waiting -> working
-        assert mock_execution.status == "working"
-        assert mock_execution.started_at is not None
-        session.commit.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_job_idempotent(self, mock_db_manager):
-        """Test that acknowledging an already-acknowledged job is idempotent"""
-        # Arrange
-        db_manager, session = mock_db_manager
-        tenant_manager = Mock()
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-
-        # Mock already-acknowledged AgentExecution (already in 'working' status)
-        mock_execution = Mock(spec=AgentExecution)
-        mock_execution.job_id = "job-123"
-        mock_execution.agent_id = "agent-456"
-        mock_execution.agent_display_name = "implementer"
-        mock_execution.agent_name = "implementer"
-        mock_execution.status = "working"  # Already working
-        mock_execution.started_at = datetime.now()
-        mock_execution.mission_acknowledged_at = datetime.now()
-
-        # Mock AgentJob (contains mission)
-        mock_job = Mock(spec=AgentJob)
-        mock_job.job_id = "job-123"
-        mock_job.mission = "Test mission"
-        mock_job.project_id = None  # No project -> skip implementation gate check
-
-        # Two queries: 1) fetch AgentExecution, 2) fetch AgentJob
-        session.execute.side_effect = [
-            Mock(scalar_one_or_none=Mock(return_value=mock_execution)),
-            Mock(scalar_one_or_none=Mock(return_value=mock_job)),
-        ]
-
-        service = OrchestrationService(db_manager, tenant_manager)
-
-        # Act
-        result = await service.acknowledge_job(job_id="job-123", agent_id="agent-456")
-
-        # Assert - exception-based pattern: returns {"job": {...}, "next_instructions": ...}
-        # For idempotent call (already working), returns current state without committing
-        assert result["job"]["job_id"] == "job-123"
-        assert result["job"]["status"] == "working"
-        # Should not commit again (idempotent)
-        session.commit.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_complete_job_success(self, mock_db_manager):
@@ -714,25 +630,6 @@ class TestOrchestrationServiceErrorHandling:
             )
 
         assert "connection lost" in str(exc_info.value).lower()
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_job_no_tenant_context(self):
-        """Test acknowledge_job raises ValidationError without tenant context"""
-        from src.giljo_mcp.exceptions import ValidationError
-
-        # Arrange
-        db_manager = Mock()
-        tenant_manager = Mock()
-
-        tenant_manager.get_current_tenant = Mock(return_value=None)
-
-        service = OrchestrationService(db_manager, tenant_manager)
-
-        # Act & Assert - exception-based pattern: raises ValidationError
-        with pytest.raises(ValidationError) as exc_info:
-            await service.acknowledge_job(job_id="job-123", agent_id="agent-456")
-
-        assert "No tenant context" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_complete_job_invalid_result(self):
