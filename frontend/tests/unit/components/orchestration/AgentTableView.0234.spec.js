@@ -69,7 +69,7 @@ describe('AgentTableView.vue - StatusChip Integration (0234)', () => {
           health_status: 'healthy',
           last_progress_at: new Date().toISOString(),
           mission_read_at: null,
-          mission_acknowledged_at: null
+
         }
       ];
 
@@ -93,7 +93,7 @@ describe('AgentTableView.vue - StatusChip Integration (0234)', () => {
           health_failure_count: 2,
           minutes_since_progress: 5,
           mission_read_at: null,
-          mission_acknowledged_at: null
+
         }
       ];
 
@@ -116,7 +116,7 @@ describe('AgentTableView.vue - StatusChip Integration (0234)', () => {
           status: 'waiting',
           health_status: 'healthy',
           mission_read_at: null,
-          mission_acknowledged_at: null
+
           // No last_progress_at, health_failure_count, or minutes_since_progress
         }
       ];
@@ -140,7 +140,7 @@ describe('AgentTableView.vue - StatusChip Integration (0234)', () => {
           health_status: 'healthy',
           last_progress_at: new Date().toISOString(),
           mission_read_at: null,
-          mission_acknowledged_at: null
+
           // health_failure_count is undefined
         }
       ];
@@ -175,7 +175,7 @@ describe('AgentTableView.vue - StatusChip Integration (0234)', () => {
           health_status: 'warning',
           last_progress_at: new Date().toISOString(),
           mission_read_at: null,
-          mission_acknowledged_at: null
+
         }
       ];
 
@@ -223,7 +223,7 @@ describe('AgentTableView.vue - StatusChip Integration (0234)', () => {
           health_status: 'healthy',
           last_progress_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 min ago
           mission_read_at: null,
-          mission_acknowledged_at: null
+
         }
       ];
 
@@ -299,8 +299,7 @@ describe('AgentTableView.vue - StatusChip Integration (0234)', () => {
         status: 'working',
         health_status: 'healthy',
         last_progress_at: new Date().toISOString(),
-        mission_read_at: null,
-        mission_acknowledged_at: null
+        mission_read_at: null
       };
 
       wrapper = createWrapper({ agents: [agent] });

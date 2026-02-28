@@ -13,8 +13,8 @@ After implementation (GREEN phase), all tests should pass.
 
 Key Issues Tested:
 - HIGH Priority: get_orchestrator_instructions uses legacy orchestrator_id instead of job_id
-- MEDIUM Priority: 8 tools missing tenant_key in MCP schema
-  (report_progress, complete_job, report_error, acknowledge_job,
+- MEDIUM Priority: 7 tools missing tenant_key in MCP schema
+  (report_progress, complete_job, report_error,
    send_message, receive_messages, list_messages, gil_handover)
 """
 
@@ -322,32 +322,6 @@ async def test_report_error_schema_requires_tenant_key():
 
 
 @pytest.mark.asyncio
-async def test_acknowledge_job_schema_requires_tenant_key():
-    """
-    Test: acknowledge_job MCP schema should require tenant_key
-
-    This test WILL FAIL initially because schema is missing tenant_key.
-    """
-    from pathlib import Path
-
-    mcp_http_path = Path("F:/GiljoAI_MCP/api/endpoints/mcp_http.py")
-    content = mcp_http_path.read_text()
-
-    # Find acknowledge_job tool definition
-    start_idx = content.find('"name": "acknowledge_job"')
-    end_idx = content.find('{"name":', start_idx + 1)
-    tool_def = content[start_idx:end_idx]
-
-    # Assert: tenant_key in properties
-    assert '"tenant_key"' in tool_def, "acknowledge_job schema missing 'tenant_key' in properties"
-
-    # Assert: tenant_key in required array
-    assert '"tenant_key"' in tool_def.split('"required":')[1].split("]")[0], (
-        "acknowledge_job schema missing 'tenant_key' in required array"
-    )
-
-
-@pytest.mark.asyncio
 async def test_send_message_schema_requires_tenant_key():
     """
     Test: send_message MCP schema should require tenant_key
@@ -648,7 +622,6 @@ async def test_all_tenant_scoped_tools_have_tenant_key():
     - report_progress
     - complete_job
     - report_error
-    - acknowledge_job
     - send_message
     - receive_messages
     - list_messages
@@ -670,7 +643,6 @@ async def test_all_tenant_scoped_tools_have_tenant_key():
         "report_progress",
         "complete_job",
         "report_error",
-        "acknowledge_job",
         "send_message",
         "receive_messages",
         "list_messages",
@@ -732,7 +704,6 @@ async def test_identity_parameter_consistency():
         "report_progress",
         "complete_job",
         "report_error",
-        "acknowledge_job",
         "get_orchestrator_instructions",  # Should be job_id, NOT orchestrator_id
         "gil_handover",
     ]
@@ -799,7 +770,6 @@ async def test_no_tools_rely_on_implicit_tenant_context(db_manager, tenant_manag
         "report_progress",
         "complete_job",
         "report_error",
-        "acknowledge_job",
         "get_orchestrator_instructions",
         "get_agent_mission",
     ]

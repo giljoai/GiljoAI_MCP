@@ -8,7 +8,6 @@ Created: Handover 0731
 """
 
 from src.giljo_mcp.schemas.service_responses import (
-    AcknowledgeJobResult,
     ApiKeyCreateResult,
     ApiKeyInfo,
     AuthResult,
@@ -51,7 +50,6 @@ from src.giljo_mcp.schemas.service_responses import (
 
 
 __all__ = [
-    "AcknowledgeJobResult",
     "ApiKeyCreateResult",
     "ApiKeyInfo",
     "AuthResult",

@@ -24,8 +24,8 @@ class TestMCPToolMetadata:
 
         return TestClient(app)
 
-    def test_all_20_tools_present(self, client):
-        """Verify all 20 tools are listed in the endpoint"""
+    def test_all_19_tools_present(self, client):
+        """Verify all 19 tools are listed in the endpoint"""
         response = client.get("/api/v1/mcp-tools/list")
         assert response.status_code == 200
 
@@ -35,7 +35,7 @@ class TestMCPToolMetadata:
 
         # Count all tools across categories
         total_tools = sum(len(tools) for tools in data["tools"].values())
-        assert total_tools == 20, f"Expected 20 tools, found {total_tools}"
+        assert total_tools == 19, f"Expected 19 tools, found {total_tools}"
 
     def test_project_management_tools_have_rich_metadata(self, client):
         """Test project management tools (4 tools) have enhanced metadata"""
@@ -144,9 +144,9 @@ class TestMCPToolMetadata:
         data = response.json()
 
         coordination_tools = data["tools"]["agent_coordination"]
-        expected_tools = ["get_pending_jobs", "acknowledge_job", "report_progress", "complete_job", "report_error"]
+        expected_tools = ["get_pending_jobs", "report_progress", "complete_job", "report_error"]
 
-        assert len(coordination_tools) == 5
+        assert len(coordination_tools) == 4
 
         for tool in coordination_tools:
             assert tool["name"] in expected_tools

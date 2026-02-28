@@ -629,43 +629,6 @@ function formatCount(count) {
 }
 
 /**
- * Format acknowledgment timestamp for tooltip
- * Returns null for invalid/empty timestamps
- */
-function formatAcknowledgmentTime(timestamp) {
-  if (!timestamp || timestamp === '') {
-    return null
-  }
-
-  try {
-    const date = new Date(timestamp)
-    if (isNaN(date.getTime())) {
-      return null
-    }
-    // User-friendly format: "Dec 6, 2025, 10:30 AM"
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
-  } catch (error) {
-    console.warn('[JobsTab] Invalid timestamp:', timestamp, error)
-    return null
-  }
-}
-
-/**
- * Format acknowledgment tooltip with "Acknowledged at" prefix
- */
-function formatAcknowledgmentTooltip(timestamp) {
-  const formatted = formatAcknowledgmentTime(timestamp)
-  return formatted ? `Acknowledged at ${formatted}` : 'Not yet acknowledged'
-}
-
-/**
  * Format duration between started_at and completed_at (or now for working agents)
  * Shows: "---" if not started, live elapsed time if working, final duration if completed
  */

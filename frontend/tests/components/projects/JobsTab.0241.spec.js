@@ -37,7 +37,6 @@ describe('JobsTab.vue - Handover 0241 (Screenshot Match)', () => {
       status: 'waiting',
       mission: 'Test orchestrator mission',
       mission_read_at: null,
-      mission_acknowledged_at: null,
       messages_sent: 4,
       messages_waiting: 1,
       messages_read: 0
@@ -49,7 +48,6 @@ describe('JobsTab.vue - Handover 0241 (Screenshot Match)', () => {
       status: 'waiting',
       mission: 'Test analyzer mission',
       mission_read_at: null,
-      mission_acknowledged_at: null,
       messages_sent: 0,
       messages_waiting: 1,
       messages_read: 0
@@ -61,7 +59,6 @@ describe('JobsTab.vue - Handover 0241 (Screenshot Match)', () => {
       status: 'waiting',
       mission: 'Test implementor mission',
       mission_read_at: null,
-      mission_acknowledged_at: null,
       messages_sent: 0,
       messages_waiting: 1,
       messages_read: 0
@@ -73,7 +70,6 @@ describe('JobsTab.vue - Handover 0241 (Screenshot Match)', () => {
       status: 'waiting',
       mission: 'Test tester mission',
       mission_read_at: null,
-      mission_acknowledged_at: null,
       messages_sent: 0,
       messages_waiting: 1,
       messages_read: 0
@@ -148,19 +144,18 @@ describe('JobsTab.vue - Handover 0241 (Screenshot Match)', () => {
       expect(table.exists()).toBe(true)
     })
 
-    it('should have exactly 9 columns in correct order', () => {
+    it('should have exactly 8 columns in correct order', () => {
       const headers = wrapper.findAll('.agents-table thead th')
-      expect(headers).toHaveLength(9)
+      expect(headers).toHaveLength(8)
 
       expect(headers[0].text()).toBe('Agent Type')
       expect(headers[1].text()).toBe('Agent ID')
       expect(headers[2].text()).toBe('Agent Status')
       expect(headers[3].text()).toBe('Job Read')
-      expect(headers[4].text()).toBe('Job Acknowledged')
-      expect(headers[5].text()).toBe('Messages Sent')
-      expect(headers[6].text()).toBe('Messages waiting')
-      expect(headers[7].text()).toBe('Messages Read')
-      expect(headers[8].text()).toBe('') // Actions column (no header text)
+      expect(headers[4].text()).toBe('Messages Sent')
+      expect(headers[5].text()).toBe('Messages waiting')
+      expect(headers[6].text()).toBe('Messages Read')
+      expect(headers[7].text()).toBe('') // Actions column (no header text)
     })
 
     it('should render one row per agent', () => {
@@ -270,35 +265,7 @@ describe('JobsTab.vue - Handover 0241 (Screenshot Match)', () => {
     })
   })
 
-  describe('Job Acknowledged Column (Column 5)', () => {
-    it('should show checkmark when mission_acknowledged_at is set', async () => {
-      // Update first agent to have acknowledged mission
-      const agentsWithAck = [...mockAgents]
-      agentsWithAck[0] = {
-        ...agentsWithAck[0],
-        mission_acknowledged_at: '2025-01-15T10:05:00Z'
-      }
-
-      await wrapper.setProps({ agents: agentsWithAck })
-      await wrapper.vm.$nextTick()
-
-      const firstRow = wrapper.findAll('.agents-table tbody tr')[0]
-      const checkboxCells = firstRow.findAll('.checkbox-cell')
-      const jobAckCell = checkboxCells[1]
-
-      expect(jobAckCell.find('.v-icon').exists()).toBe(true)
-    })
-
-    it('should show empty cell when mission_acknowledged_at is null', () => {
-      const secondRow = wrapper.findAll('.agents-table tbody tr')[1]
-      const checkboxCells = secondRow.findAll('.checkbox-cell')
-      const jobAckCell = checkboxCells[1]
-
-      expect(jobAckCell.find('.v-icon').exists()).toBe(false)
-    })
-  })
-
-  describe('Message Count Columns (Columns 6-8)', () => {
+  describe('Message Count Columns (Columns 5-7)', () => {
     it('should show Messages Sent count', () => {
       const countCells = wrapper.findAll('.count-cell')
       // First agent has 4 messages sent

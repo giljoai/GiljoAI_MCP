@@ -244,7 +244,6 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
     },
     # Agent Coordination
     "get_pending_jobs": {"agent_display_name", "tenant_key"},
-    "acknowledge_job": {"job_id", "agent_id", "tenant_key"},
     "report_progress": {"job_id", "tenant_key", "todo_items"},
     "complete_job": {"job_id", "result", "tenant_key"},
     "report_error": {"job_id", "error", "tenant_key"},
@@ -529,19 +528,6 @@ async def handle_tools_list(
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
                 "required": ["agent_display_name"],
-            },
-        },
-        {
-            "name": "acknowledge_job",
-            "description": "Claim a job (pending → active)",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "job_id": {"type": "string", "description": "Your work order (identity.job_id)"},
-                    "agent_id": {"type": "string", "description": "Your identity (identity.agent_id)"},
-                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
-                },
-                "required": ["job_id", "agent_id"],
             },
         },
         {
@@ -841,7 +827,6 @@ async def handle_tools_call(
         "create_task": state.tool_accessor.create_task,
         # Agent Coordination (Handover 0045)
         "get_pending_jobs": state.tool_accessor.get_pending_jobs,
-        "acknowledge_job": state.tool_accessor.acknowledge_job,
         "report_progress": state.tool_accessor.report_progress,
         "complete_job": state.tool_accessor.complete_job,
         "report_error": state.tool_accessor.report_error,

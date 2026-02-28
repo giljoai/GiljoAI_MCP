@@ -231,27 +231,6 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     upsertJob(payload)
   }
 
-  // Handover 0462: Include identity fields to prevent "??" avatar bug from race conditions
-  function handleMissionAcknowledged(payload) {
-    if (!payload?.job_id) return
-    const updates = {
-      job_id: payload.job_id,
-      mission_acknowledged_at: payload.mission_acknowledged_at,
-    }
-    // Handover 0462: Include identity fields if present in payload
-    // If this event arrives before agent:created, these fields ensure the entry is complete
-    if (payload.agent_display_name) {
-      updates.agent_display_name = payload.agent_display_name
-    }
-    if (payload.agent_name) {
-      updates.agent_name = payload.agent_name
-    }
-    if (payload.agent_id) {
-      updates.agent_id = payload.agent_id
-    }
-    upsertJob(updates)
-  }
-
   // Handover 0386: Handle progress updates from job:progress_update WebSocket events
   // Progress is now sent directly via WebSocket, NOT via message system
   // Handover 0388: Conditionally build updates to prevent undefined corruption
@@ -481,7 +460,6 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     handleCreated,
     handleUpdated,
     handleStatusChanged,
-    handleMissionAcknowledged,
     handleProgressUpdate,
     handleMessageSent,
     handleMessageReceived,

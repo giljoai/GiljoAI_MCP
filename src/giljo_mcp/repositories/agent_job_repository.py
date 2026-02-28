@@ -224,33 +224,6 @@ class AgentJobRepository:
             return True
         return False
 
-    async def acknowledge_job(self, session: AsyncSession, tenant_key: str, job_id: str) -> bool:
-        """
-        Mark job as acknowledged (transition to active status).
-
-        Args:
-            session: Async database session
-            tenant_key: Tenant key for isolation
-            job_id: AgentJob ID to acknowledge
-
-        Returns:
-            True if job was acknowledged, False if not found
-        """
-        result = await session.execute(
-            select(AgentJob).where(AgentJob.tenant_key == tenant_key, AgentJob.job_id == job_id)
-        )
-        job = result.scalar_one_or_none()
-
-        if job:
-            # Transition to active status (acknowledgment is implicit in status change)
-            if job.status == "pending":
-                job.status = "active"
-                if not job.started_at:
-                    job.started_at = datetime.now(timezone.utc)
-            await session.flush()
-            return True
-        return False
-
     async def add_context_chunk(self, session: AsyncSession, tenant_key: str, job_id: str, chunk_id: str) -> bool:
         """
         Add a context chunk ID to the job.

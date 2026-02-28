@@ -49,13 +49,6 @@
     </template>
 
 
-    <!-- Job Acknowledged Column (Handover 0240b) -->
-    <template #item.job_acknowledged="{ item }">
-      <v-icon :color="item.mission_acknowledged_at ? 'success' : 'grey'" size="small">
-        {{ item.mission_acknowledged_at ? 'mdi-check-circle' : 'mdi-minus-circle-outline' }}
-      </v-icon>
-    </template>
-
     <!-- Steps Column (Handover 0297: TODO progress summary) -->
     <template #item.steps="{ item }">
       <span class="text-body-2">
@@ -125,7 +118,6 @@ import { useAgentData } from '@/composables/useAgentData'
 import { useClipboard } from '@/composables/useClipboard'
 import { useStalenessMonitor } from '@/composables/useStalenessMonitor'
 import api from '@/services/api'
-import JobReadAckIndicators from '@/components/StatusBoard/JobReadAckIndicators.vue'
 import StatusChip from '@/components/StatusBoard/StatusChip.vue'
 import ActionIcons from '@/components/StatusBoard/ActionIcons.vue'
 import { shouldShowLaunchAction } from '@/utils/actionConfig'
@@ -189,7 +181,6 @@ const headers = [
   { title: 'Agent Type', key: 'agent_display_name', sortable: true },
   { title: 'Agent ID', key: 'agent_id', sortable: false },
   { title: 'Job ID', key: 'job_id', sortable: false },
-  { title: 'Job Acknowledged', key: 'job_acknowledged', sortable: false, align: 'center' },
   { title: 'Agent Status', key: 'status', sortable: true },
   { title: 'Steps', key: 'steps', sortable: false, align: 'center' },
   { title: 'Messages Sent', key: 'messages_sent', sortable: true, align: 'center' },

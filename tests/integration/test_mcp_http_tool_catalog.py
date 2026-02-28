@@ -21,7 +21,6 @@ MCP_ENDPOINT = "/mcp"
 # NOTE: orchestrate_project removed (0470) - deprecated (use manual orchestration)
 # NOTE: create_successor_orchestrator, check_succession_status removed - succession via UI only
 EXPECTED_TOOL_NAMES = {
-    "acknowledge_job",
     "close_project_and_update_memory",
     "complete_job",
     "create_task",
