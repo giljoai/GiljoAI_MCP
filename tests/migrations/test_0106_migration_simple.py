@@ -85,7 +85,6 @@ class TestMigrationFileValidation:
 
         # Should contain all required MCP tools
         required_tools = [
-            'acknowledge_job',
             'report_progress',
             'complete_job',
             'send_message',

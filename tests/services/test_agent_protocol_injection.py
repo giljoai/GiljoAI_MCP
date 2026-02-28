@@ -133,7 +133,6 @@ class TestProtocolRegression:
         protocol = _gen_protocol(execution_mode=execution_mode, git_integration_enabled=git_enabled)
         assert "Phase 1: STARTUP" in protocol
         assert "get_agent_mission" in protocol
-        assert "acknowledge_job" in protocol
 
     @pytest.mark.parametrize(
         ("execution_mode", "git_enabled"),

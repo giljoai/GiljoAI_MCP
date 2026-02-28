@@ -65,7 +65,6 @@ const createMockJob = (overrides = {}) => ({
   agent_name: 'Implementer Agent',
   status: 'waiting',
   mission_read_at: null,
-  mission_acknowledged_at: null,
   messages: [],
   ...overrides,
 })

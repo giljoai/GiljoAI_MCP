@@ -380,36 +380,6 @@ async def test_multi_tenant_isolation_get_job(
 
 
 @pytest.mark.asyncio
-async def test_acknowledge_job_success(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
-    """Test acknowledging a job (pending -> active)."""
-    client, user = authenticated_client
-
-    response = await client.post(f"/api/agent-jobs/{test_job.job_id}/acknowledge")
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["job_id"] == test_job.job_id
-    assert data["status"] == "active"
-    assert "started_at" in data
-    assert "Job acknowledged successfully" in data["message"]
-
-
-@pytest.mark.asyncio
-async def test_acknowledge_job_idempotent(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
-    """Test acknowledging already acknowledged job is idempotent."""
-    client, user = authenticated_client
-
-    # First acknowledgment
-    response1 = await client.post(f"/api/agent-jobs/{test_job.job_id}/acknowledge")
-    assert response1.status_code == 200
-
-    # Second acknowledgment should succeed (idempotent)
-    response2 = await client.post(f"/api/agent-jobs/{test_job.job_id}/acknowledge")
-    assert response2.status_code == 200
-    assert response2.json()["status"] == "active"
-
-
-@pytest.mark.asyncio
 async def test_complete_job_success(authenticated_client: tuple[AsyncClient, User], test_job: AgentExecution):
     """Test completing a job (active -> completed)."""
     client, user = authenticated_client

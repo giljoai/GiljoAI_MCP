@@ -88,7 +88,6 @@ describe('JobsTab Message Counters', () => {
     agent_name: 'Implementer Agent',
     status: 'working',
     mission_read_at: null,
-    mission_acknowledged_at: null,
     messages: [],
     ...overrides,
   })

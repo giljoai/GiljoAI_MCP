@@ -107,12 +107,10 @@ async def test_get_agent_mission_emits_ack_and_status_changed(
     response = await orchestration_service.get_agent_mission(job_id=job_id, tenant_key=tenant_key)
 
     # No success wrapper after 0730b refactor
-    assert execution.mission_acknowledged_at is not None
     assert execution.status == "working"
     assert execution.started_at is not None
 
     event_types = [c.kwargs["event_type"] for c in mock_websocket_manager.broadcast_to_tenant.await_args_list]
-    assert "job:mission_acknowledged" in event_types
     assert "agent:status_changed" in event_types
 
 
@@ -156,53 +154,6 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
 
     # No success wrapper after 0730b refactor
     mock_websocket_manager.broadcast_to_tenant.assert_not_awaited()
-
-
-async def test_acknowledge_job_emits_status_changed(
-    orchestration_service,
-    mock_db_manager,
-    mock_websocket_manager,
-):
-    db_manager, session = mock_db_manager
-    tenant_key = "tenant-test-123"
-    job_id = str(uuid4())
-    project_id = str(uuid4())
-
-    execution = SimpleNamespace(
-        agent_id=str(uuid4()),
-        job_id=job_id,
-        tenant_key=tenant_key,
-        agent_display_name="implementer",
-        agent_name="impl-worker-42",
-        status="waiting",
-        started_at=None,
-        mission_acknowledged_at=None,
-    )
-    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work")
-    project = SimpleNamespace(
-        id=project_id,
-        tenant_key=tenant_key,
-        implementation_launched_at=datetime.now(timezone.utc),
-    )
-
-    session.execute.side_effect = [
-        _scalar_result(execution),
-        _scalar_result(job),
-        _scalar_result(project),
-    ]
-
-    result = await orchestration_service.acknowledge_job(job_id=job_id, agent_id="ignored", tenant_key=tenant_key)
-
-    # Handover 0731c: Returns AcknowledgeJobResult typed model
-    assert result.job
-    assert result.next_instructions
-    assert execution.status == "working"
-    mock_websocket_manager.broadcast_to_tenant.assert_awaited()
-
-    last_call = mock_websocket_manager.broadcast_to_tenant.await_args_list[-1].kwargs
-    assert last_call["tenant_key"] == tenant_key
-    assert last_call["event_type"] == "agent:status_changed"
-    assert last_call["data"]["agent_name"] == "impl-worker-42"
 
 
 async def test_complete_job_emits_status_changed_with_duration_seconds(
@@ -317,46 +268,3 @@ async def test_report_progress_fallback_emits_message_new_event(
     last_call = mock_websocket_manager.broadcast_to_tenant.await_args_list[-1].kwargs
     assert last_call["tenant_key"] == tenant_key
     assert last_call["event_type"] == "job:progress_update"
-
-
-async def test_websocket_failures_do_not_break_orchestration_calls(
-    orchestration_service,
-    mock_db_manager,
-    mock_websocket_manager,
-):
-    db_manager, session = mock_db_manager
-    tenant_key = "tenant-test-123"
-    job_id = str(uuid4())
-    project_id = str(uuid4())
-
-    execution = SimpleNamespace(
-        agent_id=str(uuid4()),
-        job_id=job_id,
-        tenant_key=tenant_key,
-        agent_display_name="implementer",
-        agent_name="impl-worker-42",
-        status="waiting",
-        started_at=None,
-        mission_acknowledged_at=None,
-    )
-    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work")
-    project = SimpleNamespace(
-        id=project_id,
-        tenant_key=tenant_key,
-        implementation_launched_at=datetime.now(timezone.utc),
-    )
-
-    session.execute.side_effect = [
-        _scalar_result(execution),
-        _scalar_result(job),
-        _scalar_result(project),
-    ]
-
-    mock_websocket_manager.broadcast_to_tenant.side_effect = Exception("WebSocket down")
-
-    result = await orchestration_service.acknowledge_job(job_id=job_id, agent_id="ignored", tenant_key=tenant_key)
-
-    # Handover 0731c: Returns AcknowledgeJobResult typed model
-    assert result.job
-    assert result.next_instructions
-    assert execution.status == "working"

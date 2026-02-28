@@ -3,7 +3,6 @@ Agent Job Lifecycle Endpoints - Handover 0124
 
 Handles agent job lifecycle operations:
 - POST /api/agent-jobs/spawn - Spawn new agent job
-- POST /api/agent-jobs/{job_id}/acknowledge - Acknowledge job
 - POST /api/agent-jobs/{job_id}/complete - Complete job
 - POST /api/agent-jobs/{job_id}/error - Report job error
 
@@ -21,7 +20,6 @@ from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
 from .dependencies import get_orchestration_service
 from .models import (
-    JobAcknowledgeResponse,
     JobCompleteRequest,
     JobCompleteResponse,
     JobErrorRequest,
@@ -111,46 +109,6 @@ async def spawn_agent_job(
         agent_prompt=result.agent_prompt,
         mission_stored=result.mission_stored,
         thin_client=result.thin_client,
-    )
-
-
-@router.post("/{job_id}/acknowledge", response_model=JobAcknowledgeResponse)
-async def acknowledge_job(
-    job_id: str,
-    current_user: User = Depends(get_current_active_user),
-    orchestration_service: OrchestrationService = Depends(get_orchestration_service),
-) -> JobAcknowledgeResponse:
-    """
-    Acknowledge a job (pending -> active).
-
-    Sets mission_acknowledged_at, status=active, and started_at timestamp.
-    Idempotent operation.
-
-    Args:
-        job_id: Job ID to acknowledge
-        current_user: Authenticated user (from dependency)
-        orchestration_service: Service for job operations (from dependency)
-
-    Returns:
-        JobAcknowledgeResponse with updated job status
-
-    Raises:
-        HTTPException 404: Job not found
-        HTTPException 400: Invalid status transition
-    """
-    logger.debug(f"User {current_user.username} acknowledging job {job_id}")
-
-    result = await orchestration_service.acknowledge_job(job_id=job_id, tenant_key=current_user.tenant_key)
-
-    logger.info(f"Acknowledged job {job_id} for tenant {current_user.tenant_key}")
-
-    # 0731d: OrchestrationService returns AcknowledgeJobResult typed model
-    job_data = result.job
-    return JobAcknowledgeResponse(
-        job_id=job_id,
-        status=job_data.get("status", "active"),
-        started_at=job_data.get("started_at"),
-        message=result.next_instructions,
     )
 
 

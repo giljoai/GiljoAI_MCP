@@ -75,7 +75,6 @@ async def verify_templates(tenant_key: str = "default"):
                 "Phase 3: Completion",
                 "Error Handling",
                 "get_pending_jobs",
-                "acknowledge_job",
                 "report_progress",
                 "complete_job",
                 "report_error",

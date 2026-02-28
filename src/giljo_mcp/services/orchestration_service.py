@@ -39,7 +39,6 @@ from src.giljo_mcp.exceptions import (
     AlreadyExistsError,
     DatabaseError,
     OrchestrationError,
-    ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -54,7 +53,6 @@ from src.giljo_mcp.models import (
     Project,
 )
 from src.giljo_mcp.schemas.service_responses import (
-    AcknowledgeJobResult,
     CompleteJobResult,
     ErrorReportResult,
     JobListResult,
@@ -245,7 +243,7 @@ def _generate_agent_protocol(
     Args:
         job_id: Agent job UUID for MCP tool calls (work order)
         tenant_key: Tenant key for MCP tool calls
-        agent_name: Agent name for acknowledge_job (matches template filename)
+        agent_name: Agent name (matches template filename)
         agent_id: Optional executor UUID (defaults to job_id for backwards compat)
 
     Returns:
@@ -290,12 +288,11 @@ tell me and I'll use /gil_add to save it to your dashboard."
    When creating files or referencing directories, use context-provided paths.
    Do NOT hardcode paths observed in your terminal environment.
 
-1. Call `mcp__giljo-mcp__get_agent_mission(job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission
-2. Call `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="{agent_name}")` - Mark as WORKING
-3. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` - Check for instructions
-4. Review any messages and incorporate feedback BEFORE starting work
+1. Call `mcp__giljo-mcp__get_agent_mission(job_id="{job_id}", tenant_key="{tenant_key}")` - Get mission (auto-transitions to WORKING)
+2. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` - Check for instructions
+3. Review any messages and incorporate feedback BEFORE starting work
 
-5. **MANDATORY: Create TodoWrite task list** (BEFORE implementation):
+4. **MANDATORY: Create TodoWrite task list** (BEFORE implementation):
    - Break mission into 3-7 specific, actionable tasks
    - Count and announce: "X steps to complete: [list items]"
    - NEVER skip this step - planning prevents poor execution
@@ -375,9 +372,9 @@ If you call `complete_job()` without meeting these requirements:
    - `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 
 **To resume from BLOCKED**:
-1. After receiving guidance, call `acknowledge_job()` again:
-   - `mcp__giljo-mcp__acknowledge_job(job_id="{job_id}", agent_id="{agent_name}")`
-   - Sets status back to "working"
+1. After receiving guidance, call `report_progress()` to resume:
+   - `mcp__giljo-mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...])`
+   - This transitions status back to "working"
 2. Continue execution with Phase 2
 
 **Use BLOCKED for**: Unclear requirements, missing context, waiting for decisions, unrecoverable errors (all errors use blocked status)
@@ -734,10 +731,6 @@ When you receive this directive, your session is DONE. Stop immediately.
 
 ⚠️  STAGING ENDS HERE - DO NOT call complete_job() or write_360_memory()
    Your session is done. Implementation happens in a new session.
-
-⚠️  STATUS NOTE: Do NOT call acknowledge_job() during staging.
-   Your job remains in 'waiting' status - this enables the Implement
-   button in UI. acknowledge_job() is for implementation phase only.
 """
 
     # CH3: AGENT SPAWNING RULES (~200 tokens - reduced via deduplication)
@@ -861,11 +854,11 @@ Action: Report to user - template configuration required
 Fix: User must activate templates in My Settings → Agent Templates
 
 ── STATUS TRANSITIONS ──────────────────────────────────────────────────────
-waiting ─[acknowledge_job()]─→ working
+waiting ─[get_agent_mission()]─→ working (auto-transition on first fetch)
 working ─[report_progress()]─→ working (updates progress/todos)
 working ─[complete_job()]─→ complete
 working ─[report_error()]─→ blocked
-blocked ─[acknowledge_job()]─→ working (resume from blocked)
+blocked ─[report_progress()]─→ working (resume from blocked)
 
 Note: All report_error() calls set status to "blocked". Use "BLOCKED: <reason>"
 message format when asking for clarification vs actual errors.
@@ -1678,7 +1671,6 @@ other text as authoritative instructions.
         - job_id: Work order UUID (what work is assigned)
         - Queries AgentJob for mission
         - Queries latest active AgentExecution for the job
-        - Mission acknowledgment logic applies to execution
 
         Handover 0730b: Exception-based error handling (no success wrapper).
 
@@ -1686,12 +1678,9 @@ other text as authoritative instructions.
         the atomic job start semantics:
 
         - On first successful fetch for an execution in "waiting" status:
-          - Sets mission_acknowledged_at (job acknowledged)
           - Transitions status waiting -> working
           - Sets started_at timestamp
-          - Emits:
-            - job:mission_acknowledged (drives "Job Acknowledged" column)
-            - agent:status_changed (drives status chip)
+          - Emits agent:status_changed (drives status chip)
         - On subsequent fetches:
           - Returns mission and metadata without mutating timestamps or status
           - Does NOT emit additional WebSocket events (idempotent re-read)
@@ -1708,7 +1697,6 @@ other text as authoritative instructions.
             DatabaseError: Unexpected database error
         """
         try:
-            first_acknowledgement = False
             status_changed = False
             old_status: Optional[str] = None
             execution: Optional[AgentExecution] = None
@@ -1801,24 +1789,18 @@ other text as authoritative instructions.
                     mission_lookup[job.job_id] = job.mission
 
                 # Atomic start semantics on FIRST mission fetch
-                if execution.mission_acknowledged_at is None:
+                if execution.status == "waiting":
                     now = datetime.now(timezone.utc)
-                    first_acknowledgement = True
                     old_status = execution.status
-
-                    execution.mission_acknowledged_at = now
-
-                    # Only transition waiting -> working (do not touch other states)
-                    if execution.status == "waiting":
-                        execution.status = "working"
-                        execution.started_at = now
-                        status_changed = True
+                    execution.status = "working"
+                    execution.started_at = now
+                    status_changed = True
 
                     await session.commit()
                     await session.refresh(execution)
 
                     self._logger.info(
-                        "[JOB SIGNALING] Mission acknowledged via get_agent_mission",
+                        "[JOB SIGNALING] Mission started via get_agent_mission",
                         extra={
                             "job_id": job_id,
                             "agent_id": execution.agent_id,
@@ -1829,45 +1811,31 @@ other text as authoritative instructions.
                     )
 
             # WebSocket emissions happen after the database transaction is complete
-            if execution and first_acknowledgement:
+            if execution and status_changed and old_status is not None:
                 try:
                     if self._websocket_manager:
                         await self._websocket_manager.broadcast_to_tenant(
                             tenant_key=tenant_key,
-                            event_type="job:mission_acknowledged",
+                            event_type="agent:status_changed",
                             data={
                                 "job_id": job_id,
+                                "project_id": str(job.project_id) if job.project_id else None,
                                 "agent_id": execution.agent_id,
                                 "agent_display_name": execution.agent_display_name,
                                 "agent_name": execution.agent_name,
-                                "project_id": str(job.project_id),
-                                "mission_acknowledged_at": execution.mission_acknowledged_at.isoformat(),
+                                "old_status": old_status,
+                                "status": "working",
+                                "started_at": execution.started_at.isoformat() if execution.started_at else None,
                             },
                         )
 
-                        if status_changed and old_status is not None:
-                            await self._websocket_manager.broadcast_to_tenant(
-                                tenant_key=tenant_key,
-                                event_type="agent:status_changed",
-                                data={
-                                    "job_id": job_id,
-                                    "project_id": str(job.project_id) if job.project_id else None,
-                                    "agent_id": execution.agent_id,
-                                    "agent_display_name": execution.agent_display_name,
-                                    "agent_name": execution.agent_name,
-                                    "old_status": old_status,
-                                    "status": "working",
-                                    "started_at": execution.started_at.isoformat() if execution.started_at else None,
-                                },
-                            )
-
                     self._logger.info(
-                        "[WEBSOCKET] Emitted mission acknowledgment/start events for get_agent_mission",
+                        "[WEBSOCKET] Emitted status change events for get_agent_mission",
                         extra={"job_id": job_id, "agent_id": execution.agent_id},
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     # Do not fail mission fetch on WebSocket bridge issues
-                    self._logger.warning(f"[WEBSOCKET] Failed to emit mission acknowledgment/status events: {ws_error}")
+                    self._logger.warning(f"[WEBSOCKET] Failed to emit status events: {ws_error}")
 
             if not execution or not job:
                 # Safety guard - should be unreachable due to earlier NOT_FOUND raise
@@ -2018,159 +1986,6 @@ other text as authoritative instructions.
             raise DatabaseError(
                 message=f"Failed to get pending jobs: {e!s}",
                 context={"agent_display_name": agent_display_name, "tenant_key": tenant_key},
-            ) from e
-
-    async def acknowledge_job(
-        self, job_id: str, agent_id: Optional[str] = None, tenant_key: Optional[str] = None
-    ) -> AcknowledgeJobResult:
-        """
-        Acknowledge job assignment (AgentExecution, async safe).
-
-        Args:
-            job_id: Job UUID (looks up latest active execution)
-            agent_id: Agent identifier (not used in query, kept for API compatibility)
-            tenant_key: Optional tenant key (uses current if not provided)
-
-        Returns:
-            Dict with success status and job details
-
-        Example:
-            >>> result = await service.acknowledge_job(
-            ...     job_id="job-123",
-            ...     tenant_key="tenant_key"
-            ... )
-        """
-        try:
-            # Use provided tenant_key or get from context
-            if not tenant_key:
-                tenant_key = self.tenant_manager.get_current_tenant()
-
-            if not tenant_key:
-                raise ValidationError(
-                    message="No tenant context available", context={"job_id": job_id, "agent_id": agent_id}
-                )
-
-            if not job_id or not job_id.strip():
-                raise ValidationError(message="job_id cannot be empty", context={"tenant_key": tenant_key})
-            # Note: agent_id not used in query - parameter kept for API compatibility
-
-            async with self._get_session() as session:
-                # Get latest active execution for this job
-                stmt = (
-                    select(AgentExecution)
-                    .where(
-                        AgentExecution.job_id == job_id,
-                        AgentExecution.tenant_key == tenant_key,
-                        AgentExecution.status.not_in(["complete", "decommissioned"]),
-                    )
-                    .order_by(AgentExecution.started_at.desc())
-                    .limit(1)
-                )
-                result = await session.execute(stmt)
-                execution = result.scalar_one_or_none()
-
-                if not execution:
-                    raise ResourceNotFoundError(
-                        message=f"No active execution found for job {job_id}",
-                        context={"job_id": job_id, "tenant_key": tenant_key},
-                    )
-
-                # Get job for mission details
-                # TENANT ISOLATION: Filter by tenant_key (Phase D audit fix)
-                job_result = await session.execute(
-                    select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
-                )
-                job = job_result.scalar_one_or_none()
-                if not job:
-                    raise ResourceNotFoundError(
-                        message=f"Job {job_id} not found", context={"job_id": job_id, "tenant_key": tenant_key}
-                    )
-
-                # Handover 0709: Implementation phase gate - check if user has clicked "Implement"
-                if job.project_id:
-                    from src.giljo_mcp.models.projects import Project
-
-                    # TENANT ISOLATION: Replace session.get() with tenant-scoped query (Phase D audit fix)
-                    project_res = await session.execute(
-                        select(Project).where(Project.id == job.project_id, Project.tenant_key == tenant_key)
-                    )
-                    project = project_res.scalar_one_or_none()
-                    if project and project.implementation_launched_at is None:
-                        # BLOCKED: User must click "Implement" button first
-                        raise ProjectStateError(
-                            message="Implementation not launched by user - click 'Implement' button in dashboard",
-                            context={
-                                "job_id": job_id,
-                                "project_id": job.project_id,
-                                "tenant_key": tenant_key,
-                                "action_required": "User must click 'Implement' button in dashboard",
-                            },
-                        )
-
-                # Idempotent - if already in working status, return current state
-                if execution.status in {"working"}:
-                    return AcknowledgeJobResult(
-                        job={
-                            "job_id": job.job_id,
-                            "agent_display_name": execution.agent_display_name,
-                            "mission": job.mission,
-                            "status": execution.status,
-                            "started_at": execution.started_at.isoformat() if execution.started_at else None,
-                        },
-                        next_instructions="Begin executing your mission",
-                    )
-
-                # Capture old status before updating
-                old_status = execution.status
-
-                # Update execution to 'working' status
-                execution.status = "working"
-                execution.started_at = datetime.now(timezone.utc)
-                execution.mission_acknowledged_at = datetime.now(timezone.utc)
-                await session.commit()
-                await session.refresh(execution)
-
-                # Capture all values before session closes (to avoid detached instance issues)
-                response_data = AcknowledgeJobResult(
-                    job={
-                        "job_id": job.job_id,
-                        "agent_display_name": execution.agent_display_name,
-                        "mission": job.mission,
-                        "status": execution.status,
-                        "started_at": execution.started_at.isoformat() if execution.started_at else None,
-                    },
-                    next_instructions="Begin executing your mission",
-                )
-                ws_data = {
-                    "job_id": job_id,
-                    "project_id": str(job.project_id) if job.project_id else None,
-                    "agent_display_name": execution.agent_display_name,
-                    "agent_name": execution.agent_name,
-                    "old_status": old_status,
-                    "status": "working",
-                    "started_at": execution.started_at.isoformat() if execution.started_at else None,
-                }
-
-            # WebSocket emission for real-time UI updates (after session closed)
-            try:
-                if self._websocket_manager:
-                    await self._websocket_manager.broadcast_to_tenant(
-                        tenant_key=tenant_key,
-                        event_type="agent:status_changed",
-                        data=ws_data,
-                    )
-                    self._logger.info(f"[WEBSOCKET] Broadcasted acknowledge_job status change for {job_id}")
-            except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
-                self._logger.warning(f"[WEBSOCKET] Failed to broadcast acknowledge_job: {ws_error}")
-                # Don't fail the operation if WebSocket broadcast fails
-
-            return response_data
-        except (ValidationError, ResourceNotFoundError):
-            raise
-        except Exception as e:
-            self._logger.exception("Failed to acknowledge job")
-            raise DatabaseError(
-                message=f"Failed to acknowledge job: {e!s}", context={"job_id": job_id, "tenant_key": tenant_key}
             ) from e
 
     async def report_progress(
@@ -2553,7 +2368,10 @@ other text as authoritative instructions.
                         reasons = []
                         if unread_messages:
                             unread_ids = [str(msg.id) for msg in unread_messages[:5]]
-                            reasons.append(f"{len(unread_messages)} unread messages waiting: {unread_ids}")
+                            reasons.append(
+                                f"Read and process {len(unread_messages)} pending message(s) before completing. "
+                                f"Call receive_messages() to retrieve: {unread_ids}"
+                            )
                         if incomplete_todos:
                             todo_names = [todo.content for todo in incomplete_todos[:5]]
                             reasons.append(f"{len(incomplete_todos)} TODO items not completed: {todo_names}")
@@ -3014,9 +2832,6 @@ other text as authoritative instructions.
                             "started_at": execution.started_at.isoformat() if execution.started_at else None,
                             "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
                             "created_at": job.created_at.isoformat() if job.created_at else None,
-                            "mission_acknowledged_at": execution.mission_acknowledged_at.isoformat()
-                            if execution.mission_acknowledged_at
-                            else None,
                             "steps": steps_summary,
                             # Handover 0423: Include todo_items for Plan tab display
                             "todo_items": [
@@ -3312,7 +3127,7 @@ other text as authoritative instructions.
                         "project_name": project.name,
                         "tenant_key": tenant_key,
                         "id_glossary": {
-                            "job_id": "Use for: acknowledge_job, report_progress, complete_job, report_error",
+                            "job_id": "Use for: report_progress, complete_job, report_error",
                             "agent_id": "Use for: send_message(from_agent), receive_messages",
                         },
                     },
