@@ -191,7 +191,7 @@ def build_retirement_prompt(
         tag = project_taxonomy or project_name or project_id[:8]
         display_name = project_name or "this project"
         git_closeout_section = f"""
-BEFORE writing 360 Memory, create a git closeout commit to preserve project history:
+BETWEEN STEP 5 and STEP 6, create a git closeout commit to preserve project history:
 
 git commit --allow-empty -m "closeout({tag}): {display_name}
 
@@ -204,53 +204,88 @@ This commit makes project history searchable via git log --grep="closeout" or gi
 
     return f"""ORCHESTRATOR SESSION RETIREMENT{project_display}
 
-Your terminal session is being refreshed. Before you stop, you MUST preserve your session context for the continuation session.
+Your terminal session is ending due to context exhaustion. Execute these steps IN ORDER to close out all subagents and preserve session context.
 
 YOUR IDENTITY:
   Agent ID: {agent_id}
   Job ID: {job_id}
   Project ID: {project_id}
-{git_closeout_section}
-STEP 1 - Drain active subagents:
+
+Timeout: If any agent is still "working" after 60 seconds, skip it and document as unresolved.
+
+STEP 1 — Pre-flight: Gather team state (do NOT modify anything yet)
 
 mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
 
-If any agents are still "working":
-- Receive their final messages: mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
-- Wait for them to complete (poll workflow status every ~20s, timeout after 60s)
-- Include their outcomes in your session summary
+Record:
+- Which agents need cleanup (status is NOT "complete" and NOT "decommissioned")
+- Which agents have messages_waiting > 0 or incomplete todos
+- Which agents can be skipped (status "complete" with 0 messages waiting and all todos done, or status "decommissioned")
 
-STEP 2 - Signal you are alive before writing memory:
+STEP 2 — Drain and close out each subagent
+
+LOOP over each non-orchestrator agent from Step 1 that needs cleanup:
+
+  2a. Drain their messages:
+      mcp__giljo-mcp__receive_messages(agent_id="<agent_id>")
+      Record any important content for the 360 Memory summary.
+
+  2b. Mark remaining todos as skipped:
+      mcp__giljo-mcp__report_progress(
+          job_id="<agent_job_id>",
+          todo_items=[
+              ...keep completed items as "completed",
+              ...mark remaining pending/in_progress items as "skipped"
+          ]
+      )
+
+  2c. Complete the agent:
+      mcp__giljo-mcp__complete_job(
+          job_id="<agent_job_id>",
+          result={{
+              "summary": "Handed over due to context exhaustion. Skipped items documented in 360 Memory.",
+              "status": "handed_over"
+          }}
+      )
+
+Skip agents already in status "complete" with 0 messages waiting and all todos done.
+Skip agents in status "decommissioned".
+
+STEP 3 — Drain YOUR OWN message queue
+
+mcp__giljo-mcp__receive_messages(agent_id="{agent_id}")
+
+STEP 4 — Report progress (signal alive on dashboard)
 
 mcp__giljo-mcp__report_progress(
     job_id="{job_id}",
-    todo_items=[{{"task": "Session retirement", "status": "in_progress"}}]
+    todo_items=[...mark your own items appropriately...]
 )
 
-STEP 3 - Write your session context to 360 Memory:
+STEP 5 — Write 360 Memory ONCE (this is the ONLY write, must succeed first attempt)
 
 mcp__giljo-mcp__write_360_memory(
     project_id="{project_id}",
-    summary="<Summarize what you accomplished, what is in progress, and any blockers>",
-    key_outcomes=["<list each concrete outcome>"],
-    decisions_made=["<list decisions and rationale>"],
     entry_type="handover_closeout",
-    author_job_id="{job_id}"
+    author_job_id="{job_id}",
+    summary="<Include ALL of the following sections:
+      COMPLETED WORK: <what was accomplished this session>
+      IN-PROGRESS WORK: <what was actively being worked on>
+      UNRESOLVED ITEMS FOR CONTINUATION SESSION:
+        - Agent <name> (job_id: <id>): skipped todos: [list], important messages: [list]
+        - <repeat for each unresolved agent>
+        - What the continuation orchestrator needs to address
+      BLOCKERS: <any known blockers>>",
+    key_outcomes=["<list each concrete outcome from this session>"],
+    decisions_made=["<list architectural/design decisions and rationale>"]
 )
+{git_closeout_section}
+STEP 6 — Confirm to user
 
-YOUR SUMMARY MUST INCLUDE:
-- Tasks completed and their results
-- Work currently in progress (with status)
-- Decisions made and why
-- Known blockers or issues
-- Agent statuses and any pending coordination
-- Recommended next steps for the continuation session
-
-After writing memory, report to the user:
-"Session context saved to 360 Memory. You may now close this terminal and paste the continuation prompt in a new terminal."
+Print: "Session context saved to 360 Memory. All subagents closed out. You may now close this terminal and paste the continuation prompt in a new terminal."
 
 CRITICAL: Do NOT skip the memory write. The continuation session depends on this context.
-CRITICAL: Do NOT call complete_job(). You are NOT done - your work continues in a new terminal.
+CRITICAL: Do NOT call complete_job() on YOUR OWN job. You are NOT done - your work continues in a new terminal.
 """
 
 
