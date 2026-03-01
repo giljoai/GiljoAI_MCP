@@ -101,6 +101,11 @@ Organization
 
 **Non-negotiable:** Handover plans that touch any layer of this hierarchy must explicitly document the cascading analysis. "I only changed the task layer" is not sufficient — you must confirm the product, project, and job layers are unaffected.
 
+When modifying or removing code, trace the full chain:
+model → repository → service → tool → endpoint → frontend component → test
+When removing a DB column: grep for the column name across ALL layers
+When removing a tool: check MCP registration, frontend tool lists, and test fixtures
+
 ### Installation Flow Protection
 
 A customer downloading GiljoAI originates with `install.py`. The installation flow is the front door to the product and **must never break**.
@@ -125,7 +130,7 @@ This is a professional product built to community-facing standards. Code quality
 Before EVERY commit, verify:
 
 1. **Zero lint issues**: `ruff check src/ api/` must pass clean
-2. **No dict return regression**: Services raise exceptions (post-0480/0730), NOT `return {"success": False, ...}`
+2. **No dict return regression**: All Python layers raise exceptions (post-0480/0730) — services, tools, orchestration, helpers, and context management. NOT `return {"success": False, ...}`
 3. **Tenant isolation**: Every new DB query filters by `tenant_key` (security-critical)
 4. **No dead code introduced**: If you add a method, it must be called. If you remove a caller, remove the method.
 5. **Valid agent statuses only**: `waiting`, `working`, `blocked`, `complete`, `silent`, `decommissioned` (post-0491)
@@ -150,6 +155,27 @@ When creating a new handover, you MUST validate the number:
 4. **Prefer filling gaps** in existing ranges rather than jumping to higher numbers
 5. **Current known gaps** (check catalogue for latest): 0021, 0033, 0054-0059, 0068, 0097-0099, 0133-0134, 0259, 0277, 0317, 0398-0399, 0413, 0418, 0435-0439, 0441-0449, 0493-0499
 6. **Use gaps appropriate to the domain**: Foundation (0001-0100), Architecture (0101-0200), GUI/Context (0201-0300), Services (0301-0400), Agent/Org (0401-0500)
+
+### Endpoint Security
+- Every API router MUST inject `Depends(get_current_active_user)` for authentication
+- Admin-only endpoints (configuration, database, system management) MUST additionally check user role
+- Only explicitly public endpoints (login, health check, frontend config) may skip auth
+- Pattern: `async def my_endpoint(current_user: User = Depends(get_current_active_user)):`
+
+### Frontend Code Discipline
+- Shared logic goes in `composables/` — do not duplicate utility functions across components
+- Use Vuetify theme variables for colors — no `!important` CSS overrides unless compensating for a verified framework bug
+- When removing a parent event listener, also remove the child `$emit` call
+- Interactive elements must have ARIA labels for accessibility
+
+### Function Size Limits
+- No function or method exceeds 200 lines without explicit justification documented in the handover
+- No class exceeds 1000 lines — split into focused modules
+
+### No Placeholder Data
+- No `random.randint()` or fabricated values in production code paths
+- No hardcoded fake metrics or statistics
+- If real data is unavailable: return null, raise an exception, or mark as "not yet implemented" — never fabricate
 
 ---
 
