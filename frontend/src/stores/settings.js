@@ -17,21 +17,16 @@ export const useSettingsStore = defineStore('settings', () => {
     wsUrl: 'ws://localhost:6003',
   })
 
-  const productInfo = ref(null)
-  const sessionInfo = ref(null)
   const loading = ref(false)
   const error = ref(null)
 
   // Field priority configuration (Handover 0048)
   const fieldPriorityConfig = ref(null)
-  const fieldPriorityLoading = ref(false)
-  const fieldPriorityError = ref(null)
 
   // Theme management
   const theme = useTheme()
 
   // Getters
-  const isDarkTheme = computed(() => true)
   const notificationPosition = computed(() => settings.value.notifications?.position || 'bottom-right')
   const notificationDuration = computed(() => (settings.value.notifications?.duration || 5) * 1000)
 
@@ -156,47 +151,32 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // Field Priority Configuration Actions (Handover 0048)
   async function fetchFieldPriorityConfig() {
-    fieldPriorityLoading.value = true
-    fieldPriorityError.value = null
     try {
       const response = await api.users.getFieldPriorityConfig()
       fieldPriorityConfig.value = response.data
     } catch (err) {
-      fieldPriorityError.value = err.response?.data?.detail || err.message
       console.error('Failed to fetch field priority config:', err)
       throw err
-    } finally {
-      fieldPriorityLoading.value = false
     }
   }
 
   async function updateFieldPriorityConfig(config) {
-    fieldPriorityLoading.value = true
-    fieldPriorityError.value = null
     try {
       const response = await api.users.updateFieldPriorityConfig(config)
       fieldPriorityConfig.value = response.data
     } catch (err) {
-      fieldPriorityError.value = err.response?.data?.detail || err.message
       console.error('Failed to update field priority config:', err)
       throw err
-    } finally {
-      fieldPriorityLoading.value = false
     }
   }
 
   async function resetFieldPriorityConfig() {
-    fieldPriorityLoading.value = true
-    fieldPriorityError.value = null
     try {
       const response = await api.users.resetFieldPriorityConfig()
       fieldPriorityConfig.value = response.data
     } catch (err) {
-      fieldPriorityError.value = err.response?.data?.detail || err.message
       console.error('Failed to reset field priority config:', err)
       throw err
-    } finally {
-      fieldPriorityLoading.value = false
     }
   }
 
@@ -212,16 +192,11 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     // State
     settings,
-    productInfo,
-    sessionInfo,
     loading,
     error,
     fieldPriorityConfig,
-    fieldPriorityLoading,
-    fieldPriorityError,
 
     // Getters
-    isDarkTheme,
     notificationPosition,
     notificationDuration,
 

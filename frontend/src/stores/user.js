@@ -11,7 +11,6 @@ import api, { setTenantKey } from '@/services/api'
 export const useUserStore = defineStore('user', () => {
   // State
   const currentUser = ref(null)
-  const isLoading = ref(false)
 
   // Org state (Handover 0424h)
   const orgId = ref(null)
@@ -38,17 +37,8 @@ export const useUserStore = defineStore('user', () => {
     }
   })
 
-  const isOrgAdmin = computed(() => {
-    return orgRole.value === 'admin' || orgRole.value === 'owner'
-  })
-
-  const isOrgOwner = computed(() => {
-    return orgRole.value === 'owner'
-  })
-
   // Actions
   async function fetchCurrentUser() {
-    isLoading.value = true
     try {
       const response = await api.auth.me()
       currentUser.value = response.data
@@ -69,13 +59,10 @@ export const useUserStore = defineStore('user', () => {
       currentUser.value = null
       clearOrgFields()
       return false
-    } finally {
-      isLoading.value = false
     }
   }
 
   async function login(username, password) {
-    isLoading.value = true
     try {
       await api.auth.login(username, password)
       // After successful login, fetch the user data
@@ -86,8 +73,6 @@ export const useUserStore = defineStore('user', () => {
       currentUser.value = null
       clearOrgFields()
       return false
-    } finally {
-      isLoading.value = false
     }
   }
 
@@ -100,7 +85,6 @@ export const useUserStore = defineStore('user', () => {
     } finally {
       // Always clear local state
       currentUser.value = null
-      isLoading.value = false
       clearOrgFields()
 
       // Clear tenant key from API client
@@ -112,7 +96,6 @@ export const useUserStore = defineStore('user', () => {
   }
 
   async function checkAuth() {
-    isLoading.value = true
     try {
       const response = await api.auth.me()
       currentUser.value = response.data
@@ -136,8 +119,6 @@ export const useUserStore = defineStore('user', () => {
       // v3.0 Unified: Always require valid authentication
       // No localhost bypass - unified authentication for ALL IPs
       return false
-    } finally {
-      isLoading.value = false
     }
   }
 
@@ -151,14 +132,12 @@ export const useUserStore = defineStore('user', () => {
   // Clear all user and org state (Handover 0424h)
   function clearUser() {
     currentUser.value = null
-    isLoading.value = false
     clearOrgFields()
   }
 
   return {
     // State
     currentUser,
-    isLoading,
     // Org state (Handover 0424h)
     orgId,
     orgName,
@@ -168,8 +147,6 @@ export const useUserStore = defineStore('user', () => {
     isAdmin,
     // Org computed properties (Handover 0424h)
     currentOrg,
-    isOrgAdmin,
-    isOrgOwner,
     // Actions
     fetchCurrentUser,
     login,

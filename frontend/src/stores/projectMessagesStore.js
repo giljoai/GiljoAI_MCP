@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
 import { immutableMapSet, immutableObjectPatch } from './immutableHelpers'
 
@@ -26,8 +26,6 @@ function normalizeMessage(raw) {
 
 export const useProjectMessagesStore = defineStore('projectMessagesDomain', () => {
   const messagesByProjectId = ref(new Map())
-
-  const projectCount = computed(() => messagesByProjectId.value.size)
 
   function getMessages(projectId) {
     const resolved = resolveProjectId(projectId)
@@ -144,9 +142,6 @@ export const useProjectMessagesStore = defineStore('projectMessagesDomain', () =
   return {
     // state
     messagesByProjectId,
-
-    // getters
-    projectCount,
 
     // selectors
     getMessages,

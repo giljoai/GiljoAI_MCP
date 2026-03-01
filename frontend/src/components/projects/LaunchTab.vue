@@ -14,6 +14,7 @@
                 variant="text"
                 class="header-edit-btn"
                 title="Edit description"
+                aria-label="Edit description"
                 @click="editDescription"
               />
               <AgentTipsDialog />
@@ -51,6 +52,7 @@
                     size="48"
                     data-testid="github-status-icon"
                     style="cursor: pointer;"
+                    aria-label="GitHub integration status"
                     @click="goToIntegrations"
                   >
                     mdi-github
@@ -70,6 +72,8 @@
                     :class="{ 'icon-disabled': !serenaEnabled }"
                     data-testid="serena-status-icon"
                     style="cursor: pointer;"
+                    alt="Serena MCP integration status"
+                    aria-label="Serena MCP integration status"
                     @click="goToIntegrations"
                   />
                 </template>
@@ -122,6 +126,7 @@
                   role="button"
                   tabindex="0"
                   title="Edit agent configuration"
+                  aria-label="Edit agent configuration"
                   @click.stop="handleAgentEdit(agent)"
                   @keydown.enter="handleAgentEdit(agent)"
                 >mdi-pencil</v-icon>
@@ -131,6 +136,7 @@
                   role="button"
                   tabindex="0"
                   title="View agent details"
+                  aria-label="View agent details"
                   @click.stop="handleAgentInfo(agent)"
                   @keydown.enter="handleAgentInfo(agent)"
                 >mdi-eye</v-icon>
@@ -487,7 +493,7 @@ watch(missionText, (next, previous) => {
             width: 32px;
 
             &:hover {
-              color: #ffc300;
+              color: rgb(var(--v-theme-primary));
             }
           }
 
@@ -610,7 +616,7 @@ watch(missionText, (next, previous) => {
 
     /* Orchestrator gets green border */
     &.orchestrator-card {
-      border-color: #67bd6d;
+      border-color: rgb(var(--v-theme-success));
     }
 
     .agent-avatar {
@@ -643,7 +649,7 @@ watch(missionText, (next, previous) => {
 
       &.status-waiting { color: #ffd700; }
       &.status-working { color: #D4A574; }
-      &.status-complete { color: #67bd6d; }
+      &.status-complete { color: rgb(var(--v-theme-success)); }
       &.status-handed_over { color: #9e9e9e; }
       &.status-blocked { color: #ff9800; }
       &.status-silent { color: #ff9800; }
@@ -656,7 +662,7 @@ watch(missionText, (next, previous) => {
       text-decoration-style: dotted;
 
       &:hover {
-        color: #ffc300;
+        color: rgb(var(--v-theme-primary));
       }
     }
 

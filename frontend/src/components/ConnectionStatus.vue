@@ -8,6 +8,7 @@
       size="small"
       :class="['connection-status', { reconnecting: wsStore.connectionStatus === 'reconnecting' }]"
       style="cursor: pointer"
+      aria-label="Connection status, click for details"
       @click="showDebugPanel = !showDebugPanel"
     >
       <span class="text-caption">{{ statusText }}</span>
@@ -30,7 +31,7 @@
           <v-icon start>mdi-bug</v-icon>
           WebSocket Debug Panel
           <v-spacer></v-spacer>
-          <v-btn icon="mdi-close" variant="text" @click="showDebugPanel = false"></v-btn>
+          <v-btn icon="mdi-close" variant="text" aria-label="Close debug panel" @click="showDebugPanel = false"></v-btn>
         </v-card-title>
 
         <v-divider></v-divider>

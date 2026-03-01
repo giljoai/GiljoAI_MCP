@@ -6,7 +6,6 @@ export const useProjectStore = defineStore('projects', () => {
   // State
   const projects = ref([])
   const deletedProjects = ref([])
-  const currentProject = ref(null)
   const loading = ref(false)
   const error = ref(null)
 
@@ -54,7 +53,6 @@ export const useProjectStore = defineStore('projects', () => {
     error.value = null
     try {
       const response = await api.projects.get(id)
-      currentProject.value = response.data
 
       // Update in list if exists
       const index = projects.value.findIndex((p) => p.id === id)
@@ -101,10 +99,6 @@ export const useProjectStore = defineStore('projects', () => {
         projects.value[index] = response.data
       }
 
-      if (currentProject.value?.id === id) {
-        currentProject.value = response.data
-      }
-
       return response.data
     } catch (err) {
       error.value = err.message
@@ -122,10 +116,6 @@ export const useProjectStore = defineStore('projects', () => {
       await api.projects.delete(id)
 
       projects.value = projects.value.filter((p) => p.id !== id)
-
-      if (currentProject.value?.id === id) {
-        currentProject.value = null
-      }
 
       // Refresh deleted projects list after deletion
       await fetchDeletedProjects()
@@ -211,10 +201,6 @@ export const useProjectStore = defineStore('projects', () => {
         projects.value[index] = response.data
       }
 
-      if (currentProject.value?.id === id) {
-        currentProject.value = response.data
-      }
-
       return response.data
     } catch (err) {
       error.value = err.message
@@ -234,10 +220,6 @@ export const useProjectStore = defineStore('projects', () => {
       const index = projects.value.findIndex((p) => p.id === id)
       if (index !== -1) {
         projects.value[index] = response.data
-      }
-
-      if (currentProject.value?.id === id) {
-        currentProject.value = response.data
       }
 
       return response.data
@@ -315,10 +297,6 @@ export const useProjectStore = defineStore('projects', () => {
         projects.value[index] = response.data
       }
 
-      if (currentProject.value?.id === id) {
-        currentProject.value = response.data
-      }
-
       return response.data
     } catch (err) {
       error.value = err.message
@@ -380,11 +358,6 @@ export const useProjectStore = defineStore('projects', () => {
       }
 
       project.updated_at = new Date().toISOString()
-
-      // Update current project if it's the same
-      if (currentProject.value?.id === project_id) {
-        currentProject.value = { ...project }
-      }
     } else if (project_id) {
       // Unknown project - fetch updated list
       fetchProjects()
@@ -395,7 +368,6 @@ export const useProjectStore = defineStore('projects', () => {
     // State
     projects,
     deletedProjects,
-    currentProject,
     loading,
     error,
 

@@ -52,14 +52,14 @@ const eyeColor = computed(() => (props.darkEyes ? '#080d13' : '#e1e1e1'))
 
 <style scoped>
 .gil-mascot {
-  background: transparent !important;
+  background: transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 svg {
   display: block;
-  background: transparent !important;
+  background: transparent;
 }
 
 /* SVG class styles */
@@ -73,6 +73,6 @@ svg {
   fill: none;
 }
 .st3 {
-  fill: #ffc300;
+  fill: rgb(var(--v-theme-primary));
 }
 </style>

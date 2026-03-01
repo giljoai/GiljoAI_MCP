@@ -10,18 +10,11 @@ import { defineStore } from 'pinia'
 
 export const useProjectTabsStore = defineStore('projectTabs', {
   state: () => ({
-    activeTab: 'launch', // 'launch' | 'jobs'
     currentProject: null,
     isLaunched: false,
   }),
 
   actions: {
-    switchTab(tabName) {
-      if (tabName === 'launch' || tabName === 'jobs') {
-        this.activeTab = tabName
-      }
-    },
-
     setCurrentProject(project) {
       this.currentProject = project || null
     },
@@ -31,7 +24,6 @@ export const useProjectTabsStore = defineStore('projectTabs', {
     },
 
     $reset() {
-      this.activeTab = 'launch'
       this.currentProject = null
       this.isLaunched = false
     },

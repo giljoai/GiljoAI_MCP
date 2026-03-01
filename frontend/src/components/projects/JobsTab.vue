@@ -44,6 +44,7 @@
                       v-bind="tooltipProps"
                       type="button"
                       class="play-circle-btn"
+                      aria-label="Copy agent prompt"
                       @click="handlePlay(agent)"
                     >
                       <v-icon size="18">mdi-play</v-icon>
@@ -65,6 +66,7 @@
                 <button
                   type="button"
                   class="agent-name-primary agent-name-button"
+                  aria-label="View assigned job"
                   @click="handleAgentJob(agent)"
                 >
                   {{ getPrimaryAgentLabel(agent) }}
@@ -109,6 +111,7 @@
                 v-if="agent.steps && typeof agent.steps.completed === 'number' && typeof agent.steps.total === 'number'"
                 type="button"
                 class="steps-trigger"
+                aria-label="View execution plan"
                 data-testid="steps-trigger"
                 @click="handleStepsClick(agent)"
               >
@@ -140,6 +143,7 @@
                     size="small"
                     variant="text"
                     :color="actionIconColor"
+                    aria-label="View messages"
                     data-testid="jobs-messages-btn"
                     @click="handleMessages(agent)"
                   />
@@ -153,6 +157,7 @@
                     v-bind="tooltipProps"
                     size="small"
                     variant="text"
+                    aria-label="View agent role"
                     data-testid="jobs-role-btn"
                     @click="handleAgentRole(agent)"
                   >
@@ -174,6 +179,7 @@
                     size="small"
                     variant="text"
                     :color="actionIconColor"
+                    aria-label="View assigned job"
                     data-testid="jobs-info-btn"
                     @click="handleAgentJob(agent)"
                   />
@@ -192,6 +198,7 @@
                     size="small"
                     variant="text"
                     :color="actionIconColor"
+                    aria-label="Hand over session"
                     @click="handleHandOver(agent)"
                   />
                 </template>
@@ -209,6 +216,7 @@
                     size="small"
                     variant="text"
                     color="error"
+                    aria-label="Stop project"
                     data-testid="jobs-stop-btn"
                     @click="handleStopProject(agent)"
                   />
@@ -247,6 +255,7 @@
         variant="outlined"
         density="compact"
         hide-details
+        aria-label="Message to agent"
         @keyup.enter="sendMessage"
       />
 
@@ -256,6 +265,7 @@
         color="yellow-darken-2"
         :loading="sending"
         :disabled="!messageText.trim()"
+        aria-label="Send message"
         @click="sendMessage"
       />
     </div>
@@ -321,6 +331,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { api } from '@/services/api'
 import { useToast } from '@/composables/useToast'
+import { useClipboard } from '@/composables/useClipboard'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusConfig'
@@ -330,6 +341,8 @@ import AgentJobModal from '@/components/projects/AgentJobModal.vue'
 import MessageAuditModal from '@/components/projects/MessageAuditModal.vue'
 import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
 import HandoverModal from '@/components/projects/HandoverModal.vue'
+
+const { copy: clipboardCopy } = useClipboard()
 
 /**
  * JobsTab Component - Handover 0241 + 0243c + 0461d
@@ -462,8 +475,12 @@ async function copyId(value, label) {
   }
 
   try {
-    await navigator.clipboard.writeText(value)
-    showLocalToast({ message: `${label} copied`, type: 'success', duration: 2000 })
+    const success = await clipboardCopy(value)
+    if (success) {
+      showLocalToast({ message: `${label} copied`, type: 'success', duration: 2000 })
+    } else {
+      showLocalToast({ message: `Failed to copy ${label}`, type: 'error', duration: 3000 })
+    }
   } catch (error) {
     console.warn('[JobsTab] Failed to copy ID:', error)
     showLocalToast({ message: `Failed to copy ${label}`, type: 'error', duration: 3000 })
@@ -879,7 +896,7 @@ async function handleStopProject(agent) {
     const response = await api.prompts.termination(projectId.value)
 
     if (response.data.prompt) {
-      await navigator.clipboard.writeText(response.data.prompt)
+      await clipboardCopy(response.data.prompt)
 
       showLocalToast({
         message: `Termination prompt copied! Paste into orchestrator terminal. (${response.data.agent_count} agents)`,
@@ -989,30 +1006,10 @@ async function handleCloseout(data) {
 }
 
 /**
- * Copy helper with fallback
+ * Copy helper using shared composable
  */
 async function copyToClipboard(text) {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      return await navigator.clipboard.writeText(text)
-    }
-  } catch (e) {
-    // fall through to fallback
-  }
-  // Fallback: temporary textarea + execCommand
-  const textArea = document.createElement('textarea')
-  textArea.value = text
-  textArea.style.position = 'fixed'
-  textArea.style.left = '-9999px'
-  textArea.style.top = '-9999px'
-  document.body.appendChild(textArea)
-  textArea.focus()
-  textArea.select()
-  try {
-    document.execCommand('copy')
-  } finally {
-    document.body.removeChild(textArea)
-  }
+  await clipboardCopy(text)
 }
 
 // WebSocket updates for jobs/messages flow through the centralized router (0379a)
@@ -1294,7 +1291,7 @@ async function copyToClipboard(text) {
           }
 
           .v-icon {
-            opacity: 1 !important;
+            opacity: 1;
           }
         }
       }
@@ -1346,7 +1343,7 @@ async function copyToClipboard(text) {
 
       ::v-deep(.v-field) {
         background: rgba(var(--v-theme-on-surface), 0.05);
-        border: 2px solid rgba(var(--v-theme-on-surface), 0.2) !important;
+        border: 2px solid rgba(var(--v-theme-on-surface), 0.2);
         border-radius: 8px;
 
         input {
@@ -1360,11 +1357,11 @@ async function copyToClipboard(text) {
         }
 
         &:hover {
-          border-color: rgba(var(--v-theme-on-surface), 0.3) !important;
+          border-color: rgba(var(--v-theme-on-surface), 0.3);
         }
 
         &.v-field--focused {
-          border-color: #ffd700 !important;
+          border-color: #ffd700;
         }
       }
     }

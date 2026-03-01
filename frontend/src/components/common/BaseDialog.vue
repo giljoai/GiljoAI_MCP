@@ -337,28 +337,28 @@ watch(() => props.modelValue, (newVal) => {
 <style scoped>
 /* Ensure dialog card is fully opaque and elevated */
 .base-dialog-card {
-  background-color: rgb(var(--v-theme-surface)) !important;
-  opacity: 1 !important;
+  background-color: rgb(var(--v-theme-surface));
+  opacity: 1;
 }
 
 /* Title bar background colors with proper contrast */
 .bg-info {
-  background-color: rgb(var(--v-theme-info)) !important;
+  background-color: rgb(var(--v-theme-info));
   color: white;
 }
 
 .bg-warning {
-  background-color: rgb(var(--v-theme-warning)) !important;
+  background-color: rgb(var(--v-theme-warning));
   color: rgba(0, 0, 0, 0.87);
 }
 
 .bg-error {
-  background-color: rgb(var(--v-theme-error)) !important;
+  background-color: rgb(var(--v-theme-error));
   color: white;
 }
 
 .bg-success {
-  background-color: rgb(var(--v-theme-success)) !important;
+  background-color: rgb(var(--v-theme-success));
   color: white;
 }
 
