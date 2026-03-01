@@ -1,7 +1,7 @@
 # Handover Reconciliation Report - February 2026
 
 **Created**: 2026-02-17
-**Last Updated**: 2026-02-23 (reconciled with git history + catalogue sync)
+**Last Updated**: 2026-02-28 (8 handovers closed out, execution order revised)
 **Commit**: `9e5743ea` (original reconciliation) + restoration amendments
 **Scope**: Full audit of `handovers/` root - 31 files triaged + complete February completion record
 
@@ -341,16 +341,18 @@ Completed 2026-02-15. 5 CRITICAL + 20 HIGH findings identified and fixed across 
 
 ---
 
-## Active Handover Debt (Updated 2026-02-23)
+## Active Handover Debt (Updated 2026-02-28)
 
 | Tier | Handovers | Focus |
 |------|-----------|-------|
 | ~~1 - Dead Code~~ | ~~0371, 0371a~~ | ~~Dead code cleanup + template dead code + stale tests~~ **ALL COMPLETE** |
-| ~~2 - Orchestrator~~ | ~~0365~~, ~~0410~~ | ~~0365 SUPERSEDED~~ (UI handover + `build_continuation_prompt()`), ~~0410 COMPLETE~~ (2026-02-21, recipient name resolution + broadcast signal + field mismatch fix) |
-| ~~3 - Agent Exec~~ | ~~0419~~ | ~~Long-polling orchestrator monitoring~~ **SUPERSEDED** by Agent Lab feature (bash sleep polling via `AgentTipsDialog.vue`) |
-| 4 - Polish | 0732 | API consistency fixes (minor, 2-4h) |
-| 5 - Ready | 0411 | Windows Terminal agent spawning (multi-tab orchestration) |
-| 6 - Future | 0409, 0250 | Unified client setup, HTTPS enablement |
+| ~~2 - Orchestrator~~ | ~~0365~~, ~~0410~~ | ~~0365 SUPERSEDED~~, ~~0410 COMPLETE~~ |
+| ~~3 - Agent Exec~~ | ~~0419~~ | ~~Long-polling orchestrator monitoring~~ **SUPERSEDED** |
+| ~~4 - Polish~~ | ~~0732~~ | ~~API consistency fixes~~ **COMPLETE** (2026-02-23) |
+| ~~5 - Multi-Terminal~~ | ~~0411, 0411a, 0411b~~ | ~~WT spawning → phase labels + dead code~~ **ALL COMPLETE** (2026-02-24) |
+| ~~6 - Production Parity~~ | ~~0497a-e~~ | ~~Multi-terminal production parity chain~~ **ALL COMPLETE** (2026-02-25) |
+| ~~7 - Closeout~~ | ~~0498~~ | ~~Early termination + dashboard reduction~~ **COMPLETE** (2026-02-26) |
+| 8 - Future | 0409, 0250 | Unified client setup, HTTPS enablement |
 
 ### Closed Since Report
 
@@ -362,12 +364,32 @@ Completed 2026-02-15. 5 CRITICAL + 20 HIGH findings identified and fixed across 
 - **0440a-d** (Project Taxonomy): ALL COMPLETE 2026-02-21. All 4 phases archived to completed/.
 - **0365** (Orchestrator Handover Behavior Injection): SUPERSEDED 2026-02-21. UI-triggered handover flow + `build_continuation_prompt()` replaced the need for conditional `get_orchestrator_instructions`. Moved to `completed/superseded/`.
 
-### Post-Report Commits (2026-02-22 to 2026-02-23)
+### Closed Since Last Update (2026-02-23 to 2026-02-28)
+
+- **0732** (API Consistency Fixes): COMPLETE 2026-02-23. URL kebab-case + HTTPException standardization. Commit: `30072759`.
+- **0411** (Windows Terminal Agent Spawning): SUPERSEDED 2026-02-24. Split into 0411a (phase labels) + 0411b (dead code cleanup).
+- **0411a** (Recommended Execution Order): COMPLETE 2026-02-24. Phase field on AgentJob, colored pill badges in Jobs tab, 7 commits.
+- **0411b** (Dead Code Cleanup): COMPLETE 2026-02-24. Removed ~11,900 lines of orphaned WorkflowEngine, MissionPlanner, and dead tests.
+- **0497a** (Thin Agent Prompt): COMPLETE 2026-02-25. Rewrote `generate_agent_prompt()`. Commit: `15aad66a` (combined with 0497b).
+- **0497b** (Agent Completion Result Storage): COMPLETE 2026-02-25. `result` JSON column on AgentExecution, auto-message. Commit: `15aad66a`.
+- **0497c** (Multi-Terminal Orchestrator Prompt): COMPLETE 2026-02-25. Dedicated prompt builder for MT mode. Commit: `8de0586e`.
+- **0497d** (Agent Protocol Enhancements): COMPLETE 2026-02-25. /gil_add + git commit injection. Commit: `25ee3bb2`.
+- **0497e** (Fresh Agent Recovery Flow): COMPLETE 2026-02-25. Successor spawning with predecessor context. Commit: `c6592915`.
+- **0498** (Early Termination + Dashboard Reduction): COMPLETE 2026-02-26. Smart force-close, "skipped" status, 9→5 columns, handover modal. 4 commits + 8 follow-up fixes.
+
+### Post-Report Commits (2026-02-22 to 2026-02-28)
 
 Not tied to specific handovers:
 - `a654ec90` feat: Inject structured git closeout commit in orchestrator prompts
 - `d670d7b2` fix: Require both git integration AND context priority git_history toggles
 - `6f9d7d49` fix: Group edit + lab icons together on launch page panel header
+- `334ee414` feat: Block duplicate agent_display_name on spawn, suggest unique name
+- `511595bc` fix: Handle multiple duplicate agents gracefully in spawn validation
+- `a00a863e` feat: Add per-agent todo/message counts to get_workflow_status
+- `0860be57` fix: Message badge/modal count mismatch and column rename
+- `4e4ba85e` fix: Show completed date for terminated projects in project list
+- `b3aa0a54` fix: Remove spawn-time Serena injection (double-inject bug)
+- Various UI polish: play button positioning, column renaming, agent card layout
 
 ### Audit Notes on Stale Orchestrator Handovers
 
@@ -375,14 +397,20 @@ Not tied to specific handovers:
 
 ---
 
-## Remaining Handovers (Updated 2026-02-23)
+## Remaining Handovers (Updated 2026-02-28)
 
 ### Ready for Implementation
 
 | Handover | Title | Priority | Est. Hours |
 |----------|-------|----------|------------|
-| 0411 | Windows Terminal Agent Spawning | HIGH | 2-3h |
-| 0732 (fixes) | API Consistency Fixes | LOW | 2-4h |
+| 0409 | Unified Client Quick Setup | Medium | 8-12h |
+
+### Needs Triage
+
+| File | Title | Action Needed |
+|------|-------|---------------|
+| TECHNICAL_DEBT_v2.md | Stale debt register (Oct 2025) | Retire resolved items, capture survivors as new handovers |
+| TODO_vision_summarizer_llm_upgrade.md | Vision Summarizer LLM Upgrade | Check if Phase 1 scope still valid post-0493 |
 
 ### Deferred (7 remaining)
 
@@ -396,7 +424,17 @@ Not tied to specific handovers:
 | 1014 | Security Auditing | Enterprise compliance |
 | 9999 | One-Liner Installation System | Parking lot / future ideas |
 
-> **Note**: Two files use the `0732` number: `0732_API_CONSISTENCY_FIXES.md` (ready, minor polish) and `0732_release_packaging_sprint.md` (deferred, post-v1.0). Different scopes.
+### Root Files to Move to Reference_docs/
+
+These are non-actionable reference/operational docs that should be moved out of the active handover root:
+
+| File | Type | Recommendation |
+|------|------|----------------|
+| Code_quality_prompt.md | Operational tool | Move to Reference_docs/ |
+| LOG_ANALYSIS_GUIDE.md | Operational tool | Move to Reference_docs/ |
+| Agent instructions and where they live.md | Reference | Move to Reference_docs/ |
+| Claude code vs Multerminal write up.txt | Reference | Move to Reference_docs/ |
+| claude_code_agent_teams_integration_review.md | Reference | Move to Reference_docs/ |
 
 ---
 
@@ -404,11 +442,12 @@ Not tied to specific handovers:
 
 | Metric | Value |
 |--------|-------|
-| Handovers completed in February | ~50+ (0054, 0433, 0434, 0440a-d, 0485, 0487, 0489-0493, 0495, 0700 series, 0709, 0720-0733, 0740, 0745a-f, 0750a-d, tenant isolation, 0371/0371a, 0410, etc.) |
-| Handovers remaining (ready) | 2 (0411, 0732 fixes) |
+| Handovers completed in February | ~60+ (including 0411a/b, 0497a-e, 0498, 0732, 0054, 0433, 0434, 0440a-d, 0485, 0487, 0489-0493, 0495, 0700 series, 0709, 0720-0733, 0740, 0745a-f, 0750a-d, tenant isolation, 0371/0371a, 0410, etc.) |
+| Handovers remaining (ready) | 1 (0409) |
+| Handovers needing triage | 2 (TECHNICAL_DEBT_v2, TODO_vision) |
 | Handovers deferred | 7 (post-v1.0 or low priority) |
-| Total in completed/ archive | 314 |
-| Lines removed (0700-0750 series alone) | ~15,800 |
+| Total in completed/ archive | 322+ |
+| Lines removed (0700-0750 + 0411b) | ~27,700 |
 | Tenant isolation regression tests | 61 passing |
 
 ---
@@ -420,72 +459,61 @@ Sequenced to avoid rework -- earlier items affect surfaces that later items buil
 ### Dependency Map
 
 ```
-0732 API Fixes ──┐
-                  ├──→ 0409 Unified Client Setup ──→ 0732 Release Packaging
-0411 WT Spawning ─┤                                          │
-                  │                                          ▼
-0284 Agent Disc. ─┘                                   0731 Legacy Removal
-                                                             │
-0250 HTTPS ──────────────────────────────────────────────────┘
+TECHNICAL_DEBT_v2 triage ─┐
+                           ├──→ 0409 Unified Client Setup ──→ 0732 Release Packaging
+0284 Agent Discovery ──────┤                                          │
+                           │                                          ▼
+0250 HTTPS ────────────────┘                                   0731 Legacy Removal
 ```
 
 **Key dependencies:**
-- **0732 API Fixes before 0409**: Setup prompts reference API endpoints -- fix the surface before generating prompts for it
-- **0411 before 0409**: Spawning mechanics may affect what the setup flow needs to configure
 - **0250 before 0409** (ideally): Setup prompts should offer HTTPS option if it exists
+- **0284 before 0409** (ideally): Agent discovery enriches what setup can configure
 - **0409 before 0732 Release**: Onboarding flow must work before packaging for release
 - **0731 after release**: Explicitly designed to break backward compat after users migrate
 
-### Phase 1: API Cleanup (before new features)
+### Phase 1: Triage (housekeeping)
 
 | # | Handover | Title | Hours | Rationale |
 |---|----------|-------|-------|-----------|
-| 1 | 0732 (fixes) | API Consistency Fixes | 2-4h | Fix 1 URL naming violation + 2 inconsistent error handlers from 0725 audit. Quick win. Clean API surface before anything builds on it. |
-| 2 | TECHNICAL_DEBT_v2 | Triage stale debt register | 1-2h | Created Oct 2025, most "CRITICAL blockers" (agent monitoring UI, task-agent integration) resolved by 0400-0500 series. Retire resolved items, capture any survivors as new handovers. |
+| 1 | TECHNICAL_DEBT_v2 | Triage stale debt register | 1-2h | Created Oct 2025, most items resolved by 0400-0500 series. Retire resolved, capture survivors. |
+| 2 | TODO_vision | Check vision summarizer scope | 1h | Verify remaining scope after 0493 token harmonization. |
 
 ### Phase 2: Feature Completion
 
 | # | Handover | Title | Hours | Rationale |
 |---|----------|-------|-------|-----------|
-| 3 | 0411 | Windows Terminal Agent Spawning | 2-3h | Highest priority remaining feature. Enables orchestrators to auto-spawn agent teams in colored WT tabs. Template updates + testing. Independent -- no handover blocks it. |
-| 4 | 0284 | Address get_available_agents | 4-6h | Enhances agent discovery MCP tool (expose via HTTP, improve descriptions, add version validation). Complements 0411's spawning with proper discovery. |
+| 3 | 0284 | Address get_available_agents | 4-6h | Enhances agent discovery MCP tool. Complements multi-terminal spawning. |
+| 4 | 0250 | HTTPS Enablement | 6-8h | Optional but should exist before 0409 generates setup prompts. |
+| 5 | 0409 | Unified Client Quick Setup | 8-12h | Generate copy-paste setup prompts for Claude/Codex/Gemini. After agent discovery and HTTPS. |
 
-### Phase 3: Production Readiness
-
-| # | Handover | Title | Hours | Rationale |
-|---|----------|-------|-------|-----------|
-| 5 | 0250 | HTTPS Enablement | 6-8h | Optional but should exist before 0409 generates setup prompts. Certificate generation helpers, WebSocket protocol switching (ws->wss), config persistence. Backend SSL flags already exist. |
-| 6 | 0409 | Unified Client Quick Setup | 8-12h | Generate copy-paste setup prompts for Claude/Codex/Gemini from the intro tour. Must come AFTER 0732 fixes (clean API), 0411 (spawning), and ideally 0250 (HTTPS option) so prompts are accurate. |
-
-### Phase 4: Pre-Release Polish
+### Phase 3: Pre-Release Polish
 
 | # | Handover | Title | Hours | Rationale |
 |---|----------|-------|-------|-----------|
-| 7 | 0083 | Harmonize Slash Commands | 2-4h | **Needs triage first.** Was deferred to 0512 (completed as "claude_md update cleanup"). Some `/gil_*` harmonization happened organically (`/gil_add` exists). Check if remaining scope is still relevant or can be retired. |
-| 8 | TODO_vision | Vision Summarizer LLM Upgrade | TBD | Phase 1 (consolidated summaries) partially done via 0377. Remaining: consolidation trigger, updated `get_vision_document()`, regeneration button. Phase 2 (LLM-native) is future. |
+| 6 | 0083 | Harmonize Slash Commands | 2-4h | **Needs triage first.** Check if remaining scope is still relevant. |
 
-### Phase 5: Release Gate
-
-| # | Handover | Title | Hours | Rationale |
-|---|----------|-------|-------|-----------|
-| 9 | 0732 (release) | Open Source Release Packaging | 3-5h | GitHub issue/PR templates, screenshots, Docker compose, changelog, test badge. The "first 60 seconds" experience. After all features are merged. |
-
-### Phase 6: Post-Release
+### Phase 4: Release Gate
 
 | # | Handover | Title | Hours | Rationale |
 |---|----------|-------|-------|-----------|
-| 10 | 0731 | Legacy Code Removal | 16-24h | Remove 89+ backward compat layers, deprecated fields, method stubs. Explicitly post-v1.0 to allow migration period. |
-| 11 | 1014 | Security Auditing | TBD | Enterprise compliance audit trail. Deferred until compliance requirements are defined. |
-| 12 | 9999 | One-Liner Installation System | TBD | Parking lot. curl-pipe-bash installer for instant setup. |
+| 7 | 0732 (release) | Open Source Release Packaging | 3-5h | The "first 60 seconds" experience. After all features are merged. |
+
+### Phase 5: Post-Release
+
+| # | Handover | Title | Hours | Rationale |
+|---|----------|-------|-------|-----------|
+| 8 | 0731 | Legacy Code Removal | 16-24h | Remove 89+ backward compat layers. Post-v1.0 migration period. |
+| 9 | 1014 | Security Auditing | TBD | Enterprise compliance. Deferred until requirements defined. |
+| 10 | 9999 | One-Liner Installation System | TBD | Parking lot. |
 
 ### Estimated Total
 
 | Phase | Hours | Notes |
 |-------|-------|-------|
-| Phase 1 (API Cleanup) | 3-6h | Can start immediately |
-| Phase 2 (Features) | 6-9h | Highest impact |
-| Phase 3 (Production) | 14-20h | Largest phase |
-| Phase 4 (Polish) | 2-8h | Depends on triage |
-| Phase 5 (Release) | 3-5h | Gating step |
-| **Pre-release total** | **28-48h** | |
-| Phase 6 (Post-release) | 16-24h+ | No rush |
+| Phase 1 (Triage) | 2-3h | Can start immediately |
+| Phase 2 (Features) | 18-26h | Largest phase |
+| Phase 3 (Polish) | 2-4h | Depends on triage |
+| Phase 4 (Release) | 3-5h | Gating step |
+| **Pre-release total** | **25-38h** | |
+| Phase 5 (Post-release) | 16-24h+ | No rush |
