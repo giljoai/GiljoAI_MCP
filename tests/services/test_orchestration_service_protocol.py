@@ -5,7 +5,7 @@ Verifies that _generate_agent_protocol() produces protocol strings
 that match the backend's expected progress format.
 """
 
-from src.giljo_mcp.services.orchestration_service import _generate_agent_protocol
+from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
 
 class TestAgentProtocolFormat:
