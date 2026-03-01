@@ -1,1 +1,0 @@
-"""Product endpoint tests package."""
