@@ -124,7 +124,7 @@ FIRST ACTIONS (DO NOT RE-STAGE):
 2. Signal you are alive:
    mcp__giljo-mcp__report_progress(
        job_id="{job_id}",
-       todo_items=[{{"task": "Continuation startup", "status": "in_progress"}}]
+       todo_items=[{{"content": "Continuation startup", "status": "in_progress"}}]
    )
 
 3. Read 360 Memory for session context:
@@ -144,7 +144,7 @@ FIRST ACTIONS (DO NOT RE-STAGE):
    mcp__giljo-mcp__get_workflow_status(project_id="{project_id}")
 
 AFTER CONTEXT GATHERING — decide next action based on workflow status:
-- If all agents completed: proceed to closeout (complete_job, write_360_memory)
+- If all agents completed: proceed to closeout (update your own todos to completed via report_progress, then complete_job, then close_project_and_update_memory)
 - If agents still working: resume monitoring loop (~20s intervals)
 - If agents blocked: send messages to resolve blockers
 - If agents failed: assess and re-spawn if needed
