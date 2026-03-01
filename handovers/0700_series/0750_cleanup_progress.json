@@ -72,9 +72,9 @@
       "phase": 6,
       "title": "Dead Code Removal",
       "handover": "handovers/0700_series/0750f_dead_code_removal.md",
-      "status": "pending",
-      "commits": [],
-      "notes": ""
+      "status": "complete",
+      "commits": ["3e0f7dce", "e63457c6", "60639510"],
+      "notes": "Net ~1,460 lines removed. 11 dead methods, 24 dead schemas (331 lines), 5 broken repo methods, 107 lines duplicate consolidated into _memory_helpers.py, 7 frontend dead code items, 3 stale status strings fixed, dead test class removed. GREEN: 1406 passed, 342 skipped, 0 failed."
     },
     {
       "id": "0750g",
