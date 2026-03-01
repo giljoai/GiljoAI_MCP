@@ -69,7 +69,7 @@ class AgentHealthStatus:
         job_id: Job identifier (work order - may have multiple executions via succession)
         agent_id: Agent identifier (may have duplicates in edge cases)
         agent_display_name: Type of agent (orchestrator, implementer, etc.)
-        current_status: Current job status (waiting, active, etc.)
+        current_status: Current execution status (waiting, working, blocked, complete, silent, decommissioned)
         health_state: Health state (healthy, warning, critical, timeout)
         last_update: Timestamp of last activity
         minutes_since_update: Minutes since last activity
