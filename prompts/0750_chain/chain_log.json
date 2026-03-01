@@ -164,8 +164,8 @@
         "tool_accessor.py recommended NO SPLIT — facade pattern is intentional and splitting would increase complexity"
       ],
       "blockers_encountered": [],
-      "notes_for_next": "MONOLITH_SPLIT_PLAN.md has the full implementation plan. Key finding: only orchestration_service.py needs splitting. Proposed 3-module split: protocol_builder.py (~886 lines, pure functions, safest first step), job_lifecycle.py (~692 lines, needs shared context extraction), remainder stays in orchestration_service.py (~860 lines). 8 oversized functions need internal decomposition. Estimated 4-6 sessions for full implementation. tool_accessor.py should NOT be split.",
-      "summary": "Full monolith research complete. Mapped all methods in orchestration_service.py (3,427 lines) and tool_accessor.py (1,072 lines). Created detailed split plan proposing 3-module extraction for OrchestrationService. Identified 8 oversized functions >250 lines. Recommended NO SPLIT for tool_accessor.py (facade pattern). Assessed 22 files >500 lines — only 1 genuine monolith."
+      "notes_for_next": "Phase A+B executed (commit 6a356084). orchestration_service.py: 3,427 -> 2,705 lines. protocol_builder.py: 941 lines (new). All 5 oversized functions under 250 lines. Remaining split work: job_lifecycle extraction (Phase C, ~692 lines), other file decompositions (Phase D). 3 oversized functions in other files still need attention (see MONOLITH_SPLIT_PLAN.md). tool_accessor.py should NOT be split.",
+      "summary": "Research + execution complete. Mapped orchestration_service.py (3,427 lines) and tool_accessor.py (1,072 lines). Executed Phase A: extracted protocol_builder.py (941 lines of stateless functions). Executed Phase B: decomposed 5 oversized functions via helper extraction. orchestration_service.py reduced from 3,427 to 2,705 lines. All functions under 250 lines. 1414 tests passing."
     },
     {
       "session_id": "0750f",
