@@ -1,0 +1,89 @@
+{
+  "series": "0750",
+  "title": "Code Quality Cleanup Sprint",
+  "created": "2026-02-28",
+  "roadmap": "handovers/CLEANUP_ROADMAP_2026_02_28.md",
+  "audit": "handovers/CODE_QUALITY_AUDIT_REPORT_2026_02_28.md",
+  "dependency_graph": "docs/cleanup/dependency_graph.json",
+  "baseline": {
+    "quality_score": 6.6,
+    "graph_orphans": 948,
+    "graph_edges": 2530,
+    "dict_returns_src": 66,
+    "dict_returns_api": 3,
+    "lint_issues": 2,
+    "test_collection_errors": 1
+  },
+  "target": {
+    "quality_score": 8.5,
+    "dict_returns_src": 0,
+    "dict_returns_api": 0,
+    "lint_issues": 0,
+    "test_collection_errors": 0
+  },
+  "phases": [
+    {
+      "id": "0750a",
+      "phase": 1,
+      "title": "Protocol Document Patches",
+      "handover": "handovers/0700_series/0750a_protocol_doc_patches.md",
+      "status": "pending",
+      "commits": [],
+      "notes": ""
+    },
+    {
+      "id": "0750b",
+      "phase": 2,
+      "title": "Test Suite Triage",
+      "handover": "handovers/0700_series/0750b_test_suite_triage.md",
+      "status": "pending",
+      "commits": [],
+      "notes": ""
+    },
+    {
+      "id": "0750c",
+      "phase": 3,
+      "title": "Tools Dict-to-Exception Migration",
+      "handover": "handovers/0700_series/0750c_tools_dict_migration.md",
+      "status": "pending",
+      "commits": [],
+      "notes": ""
+    },
+    {
+      "id": "0750d",
+      "phase": 4,
+      "title": "API Endpoint Hardening",
+      "handover": "handovers/0700_series/0750d_api_endpoint_hardening.md",
+      "status": "pending",
+      "commits": [],
+      "notes": ""
+    },
+    {
+      "id": "0750e",
+      "phase": 5,
+      "title": "Monolith Splits",
+      "handover": "handovers/0700_series/0750e_monolith_splits.md",
+      "status": "pending",
+      "commits": [],
+      "notes": ""
+    },
+    {
+      "id": "0750f",
+      "phase": 6,
+      "title": "Dead Code Removal",
+      "handover": "handovers/0700_series/0750f_dead_code_removal.md",
+      "status": "pending",
+      "commits": [],
+      "notes": ""
+    },
+    {
+      "id": "0750g",
+      "phase": 7,
+      "title": "Frontend Cleanup",
+      "handover": "handovers/0700_series/0750g_frontend_cleanup.md",
+      "status": "pending",
+      "commits": [],
+      "notes": ""
+    }
+  ]
+}
