@@ -6,9 +6,11 @@ Allows MCP adapter to route slash commands via HTTP (Handover 0080a)
 import logging
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.models import User
 from src.giljo_mcp.slash_commands import get_slash_command
 
 
@@ -39,7 +41,7 @@ class SlashCommandResponse(BaseModel):
 
 
 @router.post("/execute", response_model=SlashCommandResponse)
-async def execute_slash_command(request: SlashCommandRequest):
+async def execute_slash_command(request: SlashCommandRequest, current_user: User = Depends(get_current_active_user)):
     """
     Execute a slash command via HTTP
 

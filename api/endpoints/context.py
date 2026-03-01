@@ -14,6 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from api.dependencies import get_tenant_key
+from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.models import User
 
 
 router = APIRouter()
@@ -99,6 +101,7 @@ class HealthCheckResponse(BaseModel):
 @router.get("/index", response_model=ContextIndexResponse)
 async def get_context_index(
     product_id: str | None = Query(None, description="Product ID"),
+    current_user: User = Depends(get_current_active_user),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """Get the context index for intelligent querying"""
@@ -119,6 +122,7 @@ async def get_context_index(
 async def get_vision(
     part: int = Query(1, description="Part number to retrieve"),
     max_tokens: int = Query(20000, description="Maximum tokens per part"),
+    current_user: User = Depends(get_current_active_user),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """Get the vision document (chunked if large)"""
@@ -137,6 +141,7 @@ async def get_vision(
 
 @router.get("/vision/index", response_model=dict[str, Any])
 async def get_vision_index(
+    current_user: User = Depends(get_current_active_user),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """Get the vision document index"""
@@ -149,6 +154,7 @@ async def get_vision_index(
 @router.get("/settings", response_model=dict[str, Any])
 async def get_product_settings(
     product_id: str | None = Query(None, description="Product ID"),
+    current_user: User = Depends(get_current_active_user),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """Get all product settings for analysis"""
@@ -162,6 +168,7 @@ async def get_product_settings(
 async def chunk_vision_document(
     product_id: str,
     request: ChunkVisionRequest,
+    current_user: User = Depends(get_current_active_user),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """
@@ -260,6 +267,7 @@ async def search_context(
     query: str = Query(..., description="Search query"),
     product_id: str | None = Query(None, description="Filter by product ID"),
     limit: int = Query(10, description="Maximum chunks to return"),
+    current_user: User = Depends(get_current_active_user),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """
@@ -306,6 +314,7 @@ async def search_context(
 @router.post("/load-for-agent", response_model=LoadContextResponse)
 async def load_context_for_agent(
     request: LoadContextRequest,
+    current_user: User = Depends(get_current_active_user),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """
@@ -356,6 +365,7 @@ async def load_context_for_agent(
 @router.get("/products/{product_id}/token-stats", response_model=TokenStatsResponse)
 async def get_token_stats(
     product_id: str,
+    current_user: User = Depends(get_current_active_user),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """
@@ -401,6 +411,7 @@ async def get_token_stats(
 
 @router.get("/health", response_model=HealthCheckResponse)
 async def health_check(
+    current_user: User = Depends(get_current_active_user),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """

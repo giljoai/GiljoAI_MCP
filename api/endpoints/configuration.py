@@ -7,8 +7,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
+
+from src.giljo_mcp.auth.dependencies import get_current_active_user, require_admin
+from src.giljo_mcp.models import User
 
 
 router = APIRouter()
@@ -48,7 +51,7 @@ class SystemConfigResponse(BaseModel):
 
 
 @router.get("/")
-async def get_system_configuration():
+async def get_system_configuration(current_user: User = Depends(get_current_active_user)):
     """
     Get complete system configuration from config.yaml.
 
@@ -82,7 +85,9 @@ async def get_system_configuration():
 
 
 @router.get("/key/{key_path}", response_model=ConfigurationResponse)
-async def get_configuration(key_path: str, default: Optional[Any] = None):
+async def get_configuration(
+    key_path: str, default: Optional[Any] = None, current_user: User = Depends(get_current_active_user)
+):
     """Get specific configuration value by key path"""
     from api.app import state
 
@@ -105,7 +110,7 @@ async def get_configuration(key_path: str, default: Optional[Any] = None):
 
 
 @router.put("/key/{key_path}")
-async def set_configuration(key_path: str, config: ConfigurationSet):
+async def set_configuration(key_path: str, config: ConfigurationSet, current_user: User = Depends(require_admin)):
     """Set configuration value (runtime only, not persisted)"""
     from api.app import state
 
@@ -131,7 +136,7 @@ async def set_configuration(key_path: str, config: ConfigurationSet):
 
 
 @router.patch("/")
-async def update_configurations(update: ConfigurationUpdate):
+async def update_configurations(update: ConfigurationUpdate, current_user: User = Depends(require_admin)):
     """Update multiple configuration values at once"""
     from api.app import state
 
@@ -157,7 +162,7 @@ async def update_configurations(update: ConfigurationUpdate):
 
 
 @router.post("/reload")
-async def reload_configuration():
+async def reload_configuration(current_user: User = Depends(require_admin)):
     """Reload configuration from files and environment"""
     from api.app import state
 
@@ -171,7 +176,7 @@ async def reload_configuration():
 
 
 @router.get("/tenant", response_model=dict[str, Any])
-async def get_tenant_configuration(request: Request):
+async def get_tenant_configuration(request: Request, current_user: User = Depends(get_current_active_user)):
     """Get configuration for the authenticated user's tenant"""
     from api.app import state
 
@@ -202,6 +207,7 @@ async def get_tenant_configuration(request: Request):
 async def set_tenant_configuration(
     request: Request,
     configurations: dict[str, Any] = Body(..., description="Tenant-specific configurations"),
+    current_user: User = Depends(require_admin),
 ):
     """Set configuration for the authenticated user's tenant"""
     from api.app import state
@@ -241,7 +247,7 @@ async def set_tenant_configuration(
 
 
 @router.delete("/tenant")
-async def delete_tenant_configuration(request: Request):
+async def delete_tenant_configuration(request: Request, current_user: User = Depends(require_admin)):
     """Delete all configurations for the authenticated user's tenant"""
     from api.app import state
 
@@ -290,7 +296,7 @@ class DatabasePasswordUpdate(BaseModel):
 
 
 @router.get("/database", response_model=DatabaseConfigResponse)
-async def get_database_configuration():
+async def get_database_configuration(current_user: User = Depends(require_admin)):
     """Get database configuration (password masked) - reads from .env file"""
     # Read directly from .env file
     from dotenv import dotenv_values
@@ -316,7 +322,7 @@ async def get_database_configuration():
 
 
 @router.post("/database/password")
-async def update_database_password(update: DatabasePasswordUpdate):
+async def update_database_password(update: DatabasePasswordUpdate, current_user: User = Depends(require_admin)):
     """
     Update database password for giljo_user in both PostgreSQL and .env file
 
@@ -490,7 +496,7 @@ async def test_database_connection():
     from api.app import state
 
     if not state.db_manager:
-        return {"success": False, "error": "Database manager not initialized"}
+        raise HTTPException(status_code=503, detail="Database manager not initialized")
 
     try:
         async with state.db_manager.get_session_async() as session:
@@ -501,7 +507,7 @@ async def test_database_connection():
 
             if is_healthy:
                 return {"success": True, "message": "Database connection successful"}
-            return {"success": False, "error": "Database health check returned False"}
+            raise HTTPException(status_code=503, detail="Database health check failed")
 
     except (RuntimeError, OSError, ValueError) as e:
-        return {"success": False, "error": f"Database connection failed: {e!s}"}
+        raise HTTPException(status_code=503, detail=f"Database connection failed: {e!s}") from e
