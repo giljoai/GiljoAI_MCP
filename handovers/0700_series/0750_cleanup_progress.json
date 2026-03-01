@@ -27,18 +27,18 @@
       "phase": 1,
       "title": "Protocol Document Patches",
       "handover": "handovers/0700_series/0750a_protocol_doc_patches.md",
-      "status": "pending",
-      "commits": [],
-      "notes": ""
+      "status": "complete",
+      "commits": ["e46f223e"],
+      "notes": "All 3 protocol docs patched. Zero dict-return templates, 6 valid statuses, 5 new instruction sections."
     },
     {
       "id": "0750b",
       "phase": 2,
       "title": "Test Suite Triage",
       "handover": "handovers/0700_series/0750b_test_suite_triage.md",
-      "status": "pending",
-      "commits": [],
-      "notes": ""
+      "status": "complete",
+      "commits": ["05441fac", "dbf01502"],
+      "notes": "9 broken test files deleted (~4000 lines). CORE_TESTS.md created. Collection clean: 6497 tests, 0 errors."
     },
     {
       "id": "0750c",
