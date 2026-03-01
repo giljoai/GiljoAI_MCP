@@ -319,7 +319,6 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useTheme } from 'vuetify'
 import { api } from '@/services/api'
 import { useToast } from '@/composables/useToast'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -364,18 +363,10 @@ const props = defineProps({
     },
   },
 
-  readonly: {
-    type: Boolean,
-    default: false,
-  },
 })
 
 const emit = defineEmits([
-  'launch-agent',
-  'view-details',
-  'view-error',
   'closeout-project',
-  'send-message',
 ])
 
 /**
@@ -383,7 +374,6 @@ const emit = defineEmits([
  */
 const { showToast } = useToast()
 const wsStore = useWebSocketStore()
-const theme = useTheme()
 const { sortedJobs: sortedAgents, loadJobs, store: agentJobsStore } = useAgentJobs()
 
 /**
