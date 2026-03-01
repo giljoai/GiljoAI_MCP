@@ -29,8 +29,9 @@ from api.schemas.vision_document import (
     RechunkResponse,
     VisionDocumentResponse,
 )
+from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models import Product
+from src.giljo_mcp.models import Product, User
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from src.giljo_mcp.services.consolidation_service import ConsolidatedVisionService
 
@@ -115,6 +116,7 @@ async def create_vision_document(
     vision_file: UploadFile | None = File(None),
     display_order: int = Form(0),
     version: str = Form("1.0.0"),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
@@ -313,6 +315,7 @@ async def create_vision_document(
 @router.get("/{document_id}", response_model=VisionDocumentResponse)
 async def get_vision_document(
     document_id: str,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
 ):
@@ -353,6 +356,7 @@ async def get_vision_document(
 async def list_vision_documents(
     product_id: str,
     active_only: bool = True,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
@@ -389,6 +393,7 @@ async def list_vision_documents(
 async def update_vision_document(
     document_id: str,
     content: str = Form(...),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
@@ -481,6 +486,7 @@ async def update_vision_document(
 @router.delete("/{document_id}", response_model=DeleteResponse)
 async def delete_vision_document(
     document_id: str,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
@@ -548,6 +554,7 @@ async def delete_vision_document(
 async def regenerate_consolidated_vision(
     product_id: str,
     force: bool = False,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
 ):
@@ -608,6 +615,7 @@ async def regenerate_consolidated_vision(
 @router.post("/{document_id}/regenerate-summaries", response_model=RechunkResponse)
 async def regenerate_summaries(
     document_id: str,
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     tenant_key: str = Depends(get_tenant_key),
     vision_repo: VisionDocumentRepository = Depends(get_vision_repo),
