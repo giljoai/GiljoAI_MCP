@@ -1,6 +1,10 @@
 # Core Tests
 
-Tests that must always pass. Failures here block merges.
+**Baseline (post-0750b triage):** 167 test files, 1,238 passing, 522 skipped, 0 failed.
+This IS the complete test suite. 470+ stale/broken test files were deliberately removed in 0750b.
+Do NOT treat the test count as low or attempt to restore deleted tests. Write new tests alongside new features.
+
+Tests listed below must always pass. Failures here block merges.
 
 ## Tenant Isolation (SaaS Critical)
 

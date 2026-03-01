@@ -137,6 +137,7 @@ protocol documents. Commit when all checkboxes are done.
 **Priority:** HIGH (blocks all future validation)
 **Audit Reference:** Section "Test Suite" — 3 CRITICAL, 8 HIGH, 12 MEDIUM findings
 **Depends on:** None (can run parallel with Phase 1)
+**COMPLETED:** 167 test files remain (470+ stale files deleted). 1,238 passing, 522 skipped, 0 failed. This IS the correct baseline — do not attempt to restore deleted tests.
 **Graph context:** 801 of 1,284 graph nodes are test layer. The graph flags many test files as orphans — this is expected (tests are leaf nodes, they import but are not imported). Do NOT use orphan status to decide test file fate. Use pytest collection and pass/fail results instead.
 
 ### 2A: Delete Known-Broken Tests (Session 1)
