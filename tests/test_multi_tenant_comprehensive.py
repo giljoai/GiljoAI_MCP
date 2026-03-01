@@ -16,7 +16,7 @@ from typing import Any
 import pytest
 from sqlalchemy import select
 
-pytestmark = pytest.mark.skip(reason="0750b: Needs project fixture update for uq_project_taxonomy and NOT NULL constraints")
+pytestmark = pytest.mark.skip(reason="0750c3: async_engine attribute missing on DatabaseManager — DB test infrastructure")
 
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -53,6 +53,7 @@ class TestMultiTenantIsolation:
                     name=f"Tenant {i} Project",
                     mission=f"Mission for tenant {i}",
                     tenant_key=tenant_key,
+                    series_number=random.randint(1, 999999),
                 )
                 session.add(project)
                 session.commit()
@@ -162,6 +163,7 @@ class TestMultiTenantIsolation:
                         name=f"Concurrent Project T{tenant_id}_P{i}",
                         mission=f"Concurrent mission {i}",
                         tenant_key=tenant_key,
+                        series_number=random.randint(1, 999999),
                     )
                     session.add(project)
 
@@ -285,7 +287,7 @@ class TestMultiTenantIsolation:
 
         with db_manager.get_tenant_session(tenant_key) as session:
             # Create project
-            project = Project(name="Parent Project", mission="Test inheritance chain", tenant_key=tenant_key)
+            project = Project(name="Parent Project", mission="Test inheritance chain", tenant_key=tenant_key, series_number=random.randint(1, 999999))
             session.add(project)
             session.commit()
 
@@ -356,6 +358,7 @@ class TestMultiTenantIsolation:
                     name=f"Performance Test Project {i}",
                     mission=f"Performance testing for tenant {i}",
                     tenant_key=tenant_key,
+                    series_number=random.randint(1, 999999),
                 )
                 session.add(project)
                 session.commit()
@@ -393,7 +396,7 @@ class TestMultiTenantIsolation:
         # Initialize tenants
         for tenant_key in tenant_keys:
             with db_manager.get_tenant_session(tenant_key) as session:
-                project = Project(name="Load Test Project", mission="Stress testing", tenant_key=tenant_key)
+                project = Project(name="Load Test Project", mission="Stress testing", tenant_key=tenant_key, series_number=random.randint(1, 999999))
                 session.add(project)
                 session.commit()
 

@@ -7,6 +7,7 @@ Updated 0730d: Exception-based error handling patterns (no success wrappers).
 Updated 0731c: Typed returns - nuclear_delete_project returns NuclearDeleteResult.
 """
 
+import random
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -36,6 +37,7 @@ async def test_nuclear_delete_marks_memory_entries_in_table(
         status="active",
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
 
@@ -107,6 +109,7 @@ async def test_nuclear_delete_with_no_memory_entries(
         status="active",
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
@@ -137,6 +140,7 @@ async def test_nuclear_delete_tenant_isolation(db_session, test_tenant_key, test
         status="active",
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project1)
 

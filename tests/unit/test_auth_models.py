@@ -29,7 +29,8 @@ from src.giljo_mcp.api_key_utils import (
 )
 from src.giljo_mcp.models import APIKey, User
 
-pytestmark = pytest.mark.skip(reason="0750b: Auth model tests need project fixture updates for NOT NULL constraints")
+pytestmark = pytest.mark.skip(reason="0750c3: duplicate key on test@example.com — needs unique test user fixture")
+
 
 @pytest.mark.asyncio
 class TestUserModel:

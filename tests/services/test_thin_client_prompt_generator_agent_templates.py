@@ -23,6 +23,8 @@ Updated: 2026-02-09 (0730 series - UUID fix)
 - Use UUIDs for all test entities to avoid conflicts with existing database records
 """
 
+import random
+
 import pytest
 from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,6 +98,7 @@ async def test_thin_prompt_contains_core_structure(db_session: AsyncSession):
         tenant_key=tenant_key,
         description="Test project description",
         mission="Test project mission",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
 
@@ -223,6 +226,7 @@ async def test_thin_prompt_is_concise(db_session: AsyncSession):
         tenant_key=tenant_key,
         description="Priority test description",
         mission="Priority test mission",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
 
@@ -320,6 +324,7 @@ async def test_thin_prompt_token_estimation(db_session: AsyncSession):
         tenant_key=tenant_key,
         description="Token test description",
         mission="Token test mission",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
 
@@ -408,6 +413,7 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
         tenant_key=tenant_a_key,
         description="Tenant A description",
         mission="Tenant A mission",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project_a)
 
@@ -515,6 +521,7 @@ async def test_thin_prompt_works_without_field_priorities(db_session: AsyncSessi
         tenant_key=tenant_key,
         description="Default priority test description",
         mission="Default priority test mission",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
 
@@ -611,6 +618,7 @@ async def test_project_description_not_notes_in_context_string(db_session: Async
         tenant_key=tenant_key,
         description=project_description,
         mission="Test mission for notes bug",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()

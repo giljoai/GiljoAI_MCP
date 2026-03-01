@@ -19,7 +19,6 @@ from sqlalchemy import select
 from src.giljo_mcp.models.templates import AgentTemplate, TemplateArchive, TemplateUsageStats
 from src.giljo_mcp.services.template_service import TemplateService
 
-pytestmark = pytest.mark.skip(reason="0750b: reset_system_instructions test expects old tool name acknowledge_job")
 
 
 # Test Fixtures
@@ -442,6 +441,7 @@ async def test_reset_template_to_defaults(db_session, template_service, sample_t
     assert sample_template.tags == []
 
 
+@pytest.mark.skip(reason="0750c3: expects old tool name acknowledge_job")
 @pytest.mark.asyncio
 async def test_reset_system_instructions(db_session, template_service, sample_template):
     """Test resetting system instructions to canonical default"""

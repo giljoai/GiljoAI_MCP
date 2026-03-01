@@ -16,6 +16,7 @@ Test Strategy:
 Follows patterns from: test_project_tenant_isolation_regression.py
 """
 
+import random
 import uuid
 from datetime import datetime, timezone
 
@@ -69,6 +70,7 @@ async def two_tenant_orchestration(db_session, db_manager):
         product_id=product_a.id,
         status="active",
         implementation_launched_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     project_b = Project(
         id=str(uuid.uuid4()),
@@ -79,6 +81,7 @@ async def two_tenant_orchestration(db_session, db_manager):
         product_id=product_b.id,
         status="active",
         implementation_launched_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project_a)
     db_session.add(project_b)

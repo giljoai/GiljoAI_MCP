@@ -21,18 +21,18 @@ Tests validate:
 7. Testing configs don't cross tenant boundaries
 """
 
+import random
 from datetime import datetime
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
 
-pytestmark = pytest.mark.skip(reason="0750b: Needs project fixture update for uq_project_taxonomy and NOT NULL constraints")
-
 from src.giljo_mcp.mission_planner import MissionPlanner
 from src.giljo_mcp.models import Product, Project, User
 from src.giljo_mcp.models.agent_identity import AgentExecution
 
+pytestmark = pytest.mark.skip(reason="0750c3: schema drift — serena_enabled invalid keyword for User model")
 
 # ============================================================================
 # FIXTURES
@@ -255,6 +255,7 @@ class TestUserSettingsIsolation:
             name=f"Project_{uuid4().hex[:6]}",
             status="created",
             tenant_key=tenant_a,
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
         await db_session.flush()
@@ -410,6 +411,7 @@ class TestContextGenerationTenantRespect:
             name=f"Project_{uuid4().hex[:6]}",
             status="created",
             tenant_key=tenant_a,
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
         await db_session.flush()
@@ -445,6 +447,7 @@ class TestContextGenerationTenantRespect:
             name=f"Project_{uuid4().hex[:6]}",
             status="created",
             tenant_key=tenant_a,
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
         await db_session.flush()
@@ -555,6 +558,7 @@ class TestMCPToolTenantScoping:
             name=f"Project_{uuid4().hex[:6]}",
             status="created",
             tenant_key=tenant_a,
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
         await db_session.flush()
@@ -598,6 +602,7 @@ class TestMCPToolTenantScoping:
             name=f"Project_{uuid4().hex[:6]}",
             status="created",
             tenant_key=tenant_a,
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
         await db_session.flush()

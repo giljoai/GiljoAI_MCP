@@ -282,6 +282,8 @@ async def test_project_id(db_session, test_tenant_key):
 
     from src.giljo_mcp.models import Project
 
+    import random
+
     project = Project(
         id=str(uuid.uuid4()),
         name="Test Project",
@@ -289,6 +291,7 @@ async def test_project_id(db_session, test_tenant_key):
         mission="Test mission for integration testing",
         status="active",
         tenant_key=test_tenant_key,
+        series_number=random.randint(1, 999999),
     )
 
     db_session.add(project)

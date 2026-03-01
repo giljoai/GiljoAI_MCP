@@ -4,18 +4,19 @@ Integration tests for MessageService.receive_messages and list_messages.
 Tests proper database queries without legacy AgentMessageQueue dependency.
 """
 
+import random
 from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
-
-pytestmark = pytest.mark.skip(reason="0750b: Needs project fixture update for NOT NULL constraints")
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.services.message_service import MessageService
+
+pytestmark = pytest.mark.skip(reason="0750c3: schema drift — project_id invalid keyword for AgentExecution")
 
 
 @pytest.fixture
@@ -43,6 +44,7 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
             description="Test project for message service",
             mission="Test mission for message service integration tests",
             status="active",
+            series_number=random.randint(1, 999999),
         )
         session.add(project)
 
@@ -280,6 +282,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             description="Test project for tenant 1",
             mission="Test mission for tenant 1",
             status="active",
+            series_number=random.randint(1, 999999),
         )
         project2 = Project(
             id=project2_id,
@@ -288,6 +291,7 @@ async def test_receive_messages_tenant_isolation(db_manager, tenant_manager):
             description="Test project for tenant 2",
             mission="Test mission for tenant 2",
             status="active",
+            series_number=random.randint(1, 999999),
         )
         session.add_all([project1, project2])
 
@@ -469,6 +473,7 @@ async def test_broadcast_excludes_sender(db_manager, tenant_manager, test_tenant
             description="Test project for broadcast self-exclusion",
             mission="Test mission",
             status="active",
+            series_number=random.randint(1, 999999),
         )
         session.add(project)
 

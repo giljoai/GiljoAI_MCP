@@ -22,6 +22,8 @@ class TestDataFactory:
         tenant_key: Optional[str] = None,
     ) -> dict[str, Any]:
         """Create project data dictionary"""
+        import random
+
         return {
             "id": str(uuid.uuid4()),
             "name": name,
@@ -31,6 +33,7 @@ class TestDataFactory:
             "tenant_key": tenant_key or str(uuid.uuid4()),
             "created_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc),
+            "series_number": random.randint(1, 999999),
         }
 
     @staticmethod

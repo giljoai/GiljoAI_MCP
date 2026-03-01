@@ -23,6 +23,7 @@ enforcement (tenant_key validation and filtering) rather than relying
 on data visibility across sessions.
 """
 
+import random
 import uuid
 from datetime import datetime, timezone
 
@@ -75,6 +76,7 @@ async def two_tenant_messages(db_session, db_manager):
         tenant_key=tenant_a,
         product_id=product_a.id,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     project_b = Project(
         id=str(uuid.uuid4()),
@@ -84,6 +86,7 @@ async def two_tenant_messages(db_session, db_manager):
         tenant_key=tenant_b,
         product_id=product_b.id,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project_a)
     db_session.add(project_b)

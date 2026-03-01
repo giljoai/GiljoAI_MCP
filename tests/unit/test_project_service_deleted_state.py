@@ -11,8 +11,6 @@ TDD RED Phase - These tests MUST FAIL initially
 
 import pytest
 
-pytestmark = pytest.mark.skip(reason="0750b: schema drift — NOT NULL constraints + fixture updates needed")
-
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock
 

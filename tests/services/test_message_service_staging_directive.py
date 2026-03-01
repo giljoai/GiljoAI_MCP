@@ -14,6 +14,7 @@ Conditions for directive:
 This is the RED phase of TDD - tests written before implementation.
 """
 
+import random
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -92,6 +93,7 @@ async def test_project_staging(
         mission="Test mission",
         status="active",
         created_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
@@ -178,6 +180,7 @@ async def test_project_implementation(
         mission="Test mission",
         status="active",
         created_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
         # NOTE: implementation_launched_at removed to avoid DB schema mismatch in tests
     )
     db_session.add(project)

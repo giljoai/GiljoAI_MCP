@@ -4,6 +4,8 @@ Updated 0730d: Exception-based error handling patterns (no success wrappers).
 Updated 0731c: Typed returns - get_closeout_data returns CloseoutData model.
 """
 
+import random
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +31,7 @@ async def test_get_closeout_data_all_agents_complete(
         description="Reporting work",
         tenant_key=tenant_key,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.flush()
@@ -81,6 +84,7 @@ async def test_get_closeout_data_with_blocked_agents(
         description="Analytics work",
         tenant_key=tenant_key,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.flush()
@@ -175,6 +179,7 @@ async def test_get_closeout_data_with_git_integration(
         tenant_key=tenant_key,
         product_id=product.id,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.flush()
@@ -226,6 +231,7 @@ async def test_get_closeout_data_tenant_isolation(db_manager, db_session: AsyncS
         description="Isolation test",
         tenant_key=tenant_one,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()

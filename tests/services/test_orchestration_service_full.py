@@ -10,6 +10,7 @@ Tests core functionality after orchestrator.py consolidation:
 All tests use real database integration (db_manager fixture).
 """
 
+import random
 import uuid
 
 import pytest
@@ -67,6 +68,7 @@ async def test_project(db_manager: DatabaseManager, test_product: dict):
             status="active",
             # Handover 0709: Set implementation_launched_at to bypass phase gate
             implementation_launched_at=datetime.now(timezone.utc),
+            series_number=random.randint(1, 999999),
         )
         session.add(project)
         await session.commit()
