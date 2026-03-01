@@ -125,6 +125,16 @@ The canonical test reference is `tests/CORE_TESTS.md`. `test_db_helper.py` (54 d
 
 ---
 
+## Point Fixes (Fold Into Nearest Phase)
+
+These are specific bugs/security items from the audit that don't fit a pattern-level phase. Fold each into the nearest relevant phase handover, or commit as a standalone fix before starting phases.
+
+1. **Fix `get_project_summary` status strings** (15 min) — Returns 0% completion because it checks old status values (`active`, `running`) instead of post-0491 values (`waiting`, `working`, `blocked`, `complete`, `silent`, `decommissioned`). Fold into Phase 3 (0750c) since it's a code fix in the services/tools layer.
+2. **Fix `get_project_statistics_by_id` limit=1 bug** (15 min) — Query returns only 1 result when it should return all. Fold into Phase 4 (0750d) alongside other API fixes.
+3. **Remove X-Test-Mode rate limit bypass** (30 min) — Test header that bypasses rate limiting. Security risk in production. Fold into Phase 4 (0750d) alongside auth hardening.
+
+---
+
 ## Remaining Phases (Your Job)
 
 You must execute these 5 phases in order. Each phase depends on the
