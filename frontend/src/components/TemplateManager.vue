@@ -775,7 +775,10 @@ import { format } from 'date-fns'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
+import { useClipboard } from '@/composables/useClipboard'
 import DOMPurify from 'dompurify'
+
+const { copy: clipboardCopy } = useClipboard()
 
 // Handover 0335: WebSocket setup for real-time export status updates
 const { on, off } = useWebSocketV2()
@@ -813,24 +816,11 @@ This download link expires in 15 minutes but can be used multiple times.`
 }
 
 async function copyToClipboardSafe(text, onSuccess, onError) {
-  try {
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-      await navigator.clipboard.writeText(text)
-      if (onSuccess) onSuccess()
-    } else {
-      // Fallback for older browsers
-      const textarea = document.createElement('textarea')
-      textarea.value = text
-      textarea.style.position = 'fixed'
-      textarea.style.opacity = '0'
-      document.body.appendChild(textarea)
-      textarea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textarea)
-      if (onSuccess) onSuccess()
-    }
-  } catch (error) {
-    if (onError) onError(error)
+  const success = await clipboardCopy(text)
+  if (success) {
+    if (onSuccess) onSuccess()
+  } else {
+    if (onError) onError(new Error('Failed to copy to clipboard'))
   }
 }
 
@@ -1559,8 +1549,8 @@ watch(
     background: var(--v-theme-surface);
 
     :deep(.v-data-table__th) {
-      background: var(--v-theme-background) !important;
-      color: var(--v-theme-primary) !important;
+      background: var(--v-theme-background);
+      color: var(--v-theme-primary);
       font-weight: 600;
     }
 
@@ -1672,23 +1662,24 @@ watch(
 }
 
 // Custom toggle colors: green when ON, faded blue when OFF
+// Global switch styling is defined in App.vue; scoped overrides reinforce specificity
 .v-switch {
   :deep(.v-switch__thumb) {
-    background-color: rgba(33, 150, 243, 0.4) !important; // Faded blue when OFF
+    background-color: rgba(33, 150, 243, 0.4); // Faded blue when OFF
   }
 
   :deep(.v-switch__track) {
-    background-color: rgba(33, 150, 243, 0.2) !important; // Faded blue track when OFF
+    background-color: rgba(33, 150, 243, 0.2); // Faded blue track when OFF
   }
 }
 
 .v-switch :deep(.v-selection-control--dirty) {
   .v-switch__thumb {
-    background-color: #4caf50 !important; // Green when ON
+    background-color: #4caf50; // Green when ON
   }
 
   .v-switch__track {
-    background-color: rgba(76, 175, 80, 0.3) !important; // Green track when ON
+    background-color: rgba(76, 175, 80, 0.3); // Green track when ON
   }
 }
 
@@ -1697,7 +1688,7 @@ watch(
   opacity: 0.5;
 
   td {
-    color: var(--v-theme-on-surface) !important;
+    color: var(--v-theme-on-surface);
   }
 }
 

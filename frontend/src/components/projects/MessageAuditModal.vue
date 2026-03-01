@@ -120,6 +120,8 @@
                   <!-- Message Content Line with Eye Icon -->
                   <div
                     class="message-content-line"
+                    role="button"
+                    aria-label="Toggle message details"
                     @click="toggleMessageExpansion(message.id)"
                   >
                     <span class="message-preview">{{ getMessagePreview(message) }}</span>
@@ -416,8 +418,8 @@ function getMessagePreview(message) {
 }
 
 .v-theme--dark .message-timestamp {
-  color: #ffc300 !important;
-  opacity: 1 !important;
+  color: #ffc300;
+  opacity: 1;
 }
 
 .message-separator {
@@ -426,8 +428,8 @@ function getMessagePreview(message) {
 }
 
 .v-theme--dark .message-separator {
-  color: #ffc300 !important;
-  opacity: 1 !important;
+  color: #ffc300;
+  opacity: 1;
 }
 
 .message-recipient {
@@ -436,8 +438,8 @@ function getMessagePreview(message) {
 }
 
 .v-theme--dark .message-recipient {
-  color: #ffc300 !important;
-  opacity: 1 !important;
+  color: #ffc300;
+  opacity: 1;
 }
 
 /* Message Content Line with Eye Icon */
@@ -489,12 +491,12 @@ function getMessagePreview(message) {
 }
 
 .message-eye-icon {
-  color: #ffc300 !important; /* Brand yellow */
+  color: #ffc300; /* Brand yellow */
   transition: all 0.2s ease;
 }
 
 .v-theme--dark .message-eye-icon {
-  opacity: 1 !important;
+  opacity: 1;
 }
 
 /* Expanded Full Content */

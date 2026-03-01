@@ -303,7 +303,7 @@ function canCopyPrompt(agent) {
 }
 
 .agent-table-view :deep(.v-data-table__th) {
-  font-weight: 600 !important;
+  font-weight: 600;
   background-color: rgba(0, 0, 0, 0.02);
 }
 
@@ -325,7 +325,7 @@ function canCopyPrompt(agent) {
 }
 
 .agent-table-view :deep(.disabled-agent-row:hover) {
-  background-color: rgba(0, 0, 0, 0.04) !important;
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
 /* Handover 0229: Disabled action buttons */
@@ -334,7 +334,7 @@ function canCopyPrompt(agent) {
 }
 
 .agent-table-view :deep(.v-btn:disabled .v-icon) {
-  color: grey !important;
+  color: grey;
 }
 
 /* Handover 0240b: Agent ID styling */

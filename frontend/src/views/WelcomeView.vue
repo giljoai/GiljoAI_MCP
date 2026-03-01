@@ -271,7 +271,7 @@ onMounted(async () => {
 .startup-cta {
   font-weight: 700;
   position: relative;
-  border: none !important;
+  border: none;
   overflow: hidden;
 }
 

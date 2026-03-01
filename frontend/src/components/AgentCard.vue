@@ -383,7 +383,7 @@ const cardStyles = computed(() => ({
 }))
 
 const headerStyles = computed(() => ({
-  background: `${agentColor.value.hex} !important`,
+  background: agentColor.value.hex,
   color: 'white',
   padding: '16px 20px',
   textAlign: 'center',
@@ -626,7 +626,7 @@ onBeforeUnmount(() => {
 }
 
 .agent-id-value {
-  font-size: 10px !important;
+  font-size: 10px;
   font-family: 'Courier New', monospace;
   white-space: nowrap;
   line-height: 1.4;
@@ -761,13 +761,13 @@ onBeforeUnmount(() => {
 /* Responsive */
 @media (max-width: 1200px) {
   .agent-card {
-    width: 240px !important;
+    width: 240px;
   }
 }
 
 @media (max-width: 768px) {
   .agent-card {
-    width: 100% !important;
+    width: 100%;
     max-width: 280px;
   }
 }

@@ -42,6 +42,9 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useClipboard } from '@/composables/useClipboard'
+
+const { copy: clipboardCopy } = useClipboard()
 
 // Props
 const props = defineProps({
@@ -61,16 +64,12 @@ const copySuccess = ref(false)
 
 // Methods
 async function copyToClipboard() {
-  try {
-    await navigator.clipboard.writeText(props.config)
+  const success = await clipboardCopy(props.config)
+  if (success) {
     copySuccess.value = true
-
-    // Hide success message after 2 seconds
     setTimeout(() => {
       copySuccess.value = false
     }, 2000)
-  } catch (err) {
-    console.error('Failed to copy to clipboard:', err)
   }
 }
 </script>
