@@ -45,9 +45,9 @@
       "phase": 3,
       "title": "Tools Dict-to-Exception Migration",
       "handover": "handovers/0700_series/0750c_tools_dict_migration.md",
-      "status": "pending",
-      "commits": [],
-      "notes": ""
+      "status": "complete",
+      "commits": ["09689e7b", "5ffcb982"],
+      "notes": "70 dict-return anti-patterns migrated to exceptions across 11 src files. 2 callers updated (product_service, project_service). 2 test files updated. GREEN: 1238 passed, 522 skipped, 0 failed."
     },
     {
       "id": "0750d",
