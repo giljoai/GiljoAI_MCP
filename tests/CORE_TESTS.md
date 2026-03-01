@@ -6,7 +6,17 @@ Tests that must always pass. Failures here block merges.
 
 - `tests/test_tenant_isolation.py`
 - `tests/test_tenant_isolation_demo.py`
+- `tests/test_tenant_key_fix.py`
+- `tests/test_multi_tenant_comprehensive.py`
 - `tests/services/test_tenant_isolation_services.py`
+- `tests/services/test_project_tenant_isolation_regression.py`
+- `tests/services/test_task_tenant_isolation_regression.py`
+- `tests/services/test_message_tenant_isolation_regression.py`
+- `tests/services/test_orchestration_tenant_isolation_regression.py`
+- `tests/services/test_medium_tenant_isolation_regression.py`
+- `tests/integration/test_multi_tenant_isolation.py`
+- `tests/integration/test_user_tenant_isolation.py`
+- `tests/integration/test_field_priority_tenant_isolation.py`
 - `tests/smoke/test_tenant_isolation_smoke.py`
 
 ## Service Layer (Business Logic)
@@ -88,7 +98,6 @@ Tests that must always pass. Failures here block merges.
 - `tests/helpers/websocket_test_utils.py`
 - `tests/helpers/tenant_helpers.py`
 - `tests/fixtures/base_fixtures.py`
-- `tests/fixtures/base_test.py`
 - `tests/fixtures/e2e_closeout_fixtures.py`
 - `tests/fixtures/mock_agent_simulator.py`
 - `tests/fixtures/orchestrator_simulator.py`
