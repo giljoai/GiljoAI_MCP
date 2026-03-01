@@ -18,6 +18,7 @@
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy DEFERRED, 0732 fixes COMPLETE |
+| 0760 | Perfect Score Proposal | Active — research phase, proposal at `handovers/0700_series/0760_PERFECT_SCORE_PROPOSAL.md` |
 
 ---
 
@@ -61,6 +62,7 @@
 | 0497d | Agent Protocol Enhancements (Gil_add + Git Commit) | 2026-02-25 | COMPLETE (`25ee3bb2`) |
 | 0497e | Fresh Agent Recovery Flow (Successor Spawning) | 2026-02-25 | COMPLETE (`c6592915`) |
 | 0498 | Early Termination Protocol + Dashboard Reduction | 2026-02-26 | COMPLETE (4 commits + 8 follow-up fixes, handover modal + retirement flow) |
+| 0750 | Code Quality Cleanup Sprint (7 phases + audits) | 2026-03-01 | COMPLETE — score 6.6 to 7.8/10, 24 findings resolved, 15 handovers archived to completed/0700_series/ |
 
 ### Greptile Security Series (1000-1014) - SECURITY
 
