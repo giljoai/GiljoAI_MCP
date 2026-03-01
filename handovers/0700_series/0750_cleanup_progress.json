@@ -54,9 +54,9 @@
       "phase": 4,
       "title": "API Endpoint Hardening",
       "handover": "handovers/0700_series/0750d_api_endpoint_hardening.md",
-      "status": "pending",
-      "commits": [],
-      "notes": ""
+      "status": "complete",
+      "commits": ["f52589fe"],
+      "notes": "Auth added to 48 endpoints across 7 files (10 config + 38 audited). 3 health check dict returns fixed. Statistics query bug fixed. X-Test-Mode rate limit bypass removed. GREEN: 1238 passed, 522 skipped, 0 failed."
     },
     {
       "id": "0750e",
