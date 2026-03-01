@@ -98,6 +98,9 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useClipboard } from '@/composables/useClipboard'
+
+const { copy: clipboardCopy } = useClipboard()
 
 defineProps({
   modelValue: {
@@ -112,7 +115,7 @@ const activeTab = ref('manual')
 
 const copyConfig = () => {
   const config = `codex mcp add giljo-mcp --url http://your-server-ip:7272/mcp --bearer-token-env-var GILJO_API_KEY`
-  navigator.clipboard.writeText(config)
+  clipboardCopy(config)
 }
 
 const downloadInstructions = () => {

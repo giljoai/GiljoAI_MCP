@@ -119,6 +119,7 @@
 import { ref, computed } from 'vue'
 import { getAvailableActions, getActionConfig } from '@/utils/actionConfig'
 import api from '@/services/api'
+import { useClipboard } from '@/composables/useClipboard'
 
 export default {
   name: 'ActionIcons',
@@ -143,6 +144,8 @@ export default {
   emits: ['launch', 'copy-prompt', 'view-messages', 'hand-over'],
 
   setup(props, { emit }) {
+    const { copy: clipboardCopy } = useClipboard()
+
     const loadingStates = ref({
       launch: false,
       copyPrompt: false,
@@ -175,7 +178,7 @@ export default {
       if (handoverPending.value && storedContinuationPrompt.value) {
         loadingStates.value.launch = true
         try {
-          await navigator.clipboard.writeText(storedContinuationPrompt.value)
+          await clipboardCopy(storedContinuationPrompt.value)
           showCopySuccess.value = true
 
           // Reset handover state
@@ -227,7 +230,7 @@ export default {
 
         if (response.data.success) {
           // Stage 1: Copy RETIREMENT prompt to clipboard (for old terminal)
-          await navigator.clipboard.writeText(response.data.retirement_prompt)
+          await clipboardCopy(response.data.retirement_prompt)
 
           // Store continuation prompt for Stage 2 (play button click)
           storedContinuationPrompt.value = response.data.continuation_prompt

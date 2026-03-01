@@ -166,7 +166,7 @@ watch(
 /* NavigationDrawer styling */
 
 .navigation-drawer-container {
-  overflow: visible !important;
+  overflow: visible;
 }
 
 .edge-toggle-tab {

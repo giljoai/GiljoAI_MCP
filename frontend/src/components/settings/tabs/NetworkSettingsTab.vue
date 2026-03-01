@@ -170,6 +170,9 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useClipboard } from '@/composables/useClipboard'
+
+const { copy: clipboardCopy } = useClipboard()
 
 const props = defineProps({
   config: {
@@ -206,7 +209,7 @@ function isDefaultOrigin(origin) {
 }
 
 function copyOrigin(origin) {
-  navigator.clipboard.writeText(origin)
+  clipboardCopy(origin)
 }
 
 function addOrigin() {
