@@ -10,6 +10,7 @@ Test BEHAVIOR:
 TDD Phase: RED - These tests should FAIL initially.
 """
 
+import random
 import uuid
 
 import pytest
@@ -51,6 +52,7 @@ class TestCLIModeRules:
                 mission="Test mission for CLI mode validation",
                 status="active",
                 execution_mode="claude_code_cli",  # Required for cli_mode_rules to be included
+                series_number=random.randint(1, 999999),
             )
             session.add(project)
             await session.flush()
@@ -131,6 +133,7 @@ class TestCLIModeRules:
                 description="Project for testing multi-terminal mode",
                 mission="Test mission for multi-terminal mode",
                 status="active",
+                series_number=random.randint(1, 999999),
             )
             session.add(project)
             await session.flush()
@@ -548,6 +551,7 @@ class TestCLIModeRulesBackwardCompatibility:
                 description="Project for backward compatibility tests",
                 mission="Test mission for backward compatibility",
                 status="active",
+                series_number=random.randint(1, 999999),
             )
             session.add(project)
             await session.flush()

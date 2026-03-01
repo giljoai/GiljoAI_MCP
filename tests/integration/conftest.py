@@ -262,6 +262,8 @@ async def test_product(db_session: AsyncSession, test_user: User):
 @pytest_asyncio.fixture
 async def test_project(db_session: AsyncSession, test_user: User, test_product: Product):
     """Create test project"""
+    import random
+
     project = Project(
         name=f"Test Project {uuid4().hex[:8]}",
         description="Comprehensive project description for testing mission generation.",
@@ -269,6 +271,7 @@ async def test_project(db_session: AsyncSession, test_user: User, test_product: 
         product_id=test_product.id,
         tenant_key=test_user.tenant_key,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
@@ -382,6 +385,8 @@ async def test_project_with_orchestrator(db_session: AsyncSession, test_user: Us
     """Create test project with orchestrator job"""
     from src.giljo_mcp.models.agent_identity import AgentExecution
 
+    import random
+
     project = Project(
         name=f"Test Project with Orchestrator {uuid4().hex[:8]}",
         description="Test project for orchestrator integration testing",
@@ -389,6 +394,7 @@ async def test_project_with_orchestrator(db_session: AsyncSession, test_user: Us
         product_id=test_product.id,
         tenant_key=test_user.tenant_key,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()

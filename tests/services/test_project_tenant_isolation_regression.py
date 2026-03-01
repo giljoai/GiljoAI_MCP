@@ -16,6 +16,7 @@ Test Strategy:
 Follows patterns from: test_tenant_isolation_services.py (Handover 0325)
 """
 
+import random
 import uuid
 from datetime import datetime, timezone
 
@@ -27,7 +28,6 @@ from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 
-pytestmark = pytest.mark.skip(reason="0750b: Needs project fixture update for uq_project_taxonomy constraint")
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -69,6 +69,7 @@ async def two_tenant_projects(db_session, db_manager):
         tenant_key=tenant_a,
         product_id=product_a.id,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     active_b = Project(
         id=str(uuid.uuid4()),
@@ -78,6 +79,7 @@ async def two_tenant_projects(db_session, db_manager):
         tenant_key=tenant_b,
         product_id=product_b.id,
         status="active",
+        series_number=random.randint(1, 999999),
     )
 
     # Create soft-deleted project for tenant A
@@ -90,6 +92,7 @@ async def two_tenant_projects(db_session, db_manager):
         product_id=product_a.id,
         status="deleted",
         deleted_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
 
     # Create cancelled project for tenant B (restore target)
@@ -102,6 +105,7 @@ async def two_tenant_projects(db_session, db_manager):
         product_id=product_b.id,
         status="cancelled",
         completed_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
 
     db_session.add_all([active_a, active_b, deleted_a, cancelled_b])

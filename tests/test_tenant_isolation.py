@@ -6,6 +6,7 @@ no cross-tenant data leakage is possible.
 """
 
 import asyncio
+import random
 
 # Add src to path
 import sys
@@ -15,9 +16,10 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-pytestmark = pytest.mark.skip(reason="0750b: Needs project fixture update for uq_project_taxonomy constraint")
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+pytestmark = pytest.mark.skip(reason="0750c3: async_engine attribute missing on DatabaseManager — DB test infrastructure")
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Message, Project
@@ -156,12 +158,12 @@ class TestDatabaseTenantIsolation:
 
         # Create projects in different tenant contexts
         with db_manager.get_tenant_session(tenant1) as session:
-            project1 = Project(name="Tenant 1 Project", mission="Mission 1", tenant_key=tenant1)
+            project1 = Project(name="Tenant 1 Project", mission="Mission 1", tenant_key=tenant1, series_number=random.randint(1, 999999))
             session.add(project1)
             session.commit()
 
         with db_manager.get_tenant_session(tenant2) as session:
-            project2 = Project(name="Tenant 2 Project", mission="Mission 2", tenant_key=tenant2)
+            project2 = Project(name="Tenant 2 Project", mission="Mission 2", tenant_key=tenant2, series_number=random.randint(1, 999999))
             session.add(project2)
             session.commit()
 
@@ -183,7 +185,7 @@ class TestDatabaseTenantIsolation:
 
         # Create entities for tenant1
         with db_manager.get_tenant_session(tenant1) as session:
-            project = Project(name="Private Project", mission="Secret mission", tenant_key=tenant1)
+            project = Project(name="Private Project", mission="Secret mission", tenant_key=tenant1, series_number=random.randint(1, 999999))
             session.add(project)
             session.commit()
             project_id = project.id
@@ -210,7 +212,7 @@ class TestDatabaseTenantIsolation:
 
         with db_manager.get_tenant_session(tenant_key) as session:
             # Create project
-            project = Project(name="Parent Project", mission="Test inheritance", tenant_key=tenant_key)
+            project = Project(name="Parent Project", mission="Test inheritance", tenant_key=tenant_key, series_number=random.randint(1, 999999))
             session.add(project)
             session.commit()
 
@@ -238,7 +240,8 @@ class TestDatabaseTenantIsolation:
                 with db_manager.get_tenant_session(tenant_key) as session:
                     # Create project
                     project = Project(
-                        name=f"Tenant{tenant_id}_Project{i}", mission=f"Mission {i}", tenant_key=tenant_key
+                        name=f"Tenant{tenant_id}_Project{i}", mission=f"Mission {i}", tenant_key=tenant_key,
+                        series_number=random.randint(1, 999999)
                     )
                     session.add(project)
                     session.commit()
@@ -285,7 +288,7 @@ class TestDatabaseTenantIsolation:
 
         # Create projects and messages for each tenant
         with db_manager.get_tenant_session(tenant1) as session:
-            project1 = Project(name="Tenant 1 Project", mission="Mission 1", tenant_key=tenant1)
+            project1 = Project(name="Tenant 1 Project", mission="Mission 1", tenant_key=tenant1, series_number=random.randint(1, 999999))
             session.add(project1)
             session.commit()
 
@@ -300,7 +303,7 @@ class TestDatabaseTenantIsolation:
             session.commit()
 
         with db_manager.get_tenant_session(tenant2) as session:
-            project2 = Project(name="Tenant 2 Project", mission="Mission 2", tenant_key=tenant2)
+            project2 = Project(name="Tenant 2 Project", mission="Mission 2", tenant_key=tenant2, series_number=random.randint(1, 999999))
             session.add(project2)
             session.commit()
 
@@ -332,7 +335,7 @@ class TestDatabaseTenantIsolation:
 
         # Create projects with agents for both tenants
         with db_manager.get_tenant_session(tenant1) as session:
-            project1 = Project(name="Tenant 1 Project", mission="Mission 1", tenant_key=tenant1)
+            project1 = Project(name="Tenant 1 Project", mission="Mission 1", tenant_key=tenant1, series_number=random.randint(1, 999999))
             session.add(project1)
             session.commit()
 
@@ -342,7 +345,7 @@ class TestDatabaseTenantIsolation:
             project1_id = project1.id
 
         with db_manager.get_tenant_session(tenant2) as session:
-            project2 = Project(name="Tenant 2 Project", mission="Mission 2", tenant_key=tenant2)
+            project2 = Project(name="Tenant 2 Project", mission="Mission 2", tenant_key=tenant2, series_number=random.randint(1, 999999))
             session.add(project2)
             session.commit()
 
@@ -392,12 +395,12 @@ class TestAsyncTenantIsolation:
 
         # Create projects asynchronously
         async with async_db_manager.get_tenant_session_async(tenant1) as session:
-            project1 = Project(name="Async Tenant 1", mission="Async mission 1", tenant_key=tenant1)
+            project1 = Project(name="Async Tenant 1", mission="Async mission 1", tenant_key=tenant1, series_number=random.randint(1, 999999))
             session.add(project1)
             await session.commit()
 
         async with async_db_manager.get_tenant_session_async(tenant2) as session:
-            project2 = Project(name="Async Tenant 2", mission="Async mission 2", tenant_key=tenant2)
+            project2 = Project(name="Async Tenant 2", mission="Async mission 2", tenant_key=tenant2, series_number=random.randint(1, 999999))
             session.add(project2)
             await session.commit()
 
@@ -419,7 +422,8 @@ class TestAsyncTenantIsolation:
             """Create data for a tenant asynchronously."""
             async with async_db_manager.get_tenant_session_async(tenant_key) as session:
                 project = Project(
-                    name=f"Async Project {tenant_id}", mission=f"Async Mission {tenant_id}", tenant_key=tenant_key
+                    name=f"Async Project {tenant_id}", mission=f"Async Mission {tenant_id}", tenant_key=tenant_key,
+                    series_number=random.randint(1, 999999)
                 )
                 session.add(project)
                 await session.commit()
@@ -523,7 +527,7 @@ class TestTenantPerformance:
         for tenant_key in tenant_keys:
             with db_manager.get_tenant_session(tenant_key) as session:
                 for i in range(50):
-                    project = Project(name=f"Project {i}", mission=f"Mission {i}", tenant_key=tenant_key)
+                    project = Project(name=f"Project {i}", mission=f"Mission {i}", tenant_key=tenant_key, series_number=random.randint(1, 999999))
                     session.add(project)
                 session.commit()
 
