@@ -15,11 +15,10 @@ Pydantic models) instead of dict[str, Any] wrappers.
 Target: Comprehensive integration coverage
 """
 
+import random
 from uuid import uuid4
 
 import pytest
-
-pytestmark = pytest.mark.skip(reason="0750b: Needs project fixture update for NOT NULL constraints")
 
 from src.giljo_mcp.models.products import Product, VisionDocument
 from src.giljo_mcp.models.projects import Project
@@ -416,6 +415,7 @@ class TestProductProjectCascade:
                 status="waiting",
                 product_id=product_id,
                 tenant_key=tenant_key,
+                series_number=random.randint(1, 999999),
             )
             session.add(project)
             await session.commit()

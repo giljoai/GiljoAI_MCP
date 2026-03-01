@@ -14,6 +14,7 @@ This test suite covers the 5 new TaskService methods + 2 permission helpers:
 Coverage Target: >80%
 """
 
+import random
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -31,7 +32,6 @@ from src.giljo_mcp.models.tasks import Task
 from src.giljo_mcp.schemas.service_responses import ConversionResult, TaskUpdateResult
 from src.giljo_mcp.services.task_service import TaskService
 
-pytestmark = pytest.mark.skip(reason="0750b: convert_to_project needs project fixture with description field")
 
 
 # Use existing fixtures from base_fixtures
@@ -84,6 +84,7 @@ async def test_project(db_session, test_tenant_key, test_product):
         tenant_key=test_tenant_key,
         status="active",
         created_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()

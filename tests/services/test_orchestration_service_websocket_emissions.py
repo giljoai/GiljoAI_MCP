@@ -16,7 +16,6 @@ import pytest
 
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 
-pytestmark = pytest.mark.skip(reason="0750b: complete_job test needs update for changed emissions")
 
 # pytestmark = pytest.mark.asyncio
 
@@ -157,6 +156,7 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
     mock_websocket_manager.broadcast_to_tenant.assert_not_awaited()
 
 
+@pytest.mark.skip(reason="0750c3: complete_job emission payload changed")
 async def test_complete_job_emits_status_changed_with_duration_seconds(
     orchestration_service,
     mock_db_manager,

@@ -10,6 +10,7 @@ Validates:
 6. Spawn without predecessor_job_id preserves existing behavior (regression)
 """
 
+import random
 import uuid
 
 import pytest
@@ -83,6 +84,7 @@ async def project(db_session, tenant_key, agent_templates) -> Project:
         status="active",
         tenant_key=tenant_key,
         implementation_launched_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(proj)
     await db_session.commit()
@@ -103,6 +105,7 @@ async def other_project(db_session, other_tenant_key, other_tenant_templates) ->
         status="active",
         tenant_key=other_tenant_key,
         implementation_launched_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(proj)
     await db_session.commit()
@@ -306,7 +309,7 @@ class TestPredecessorValidation:
             mission="Other work",
             status="active",
             tenant_key=tenant_key,
-            series_number=999,
+            series_number=random.randint(1, 999999),
             implementation_launched_at=datetime.now(timezone.utc),
         )
         db_session.add(proj2)

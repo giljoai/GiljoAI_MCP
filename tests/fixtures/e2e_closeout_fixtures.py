@@ -223,6 +223,8 @@ class E2ECloseoutFixtures:
             return existing_project
 
         # Create new project
+        import random
+
         project = Project(
             name="Mock Project",
             description="E2E test project for closeout workflow",
@@ -233,6 +235,7 @@ class E2ECloseoutFixtures:
             created_at=datetime.now(timezone.utc),
             activated_at=datetime.now(timezone.utc),
             meta_data={"test": True, "e2e_fixture": True},
+            series_number=random.randint(1, 999999),
         )
 
         session.add(project)

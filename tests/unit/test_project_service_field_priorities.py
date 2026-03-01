@@ -12,8 +12,6 @@ EXPECTED BEHAVIOR:
 
 import pytest
 
-pytestmark = pytest.mark.skip(reason="0750b: schema drift — NOT NULL constraints + fixture updates needed")
-
 from unittest.mock import AsyncMock, Mock
 
 import pytest
