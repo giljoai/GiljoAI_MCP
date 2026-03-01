@@ -105,20 +105,37 @@
       "title": "API Endpoint Hardening",
       "color": "#FF9800",
       "handover": "handovers/0700_series/0750d_api_endpoint_hardening.md",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-01T12:00:00Z",
+      "completed_at": "2026-03-01T13:30:00Z",
       "planned_tasks": [
         "Add auth to configuration endpoints",
         "Add admin role checks",
         "Audit all endpoints for missing auth",
         "Fix API dict returns"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Added auth to 10 configuration endpoints (6 require_admin, 4 get_current_active_user)",
+        "Left /frontend and /health/database public (pre-login access needed)",
+        "Fixed 3 dict returns in health check endpoint to HTTPException(503)",
+        "Audited all 17 endpoint files without auth imports",
+        "Added get_current_active_user to 6 files: agent_management (8 endpoints), context (9 endpoints), serena (3 endpoints), slash_commands (1 endpoint), statistics (9 endpoints), vision_documents (8 endpoints)",
+        "Fixed get_project_statistics_by_id limit=1 bug (removed limit=1 to search all projects)",
+        "Removed X-Test-Mode header bypass from rate limiter",
+        "Verified zero X-Test-Mode references remain in src/ and api/",
+        "Verified zero dict returns with success:False remain in api/",
+        "GREEN test suite: 1238 passed, 522 skipped, 0 failed"
+      ],
+      "deviations": [
+        "Pre-commit ruff-format reformatted 3 files on first attempt, check-added-large-files hook fired on second — both resolved on third commit",
+        "database_setup.py, setup.py, setup_security.py, network.py left without auth (setup wizard endpoints that must work before users exist)",
+        "websocket_bridge.py left without user auth (internal MCP-to-WS bridge, different auth mechanism)",
+        "downloads.py already handles auth appropriately via manual get_current_user/get_current_user_optional calls",
+        "mcp_http.py uses API key auth via X-API-Key header (separate mechanism, not user Depends)"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "notes_for_next": "All endpoint files now either have user auth or are documented as intentionally public. 5 files left without Depends-based auth by design: database_setup (setup wizard), setup/setup_security (first-run detection), network (LAN config), websocket_bridge (internal bridge). 41 unstaged test file changes exist in working directory from previous phases — not part of 0750d scope.",
+      "summary": "Added authentication to 48 endpoints across 7 files (configuration + 6 audited files). Fixed health check dict returns, statistics query bug, and rate limiter bypass. All pre-commit hooks pass. GREEN: 1238 passed, 522 skipped, 0 failed."
     },
     {
       "session_id": "0750e",
