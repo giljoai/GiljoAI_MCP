@@ -11,6 +11,7 @@ NOTE: create_successor_orchestrator() tests removed - tool deleted (succession v
 All tests should FAIL initially (RED phase) since the methods don't exist yet in OrchestrationService.
 """
 
+import random
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -203,6 +204,7 @@ class TestGetOrchestratorInstructions:
             mission="Test mission for tenant A",  # Required field
             tenant_key=tenant_a,
             product_id=product_a.id,
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project_a)
         await db_session.commit()
@@ -342,6 +344,7 @@ class TestUpdateAgentMission:
             mission="Test mission for tenant A",  # Required field
             tenant_key=tenant_a,
             product_id=product_a.id,
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project_a)
         await db_session.commit()

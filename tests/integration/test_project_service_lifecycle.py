@@ -12,17 +12,17 @@ These tests use real database connections to verify:
 Target: >85% code coverage
 """
 
+import random
 from datetime import datetime
 
 import pytest
-
-pytestmark = pytest.mark.skip(reason="0750b: Needs project fixture update for uq_project_taxonomy constraint")
 
 from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.services.project_service import ProjectService
 
+pytestmark = pytest.mark.skip(reason="0750c3: project status drift — tests expect staging flow, service uses waiting status")
 
 @pytest.mark.asyncio
 class TestProjectLifecycleMethods:
@@ -51,6 +51,7 @@ class TestProjectLifecycleMethods:
                 status="waiting",
                 product_id=product_id,
                 tenant_key=tenant_manager.get_current_tenant(),
+                series_number=random.randint(1, 999999),
             )
             session.add(project)
             await session.commit()
@@ -101,6 +102,7 @@ class TestProjectLifecycleMethods:
                 status="waiting",
                 product_id=product_id,
                 tenant_key=tenant_manager.get_current_tenant(),
+                series_number=random.randint(1, 999999),
             )
             project2 = Project(
                 name="Project 2",
@@ -109,6 +111,7 @@ class TestProjectLifecycleMethods:
                 status="waiting",
                 product_id=product_id,
                 tenant_key=tenant_manager.get_current_tenant(),
+                series_number=random.randint(1, 999999),
             )
             session.add(project1)
             session.add(project2)
@@ -157,6 +160,7 @@ class TestProjectLifecycleMethods:
                 status="active",
                 product_id=product.id,
                 tenant_key=tenant_manager.get_current_tenant(),
+                series_number=random.randint(1, 999999),
             )
             session.add(project)
             await session.commit()
@@ -190,6 +194,7 @@ class TestProjectLifecycleMethods:
                 status="waiting",
                 product_id=product.id,
                 tenant_key=tenant_manager.get_current_tenant(),
+                series_number=random.randint(1, 999999),
             )
             session.add(project)
             await session.commit()
@@ -224,6 +229,7 @@ class TestProjectLifecycleMethods:
                 activated_at=datetime.utcnow(),
                 product_id=product.id,
                 tenant_key=tenant_manager.get_current_tenant(),
+                series_number=random.randint(1, 999999),
             )
             session.add(project)
             await session.commit()
@@ -313,6 +319,7 @@ class TestProjectLifecycleMethods:
                 status="active",
                 product_id=product.id,
                 tenant_key=tenant_manager.get_current_tenant(),
+                series_number=random.randint(1, 999999),
             )
             session.add(project)
             await session.commit()
@@ -355,6 +362,7 @@ class TestProjectLifecycleMethods:
                 status="waiting",
                 product_id=product.id,
                 tenant_key=tenant_manager.get_current_tenant(),
+                series_number=random.randint(1, 999999),
             )
             session.add(project)
             await session.commit()

@@ -14,6 +14,7 @@ Test Coverage:
 - test_spawn_valid_agent_name_succeeds
 """
 
+import random
 import uuid
 
 import pytest
@@ -48,6 +49,7 @@ async def test_project(db_session, test_tenant_key) -> Project:
         tenant_key=test_tenant_key,
         # Handover 0709: Set implementation_launched_at to bypass phase gate
         implementation_launched_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
