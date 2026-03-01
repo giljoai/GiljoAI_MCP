@@ -33,6 +33,8 @@ class TestData:
     @staticmethod
     def generate_project_data(tenant_key: str) -> dict[str, Any]:
         """Generate test project data"""
+        import random
+
         return {
             "id": str(uuid.uuid4()),
             "name": f"Test Project {uuid.uuid4().hex[:8]}",
@@ -41,6 +43,7 @@ class TestData:
             "status": "active",
             "tenant_key": tenant_key,
             "metadata": {"test": True},
+            "series_number": random.randint(1, 999999),
         }
 
     @staticmethod

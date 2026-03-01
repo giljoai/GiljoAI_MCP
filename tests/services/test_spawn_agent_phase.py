@@ -9,6 +9,7 @@ RED PHASE - These tests verify:
 5. get_orchestrator_instructions() excludes phase instructions in CLI mode
 """
 
+import random
 import uuid
 
 import pytest
@@ -59,6 +60,7 @@ async def test_project(db_session, test_tenant_key, test_agent_templates) -> Pro
         status="active",
         tenant_key=test_tenant_key,
         implementation_launched_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
@@ -230,6 +232,7 @@ class TestOrchestratorPhaseInstructions:
             status="active",
             tenant_key=test_tenant_key,
             implementation_launched_at=datetime.now(timezone.utc),
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
 
@@ -288,6 +291,7 @@ class TestOrchestratorPhaseInstructions:
             tenant_key=test_tenant_key,
             execution_mode="claude_code_cli",
             implementation_launched_at=datetime.now(timezone.utc),
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
 

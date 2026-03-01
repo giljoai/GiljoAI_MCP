@@ -7,6 +7,7 @@ Verifies that when a project is reactivated, the system does NOT create duplicat
 orchestrators if one already exists in a non-decommissioned state (complete, blocked, etc.).
 """
 
+import random
 from contextlib import asynccontextmanager
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -98,6 +99,7 @@ class TestOrchestratorDeduplication:
             product_id=product.id,
             tenant_key=test_user.tenant_key,
             status="inactive",
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
         await db_session.flush()
@@ -180,6 +182,7 @@ class TestOrchestratorDeduplication:
             product_id=product.id,
             tenant_key=test_user.tenant_key,
             status="inactive",
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
         await db_session.flush()
@@ -262,6 +265,7 @@ class TestOrchestratorDeduplication:
             product_id=product.id,
             tenant_key=test_user.tenant_key,
             status="inactive",
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
         await db_session.flush()
@@ -353,6 +357,7 @@ class TestOrchestratorDeduplication:
             product_id=product.id,
             tenant_key=test_user.tenant_key,
             status="active",
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
         await db_session.flush()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = pytest.mark.skip(reason="0750b: Project creation API returns 422 - needs field update")
+pytestmark = pytest.mark.skip(reason="0750c3: test isolation — Product already exists, needs cleanup between runs")
 
 
 @pytest.mark.smoke

@@ -12,6 +12,7 @@ Expected Behavior:
 - WebSocket event 'projects:bulk:deactivated' should be emitted
 """
 
+import random
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
@@ -22,7 +23,6 @@ from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.services.product_service import ProductService
 from tests.fixtures.base_fixtures import TestData
 
-pytestmark = pytest.mark.skip(reason="0750b: Needs project fixture update for description NOT NULL constraint")
 
 
 @pytest.mark.asyncio
@@ -67,6 +67,7 @@ async def test_activate_product_deactivates_projects_in_old_product(db_session, 
         status="active",
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project_x)
     await db_session.commit()
@@ -143,6 +144,7 @@ async def test_product_switch_emits_websocket_events(db_session, db_manager):
         status="active",
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project_1)
 
@@ -156,6 +158,7 @@ async def test_product_switch_emits_websocket_events(db_session, db_manager):
         status="inactive",  # This one is already inactive
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project_2)
     await db_session.commit()
@@ -233,6 +236,7 @@ async def test_product_switch_multi_tenant_isolation(db_session, db_manager):
         mission="Test",
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project_x_tenant_a)
 
@@ -269,6 +273,7 @@ async def test_product_switch_multi_tenant_isolation(db_session, db_manager):
         mission="Test",
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project_y_tenant_b)
     await db_session.commit()

@@ -7,6 +7,7 @@ returning {"success": False, ...} dicts.
 Also verifies typed returns for happy path scenarios.
 """
 
+import random
 from uuid import uuid4
 
 import pytest
@@ -185,6 +186,7 @@ class TestProjectServiceTypedReturns:
             description="Test description",
             tenant_key=test_tenant_key,
             status="staging",
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
         await db_session.commit()
@@ -222,6 +224,7 @@ class TestProjectServiceTypedReturns:
             description="Test description",
             tenant_key=test_tenant_key,
             status="completed",
+            series_number=random.randint(1, 999999),
         )
         db_session.add(project)
         await db_session.commit()
@@ -260,6 +263,7 @@ async def active_project(db_session, test_tenant_key):
         description="Test description",
         tenant_key=test_tenant_key,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
@@ -279,6 +283,7 @@ async def inactive_project(db_session, test_tenant_key):
         description="Test description",
         tenant_key=test_tenant_key,
         status="inactive",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
@@ -299,6 +304,7 @@ async def staged_project(db_session, test_tenant_key):
         tenant_key=test_tenant_key,
         status="inactive",
         staging_status="staged",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()

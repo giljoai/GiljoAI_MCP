@@ -2,6 +2,8 @@
 Simple demonstration of multi-tenant isolation working correctly.
 """
 
+import random
+
 # Add src to path
 import sys
 import time
@@ -11,9 +13,10 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-pytestmark = pytest.mark.skip(reason="0750b: Needs project fixture update for uq_project_taxonomy constraint")
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+pytestmark = pytest.mark.skip(reason="0750c3: Agent class undefined — schema drift from AgentJob/AgentExecution migration")
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Message, Project
@@ -38,7 +41,9 @@ def test_multi_tenant_isolation_demo():
         with db_manager.get_tenant_session(tenant_key) as session:
             # Create project
             project = Project(
-                name=f"Tenant {i} Project", mission=f"Secret mission for tenant {i}", tenant_key=tenant_key
+                name=f"Tenant {i} Project", description=f"Description for tenant {i}",
+                mission=f"Secret mission for tenant {i}", tenant_key=tenant_key,
+                series_number=random.randint(1, 999999)
             )
             session.add(project)
             session.commit()
