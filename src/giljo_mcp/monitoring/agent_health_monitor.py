@@ -289,7 +289,7 @@ class AgentHealthMonitor:
                         job_id=execution.job_id,
                         agent_id=execution.agent_id,
                         agent_display_name=execution.agent_display_name,
-                        current_status="active",
+                        current_status="working",
                         health_state=health_state,
                         last_update=last_progress,
                         minutes_since_update=minutes_stalled,
