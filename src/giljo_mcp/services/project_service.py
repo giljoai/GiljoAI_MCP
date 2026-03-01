@@ -1498,10 +1498,10 @@ class ProjectService:
             job_counts = dict(job_counts_raw)
 
             total_jobs = sum(job_counts.values())
-            completed_jobs = job_counts.get("completed", 0)
+            completed_jobs = job_counts.get("complete", 0)
             blocked_jobs = job_counts.get("blocked", 0)
-            active_jobs = job_counts.get("active", 0)
-            pending_jobs = job_counts.get("pending", 0)
+            active_jobs = job_counts.get("working", 0)
+            pending_jobs = job_counts.get("waiting", 0)
 
             # Calculate completion percentage
             completion_percentage = 0.0
@@ -2555,7 +2555,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     and_(
                         AgentJob.project_id == project_id,
                         AgentJob.tenant_key == tenant_key,
-                        AgentExecution.status.notin_(["completed", "complete", "decommissioned"]),
+                        AgentExecution.status.notin_(["complete", "decommissioned"]),
                     )
                 )
             )
