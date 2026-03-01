@@ -230,7 +230,7 @@ LOOP over each non-orchestrator agent from Step 1 that needs cleanup:
       mcp__giljo-mcp__receive_messages(agent_id="<agent_id>")
       Record any important content for the 360 Memory summary.
 
-  2b. Mark remaining todos as skipped:
+  2b. If agent has incomplete todos, mark remaining as skipped:
       mcp__giljo-mcp__report_progress(
           job_id="<agent_job_id>",
           todo_items=[
@@ -239,7 +239,7 @@ LOOP over each non-orchestrator agent from Step 1 that needs cleanup:
           ]
       )
 
-  2c. Complete the agent:
+  2c. ONLY if agent is NOT already "complete", force complete it:
       mcp__giljo-mcp__complete_job(
           job_id="<agent_job_id>",
           result={{
@@ -247,9 +247,10 @@ LOOP over each non-orchestrator agent from Step 1 that needs cleanup:
               "status": "handed_over"
           }}
       )
+      Do NOT call complete_job() on agents already in "complete" status — it will fail.
 
-Skip agents already in status "complete" with 0 messages waiting and all todos done.
 Skip agents in status "decommissioned".
+Skip agents in status "complete" with 0 unread messages and all todos done (fully clean).
 
 STEP 3 — Drain YOUR OWN message queue
 
