@@ -9,10 +9,12 @@ Original direct SQLAlchemy queries preserved as comments for rollback reference.
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
+from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.colored_logger import get_colored_logger
+from src.giljo_mcp.models import User
 from src.giljo_mcp.repositories.statistics_repository import StatisticsRepository
 
 
@@ -106,7 +108,7 @@ startup_time = datetime.now(timezone.utc)
 
 
 @router.get("/call-counts", response_model=CallCountsResponse)
-async def get_call_counts(request: Request):
+async def get_call_counts(request: Request, current_user: User = Depends(get_current_active_user)):
     """Get total API and MCP call counts."""
     from api.app import state
 
@@ -135,7 +137,7 @@ async def get_call_counts(request: Request):
 
 
 @router.get("/system", response_model=SystemStatsResponse)
-async def get_system_statistics(request: Request):
+async def get_system_statistics(request: Request, current_user: User = Depends(get_current_active_user)):
     """Get overall system statistics"""
     from api.app import state
 
@@ -208,6 +210,7 @@ async def get_project_statistics(
     status: Optional[str] = Query(None, description="Filter by project status"),
     limit: int = Query(100, description="Maximum number of results"),
     offset: int = Query(0, description="Number of results to skip"),
+    current_user: User = Depends(get_current_active_user),
 ):
     """Get statistics for all projects"""
     from api.app import state
@@ -260,9 +263,11 @@ async def get_project_statistics(
 
 
 @router.get("/project/{project_id}", response_model=ProjectStatsResponse)
-async def get_project_statistics_by_id(request: Request, project_id: str):
+async def get_project_statistics_by_id(
+    request: Request, project_id: str, current_user: User = Depends(get_current_active_user)
+):
     """Get statistics for a specific project"""
-    stats = await get_project_statistics(request, limit=1)
+    stats = await get_project_statistics(request)
     for stat in stats:
         if stat.project_id == project_id:
             return stat
@@ -275,6 +280,7 @@ async def get_agent_statistics(
     project_id: Optional[str] = Query(None, description="Filter by project"),
     status: Optional[str] = Query(None, description="Filter by agent status"),
     limit: int = Query(100, description="Maximum number of results"),
+    current_user: User = Depends(get_current_active_user),
 ):
     """Get statistics for all agents"""
     from api.app import state
@@ -339,6 +345,7 @@ async def get_message_statistics(
     request: Request,
     project_id: Optional[str] = Query(None, description="Filter by project"),
     time_range: Optional[str] = Query("24h", description="Time range (1h, 24h, 7d, 30d)"),
+    current_user: User = Depends(get_current_active_user),
 ):
     """Get message statistics"""
     from api.app import state
@@ -403,7 +410,7 @@ async def get_message_statistics(
 
 
 @router.get("/performance", response_model=PerformanceMetricsResponse)
-async def get_performance_metrics():
+async def get_performance_metrics(current_user: User = Depends(get_current_active_user)):
     """Get real-time performance metrics"""
     import time
 
@@ -462,7 +469,7 @@ async def get_performance_metrics():
 
 
 @router.get("/health/detailed", response_model=DetailedHealthResponse)
-async def get_detailed_health():
+async def get_detailed_health(current_user: User = Depends(get_current_active_user)):
     """Get detailed health status of all system components"""
     from api.app import state
 
