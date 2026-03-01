@@ -252,10 +252,9 @@ class OrchestrationService:
 
                 # Handover 0491: Count by simplified execution statuses
                 executions = [row[0] for row in rows]
-                working_like = {"active", "working"}
-                active_count = sum(1 for execution in executions if execution.status in working_like)
-                completed_count = sum(1 for execution in executions if execution.status in {"complete", "completed"})
-                pending_count = sum(1 for execution in executions if execution.status in {"waiting", "pending"})
+                active_count = sum(1 for execution in executions if execution.status == "working")
+                completed_count = sum(1 for execution in executions if execution.status == "complete")
+                pending_count = sum(1 for execution in executions if execution.status == "waiting")
                 blocked_count = sum(1 for execution in executions if execution.status == "blocked")
                 silent_count = sum(1 for execution in executions if execution.status == "silent")
                 decommissioned_count = sum(1 for execution in executions if execution.status == "decommissioned")
