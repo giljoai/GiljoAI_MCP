@@ -5,7 +5,7 @@
 **To Agent:** database-expert + tdd-implementor
 **Priority:** High
 **Estimated Complexity:** 4-6 hours
-**Status:** Not Started
+**Status:** COMPLETE (2026-02-25)
 **Chain:** 0497a → **0497b** → 0497c → 0497d → 0497e (Multi-Terminal Production Parity)
 **Depends On:** None (independent DB + service change)
 
@@ -194,3 +194,19 @@ The existing `agent:status_changed` broadcast for completion should include a `h
 - **Upstream**: No impact on AgentJob, Project, or Product
 - **Sibling**: Message auto-creation follows existing Message model patterns. New `message_type="completion_report"` is safe — `message_type` is String(50) with no CheckConstraint, and `receive_messages` does not filter by type.
 - **Installation**: Alembic migration required (idempotent ADD COLUMN in `migrations/versions/`)
+
+---
+
+## Completion Summary
+
+### 2026-02-25 - Reconciliation Closeout
+**Status:** COMPLETE
+
+**Implementation commit:** `15aad66a` feat(0497a+0497b): Thin agent prompt + completion result storage (combined with 0497a)
+
+**What was built:**
+- `result` JSON column added to AgentExecution model
+- `complete_job()` persists the result dict
+- Auto-generated completion message from agent to orchestrator on job completion
+- `get_agent_result()` MCP tool for reading stored results with tenant isolation
+- Alembic migration for the new column

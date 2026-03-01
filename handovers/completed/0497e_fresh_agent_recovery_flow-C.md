@@ -5,7 +5,7 @@
 **To Agent:** system-architect + tdd-implementor
 **Priority:** Medium
 **Estimated Complexity:** 4-6 hours
-**Status:** Not Started
+**Status:** COMPLETE (2026-02-25)
 **Chain:** 0497a → 0497b → 0497c → 0497d → **0497e** (Multi-Terminal Production Parity)
 **Depends On:** 0497b (result storage) + 0497c (orchestrator prompt knows about spawning)
 
@@ -190,3 +190,19 @@ The frontend Jobs tab could show a "predecessor" link or badge on successor agen
 - **Upstream**: Reads from AgentExecution.result (added in 0497b) — read-only
 - **Sibling**: Existing spawn callers unaffected (parameter is optional with default None)
 - **Installation**: No `install.py` changes (0497b handles the migration)
+
+---
+
+## Completion Summary
+
+### 2026-02-25 - Reconciliation Closeout
+**Status:** COMPLETE
+
+**Implementation commit:** `c6592915` feat(0497e): Successor spawning with predecessor context injection
+
+**What was built:**
+- `spawn_agent_job()` accepts `predecessor_job_id` parameter
+- Predecessor context (completion result + git commits) injected into successor mission
+- `get_agent_result()` MCP tool allows any agent to read a completed agent's result
+- Successor agents appear on dashboard with working play buttons via WebSocket broadcast
+- Predecessor validation enforces tenant isolation and existence

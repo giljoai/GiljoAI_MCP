@@ -360,3 +360,21 @@ rg "OrchestrationWorkflowResult" src/ --type py
 - mission_planner lazy property in OrchestrationService
 - Mission, RequirementAnalysis, AgentConfig dataclasses
 - _generate_team_context_header() and all active MCP tool endpoints
+
+---
+
+## Completion Summary
+
+### 2026-02-24 - Reconciliation Closeout
+**Status:** COMPLETE
+
+**Implementation commits:**
+- `ad339583` refactor: Remove ~5,200 lines of dead orchestration pipeline code (0411b)
+- `a3a02caa` refactor: Remove ~6,700 lines of zombie code from MissionPlanner and orchestration_types (0411b)
+
+**What was removed:**
+- WorkflowEngine and JobCoordinator (fully unreachable since `orchestrate_project` removal)
+- Dead MissionPlanner methods, AgentSelector
+- Dead test files: test_orchestration_service_consolidation.py, test_stage_project_workflow.py
+- Total: ~11,900 lines removed across 12 files
+- Active code (MissionPlanner._build_fetch_instructions, AgentConfig) preserved

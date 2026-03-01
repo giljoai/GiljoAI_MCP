@@ -5,7 +5,7 @@
 **To Agent:** tdd-implementor
 **Priority:** Medium
 **Estimated Complexity:** 3-4 hours
-**Status:** Not Started
+**Status:** COMPLETE (2026-02-25)
 **Chain:** 0497a → 0497b → 0497c → **0497d** → 0497e (Multi-Terminal Production Parity)
 **Depends On:** None (protocol injection is independent)
 
@@ -188,3 +188,18 @@ User enables git integration in settings
 - **Upstream**: Reads project.execution_mode and git_integration (read-only)
 - **Sibling**: Other protocol phases (1-3, 5) are untouched
 - **Installation**: No `install.py` changes needed
+
+---
+
+## Completion Summary
+
+### 2026-02-25 - Reconciliation Closeout
+**Status:** COMPLETE
+
+**Implementation commit:** `25ee3bb2` feat(0497d): Inject git commit + /gil_add guidance into agent protocol
+
+**What was built:**
+- /gil_add guidance injected into Phase 4 (COMPLETION) for multi-terminal agents only
+- Git commit instructions injected when git integration is enabled
+- CLI sub-agents excluded from /gil_add (no user-facing terminal)
+- `execution_mode` and `git_integration` resolved by caller and passed as parameters to `_generate_agent_protocol()`
