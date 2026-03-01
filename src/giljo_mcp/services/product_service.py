@@ -32,7 +32,9 @@ from sqlalchemy.orm import selectinload
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
     BaseGiljoError,
+    ContextError,
     DatabaseError,
+    GiljoFileNotFoundError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -1229,26 +1231,23 @@ class ProductService:
                 if auto_chunk:
                     chunker = VisionDocumentChunker(target_chunk_size=max_tokens)
 
-                    # Chunk the document
-                    chunk_result = await chunker.chunk_vision_document(
-                        session=session, tenant_key=self.tenant_key, vision_document_id=str(doc.id)
-                    )
+                    try:
+                        # Chunk the document
+                        chunk_result = await chunker.chunk_vision_document(
+                            session=session, tenant_key=self.tenant_key, vision_document_id=str(doc.id)
+                        )
 
-                    await session.commit()
+                        await session.commit()
 
-                    if chunk_result["success"]:
                         chunks_created = chunk_result["chunks_created"]
                         chunk_total_tokens = chunk_result["total_tokens"]
                         # Update total_tokens for return value (use chunker's accurate count)
                         total_tokens = chunk_total_tokens
 
                         self._logger.info(f"Chunked document {doc.id}: {chunks_created} chunks, {total_tokens} tokens")
-                    else:
+                    except (ContextError, GiljoFileNotFoundError, OSError) as e:
                         # Chunking failed but document created
-                        self._logger.warning(
-                            f"Document {doc.id} created but chunking failed: "
-                            f"{chunk_result.get('error', 'Unknown error')}"
-                        )
+                        self._logger.warning(f"Document {doc.id} created but chunking failed: {e}")
 
                 # Handover 0493: Auto-consolidation after upload
                 # Ensures light/medium summaries are always available

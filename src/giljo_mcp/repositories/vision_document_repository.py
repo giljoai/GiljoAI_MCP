@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import ResourceNotFoundError
 from src.giljo_mcp.models import MCPContextIndex, Product, VisionDocument
 
 from .base import BaseRepository
@@ -219,7 +220,7 @@ class VisionDocumentRepository:
         doc = await self.get_by_id(session, tenant_key, document_id)
 
         if not doc:
-            return {"success": False, "message": "Document not found"}
+            raise ResourceNotFoundError("Document not found")
 
         # Count chunks before deletion (for stats)
         stmt = select(MCPContextIndex).where(
