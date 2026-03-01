@@ -6,7 +6,6 @@ Provides direct access to MCP tool functions for API endpoints
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 
@@ -524,54 +523,6 @@ class ToolAccessor:
         """Update a template (delegates to TemplateService)"""
         return await self._template_service.update_template(template_id=template_id, **kwargs)
 
-    # Agent Export Tools (Handover 0084)
-
-    async def export_agents(
-        self,
-        product_path: str | None = None,
-        personal: bool = False,
-        product_id: str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Export agent templates to Claude Code format via MCP command.
-
-        Args:
-            product_path: Path to product's .claude/agents directory
-            personal: Export to user's personal ~/.claude/agents
-            product_id: Optional specific product ID (uses active product if not specified)
-
-        Returns:
-            Export result dictionary
-        """
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                raise ValidationError("No tenant context available")
-
-            from .claude_export import export_agents_command, get_product_for_tenant
-
-            # If product_path not provided and not personal, try to get from product
-            if not product_path and not personal:
-                product = await get_product_for_tenant(self.db_manager, tenant_key, product_id)
-                if product and product.project_path:
-                    product_path = str(Path(product.project_path) / ".claude" / "agents")
-                else:
-                    raise ValidationError("No product path configured. Set product project_path or use --personal")
-
-            # Call export command
-            result = await export_agents_command(
-                db_manager=self.db_manager,
-                tenant_key=tenant_key,
-                product_path=product_path,
-                personal=personal,
-            )
-
-            return result
-
-        except Exception:
-            logger.exception("Failed to export agents")
-            raise
-
     async def set_product_path(
         self,
         project_path: str,
@@ -806,90 +757,6 @@ class ToolAccessor:
         """Report job error (delegates to OrchestrationService). Handover 0491: severity param removed."""
         return await self._orchestration_service.report_error(job_id=job_id, error=error, tenant_key=tenant_key)
 
-    async def get_team_agents(
-        self,
-        job_id: str,
-        tenant_key: str,
-        include_inactive: bool = False,
-    ) -> dict[str, Any]:
-        """
-        List agent executions (teammates) associated with this job.
-
-        Handover 0360 Feature 2: Team Discovery Tool.
-
-        Enables agents to discover teammates working on the same job/project.
-
-        Args:
-            job_id: Job ID to get teammates for
-            tenant_key: Tenant key for multi-tenant isolation
-            include_inactive: If True, include completed/decommissioned executions
-
-        Returns:
-            dict: {
-                "success": True,
-                "team": [
-                    {
-                        "agent_id": str,
-                        "job_id": str,
-                        "agent_display_name": str,
-                        "status": str,
-                        "agent_name": str,
-                        "tenant_key": str
-                    },
-                    ...
-                ]
-            }
-        """
-        from giljo_mcp.tools.agent_coordination import get_team_agents as coordination_get_team_agents
-
-        return await coordination_get_team_agents(
-            job_id=job_id,
-            tenant_key=tenant_key,
-            include_inactive=include_inactive,
-        )
-
-    # Succession tools removed (0391/0461/0700d)
-    # User triggers via UI button (simple-handover REST endpoint) or /gil_handover slash command.
-    # Agents cannot self-detect context exhaustion (passive HTTP architecture).
-
-    async def gil_launch(self, project_id: str) -> dict[str, Any]:
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                raise ValidationError("No active tenant")
-            if not project_id:
-                raise ValidationError("project_id is required")
-            from datetime import datetime, timezone
-
-            from sqlalchemy import select
-
-            from giljo_mcp.models import Project
-            from giljo_mcp.models.agent_identity import AgentJob
-
-            async with self.get_session_async() as session:
-                pr = await session.execute(
-                    select(Project).where(Project.id == project_id, Project.tenant_key == tenant_key)
-                )
-                project = pr.scalar_one_or_none()
-                if not project:
-                    raise ResourceNotFoundError("Project not found")
-                if not project.mission or not project.mission.strip():
-                    raise ProjectStateError("Project mission has not been created. Please complete staging first.")
-                ag = await session.execute(
-                    select(AgentJob).where(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key)
-                )
-                agents = ag.scalars().all()
-                if not agents:
-                    raise ProjectStateError(
-                        "No agents have been spawned for this project. Please complete staging first."
-                    )
-                project.updated_at = datetime.now(timezone.utc)
-                await session.commit()
-            return {"project_id": project_id, "agent_count": len(agents)}
-        except Exception:
-            logger.exception("gil_launch failed")
-            raise
-
     async def close_project_and_update_memory(
         self,
         project_id: str,
@@ -1019,54 +886,3 @@ class ToolAccessor:
         )
 
     # Agent Discovery Tools (Handover 0422)
-
-    async def get_available_agents(
-        self, tenant_key: str, active_only: bool = True, depth: str = "full"
-    ) -> dict[str, Any]:
-        """
-        Get available agent templates with staleness info.
-
-        Wraps agent_discovery.get_available_agents() for HTTP MCP exposure.
-
-        Args:
-            tenant_key: Tenant isolation key
-            active_only: Include only active templates (default: True)
-            depth: Detail level - "type_only" (name/role/version) or "full" (includes description)
-
-        Returns:
-            Dict with agents list and staleness warning (if applicable):
-            {
-                "success": True,
-                "data": {
-                    "agents": [
-                        {
-                            "name": str,
-                            "role": str,
-                            "version_tag": str,
-                            "may_be_stale": bool,
-                            "last_exported_at": str,
-                            "updated_at": str,
-                            "description": str,  # Only if depth="full"
-                            "expected_filename": str,  # Only if depth="full"
-                            "created_at": str  # Only if depth="full"
-                        }
-                    ],
-                    "count": int,
-                    "fetched_at": str,
-                    "note": str,
-                    "staleness_warning": {  # Only if stale agents detected
-                        "has_stale_agents": bool,
-                        "stale_count": int,
-                        "stale_agents": list[str],
-                        "action_required": str,
-                        "options": list[str]
-                    }
-                }
-            }
-
-        Handover 0422: Added for HTTP MCP exposure of agent discovery tool.
-        """
-        from src.giljo_mcp.tools.agent_discovery import get_available_agents as _get_available_agents
-
-        async with self.get_session_async() as session:
-            return await _get_available_agents(session, tenant_key, depth=depth)
