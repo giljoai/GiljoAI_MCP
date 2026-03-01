@@ -14,6 +14,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
@@ -51,19 +52,16 @@ async def close_project_and_update_memory(
     closing, and logs a warning with the affected agents.
     """
     if not project_id:
-        return {"success": False, "error": "project_id is required"}
+        raise ValidationError("project_id is required")
 
     if not summary or not summary.strip():
-        return {"success": False, "error": "summary is required"}
+        raise ValidationError("summary is required")
 
     if db_manager is None:
-        return {"success": False, "error": "db_manager is required"}
+        raise ValidationError("db_manager is required")
 
     if len(summary) > MAX_SUMMARY_LENGTH:
-        return {
-            "success": False,
-            "error": f"Summary too long (max {MAX_SUMMARY_LENGTH} characters)",
-        }
+        raise ValidationError(f"Summary too long (max {MAX_SUMMARY_LENGTH} characters)")
 
     key_outcomes = key_outcomes or []
     decisions_made = decisions_made or []
@@ -99,13 +97,13 @@ async def close_project_and_update_memory(
                 project = await project
 
             if not project:
-                return {"success": False, "error": "Project not found or unauthorized for tenant"}
+                raise ResourceNotFoundError("Project not found or unauthorized for tenant")
 
             if getattr(project, "tenant_key", None) != tenant_key:
-                return {"success": False, "error": "Project not found or unauthorized for tenant"}
+                raise ResourceNotFoundError("Project not found or unauthorized for tenant")
 
             if not project.product_id:
-                return {"success": False, "error": "Project not associated with product"}
+                raise ValidationError("Project not associated with product")
 
             product_stmt = select(Product).where(
                 Product.id == project.product_id,
@@ -117,19 +115,20 @@ async def close_project_and_update_memory(
                 product = await product
 
             if not product:
-                return {"success": False, "error": "Product not found for project"}
+                raise ResourceNotFoundError("Product not found for project")
 
             # Closeout readiness gate: verify all agents are finished
             is_ready, blockers = await _check_agent_readiness(active_session, project_id, tenant_key)
 
             if not is_ready and not force:
-                return {
-                    "success": False,
-                    "status": "CLOSEOUT_BLOCKED",
-                    "error": "Cannot close project: agents have unfinished work",
-                    "blockers": blockers,
-                    "hint": "Resolve all blockers or pass force=true to auto-decommission remaining agents.",
-                }
+                raise ProjectStateError(
+                    "Cannot close project: agents have unfinished work",
+                    context={
+                        "status": "CLOSEOUT_BLOCKED",
+                        "blockers": blockers,
+                        "hint": "Resolve all blockers or pass force=true to auto-decommission remaining agents.",
+                    },
+                )
 
             if not is_ready and force:
                 decommissioned = await _force_decommission_agents(active_session, project_id, tenant_key)
@@ -211,7 +210,6 @@ async def close_project_and_update_memory(
             )
 
             return {
-                "success": True,
                 "entry_id": str(entry.id),
                 "sequence_number": sequence_number,
                 "git_commits_count": len(git_commits),
@@ -220,7 +218,7 @@ async def close_project_and_update_memory(
 
     except Exception as exc:
         logger.exception("Failed to close project and update memory", extra={"error": str(exc)})
-        return {"success": False, "error": str(exc)}
+        raise
 
 
 # Statuses that do not block closeout (aligned with write_360_memory.SKIP_STATUSES)
