@@ -144,10 +144,8 @@ translators.
       product_service: ProductService = Depends(get_product_service)
   ):
       # Endpoint only translates request → service → response
-      result = await product_service.list_products()
-      if not result["success"]:
-          raise HTTPException(status_code=400, detail=result["error"])
-      return [ProductResponse.from_orm(p) for p in result["data"]]
+      products = await product_service.list_products()
+      return [ProductResponse.from_orm(p) for p in products]
 
   # src/giljo_mcp/services/product_service.py
   class ProductService:
@@ -155,19 +153,14 @@ translators.
           self.session = session
           self.tenant_key = tenant_key
 
-      async def list_products(self) -> dict[str, Any]:
+      async def list_products(self) -> list[Product]:
           """List all products for current tenant"""
-          try:
-              stmt = select(Product).where(
-                  Product.tenant_key == self.tenant_key,
-                  Product.is_deleted == False
-              )
-              result = await self.session.execute(stmt)
-              products = result.scalars().all()
-              return {"success": True, "data": products}
-          except Exception as e:
-              logger.error(f"Failed to list products: {e}")
-              return {"success": False, "error": str(e)}
+          stmt = select(Product).where(
+              Product.tenant_key == self.tenant_key,
+              Product.is_deleted == False
+          )
+          result = await self.session.execute(stmt)
+          return result.scalars().all()
 
 ### Core Services (Use These, Don't Recreate)
 
@@ -209,13 +202,11 @@ Example: Reusing ProductService
       product_service: ProductService = Depends(get_product_service)
   ):
       # Reuse existing upload_vision_document method (don't recreate)
-      result = await product_service.upload_vision_document(
+      chunks = await product_service.upload_vision_document(
           product_id=product_id,
           content=content
       )
-      if not result["success"]:
-          raise HTTPException(status_code=400, detail=result["error"])
-      return {"message": "Vision uploaded", "chunks": len(result["data"])}
+      return {"message": "Vision uploaded", "chunks": len(chunks)}
 
 ### Multi-Tenant Isolation (CRITICAL)
 
@@ -257,10 +248,10 @@ Test multi-tenant isolation in every service test:
       products_a = await service_a.list_products()
       products_b = await service_b.list_products()
 
-      assert len(products_a["data"]) == 1
-      assert len(products_b["data"]) == 1
-      assert products_a["data"][0].id == product_a.id
-      assert products_b["data"][0].id == product_b.id
+      assert len(products_a) == 1
+      assert len(products_b) == 1
+      assert products_a[0].id == product_a.id
+      assert products_b[0].id == product_b.id
 
 ### WebSocket Events for Real-Time UI
 
@@ -310,16 +301,18 @@ Best Example: ProjectsView.vue extracted 9 components (~2,500 lines → 1,018)
 
 Production-grade code from the start. No bandaids, no "fix later" comments.
 
-IMPORTANT (Post-0480/0730): Service methods raise domain exceptions on error,
-NOT return {"success": False, "error": ...} dicts. Some examples below predate
-this migration and still show dict patterns - use exception-based patterns instead:
+HARD RULE (Post-0480/0730): ALL Python layers — services, tools, orchestration,
+helpers, and context management — MUST raise exceptions for error handling.
+Never return dict error responses like {"success": False}. This applies everywhere,
+not just services:
 
-  # OLD pattern (pre-0480) - DO NOT USE:
+  # FORBIDDEN — DO NOT USE ANYWHERE:
   return {"success": False, "error": str(e)}
 
-  # NEW pattern (post-0480) - USE THIS:
+  # REQUIRED — USE THIS IN ALL LAYERS:
   raise ProductNotFoundError(f"Product {product_id} not found")
   raise OrchestrationError(message="Failed", context={"key": value})
+  raise HTTPException(status_code=404, detail="Not found")  # endpoints only
 
 ### Cross-Platform Paths (CRITICAL for Windows/Linux/Mac)
 
@@ -749,62 +742,50 @@ All services follow this structure:
           self.session = session
           self.tenant_key = tenant_key
 
-      async def create_feature(self, feature_data: dict) -> dict[str, Any]:
+      async def create_feature(self, feature_data: dict) -> Feature:
           """Create new feature
 
           Args:
               feature_data: Feature creation data
 
           Returns:
-              dict with 'success' bool and 'data' or 'error'
+              The created Feature object
+
+          Raises:
+              ServiceError: If creation fails
           """
-          try:
-              feature = Feature(
-                  name=feature_data["name"],
-                  tenant_key=self.tenant_key
-              )
-              self.session.add(feature)
-              await self.session.commit()
+          feature = Feature(
+              name=feature_data["name"],
+              tenant_key=self.tenant_key
+          )
+          self.session.add(feature)
+          await self.session.commit()
 
-              # Emit WebSocket event
-              await websocket_manager.broadcast_to_tenant(
-                  tenant_key=self.tenant_key,
-                  event="feature:created",
-                  data={"feature_id": feature.id, "name": feature.name}
-              )
+          # Emit WebSocket event
+          await websocket_manager.broadcast_to_tenant(
+              tenant_key=self.tenant_key,
+              event="feature:created",
+              data={"feature_id": feature.id, "name": feature.name}
+          )
 
-              logger.info(
-                  "Feature created",
-                  extra={
-                      "feature_id": feature.id,
-                      "tenant_key": self.tenant_key
-                  }
-              )
+          logger.info(
+              "Feature created",
+              extra={
+                  "feature_id": feature.id,
+                  "tenant_key": self.tenant_key
+              }
+          )
 
-              return {"success": True, "data": feature}
+          return feature
 
-          except Exception as e:
-              logger.error(
-                  f"Failed to create feature: {e}",
-                  extra={"tenant_key": self.tenant_key}
-              )
-              return {"success": False, "error": str(e)}
-
-      async def list_features(self) -> dict[str, Any]:
+      async def list_features(self) -> list[Feature]:
           """List all features for current tenant"""
-          try:
-              stmt = select(Feature).where(
-                  Feature.tenant_key == self.tenant_key,
-                  Feature.is_deleted == False
-              )
-              result = await self.session.execute(stmt)
-              features = result.scalars().all()
-
-              return {"success": True, "data": features}
-
-          except Exception as e:
-              logger.error(f"Failed to list features: {e}")
-              return {"success": False, "error": str(e)}
+          stmt = select(Feature).where(
+              Feature.tenant_key == self.tenant_key,
+              Feature.is_deleted == False
+          )
+          result = await self.session.execute(stmt)
+          return result.scalars().all()
 
 Dependency injection in endpoints:
 
@@ -830,37 +811,30 @@ Endpoint usage:
       feature_data: FeatureCreate,
       feature_service: FeatureService = Depends(get_feature_service)
   ):
-      result = await feature_service.create_feature(feature_data.dict())
-
-      if not result["success"]:
-          raise HTTPException(status_code=400, detail=result["error"])
-
-      return FeatureResponse.from_orm(result["data"])
+      feature = await feature_service.create_feature(feature_data.dict())
+      return FeatureResponse.from_orm(feature)
 
 ### Multi-Tenant Isolation Pattern
 
 EVERY query MUST filter by tenant_key. Use this pattern:
 
-  async def get_feature(self, feature_id: int) -> dict[str, Any]:
-      """Get feature by ID (tenant-isolated)"""
-      try:
-          stmt = select(Feature).where(
-              Feature.id == feature_id,
-              Feature.tenant_key == self.tenant_key  # REQUIRED
-          )
-          result = await self.session.execute(stmt)
-          feature = result.scalar_one_or_none()
+  async def get_feature(self, feature_id: int) -> Feature:
+      """Get feature by ID (tenant-isolated)
 
-          if not feature:
-              return {
-                  "success": False,
-                  "error": f"Feature {feature_id} not found"
-              }
+      Raises:
+          FeatureNotFoundError: If feature doesn't exist for this tenant
+      """
+      stmt = select(Feature).where(
+          Feature.id == feature_id,
+          Feature.tenant_key == self.tenant_key  # REQUIRED
+      )
+      result = await self.session.execute(stmt)
+      feature = result.scalar_one_or_none()
 
-          return {"success": True, "data": feature}
+      if not feature:
+          raise FeatureNotFoundError(f"Feature {feature_id} not found")
 
-      except Exception as e:
-          return {"success": False, "error": str(e)}
+      return feature
 
 Test multi-tenant isolation:
 
@@ -874,14 +848,12 @@ Test multi-tenant isolation:
       feature_b = await service_b.create_feature({"name": "Feature B"})
 
       # BEHAVIOR: tenant_a can't access tenant_b's features
-      result = await service_a.get_feature(feature_b["data"].id)
-      assert not result["success"]
-      assert "not found" in result["error"]
+      with pytest.raises(FeatureNotFoundError):
+          await service_a.get_feature(feature_b.id)
 
       # BEHAVIOR: tenant_b can't access tenant_a's features
-      result = await service_b.get_feature(feature_a["data"].id)
-      assert not result["success"]
-      assert "not found" in result["error"]
+      with pytest.raises(FeatureNotFoundError):
+          await service_b.get_feature(feature_a.id)
 
 ### Frontend Composable Pattern (Vue 3)
 
@@ -1037,7 +1009,7 @@ Before marking handover complete, verify ALL deliverables:
 4. Service Layer Compliance (No Direct DB Queries in Endpoints)
    ✓ All business logic in services
    ✓ Endpoints use dependency injection
-   ✓ Services return dict[str, Any] with success/data/error
+   ✓ Services raise exceptions on error and return domain objects directly
 
 5. Multi-Tenant Isolation Verified
    ✓ All queries filter by tenant_key
@@ -1104,7 +1076,7 @@ Run this checklist BEFORE git commit:
 ### Service Layer Checks
 ✓ All business logic in services? (not endpoints)
 ✓ Services use AsyncSession + tenant_key? (consistent pattern)
-✓ Services return dict[str, Any]? (success/data/error structure)
+✓ Services raise exceptions? (not dict returns)
 ✓ Dependency injection used? (get_feature_service pattern)
 
 ### Multi-Tenant Isolation Checks
@@ -1900,10 +1872,9 @@ RED Phase (Write Failing Tests):
       job = await create_test_job(status="active")
 
       # Cancel job
-      result = await cancel_job(job.id, test_tenant)
+      await cancel_job(job.id, test_tenant)
 
       # Verify status changed
-      assert result["success"] is True
       updated_job = await db_session.get(AgentJob, job.id)
       assert updated_job.status == "cancelled"
 
@@ -1913,8 +1884,12 @@ RED Phase (Write Failing Tests):
 
 GREEN Phase (Minimal Implementation):
   # src/giljo_mcp/tools/agent_job_tools.py
-  async def cancel_job(job_id: str, tenant_key: str) -> dict:
-      """Cancel active agent job"""
+  async def cancel_job(job_id: str, tenant_key: str) -> None:
+      """Cancel active agent job
+
+      Raises:
+          JobNotFoundError: If job doesn't exist for this tenant
+      """
       async with get_db_session() as session:
           stmt = select(AgentJob).where(
               AgentJob.id == job_id,
@@ -1924,28 +1899,30 @@ GREEN Phase (Minimal Implementation):
           job = result.scalar_one_or_none()
 
           if not job:
-              return {"success": False, "error": "Job not found"}
+              raise JobNotFoundError(f"Job {job_id} not found")
 
           job.status = "cancelled"
           await session.commit()
-
-          return {"success": True, "data": {"job_id": job_id}}
 
   # Run test
   pytest tests/tools/test_agent_job_tools.py::test_cancel_job -v
   # MUST SEE: PASSED (GREEN ✅)
 
 REFACTOR Phase (Polish):
-  # Add logging, error handling, WebSocket events
-  async def cancel_job(job_id: str, tenant_key: str) -> dict:
-      """Cancel active agent job"""
+  # Add logging, WebSocket events
+  async def cancel_job(job_id: str, tenant_key: str) -> None:
+      """Cancel active agent job
+
+      Raises:
+          JobNotFoundError: If job doesn't exist for this tenant
+      """
       logger.info(
           "Cancelling agent job",
           extra={"job_id": job_id, "tenant_key": tenant_key}
       )
 
       async with get_db_session() as session:
-          # ... implementation ...
+          # ... implementation (raise JobNotFoundError if not found) ...
 
           # Emit real-time event
           await websocket_manager.broadcast_to_tenant(
@@ -1953,8 +1930,6 @@ REFACTOR Phase (Polish):
               event="job:cancelled",
               data={"job_id": job_id}
           )
-
-      return {"success": True, "data": {"job_id": job_id}}
 
   # Tests MUST STAY GREEN
   pytest tests/tools/test_agent_job_tools.py -v
