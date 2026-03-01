@@ -64,8 +64,8 @@
       "title": "Monolith Splits",
       "handover": "handovers/0700_series/0750e_monolith_splits.md",
       "status": "complete",
-      "commits": ["45600cd0"],
-      "notes": "Research complete. Mapped orchestration_service.py (3,427 lines, 24 methods) and tool_accessor.py (1,072 lines, 45 methods). Created MONOLITH_SPLIT_PLAN.md: 3-module split for OrchestrationService (protocol_builder ~886 lines, job_lifecycle ~692 lines, remainder ~860 lines). 8 oversized functions >250 lines identified. tool_accessor.py: NO SPLIT recommended (facade pattern). Estimated 4-6 sessions for implementation."
+      "commits": ["45600cd0", "6a356084"],
+      "notes": "Research + execution complete. Phase A: extracted protocol_builder.py (941 lines) from orchestration_service.py. Phase B: decomposed 5 oversized functions via helper extraction (_build_orchestrator_protocol, spawn_agent_job, report_progress, complete_job, get_orchestrator_instructions). orchestration_service.py: 3,427 -> 2,705 lines. All functions under 250 lines. 1414 tests passing. Remaining: Phase C (job_lifecycle ~692 lines), Phase D (other files)."
     },
     {
       "id": "0750f",
