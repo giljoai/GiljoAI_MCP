@@ -5,7 +5,7 @@
 **To Agent:** tdd-implementor
 **Priority:** Critical
 **Estimated Complexity:** 2-3 hours
-**Status:** Not Started
+**Status:** COMPLETE (2026-02-25)
 **Chain:** 0497a → 0497b → 0497c → 0497d → 0497e (Multi-Terminal Production Parity)
 
 ## Task Summary
@@ -136,3 +136,18 @@ Keep `AgentPromptResponse` as-is. Map fields:
 - **Upstream**: No upstream impact — no model changes
 - **Sibling**: No sibling impact — other prompt endpoints (staging, implementation) are untouched
 - **Installation**: No `install.py` changes needed — no schema changes
+
+---
+
+## Completion Summary
+
+### 2026-02-25 - Reconciliation Closeout
+**Status:** COMPLETE
+
+**Implementation commit:** `15aad66a` feat(0497a+0497b): Thin agent prompt + completion result storage (combined with 0497b)
+
+**What was built:**
+- Rewrote `generate_agent_prompt()` to produce thin prompt (~50 tokens) matching `spawn_agent_job()` pattern
+- Removed stale bash-script prompt generation (export AGENT_ID, mkdir, cat > .missions)
+- Agent play buttons in Jobs tab now copy working thin prompts
+- Agents bootstrap via `get_agent_mission()` MCP call
