@@ -238,6 +238,8 @@ LOOP over each non-orchestrator agent from Step 1 that needs cleanup:
               ...mark remaining pending/in_progress items as "skipped"
           ]
       )
+      NOTE: This will fail on agents already in "complete" status.
+      If it fails, skip and include their incomplete todos in your 360 Memory summary instead.
 
   2c. ONLY if agent is NOT already "complete", force complete it:
       mcp__giljo-mcp__complete_job(
