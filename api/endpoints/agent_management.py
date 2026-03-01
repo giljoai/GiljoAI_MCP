@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from api.dependencies import get_tenant_key
-from src.giljo_mcp.models import Product
+from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.models import Product, User
 from src.giljo_mcp.repositories.agent_job_repository import AgentJobRepository
 from src.giljo_mcp.repositories.context_repository import ContextRepository
 
@@ -97,6 +98,7 @@ class TokenReductionStats(BaseModel):
 @router.get("/agent-jobs/active", response_model=list[AgentJobResponse])
 async def get_active_agent_jobs(
     agent_display_name: str | None = Query(None, description="Filter by agent display name"),
+    current_user: User = Depends(get_current_active_user),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """List all active agent jobs for tenant."""
@@ -130,7 +132,11 @@ async def get_active_agent_jobs(
 
 
 @router.post("/agent-jobs", response_model=AgentJobResponse)
-async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(get_tenant_key)):
+async def create_agent_job(
+    job_data: AgentJobCreate,
+    current_user: User = Depends(get_current_active_user),
+    tenant_key: str = Depends(get_tenant_key),
+):
     """Create a new agent job."""
     from api.app import state
 
@@ -181,7 +187,10 @@ async def create_agent_job(job_data: AgentJobCreate, tenant_key: str = Depends(g
 
 @router.put("/agent-jobs/{job_id}/status", response_model=dict)
 async def update_agent_job_status(
-    job_id: str, status_update: AgentJobStatusUpdate, tenant_key: str = Depends(get_tenant_key)
+    job_id: str,
+    status_update: AgentJobStatusUpdate,
+    current_user: User = Depends(get_current_active_user),
+    tenant_key: str = Depends(get_tenant_key),
 ):
     """Update agent job status."""
     from api.app import state
@@ -236,7 +245,12 @@ async def update_agent_job_status(
 
 
 @router.post("/agent-jobs/{job_id}/messages", response_model=dict)
-async def add_job_message(job_id: str, message_data: AgentJobMessage, tenant_key: str = Depends(get_tenant_key)):
+async def add_job_message(
+    job_id: str,
+    message_data: AgentJobMessage,
+    current_user: User = Depends(get_current_active_user),
+    tenant_key: str = Depends(get_tenant_key),
+):
     """Add a message to an agent job."""
     from uuid import uuid4
 
@@ -279,7 +293,11 @@ async def add_job_message(job_id: str, message_data: AgentJobMessage, tenant_key
 
 
 @router.post("/context/search", response_model=list[ContextChunkResponse])
-async def search_context(search_data: ContextSearchRequest, tenant_key: str = Depends(get_tenant_key)):
+async def search_context(
+    search_data: ContextSearchRequest,
+    current_user: User = Depends(get_current_active_user),
+    tenant_key: str = Depends(get_tenant_key),
+):
     """Full-text search on vision chunks."""
     from api.app import state
 
@@ -317,7 +335,9 @@ async def search_context(search_data: ContextSearchRequest, tenant_key: str = De
 
 
 @router.get("/context/product/{product_id}/chunks", response_model=list[ContextChunkResponse])
-async def get_product_chunks(product_id: str, tenant_key: str = Depends(get_tenant_key)):
+async def get_product_chunks(
+    product_id: str, current_user: User = Depends(get_current_active_user), tenant_key: str = Depends(get_tenant_key)
+):
     """Get all context chunks for a product."""
     from api.app import state
 
@@ -353,7 +373,9 @@ async def get_product_chunks(product_id: str, tenant_key: str = Depends(get_tena
 
 
 @router.get("/context/stats/{product_id}", response_model=TokenReductionStats)
-async def get_token_reduction_stats(product_id: str, tenant_key: str = Depends(get_tenant_key)):
+async def get_token_reduction_stats(
+    product_id: str, current_user: User = Depends(get_current_active_user), tenant_key: str = Depends(get_tenant_key)
+):
     """Get context prioritization statistics for a product."""
     from api.app import state
 
@@ -380,6 +402,7 @@ async def get_token_reduction_stats(product_id: str, tenant_key: str = Depends(g
 @router.get("/agent-jobs/stats", response_model=dict)
 async def get_agent_job_statistics(
     agent_display_name: str | None = Query(None, description="Filter by agent display name"),
+    current_user: User = Depends(get_current_active_user),
     tenant_key: str = Depends(get_tenant_key),
 ):
     """Get agent job statistics for tenant."""
