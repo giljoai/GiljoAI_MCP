@@ -1145,17 +1145,6 @@ function normalizeStatus(status) {
 }
 
 // Methods
-// Handover 0062: Activate project
-async function activateProject(projectId) {
-  try {
-    // Call the new activate endpoint
-    await projectStore.activateProject(projectId)
-    await projectStore.fetchProjects()
-  } catch (error) {
-    console.error('[PROJECTS] Error activating project:', error)
-  }
-}
-
 // Handover 0062: Launch project
 function launchProject(projectId) {
   // Navigate to Project Launch Panel
