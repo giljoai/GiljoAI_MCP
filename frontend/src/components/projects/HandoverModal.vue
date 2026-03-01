@@ -25,6 +25,7 @@
                   size="small"
                   class="ml-2"
                   style="opacity: 0.8"
+                  aria-label="Handover information"
                 />
               </template>
               Refreshes the orchestrator's context by retiring the current session
@@ -105,6 +106,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useDisplay } from 'vuetify'
+import { useClipboard } from '@/composables/useClipboard'
+
+const { copy: clipboardCopy } = useClipboard()
 
 const props = defineProps({
   show: {
@@ -140,26 +144,7 @@ watch(() => props.show, (val) => {
 })
 
 async function copyToClipboard(text) {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      return await navigator.clipboard.writeText(text)
-    }
-  } catch (e) {
-    // fall through to fallback
-  }
-  const textArea = document.createElement('textarea')
-  textArea.value = text
-  textArea.style.position = 'fixed'
-  textArea.style.left = '-9999px'
-  textArea.style.top = '-9999px'
-  document.body.appendChild(textArea)
-  textArea.focus()
-  textArea.select()
-  try {
-    document.execCommand('copy')
-  } finally {
-    document.body.removeChild(textArea)
-  }
+  await clipboardCopy(text)
 }
 
 async function copyRetirementPrompt() {

@@ -745,8 +745,8 @@ defineExpose({
 .context-row {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   min-height: 52px;
-  padding-top: 12px !important;
-  padding-bottom: 12px !important;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 .context-row:last-of-type {

@@ -655,9 +655,9 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Tighten the "bullet" indent so icon → text spacing matches desired feel */
+/* Tighten the "bullet" indent so icon -> text spacing matches desired feel */
 .startup-quickstart :deep(.v-list-item__prepend) {
-  margin-inline-end: 15px !important;
+  margin-inline-end: 15px;
 }
 
 /* Improve button readability in dark mode by nudging tonal backgrounds brighter */
@@ -666,15 +666,15 @@ onMounted(() => {
 }
 
 .quickstart-go-btn {
-  border-radius: 9999px !important;
+  border-radius: 9999px;
   font-weight: 700;
   letter-spacing: 0.02em;
   min-width: 56px;
   --v-btn-height: 24px;
-  height: var(--v-btn-height) !important;
-  min-height: var(--v-btn-height) !important;
-  padding-inline: 14px !important;
-  color: rgb(var(--v-theme-on-secondary)) !important;
+  height: var(--v-btn-height);
+  min-height: var(--v-btn-height);
+  padding-inline: 14px;
+  color: rgb(var(--v-theme-on-secondary));
 }
 
 .steps-chip {

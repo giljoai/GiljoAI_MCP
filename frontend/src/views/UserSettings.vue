@@ -515,8 +515,8 @@ function openIntroTour() {
 /* Integrations section divider should follow theme */
 .integrations-divider {
   --v-theme-overlay-multiplier: 1; /* ensure visibility */
-  border-color: var(--v-theme-on-surface) !important;
-  opacity: 0.3 !important;
+  border-color: var(--v-theme-on-surface);
+  opacity: 0.3;
 }
 
 /* Tab animations are handled by global-tabs-window class */
