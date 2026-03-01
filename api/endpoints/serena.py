@@ -7,10 +7,12 @@ Removed advanced settings for 99% token reduction.
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from src.giljo_mcp._config_io import read_config, write_config
+from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.models import User
 
 
 logger = logging.getLogger(__name__)
@@ -24,7 +26,7 @@ class SerenaToggleRequest(BaseModel):
 
 
 @router.get("/settings")
-async def get_serena_settings():
+async def get_serena_settings(current_user: User = Depends(get_current_active_user)):
     """
     Get simplified Serena MCP settings.
 
@@ -37,7 +39,7 @@ async def get_serena_settings():
 
 
 @router.post("/toggle")
-async def toggle_serena(request: SerenaToggleRequest):
+async def toggle_serena(request: SerenaToggleRequest, current_user: User = Depends(get_current_active_user)):
     """
     Toggle Serena MCP on/off.
 
@@ -71,7 +73,7 @@ async def toggle_serena(request: SerenaToggleRequest):
 
 
 @router.get("/status")
-async def get_serena_status():
+async def get_serena_status(current_user: User = Depends(get_current_active_user)):
     """Get current Serena prompt toggle status (legacy endpoint)."""
     config = read_config()
     enabled = config.get("features", {}).get("serena_mcp", {}).get("use_in_prompts", False)
