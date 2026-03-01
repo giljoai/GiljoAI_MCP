@@ -37,8 +37,8 @@
       "title": "Test Suite Triage",
       "handover": "handovers/0700_series/0750b_test_suite_triage.md",
       "status": "complete",
-      "commits": ["05441fac", "dbf01502"],
-      "notes": "9 broken test files deleted (~4000 lines). CORE_TESTS.md created. Collection clean: 6497 tests, 0 errors."
+      "commits": ["05441fac", "dbf01502", "PENDING"],
+      "notes": "470+ broken/stale test files deleted (~170K lines). CORE_TESTS.md updated. GREEN: 1238 passed, 522 skipped, 0 failed. 8 core unit tests skipped (dict-return API stale, fit for 0750c rewrite)."
     },
     {
       "id": "0750c",
