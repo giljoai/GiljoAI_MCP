@@ -142,20 +142,30 @@
       "title": "Monolith Splits",
       "color": "#009688",
       "handover": "handovers/0700_series/0750e_monolith_splits.md",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-01T14:00:00Z",
+      "completed_at": "2026-03-01T15:00:00Z",
       "planned_tasks": [
         "Refresh dependency graph",
         "Research OrchestrationService split",
         "Research tool_accessor.py split",
         "Write split plan document"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Refreshed dependency graph (833 nodes, 1568 edges, 7 critical hub files)",
+        "Mapped OrchestrationService (3,427 lines): 19 methods + 5 module-level functions grouped into 5 domains with production caller analysis",
+        "Mapped tool_accessor.py (1,072 lines): 45 methods across 9 domains — recommended NO SPLIT (facade pattern)",
+        "Assessed 22 files >500 lines — only orchestration_service.py is a genuine monolith",
+        "Found 8 functions >250 lines (vs 4 in original audit): 5 in orchestration_service, 3 in other files",
+        "Created MONOLITH_SPLIT_PLAN.md with 3-module split proposal, oversized function extraction plans, and 4-phase implementation order"
+      ],
+      "deviations": [
+        "Found 8 oversized functions instead of 4 referenced in H-16 — audit likely only checked a subset of files",
+        "tool_accessor.py recommended NO SPLIT — facade pattern is intentional and splitting would increase complexity"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "notes_for_next": "MONOLITH_SPLIT_PLAN.md has the full implementation plan. Key finding: only orchestration_service.py needs splitting. Proposed 3-module split: protocol_builder.py (~886 lines, pure functions, safest first step), job_lifecycle.py (~692 lines, needs shared context extraction), remainder stays in orchestration_service.py (~860 lines). 8 oversized functions need internal decomposition. Estimated 4-6 sessions for full implementation. tool_accessor.py should NOT be split.",
+      "summary": "Full monolith research complete. Mapped all methods in orchestration_service.py (3,427 lines) and tool_accessor.py (1,072 lines). Created detailed split plan proposing 3-module extraction for OrchestrationService. Identified 8 oversized functions >250 lines. Recommended NO SPLIT for tool_accessor.py (facade pattern). Assessed 22 files >500 lines — only 1 genuine monolith."
     },
     {
       "session_id": "0750f",
