@@ -18,6 +18,7 @@ from typing import Any
 
 import tiktoken
 
+from src.giljo_mcp.exceptions import ContextError, GiljoFileNotFoundError
 from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET, EnhancedChunker
 
 
@@ -282,7 +283,7 @@ class VisionDocumentChunker:
             from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
         except ImportError as e:
             logger.exception("Failed to import repositories")
-            return {"success": False, "error": f"Import error: {e}"}
+            raise ContextError(f"Import error: {e}") from e
 
         vision_repo = VisionDocumentRepository(db_manager=None)
         context_repo = ContextRepository(db_manager=None)
@@ -292,7 +293,7 @@ class VisionDocumentChunker:
         if not doc:
             error_msg = f"Vision document {vision_document_id} not found for tenant {tenant_key}"
             logger.error(error_msg)
-            return {"success": False, "error": error_msg}
+            raise ContextError(error_msg)
 
         # Get content based on storage type
         content = ""
@@ -309,7 +310,7 @@ class VisionDocumentChunker:
                     logger.warning(f"File path {normalized_path} does not exist for document {vision_document_id}")
                     if doc.storage_type == "file":
                         # For file-only storage, this is an error
-                        return {"success": False, "error": f"File not found: {normalized_path}"}
+                        raise GiljoFileNotFoundError(f"File not found: {normalized_path}")
 
             if doc.storage_type in ("inline", "hybrid") and doc.vision_document:
                 content += doc.vision_document
@@ -317,12 +318,12 @@ class VisionDocumentChunker:
         except (ValueError, KeyError, OSError) as e:
             error_msg = f"Error reading content for document {vision_document_id}: {e}"
             logger.exception(error_msg)
-            return {"success": False, "error": error_msg}
+            raise ContextError(error_msg) from e
 
         if not content or not content.strip():
             error_msg = f"Document {vision_document_id} has no content to chunk"
             logger.error(error_msg)
-            return {"success": False, "error": error_msg}
+            raise ContextError(error_msg)
 
         # Delete existing chunks for this document (selective deletion, async)
         deleted_count = await context_repo.delete_chunks_by_vision_document(session, tenant_key, vision_document_id)
@@ -337,7 +338,6 @@ class VisionDocumentChunker:
             error_msg = f"No chunks generated for document {vision_document_id}"
             logger.warning(error_msg)
             return {
-                "success": True,
                 "document_id": vision_document_id,
                 "document_name": doc.document_name,
                 "chunks_created": 0,
@@ -373,7 +373,6 @@ class VisionDocumentChunker:
         )
 
         return {
-            "success": True,
             "document_id": vision_document_id,
             "document_name": doc.document_name,
             "chunks_created": len(chunks),

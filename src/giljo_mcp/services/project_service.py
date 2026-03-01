@@ -753,22 +753,24 @@ class ProjectService:
         # Invoke MCP tool to write 360 Memory entry
         from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
-        mcp_result = await close_project_and_update_memory(
-            project_id=project_id,
-            summary=summary,
-            key_outcomes=key_outcomes or [],
-            decisions_made=decisions_made or [],
-            tenant_key=tenant_key,
-            db_manager=self.db_manager,
-            session=session,
-        )
-
-        if not mcp_result.get("success"):
-            self._logger.error(f"MCP tool call failed: {mcp_result.get('error')}")
-
-        memory_updated = bool(mcp_result.get("success"))
-        sequence_number = mcp_result.get("sequence_number", 0)
-        git_commits_count = mcp_result.get("git_commits_count", 0)
+        try:
+            mcp_result = await close_project_and_update_memory(
+                project_id=project_id,
+                summary=summary,
+                key_outcomes=key_outcomes or [],
+                decisions_made=decisions_made or [],
+                tenant_key=tenant_key,
+                db_manager=self.db_manager,
+                session=session,
+            )
+            memory_updated = True
+            sequence_number = mcp_result.get("sequence_number", 0)
+            git_commits_count = mcp_result.get("git_commits_count", 0)
+        except (ResourceNotFoundError, ValidationError, ProjectStateError, OSError):
+            self._logger.exception("MCP tool call failed")
+            memory_updated = False
+            sequence_number = 0
+            git_commits_count = 0
 
         if commit:
             await session.commit()

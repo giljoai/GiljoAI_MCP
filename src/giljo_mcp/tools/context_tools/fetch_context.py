@@ -23,6 +23,7 @@ from typing import Any
 import structlog
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
 from src.giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
 from src.giljo_mcp.tools.context_tools.get_architecture import get_architecture
@@ -201,7 +202,7 @@ async def fetch_context(
     category = categories[0]
     if category not in CATEGORY_TOOLS:
         logger.warning("invalid_category", invalid_category=category, valid_categories=ALL_CATEGORIES)
-        return {"error": f"Invalid category: {category}", "valid_categories": ALL_CATEGORIES, "metadata": {}}
+        raise ValidationError(f"Invalid category: {category}. Valid categories: {ALL_CATEGORIES}")
 
     # Load user config if requested
     effective_depths = DEFAULT_DEPTHS.copy()
