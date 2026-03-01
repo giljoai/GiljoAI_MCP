@@ -51,7 +51,7 @@ from sqlalchemy.orm import joinedload
 
 from src.giljo_mcp._config_io import read_config
 from src.giljo_mcp.config_manager import get_config
-from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
@@ -1116,27 +1116,6 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
 
         return enhanced_prompt
 
-    async def _get_user_field_priorities(self, user_id: str) -> dict[str, int]:
-        """
-        Fetch user's field priority configuration.
-
-        Returns dict like:
-            {
-                'product_vision': 10,  # Full detail
-                'architecture': 7,      # Moderate
-                'tech_stack': 8,        # Moderate-high
-                'dependencies': 2       # Minimal
-            }
-        """
-        # Get user config from database
-        result = await self.db.execute(select(User).where(User.id == user_id, User.tenant_key == self.tenant_key))
-        user = result.scalar_one_or_none()
-
-        if not user or not user.field_priority_config:
-            return {}
-
-        return user.field_priority_config
-
     def _get_external_host(self) -> str:
         """
         Get external MCP server host from config.
@@ -1670,29 +1649,3 @@ START NOW:
         all_sections = identity_section + team_section + coordinator_section + issues_section + closeout_section
 
         return "\n".join(all_sections)
-
-    def _get_field_priority(self, field_name: str, user_priorities: dict | None) -> int | None:
-        """
-        Get priority for a specific field from user config or defaults.
-
-        Args:
-            field_name: Field name (e.g., "agent_templates")
-            user_priorities: User's custom field priority config (optional)
-
-        Returns:
-            Priority level (1-3) or None if unassigned
-
-        Example:
-            >>> priority = self._get_field_priority("agent_templates", {"agent_templates": 2})
-            >>> print(priority)
-            2
-        """
-        from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
-
-        # Check user custom priorities first
-        if user_priorities and field_name in user_priorities:
-            return user_priorities[field_name]
-
-        # Fall back to default priorities
-        default_fields = DEFAULT_FIELD_PRIORITY.get("fields", {})
-        return default_fields.get(field_name)
