@@ -74,11 +74,11 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
             "last_updated": datetime.now(timezone.utc).isoformat(),
         }
 
-        return {"success": True, "index": index}
+        return index
 
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to get vision index")
-        return {"success": False, "error": str(e)}
+        raise
 
 
 async def get_vision(
@@ -89,11 +89,12 @@ async def get_vision(
     Vision functionality now handled by VisionDocument (product-centric).
     Use vision_documents API instead.
     """
-    return {
-        "success": False,
-        "error": "Vision model deprecated - use VisionDocument API",
-        "message": "This tool has been deprecated. Vision documents are now managed at the product level via VisionDocument model.",
-    }
+    from giljo_mcp.exceptions import ToolError
+
+    raise ToolError(
+        "Vision model deprecated - use VisionDocument API. "
+        "Vision documents are now managed at the product level via VisionDocument model."
+    )
 
 
 async def get_vision_index() -> dict[str, Any]:
@@ -111,7 +112,9 @@ async def get_vision_index() -> dict[str, Any]:
     try:
         tenant_key = tenant_manager.get_current_tenant()
         if not tenant_key:
-            return {"success": False, "error": "No tenant context available"}
+            from giljo_mcp.exceptions import ValidationError
+
+            raise ValidationError("No tenant context available")
 
         async with db_manager.get_tenant_session_async(tenant_key) as session:
             project_query = select(Project).where(Project.tenant_key == tenant_key)
@@ -119,7 +122,9 @@ async def get_vision_index() -> dict[str, Any]:
             project = project_result.scalar_one_or_none()
 
             if not project:
-                return {"success": False, "error": "Project not found"}
+                from giljo_mcp.exceptions import ResourceNotFoundError
+
+                raise ResourceNotFoundError("Project not found")
 
             # Check for context index in database
             index_query = select(ContextIndex).where(
@@ -150,23 +155,20 @@ async def get_vision_index() -> dict[str, Any]:
                     }
                     index["files"].append(file_info)
 
-                return {"success": True, "index": index}
+                return index
 
             # No index found, return placeholder
             return {
-                "success": True,
-                "index": {
-                    "files": [],
-                    "total_files": 0,
-                    "chunks": {},
-                    "from_database": False,
-                    "message": "No vision index found - use MCP tools to initialize vision documents",
-                },
+                "files": [],
+                "total_files": 0,
+                "chunks": {},
+                "from_database": False,
+                "message": "No vision index found - use MCP tools to initialize vision documents",
             }
 
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to get vision index")
-        return {"success": False, "error": str(e)}
+        raise
 
 
 async def fetch_context(
@@ -240,15 +242,14 @@ async def fetch_context(
                 )
 
             return {
-                "success": True,
                 "agent_id": execution.agent_id,
                 "job_id": execution.job_id,
                 "context": product_context,
             }
 
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to fetch context")
-        return {"success": False, "error": str(e)}
+        raise
 
 
 # NOTE: update_context_usage() was removed in Handover 0422 - the MCP server is passive
@@ -290,21 +291,19 @@ async def get_context_history(
             execution = result.scalar_one_or_none()
 
             if not execution:
-                return {
-                    "success": False,
-                    "error": "Agent execution not found or unauthorized",
-                }
+                from giljo_mcp.exceptions import ResourceNotFoundError
+
+                raise ResourceNotFoundError("Agent execution not found or unauthorized")
 
             return {
-                "success": True,
                 "agent_id": execution.agent_id,
                 "job_id": execution.job_id,
                 "agent_display_name": execution.agent_display_name,
             }
 
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to get context history")
-        return {"success": False, "error": str(e)}
+        raise
 
 
 async def get_succession_context(
@@ -344,10 +343,9 @@ async def get_succession_context(
             current_execution = result.scalar_one_or_none()
 
             if not current_execution:
-                return {
-                    "success": False,
-                    "error": "Agent execution not found or unauthorized",
-                }
+                from giljo_mcp.exceptions import ResourceNotFoundError
+
+                raise ResourceNotFoundError("Agent execution not found or unauthorized")
 
             # Build succession chain by following spawned_by links
             succession_chain = []
@@ -377,12 +375,11 @@ async def get_succession_context(
             ]
 
             return {
-                "success": True,
                 "agent_id": current_execution.agent_id,
                 "job_id": current_execution.job_id,
                 "succession_chain": succession_chain,
             }
 
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to get succession context")
-        return {"success": False, "error": str(e)}
+        raise

@@ -12,6 +12,8 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Any, ClassVar, Optional
 
+from src.giljo_mcp.exceptions import ValidationError as TenantValidationError
+
 
 # Thread-safe context variable for current tenant
 current_tenant: ContextVar[Optional[str]] = ContextVar("current_tenant", default=None)
@@ -296,7 +298,7 @@ class TenantManager:
             Dictionary with tenant metadata (no sensitive data)
         """
         if not cls.validate_tenant_key(tenant_key):
-            return {"error": "Invalid tenant key"}
+            raise TenantValidationError("Invalid tenant key")
 
         return {
             "key_hash": cls.hash_tenant_key(tenant_key),

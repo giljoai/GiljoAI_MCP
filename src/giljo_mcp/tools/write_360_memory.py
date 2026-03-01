@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
@@ -229,19 +230,16 @@ async def write_360_memory(
         Success/error dictionary with sequence number and entry_id
     """
     if not project_id:
-        return {"success": False, "error": "project_id is required"}
+        raise ValidationError("project_id is required")
 
     if not summary or not summary.strip():
-        return {"success": False, "error": "summary is required"}
+        raise ValidationError("summary is required")
 
     if db_manager is None:
-        return {"success": False, "error": "db_manager is required"}
+        raise ValidationError("db_manager is required")
 
     if len(summary) > MAX_SUMMARY_LENGTH:
-        return {
-            "success": False,
-            "error": f"Summary too long (max {MAX_SUMMARY_LENGTH} characters)",
-        }
+        raise ValidationError(f"Summary too long (max {MAX_SUMMARY_LENGTH} characters)")
 
     key_outcomes = key_outcomes or []
     decisions_made = decisions_made or []
@@ -263,10 +261,7 @@ async def write_360_memory(
     # Validate entry_type
     valid_entry_types = {"project_completion", "handover_closeout", "session_handover"}
     if entry_type not in valid_entry_types:
-        return {
-            "success": False,
-            "error": f"Invalid entry_type '{entry_type}'. Must be one of: {valid_entry_types}",
-        }
+        raise ValidationError(f"Invalid entry_type '{entry_type}'. Must be one of: {valid_entry_types}")
 
     try:
         owns_session = session is None
@@ -286,13 +281,13 @@ async def write_360_memory(
                 project = await project
 
             if not project:
-                return {"success": False, "error": "Project not found or unauthorized for tenant"}
+                raise ResourceNotFoundError("Project not found or unauthorized for tenant")
 
             if getattr(project, "tenant_key", None) != tenant_key:
-                return {"success": False, "error": "Project not found or unauthorized for tenant"}
+                raise ResourceNotFoundError("Project not found or unauthorized for tenant")
 
             if not project.product_id:
-                return {"success": False, "error": "Project not associated with product"}
+                raise ValidationError("Project not associated with product")
 
             # Get product with tenant isolation
             product_stmt = select(Product).where(
@@ -305,7 +300,7 @@ async def write_360_memory(
                 product = await product
 
             if not product:
-                return {"success": False, "error": "Product not found for project"}
+                raise ResourceNotFoundError("Product not found for project")
 
             # Handover 0431: Pre-closeout verification
             # Only enforce readiness check for project_completion (not handover_closeout).
@@ -419,7 +414,6 @@ async def write_360_memory(
 
             # Build success response with optional verification details
             result = {
-                "success": True,
                 "sequence_number": sequence_number,
                 "entry_id": str(entry.id),
                 "git_commits_count": len(git_commits),
@@ -450,7 +444,7 @@ async def write_360_memory(
 
     except (RuntimeError, ValueError, KeyError) as exc:
         logger.exception("Failed to write 360 memory entry", extra={"error": str(exc)})
-        return {"success": False, "error": str(exc)}
+        raise
 
 
 async def _emit_websocket_event(
