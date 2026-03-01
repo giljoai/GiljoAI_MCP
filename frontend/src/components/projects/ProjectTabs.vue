@@ -141,7 +141,6 @@
             @launch-agent="handleLaunchAgent"
             @view-details="emit('view-details', $event)"
             @view-error="emit('view-error', $event)"
-            @hand-over="handleHandOver"
             @closeout-project="handleCloseoutProject"
           />
         </v-window-item>
@@ -546,13 +545,6 @@ async function handleExecutionModeChange(newValue) {
 }
 
 /**
- * Navigate to integrations settings (Handover 0427)
- */
-function goToIntegrations() {
-  router.push({ path: '/settings', query: { tab: 'integrations' } })
-}
-
-/**
  * Handle stage project
  */
 async function handleStageProject() {
@@ -678,7 +670,6 @@ async function handleLaunchAgent(agent) {
       return
     }
 
-    await api.agentJobs.acknowledge(jobId)
     emit('launch-agent', agent)
   } catch (error) {
     console.error('Launch agent failed:', error)
@@ -697,25 +688,6 @@ async function handleCloseoutProject(closeoutData) {
     router.push('/projects')
   } catch (error) {
     console.error('Closeout project failed:', error)
-  }
-}
-
-/**
- * Handle orchestrator session refresh result from ActionIcons.
- * ActionIcons handles the API call internally and emits the result.
- */
-function handleHandOver(event) {
-  if (event.success) {
-    toastMessage.value = event.message || 'Session refreshed! Continuation prompt copied to clipboard.'
-    toastColor.value = 'success'
-    toastDuration.value = 4000
-    toastVisible.value = true
-  } else {
-    console.error('Session refresh failed:', event.error)
-    toastMessage.value = event.error || 'Failed to refresh session'
-    toastColor.value = 'error'
-    toastDuration.value = 5000
-    toastVisible.value = true
   }
 }
 
