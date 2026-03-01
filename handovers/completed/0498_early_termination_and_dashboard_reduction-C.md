@@ -5,7 +5,7 @@
 **To Agent:** Next Session (tdd-implementor recommended)
 **Priority:** High
 **Estimated Complexity:** 1 day
-**Status:** Not Started
+**Status:** COMPLETE (2026-02-26)
 
 ---
 
@@ -381,3 +381,35 @@ With CSS:
 2. **Frontend:** Revert JobsTab.vue column changes (git revert).
 3. **Protocol:** Remove early termination section from orchestrator protocol (revert orchestration_service.py).
 4. **MCP Schema:** Revert enum in mcp_http.py.
+
+---
+
+## Completion Summary
+
+### 2026-02-28 - Reconciliation Closeout
+**Status:** COMPLETE
+
+**Implementation commits:**
+- `64a2a5cf` feat(0498): Early termination protocol backend (Phases 1-6)
+- `1706c1ae` feat(0498): Jobs dashboard column reduction and skipped notation (Phases 7-8)
+- `d82eb58d` feat(0498): Termination prompt endpoint and terminated status
+- `3941ac5f` docs(0498): Add handover document and update catalogue
+
+**Follow-up fixes (part of 0498 scope):**
+- `38088a46` refactor: Remove acknowledge_job MCP tool and mission_acknowledged_at references
+- `57903c75` feat: Handover modal with two-stage retirement/continuation flow
+- `335407b8` refactor: Compact handover modal with gated checkbox + step flow
+- `f9b059aa` fix: Align handover prompts with valid entry_type and add guidance
+- `8b56c49f` fix: Retirement prompt follows termination-style cleanup loop
+- `592963ff` fix: Gate complete_job in retirement prompt to non-complete agents only
+- `3234df6d` fix: Note that report_progress fails on completed agents in retirement prompt
+- `12376435` fix: Continuation prompt field name, closeout path, and todo gate
+
+**What was built:**
+- Smart force-close: drains agent lifecycle (TODOs skipped, messages marked read with prefix) before decommissioning
+- "skipped" status for AgentTodoItem (audit trail distinction from "completed")
+- Jobs dashboard reduced from 9 to 5 columns (Agent Name, Status, Duration, Steps, Messages Waiting)
+- Steps notation: `completed(skipped)/total` with orange skipped count
+- Termination prompt endpoint for orchestrator protocol
+- Handover modal with two-stage retirement/continuation flow
+- acknowledge_job MCP tool removed (dead code)

@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-25 (0497a-e Multi-Terminal Production Parity chain created)
+**Last Updated:** 2026-02-28 (0411a/b, 0497a-e, 0498 closed out + reconciliation)
 
 ---
 
@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | 0371 COMPLETE, 0365 SUPERSEDED, 0382 COMPLETE |
-| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0495 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409, 0411a, 0411b, 0497a-e, 0498 |
+| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0498 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409 only |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy DEFERRED, 0732 fixes COMPLETE |
@@ -28,14 +28,6 @@
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0409 | Unified Client Quick Setup | Ready | Medium | Future enhancement |
-| 0411a | Recommended Execution Order (Phase Labels) | Ready | Medium | Add `phase` to AgentJob, orchestrator assigns during multi-terminal staging, Jobs tab groups by phase |
-| 0411b | Dead Code Cleanup (WorkflowEngine, MissionPlanner) | Ready | Medium | Remove ~1,600 lines orphaned since 0470 removed `orchestrate_project` entry point |
-| 0497a | Multi-Terminal Agent Prompt Fix (Thin Prompt) | Ready | Critical | Replace stale bash-script `generate_agent_prompt` with thin prompt pattern. Chain: 0497a→e |
-| 0497b | Agent Completion Result Storage + Auto-Message | Ready | High | Persist `result` dict in AgentExecution, auto-message orchestrator on completion |
-| 0497c | Multi-Terminal Orchestrator Implementation Prompt | Ready | High | Build `_build_multi_terminal_orchestrator_prompt()`, mode-aware implementation endpoint |
-| 0497d | Agent Protocol Enhancements (Gil_add + Git Commit) | Ready | Medium | /gil_add guidance (multi-terminal only) + git commit instructions (when git enabled) in Phase 4 |
-| 0497e | Fresh Agent Recovery Flow (Successor Spawning) | Ready | Medium | `predecessor_job_id` on spawn, `get_agent_result` MCP tool, fresh context recovery |
-| 0498 | Early Termination Protocol + Dashboard Reduction | Ready | High | Smart force-close (drain lifecycle), "skipped" TODO status, orchestrator protocol, Jobs table 9→5 columns |
 
 ### Recently Closed (February 2026 - from Active)
 
@@ -61,6 +53,14 @@
 | 0495 | Fix API Test Suite Hang | 2026-02-18 | COMPLETE (`d48beecb`) |
 | 0411 | Windows Terminal Agent Spawning | 2026-02-24 | SUPERSEDED by 0411a (phase labels) + 0411b (dead code cleanup) |
 | 0732 | API Consistency Fixes | 2026-02-23 | COMPLETE (`30072759`) - URL kebab-case + HTTPException standardization |
+| 0411a | Recommended Execution Order (Phase Labels) | 2026-02-24 | COMPLETE (7 commits, phase field + Jobs tab pill badges) |
+| 0411b | Dead Code Cleanup (WorkflowEngine, MissionPlanner) | 2026-02-24 | COMPLETE (~11,900 lines removed across 12 files) |
+| 0497a | Multi-Terminal Agent Prompt Fix (Thin Prompt) | 2026-02-25 | COMPLETE (`15aad66a`, combined with 0497b) |
+| 0497b | Agent Completion Result Storage + Auto-Message | 2026-02-25 | COMPLETE (`15aad66a`, combined with 0497a) |
+| 0497c | Multi-Terminal Orchestrator Implementation Prompt | 2026-02-25 | COMPLETE (`8de0586e`) |
+| 0497d | Agent Protocol Enhancements (Gil_add + Git Commit) | 2026-02-25 | COMPLETE (`25ee3bb2`) |
+| 0497e | Fresh Agent Recovery Flow (Successor Spawning) | 2026-02-25 | COMPLETE (`c6592915`) |
+| 0498 | Early Termination Protocol + Dashboard Reduction | 2026-02-26 | COMPLETE (4 commits + 8 follow-up fixes, handover modal + retirement flow) |
 
 ### Greptile Security Series (1000-1014) - SECURITY
 
@@ -111,6 +111,10 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0498 | Early Termination Protocol + Dashboard Reduction | **COMPLETE** (2026-02-26, 4 commits + 8 follow-up fixes) |
+| 0497a-e | Multi-Terminal Production Parity Chain (5 handovers) | **COMPLETE** (2026-02-25, thin prompt + result storage + orchestrator prompt + protocol + recovery) |
+| 0411a | Recommended Execution Order (Phase Labels) | **COMPLETE** (2026-02-24, 7 commits, phase field + pill badges) |
+| 0411b | Dead Code Cleanup (WorkflowEngine, MissionPlanner) | **COMPLETE** (2026-02-24, ~11,900 lines removed) |
 | 0411 | Windows Terminal Agent Spawning | **SUPERSEDED** (2026-02-24, split to 0411a + 0411b) |
 | 0732 | API Consistency Fixes (URL kebab-case + HTTPException) | **COMPLETE** (2026-02-23, `30072759`) |
 | 0419 | Long Polling Orchestrator Monitoring | **SUPERSEDED** (2026-02-22, replaced by Agent Lab bash sleep polling) |
@@ -298,6 +302,18 @@ Located in `handovers/cancelled/`:
 - 0425-0432: Platform Detection, Integration Icons, Sticky Header, Succession, Closeout Protocol, Template Harmonization
 - **Result**: Clean agent lifecycle, proper state machine, template system modernized
 
+### Multi-Terminal Production Parity (0497a-e + 0498)
+**Status:** 100% Complete (February 2026)
+- 0497a: Thin agent prompt (replaced stale bash-script generator)
+- 0497b: Agent completion result storage + auto-message to orchestrator
+- 0497c: Multi-terminal orchestrator implementation prompt
+- 0497d: Agent protocol enhancements (/gil_add + git commit)
+- 0497e: Fresh agent recovery flow (successor spawning with predecessor context)
+- 0498: Early termination protocol + dashboard reduction (9→5 columns) + handover modal
+- 0411a: Phase labels (execution order pill badges in Jobs tab)
+- 0411b: Dead code cleanup (~11,900 lines of orphaned orchestration pipeline)
+- **Result**: Full multi-terminal mode parity with CLI mode, smart project closeout
+
 ### Exception Handling REVISED Series (0480)
 **Status:** 100% Complete (January 2026)
 - 0480a-f: Foundation, Services Auth/Product, Services Core, Services Remaining, Endpoints, Frontend
@@ -391,7 +407,7 @@ completed/reference/
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0397
-**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-d (complete), 0460-0464 (complete), 0470 (complete), 0480-0495 (all complete/retired/cancelled). Active: 0409, 0411
+**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-d (complete), 0460-0464 (complete), 0470 (complete), 0480-0498 (all complete/retired/cancelled). Active: 0409 only
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
@@ -429,6 +445,15 @@ completed/reference/
 ## History
 
 ### February 2026
+- **Closeout Reconciliation (2026-02-28)**: Closed out 8 handovers that were implemented but not archived
+  - 0411a, 0411b, 0497a-e, 0498: All had implementation commits but docs still said "Not Started" / "Ready"
+  - Added completion summaries with git evidence to each file
+  - Moved all 8 to `completed/` with `-C` suffix
+  - Updated Active Handovers: reduced from 9 ready to 1 (0409 only)
+  - Added Multi-Terminal Production Parity completed series
+  - Logged 20+ undocumented commits (Feb 24-28) as part of 0497/0498 scope
+  - Total: 322+ completed handovers in archive, 1 ready, 7 deferred
+
 - **Git History Reconciliation (2026-02-23)**: Cross-validated catalogue + Feb report against all February git commits
   - Removed 0254 and 0298 from Deferred (both COMPLETE)
   - Added 0054, 0493, tenant isolation audit, 0700a-i, 0745a-f to Recently Completed
