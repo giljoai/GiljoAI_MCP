@@ -47,7 +47,7 @@
               <!-- Name (with Role suffix if different) - Handover 0358: giljo yellow -->
               <v-list-item>
                 <template #prepend>
-                  <v-icon color="#FFD700">mdi-account-badge</v-icon>
+                  <v-icon color="primary">mdi-account-badge</v-icon>
                 </template>
                 <v-list-item-title class="font-weight-bold">Name</v-list-item-title>
                 <v-list-item-subtitle>
@@ -95,7 +95,7 @@
               <!-- Description - Handover 0358: giljo yellow -->
               <v-list-item v-if="templateData.description">
                 <template #prepend>
-                  <v-icon color="#FFD700">mdi-text</v-icon>
+                  <v-icon color="primary">mdi-text</v-icon>
                 </template>
                 <v-list-item-title class="font-weight-bold">Description</v-list-item-title>
                 <v-list-item-subtitle class="text-wrap">
@@ -271,6 +271,9 @@
 import { ref, computed, watch, getCurrentInstance } from 'vue'
 import { useTheme } from 'vuetify'
 import api from '@/services/api'
+import { useClipboard } from '@/composables/useClipboard'
+
+const { copy: clipboardCopy } = useClipboard()
 
 const props = defineProps({
   modelValue: {
@@ -415,11 +418,9 @@ const fetchOrchestratorPrompt = async () => {
 }
 
 const copyToClipboard = async (text) => {
-  try {
-    await navigator.clipboard.writeText(text)
+  const success = await clipboardCopy(text)
+  if (success) {
     copySuccess.value = true
-  } catch (err) {
-    console.error('[AgentDetailsModal] Failed to copy to clipboard:', err)
   }
 }
 

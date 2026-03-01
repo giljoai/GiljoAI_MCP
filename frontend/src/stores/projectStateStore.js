@@ -27,8 +27,6 @@ function normalizeProjectState(project) {
 export const useProjectStateStore = defineStore('projectStateDomain', () => {
   const stateByProjectId = ref(new Map())
 
-  const projectCount = computed(() => stateByProjectId.value.size)
-
   // Fix: Reactive array for Map contents - enables Vue reactivity for computed properties
   // Vue 3 doesn't deeply track Map.get() calls, but does track Array.from() iterations
   const allProjects = computed(() => Array.from(stateByProjectId.value.values()))
@@ -131,7 +129,6 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
     stateByProjectId,
 
     // getters
-    projectCount,
     allProjects, // Fix: Export for reactive access
 
     // selectors

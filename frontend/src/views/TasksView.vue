@@ -74,6 +74,7 @@
           density="compact"
           clearable
           hide-details
+          aria-label="Search tasks by title"
           data-search-input
         />
       </v-col>
@@ -273,7 +274,7 @@
                 </div>
               </template>
               <v-card class="compact-date-picker">
-                <v-card-title class="py-2 px-3" style="background-color: #ffc300">
+                <v-card-title class="py-2 px-3 bg-primary">
                   <span class="text-subtitle-2">Select Date</span>
                 </v-card-title>
                 <v-date-picker
@@ -295,7 +296,8 @@
                 icon
                 size="small"
                 variant="text"
-                color="#ffc300"
+                color="primary"
+                aria-label="Convert to project"
                 @click.stop="convertTaskToProject(item)"
               >
                 <v-icon>mdi-folder-arrow-up</v-icon>
@@ -309,7 +311,7 @@
           <template v-slot:item.actions="{ item }">
             <v-menu>
               <template v-slot:activator="{ props }">
-                <v-btn icon="mdi-dots-vertical" size="small" variant="text" v-bind="props" />
+                <v-btn icon="mdi-dots-vertical" size="small" variant="text" v-bind="props" aria-label="Task actions" />
               </template>
               <v-list>
                 <v-list-item @click="editTask(item)">
@@ -987,47 +989,47 @@ onMounted(async () => {
 /* Status chip centered text with compact sizing */
 .status-chip {
   justify-content: center;
-  padding: 4px 10px !important;
-  min-width: 100px !important;
-  max-width: 100px !important;
+  padding: 4px 10px;
+  min-width: 100px;
+  max-width: 100px;
 }
 
 .status-chip :deep(.v-chip__content) {
-  display: flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
 }
 
 .status-chip :deep(.v-icon) {
-  margin: 0 !important;
-  flex-shrink: 0 !important;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 /* Status column - allow badge overflow and remove constraints */
 .inline-select :deep(.v-field__input) {
-  overflow: visible !important;
+  overflow: visible;
 }
 
 .inline-select :deep(.v-input__control) {
-  overflow: visible !important;
+  overflow: visible;
 }
 
 .inline-select :deep(.v-field__field) {
-  overflow: visible !important;
+  overflow: visible;
 }
 
 /* Fix dropdown menu icons being cut off */
 .inline-select :deep(.v-list-item) {
-  padding-left: 16px !important;
-  padding-right: 16px !important;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
 .inline-select :deep(.v-list-item__prepend) {
-  margin-right: 12px !important;
+  margin-right: 12px;
 }
 
 .inline-select :deep(.v-list-item__prepend .v-icon) {
-  margin: 0 !important;
+  margin: 0;
 }
 </style>

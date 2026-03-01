@@ -391,6 +391,9 @@ import { ref, computed } from 'vue'
 import { format } from 'date-fns'
 import api from '@/services/api'
 import { getApiBaseURL } from '@/config/api'
+import { useClipboard } from '@/composables/useClipboard'
+
+const { copy: clipboardCopy } = useClipboard()
 
 // State
 const downloading = ref({
@@ -515,16 +518,13 @@ function resetShareLinks() {
   shareLinks.value = null
 }
 
-function copyToClipboard(text, label) {
-  navigator.clipboard
-    .writeText(text)
-    .then(() => {
-      showSnackbar(`${label} copied to clipboard!`, 'success')
-    })
-    .catch((error) => {
-      console.error('[MCP Integration] Copy failed:', error)
-      showSnackbar('Failed to copy to clipboard', 'error')
-    })
+async function copyToClipboard(text, label) {
+  const success = await clipboardCopy(text)
+  if (success) {
+    showSnackbar(`${label} copied to clipboard!`, 'success')
+  } else {
+    showSnackbar('Failed to copy to clipboard', 'error')
+  }
 }
 
 function copyManualConfig() {
