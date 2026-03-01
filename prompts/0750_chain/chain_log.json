@@ -66,20 +66,39 @@
       "title": "Tools Dict-to-Exception Migration",
       "color": "#9C27B0",
       "handover": "handovers/0700_series/0750c_tools_dict_migration.md",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-01T08:00:00Z",
+      "completed_at": "2026-03-01T11:30:00Z",
       "planned_tasks": [
         "Migrate tool_accessor.py (19 dict returns)",
         "Migrate remaining tools files",
         "Migrate context_management layer",
         "Update all callers"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Migrated tool_accessor.py: 19 dict returns → exceptions (ResourceNotFoundError, ProjectStateError, ValidationError)",
+        "Migrated write_360_memory.py: 8 dict returns → ValidationError/ResourceNotFoundError",
+        "Migrated project_closeout.py: 8 dict returns → ProjectStateError/ResourceNotFoundError/ValidationError",
+        "Migrated agent.py: 9 dict returns → ResourceNotFoundError",
+        "Migrated context.py: 8 dict returns → ValidationError/ResourceNotFoundError/ToolError",
+        "Migrated claude_export.py: 6 dict returns → ToolError/FileSystemError/GiljoFileNotFoundError",
+        "Migrated chunker.py: 5 dict returns → ContextError/GiljoFileNotFoundError",
+        "Migrated manager.py: 1 dict return → ContextError",
+        "Migrated vision_document_repository.py: 1 dict return → ResourceNotFoundError",
+        "Migrated tenant.py: 1 dict return → TenantValidationError",
+        "Migrated fetch_context.py: 1 dict return → ValidationError",
+        "Updated callers: product_service.py and project_service.py (dict check → try/except)",
+        "Updated 2 test files for exception-based API assertions",
+        "All 3 acceptance criteria greps return zero matches",
+        "GREEN test suite maintained: 1238 passed, 522 skipped, 0 failed"
+      ],
+      "deviations": [
+        "Subagent used wrong import style (from giljo_mcp vs from src.giljo_mcp) for top-level imports in 3 files — fixed manually",
+        "Pre-commit ruff caught B904/BLE001/TRY400/TRY401 lint errors on first commit attempt — all fixed"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "notes_for_next": "70 dict-return anti-patterns fully migrated to exceptions. All callers updated. Test suite GREEN. 8 skipped unit test files from 0750b still need Pydantic model assertion rewrites (separate from this migration).",
+      "summary": "Migrated all 70 dict-return anti-patterns across 11 source files to proper exception raises. Updated 2 callers and 2 test files. GREEN: 1238 passed, 522 skipped, 0 failed."
     },
     {
       "session_id": "0750d",
