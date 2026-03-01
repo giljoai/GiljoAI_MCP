@@ -17,7 +17,7 @@ from sqlalchemy import and_, select
 
 from src.giljo_mcp._config_io import read_config
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ValidationError
+from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models import Product, Project
 from src.giljo_mcp.schemas.service_responses import (
     CompleteMessageResult,
@@ -67,10 +67,10 @@ async def activate_project(project_id: str, tenant_key: str, session) -> dict[st
         project = res.scalar_one_or_none()
 
         if not project:
-            return {"success": False, "error": "Project not found"}
+            raise ResourceNotFoundError("Project not found")
 
         if project.status != "inactive":
-            return {"success": False, "error": f"Project cannot be activated from status '{project.status}'"}
+            raise ProjectStateError(f"Project cannot be activated from status '{project.status}'")
 
         # Verify product belongs to same tenant (if exists)
         if project.product_id:
@@ -80,7 +80,7 @@ async def activate_project(project_id: str, tenant_key: str, session) -> dict[st
             )
             product = prod.scalar_one_or_none()
             if not product or not getattr(product, "is_active", False):
-                return {"success": False, "error": "Parent product inactive or missing"}
+                raise ProjectStateError("Parent product inactive or missing")
 
         # Activate the project
         project.status = "active"
@@ -88,14 +88,13 @@ async def activate_project(project_id: str, tenant_key: str, session) -> dict[st
         await session.commit()
 
         return {
-            "success": True,
             "project_id": str(project.id),
             "status": "active",
         }
 
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to activate project")
-        return {"success": False, "error": str(e)}
+        raise
 
 
 class ToolAccessor:
@@ -547,7 +546,7 @@ class ToolAccessor:
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
             if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
+                raise ValidationError("No tenant context available")
 
             from .claude_export import export_agents_command, get_product_for_tenant
 
@@ -557,10 +556,7 @@ class ToolAccessor:
                 if product and product.project_path:
                     product_path = str(Path(product.project_path) / ".claude" / "agents")
                 else:
-                    return {
-                        "success": False,
-                        "error": "No product path configured. Set product project_path or use --personal",
-                    }
+                    raise ValidationError("No product path configured. Set product project_path or use --personal")
 
             # Call export command
             result = await export_agents_command(
@@ -572,9 +568,9 @@ class ToolAccessor:
 
             return result
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to export agents")
-            return {"success": False, "error": str(e)}
+            raise
 
     async def set_product_path(
         self,
@@ -594,14 +590,14 @@ class ToolAccessor:
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
             if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
+                raise ValidationError("No tenant context available")
 
             from .claude_export import get_product_for_tenant, validate_product_path
 
             # Get product
             product = await get_product_for_tenant(self.db_manager, tenant_key, product_id)
             if not product:
-                return {"success": False, "error": "Product not found"}
+                raise ResourceNotFoundError("Product not found")
 
             # Validate and update path
             result = await validate_product_path(
@@ -613,9 +609,9 @@ class ToolAccessor:
 
             return result
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to set product path")
-            return {"success": False, "error": str(e)}
+            raise
 
     async def get_product_path(
         self,
@@ -633,26 +629,25 @@ class ToolAccessor:
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
             if not tenant_key:
-                return {"success": False, "error": "No tenant context available"}
+                raise ValidationError("No tenant context available")
 
             from .claude_export import get_product_for_tenant
 
             # Get product
             product = await get_product_for_tenant(self.db_manager, tenant_key, product_id)
             if not product:
-                return {"success": False, "error": "Product not found"}
+                raise ResourceNotFoundError("Product not found")
 
             return {
-                "success": True,
                 "product_id": str(product.id),
                 "product_name": product.name,
                 "project_path": product.project_path,
                 "has_path": bool(product.project_path),
             }
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to get product path")
-            return {"success": False, "error": str(e)}
+            raise
 
     # Orchestration Tools
 
@@ -675,7 +670,7 @@ class ToolAccessor:
         from giljo_mcp.file_staging import FileStaging
 
         if content_type not in ["agent_templates", "slash_commands"]:
-            return {"success": False, "error": "content_type must be 'agent_templates' or 'slash_commands'"}
+            raise ValidationError("content_type must be 'agent_templates' or 'slash_commands'")
 
         try:
             async with self.get_session_async() as session:
@@ -701,7 +696,7 @@ class ToolAccessor:
 
                 if not zip_path:
                     await token_manager.mark_failed(token, message)
-                    return {"success": False, "error": message}
+                    raise ValidationError(message)
 
                 # Mark ready and build URL
                 await token_manager.mark_ready(token)
@@ -719,15 +714,14 @@ class ToolAccessor:
                 token_data = await token_manager.get_token_info(token, tenant_key)
 
                 return {
-                    "success": True,
                     "download_url": download_url,
                     "expires_at": token_data.get("expires_at") if token_data else None,
                     "content_type": content_type,
                     "one_time_use": True,
                 }
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to generate download token")
-            return {"success": False, "error": str(e)}
+            raise
 
     async def get_orchestrator_instructions(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """Delegate to OrchestrationService (Handover 0451)"""
@@ -862,9 +856,9 @@ class ToolAccessor:
         try:
             tenant_key = self.tenant_manager.get_current_tenant()
             if not tenant_key:
-                return {"success": False, "error": "No active tenant"}
+                raise ValidationError("No active tenant")
             if not project_id:
-                return {"success": False, "error": "project_id is required"}
+                raise ValidationError("project_id is required")
             from datetime import datetime, timezone
 
             from sqlalchemy import select
@@ -878,27 +872,23 @@ class ToolAccessor:
                 )
                 project = pr.scalar_one_or_none()
                 if not project:
-                    return {"success": False, "error": "Project not found"}
+                    raise ResourceNotFoundError("Project not found")
                 if not project.mission or not project.mission.strip():
-                    return {
-                        "success": False,
-                        "error": "Project mission has not been created. Please complete staging first.",
-                    }
+                    raise ProjectStateError("Project mission has not been created. Please complete staging first.")
                 ag = await session.execute(
                     select(AgentJob).where(AgentJob.project_id == project_id, AgentJob.tenant_key == tenant_key)
                 )
                 agents = ag.scalars().all()
                 if not agents:
-                    return {
-                        "success": False,
-                        "error": "No agents have been spawned for this project. Please complete staging first.",
-                    }
+                    raise ProjectStateError(
+                        "No agents have been spawned for this project. Please complete staging first."
+                    )
                 project.updated_at = datetime.now(timezone.utc)
                 await session.commit()
-            return {"success": True, "project_id": project_id, "agent_count": len(agents)}
-        except Exception as e:
+            return {"project_id": project_id, "agent_count": len(agents)}
+        except Exception:
             logger.exception("gil_launch failed")
-            return {"success": False, "error": str(e)}
+            raise
 
     async def close_project_and_update_memory(
         self,
