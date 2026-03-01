@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import api from '@/services/api'
 
 export const useAgentStore = defineStore('agents', () => {
@@ -9,17 +9,6 @@ export const useAgentStore = defineStore('agents', () => {
   const loading = ref(false)
   const error = ref(null)
   const healthData = ref({})
-
-  // Getters
-  const activeAgents = computed(() => agents.value.filter((a) => a.status === 'active'))
-
-  const agentsByProject = computed(
-    () => (projectId) => agents.value.filter((a) => a.project_id === projectId),
-  )
-
-  const agentByName = computed(() => (name) => agents.value.find((a) => a.name === name))
-
-  const agentHealth = computed(() => (agentId) => healthData.value[agentId] || null)
 
   // Actions
   // MIGRATION NOTE (Handover 0119): Migrated from api.agents.list() to api.agentJobs.list()
@@ -266,12 +255,6 @@ export const useAgentStore = defineStore('agents', () => {
     loading,
     error,
     healthData,
-
-    // Getters
-    activeAgents,
-    agentsByProject,
-    agentByName,
-    agentHealth,
 
     // Actions
     fetchAgents,

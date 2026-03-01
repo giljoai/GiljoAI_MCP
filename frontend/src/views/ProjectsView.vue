@@ -6,7 +6,7 @@
         <h1 class="text-h4">Project Management</h1>
         <p class="text-subtitle-1 text-medium-emphasis">
           Manage orchestration projects for:
-          <strong style="color: #ffc300">{{ activeProduct?.name || 'No Active Product' }}</strong>
+          <strong class="text-primary">{{ activeProduct?.name || 'No Active Product' }}</strong>
         </p>
       </v-col>
     </v-row>
@@ -167,7 +167,7 @@
           <!-- Launch Project Button (only when exactly 1 active project) -->
           <v-btn
             v-if="hasActiveProject"
-            color="#ffc300"
+            color="primary"
             variant="flat"
             prepend-icon="mdi-rocket-launch"
             :title="isWorking(activeProject) ? 'View running jobs' : 'Launch active project'"
@@ -1485,7 +1485,7 @@ onBeforeUnmount(() => {
 /* Clickable project name */
 .project-name-link {
   cursor: pointer;
-  color: #ffc300;
+  color: rgb(var(--v-theme-primary));
 }
 
 .project-name-link:hover {
@@ -1509,6 +1509,6 @@ onBeforeUnmount(() => {
 
 /* Remove default table wrapper overflow to allow container scroll */
 .project-list-container :deep(.v-table__wrapper) {
-  overflow: visible !important;
+  overflow: visible;
 }
 </style>

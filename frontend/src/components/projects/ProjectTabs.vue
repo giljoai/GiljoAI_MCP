@@ -64,11 +64,11 @@
           </v-radio-group>
           <v-tooltip location="bottom">
             <template v-slot:activator="{ props: tooltipProps }">
-              <v-icon v-bind="tooltipProps" size="small" class="help-icon">mdi-help-circle-outline</v-icon>
+              <v-icon v-bind="tooltipProps" size="small" class="help-icon" aria-label="Execution mode help">mdi-help-circle-outline</v-icon>
             </template>
             <span>Multi-Terminal: Manually launch each agent in separate terminals. Claude Code CLI: Orchestrator spawns specialists via Task tool.</span>
           </v-tooltip>
-          <v-icon v-if="isExecutionModeLocked" size="small" class="lock-icon">mdi-lock</v-icon>
+          <v-icon v-if="isExecutionModeLocked" size="small" class="lock-icon" aria-label="Execution mode locked">mdi-lock</v-icon>
         </div>
       </div>
 
@@ -187,10 +187,13 @@ import { useProjectMessages } from '@/composables/useProjectMessages'
 import { useProjectStateStore } from '@/stores/projectStateStore'
 import { useIntegrationStatus } from '@/composables/useIntegrationStatus'
 import { useToast } from '@/composables/useToast'
+import { useClipboard } from '@/composables/useClipboard'
 import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
 import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
+
+const { copy: clipboardCopy } = useClipboard()
 
 /**
  * Props
@@ -471,45 +474,13 @@ onBeforeUnmount(() => {
 })
 
 /**
- * Production-grade clipboard copy function
+ * Copy text to clipboard using shared composable
  */
 async function copyPromptToClipboard(text) {
   if (!text) {
     return false
   }
-
-  try {
-    // Try modern Clipboard API first
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text)
-      return true
-    }
-  } catch (clipErr) {
-    console.warn('[ProjectTabs] Clipboard API failed, trying fallback:', clipErr)
-  }
-
-  // Fallback for HTTP
-  try {
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    textarea.style.position = 'fixed'
-    textarea.style.left = '-9999px'
-    textarea.style.top = '0'
-    document.body.appendChild(textarea)
-
-    textarea.focus()
-    textarea.select()
-    textarea.setSelectionRange(0, textarea.value.length)
-
-    const success = document.execCommand('copy')
-    document.body.removeChild(textarea)
-
-    if (success) return true
-  } catch (err) {
-    console.error('[ProjectTabs] All copy methods failed:', err)
-  }
-
-  return false
+  return await clipboardCopy(text)
 }
 
 /**
@@ -746,7 +717,7 @@ function handleCloseoutComplete(closeoutData) {
   }
 
   .project-name {
-    color: #ffc300;
+    color: rgb(var(--v-theme-primary));
     font-size: 2rem;
     font-weight: 400;
     margin: 0;
@@ -808,7 +779,7 @@ function handleCloseoutComplete(closeoutData) {
   letter-spacing: 0.5px;
 
   &:hover {
-    background: #ffed4e !important;
+    background: #ffed4e;
   }
 }
 
@@ -846,7 +817,7 @@ function handleCloseoutComplete(closeoutData) {
     }
 
     :deep(.v-selection-control--dirty .v-label) {
-      color: #ffc300;
+      color: rgb(var(--v-theme-primary));
       font-weight: 500;
     }
   }

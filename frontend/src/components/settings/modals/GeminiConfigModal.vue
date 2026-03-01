@@ -102,6 +102,9 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useClipboard } from '@/composables/useClipboard'
+
+const { copy: clipboardCopy } = useClipboard()
 
 defineProps({
   modelValue: {
@@ -125,7 +128,7 @@ const copyConfig = () => {
     }
   }
 }`
-  navigator.clipboard.writeText(config)
+  clipboardCopy(config)
 }
 
 const downloadInstructions = () => {

@@ -88,6 +88,9 @@
 <script setup>
 import { ref } from 'vue'
 import api from '@/services/api'
+import { useClipboard } from '@/composables/useClipboard'
+
+const { copy: clipboardCopy } = useClipboard()
 
 // State
 const copied = ref(false)
@@ -96,39 +99,6 @@ const generatingInstructions = ref(false)
 const showCopyFeedback = ref(false)
 const copyFeedbackMessage = ref('')
 
-// Production-grade cross-platform clipboard copy (matching ClaudeCodeExport pattern)
-function fallbackCopyToClipboard(text) {
-  try {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    ta.setAttribute('readonly', '')
-    ta.style.position = 'absolute'
-    ta.style.left = '-9999px'
-    ta.style.top = '0'
-    document.body.appendChild(ta)
-
-    // Select and copy
-    ta.focus()
-    ta.select()
-
-    // For iOS compatibility
-    if (navigator.userAgent.match(/ipad|iphone/i)) {
-      const range = document.createRange()
-      range.selectNodeContents(ta)
-      const selection = window.getSelection()
-      selection.removeAllRanges()
-      selection.addRange(range)
-      ta.setSelectionRange(0, text.length)
-    }
-
-    const success = document.execCommand('copy')
-    document.body.removeChild(ta)
-    return success
-  } catch (err) {
-    console.error('[SLASH COMMAND SETUP] Fallback copy failed:', err)
-    return false
-  }
-}
 
 /**
  * Generate natural language installation instructions with download token
@@ -195,21 +165,10 @@ async function copySlashCommandSetup() {
 }
 
 /**
- * Production-grade clipboard copy with fallback support
+ * Copy text to clipboard using shared composable
  */
 async function copyToClipboard(text) {
-  // Try Clipboard API first
-  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-    try {
-      await navigator.clipboard.writeText(text)
-      return
-    } catch (error) {
-      console.warn('[SLASH COMMAND SETUP] Clipboard API failed, using fallback:', error)
-    }
-  }
-
-  // Fallback method
-  const success = fallbackCopyToClipboard(text)
+  const success = await clipboardCopy(text)
   if (!success) {
     throw new Error('All copy methods failed')
   }

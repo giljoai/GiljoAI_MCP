@@ -14,31 +14,10 @@ export const useProductStore = defineStore('products', () => {
   const error = ref(null)
   const productMetrics = ref({})
   const activeProduct = ref(null)
-  const activeProductLoading = ref(false)
 
   // Getters
   const hasProducts = computed(() => products.value.length > 0)
   const productCount = computed(() => products.value.length)
-  const isProductSelected = computed(() => currentProductId.value !== null)
-
-  const currentProductName = computed(() => {
-    return currentProduct.value?.name || 'No Product Selected'
-  })
-
-  const currentProductMetrics = computed(() => {
-    if (!currentProductId.value) {
-      return null
-    }
-    return (
-      productMetrics.value[currentProductId.value] || {
-        totalTasks: 0,
-        completedTasks: 0,
-        activeAgents: 0,
-        totalProjects: 0,
-      }
-    )
-  })
-
   // Computed: Returns effective product ID for task operations
   // Prefers user-selected product (currentProductId) over active product
   const effectiveProductId = computed(() => {
@@ -229,8 +208,6 @@ export const useProductStore = defineStore('products', () => {
   }
 
   async function fetchActiveProduct() {
-    activeProductLoading.value = true
-    error.value = null
     try {
       // Use dedicated active-product endpoint for accurate status
       const response = await api.products.getActive()
@@ -241,11 +218,8 @@ export const useProductStore = defineStore('products', () => {
         activeProduct.value = null
       }
     } catch (err) {
-      error.value = err.message
       console.error('Failed to fetch active product:', err)
       activeProduct.value = null
-    } finally {
-      activeProductLoading.value = false
     }
   }
 
@@ -390,14 +364,10 @@ export const useProductStore = defineStore('products', () => {
     error,
     productMetrics,
     activeProduct,
-    activeProductLoading,
 
     // Getters
     hasProducts,
     productCount,
-    isProductSelected,
-    currentProductName,
-    currentProductMetrics,
     effectiveProductId,
 
     // Actions

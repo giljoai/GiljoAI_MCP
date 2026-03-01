@@ -55,6 +55,7 @@
                 hide-details
                 variant="outlined"
                 density="compact"
+                aria-label="Search products by name"
                 style="max-width: 300px"
               ></v-text-field>
             </v-card-title>
@@ -95,7 +96,7 @@
                       <div class="d-flex align-center justify-space-between mb-2">
                         <div
                           class="text-h6"
-                          :style="isProductActive(product) ? 'color: #ffc300' : ''"
+                          :class="{ 'text-primary': isProductActive(product) }"
                         >
                           {{ product.name }}
                         </div>
@@ -128,19 +129,19 @@
                       <v-row dense>
                         <v-col cols="4" class="text-center">
                           <div class="text-caption text-medium-emphasis">Tasks</div>
-                          <div class="text-h6" style="color: #ffc300">
+                          <div class="text-h6 text-primary">
                             {{ product.task_count || 0 }}
                           </div>
                         </v-col>
                         <v-col cols="4" class="text-center">
                           <div class="text-caption text-medium-emphasis">Projects</div>
-                          <div class="text-h6" style="color: #ffc300">
+                          <div class="text-h6 text-primary">
                             {{ product.project_count || 0 }}
                           </div>
                         </v-col>
                         <v-col cols="4" class="text-center">
                           <div class="text-caption text-medium-emphasis">Completed</div>
-                          <div class="text-h6" style="color: #ffc300">
+                          <div class="text-h6 text-primary">
                             {{ getCompletedProjectsCount(product) }}
                           </div>
                         </v-col>
@@ -177,6 +178,7 @@
                             size="small"
                             variant="text"
                             v-bind="props"
+                            aria-label="View product details"
                             :style="
                               product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''
                             "
@@ -194,7 +196,8 @@
                             size="small"
                             variant="text"
                             v-bind="props"
-                            :style="isProductActive(product) ? 'color: #ffc300' : ''"
+                            :aria-label="isProductActive(product) ? 'Deactivate product' : 'Activate product'"
+                            :class="{ 'text-primary': isProductActive(product) }"
                             @click="toggleProductActivation(product)"
                           >
                             <v-icon>{{
@@ -213,6 +216,7 @@
                             size="small"
                             variant="text"
                             v-bind="props"
+                            aria-label="Edit product"
                             :style="
                               product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''
                             "
@@ -231,6 +235,7 @@
                             variant="text"
                             color="error"
                             v-bind="props"
+                            aria-label="Delete product"
                             @click="confirmDelete(product)"
                           >
                             <v-icon>mdi-delete</v-icon>
@@ -1359,7 +1364,7 @@ onUnmounted(() => {
 /* Lighter divider line (25% closer to white) */
 .product-divider {
   opacity: 0.3;
-  border-color: rgba(255, 255, 255, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 /* Reduce spacing above card actions by 50% */

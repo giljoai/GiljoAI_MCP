@@ -140,6 +140,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import { useClipboard } from '@/composables/useClipboard'
+
+const { copy: clipboardCopy } = useClipboard()
 
 const showWizard = ref(false)
 const editingServer = ref(false)
@@ -260,22 +263,24 @@ async function generatePrompt() {
   }
 }
 
-function copyPrompt() {
+async function copyPrompt() {
   const text = String(generatedPrompt.value || '').trim()
   if (!text) return
-  navigator.clipboard.writeText(text).then(() => {
+  const success = await clipboardCopy(text)
+  if (success) {
     copied.value = true
     setTimeout(() => (copied.value = false), 3000)
-  })
+  }
 }
 
-function copyEnvVar() {
+async function copyEnvVar() {
   const text = envVarCommand.value
   if (!text) return
-  navigator.clipboard.writeText(text).then(() => {
+  const success = await clipboardCopy(text)
+  if (success) {
     copiedEnv.value = true
     setTimeout(() => (copiedEnv.value = false), 3000)
-  })
+  }
 }
 
 // Expose method to programmatically open the wizard
@@ -298,12 +303,12 @@ defineExpose({
 }
 
 .font-monospace :deep(textarea) {
-  font-family: 'Courier New', Courier, monospace !important;
-  font-size: 14px !important;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
 }
 
 .no-resize :deep(textarea) {
-  resize: none !important;
+  resize: none;
 }
 
 .platform-radios :deep(.v-selection-control-group) {

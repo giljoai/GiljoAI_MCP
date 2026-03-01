@@ -19,7 +19,7 @@
     <v-dialog v-model="showDialog" max-width="680" scrollable>
       <v-card v-draggable class="lab-dialog-card">
         <v-card-title class="d-flex align-center lab-header">
-          <v-icon class="mr-2" size="22" color="#ffc300">mdi-flask-outline</v-icon>
+          <v-icon class="mr-2" size="22" color="primary">mdi-flask-outline</v-icon>
           <span>Agent Lab</span>
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="showDialog = false" />
@@ -177,22 +177,17 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useClipboard } from '@/composables/useClipboard'
+
+const { copy: clipboardCopy } = useClipboard()
 
 const showDialog = ref(false)
 const showCopied = ref(false)
 const selectedTool = ref('claude')
 
 async function copyText(text) {
-  try {
-    await navigator.clipboard.writeText(text)
-    showCopied.value = true
-  } catch {
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
+  const success = await clipboardCopy(text)
+  if (success) {
     showCopied.value = true
   }
 }
@@ -205,7 +200,7 @@ async function copyText(text) {
 }
 
 .lab-btn {
-  color: #ffc300;
+  color: rgb(var(--v-theme-primary));
   transition: opacity 0.2s ease;
 
   &:hover {
@@ -242,9 +237,9 @@ async function copyText(text) {
 
 .tool-selector {
   .tool-chip-active {
-    background: rgba(255, 195, 0, 0.15) !important;
-    border-color: #ffc300 !important;
-    color: #ffc300 !important;
+    background: rgba(255, 195, 0, 0.15);
+    border-color: #ffc300;
+    color: #ffc300;
   }
 }
 
@@ -280,7 +275,7 @@ async function copyText(text) {
     color: rgba(var(--v-theme-on-surface), 0.4);
 
     &:hover {
-      color: #ffc300;
+      color: rgb(var(--v-theme-primary));
     }
   }
 }
