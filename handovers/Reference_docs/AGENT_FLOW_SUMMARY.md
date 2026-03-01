@@ -1,5 +1,7 @@
 # GiljoAI Agent Flow - Quick Reference
 
+**Last Verified: 2026-02-28**
+
 **For full details, see:** `start_to_finish_agent_FLOW.md` (same directory)
 
 ---
@@ -82,11 +84,11 @@
 | `description` | User Input | Human-written requirements (Product.description, Project.description) |
 | `mission` | AI Output | Orchestrator-generated plan (Project.mission, MCPAgentJob.mission) |
 
-### Database Status Values (7 canonical states)
+### Database Status Values (6 canonical states, post-0491)
 ```
-waiting → working → complete/failed/blocked/cancelled/decommissioned
+waiting → working → complete/blocked/silent/decommissioned
 ```
-**Note:** API accepts aliases (`pending`→`waiting`, `active`→`working`, `completed`→`complete`) for compatibility.
+**Note:** API accepts aliases (`pending`→`waiting`, `active`→`working`, `completed`→`complete`) for compatibility. The `failed` and `cancelled` statuses were removed in the 0491 migration.
 
 ---
 
@@ -138,7 +140,7 @@ TASK 5: spawn_agent_job() × N       → Create agent database records
 | Tool | Purpose |
 |------|---------|
 | `get_pending_jobs(agent_type, tenant_key)` | Find assigned work |
-| `acknowledge_job(job_id, agent_id)` | Claim job (waiting→working) |
+| `update_job_status(job_id, status, tenant_key)` | Update job status |
 | `report_progress(job_id, progress)` | Update progress % |
 | `complete_job(job_id, result)` | Finish job (working→complete) |
 | `report_error(job_id, error)` | Report blocking issues |
@@ -151,7 +153,7 @@ TASK 5: spawn_agent_job() × N       → Create agent database records
 | Category | Purpose | Store | Tools |
 |----------|---------|-------|-------|
 | **MESSAGES** | Agent-to-agent communication | `messages` table + JSONB mirror | `send_message()`, `receive_messages()`, `acknowledge_message()` |
-| **SIGNALS** | Job status & progress | `MCPAgentJob` table | `acknowledge_job()`, `report_progress()`, `complete_job()` |
+| **SIGNALS** | Job status & progress | `MCPAgentJob` table | `update_job_status()`, `report_progress()`, `complete_job()` |
 | **INSTRUCTIONS** | Mission/config fetch | `MCPAgentJob.mission` | `get_agent_mission()`, `get_orchestrator_instructions()` |
 
 **Counter Logic** (via WebSocket events):
@@ -181,7 +183,7 @@ TASK 5: spawn_agent_job() × N       → Create agent database records
 
 ## Agent Execution Protocol
 
-1. **Claim Job:** `get_pending_jobs()` → `acknowledge_job()`
+1. **Claim Job:** `get_pending_jobs()` → `update_job_status(job_id, "working")`
 2. **Fetch Mission:** `get_agent_mission(job_id, tenant_key)`
 3. **Execute Work:** Perform role-specific tasks
 4. **Report Progress:** `report_progress(job_id, progress%)`
@@ -224,12 +226,10 @@ User configurable in: My Settings → Context → Priority Configuration
 
 | Component | Location |
 |-----------|----------|
-| MCP Orchestration Tools | `src/giljo_mcp/tools/orchestration.py` |
+| Tool Accessor (all MCP tools) | `src/giljo_mcp/tools/tool_accessor.py` |
 | Agent Coordination | `src/giljo_mcp/tools/agent_coordination.py` |
-| Messaging (Table) | `src/giljo_mcp/tools/message.py` |
-| Messaging (JSONB) | `src/giljo_mcp/tools/agent_communication.py` |
-| Agent Job Manager | `src/giljo_mcp/agent_job_manager.py` |
-| Status Translation | `agent_job_manager.py` lines 62-71 |
+| Agent Tools | `src/giljo_mcp/tools/agent.py` |
+| Project Tools | `src/giljo_mcp/tools/project.py` |
 | Thin Prompt Generator | `src/giljo_mcp/thin_prompt_generator.py` |
 | Agent Templates | `~/.claude/agents/` or `.claude/agents/` |
 
