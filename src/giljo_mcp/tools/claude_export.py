@@ -15,6 +15,7 @@ from sqlalchemy import select
 
 from api.endpoints.claude_export import export_templates_to_claude_code
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.exceptions import FileSystemError, GiljoFileNotFoundError, ResourceNotFoundError, ToolError
 from src.giljo_mcp.models import Product, User
 
 
@@ -73,11 +74,11 @@ async def export_agents_command(
 
     except ValueError as e:
         logger.warning(f"Export validation failed: {e}")
-        return {"success": False, "error": str(e)}
+        raise
 
     except Exception as e:
         logger.exception("Export failed")
-        return {"success": False, "error": f"Export failed: {e!s}"}
+        raise ToolError(f"Export failed: {e!s}") from e
 
 
 async def get_product_for_tenant(
@@ -130,9 +131,9 @@ async def validate_product_path(
         # Validate path exists and is directory
         path = Path(project_path).expanduser()
         if not path.exists():
-            return {"success": False, "error": f"Path does not exist: {path}"}
+            raise GiljoFileNotFoundError(f"Path does not exist: {path}")
         if not path.is_dir():
-            return {"success": False, "error": f"Path is not a directory: {path}"}
+            raise FileSystemError(f"Path is not a directory: {path}")
 
         async with db_manager.get_tenant_session_async(tenant_key) as session:
             # Get product
@@ -141,14 +142,13 @@ async def validate_product_path(
             product = result.scalar_one_or_none()
 
             if not product:
-                return {"success": False, "error": "Product not found"}
+                raise ResourceNotFoundError("Product not found")
 
             # Update project_path
             product.project_path = str(path)
             await session.commit()
 
             return {
-                "success": True,
                 "product_id": product_id,
                 "project_path": str(path),
                 "message": "Product path updated successfully",
@@ -156,4 +156,4 @@ async def validate_product_path(
 
     except Exception as e:
         logger.exception("Failed to validate product path")
-        return {"success": False, "error": f"Path validation failed: {e!s}"}
+        raise FileSystemError(f"Path validation failed: {e!s}") from e

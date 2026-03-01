@@ -150,7 +150,8 @@ class TestRepositoryIntegration:
 
             # Verify repository was used
             mock_repo.get_next_sequence.assert_called_once_with(session=mock_session, product_id=mock_product.id)
-            assert result["success"] is True
+            assert "entry_id" in result
+            assert "message" in result
             assert result["sequence_number"] == 5
 
     @pytest.mark.asyncio
@@ -273,9 +274,9 @@ class TestRepositoryIntegration:
                 db_manager=mock_db_manager,
             )
 
-            assert result["success"] is True
             assert result["entry_id"] == str(entry_id)
             assert result["sequence_number"] == 1
+            assert "message" in result
 
     @pytest.mark.asyncio
     async def test_all_field_mappings_preserved(self, mock_product, mock_project, tenant_key, mock_memory_entry):

@@ -64,7 +64,9 @@ class ContextManagementSystem:
 
         if not chunks:
             logger.warning(f"No chunks created for product {product_id}")
-            return {"success": False, "chunks_created": 0, "total_tokens": 0, "message": "No content to chunk"}
+            from giljo_mcp.exceptions import ContextError
+
+            raise ContextError("No content to chunk")
 
         # Store chunks in database
         chunk_ids = self.indexer.store_chunks(tenant_key, product_id, chunks)
@@ -74,7 +76,6 @@ class ContextManagementSystem:
         logger.info(f"Processed vision document for product {product_id}: {len(chunks)} chunks, {total_tokens} tokens")
 
         return {
-            "success": True,
             "chunks_created": len(chunks),
             "chunk_ids": chunk_ids,
             "total_tokens": total_tokens,

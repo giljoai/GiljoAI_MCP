@@ -14,6 +14,7 @@ from uuid import uuid4
 
 import pytest
 
+from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
@@ -239,21 +240,22 @@ class TestCloseoutGateIntegration:
 
         mock_session.execute = AsyncMock(side_effect=mock_execute)
 
-        result = await close_project_and_update_memory(
-            project_id=project_id,
-            summary="Test summary for closeout",
-            key_outcomes=["outcome-1"],
-            decisions_made=["decision-1"],
-            tenant_key=tenant_key,
-            db_manager=mock_db_manager,
-            force=False,
-        )
+        with pytest.raises(ProjectStateError) as exc_info:
+            await close_project_and_update_memory(
+                project_id=project_id,
+                summary="Test summary for closeout",
+                key_outcomes=["outcome-1"],
+                decisions_made=["decision-1"],
+                tenant_key=tenant_key,
+                db_manager=mock_db_manager,
+                force=False,
+            )
 
-        assert result["success"] is False
-        assert result["status"] == "CLOSEOUT_BLOCKED"
-        assert "blockers" in result
-        assert len(result["blockers"]) == 1
-        assert result["blockers"][0]["agent_name"] == "impl-1"
+        assert "agents have unfinished work" in str(exc_info.value)
+        assert exc_info.value.context["status"] == "CLOSEOUT_BLOCKED"
+        assert "blockers" in exc_info.value.context
+        assert len(exc_info.value.context["blockers"]) == 1
+        assert exc_info.value.context["blockers"][0]["agent_name"] == "impl-1"
 
     @pytest.mark.asyncio
     async def test_force_decommissions_and_proceeds(self):
@@ -336,6 +338,9 @@ class TestCloseoutGateIntegration:
                     force=True,
                 )
 
-        assert result["success"] is True
+        # Success path: no "success" key, just check returned dict has expected fields
+        assert "entry_id" in result
+        assert "sequence_number" in result
+        assert "message" in result
         # Verify the agent was decommissioned
         assert agent_working.status == "decommissioned"
