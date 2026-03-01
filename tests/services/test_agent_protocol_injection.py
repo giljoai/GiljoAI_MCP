@@ -16,7 +16,7 @@ def _gen_protocol(
     git_integration_enabled: bool = False,
 ) -> str:
     """Helper to call _generate_agent_protocol with test defaults."""
-    from src.giljo_mcp.services.orchestration_service import _generate_agent_protocol
+    from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
     return _generate_agent_protocol(
         job_id="test-job-id",

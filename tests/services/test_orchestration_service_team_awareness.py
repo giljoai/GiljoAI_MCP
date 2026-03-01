@@ -21,7 +21,7 @@ and test the function output.
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from src.giljo_mcp.services.orchestration_service import _generate_team_context_header
+from src.giljo_mcp.services.protocol_builder import _generate_team_context_header
 
 
 def create_mock_agent_execution(
