@@ -9,6 +9,7 @@ from typing import Any, Optional
 
 from sqlalchemy import and_, select
 
+from src.giljo_mcp.exceptions import ResourceNotFoundError
 from src.giljo_mcp.models import Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
@@ -44,7 +45,7 @@ async def launch_agent(agent_id: str, tenant_key: str, session) -> dict[str, Any
         agent = agent_result.scalar_one_or_none()
 
         if not agent:
-            return {"success": False, "error": "Agent not found or tenant mismatch"}
+            raise ResourceNotFoundError("Agent not found or tenant mismatch")
 
         # Update agent execution status to working
         agent.status = "working"
@@ -52,14 +53,13 @@ async def launch_agent(agent_id: str, tenant_key: str, session) -> dict[str, Any
         await session.commit()
 
         return {
-            "success": True,
             "agent_id": str(agent.agent_id),
             "status": "working",
         }
 
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to launch agent")
-        return {"success": False, "error": str(e)}
+        raise
 
 
 async def log_interaction_legacy(interaction: dict[str, Any], tenant_key: str, session) -> dict[str, Any]:
@@ -88,7 +88,7 @@ async def log_interaction_legacy(interaction: dict[str, Any], tenant_key: str, s
             project = project_result.scalar_one_or_none()
 
             if not project:
-                return {"success": False, "error": "Project not found or tenant mismatch"}
+                raise ResourceNotFoundError("Project not found or tenant mismatch")
 
         # Verify parent agent belongs to tenant (if specified)
         if parent_agent_id:
@@ -99,14 +99,14 @@ async def log_interaction_legacy(interaction: dict[str, Any], tenant_key: str, s
             parent_agent = parent_result.scalar_one_or_none()
 
             if not parent_agent:
-                return {"success": False, "error": "Parent agent not found or tenant mismatch"}
+                raise ResourceNotFoundError("Parent agent not found or tenant mismatch")
 
         # If all checks pass, interaction is valid
-        return {"success": True, "message": "Interaction validated"}
+        return None
 
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to log interaction")
-        return {"success": False, "error": str(e)}
+        raise
 
 
 # Helper functions for testing and internal use
@@ -325,10 +325,9 @@ async def _get_agent_health_with_session(
         execution = execution_result.scalar_one_or_none()
 
         if not execution:
-            return {"success": False, "error": f"Agent execution '{agent_name}' not found"}
+            raise ResourceNotFoundError(f"Agent execution '{agent_name}' not found")
 
         return {
-            "success": True,
             "agent": agent_name,
             "status": execution.status,
             "last_activity": execution.last_progress_at.isoformat() if execution.last_progress_at else None,
@@ -366,7 +365,6 @@ async def _get_agent_health_with_session(
         )
 
     return {
-        "success": True,
         "total_agents": len(executions),
         "agents": agents_data,
     }
@@ -411,7 +409,7 @@ async def _handoff_agent_work_with_session(
     project = project_result.scalar_one_or_none()
 
     if not project:
-        return {"success": False, "error": f"Project {project_id} not found"}
+        raise ResourceNotFoundError(f"Project {project_id} not found")
 
     # Find from_agent execution (match exact agent_name)
     from_query = (
@@ -424,7 +422,7 @@ async def _handoff_agent_work_with_session(
     from_execution = from_result.scalar_one_or_none()
 
     if not from_execution:
-        return {"success": False, "error": f"From agent '{from_agent}' not found"}
+        raise ResourceNotFoundError(f"From agent '{from_agent}' not found")
 
     # Find to_agent execution (match exact agent_name)
     to_query = (
@@ -437,7 +435,7 @@ async def _handoff_agent_work_with_session(
     to_execution = to_result.scalar_one_or_none()
 
     if not to_execution:
-        return {"success": False, "error": f"To agent '{to_agent}' not found"}
+        raise ResourceNotFoundError(f"To agent '{to_agent}' not found")
 
     # Update execution statuses
     from_execution.status = "complete"
@@ -450,7 +448,6 @@ async def _handoff_agent_work_with_session(
     await session.commit()
 
     return {
-        "success": True,
         "from_agent": from_agent,
         "to_agent": to_agent,
         "handoff_time": datetime.now(timezone.utc).isoformat(),
