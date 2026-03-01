@@ -7,6 +7,7 @@ This is a unit test focusing on the core behavior without HTTP layer complexity.
 Updated for Handover 0730: Exception-based error handling patterns.
 """
 
+import random
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -44,6 +45,7 @@ async def test_message_service_websocket_injection(db_session, db_manager, tenan
         mission="Test mission",
         tenant_key=tenant_key,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
@@ -142,6 +144,7 @@ async def test_message_service_without_websocket_manager(db_session, db_manager,
         mission="Test mission",
         tenant_key=tenant_key,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()

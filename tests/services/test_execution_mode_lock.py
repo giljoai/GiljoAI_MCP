@@ -9,6 +9,8 @@ BEHAVIOR TESTED:
 Updated for Handover 0730: Exception-based patterns (no success wrapper)
 """
 
+import random
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,6 +41,7 @@ async def test_update_execution_mode_allowed_before_staging(
         tenant_key=tenant_key,
         status="draft",
         execution_mode="interactive",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
@@ -74,6 +77,7 @@ async def test_update_execution_mode_blocked_after_mission_generated(
         tenant_key=tenant_key,
         status="active",
         execution_mode="interactive",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
@@ -113,6 +117,7 @@ async def test_update_other_fields_still_allowed_after_staging(
         tenant_key=tenant_key,
         status="active",
         execution_mode="interactive",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
@@ -154,6 +159,7 @@ async def test_execution_mode_unlocked_with_whitespace_only_mission(
         tenant_key=tenant_key,
         status="draft",
         execution_mode="interactive",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()

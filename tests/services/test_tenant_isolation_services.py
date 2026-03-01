@@ -18,6 +18,7 @@ Coverage:
 - task_service.py: log_task() - Line 117
 """
 
+import random
 import uuid
 from datetime import datetime, timezone
 
@@ -82,6 +83,7 @@ async def two_tenant_service_setup(db_session, db_manager):
         tenant_key=tenant_a,
         product_id=product_a.id,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project_a)
 
@@ -94,6 +96,7 @@ async def two_tenant_service_setup(db_session, db_manager):
         tenant_key=tenant_b,
         product_id=product_b.id,
         status="active",
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project_b)
 

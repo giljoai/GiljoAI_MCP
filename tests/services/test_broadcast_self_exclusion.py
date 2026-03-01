@@ -10,6 +10,7 @@ This test verifies:
 4. Message counters are updated correctly (sender +1 sent, recipients +1 waiting each)
 """
 
+import random
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -88,6 +89,7 @@ async def test_project_with_three_agents(
         mission="Test mission",
         status="active",
         created_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()
@@ -417,6 +419,7 @@ async def test_broadcast_to_empty_project_no_crash(
         mission="Test mission",
         status="active",
         created_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()

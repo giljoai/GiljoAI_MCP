@@ -8,6 +8,7 @@ Tests cover:
 Updated for exception-based error handling (Handover 0730).
 """
 
+import random
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -62,6 +63,7 @@ def mock_project_not_launched():
         mission="Test mission",
         status="active",
         implementation_launched_at=None,  # BLOCKED - not launched yet
+        series_number=random.randint(1, 999999),
     )
     return project
 
@@ -77,6 +79,7 @@ def mock_project_launched():
         mission="Test mission",
         status="active",
         implementation_launched_at=datetime.now(timezone.utc),  # LAUNCHED
+        series_number=random.randint(1, 999999),
     )
     return project
 

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.skip(reason="0750b: Needs project fixture update for NOT NULL constraints")
+pytestmark = pytest.mark.skip(reason="0750c3: sync/async mismatch — tests don't await async methods")
 
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository

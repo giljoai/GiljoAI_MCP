@@ -13,6 +13,7 @@ Updated for Handover 0700c: AgentExecution.messages JSONB removed, using counter
 Updated for Handover 0731c: Typed returns (SendMessageResult, CompleteMessageResult, etc.)
 """
 
+import random
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -96,6 +97,7 @@ async def test_project_with_agents(
         mission="Test mission",
         status="active",
         created_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()

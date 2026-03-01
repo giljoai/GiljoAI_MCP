@@ -17,6 +17,7 @@ Test Categories:
 4. MessageService: No MCPAgentJob job lookups
 """
 
+import random
 import uuid
 
 import pytest
@@ -47,6 +48,7 @@ async def test_project_0367a(db_session, test_tenant_0367a) -> Project:
         mission="Test the removal of MCPAgentJob from service layer",
         status="active",
         tenant_key=test_tenant_0367a,
+        series_number=random.randint(1, 999999),
     )
     db_session.add(project)
     await db_session.commit()

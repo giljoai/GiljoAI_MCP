@@ -12,6 +12,7 @@ These tests are written TDD-style: they define expected behavior for
 features added in Handover 0497b (result persistence + auto-message).
 """
 
+import random
 import uuid
 
 import pytest
@@ -64,6 +65,7 @@ async def project(db_session, tenant_key, agent_templates) -> Project:
         status="active",
         tenant_key=tenant_key,
         implementation_launched_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
     )
     db_session.add(proj)
     await db_session.commit()
