@@ -467,11 +467,11 @@ describe('WebSocket V2 Store - Event Handler Management', () => {
     await flushPromises()
 
     // Register handler
-    store.on('agent_update', handler)
+    store.on('agent:update', handler)
 
     // Simulate incoming message
     const wsInstance = MockWebSocket.instances[0]
-    wsInstance.simulateMessage({ type: 'agent_update', data: { id: '123' } })
+    wsInstance.simulateMessage({ type: 'agent:update', data: { id: '123' } })
 
     // After Handover 0290: Payload normalization merges nested data to top level
     // Handler receives: { data: { id: '123' }, id: '123' } - both nested and flat access

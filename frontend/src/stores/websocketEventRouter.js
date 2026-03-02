@@ -30,9 +30,7 @@ export const PROJECT_SCOPED_EVENTS = new Set([
   'agent:status_changed',
   'agent:created',
   'agent:spawn',
-  'agent:updated',
   'agent:update',
-  'agent_update',
   'job:progress_update',
 ])
 
@@ -90,25 +88,7 @@ export const EVENT_MAP = {
   // =========================
   // Agents
   // =========================
-  agent_update: {
-    handler: async (payload, { storeRegistry } = {}) => {
-      const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
-      const agentsStore = storeRegistry?.agents?.() ?? useAgentStore()
-
-      agentJobsStore.handleUpdated?.(payload)
-      agentsStore.handleRealtimeUpdate?.(payload)
-    },
-  }, // legacy underscore
   'agent:update': {
-    handler: async (payload, { storeRegistry } = {}) => {
-      const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
-      const agentsStore = storeRegistry?.agents?.() ?? useAgentStore()
-
-      agentJobsStore.handleUpdated?.(payload)
-      agentsStore.handleRealtimeUpdate?.(payload)
-    },
-  },
-  'agent:updated': {
     handler: async (payload, { storeRegistry } = {}) => {
       const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
       const agentsStore = storeRegistry?.agents?.() ?? useAgentStore()
@@ -386,9 +366,6 @@ export const EVENT_MAP = {
   'product:memory:updated': { store: 'products', action: 'handleProductMemoryUpdated' },
   'product:learning:added': { store: 'products', action: 'handleProductLearningAdded' },
   'product:status:changed': { store: 'products', action: 'handleProductStatusChanged' },
-  'product:memory_updated': { store: 'products', action: 'handleProductMemoryUpdated' },
-  'product:learning_added': { store: 'products', action: 'handleProductLearningAdded' },
-  'product:status_changed': { store: 'products', action: 'handleProductStatusChanged' },
 }
 
 /**
