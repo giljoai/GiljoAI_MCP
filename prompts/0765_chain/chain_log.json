@@ -226,19 +226,29 @@
       "title": "Tenant Key + Encapsulation",
       "color": "#795548",
       "handover": "handovers/0765g_tenant_key_encapsulation.md",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-02T18:00:00Z",
+      "completed_at": "2026-03-02T21:00:00Z",
       "planned_tasks": [
         "Remove hardcoded default tenant key from 10 locations — config-based resolution (4B)",
         "Fix prompts endpoint encapsulation — add public API methods (4D)",
         "Refactor update_project — extract DTO construction and broadcast (4E)"
       ],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "tasks_completed": [
+        "Task 1: Removed 14+ hardcoded tenant key occurrences from backend (dependencies, auth middleware, auth endpoint, config endpoint), frontend (api.js, api service, McpIntegration), and both installers. Config-based resolution via ConfigManager.tenant.default_tenant_key.",
+        "Task 2: Added generate_implementation_prompt() public method to ThinClientPromptGenerator, replacing direct private _build_* method calls from prompts API endpoint.",
+        "Task 3: Extracted _apply_project_updates() and _build_project_data() helpers from update_project, with 19 new unit tests."
+      ],
+      "deviations": [
+        "Task 3 subagent committed with 'test:' and 'refactor:' prefixes instead of 'cleanup(0765g):' convention",
+        "RegisterUserRequest.tenant_key default changed from hardcoded to None (field was unused by both endpoint handlers)"
+      ],
+      "blockers_encountered": [
+        "Pre-commit ruff-format and mixed-line-ending hooks required re-staging on both Task 1 and Task 2 commits",
+        "Task 3 subagent had 8 initial test failures due to Pydantic validation on Mock() project_type — fixed with proper mock fields"
+      ],
+      "notes_for_next": "All 3 tasks complete. 1441 tests passing (19 new), 342 skipped. Frontend builds clean. Zero hardcoded tenant keys remain. Branch ready for 0765h (Skipped Test Resolution).",
+      "summary": "Removed all hardcoded tenant keys across 11 files via config-based resolution. Encapsulated prompt generation behind public API. Extracted 2 helpers from update_project with 19 tests. 4 commits total."
     },
     {
       "session_id": "0765h",
