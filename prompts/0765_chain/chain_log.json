@@ -4,7 +4,7 @@
   "created_at": "2026-03-02",
   "branch": "0760-perfect-score",
   "parent_branch": "0750-cleanup-sprint",
-  "total_sessions": 8,
+  "total_sessions": 9,
   "sessions": [
     {
       "session_id": "0765a",
@@ -255,8 +255,8 @@
       "title": "Skipped Test Resolution",
       "color": "#607D8B",
       "handover": "handovers/0765h_skipped_test_resolution.md",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-02T22:00:00Z",
       "completed_at": null,
       "planned_tasks": [
         "Triage all ~342 skipped tests into DELETE/REPLACE/FIX categories",
@@ -264,6 +264,27 @@
         "Fix quick-win skips (imports, fixtures, async markers)",
         "Rewrite dict-return test assertions for current Pydantic/exception API",
         "Achieve zero skipped tests"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0765i",
+      "title": "Post-Sprint Quality Audit",
+      "color": "#00BCD4",
+      "handover": "handovers/0765i_quality_audit.md",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Verify test health: all pass, zero skips, zero failures",
+        "Run 4 parallel audit subagents (backend, API, tests, frontend)",
+        "Independently verify 6 sprint-specific claims",
+        "Score codebase on 10-dimension rubric",
+        "Issue PASS/FAIL verdict with findings report"
       ],
       "tasks_completed": [],
       "deviations": [],
