@@ -194,8 +194,8 @@ test.describe('Complete Project Lifecycle E2E', () => {
     await expect(submitBtn).toBeEnabled()
     await submitBtn.click()
 
-    // Wait for WebSocket event: product:memory_updated
-    await waitForWebSocketEvent(page, 'product:memory_updated', 15000)
+    // Wait for WebSocket event: product:memory:updated
+    await waitForWebSocketEvent(page, 'product:memory:updated', 15000)
 
     // Verify success toast
     await expectToastWithText(page, 'Project closed')
