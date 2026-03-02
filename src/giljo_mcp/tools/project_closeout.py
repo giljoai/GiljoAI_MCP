@@ -219,7 +219,7 @@ async def close_project_and_update_memory(
                 "message": "Project closed and 360 Memory updated successfully",
             }
 
-    except Exception as exc:
+    except Exception as exc:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to close project and update memory", extra={"error": str(exc)})
         raise
 

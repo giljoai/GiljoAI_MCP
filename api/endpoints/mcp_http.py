@@ -948,7 +948,7 @@ async def handle_tools_call(
 
         return {"content": [{"type": "text", "text": result_text}], "isError": False}
 
-    except Exception as e:
+    except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         # Suppress expected validation errors from console logs (they're returned to agent)
         if isinstance(e, ValidationError) and "COMPLETION_BLOCKED" in str(e):
             # This is expected behavior - agent tried to complete without finishing TODOs
@@ -1026,7 +1026,7 @@ async def mcp_endpoint(
     client_ip = request.client.host if request.client else "unknown"
     try:
         await session_manager.log_ip(session.api_key_id, client_ip)
-    except Exception:  # noqa: BLE001
+    except (OSError, ValueError, KeyError):
         logger.debug("IP logging failed for MCP request (non-blocking)")
 
     # Route to method handler
@@ -1052,6 +1052,6 @@ async def mcp_endpoint(
         return JSONRPCErrorResponse(
             error=JSONRPCError(code=-32603, message=e.detail, data={"status_code": e.status_code}), id=rpc_request.id
         )
-    except Exception:
+    except Exception:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Unexpected MCP endpoint error")
         return JSONRPCErrorResponse(error=JSONRPCError(code=-32603, message="Internal server error"), id=rpc_request.id)
