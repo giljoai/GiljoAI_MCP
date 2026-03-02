@@ -138,9 +138,6 @@
           <JobsTab
             :project="projectWithUpdatedMode"
             :readonly="readonly"
-            @launch-agent="handleLaunchAgent"
-            @view-details="emit('view-details', $event)"
-            @view-error="emit('view-error', $event)"
             @closeout-project="handleCloseoutProject"
           />
         </v-window-item>
@@ -217,17 +214,9 @@ const props = defineProps({
  * Emits
  */
 const emit = defineEmits([
-  'stage-project',
-  'launch-jobs',
-  'cancel-staging',
   'edit-description',
   'edit-mission',
   'edit-agent-mission',
-  'launch-agent',
-  'view-details',
-  'view-error',
-  'closeout-project',
-  'send-message',
 ])
 
 /**
@@ -555,8 +544,6 @@ async function handleStageProject() {
     } else {
       alert(`Please manually copy this prompt:\n\n${prompt}`)
     }
-
-    emit('stage-project')
   } catch (error) {
     console.error('Stage project failed:', error)
 
@@ -595,7 +582,6 @@ async function handleLaunchJobs() {
     tabsStore.isLaunched = true
     tabsStore.currentProject = props.project
     projectStateStore.setLaunched(projectId.value, true)
-    emit('launch-jobs')
 
     // Auto-switch to Jobs/Implement tab after launch (Handover 0243e)
     activeTab.value = 'jobs'
@@ -621,30 +607,9 @@ async function handleCancelStaging() {
     projectStateStore.setLaunched(projectId.value, false)
     projectMessagesStore.setMessages(projectId.value, [])
     agentJobsStore.$reset?.()
-
-    emit('cancel-staging')
   } catch (error) {
     console.error('Cancel staging failed:', error)
     const msg = error.response?.data?.detail || error.message || 'Failed to cancel staging'
-    showError(msg)
-  }
-}
-
-/**
- * Handle launch agent
- */
-async function handleLaunchAgent(agent) {
-  try {
-    const jobId = agent?.job_id || agent?.agent_id || agent?.id
-    if (!jobId) {
-      showError('Agent job missing ID')
-      return
-    }
-
-    emit('launch-agent', agent)
-  } catch (error) {
-    console.error('Launch agent failed:', error)
-    const msg = error.response?.data?.detail || error.message || 'Failed to launch agent'
     showError(msg)
   }
 }
@@ -654,7 +619,6 @@ async function handleLaunchAgent(agent) {
  */
 async function handleCloseoutProject(closeoutData) {
   try {
-    emit('closeout-project', closeoutData)
     // Navigate to projects list after closeout
     router.push('/projects')
   } catch (error) {
@@ -684,7 +648,6 @@ function handleCloseoutComplete(closeoutData) {
   toastVisible.value = true
 
   showCloseoutModal.value = false
-  emit('closeout-project', normalized)
 
   // Navigate to projects list after closeout
   router.push('/projects')
@@ -757,14 +720,6 @@ function handleCloseoutComplete(closeoutData) {
 .stage-button {
   text-transform: none;
   font-weight: 500;
-}
-
-.status-text {
-  color: #ffd700;
-  font-style: italic;
-  font-size: 16px;
-  font-weight: 400;
-  white-space: nowrap;
 }
 
 .launch-button {
@@ -863,10 +818,6 @@ function handleCloseoutComplete(closeoutData) {
   .action-buttons-row {
     flex-wrap: wrap;
     gap: 8px;
-
-    .status-text {
-      font-size: 14px;
-    }
   }
 }
 </style>
