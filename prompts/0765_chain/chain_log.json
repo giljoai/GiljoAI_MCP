@@ -192,20 +192,34 @@
       "title": "Security Hardening",
       "color": "#F44336",
       "handover": "handovers/0765f_security_hardening.md",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-02T03:00:00Z",
+      "completed_at": "2026-03-02T05:30:00Z",
       "planned_tasks": [
         "Enable CSRF middleware — fix httponly bug, wire frontend interceptor (4A)",
         "Fix 8 raw fetch() calls needing manual CSRF token injection",
         "Complete tenant isolation pattern — fix 2 remaining violations (4C)",
         "Fix TenantManager._validation_cache test coupling (4F)"
       ],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "tasks_completed": [
+        "CSRF: Fixed httponly/secure bugs, added exempt_prefixes + API key bypass, fixed Starlette BaseHTTPMiddleware ExceptionGroup bug (JSONResponse instead of HTTPException), enabled in app.py with comprehensive exemptions",
+        "CSRF: Wired Axios request interceptor for automatic CSRF header injection on state-changing requests",
+        "CSRF: Fixed SystemSettings.vue raw fetch() PATCH call with CSRF token; 5 other raw fetch() calls exempt by path prefix",
+        "CSRF: Updated all 4 test auth fixtures (auth_headers, auth_headers_tenant_a/b, authenticated_client) with CSRF double-submit tokens",
+        "CSRF: 12 new integration tests covering block/allow/mismatch/safe-methods/exempt-paths/api-key-bypass/cookie-behavior",
+        "Tenant isolation: Added tenant_key filter to AgentJob lookup in simple_handover.py",
+        "Tenant isolation: Replaced db.get(Project) with tenant-scoped select() in orchestration.py",
+        "TenantManager: Added register_test_tenant() classmethod, replaced 3 direct _validation_cache accesses in smoke conftest"
+      ],
+      "deviations": [
+        "Only 1 of 8 raw fetch() calls needed manual CSRF fix — 7 others exempt by path prefix (auth, setup, mcp-installer, download)",
+        "Discovered and fixed Starlette BaseHTTPMiddleware bug: raise HTTPException wraps in ExceptionGroup -> 500; replaced with return JSONResponse"
+      ],
+      "blockers_encountered": [
+        "Pre-commit ruff-format and mixed-line-ending hooks required re-staging on first CSRF commit"
+      ],
+      "notes_for_next": "All security hardening complete. CSRF enabled with 12 tests. 2 tenant isolation fixes applied. TenantManager test coupling eliminated. 1422 tests passing (12 new CSRF), 342 skipped. Frontend builds clean. Branch ready for 0765g (Tenant Key + Encapsulation).",
+      "summary": "Enabled CSRF double-submit cookie protection across full stack: fixed 3 middleware bugs (httponly, secure, Starlette ExceptionGroup), wired Axios interceptor + raw fetch fix, configured comprehensive exemptions. Fixed 2 tenant isolation pattern violations (defense-in-depth). Added TenantManager.register_test_tenant() to eliminate test coupling. 3 commits, 12 new tests, 1422 total passing."
     },
     {
       "session_id": "0765g",
