@@ -7,12 +7,16 @@ the authentication middleware and provide authenticated clients.
 
 from __future__ import annotations
 
+import secrets
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest_asyncio
 from httpx import ASGITransport
+
+# Shared CSRF token for smoke test fixtures (double-submit cookie pattern)
+_TEST_CSRF_TOKEN = secrets.token_urlsafe(32)
 from httpx import AsyncClient as HTTPXAsyncClient
 from sqlalchemy import select
 
@@ -47,11 +51,10 @@ async def api_client(db_manager):
     if state.tenant_manager is None:
         state.tenant_manager = TenantManager()
 
-    # Pre-populate validation cache with smoke test tenant keys to bypass format validation
-    # This allows tests to use friendly tenant keys like "smoke-tenant" instead of generated keys
-    TenantManager._validation_cache["smoke-tenant"] = True
-    TenantManager._validation_cache["tenant-a"] = True
-    TenantManager._validation_cache["tenant-b"] = True
+    # Register smoke test tenant keys (bypasses format validation via public API)
+    TenantManager.register_test_tenant("smoke-tenant")
+    TenantManager.register_test_tenant("tenant-a")
+    TenantManager.register_test_tenant("tenant-b")
 
     # Create mock config for AuthManager
     mock_config = MagicMock()
@@ -133,6 +136,9 @@ async def authenticated_client(api_client, db_manager):
 
     # Set default headers with JWT token in Cookie (matches production auth flow)
     api_client.cookies.set("access_token", token)
+    # Add CSRF token for double-submit cookie pattern (0765f)
+    api_client.cookies.set("csrf_token", _TEST_CSRF_TOKEN)
+    api_client.headers["X-CSRF-Token"] = _TEST_CSRF_TOKEN
 
     yield api_client, test_user
 
