@@ -429,12 +429,12 @@ async def generate_staging_prompt(
         # Return response with 'prompt' key for frontend compatibility
         # Handover 0260: Use staging_prompt (mode-specific) instead of thin_prompt
         # Handover 0388: Include agent_id in response
-        return {
-            "orchestrator_id": result["orchestrator_id"],
-            "agent_id": result.get("agent_id"),  # WHO - executor ID for MCP tool calls
-            "prompt": staging_prompt,  # Mode-specific staging prompt
-            "estimated_prompt_tokens": staging_tokens,  # Updated token count for staging prompt
-        }
+        return StagingPromptResponse(
+            orchestrator_id=result["orchestrator_id"],
+            agent_id=result.get("agent_id"),  # WHO - executor ID for MCP tool calls
+            prompt=staging_prompt,  # Mode-specific staging prompt
+            estimated_prompt_tokens=staging_tokens,  # Updated token count for staging prompt
+        )
 
     except ValueError as e:
         # Project not found or invalid tool
@@ -621,11 +621,11 @@ async def get_implementation_prompt(
     )
 
     # 6. Return implementation prompt response
-    return {
-        "prompt": prompt,
-        "orchestrator_job_id": orchestrator_execution.agent_id,
-        "agent_count": len(agent_executions),
-    }
+    return ImplementationPromptResponse(
+        prompt=prompt,
+        orchestrator_job_id=orchestrator_execution.agent_id,
+        agent_count=len(agent_executions),
+    )
 
 
 @router.get("/termination/{project_id}", response_model=TerminationPromptResponse)
@@ -787,8 +787,8 @@ project_id: {project_id}"""
         f"user={current_user.username}"
     )
 
-    return {
-        "prompt": prompt,
-        "orchestrator_job_id": orchestrator.job_id,
-        "agent_count": len(agents),
-    }
+    return TerminationPromptResponse(
+        prompt=prompt,
+        orchestrator_job_id=orchestrator.job_id,
+        agent_count=len(agents),
+    )

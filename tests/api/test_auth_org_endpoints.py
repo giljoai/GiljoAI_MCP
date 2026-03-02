@@ -62,12 +62,12 @@ async def test_create_first_admin_accepts_workspace_name(api_client, db_manager)
 
     from src.giljo_mcp.models.auth import User
 
-    # Check if any admin already exists
+    # Check if any users already exist (endpoint rejects if total_users > 0, not just admins)
     async with db_manager.get_session_async() as session:
-        admin_count_result = await session.execute(
-            select(func.count()).select_from(User).where(User.role == "admin")
+        user_count_result = await session.execute(
+            select(func.count()).select_from(User)
         )
-        admin_count = admin_count_result.scalar()
+        user_count = user_count_result.scalar()
 
     unique_suffix = str(uuid4())[:8]
     request_body = {
@@ -81,10 +81,10 @@ async def test_create_first_admin_accepts_workspace_name(api_client, db_manager)
     # Act
     response = await api_client.post("/api/auth/create-first-admin", json=request_body)
 
-    # Assert based on whether first admin already exists
-    if admin_count > 0:
-        # First admin already exists - endpoint should reject
-        assert response.status_code == 400, f"Expected 400 when admin exists, got {response.status_code}"
+    # Assert based on whether users already exist (endpoint checks total user count)
+    if user_count > 0:
+        # Users already exist - endpoint should reject (fresh install only)
+        assert response.status_code == 400, f"Expected 400 when users exist, got {response.status_code}"
         assert "already exists" in response.text.lower() or "already created" in response.text.lower()
     else:
         # No admin yet - should create successfully
@@ -135,12 +135,12 @@ async def test_create_first_admin_defaults_workspace_name(api_client, db_manager
 
     from src.giljo_mcp.models.auth import User
 
-    # Check if any admin already exists
+    # Check if any users already exist (endpoint rejects if total_users > 0, not just admins)
     async with db_manager.get_session_async() as session:
-        admin_count_result = await session.execute(
-            select(func.count()).select_from(User).where(User.role == "admin")
+        user_count_result = await session.execute(
+            select(func.count()).select_from(User)
         )
-        admin_count = admin_count_result.scalar()
+        user_count = user_count_result.scalar()
 
     unique_suffix = str(uuid4())[:8]
     request_body = {
@@ -154,10 +154,10 @@ async def test_create_first_admin_defaults_workspace_name(api_client, db_manager
     # Act
     response = await api_client.post("/api/auth/create-first-admin", json=request_body)
 
-    # Assert based on whether first admin already exists
-    if admin_count > 0:
-        # First admin already exists - endpoint should reject
-        assert response.status_code == 400, f"Expected 400 when admin exists, got {response.status_code}"
+    # Assert based on whether users already exist (endpoint checks total user count)
+    if user_count > 0:
+        # Users already exist - endpoint should reject (fresh install only)
+        assert response.status_code == 400, f"Expected 400 when users exist, got {response.status_code}"
     else:
         # No admin yet - should create successfully with default org name
         assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
