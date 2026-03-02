@@ -371,25 +371,6 @@ const dismissHandover = () => {
   border-radius: 50%;
 }
 
-/* Copy success animation - checkmark appears with scale */
-@keyframes checkmark-pop {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.copy-success-icon {
-  animation: checkmark-pop 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
 /* Snackbar slide-in animation */
 .v-snackbar {
   animation: snackbar-slide 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);

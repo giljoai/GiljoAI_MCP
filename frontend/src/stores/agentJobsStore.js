@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { AGENT_STATUS_PRIORITY } from '@/utils/constants'
 
 function ensureArray(value) {
   return Array.isArray(value) ? value : []
@@ -41,22 +42,10 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
   const jobs = computed(() => Array.from(jobsById.value.values()))
 
   const sortedJobs = computed(() => {
-    // Sort order: Working (top) -> Silent -> Blocked -> Waiting -> Completed (bottom)
-    // Handover 0491: Removed failed/cancelled, added silent
-    const priority = {
-      working: 1,
-      silent: 2,
-      blocked: 3,
-      waiting: 4,
-      complete: 5,
-      completed: 5,  // alias
-      decommissioned: 6,
-    }
-
     const list = Array.from(jobsById.value.values())
     list.sort((a, b) => {
-      const aPriority = priority[a.status] || 999
-      const bPriority = priority[b.status] || 999
+      const aPriority = AGENT_STATUS_PRIORITY[a.status] ?? 999
+      const bPriority = AGENT_STATUS_PRIORITY[b.status] ?? 999
 
       if (aPriority !== bPriority) return aPriority - bPriority
 

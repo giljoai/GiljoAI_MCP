@@ -615,9 +615,8 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             print_warning("npm not found in PATH - skipping frontend server")
             return None
 
-        # Check if node_modules exists
-        node_modules = frontend_dir / "node_modules"
-        if not node_modules.exists():
+        # Check if node_modules is properly installed (.package-lock.json is written by npm install)
+        if not (frontend_dir / "node_modules" / ".package-lock.json").exists():
             print_info("Installing frontend dependencies...")
             subprocess.run([npm_executable, "install"], cwd=str(frontend_dir), check=True)
 

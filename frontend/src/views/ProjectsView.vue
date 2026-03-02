@@ -725,7 +725,6 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
-import { useAgentStore } from '@/stores/agents'
 import { useProjectTabsStore } from '@/stores/projectTabs'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
@@ -740,7 +739,6 @@ const router = useRouter()
 // Stores
 const projectStore = useProjectStore()
 const productStore = useProductStore()
-const agentStore = useAgentStore()
 const tabsStore = useProjectTabsStore()
 
 // Reactive state
@@ -1440,7 +1438,6 @@ onMounted(async () => {
       productStore.fetchActiveProduct(),
       projectStore.fetchProjects(),
       projectStore.fetchDeletedProjects(),
-      agentStore.fetchAgents(),
     ])
     // Handover 0440c: Fetch project types for filter chips
     try {
