@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { API_CONFIG } from '@/config/api'
+import { API_CONFIG, getDefaultTenantKey } from '@/config/api'
 import { parseErrorResponse, getErrorMessage } from '@/utils/errorMessages'
 
 // Create axios instance with default config
@@ -86,11 +86,8 @@ apiClient.interceptors.request.use(
   (config) => {
     // Use current tenant key if set (from user store after login)
     // Otherwise fallback to default for pre-auth requests
-    if (!config.headers['X-Tenant-Key']) {
-      config.headers['X-Tenant-Key'] =
-        currentTenantKey ||
-        import.meta.env.VITE_DEFAULT_TENANT_KEY ||
-        'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd'
+    if (!config.headers['X-Tenant-Key'] || !currentTenantKey) {
+      config.headers['X-Tenant-Key'] = currentTenantKey || getDefaultTenantKey()
     }
 
     // Add CSRF token for state-changing requests (Handover 0765f)

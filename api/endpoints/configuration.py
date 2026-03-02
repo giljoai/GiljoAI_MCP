@@ -475,6 +475,9 @@ async def get_frontend_configuration():
     ws_protocol = "wss" if ssl_enabled else "ws"
     ws_url = f"{ws_protocol}://{frontend_host}:{api_port}"
 
+    # Resolve default tenant key from config for frontend use
+    default_tenant_key = state.config.tenant.default_tenant_key or ""
+
     # v3.0 Unified Architecture: No 'mode' field in response
     return {
         "api": {
@@ -486,6 +489,7 @@ async def get_frontend_configuration():
         },
         "security": {
             "api_keys_required": api_keys_required,
+            "default_tenant_key": default_tenant_key,
         },
     }
 

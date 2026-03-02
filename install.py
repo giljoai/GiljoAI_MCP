@@ -1390,8 +1390,8 @@ class UnifiedInstaller:
                 "owner_password": self.database_credentials.get("owner_password"),
                 "user_password": self.database_credentials.get("user_password"),
                 "default_tenant_key": getattr(
-                    self, "default_tenant_key", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd"
-                ),  # Pass generated tenant key
+                    self, "default_tenant_key", None
+                ),  # Pass generated tenant key (from seed_initial_data)
                 "bind": "0.0.0.0",  # v3.0: Always bind all interfaces
             }
 
