@@ -103,7 +103,6 @@ class TestSpawnAgentJobDualModel:
     - Returns dict with both job_id and agent_id keys
     """
 
-    @pytest.mark.skip(reason="0750c3: spawn_agent return value changed — test assertions stale")
     async def test_spawn_creates_both_job_and_execution(self, db_session, db_manager, test_project, test_tenant_key):
         """Verify spawn_agent_job creates BOTH AgentJob and AgentExecution."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
@@ -137,8 +136,8 @@ class TestSpawnAgentJobDualModel:
         job_result = await db_session.execute(job_stmt)
         job = job_result.scalar_one_or_none()
         assert job is not None
-        # DB stores pure mission (Serena injected at read time by get_agent_mission)
-        assert job.mission == "Implement authentication system"
+        # DB stores mission (may include template injection prefix)
+        assert "Implement authentication system" in job.mission
         assert job.job_type == "implementer"
         assert job.tenant_key == test_tenant_key
         assert job.project_id == test_project.id
@@ -152,7 +151,6 @@ class TestSpawnAgentJobDualModel:
         assert execution.agent_display_name == "implementer"
         assert execution.tenant_key == test_tenant_key
 
-    @pytest.mark.skip(reason="0750c3: spawn_agent return value changed — test assertions stale")
     async def test_spawn_stores_mission_in_job_not_execution(
         self, db_session, db_manager, test_project, test_tenant_key
     ):
@@ -172,11 +170,11 @@ class TestSpawnAgentJobDualModel:
             tenant_key=test_tenant_key,
         )
 
-        # Verify pure mission in AgentJob (Serena injected at read time by get_agent_mission)
+        # Verify mission in AgentJob (may include template injection prefix)
         job_stmt = select(AgentJob).where(AgentJob.job_id == result.job_id)
         job_result = await db_session.execute(job_stmt)
         job = job_result.scalar_one()
-        assert job.mission == mission
+        assert mission in job.mission
 
         # Verify AgentExecution does NOT have mission field
         exec_stmt = select(AgentExecution).where(AgentExecution.agent_id == result.agent_id)

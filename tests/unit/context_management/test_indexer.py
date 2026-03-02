@@ -272,12 +272,4 @@ class TestContextIndexer:
 class TestContextIndexerIntegration:
     """Integration tests for ContextIndexer with real database (if available)."""
 
-    @pytest.fixture
-    def db_manager(self):
-        """Create real database manager (skip if DB not available)."""
-        pytest.skip("Integration tests require database setup")
-
-    def test_full_indexing_workflow(self, db_manager):
-        """Test complete workflow: store, search, retrieve, delete."""
-        # This would test with real database
-        # Skipped for unit tests
+    pass
