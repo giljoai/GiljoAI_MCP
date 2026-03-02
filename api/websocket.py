@@ -18,21 +18,11 @@ from src.giljo_mcp.logging import ErrorCode, get_logger
 
 logger = get_logger(__name__)
 
-EVENT_TYPE_ALIASES: dict[str, tuple[str, ...]] = {
-    # Legacy drift: underscore vs colon
-    "agent:update": ("agent_update",),
-    # Product events (legacy underscore variants)
-    "product:memory:updated": ("product:memory_updated",),
-    "product:learning:added": ("product:learning_added",),
-    "product:status:changed": ("product:status_changed",),
-}
-
 
 class WebSocketManager:
     """Manages WebSocket connections and subscriptions with authentication"""
 
-    def __init__(self, *, emit_legacy_aliases: bool = True):
-        self.emit_legacy_aliases = emit_legacy_aliases
+    def __init__(self):
         self.active_connections: dict[str, WebSocket] = {}
         self.auth_contexts: dict[str, dict[str, Any]] = {}  # NEW: Store auth context
         self.subscriptions: dict[str, set[str]] = {}  # client_id -> set of subscriptions
@@ -66,20 +56,6 @@ class WebSocketManager:
             )
 
         self._broker_unsubscribe = broker.subscribe(_handle)
-
-    def _event_types_for_broadcast(self, event_type: str) -> list[str]:
-        if not self.emit_legacy_aliases:
-            return [event_type]
-
-        for canonical, aliases in EVENT_TYPE_ALIASES.items():
-            types = (canonical, *aliases)
-            if event_type in types:
-                # Always emit canonical first, then legacy aliases.
-                seen: set[str] = set()
-                ordered = [canonical, *aliases]
-                return [t for t in ordered if not (t in seen or seen.add(t))]
-
-        return [event_type]
 
     @staticmethod
     def _unwrap_websocket_connection(connection: Any) -> Any:
@@ -123,8 +99,6 @@ class WebSocketManager:
             "data": data,
         }
 
-        event_types = self._event_types_for_broadcast(event_type)
-
         sent_count = 0
         failed_count = 0
         disconnected_clients: list[str] = []
@@ -155,11 +129,9 @@ class WebSocketManager:
             if client_tenant != tenant_key:
                 continue
 
-            client_sent_any = False
             try:
-                for t in event_types:
-                    await websocket.send_json({**message, "type": t})
-                    client_sent_any = True
+                await websocket.send_json(message)
+                sent_count += 1
             except (RuntimeError, ValueError, KeyError) as e:
                 failed_count += 1
                 logger.warning(
@@ -171,9 +143,6 @@ class WebSocketManager:
                     error_message=str(e),
                 )
                 disconnected_clients.append(client_id)
-
-            if client_sent_any:
-                sent_count += 1
 
         for client_id in disconnected_clients:
             self.disconnect(client_id)

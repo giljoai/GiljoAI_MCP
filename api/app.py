@@ -99,7 +99,6 @@ try:
         user_settings,
         users,
         vision_documents,
-        websocket_bridge,
     )
     from .endpoints.organizations import crud as org_crud
     from .endpoints.organizations import members as org_members
@@ -428,7 +427,6 @@ def create_app() -> FastAPI:
     app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
     # Handover 0126: Modular templates module (prefix and tags defined in module __init__.py)
     app.include_router(templates.router)
-    app.include_router(websocket_bridge.router, prefix="/api/v1/ws-bridge", tags=["websocket-bridge"])
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(auth_pin_recovery.router, prefix="/api/auth", tags=["auth"])
     # Handover 0506: Fixed user endpoint path to /api/v1/users
