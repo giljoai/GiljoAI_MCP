@@ -131,48 +131,6 @@ class TestSimplifiedSummarizationValidation:
 # ============================================================================
 
 
-@pytest.mark.asyncio
-class TestDatabaseIntegration:
-    """
-    Integration tests for vision document storage with 2-level summaries.
-
-    NOTE: These tests require database fixtures and will be implemented
-    in Phase 2 after the VisionSummarizer changes are complete.
-    """
-
-    async def test_upload_stores_light_and_medium_only(self):
-        """
-        Upload should populate only light and medium summary columns.
-
-        CRITICAL: Deprecated summary fields (summary_moderate, summary_heavy) removed in Handover 0374.
-
-        NOTE: This test is a placeholder and will FAIL until database
-        integration is implemented.
-        """
-        pytest.skip("Integration test - implement after VisionSummarizer changes")
-
-    async def test_vision_document_column_populated(self):
-        """
-        Upload should populate vision_document column with full content.
-
-        Handover 0246b: Store complete original in vision_document column,
-        no chunking.
-
-        NOTE: This test is a placeholder.
-        """
-        pytest.skip("Integration test - implement after database schema changes")
-
-    async def test_no_chunks_created_for_vision_docs(self):
-        """
-        Vision document upload should NOT create entries in mcp_context_index.
-
-        Handover 0246b: Remove chunking logic for vision documents.
-
-        NOTE: This test is a placeholder.
-        """
-        pytest.skip("Integration test - implement after upload flow changes")
-
-
 # ============================================================================
 # EDGE CASES
 # ============================================================================

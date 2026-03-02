@@ -246,15 +246,14 @@ class TestHealthCheckDomain:
 
         assert is_healthy is True
 
-    @pytest.mark.skip(reason="0750c3: health check error handling changed")
     @pytest.mark.asyncio
     async def test_execute_health_check_failure(self, config_repo, db_manager, monkeypatch):
-        """Test health check when database fails"""
+        """Test health check when database fails — only RuntimeError/OSError are caught."""
 
-        # Create a mock session that raises an exception
+        # Create a mock session that raises RuntimeError (caught by health check)
         class FailingSession:
             async def execute(self, stmt):
-                raise Exception("Database connection failed")
+                raise RuntimeError("Database connection failed")
 
         is_healthy = await config_repo.execute_health_check(FailingSession())
 

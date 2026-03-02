@@ -45,12 +45,7 @@ async def test_consolidate_vision_blocks_cross_tenant(two_tenant_products):
 
     data = two_tenant_products
 
-    # Create a minimal ConsolidatedVisionService (needs summarizer mock)
-    try:
-        service = ConsolidatedVisionService()
-    except Exception:
-        pytest.skip("ConsolidatedVisionService requires summarizer initialization")
-        return
+    service = ConsolidatedVisionService()
 
     with pytest.raises(ResourceNotFoundError):
         await service.consolidate_vision_documents(
