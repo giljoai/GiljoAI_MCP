@@ -281,7 +281,7 @@ onMounted(async () => {
   inset: 0;
   border-radius: inherit;
   padding: 2px;
-  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  background: var(--gradient-brand);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -289,7 +289,7 @@ onMounted(async () => {
 }
 
 .startup-cta :deep(.v-btn__content) {
-  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  background: var(--gradient-brand);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

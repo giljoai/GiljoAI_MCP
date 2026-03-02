@@ -180,7 +180,7 @@
                             v-bind="props"
                             aria-label="View product details"
                             :style="
-                              product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''
+                              product.id === productStore.currentProductId ? 'color: rgb(var(--v-theme-on-surface))' : ''
                             "
                             @click="showProductDetails(product)"
                           >
@@ -218,7 +218,7 @@
                             v-bind="props"
                             aria-label="Edit product"
                             :style="
-                              product.id === productStore.currentProductId ? 'color: #e1e1e1' : ''
+                              product.id === productStore.currentProductId ? 'color: rgb(var(--v-theme-on-surface))' : ''
                             "
                             @click="editProduct(product)"
                           >
@@ -1401,7 +1401,7 @@ onUnmounted(() => {
 /* Global branded tooltips - must be unscoped to affect tooltip overlays */
 .branded-tooltip {
   background-color: rgba(255, 195, 0, 0.95) !important;
-  color: #000 !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
   font-weight: 500;
   font-size: 0.875rem;
   padding: 6px 12px;

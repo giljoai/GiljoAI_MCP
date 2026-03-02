@@ -353,7 +353,7 @@ const createAdmin = async () => {
 }
 
 .admin-title {
-  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  background: var(--gradient-brand);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
