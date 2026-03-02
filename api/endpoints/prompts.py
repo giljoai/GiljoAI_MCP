@@ -597,22 +597,16 @@ async def get_implementation_prompt(
         git_enabled = git_config.get("enabled", False) and git_history_priority in (1, 2, 3)
 
     # Branch prompt generation by execution mode (0497c)
-    if project.execution_mode == "multi_terminal":
-        prompt = generator._build_multi_terminal_orchestrator_prompt(
-            orchestrator_id=orchestrator_execution.job_id,
-            project=project,
-            agent_jobs=agent_executions,
-            git_enabled=git_enabled,
-        )
-    else:
-        # CLI mode: existing implementation prompt
-        # Handover 0385: Use job_id (not agent_id) for mission retrieval
-        prompt = generator._build_claude_code_execution_prompt(
-            orchestrator_id=orchestrator_execution.job_id,
-            project=project,
-            agent_jobs=agent_executions,
-            git_enabled=git_enabled,
-        )
+    prompt_type = (
+        "multi_terminal_orchestrator" if project.execution_mode == "multi_terminal" else "claude_code_execution"
+    )
+    prompt = generator.generate_implementation_prompt(
+        prompt_type=prompt_type,
+        orchestrator_id=orchestrator_execution.job_id,
+        project=project,
+        agent_jobs=agent_executions,
+        git_enabled=git_enabled,
+    )
 
     logger.info(
         f"[IMPLEMENTATION PROMPT] Generated for project={project_id}, "

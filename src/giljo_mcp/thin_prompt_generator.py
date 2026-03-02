@@ -1216,6 +1216,32 @@ START NOW:
 
         return prompt
 
+    def generate_implementation_prompt(self, prompt_type: str, **kwargs) -> str:
+        """Generate an implementation prompt by type.
+
+        Args:
+            prompt_type: One of 'multi_terminal_orchestrator', 'claude_code_execution'
+            **kwargs: Parameters passed to the underlying builder
+                - orchestrator_id: str
+                - project: Project model
+                - agent_jobs: list of AgentExecution
+                - git_enabled: bool
+
+        Returns:
+            The generated prompt string
+
+        Raises:
+            ValueError: If prompt_type is unknown
+        """
+        builders = {
+            "multi_terminal_orchestrator": self._build_multi_terminal_orchestrator_prompt,
+            "claude_code_execution": self._build_claude_code_execution_prompt,
+        }
+        builder = builders.get(prompt_type)
+        if not builder:
+            raise ValueError(f"Unknown prompt type: {prompt_type}. Valid types: {list(builders.keys())}")
+        return builder(**kwargs)
+
     def _generate_continuation_prompt(
         self,
         project_name: str,
