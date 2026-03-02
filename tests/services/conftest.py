@@ -713,3 +713,209 @@ async def two_tenant_products(db_session, db_manager):
         "db_session": db_session,
         "db_manager": db_manager,
     }
+
+
+# ============================================================================
+# Template service fixtures
+# (extracted from test_template_service.py during split)
+# ============================================================================
+
+
+@pytest_asyncio.fixture
+async def template_service(db_manager, tenant_manager):
+    """Fixture for TemplateService instance using real database manager"""
+    from src.giljo_mcp.services.template_service import TemplateService
+
+    return TemplateService(db_manager, tenant_manager)
+
+
+@pytest_asyncio.fixture
+async def sample_template(db_session, test_tenant_key, test_product):
+    """Fixture for creating a sample template in the database"""
+    from src.giljo_mcp.models.templates import AgentTemplate
+
+    template = AgentTemplate(
+        id=str(uuid4()),
+        tenant_key=test_tenant_key,
+        product_id=test_product.id,
+        name="test-analyzer",
+        role="analyzer",
+        category="custom",
+        cli_tool="claude",
+        background_color="#FF5733",
+        description="Test analyzer agent",
+        system_instructions="You are an analyzer agent.",
+        is_active=True,
+        is_default=False,
+        version="1.0.0",
+    )
+    db_session.add(template)
+    await db_session.commit()
+    await db_session.refresh(template)
+    return template
+
+
+# ============================================================================
+# Two-tenant service setup fixture
+# (extracted from test_tenant_isolation_services.py during split)
+# ============================================================================
+
+
+@pytest_asyncio.fixture(scope="function")
+async def two_tenant_service_setup(db_session, db_manager):
+    """
+    Create entities in two separate tenants for service layer testing.
+
+    Returns a dict with entities for both tenants plus service instances.
+    """
+    from src.giljo_mcp.services.project_service import ProjectService
+
+    tenant_a = TenantManager.generate_tenant_key()
+    tenant_b = TenantManager.generate_tenant_key()
+
+    # Create Product A for Tenant A
+    product_a = Product(
+        id=str(uuid4()),
+        name="Service Test Product A",
+        description="Product for tenant A service testing",
+        tenant_key=tenant_a,
+        is_active=True,
+    )
+    db_session.add(product_a)
+
+    # Create Product B for Tenant B
+    product_b = Product(
+        id=str(uuid4()),
+        name="Service Test Product B",
+        description="Product for tenant B service testing",
+        tenant_key=tenant_b,
+        is_active=True,
+    )
+    db_session.add(product_b)
+
+    await db_session.commit()
+    await db_session.refresh(product_a)
+    await db_session.refresh(product_b)
+
+    # Create Project A for Tenant A
+    project_a = Project(
+        id=str(uuid4()),
+        name="Service Test Project A",
+        description="Project for tenant A service testing",
+        mission="Test mission A",
+        tenant_key=tenant_a,
+        product_id=product_a.id,
+        status="active",
+        series_number=random.randint(1, 999999),
+    )
+    db_session.add(project_a)
+
+    # Create Project B for Tenant B
+    project_b = Project(
+        id=str(uuid4()),
+        name="Service Test Project B",
+        description="Project for tenant B service testing",
+        mission="Test mission B",
+        tenant_key=tenant_b,
+        product_id=product_b.id,
+        status="active",
+        series_number=random.randint(1, 999999),
+    )
+    db_session.add(project_b)
+
+    await db_session.commit()
+    await db_session.refresh(project_a)
+    await db_session.refresh(project_b)
+
+    # Create AgentJob A for Tenant A (the work order - stores mission and project_id)
+    # Per handover 0366a: project_id and mission are on AgentJob, not AgentExecution
+    job_a = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_a,
+        project_id=project_a.id,
+        mission="Test orchestrator mission A",
+        job_type="orchestrator",
+        status="active",
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(job_a)
+
+    # Create AgentJob B for Tenant B
+    job_b = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_b,
+        project_id=project_b.id,
+        mission="Test orchestrator mission B",
+        job_type="orchestrator",
+        status="active",
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(job_b)
+
+    await db_session.commit()
+    await db_session.refresh(job_a)
+    await db_session.refresh(job_b)
+
+    # Create AgentExecution A for Tenant A (the executor - linked to job via job_id)
+    # Valid status values: 'waiting', 'working', 'blocked', 'complete', 'failed', 'cancelled'
+    agent_job_a = AgentExecution(
+        agent_id=str(uuid4()),
+        job_id=job_a.job_id,
+        tenant_key=tenant_a,
+        agent_display_name="orchestrator",
+        status="working",  # Valid status for active agent
+    )
+    db_session.add(agent_job_a)
+
+    # Create AgentExecution B for Tenant B
+    agent_job_b = AgentExecution(
+        agent_id=str(uuid4()),
+        job_id=job_b.job_id,
+        tenant_key=tenant_b,
+        agent_display_name="orchestrator",
+        status="working",  # Valid status for active agent
+    )
+    db_session.add(agent_job_b)
+
+    await db_session.commit()
+    await db_session.refresh(agent_job_a)
+    await db_session.refresh(agent_job_b)
+
+    # Create service instances for Tenant A (using test_session)
+    tenant_manager = TenantManager()
+
+    message_service_a = MessageService(
+        db_manager=db_manager,
+        tenant_manager=tenant_manager,
+        test_session=db_session,
+    )
+
+    project_service_a = ProjectService(
+        db_manager=db_manager,
+        tenant_manager=tenant_manager,
+        test_session=db_session,
+    )
+
+    task_service_a = TaskService(
+        db_manager=db_manager,
+        tenant_manager=tenant_manager,
+        session=db_session,  # TaskService uses 'session' not 'test_session'
+    )
+
+    return {
+        "tenant_a": tenant_a,
+        "tenant_b": tenant_b,
+        "product_a": product_a,
+        "product_b": product_b,
+        "project_a": project_a,
+        "project_b": project_b,
+        "job_a": job_a,  # AgentJob (work order)
+        "job_b": job_b,  # AgentJob (work order)
+        "agent_job_a": agent_job_a,  # AgentExecution (executor)
+        "agent_job_b": agent_job_b,  # AgentExecution (executor)
+        "message_service_a": message_service_a,
+        "project_service_a": project_service_a,
+        "task_service_a": task_service_a,
+        "db_manager": db_manager,
+        "tenant_manager": tenant_manager,
+    }
