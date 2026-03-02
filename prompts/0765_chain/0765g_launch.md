@@ -1,7 +1,7 @@
-# Terminal Session: 0765g - Tenant Key + Encapsulation (FINAL)
+# Terminal Session: 0765g - Tenant Key + Encapsulation
 
 ## Mission
-Execute Handover 0765g (Part 7/7 — FINAL session of the 0765 Perfect Score Sprint).
+Execute Handover 0765g (Part 7/8 of the 0765 Perfect Score Sprint).
 Branch: `0760-perfect-score`
 
 ## READ THESE FILES FIRST (in order)
@@ -37,10 +37,7 @@ If the user is unavailable, use Option A defaults from the handover:
 
 ### Communication via Chain Log
 1. **On start:** Verify 0765f = `complete`, set 0765g to `in_progress`
-2. **On complete:** This is the FINAL session. Update chain log:
-   - Set 0765g `status` to `"complete"`
-   - Set `final_status` to `"complete"`
-   - Write `chain_summary` summarizing the entire 0765 series outcome
+2. **On complete:** Set 0765g `status` to `"complete"` in chain log
 
 ### Commit Strategy
 - Separate commits for tenant key, prompts fix, and update_project refactor
@@ -52,8 +49,11 @@ If the user is unavailable, use Option A defaults from the handover:
 - Verify CSRF middleware is enabled (from 0765f)
 - Verify all tests pass
 
-## When Done — CHAIN COMPLETE
-1. Update chain log — set `final_status: "complete"`, write `chain_summary`
-2. Run code quality audit to verify score
-3. Report final score and completion summary to the user
-4. Do NOT spawn another terminal — the chain is complete
+## When Done
+1. Update chain log (status=complete)
+2. Report completion summary
+3. Spawn the next terminal:
+
+```
+powershell.exe -Command "Start-Process wt -ArgumentList '--title \"0765h - Skipped Test Resolution\" --tabColor \"#607D8B\" -d \"F:\GiljoAI_MCP\" cmd /k claude --dangerously-skip-permissions \"Execute handover 0765h (FINAL). READ FIRST: F:\GiljoAI_MCP\prompts\0765_chain\0765h_launch.md — Full mission, protocols, subagent plan, chain log. Use Task tool subagents. This is the LAST session — mark chain complete when done.\"' -Verb RunAs"
+```
