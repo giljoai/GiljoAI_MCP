@@ -1,8 +1,8 @@
 # Handover 0765g: Tenant Key Removal + Encapsulation
 
-**Date:** 2026-03-02
-**Priority:** HIGH (SaaS blocker)
-**Estimated effort:** 6-8 hours
+**Date:** 2026-03-02 (updated 2026-03-03)
+**Priority:** HIGH
+**Estimated effort:** 4-5 hours
 **Branch:** `0760-perfect-score`
 **Chain:** `prompts/0765_chain/chain_log.json` (session 0765g)
 **Depends on:** 0765a (clean baseline), 0765f (tenant isolation patterns established)
@@ -12,12 +12,11 @@
 
 ## Objective
 
-Remove the hardcoded default tenant key (`tk_cyyOVf1H...`) from all 10 production locations and implement a proper first-run tenant provisioning flow. Also fix two encapsulation issues: prompts endpoint calling private methods and update_project bloat.
+Remove the hardcoded default tenant key (`tk_cyyOVf1H...`) from all 10 production locations and replace with config-based resolution. Also fix two encapsulation issues: prompts endpoint calling private methods and update_project bloat.
 
-This is the final sprint in the chain and addresses the last remaining items blocking a 10/10 score.
+This is a **code quality cleanup only** — removing a hardcoded secret from source code. The full SaaS tenant provisioning architecture (JWT claims, org-based key generation, multi-org support) is out of scope and tracked separately in `handovers/0770_SAAS_EDITION_PROPOSAL.md`.
 
 **Score impact:** ~9.7 -> ~9.8-10.0
-**SaaS impact:** Removes a critical SaaS blocker (hardcoded shared secret)
 
 ---
 
@@ -30,7 +29,26 @@ This is the final sprint in the chain and addresses the last remaining items blo
 
 ---
 
-## Task 1: Remove Hardcoded Default Tenant Key [Proposal 4B] (~4-5 hours)
+## Scope Boundary (READ THIS)
+
+**IN SCOPE (this handover):**
+- Remove hardcoded `tk_cyyOVf1H...` from 10 source code locations
+- Replace with config.yaml-based resolution
+- install.py generates unique key during install, stores in config
+- Upgrade path: migrate existing hardcoded key to config.yaml
+- Frontend reads key from `/api/v1/config/frontend` endpoint (already exists)
+
+**OUT OF SCOPE (future 0770 series):**
+- Tenant key in JWT claims
+- Generate key at first-admin/org creation
+- Multi-org tenant provisioning
+- Login response delivering tenant key
+- install.py mode flags (community/enterprise/saas)
+- Any auth flow changes beyond removing the hardcoded value
+
+---
+
+## Task 1: Remove Hardcoded Default Tenant Key [Proposal 4B] (~2-3 hours)
 
 ### 1.1 Current State — 10 Production Locations
 
@@ -61,55 +79,36 @@ The hardcoded key `tk_cyyOVf1H...` appears in:
 |---|------|---------|
 | 10 | `install.py` | Initial setup generates/uses this key |
 
-### 1.2 Product Decisions Required
+### 1.2 Implementation Plan — Config-Based Resolution
 
-Before implementing, the agent must resolve these design questions. If the user is unavailable, choose Option A for each:
+#### install.py Changes
 
-**Q1: What happens when no tenant key is provided?**
-- **Option A (Recommended):** Return 401 Unauthorized. Every request must have a tenant key.
-- **Option B:** Auto-assign to a "default" tenant created during installation.
-
-**Q2: First-run flow — how does the first tenant key get created?**
-- **Option A (Recommended):** `install.py` generates a unique tenant key during installation, stores it in `config.yaml`, and configures the frontend to use it.
-- **Option B:** The `/welcome` first-run wizard prompts the user to create an organization which generates a tenant key.
-
-**Q3: Frontend — where does it get the tenant key?**
-- **Option A (Recommended):** From the login response (server sends tenant key after authentication).
-- **Option B:** From a config file served by the backend (`/api/v1/config/frontend`).
-
-### 1.3 Implementation Plan (Based on Option A defaults)
+1. **Fresh install:** Generate a unique tenant key using `secrets.token_urlsafe(32)` prefixed with `tk_`. Store in `config.yaml` under `security.tenant_key`.
+2. **Upgrade path:** Detect if `config.yaml` has no `security.tenant_key`. If missing, write the EXISTING hardcoded key value to preserve backward compatibility. Log a warning that the key should be rotated.
+3. Add a future-facing comment:
+```python
+# Future: install.py will support --mode=community|enterprise|saas
+# See handovers/0770_SAAS_EDITION_PROPOSAL.md for roadmap
+```
 
 #### Backend Changes
 
-1. **`install.py`**: Generate a unique tenant key during installation. Store in `config.yaml` under `security.tenant_key`. Use `secrets.token_urlsafe(32)` prefixed with `tk_`.
-
-2. **`api/dependencies.py`**: Remove ALL hardcoded fallbacks. When no `X-Tenant-Key` header is present:
-   - For cookie-authenticated requests: extract tenant key from the user's JWT token (add `tenant_key` claim during login)
-   - For API key requests: look up the tenant key associated with the API key
-   - For unauthenticated requests: return 401
-
-3. **`api/middleware/auth.py`**: Remove hardcoded fallback. Use the same resolution logic as dependencies.
-
-4. **`api/endpoints/auth.py`**: During first admin creation, read tenant key from `config.yaml` instead of hardcoding.
+4. **Create a config reader** (or extend existing config loading) that reads `security.tenant_key` from `config.yaml` at startup. Store as `settings.default_tenant_key`.
+5. **`api/dependencies.py`**: Replace all 3 hardcoded fallbacks with `settings.default_tenant_key`.
+6. **`api/middleware/auth.py`**: Replace hardcoded fallback with `settings.default_tenant_key`.
+7. **`api/endpoints/auth.py`**: Read tenant key from config for first admin creation.
 
 #### Frontend Changes
 
-5. **`frontend/src/config/api.js`**: Remove hardcoded default. Set `tenantKey: null` initially.
+8. **`frontend/src/config/api.js`**: Remove hardcoded default. Read from the `/api/v1/config/frontend` endpoint (already serves tenant config).
+9. **`frontend/src/services/api.js`**: Axios interceptor reads from config store instead of hardcoded value.
+10. **`frontend/src/views/McpIntegration.vue`**: Same — read from config store.
 
-6. **`frontend/src/services/api.js`**: The Axios interceptor should get the tenant key from:
-   - The auth store (populated after login from the JWT or login response)
-   - If not authenticated, don't send the header
+### 1.3 Migration Safety
 
-7. **`frontend/src/views/McpIntegration.vue`**: Get tenant key from the auth store instead of hardcoding.
-
-### 1.4 Migration Safety
-
-- **Existing installations:** The `install.py` upgrade path must:
-  1. Detect if `config.yaml` has no `security.tenant_key`
-  2. If so, write the EXISTING hardcoded key to the config file (preserves backward compatibility)
-  3. Log a warning that the tenant key should be rotated
-
-- **JWT changes:** If adding `tenant_key` to JWT claims, existing tokens won't have it. The middleware must handle missing claims gracefully during the transition period.
+- **Existing installations:** Upgrade path writes the old key to config.yaml — zero breaking change.
+- **No auth flow changes:** The tenant key resolution still works the same way (header or fallback). The only difference is WHERE the fallback value comes from (config file vs source code).
+- **Tests:** Search for the hardcoded key string across all test files. Update test fixtures to read from config or use a test-specific key.
 
 ---
 
@@ -186,10 +185,10 @@ Do NOT over-refactor. The method works correctly. Extract only the two clearest 
 ## Cascading Impact Analysis
 
 ### Tenant Key Removal (Task 1)
-- **CRITICAL: Installation flow.** Every change to tenant key handling must be tested with `install.py`. Both fresh install and upgrade paths must work.
-- **Frontend auth flow:** Login -> JWT -> tenant key extraction must work end-to-end.
-- **MCP tools:** MCP connections use API keys which must be associated with a tenant. Verify the API key -> tenant key lookup works.
-- **Tests:** Many tests may use the hardcoded key in fixtures. Search for the key across all test files and update fixtures.
+- **Installation flow:** Both fresh install and upgrade must work. Test both paths.
+- **No auth flow changes.** Same resolution logic, different source for the fallback value.
+- **Tests:** Many tests may use the hardcoded key in fixtures. Update to read from config.
+- **MCP tools:** MCP connections use API keys which already carry tenant association. No change needed.
 
 ### Prompts Encapsulation (Task 2)
 - **Zero behavioral change** — same methods called, just through a public interface.
@@ -203,17 +202,14 @@ Do NOT over-refactor. The method works correctly. Extract only the two clearest 
 
 ### Tenant Key
 - `pytest tests/api/test_auth*.py -v` — all auth tests pass
-- Test fresh install: `install.py` generates unique key and stores in config
-- Test upgrade: existing installation gets migrated key
-- Manual: login flow works end-to-end with new tenant key resolution
+- Verify no source file contains the hardcoded key string (grep confirmation)
+- Verify config.yaml loading works at startup
 
 ### Prompts
 - `pytest tests/api/test_prompts*.py -v` (if exists)
-- Manual: verify prompt generation endpoints return correct content
 
 ### update_project
 - `pytest tests/services/test_project_service*.py -v`
-- Verify WebSocket events still fire on project updates
 
 ### Full Suite
 - `pytest tests/ -x -q` — full green
@@ -224,9 +220,10 @@ Do NOT over-refactor. The method works correctly. Extract only the two clearest 
 ## Success Criteria
 
 - [ ] Hardcoded tenant key removed from all 10 production locations
-- [ ] `install.py` generates unique tenant key and stores in config
-- [ ] Upgrade path preserves existing key
-- [ ] Frontend gets tenant key from auth state (not hardcoded)
+- [ ] `install.py` generates unique tenant key and stores in config.yaml
+- [ ] Upgrade path preserves existing key (backward compatible)
+- [ ] Frontend reads tenant key from config endpoint (not hardcoded)
+- [ ] Zero source files contain the hardcoded key string
 - [ ] `ThinClientPromptGenerator.generate_implementation_prompt()` public method added
 - [ ] `prompts.py` uses public method instead of private calls
 - [ ] `update_project` refactored with 2 extracted helpers
@@ -244,5 +241,5 @@ Do NOT over-refactor. The method works correctly. Extract only the two clearest 
    - Write `chain_summary` summarizing the entire 0765 series
 3. Write completion summary to THIS handover (max 400 words)
 4. Commit: `cleanup(0765g): Remove hardcoded tenant key, fix encapsulation, refactor update_project`
-5. **Final verification:** Run the code quality audit prompt (`handovers/Code_quality_prompt.md`) to verify 10/10 score
+5. **Final verification:** Run the code quality audit prompt (`handovers/Code_quality_prompt.md`) to verify score
 6. If score achieved: Tag the branch for the user's review
