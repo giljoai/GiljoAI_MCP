@@ -390,7 +390,7 @@ Questions? Let me know!
 import { ref, computed } from 'vue'
 import { format } from 'date-fns'
 import api from '@/services/api'
-import { getApiBaseURL } from '@/config/api'
+import { getApiBaseURL, getDefaultTenantKey } from '@/config/api'
 import { useClipboard } from '@/composables/useClipboard'
 
 const { copy: clipboardCopy } = useClipboard()
@@ -440,8 +440,7 @@ async function downloadScript(platform) {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-        'X-Tenant-Key':
-          import.meta.env.VITE_DEFAULT_TENANT_KEY || 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd',
+        'X-Tenant-Key': getDefaultTenantKey(),
       },
     })
 
@@ -493,8 +492,7 @@ async function generateShareLinks() {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-        'X-Tenant-Key':
-          import.meta.env.VITE_DEFAULT_TENANT_KEY || 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd',
+        'X-Tenant-Key': getDefaultTenantKey(),
       },
     })
 

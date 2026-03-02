@@ -7,7 +7,6 @@ This is the existing AuthMiddleware from api/middleware.py,
 moved to the new middleware directory structure in Handover 0129c.
 """
 
-import os
 import time
 from typing import Callable, Optional
 
@@ -106,8 +105,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     user_id=auth_result.get("user_id"),
                     path=request.url.path,
                 )
-                # Fall back to env var for setup/localhost mode only
-                tenant_key = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
+                # Fall back to config-based default for setup/localhost mode only
+                from api.dependencies import _get_default_tenant_key
+
+                tenant_key = _get_default_tenant_key()
             request.state.tenant_key = tenant_key
             # Stash token expiry for downstream use and response header
             request.state.token_exp = auth_result.get("exp")
