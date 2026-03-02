@@ -928,7 +928,7 @@ async def handle_tools_call(
         logger.info(f"Tool executed successfully: {tool_name} (session: {session_id})")
 
         # Handover 0491: Auto-clear silent status when agent makes an MCP call
-        job_id = arguments.get("job_id") or arguments.get("agent_job_id")
+        job_id = arguments.get("job_id")
         if job_id and state.websocket_manager:
             try:
                 async with state.db_manager.get_session_async() as silence_session:
