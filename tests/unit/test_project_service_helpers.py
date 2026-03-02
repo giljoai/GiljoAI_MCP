@@ -41,8 +41,12 @@ def mock_project():
     project.completed_at = None
     project.product_id = "product-001"
     project.project_type_id = "type-001"
-    project.project_type = Mock()
-    project.project_type.name = "Feature"
+    project_type_mock = Mock()
+    project_type_mock.id = "type-001"
+    project_type_mock.abbreviation = "FT"
+    project_type_mock.label = "Feature"
+    project_type_mock.color = "#FF0000"
+    project.project_type = project_type_mock
     project.series_number = 42
     project.subseries = "a"
     project.taxonomy_alias = "0042a"
@@ -202,7 +206,8 @@ class TestBuildProjectData:
         """project_type relationship object is passed through."""
         result = ProjectService._build_project_data(mock_project)
         assert result.project_type is not None
-        assert result.project_type.name == "Feature"
+        assert result.project_type.label == "Feature"
+        assert result.project_type.abbreviation == "FT"
 
     def test_completed_at_formatted_when_present(self, mock_project):
         """completed_at is formatted as ISO string when not None."""
