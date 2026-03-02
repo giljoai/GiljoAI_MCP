@@ -60,7 +60,7 @@
         <!-- Step 1: Retire -->
         <div class="step-row mb-3" data-testid="step-1">
           <v-avatar :color="step1Done ? 'success' : 'grey-darken-1'" size="26" class="mr-3 flex-shrink-0">
-            <span class="text-caption font-weight-bold" style="color: #fff">1</span>
+            <span class="text-caption font-weight-bold" style="color: white">1</span>
           </v-avatar>
           <span class="step-label text-body-2">Copy and paste this prompt to the current terminal window running the orchestrator</span>
           <v-spacer />
@@ -81,7 +81,7 @@
         <!-- Step 2: Continue -->
         <div class="step-row" data-testid="step-2">
           <v-avatar :color="step2Done ? 'success' : 'grey-darken-1'" size="26" class="mr-3 flex-shrink-0">
-            <span class="text-caption font-weight-bold" style="color: #fff">2</span>
+            <span class="text-caption font-weight-bold" style="color: white">2</span>
           </v-avatar>
           <span class="step-label text-body-2">Copy and paste this prompt into a fresh terminal to continue</span>
           <v-spacer />

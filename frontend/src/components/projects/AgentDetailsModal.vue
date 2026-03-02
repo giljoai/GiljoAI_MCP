@@ -272,6 +272,7 @@ import { ref, computed, watch, getCurrentInstance } from 'vue'
 import { useTheme } from 'vuetify'
 import api from '@/services/api'
 import { useClipboard } from '@/composables/useClipboard'
+import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
 
 const { copy: clipboardCopy } = useClipboard()
 
@@ -323,17 +324,7 @@ const handleClose = () => {
  * Get agent avatar color - matches BRANDING_GUIDE.md (Handover 0358)
  */
 const getAgentDisplayNameColor = (displayName) => {
-  const colors = {
-    orchestrator: '#D4A574', // Tan/Beige - Project coordination
-    analyzer: '#E74C3C', // Red - Analysis & research
-    implementer: '#3498DB', // Blue - Code implementation
-    implementor: '#3498DB', // Blue - Code implementation (alias)
-    tester: '#FFC300', // Yellow - Testing & QA
-    reviewer: '#9B59B6', // Purple - Code review
-    documenter: '#27AE60', // Green - Documentation
-    researcher: '#27AE60', // Green - Research (alias)
-  }
-  return colors[displayName] || 'grey'
+  return getAgentColorConfig(displayName).hex
 }
 
 /**

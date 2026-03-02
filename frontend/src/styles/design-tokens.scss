@@ -64,6 +64,24 @@ $color-status-failed: #e53935; // Red
 $color-status-cancelled: #ff9800; // Orange
 
 // =========================================================================
+// 5b. COLOR TOKENS - Additional Status Colors
+// =========================================================================
+
+$color-status-handed-over: #9e9e9e; // Grey for handed-over status
+
+// =========================================================================
+// 5c. COLOR TOKENS - Brand Gradients
+// =========================================================================
+
+$gradient-brand-start: #ffd93d;
+$gradient-brand-end: #6bcf7f;
+$gradient-brand: linear-gradient(45deg, $gradient-brand-start, $gradient-brand-end);
+
+$gradient-orchestrator-start: #667eea;
+$gradient-orchestrator-end: #764ba2;
+$gradient-orchestrator-card: linear-gradient(135deg, $gradient-orchestrator-start 0%, $gradient-orchestrator-end 100%);
+
+// =========================================================================
 // 6. SPACING & SIZING TOKENS
 // =========================================================================
 
