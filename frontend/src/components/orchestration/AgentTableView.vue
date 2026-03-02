@@ -312,12 +312,6 @@ function canCopyPrompt(agent) {
   padding: 12px 16px;
 }
 
-/* Align health icons to center */
-.agent-table-view :deep([data-v-for-health]) {
-  display: flex;
-  justify-content: center;
-}
-
 /* Handover 0229: Visual feedback for disabled rows in Claude Code mode */
 .agent-table-view :deep(.disabled-agent-row) {
   opacity: 0.6;
