@@ -20,6 +20,10 @@ export const darkTheme = {
     warning: '#ffc300', // Yellow (brand color)
     error: '#c6298c', // Pink red
 
+    // Custom status/highlight colors
+    'highlight': '#ffd700', // Gold highlight (status text, badges)
+    'highlight-hover': '#ffed4e', // Lighter gold (hover states)
+
     // Text colors
     'on-background': '#e1e1e1', // White gray
     'on-surface': '#e1e1e1',

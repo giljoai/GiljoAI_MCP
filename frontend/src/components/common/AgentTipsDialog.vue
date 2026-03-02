@@ -98,11 +98,11 @@
                 <div class="tip-section mb-3">
                   <div class="tip-subtitle">Color scheme:</div>
                   <div class="color-chips">
-                    <span class="color-chip" style="background: #4CAF50;">DB</span>
-                    <span class="color-chip" style="background: #2196F3;">Backend</span>
-                    <span class="color-chip" style="background: #9C27B0;">Frontend</span>
-                    <span class="color-chip" style="background: #FF9800;">Testing</span>
-                    <span class="color-chip" style="background: #F44336;">Final</span>
+                    <span class="color-chip" style="background: rgb(var(--v-theme-success));">DB</span>
+                    <span class="color-chip" style="background: rgb(var(--v-theme-info));">Backend</span>
+                    <span class="color-chip" style="background: rgb(var(--v-theme-error));">Frontend</span>
+                    <span class="color-chip" style="background: var(--status-blocked);">Testing</span>
+                    <span class="color-chip" style="background: rgb(var(--v-theme-error));">Final</span>
                   </div>
                 </div>
 
@@ -238,8 +238,8 @@ async function copyText(text) {
 .tool-selector {
   .tool-chip-active {
     background: rgba(255, 195, 0, 0.15);
-    border-color: #ffc300;
-    color: #ffc300;
+    border-color: rgb(var(--v-theme-primary));
+    color: rgb(var(--v-theme-primary));
   }
 }
 

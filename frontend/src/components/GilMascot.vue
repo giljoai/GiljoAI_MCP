@@ -47,7 +47,7 @@ onUnmounted(() => {
 })
 
 // Eye color adapts to theme via currentColor
-const eyeColor = computed(() => (props.darkEyes ? '#080d13' : '#e1e1e1'))
+const eyeColor = computed(() => (props.darkEyes ? 'rgb(var(--v-theme-background))' : 'rgb(var(--v-theme-on-surface))'))
 </script>
 
 <style scoped>
