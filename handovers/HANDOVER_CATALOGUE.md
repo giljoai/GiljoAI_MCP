@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy DEFERRED, 0732 fixes COMPLETE |
 | 0760 | Perfect Score Proposal | Research COMPLETE — validated by 8+4 research agents, proposal refined |
-| 0765a-g | Perfect Score Sprint Series | Active — 7 handovers, chain log at `prompts/0765_chain/chain_log.json` |
+| 0765a-h | Perfect Score Sprint Series | Active — 8 handovers, chain log at `prompts/0765_chain/chain_log.json` |
 
 ---
 
@@ -36,6 +36,7 @@
 | 0765e | Test File Splitting | Ready (after 0765d) | LOW-MEDIUM | 19 oversized test files (~10 hrs) |
 | 0765f | Security Hardening | Ready (after 0765a) | HIGH | CSRF, tenant isolation, test coupling (~10 hrs) |
 | 0765g | Tenant Key + Encapsulation | Ready (after 0765f) | HIGH (SaaS blocker) | Hardcoded key removal, prompts fix (~8 hrs) |
+| 0765h | Skipped Test Resolution | Ready (after 0765g) | HIGH | Triage+resolve all ~342 skipped tests (~8-12 hrs) |
 | 0409 | Unified Client Quick Setup | Ready | Medium | Future enhancement |
 
 ### Recently Closed (February 2026 - from Active)
