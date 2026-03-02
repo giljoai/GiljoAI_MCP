@@ -126,20 +126,30 @@
       "title": "Exception Narrowing",
       "color": "#FF9800",
       "handover": "handovers/0765d_exception_narrowing.md",
-      "status": "in_progress",
+      "status": "complete",
       "started_at": "2026-03-02T23:00:00Z",
-      "completed_at": null,
+      "completed_at": "2026-03-03T00:15:00Z",
       "planned_tasks": [
         "Categorize 121 except-Exception instances into safe/intentional/risky buckets",
         "Narrow ~20 safe catch-alls to specific exception types",
         "Add targeted except clauses where appropriate",
         "Verify no regressions in error handling behavior"
       ],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "tasks_completed": [
+        "Categorized all 177 except-Exception instances (118 src + 56 api + 3 investigate) into A/B/C/D/E/F buckets",
+        "Narrowed 10 safe instances to specific exception types across 8 files (network_detector 3, auth/dependencies 1, database 1, silence_detector 1, claude_export 1, statistics 1, mcp_http 1, background_tasks 2)",
+        "Annotated all 163 remaining broad catches with inline comments (68 service boundary, 25 tools/misc, 43 API/infra, 27 pre-existing)"
+      ],
+      "deviations": [
+        "Actual count was 177 (not 121) — 0765a removed some but count methodology differed",
+        "Narrowed 10 instances (not 20) — service boundary wrappers kept broad intentionally as they serve as error wrapping boundaries",
+        "3 Category D (fallback/retry) instances kept broad with annotation — template_manager, thin_prompt_generator, background_tasks metrics sync"
+      ],
+      "blockers_encountered": [
+        "api/endpoints/products/vision.py gitignored — required git add -f"
+      ],
+      "notes_for_next": "All 177 except-Exception instances categorized and annotated. 10 narrowed to specific types, 163 annotated with justification. 1410 tests passing, 342 skipped. Frontend builds clean. Branch ready for 0765e (Test File Splitting).",
+      "summary": "Categorized 177 except-Exception instances across 50 files. Narrowed 10 genuinely safe catch-alls to specific exception types (OSError, SQLAlchemyError, ValueError, etc.). Annotated all 163 remaining broad catches with inline comments explaining their purpose (service boundary, WebSocket resilience, API boundary, startup/infrastructure, tool boundary). 48 files changed, 159 insertions, 154 deletions. Zero test regressions."
     },
     {
       "session_id": "0765e",
