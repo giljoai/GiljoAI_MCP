@@ -91,8 +91,8 @@
       "title": "Design Token Migration",
       "color": "#9C27B0",
       "handover": "handovers/0765c_design_token_migration.md",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-02T20:00:00Z",
       "completed_at": null,
       "planned_tasks": [
         "Audit all 108 hardcoded hex colors across 20 Vue files",

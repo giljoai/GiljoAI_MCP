@@ -65,7 +65,7 @@ html.no-transition * {
 }
 
 .v-switch .v-selection-control--dirty .v-switch__thumb {
-  background-color: #4caf50 !important; /* Green when ON */
+  background-color: rgb(var(--v-theme-success)) !important; /* Green when ON */
 }
 
 .v-switch .v-selection-control--dirty .v-switch__track {

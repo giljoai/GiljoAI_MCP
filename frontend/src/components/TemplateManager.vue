@@ -113,7 +113,7 @@
             size="small"
             :style="{
               backgroundColor: getCategoryColor(item.role),
-              color: '#1e3a5f',
+              color: 'rgb(var(--v-theme-background))',
               opacity: item.is_active ? 1 : 0.4,
             }"
           >
@@ -777,6 +777,8 @@ import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import { useClipboard } from '@/composables/useClipboard'
 import DOMPurify from 'dompurify'
+import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
+import { CLI_TOOL_COLORS } from '@/utils/constants'
 
 const { copy: clipboardCopy } = useClipboard()
 
@@ -945,19 +947,19 @@ const toolOptions = [
     title: 'Claude',
     value: 'claude',
     logo: '/claude_pix.svg',
-    color: '#1976D2',
+    color: CLI_TOOL_COLORS.claude,
   },
   {
     title: 'Codex',
     value: 'codex',
     logo: '/icons/codex_mark.svg',
-    color: '#4CAF50',
+    color: CLI_TOOL_COLORS.codex,
   },
   {
     title: 'Gemini',
     value: 'gemini',
     logo: '/gemini-icon.svg',
-    color: '#9C27B0',
+    color: CLI_TOOL_COLORS.gemini,
   },
 ]
 
@@ -1390,19 +1392,7 @@ const handleRestore = async (version) => {
 }
 
 const getCategoryColor = (role) => {
-  // Colors synced with frontend/src/styles/agent-colors.scss
-  const colors = {
-    orchestrator: '#D4A574', // Tan/Beige
-    analyzer: '#E74C3C', // Red
-    researcher: '#E74C3C', // Red (alias → analyzer)
-    implementer: '#3498DB', // Blue
-    implementor: '#3498DB', // Blue (alias)
-    tester: '#FFC300', // Yellow
-    reviewer: '#9B59B6', // Purple
-    documenter: '#27AE60', // Green
-    custom: '#90A4AE', // Gray
-  }
-  return colors[role] || '#90A4AE'
+  return getAgentColorConfig(role).hex
 }
 
 const getToolLogo = (tool) => {
@@ -1675,7 +1665,7 @@ watch(
 
 .v-switch :deep(.v-selection-control--dirty) {
   .v-switch__thumb {
-    background-color: #4caf50; // Green when ON
+    background-color: rgb(var(--v-theme-success));
   }
 
   .v-switch__track {

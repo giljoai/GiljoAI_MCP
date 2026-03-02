@@ -238,7 +238,7 @@
               <div class="d-flex align-center">
                 <v-chip
                   v-if="item.taxonomy_alias && item.series_number"
-                  :color="item.project_type?.color || '#607D8B'"
+                  :color="item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
                   size="x-small"
                   variant="flat"
                   class="mr-2"
@@ -731,6 +731,7 @@ import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import AddTypeModal from '@/components/projects/AddTypeModal.vue'
 import AgentTipsDialog from '@/components/common/AgentTipsDialog.vue'
+import { DEFAULT_PROJECT_TYPE_COLOR } from '@/utils/constants'
 import api from '@/services/api'
 
 // Router
