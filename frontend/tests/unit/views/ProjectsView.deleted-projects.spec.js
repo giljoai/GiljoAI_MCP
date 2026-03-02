@@ -62,10 +62,6 @@ vi.mock('@/components/StatusBadge.vue', () => ({
   default: { template: '<div />' }
 }))
 
-vi.mock('@/utils/formatters', () => ({
-  formatStatus: (status) => status
-}))
-
 vi.mock('vue-router', () => ({
   useRouter: () => ({
     push: vi.fn()

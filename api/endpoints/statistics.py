@@ -142,7 +142,6 @@ async def get_system_statistics(request: Request, current_user: User = Depends(g
     from api.app import state
 
     tenant_key = getattr(request.state, "tenant_key", None)
-    logger.debug(f"[STATS DEBUG] tenant_key from request: {tenant_key}")
     if not tenant_key:
         raise HTTPException(status_code=400, detail="Tenant key not found in request state")
 
@@ -152,31 +151,14 @@ async def get_system_statistics(request: Request, current_user: User = Depends(g
     stats_repo = StatisticsRepository(state.db_manager)
     async with state.db_manager.get_session_async() as session:
         total_projects = await stats_repo.count_total_projects(session, tenant_key)
-        logger.debug(f"[STATS DEBUG] total_projects: {total_projects}")
-
         active_projects = await stats_repo.count_projects_by_status(session, tenant_key, "active")
-        logger.debug(f"[STATS DEBUG] active_projects: {active_projects}")
-
         completed_projects = await stats_repo.count_projects_by_status(session, tenant_key, "completed")
-        logger.debug(f"[STATS DEBUG] completed_projects: {completed_projects}")
-
         total_agents = await stats_repo.count_total_agents(session, tenant_key)
-        logger.debug(f"[STATS DEBUG] total_agents: {total_agents}")
-
         active_agents = await stats_repo.count_active_agents(session, tenant_key)
-        logger.debug(f"[STATS DEBUG] active_agents: {active_agents}")
-
         total_messages = await stats_repo.count_total_messages(session, tenant_key)
-        logger.debug(f"[STATS DEBUG] total_messages: {total_messages}")
-
         pending_messages = await stats_repo.count_messages_by_status(session, tenant_key, "pending")
-        logger.debug(f"[STATS DEBUG] pending_messages: {pending_messages}")
-
         total_tasks = await stats_repo.count_total_tasks(session, tenant_key)
-        logger.debug(f"[STATS DEBUG] total_tasks: {total_tasks}")
-
         completed_tasks = await stats_repo.count_completed_tasks(session, tenant_key)
-        logger.debug(f"[STATS DEBUG] completed_tasks: {completed_tasks}")
 
         db_size = 0
 
