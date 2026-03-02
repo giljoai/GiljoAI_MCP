@@ -73,7 +73,13 @@ async function handleAuthFailure(error) {
   return Promise.reject(error)
 }
 
-// Request interceptor for tenant key
+// Read CSRF token from cookie (double-submit cookie pattern)
+function getCsrfToken() {
+  const match = document.cookie.match(/csrf_token=([^;]+)/)
+  return match ? match[1] : null
+}
+
+// Request interceptor for tenant key and CSRF token
 // NOTE: Authentication token is sent automatically via httpOnly cookie (access_token)
 // No need to manually add Authorization header - the browser handles this
 apiClient.interceptors.request.use(
@@ -85,6 +91,14 @@ apiClient.interceptors.request.use(
         currentTenantKey ||
         import.meta.env.VITE_DEFAULT_TENANT_KEY ||
         'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd'
+    }
+
+    // Add CSRF token for state-changing requests (Handover 0765f)
+    if (['post', 'put', 'patch', 'delete'].includes(config.method)) {
+      const csrfToken = getCsrfToken()
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken
+      }
     }
 
     return config
