@@ -186,6 +186,7 @@ import { useProjectStateStore } from '@/stores/projectStateStore'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentMissionEditModal from '@/components/projects/AgentMissionEditModal.vue'
 import AgentTipsDialog from '@/components/common/AgentTipsDialog.vue'
+import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
 
 /**
  * LaunchTab Component - Complete Rewrite (Handover 0241)
@@ -282,23 +283,13 @@ const needsOrchestratorRelaunch = computed(() => {
  * Orchestrator avatar color - always tan (agent's brand color)
  * Status is shown via text label, not avatar color
  */
-const orchestratorAvatarColor = computed(() => '#D4A574') // Tan/Beige from branding guide
+const orchestratorAvatarColor = computed(() => getAgentColorConfig('orchestrator').hex)
 
 /**
  * Get agent color based on type
  */
 const getAgentColor = (displayName) => {
-  const colors = {
-    orchestrator: '#D4A574', // Tan/Beige - Project coordination
-    analyzer: '#E74C3C',     // Red - Analysis & research
-    implementer: '#3498DB',  // Blue - Code implementation
-    implementor: '#3498DB',  // Blue - Code implementation (alias)
-    tester: '#FFC300',       // Yellow - Testing & QA
-    reviewer: '#9B59B6',     // Purple - Code review
-    documenter: '#27AE60',   // Green - Documentation
-    researcher: '#27AE60',   // Green - Research (alias)
-  }
-  return colors[displayName?.toLowerCase()] || '#90A4AE' // Gray for custom agents
+  return getAgentColorConfig(displayName).hex
 }
 
 /**
@@ -647,13 +638,13 @@ watch(missionText, (next, previous) => {
       text-transform: capitalize;
       font-weight: 500;
 
-      &.status-waiting { color: #ffd700; }
-      &.status-working { color: #D4A574; }
+      &.status-waiting { color: rgb(var(--v-theme-highlight)); }
+      &.status-working { color: var(--agent-orchestrator-primary); }
       &.status-complete { color: rgb(var(--v-theme-success)); }
-      &.status-handed_over { color: #9e9e9e; }
-      &.status-blocked { color: #ff9800; }
-      &.status-silent { color: #ff9800; }
-      &.status-pending { color: #90a4ae; }
+      &.status-handed_over { color: rgb(var(--v-theme-on-surface-variant)); }
+      &.status-blocked { color: var(--status-blocked); }
+      &.status-silent { color: var(--status-blocked); }
+      &.status-pending { color: var(--status-waiting); }
     }
 
     .agent-id-link {
