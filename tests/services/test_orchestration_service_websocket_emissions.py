@@ -156,7 +156,6 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
     mock_websocket_manager.broadcast_to_tenant.assert_not_awaited()
 
 
-@pytest.mark.skip(reason="0750c3: complete_job emission payload changed")
 async def test_complete_job_emits_status_changed_with_duration_seconds(
     orchestration_service,
     mock_db_manager,
@@ -182,23 +181,26 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
         job_id=job_id, tenant_key=tenant_key, project_id=str(uuid4()), status="active", completed_at=None
     )
 
-    # complete_job makes 5 execute calls: execution, job, unread messages, todo items, other active executions
-    # unread messages, todo items, and other active use .scalars().all() not .scalar_one_or_none()
+    # complete_job makes 6 execute calls:
+    # 1. execution lookup (scalar_one_or_none)
+    # 2. job lookup (scalar_one_or_none)
+    # 3. unread messages (scalars().all())
+    # 4. todo items (scalars().all())
+    # 5. other active executions (scalar_one_or_none)
+    # 6. find orchestrator execution for auto-completion message (scalar_one_or_none)
     unread_result = MagicMock()
     unread_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
 
     todo_result = MagicMock()
     todo_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
 
-    other_active_result = MagicMock()
-    other_active_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
-
     session.execute.side_effect = [
         _scalar_result(execution),
         _scalar_result(job),
         unread_result,  # unread messages (empty list)
         todo_result,  # todo items (empty list)
-        other_active_result,  # other active executions (empty list)
+        _scalar_result(None),  # other active executions (none)
+        _scalar_result(None),  # find_orchestrator_execution (none — skip auto-message)
     ]
 
     result = await orchestration_service.complete_job(job_id=job_id, result={"ok": True}, tenant_key=tenant_key)

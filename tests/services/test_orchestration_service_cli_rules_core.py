@@ -256,7 +256,6 @@ class TestCLIModeRules:
         assert isinstance(cli_rules["template_locations"], list), "template_locations should be a list"
         assert len(cli_rules["template_locations"]) >= 2, "template_locations should have at least 2 entries"
 
-    @pytest.mark.skip(reason="Feature changed: spawning_examples moved to cli_mode_rules.multi_agent_example")
     async def test_cli_mode_response_includes_spawning_examples(
         self,
         db_manager: DatabaseManager,
@@ -318,14 +317,14 @@ class TestCLIModeRules:
         assert "cli_mode_rules" not in result, "Multi-terminal mode should NOT include cli_mode_rules"
         assert "spawning_examples" not in result, "Multi-terminal mode should NOT include spawning_examples"
 
-    @pytest.mark.skip(reason="Field renamed to agent_display_name_usage in cli_mode_rules")
     async def test_cli_mode_rules_agent_display_name_usage_mentions_template_name(
         self,
         db_manager: DatabaseManager,
         cli_mode_context: dict,
     ):
         """
-        agent_display_name_usage explains that agent_display_name must match template name.
+        agent_display_name_usage explains that agent_display_name is a dashboard label
+        and must be unique per agent instance when spawning multiple agents of same template.
         """
         from src.giljo_mcp.tenant import TenantManager
         from src.giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -341,10 +340,10 @@ class TestCLIModeRules:
         cli_rules = result.get("cli_mode_rules", {})
         agent_display_name_usage = cli_rules.get("agent_display_name_usage", "")
 
-        # Should mention template name requirement
+        # Should mention template and uniqueness requirement
         assert "template" in agent_display_name_usage.lower(), "agent_display_name_usage should mention template"
-        assert "exact" in agent_display_name_usage.lower() or "match" in agent_display_name_usage.lower(), (
-            "agent_display_name_usage should emphasize exact matching"
+        assert "unique" in agent_display_name_usage.lower(), (
+            "agent_display_name_usage should emphasize uniqueness per agent instance"
         )
 
     async def test_cli_mode_rules_task_tool_mapping_mentions_subagent_type(

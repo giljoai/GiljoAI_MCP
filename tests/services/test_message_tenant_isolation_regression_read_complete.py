@@ -183,20 +183,11 @@ async def test_complete_message_same_tenant_succeeds(db_session, two_tenant_mess
     message_a = two_tenant_messages["message_a"]
     service = two_tenant_messages["service"]
 
-    try:
-        result = await service.complete_message(
-            message_id=str(message_a.id),
-            agent_name="worker-a",
-            result="Task completed successfully",
-            tenant_key=tenant_a,
-        )
-        # If the message was visible, verify it was completed
-        assert result.completed_by == "worker-a"
-    except ResourceNotFoundError:
-        # Message not visible due to transactional session isolation.
-        # This is a test infrastructure limitation, not a tenant isolation
-        # failure. The cross-tenant test above validates the filter works.
-        pytest.skip(
-            "Message not visible to complete_message() due to "
-            "db_manager.get_session_async() session isolation in test context"
-        )
+    result = await service.complete_message(
+        message_id=str(message_a.id),
+        agent_name="worker-a",
+        result="Task completed successfully",
+        tenant_key=tenant_a,
+    )
+    # Verify the message was completed
+    assert result.completed_by == "worker-a"

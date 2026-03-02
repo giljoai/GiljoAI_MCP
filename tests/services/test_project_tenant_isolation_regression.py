@@ -262,24 +262,17 @@ async def test_switch_project_without_tenant_raises_validation_error(db_session,
 async def test_switch_project_same_tenant_succeeds(db_session, two_tenant_projects):
     """
     Verify that same-tenant switch still works correctly.
-
-    Note: May raise ModuleNotFoundError due to lazy import (giljo_mcp.tenant)
-    in some test environments — that's a pre-existing import issue, not a
-    tenant isolation problem. Marked xfail for this known issue.
     """
     tenant_a = two_tenant_projects["tenant_a"]
     active_a = two_tenant_projects["active_a"]
     service = two_tenant_projects["service"]
 
-    try:
-        result = await service.switch_project(
-            project_id=active_a.id,
-            tenant_key=tenant_a,
-        )
-        assert result.name == "Tenant A Active"
-        assert result.tenant_key == tenant_a
-    except ModuleNotFoundError:
-        pytest.skip("Known lazy import issue: giljo_mcp.tenant not importable in test env")
+    result = await service.switch_project(
+        project_id=active_a.id,
+        tenant_key=tenant_a,
+    )
+    assert result.name == "Tenant A Active"
+    assert result.tenant_key == tenant_a
 
 
 # ============================================================================
