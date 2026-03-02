@@ -418,7 +418,7 @@ function getMessagePreview(message) {
 }
 
 .v-theme--dark .message-timestamp {
-  color: #ffc300;
+  color: rgb(var(--v-theme-primary));
   opacity: 1;
 }
 
@@ -428,7 +428,7 @@ function getMessagePreview(message) {
 }
 
 .v-theme--dark .message-separator {
-  color: #ffc300;
+  color: rgb(var(--v-theme-primary));
   opacity: 1;
 }
 
@@ -438,7 +438,7 @@ function getMessagePreview(message) {
 }
 
 .v-theme--dark .message-recipient {
-  color: #ffc300;
+  color: rgb(var(--v-theme-primary));
   opacity: 1;
 }
 
@@ -491,7 +491,7 @@ function getMessagePreview(message) {
 }
 
 .message-eye-icon {
-  color: #ffc300; /* Brand yellow */
+  color: rgb(var(--v-theme-primary));
   transition: all 0.2s ease;
 }
 

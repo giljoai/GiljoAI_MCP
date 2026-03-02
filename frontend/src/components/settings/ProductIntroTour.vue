@@ -342,7 +342,7 @@ function runAction(action) {
 
 .intro-slide-title {
   font-weight: 600;
-  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  background: var(--gradient-brand);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -382,7 +382,7 @@ function runAction(action) {
   inset: 0;
   padding: 4px; /* border thickness */
   border-radius: inherit;
-  background: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  background: var(--gradient-brand);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;

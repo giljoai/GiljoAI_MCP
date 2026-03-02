@@ -335,6 +335,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { getStatusLabel, getStatusColor, isStatusItalic } from '@/utils/statusConfig'
+import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
 import { shouldShowLaunchAction } from '@/utils/actionConfig'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentJobModal from '@/components/projects/AgentJobModal.vue'
@@ -572,20 +573,10 @@ onUnmounted(() => {
 })
 
 /**
- * Get agent avatar color - matches BRANDING_GUIDE.md
+ * Get agent avatar color - uses centralized agentColors config
  */
 function getAgentColor(displayName) {
-  const colors = {
-    orchestrator: '#D4A574', // Tan/Beige - Project coordination
-    analyzer: '#E74C3C', // Red - Analysis & research
-    implementer: '#3498DB', // Blue - Code implementation
-    implementor: '#3498DB', // Blue - Code implementation (alias)
-    tester: '#FFC300', // Yellow - Testing & QA
-    reviewer: '#9B59B6', // Purple - Code review
-    documenter: '#27AE60', // Green - Documentation
-    researcher: '#27AE60', // Green - Research (alias)
-  }
-  return colors[displayName?.toLowerCase()] || '#90A4AE' // Gray for custom agents
+  return getAgentColorConfig(displayName).hex
 }
 
 /**
@@ -981,7 +972,7 @@ async function copyToClipboard(text) {
       .execution-order-title {
         font-size: 17px;
         font-weight: 700;
-        color: #f5c542;
+        color: rgb(var(--v-theme-primary));
         margin-bottom: 8px;
       }
 
@@ -1007,7 +998,7 @@ async function copyToClipboard(text) {
           .phase-label {
             font-size: 13px;
             font-weight: 700;
-            color: #fff;
+            color: white;
           }
 
           .phase-agents {
@@ -1022,13 +1013,13 @@ async function copyToClipboard(text) {
               font-size: 12px;
               font-weight: 600;
               white-space: nowrap;
-              color: #182739;
+              color: rgb(var(--v-theme-surface));
             }
 
             .phase-separator {
               font-size: 14px;
               font-weight: 700;
-              color: #fff;
+              color: white;
             }
           }
         }
@@ -1095,12 +1086,12 @@ async function copyToClipboard(text) {
             }
 
             &:hover {
-              border-color: #ffd700;
+              border-color: rgb(var(--v-theme-highlight));
               background: rgba(255, 215, 0, 0.1);
               transform: scale(1.1);
 
               .v-icon {
-                color: #ffd700;
+                color: rgb(var(--v-theme-highlight));
               }
             }
           }
@@ -1109,7 +1100,7 @@ async function copyToClipboard(text) {
             flex-shrink: 0;
 
             .avatar-text {
-              color: #000;
+              color: rgb(var(--v-theme-on-primary));
               font-weight: bold;
               font-size: 12px;
             }
@@ -1174,7 +1165,7 @@ async function copyToClipboard(text) {
         }
 
         .steps-skipped {
-          color: #ff9800;
+          color: var(--status-blocked);
           font-weight: 600;
         }
 
@@ -1224,13 +1215,13 @@ async function copyToClipboard(text) {
       transition: all 0.2s ease;
 
       &.v-btn--variant-flat {
-        background: #ffd700;
-        color: #000;
+        background: rgb(var(--v-theme-highlight));
+        color: rgb(var(--v-theme-on-primary));
         font-weight: 600;
-        border-color: #ffd700;
+        border-color: rgb(var(--v-theme-highlight));
 
         &:hover {
-          background: #ffed4e;
+          background: rgb(var(--v-theme-highlight-hover));
         }
       }
 
@@ -1266,7 +1257,7 @@ async function copyToClipboard(text) {
         }
 
         &.v-field--focused {
-          border-color: #ffd700;
+          border-color: rgb(var(--v-theme-highlight));
         }
       }
     }
@@ -1295,7 +1286,7 @@ async function copyToClipboard(text) {
 
     &.message-waiting {
       background: rgba(255, 152, 0, 0.2);
-      color: #ff9800;
+      color: var(--status-blocked);
     }
 
   }
@@ -1312,7 +1303,7 @@ async function copyToClipboard(text) {
 /* Global avatar styles for modal consistency - Handover 0401b */
 .agent-avatar {
   .avatar-text {
-    color: #000;
+    color: rgb(var(--v-theme-on-primary));
     font-weight: bold;
     font-size: 12px;
   }

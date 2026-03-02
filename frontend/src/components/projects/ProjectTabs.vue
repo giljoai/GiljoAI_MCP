@@ -8,7 +8,7 @@
           <!-- Series Chip (Handover 0440c) -->
           <v-chip
             v-if="project?.taxonomy_alias && project?.series_number"
-            :color="project?.project_type?.color || '#607D8B'"
+            :color="project?.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
             size="small"
             variant="flat"
             class="mr-3"
@@ -189,6 +189,7 @@ import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
 import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
+import { DEFAULT_PROJECT_TYPE_COLOR } from '@/utils/constants'
 
 const { copy: clipboardCopy } = useClipboard()
 
@@ -734,7 +735,7 @@ function handleCloseoutComplete(closeoutData) {
   letter-spacing: 0.5px;
 
   &:hover {
-    background: #ffed4e;
+    background: rgb(var(--v-theme-highlight-hover));
   }
 }
 

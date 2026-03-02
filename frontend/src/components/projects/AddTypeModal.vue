@@ -97,6 +97,7 @@
 <script setup>
 import { ref } from 'vue'
 import api from '@/services/api'
+import { PROJECT_TYPE_COLOR_SWATCHES, DEFAULT_SWATCH_COLOR } from '@/utils/constants'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -111,13 +112,9 @@ const submitError = ref(null)
 
 const abbreviation = ref('')
 const label = ref('')
-const color = ref('#E91E63')
+const color = ref(DEFAULT_SWATCH_COLOR)
 
-const colorSwatches = [
-  '#4CAF50', '#2196F3', '#FF9800', '#9C27B0',
-  '#00BCD4', '#795548', '#607D8B', '#F44336',
-  '#E91E63', '#3F51B5', '#009688', '#FF5722',
-]
+const colorSwatches = PROJECT_TYPE_COLOR_SWATCHES
 
 const abbreviationRules = [
   (v) => !!v || 'Abbreviation is required',
@@ -141,7 +138,7 @@ function close() {
 function resetForm() {
   abbreviation.value = ''
   label.value = ''
-  color.value = '#E91E63'
+  color.value = DEFAULT_SWATCH_COLOR
   submitError.value = null
   submitting.value = false
 }
