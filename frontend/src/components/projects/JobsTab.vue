@@ -460,33 +460,6 @@ function getPrimaryAgentLabel(agent) {
   return agent.agent_display_name || agent.agent_name || ''
 }
 
-function getShortId(value) {
-  if (!value || value === '—') {
-    return '—'
-  }
-
-  return value.slice(0, 8)
-}
-
-async function copyId(value, label) {
-  if (!value || value === '—') {
-    showLocalToast({ message: `${label} unavailable`, type: 'warning', duration: 2500 })
-    return
-  }
-
-  try {
-    const success = await clipboardCopy(value)
-    if (success) {
-      showLocalToast({ message: `${label} copied`, type: 'success', duration: 2000 })
-    } else {
-      showLocalToast({ message: `Failed to copy ${label}`, type: 'error', duration: 3000 })
-    }
-  } catch (error) {
-    console.warn('[JobsTab] Failed to copy ID:', error)
-    showLocalToast({ message: `Failed to copy ${label}`, type: 'error', duration: 3000 })
-  }
-}
-
 /**
  * State
  * Handover 0260: Initialize from project.execution_mode for persistence
@@ -640,13 +613,6 @@ function getAgentAbbr(displayName) {
 }
 
 /**
- * Format count - show number or empty string for 0/null
- */
-function formatCount(count) {
-  return count && count > 0 ? count.toString() : ''
-}
-
-/**
  * Format duration between started_at and completed_at (or now for working agents)
  * Shows: "---" if not started, live elapsed time if working, final duration if completed
  */
@@ -683,25 +649,10 @@ function formatDuration(agent) {
 }
 
 /**
- * Get count of messages sent from developer to this agent
- */
-function getMessagesSent(agent) {
-  return agent?.messages_sent_count ?? 0
-}
-
-/**
  * Get count of messages waiting to be read by agent
  */
 function getMessagesWaiting(agent) {
   return agent?.messages_waiting_count ?? 0
-}
-
-/**
- * Get count of messages acknowledged/read by agent
- * Only counts INBOUND messages that were read (not outbound messages sent by agent)
- */
-function getMessagesRead(agent) {
-  return agent?.messages_read_count ?? 0
 }
 
 /**
