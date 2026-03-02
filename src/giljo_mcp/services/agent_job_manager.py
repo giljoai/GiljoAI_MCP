@@ -180,7 +180,7 @@ class AgentJobManager:
         except BaseGiljoError:
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to spawn agent")
             raise BaseGiljoError(message=str(e), context={"operation": "spawn_agent"}) from e
 
@@ -268,7 +268,7 @@ class AgentJobManager:
         except (ResourceNotFoundError, BaseGiljoError):
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to update agent status")
             raise BaseGiljoError(message=str(e), context={"operation": "update_agent_status"}) from e
 
@@ -330,7 +330,7 @@ class AgentJobManager:
         except (ResourceNotFoundError, BaseGiljoError):
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to update agent progress")
             raise BaseGiljoError(message=str(e), context={"operation": "update_agent_progress"}) from e
 
@@ -406,7 +406,7 @@ class AgentJobManager:
         except (ResourceNotFoundError, BaseGiljoError):
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to complete job")
             raise BaseGiljoError(message=str(e), context={"operation": "complete_job"}) from e
 
@@ -487,6 +487,6 @@ class AgentJobManager:
 
                 return team_members
 
-        except Exception:
+        except Exception:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to list team agents")
             return []

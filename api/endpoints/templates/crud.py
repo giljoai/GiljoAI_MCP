@@ -348,7 +348,7 @@ async def delete_template(
 
     except HTTPException:
         raise  # Re-raise HTTP exceptions (403, 404, 500, etc.) without modification
-    except Exception as e:
+    except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Failed to delete template")
         await session.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete template: {e!s}") from e

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from api.endpoints.claude_export import export_templates_to_claude_code
 from src.giljo_mcp.database import DatabaseManager
@@ -76,7 +77,7 @@ async def export_agents_command(
         logger.warning(f"Export validation failed: {e}")
         raise
 
-    except Exception as e:
+    except Exception as e:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Export failed")
         raise ToolError(f"Export failed: {e!s}") from e
 
@@ -107,7 +108,7 @@ async def get_product_for_tenant(
             result = await session.execute(query)
             return result.scalar_one_or_none()
 
-    except Exception:
+    except SQLAlchemyError:
         logger.exception("Failed to get product")
         return None
 
@@ -154,6 +155,6 @@ async def validate_product_path(
                 "message": "Product path updated successfully",
             }
 
-    except Exception as e:
+    except Exception as e:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to validate product path")
         raise FileSystemError(f"Path validation failed: {e!s}") from e

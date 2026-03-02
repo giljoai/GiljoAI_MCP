@@ -234,7 +234,7 @@ async def get_available_agents(session: AsyncSession, tenant_key: str, depth: st
             "data": response_data,
         }
 
-    except Exception:
+    except Exception:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to fetch available agents", extra={"tenant_key": tenant_key})
         return {
             "success": False,

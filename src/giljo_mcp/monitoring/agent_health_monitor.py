@@ -79,7 +79,7 @@ class AgentHealthMonitor:
         while self.running:
             try:
                 await self._run_health_check_cycle()
-            except Exception as e:
+            except Exception as e:  # Broad catch: monitoring loop resilience
                 logger.error(f"Health check cycle failed: {e}", exc_info=True)
 
             await asyncio.sleep(self.config.scan_interval_seconds)

@@ -207,7 +207,7 @@ async def get_current_user(
                             ip_logger = MCPSessionManager(db)
                             client_ip = request.client.host if request.client else "unknown"
                             await ip_logger.log_ip(str(key_record.id), client_ip)
-                        except Exception:  # noqa: BLE001
+                        except (ImportError, AttributeError, OSError):
                             logger.debug("IP logging failed for API key auth (non-blocking)")
                         return user
                     logger.warning(f"API key valid but user inactive: {key_record.user_id}")

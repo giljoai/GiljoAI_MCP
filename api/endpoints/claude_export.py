@@ -166,7 +166,7 @@ def create_backup(file_path: Path) -> Optional[Path]:
     try:
         backup_path.write_text(file_path.read_text(), encoding="utf-8")
         logger.info(f"Created backup: {backup_path}")
-    except Exception:
+    except Exception:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Failed to create backup for {file_path}")
         raise
     else:
@@ -233,7 +233,7 @@ def create_zip_backup(agents_dir: Path) -> Optional[Path]:
 
         return backup_path
 
-    except Exception:
+    except Exception:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("[create_zip_backup] Failed to create backup")
         return None
 

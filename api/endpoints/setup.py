@@ -83,7 +83,7 @@ async def check_first_run(request: Request) -> Dict[str, Any]:
         state = state_manager.get_state()
         is_first_run = not state.get("completed", False)
         return {"first_run": is_first_run}
-    except Exception as e:
+    except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         logger.error("SetupStateManager-based first-run detection failed: %s", e)
         # Conservative fallback for production: treat as NOT first run to avoid blocking login.
         return {"first_run": False}
