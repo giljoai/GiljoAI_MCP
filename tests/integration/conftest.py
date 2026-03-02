@@ -832,3 +832,147 @@ async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
 
         # Cleanup: Rollback any uncommitted changes
         await session.rollback()
+
+
+# ============================================================================
+# Field Priority Tenant Isolation Fixtures
+# (shared across test_field_priority_tenant_isolation_*.py split modules)
+# ============================================================================
+
+
+@pytest_asyncio.fixture
+async def tenant_a_key():
+    """Tenant A isolation key"""
+    return f"tenant_a_{uuid4().hex[:8]}"
+
+
+@pytest_asyncio.fixture
+async def tenant_b_key():
+    """Tenant B isolation key (different from tenant A)"""
+    return f"tenant_b_{uuid4().hex[:8]}"
+
+
+@pytest_asyncio.fixture
+async def user_tenant_a(db_session, tenant_a_key):
+    """Create user in Tenant A with specific field priorities"""
+    user = User(
+        id=str(uuid4()),
+        username=f"user_a_{uuid4().hex[:6]}",
+        email=f"user_a_{uuid4().hex[:6]}@example.com",
+        tenant_key=tenant_a_key,
+        role="developer",
+        password_hash="hashed_password",
+        field_priority_config={
+            "version": "2.0",
+            "priorities": {
+                "product_core": 1,
+                "vision_documents": 2,
+                "agent_templates": 3,
+                "project_description": 1,
+                "memory_360": 2,
+                "git_history": 4,  # Tenant A excludes git_history
+            },
+        },
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def user_tenant_b(db_session, tenant_b_key):
+    """Create user in Tenant B with DIFFERENT field priorities"""
+    user = User(
+        id=str(uuid4()),
+        username=f"user_b_{uuid4().hex[:6]}",
+        email=f"user_b_{uuid4().hex[:6]}@example.com",
+        tenant_key=tenant_b_key,
+        role="developer",
+        password_hash="hashed_password",
+        field_priority_config={
+            "version": "2.0",
+            "priorities": {
+                "product_core": 1,
+                "vision_documents": 4,  # Tenant B excludes vision_documents
+                "agent_templates": 2,
+                "project_description": 1,
+                "memory_360": 4,  # Tenant B excludes memory_360
+                "git_history": 2,  # Tenant B INCLUDES git_history (different from A)
+            },
+        },
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def product_tenant_a(db_session, tenant_a_key):
+    """Create product in Tenant A"""
+    product = Product(
+        id=str(uuid4()),
+        name=f"Product A {uuid4().hex[:8]}",
+        description="Product for Tenant A.",
+        tenant_key=tenant_a_key,
+        is_active=True,
+    )
+    db_session.add(product)
+    await db_session.commit()
+    await db_session.refresh(product)
+    return product
+
+
+@pytest_asyncio.fixture
+async def product_tenant_b(db_session, tenant_b_key):
+    """Create product in Tenant B"""
+    product = Product(
+        id=str(uuid4()),
+        name=f"Product B {uuid4().hex[:8]}",
+        description="Product for Tenant B.",
+        tenant_key=tenant_b_key,
+        is_active=True,
+    )
+    db_session.add(product)
+    await db_session.commit()
+    await db_session.refresh(product)
+    return product
+
+
+@pytest_asyncio.fixture
+async def project_tenant_a(db_session, product_tenant_a, tenant_a_key):
+    """Create project in Tenant A"""
+    project = Project(
+        id=str(uuid4()),
+        name=f"Project A {uuid4().hex[:8]}",
+        description="Project for Tenant A.",
+        product_id=str(product_tenant_a.id),
+        tenant_key=tenant_a_key,
+        status="planning",
+        mission="Mission for Tenant A.",
+        series_number=random.randint(1, 999999),
+    )
+    db_session.add(project)
+    await db_session.commit()
+    await db_session.refresh(project)
+    return project
+
+
+@pytest_asyncio.fixture
+async def project_tenant_b(db_session, product_tenant_b, tenant_b_key):
+    """Create project in Tenant B"""
+    project = Project(
+        id=str(uuid4()),
+        name=f"Project B {uuid4().hex[:8]}",
+        description="Project for Tenant B.",
+        product_id=str(product_tenant_b.id),
+        tenant_key=tenant_b_key,
+        status="planning",
+        mission="Mission for Tenant B.",
+        series_number=random.randint(1, 999999),
+    )
+    db_session.add(project)
+    await db_session.commit()
+    await db_session.refresh(project)
+    return project
