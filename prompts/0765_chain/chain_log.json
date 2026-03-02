@@ -1,0 +1,169 @@
+{
+  "chain_id": "0765",
+  "chain_name": "Perfect Score Sprint — 7.8 to 10/10",
+  "created_at": "2026-03-02",
+  "branch": "0760-perfect-score",
+  "parent_branch": "0750-cleanup-sprint",
+  "total_sessions": 7,
+  "sessions": [
+    {
+      "session_id": "0765a",
+      "title": "Dead Code Purge + Bridge Removal",
+      "color": "#4CAF50",
+      "handover": "handovers/0765a_dead_code_purge_bridge_removal.md",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Delete 19 dead ToolAccessor methods + activate_project function (1C+1D)",
+        "Delete 7 confirmed dead files from orphan analysis",
+        "Delete 5 dead JobsTab functions (1F)",
+        "Delete dead orchestration.js Pinia store (1E)",
+        "Delete WebSocket bridge endpoint + router registration + auth exemption (2C)",
+        "Delete dead code batch: acknowledgedMessages, BroadcastMessage schemas, 3 dead fixtures, dead import, STATS DEBUG lines (2D)",
+        "Remove WebSocket EVENT_TYPE_ALIASES and legacy emission machinery",
+        "Remove 6 legacy event handlers from frontend websocketEventRouter.js EVENT_MAP",
+        "Remove 8 MCP/API argument alias fallbacks (Tier 1+2 safe removals)",
+        "Remove dead request.state.user_id and request.state.user assignments",
+        "Fix 25 stale documentation references (docstrings, comments, schema labels)",
+        "Fix stale status strings in statistics_repository and agent_job_repository (2E)",
+        "Fix 2 pre-existing test failures in test_auth_org_endpoints.py (NEW-4)",
+        "Fix 3 prompts endpoints returning raw dicts (M-9)",
+        "Convert ActionIcons.vue to script setup (2F)",
+        "Fix statistics endpoints — remove fakes and N+1 query (2B)",
+        "Update 3 frontend test files for canonical event names"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0765b",
+      "title": "Quick Tier 3 Fixes",
+      "color": "#2196F3",
+      "handover": "handovers/0765b_quick_tier3_fixes.md",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Fix NPM health check detection in startup.py and control_panel.py (3H)",
+        "Remove 6 orphan CSS selectors (3C)",
+        "Convert 2 static computeds to constants (3C)",
+        "Remove 8 dead ProjectTabs emits and their trigger logic (3D)",
+        "Unify agent sort priority between agentJobsStore and useAgentData (3E)",
+        "Restrict CORS methods and headers in api/app.py and devpanel (3F)",
+        "Remove H-24 speculative agentStore prefetch from ProjectsView"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0765c",
+      "title": "Design Token Migration",
+      "color": "#9C27B0",
+      "handover": "handovers/0765c_design_token_migration.md",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Audit all 108 hardcoded hex colors across 20 Vue files",
+        "Map colors to semantic meaning (primary, status, decorative)",
+        "Extend Vuetify theme config with custom tokens where needed",
+        "Replace hardcoded colors with design token references",
+        "Verify visual consistency across all affected components"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0765d",
+      "title": "Exception Narrowing",
+      "color": "#FF9800",
+      "handover": "handovers/0765d_exception_narrowing.md",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Categorize 121 except-Exception instances into safe/intentional/risky buckets",
+        "Narrow ~20 safe catch-alls to specific exception types",
+        "Add targeted except clauses where appropriate",
+        "Verify no regressions in error handling behavior"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0765e",
+      "title": "Test File Splitting",
+      "color": "#E91E63",
+      "handover": "handovers/0765e_test_file_splitting.md",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Split 19 oversized test files (>500 lines) into focused modules",
+        "Maintain test isolation and fixture sharing",
+        "Verify all tests still pass after reorganization",
+        "Update any test discovery configuration"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0765f",
+      "title": "Security Hardening",
+      "color": "#F44336",
+      "handover": "handovers/0765f_security_hardening.md",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Enable CSRF middleware — fix httponly bug, wire frontend interceptor (4A)",
+        "Fix 8 raw fetch() calls needing manual CSRF token injection",
+        "Complete tenant isolation pattern — fix 2 remaining violations (4C)",
+        "Fix TenantManager._validation_cache test coupling (4F)"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0765g",
+      "title": "Tenant Key + Encapsulation",
+      "color": "#795548",
+      "handover": "handovers/0765g_tenant_key_encapsulation.md",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Remove hardcoded default tenant key from 10 production locations (4B)",
+        "Design and implement first-run tenant key provisioning flow",
+        "Fix prompts endpoint encapsulation — add public API methods (4D)",
+        "Refactor update_project — extract DTO construction and broadcast (4E)"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    }
+  ],
+  "chain_summary": null,
+  "final_status": "in_progress"
+}
