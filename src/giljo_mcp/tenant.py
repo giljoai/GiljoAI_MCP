@@ -309,6 +309,14 @@ class TenantManager:
         }
 
     @classmethod
+    def register_test_tenant(cls, tenant_key: str) -> None:
+        """Register a tenant key for testing. Bypasses normal format validation.
+
+        Only for use in test fixtures. Production code should never call this.
+        """
+        cls._validation_cache[tenant_key] = True
+
+    @classmethod
     def clear_cache(cls) -> None:
         """
         Clear the validation cache (useful for testing).
