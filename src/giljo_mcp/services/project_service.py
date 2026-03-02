@@ -554,7 +554,7 @@ class ProjectService:
         """
         Update the mission field after orchestrator analysis.
 
-        This method also broadcasts the mission update via WebSocket HTTP bridge
+        This method also broadcasts the mission update via in-process WebSocketManager
         for real-time UI updates.
 
         Args:
@@ -609,7 +609,7 @@ class ProjectService:
 
                 await session.commit()
 
-                # Broadcast mission update via WebSocket HTTP bridge
+                # Broadcast mission update via WebSocketManager
                 if project:
                     await self._broadcast_mission_update(project_id, mission, project.tenant_key)
 

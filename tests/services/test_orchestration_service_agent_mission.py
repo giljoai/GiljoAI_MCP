@@ -9,7 +9,7 @@ Tests cover:
 - Backward compatibility (include_protocol defaults to True)
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -130,17 +130,7 @@ class TestGetAgentMissionFullProtocol:
         # Setup database mocks
         setup_get_agent_mission_mocks(session, job, execution)
 
-        # Stub httpx to avoid real WebSocket bridge calls
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         # Handover 0731c: Returns MissionResponse typed model
         assert isinstance(response, MissionResponse)
@@ -157,16 +147,7 @@ class TestGetAgentMissionFullProtocol:
         # Setup database mocks
         setup_get_agent_mission_mocks(session, job, execution)
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response.full_protocol
 
@@ -186,16 +167,7 @@ class TestGetAgentMissionFullProtocol:
         # Setup database mocks
         setup_get_agent_mission_mocks(session, job, execution)
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response.full_protocol
 
@@ -213,16 +185,7 @@ class TestGetAgentMissionFullProtocol:
         # Setup database mocks
         setup_get_agent_mission_mocks(session, job, execution)
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response.full_protocol
 
@@ -240,16 +203,7 @@ class TestGetAgentMissionFullProtocol:
         # Setup database mocks
         setup_get_agent_mission_mocks(session, job, execution)
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         # Verify all existing fields are still present as attributes
         # Handover 0731c: Returns MissionResponse typed model
@@ -276,16 +230,7 @@ class TestGetAgentMissionFullProtocol:
         # Setup database mocks
         setup_get_agent_mission_mocks(session, job, execution)
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         # Handover 0731c: Returns MissionResponse typed model
         assert isinstance(response, MissionResponse)
@@ -317,16 +262,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
         # Setup database mocks
         setup_get_agent_mission_mocks(session, job, execution)
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response.full_protocol or ""
 
@@ -361,16 +297,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
         # Setup database mocks
         setup_get_agent_mission_mocks(session, job, execution)
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response.full_protocol or ""
 
@@ -409,16 +336,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
         # Setup database mocks
         setup_get_agent_mission_mocks(session, job, execution)
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response.full_protocol or ""
 
@@ -454,16 +372,7 @@ class TestAgentProtocolMessageHandlingEnhancements:
         # Setup database mocks
         setup_get_agent_mission_mocks(session, job, execution)
 
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         protocol = response.full_protocol or ""
 

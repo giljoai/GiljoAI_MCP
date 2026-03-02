@@ -2,7 +2,7 @@
 Handover 0379e: SaaS Broker (Pub/Sub) + Loopback Elimination
 
 These tests enforce that OrchestrationService emits WebSocket events via the
-in-process WebSocketManager (no HTTP loopback to /api/v1/ws-bridge/emit).
+in-process WebSocketManager.
 """
 
 from __future__ import annotations
