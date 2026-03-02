@@ -26,10 +26,6 @@ export const useMessageStore = defineStore('messages', () => {
     messages.value.filter((m) => m.priority === 'high' || m.priority === 'urgent'),
   )
 
-  const acknowledgedMessages = computed(() =>
-    messages.value.filter((m) => m.acknowledged_by?.length > 0),
-  )
-
   // Actions
   async function fetchMessages(params = {}) {
     loading.value = true
@@ -237,7 +233,6 @@ export const useMessageStore = defineStore('messages', () => {
     messagesByProject,
     messagesByAgent,
     highPriorityMessages,
-    acknowledgedMessages,
 
     // Actions
     fetchMessages,
