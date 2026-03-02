@@ -199,10 +199,14 @@ async function loadNetworkSettings() {
 async function saveNetworkSettings() {
   try {
     // Save CORS origins back to config
+    const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1]
     const response = await fetch(`${getApiBaseURL()}/api/v1/config`, {
       method: 'PATCH',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
       body: JSON.stringify({
         security: {
           cors: {
