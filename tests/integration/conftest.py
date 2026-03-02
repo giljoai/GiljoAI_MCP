@@ -2,6 +2,7 @@
 Integration test fixtures for Handover 0316
 """
 
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -378,3 +379,117 @@ async def test_client(
         yield client
 
     app.dependency_overrides.clear()
+
+
+# ============================================================================
+# Multi-Tenant Isolation Fixtures (shared across split test modules)
+# ============================================================================
+
+
+@pytest_asyncio.fixture
+async def tenant_a():
+    """First test tenant"""
+    return f"tenant_a_{uuid4().hex[:8]}"
+
+
+@pytest_asyncio.fixture
+async def tenant_b():
+    """Second test tenant"""
+    return f"tenant_b_{uuid4().hex[:8]}"
+
+
+@pytest_asyncio.fixture
+async def user_in_tenant_a(db_session, tenant_a):
+    """User in tenant A"""
+    user = User(
+        id=str(uuid4()),
+        username=f"user_a_{uuid4().hex[:6]}",
+        email=f"user_a_{uuid4().hex[:6]}@example.com",
+        tenant_key=tenant_a,
+        role="developer",
+        password_hash="hash",
+        field_priority_config={
+            "version": "2.0",
+            "priorities": {
+                "product_core": 1,
+                "vision_documents": 2,
+                "git_history": 3,
+            },
+        },
+        serena_enabled=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    return user
+
+
+@pytest_asyncio.fixture
+async def user_in_tenant_b(db_session, tenant_b):
+    """User in tenant B (different tenant)"""
+    user = User(
+        id=str(uuid4()),
+        username=f"user_b_{uuid4().hex[:6]}",
+        email=f"user_b_{uuid4().hex[:6]}@example.com",
+        tenant_key=tenant_b,
+        role="developer",
+        password_hash="hash",
+        field_priority_config={
+            "version": "2.0",
+            "priorities": {
+                "product_core": 1,
+                "vision_documents": 3,  # Different priority than user_a
+                "git_history": 4,
+            },
+        },
+        serena_enabled=False,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    return user
+
+
+@pytest_asyncio.fixture
+async def product_in_tenant_a(db_session, tenant_a):
+    """Product in tenant A"""
+    product = Product(
+        id=str(uuid4()),
+        name=f"ProductA_{uuid4().hex[:6]}",
+        tenant_key=tenant_a,
+        testing_config={
+            "framework": "pytest",
+            "coverage_target": 85,
+        },
+        product_memory={
+            "git_integration": {"enabled": True},
+            "sequential_history": [
+                {
+                    "sequence": 1,
+                    "type": "project_closeout",
+                    "project_id": str(uuid4()),
+                    "summary": "Tenant A project history",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            ],
+        },
+    )
+    db_session.add(product)
+    await db_session.flush()
+    return product
+
+
+@pytest_asyncio.fixture
+async def product_in_tenant_b(db_session, tenant_b):
+    """Product in tenant B (different tenant)"""
+    product = Product(
+        id=str(uuid4()),
+        name=f"ProductB_{uuid4().hex[:6]}",
+        tenant_key=tenant_b,
+        testing_config={
+            "framework": "mocha",
+            "coverage_target": 75,
+        },
+        product_memory={"git_integration": {"enabled": False}, "sequential_history": []},
+    )
+    db_session.add(product)
+    await db_session.flush()
+    return product
