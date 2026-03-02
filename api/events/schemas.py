@@ -289,14 +289,14 @@ class MessageSentData(BaseModel):
     """Data payload for message:sent event."""
 
     message_id: str = Field(..., description="Unique message identifier")
-    job_id: str = Field(..., description="Sender job_id (legacy)")
+    job_id: str = Field(..., description="Sender agent job UUID")
     project_id: str = Field(..., description="Project UUID as string")
-    from_agent: str | None = Field(default=None, description="Sender label (legacy)")
-    to_agent: str | None = Field(default=None, description="Recipient label (legacy)")
+    from_agent: str | None = Field(default=None, description="Sender display label")
+    to_agent: str | None = Field(default=None, description="Recipient display label")
     message_type: str = Field(..., description="Message type (task, info, error, etc.)")
 
     # Compatibility aliases for content preview fields
-    message: str = Field(default="", description="Message preview (legacy)")
+    message: str = Field(default="", description="Message preview")
     content: str = Field(default="", description="Message preview")
     content_preview: str = Field(default="", description="Message preview")
 
@@ -326,14 +326,14 @@ class MessageReceivedData(BaseModel):
     """Data payload for message:received event."""
 
     message_id: str = Field(..., description="Unique message identifier")
-    job_id: str = Field(..., description="Sender job_id (legacy)")
+    job_id: str = Field(..., description="Sender agent job UUID")
     project_id: str = Field(..., description="Project UUID as string")
-    from_agent: str | None = Field(default=None, description="Sender label (legacy)")
-    to_agent_ids: list[str] = Field(default_factory=list, description="Recipient agent IDs (legacy)")
+    from_agent: str | None = Field(default=None, description="Sender display label")
+    to_agent_ids: list[str] = Field(default_factory=list, description="Recipient agent IDs")
     message_type: str = Field(..., description="Message type (task, info, error, etc.)")
 
     # Compatibility aliases for content preview fields
-    message: str = Field(default="", description="Message preview (legacy)")
+    message: str = Field(default="", description="Message preview")
     content: str = Field(default="", description="Message preview")
     content_preview: str = Field(default="", description="Message preview")
 

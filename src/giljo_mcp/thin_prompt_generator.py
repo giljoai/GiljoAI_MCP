@@ -232,7 +232,7 @@ LOOP over each non-orchestrator agent from Step 1 that needs cleanup:
 
   2b. If agent has incomplete todos, mark remaining as skipped:
       mcp__giljo-mcp__report_progress(
-          job_id="<agent_job_id>",
+          job_id="<their_job_id>",
           todo_items=[
               ...keep completed items as "completed",
               ...mark remaining pending/in_progress items as "skipped"
@@ -243,7 +243,7 @@ LOOP over each non-orchestrator agent from Step 1 that needs cleanup:
 
   2c. ONLY if agent is NOT already "complete", force complete it:
       mcp__giljo-mcp__complete_job(
-          job_id="<agent_job_id>",
+          job_id="<their_job_id>",
           result={{
               "summary": "Handed over due to context exhaustion. Skipped items documented in 360 Memory.",
               "status": "handed_over"
