@@ -2,7 +2,8 @@
 Integration test fixtures for Handover 0316
 """
 
-from datetime import datetime
+import random
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -13,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product, Project, User
+from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -493,3 +496,339 @@ async def product_in_tenant_b(db_session, tenant_b):
     db_session.add(product)
     await db_session.flush()
     return product
+
+
+# ============================================================================
+# Auth Endpoint Fixtures (split from test_auth_endpoints.py)
+# Prefixed with auth_ep_ to avoid collisions with conftest fixtures above.
+# These fixtures create their own isolated DB and dependency overrides.
+# ============================================================================
+
+
+@pytest_asyncio.fixture
+async def auth_ep_test_client():
+    """Create async HTTP client for testing auth endpoints with proper database dependency override."""
+    from typing import Optional
+
+    from fastapi import Cookie, Depends, Header, Request
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from api.app import app
+    from src.giljo_mcp.auth.dependencies import get_db_session
+    from src.giljo_mcp.database import DatabaseManager
+    from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+    # Ensure test database exists
+    await PostgreSQLTestHelper.ensure_test_database_exists()
+
+    # Create test database manager
+    db_url = PostgreSQLTestHelper.get_test_db_url()
+    test_db_manager = DatabaseManager(db_url, is_async=True)
+
+    # Create tables
+    await PostgreSQLTestHelper.create_test_tables(test_db_manager)
+
+    # Clean all test data before each test
+    async with test_db_manager.get_session_async() as session:
+        await session.execute(text("TRUNCATE TABLE api_keys, users RESTART IDENTITY CASCADE"))
+        await session.commit()
+
+    # Override get_db_session dependency to use test database
+    async def override_get_db_session():
+        """Override database session to use test database"""
+        async with test_db_manager.get_session_async() as session:
+            yield session
+
+    app.dependency_overrides[get_db_session] = override_get_db_session
+
+    # Monkey-patch the localhost check in get_current_user
+    import src.giljo_mcp.auth.dependencies
+
+    original_code = src.giljo_mcp.auth.dependencies.get_current_user
+
+    async def patched_get_current_user(
+        request: Request,
+        access_token: Optional[str] = Cookie(None),
+        x_api_key: Optional[str] = Header(None),
+        db: AsyncSession = Depends(override_get_db_session),
+    ):
+        # Mock the client to appear as non-localhost
+        if request.client:
+
+            class MockClient:
+                def __init__(self, original_client):
+                    self.host = "192.168.1.100"
+                    self.port = original_client.port if original_client else 12345
+
+            original_client = request.client
+            request._client = MockClient(original_client)
+            try:
+                return await original_code(request, access_token, x_api_key, db)
+            finally:
+                request._client = original_client
+        else:
+            return await original_code(request, access_token, x_api_key, db)
+
+    app.dependency_overrides[src.giljo_mcp.auth.dependencies.get_current_user] = patched_get_current_user
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver:8000") as ac:
+        yield ac
+
+    # Cleanup: clear overrides and close test database
+    app.dependency_overrides.clear()
+    await test_db_manager.close_async()
+
+
+@pytest_asyncio.fixture
+async def auth_ep_test_user(auth_ep_test_client):
+    """Create a test user for auth endpoint tests."""
+    from passlib.hash import bcrypt
+
+    from api.app import app
+    from src.giljo_mcp.auth.dependencies import get_db_session
+
+    db_session_gen = app.dependency_overrides[get_db_session]
+    async for session in db_session_gen():
+        user = User(
+            username="testuser",
+            password_hash=bcrypt.hash("testpassword123"),
+            email="test@example.com",
+            role="developer",
+            tenant_key="default",
+            is_active=True,
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
+
+
+@pytest_asyncio.fixture
+async def auth_ep_admin_user(auth_ep_test_client):
+    """Create an admin user for testing admin endpoints."""
+    from passlib.hash import bcrypt
+
+    from api.app import app
+    from src.giljo_mcp.auth.dependencies import get_db_session
+
+    db_session_gen = app.dependency_overrides[get_db_session]
+    async for session in db_session_gen():
+        user = User(
+            username="admin",
+            password_hash=bcrypt.hash("adminpass123"),
+            email="admin@example.com",
+            role="admin",
+            tenant_key="default",
+            is_active=True,
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
+
+
+@pytest_asyncio.fixture
+async def auth_ep_authenticated_headers(auth_ep_test_client: AsyncClient, auth_ep_test_user: User):
+    """Get authenticated JWT cookie for testing protected endpoints."""
+    response = await auth_ep_test_client.post(
+        "/api/auth/login", json={"username": "testuser", "password": "testpassword123"}
+    )
+    assert response.status_code == 200
+    return response.cookies
+
+
+@pytest_asyncio.fixture
+async def auth_ep_admin_headers(auth_ep_test_client: AsyncClient, auth_ep_admin_user: User):
+    """Get admin JWT cookie for testing admin endpoints."""
+    response = await auth_ep_test_client.post(
+        "/api/auth/login", json={"username": "admin", "password": "adminpass123"}
+    )
+    assert response.status_code == 200
+    return response.cookies
+
+
+@pytest_asyncio.fixture
+async def auth_ep_test_api_key(auth_ep_test_client, auth_ep_test_user: User):
+    """Create a test API key for auth endpoint tests."""
+    from src.giljo_mcp.api_key_utils import generate_api_key, get_key_prefix, hash_api_key
+    from src.giljo_mcp.models import APIKey
+
+    from api.app import app
+    from src.giljo_mcp.auth.dependencies import get_db_session
+
+    api_key_plaintext = generate_api_key()
+    key_hash = hash_api_key(api_key_plaintext)
+    key_prefix = get_key_prefix(api_key_plaintext)
+
+    db_session_gen = app.dependency_overrides[get_db_session]
+    async for session in db_session_gen():
+        api_key = APIKey(
+            user_id=auth_ep_test_user.id,
+            tenant_key=auth_ep_test_user.tenant_key,
+            name="Test Key",
+            key_hash=key_hash,
+            key_prefix=key_prefix,
+            permissions=["*"],
+            is_active=True,
+        )
+        session.add(api_key)
+        await session.commit()
+        await session.refresh(api_key)
+        return api_key
+
+
+# ============================================================================
+# Message Service Receive Test Fixtures (shared across split test modules)
+# ============================================================================
+
+
+@pytest.fixture
+async def setup_test_data(db_manager: DatabaseManager, test_tenant_key: str):
+    """Create test project, agents, and messages with unique IDs."""
+    tenant_key = test_tenant_key
+
+    # Generate unique IDs for this test run
+    project_id = f"proj-test-{uuid4().hex[:8]}"
+    agent1_id = f"agent-{uuid4().hex[:8]}"
+    agent2_id = f"agent-{uuid4().hex[:8]}"
+    agent3_id = f"agent-{uuid4().hex[:8]}"
+    msg1_id = f"msg-{uuid4().hex[:8]}"
+    msg2_id = f"msg-{uuid4().hex[:8]}"
+    msg3_id = f"msg-{uuid4().hex[:8]}"
+    msg4_id = f"msg-{uuid4().hex[:8]}"
+    msg5_id = f"msg-{uuid4().hex[:8]}"
+
+    async with db_manager.get_session_async() as session:
+        # Create test project
+        project = Project(
+            id=project_id,
+            tenant_key=tenant_key,
+            name="Test Project",
+            description="Test project for message service",
+            mission="Test mission for message service integration tests",
+            status="active",
+            series_number=random.randint(1, 999999),
+        )
+        session.add(project)
+
+        # Create test agents (status must be one of: waiting, working, blocked, complete, failed, cancelled, decommissioned)
+        agent1 = AgentExecution(
+            job_id=agent1_id,
+            tenant_key=tenant_key,
+            project_id=project.id,
+            agent_display_name="implementer",
+            agent_name="Implementer Agent",
+            mission="Implement features",
+            status="working",
+        )
+        agent2 = AgentExecution(
+            job_id=agent2_id,
+            tenant_key=tenant_key,
+            project_id=project.id,
+            agent_display_name="tester",
+            agent_name="Tester Agent",
+            mission="Run tests",
+            status="working",
+        )
+        agent3 = AgentExecution(
+            job_id=agent3_id,
+            tenant_key=tenant_key,
+            project_id=project.id,
+            agent_display_name="analyzer",
+            agent_name="Analyzer Agent",
+            mission="Analyze code",
+            status="working",
+        )
+        session.add_all([agent1, agent2, agent3])
+
+        # Create test messages
+        messages = [
+            # Direct message to agent-1
+            Message(
+                id=msg1_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                to_agents=[agent1_id],
+                message_type="direct",
+                content="Direct message to agent 1",
+                priority="normal",
+                status="pending",
+                meta_data={"_from_agent": "orchestrator"},
+            ),
+            # Broadcast message to all
+            Message(
+                id=msg2_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                to_agents=["all"],
+                message_type="broadcast",
+                content="Broadcast to all agents",
+                priority="high",
+                status="pending",
+                meta_data={"_from_agent": "orchestrator"},
+            ),
+            # Direct message to agent-2
+            Message(
+                id=msg3_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                to_agents=[agent2_id],
+                message_type="direct",
+                content="Direct message to agent 2",
+                priority="normal",
+                status="pending",
+                meta_data={"_from_agent": agent1_id},
+            ),
+            # Acknowledged message to agent-1
+            Message(
+                id=msg4_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                to_agents=[agent1_id],
+                message_type="direct",
+                content="Acknowledged message",
+                priority="normal",
+                status="acknowledged",
+                acknowledged_by=[agent1_id],
+                acknowledged_at=datetime.now(timezone.utc),
+                meta_data={"_from_agent": "orchestrator"},
+            ),
+            # Multiple recipients (not broadcast)
+            Message(
+                id=msg5_id,
+                tenant_key=tenant_key,
+                project_id=project.id,
+                to_agents=[agent1_id, agent2_id],
+                message_type="direct",
+                content="Message to multiple agents",
+                priority="high",
+                status="pending",
+                meta_data={"_from_agent": "orchestrator"},
+            ),
+        ]
+        session.add_all(messages)
+
+        await session.commit()
+
+        # Store IDs for test assertions
+        test_data = {
+            "project": project,
+            "agents": [agent1, agent2, agent3],
+            "messages": messages,
+            "agent1_id": agent1_id,
+            "agent2_id": agent2_id,
+            "agent3_id": agent3_id,
+            "msg1_id": msg1_id,
+            "msg2_id": msg2_id,
+            "msg3_id": msg3_id,
+            "msg4_id": msg4_id,
+            "msg5_id": msg5_id,
+        }
+
+        yield test_data
+
+        # Cleanup: Rollback any uncommitted changes
+        await session.rollback()
