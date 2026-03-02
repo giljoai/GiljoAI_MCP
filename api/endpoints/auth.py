@@ -190,9 +190,9 @@ class RegisterUserRequest(BaseModel):
     email: EmailStr | None = None
     full_name: str | None = None
     role: str = Field(default="developer", description="User role: admin, developer, viewer")
-    tenant_key: str = Field(
-        default="tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd",
-        description="Tenant key for multi-tenant isolation (must start with 'tk_')",
+    tenant_key: str | None = Field(
+        default=None,
+        description="Tenant key for multi-tenant isolation (resolved from config if not provided)",
     )
     workspace_name: str | None = Field(
         default="My Organization", description="Organization name for first admin user (Handover 0424h)"

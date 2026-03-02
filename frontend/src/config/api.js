@@ -38,6 +38,11 @@ export async function initializeApiConfig() {
     // Update API and WebSocket config
     API_CONFIG.REST_API.baseURL = newBaseURL
     API_CONFIG.WEBSOCKET.url = runtimeConfig.websocket.url
+
+    // Update default tenant key header from backend config
+    if (runtimeConfig.security?.default_tenant_key) {
+      API_CONFIG.REST_API.headers['X-Tenant-Key'] = runtimeConfig.security.default_tenant_key
+    }
     // Extract port from websocket URL or use API port
     API_CONFIG.WEBSOCKET.port = runtimeConfig.api?.port || parseInt(API_PORT, 10)
 
@@ -70,14 +75,22 @@ export function getApiBaseURL() {
   return window.API_BASE_URL || API_CONFIG.REST_API.baseURL
 }
 
+/**
+ * Get the default tenant key (runtime-aware)
+ * Resolves from: runtime config (backend) > env var > empty string
+ * @returns {string} Default tenant key
+ */
+export function getDefaultTenantKey() {
+  return runtimeConfig?.security?.default_tenant_key || import.meta.env.VITE_DEFAULT_TENANT_KEY || ''
+}
+
 export const API_CONFIG = {
   REST_API: {
     baseURL: import.meta.env.VITE_API_URL || DEFAULT_BASE_URL,
     timeout: 30000,
     headers: {
       'Content-Type': 'application/json',
-      'X-Tenant-Key':
-        import.meta.env.VITE_DEFAULT_TENANT_KEY || 'tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd',
+      'X-Tenant-Key': import.meta.env.VITE_DEFAULT_TENANT_KEY || '',
     },
   },
   WEBSOCKET: {
