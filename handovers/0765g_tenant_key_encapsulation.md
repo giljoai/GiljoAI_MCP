@@ -232,14 +232,10 @@ Do NOT over-refactor. The method works correctly. Extract only the two clearest 
 
 ---
 
-## Completion Protocol (FINAL IN CHAIN)
+## Completion Protocol
 
 1. Run full test suite and frontend build
-2. Update chain log:
-   - Set 0765g status to `complete`
-   - Set `final_status` to `complete`
-   - Write `chain_summary` summarizing the entire 0765 series
+2. Update chain log: set 0765g status to `complete`
 3. Write completion summary to THIS handover (max 400 words)
 4. Commit: `cleanup(0765g): Remove hardcoded tenant key, fix encapsulation, refactor update_project`
-5. **Final verification:** Run the code quality audit prompt (`handovers/Code_quality_prompt.md`) to verify score
-6. If score achieved: Tag the branch for the user's review
+5. Spawn 0765h (Skipped Test Resolution) — see `prompts/0765_chain/0765g_launch.md` for spawn command
