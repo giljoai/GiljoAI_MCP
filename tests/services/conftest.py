@@ -919,3 +919,211 @@ async def two_tenant_service_setup(db_session, db_manager):
         "db_manager": db_manager,
         "tenant_manager": tenant_manager,
     }
+
+
+# ============================================================================
+# Vision summarizer helpers
+# (extracted from test_vision_summarizer_simplified.py during split)
+# ============================================================================
+
+
+# ============================================================================
+# Successor spawning fixtures
+# (extracted from test_successor_spawning.py during split)
+# ============================================================================
+
+
+@pytest_asyncio.fixture
+async def tenant_key() -> str:
+    """Generate a valid tenant key for test isolation (successor spawning tests)."""
+    return TenantManager.generate_tenant_key()
+
+
+@pytest_asyncio.fixture
+async def agent_templates(db_session, tenant_key):
+    """Create agent templates needed by spawn_agent_job validation."""
+    for name in ["specialist-1", "tdd-implementor", "orchestrator"]:
+        template = AgentTemplate(
+            tenant_key=tenant_key,
+            name=name,
+            role=name,
+            description=f"Test template for {name}",
+            system_instructions=f"# {name}\nTest agent.",
+            is_active=True,
+        )
+        db_session.add(template)
+    await db_session.commit()
+
+
+@pytest_asyncio.fixture
+async def other_tenant_templates(db_session, other_tenant_key):
+    """Create templates for the other tenant."""
+    for name in ["specialist-1"]:
+        template = AgentTemplate(
+            tenant_key=other_tenant_key,
+            name=name,
+            role=name,
+            description=f"Other tenant template for {name}",
+            system_instructions=f"# {name}\nOther tenant agent.",
+            is_active=True,
+        )
+        db_session.add(template)
+    await db_session.commit()
+
+
+@pytest_asyncio.fixture
+async def project(db_session, tenant_key, agent_templates) -> Project:
+    """Create a test project for successor spawning tests."""
+    proj = Project(
+        id=str(uuid4()),
+        name="Successor Test Project",
+        description="Test project for 0497e successor spawning",
+        mission="Test recovery flow",
+        status="active",
+        tenant_key=tenant_key,
+        implementation_launched_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
+    )
+    db_session.add(proj)
+    await db_session.commit()
+    await db_session.refresh(proj)
+    return proj
+
+
+@pytest_asyncio.fixture
+async def other_project(db_session, other_tenant_key, other_tenant_templates) -> Project:
+    """Create a project in a different tenant."""
+    proj = Project(
+        id=str(uuid4()),
+        name="Other Tenant Project",
+        description="Project in a different tenant",
+        mission="Other tenant work",
+        status="active",
+        tenant_key=other_tenant_key,
+        implementation_launched_at=datetime.now(timezone.utc),
+        series_number=random.randint(1, 999999),
+    )
+    db_session.add(proj)
+    await db_session.commit()
+    await db_session.refresh(proj)
+    return proj
+
+
+@pytest_asyncio.fixture
+async def service(db_session, db_manager) -> "OrchestrationService":
+    """Create OrchestrationService with shared test session."""
+    from src.giljo_mcp.services.orchestration_service import OrchestrationService
+
+    tm = TenantManager()
+    return OrchestrationService(
+        db_manager=db_manager,
+        tenant_manager=tm,
+        test_session=db_session,
+    )
+
+
+async def _spawn_and_complete(service, project_id, tenant_key, result_payload, agent_name="specialist-1"):
+    """Helper: spawn an agent, complete it with a result, return spawn result."""
+    spawn = await service.spawn_agent_job(
+        agent_display_name="predecessor",
+        agent_name=agent_name,
+        mission="Do predecessor work",
+        project_id=project_id,
+        tenant_key=tenant_key,
+    )
+    await service.complete_job(
+        job_id=spawn.job_id,
+        result=result_payload,
+        tenant_key=tenant_key,
+    )
+    return spawn
+
+
+def generate_realistic_document(tokens: int) -> str:
+    """
+    Generate realistic technical document with approximately the specified token count.
+
+    Uses varied technical content to simulate vision documents with proper
+    sentence structure for extractive summarization.
+
+    Args:
+        tokens: Target token count (~4 chars per token)
+
+    Returns:
+        Test document string with realistic content
+    """
+    # Technical paragraphs with diverse semantic content
+    base_paragraphs = [
+        (
+            "The GiljoAI Agent Orchestration system provides a sophisticated multi-agent "
+            "framework for complex software development tasks. The orchestrator coordinates "
+            "specialized agents including implementors, testers, analyzers, and deployment "
+            "specialists. Each agent operates with context awareness and token budget management "
+            "to ensure efficient use of available language model capacity."
+        ),
+        (
+            "Vision documents serve as high-level architectural guidance for orchestrators "
+            "during project initialization and execution phases. These documents describe "
+            "the overall system goals, technical constraints, implementation strategies, "
+            "and design patterns that guide agent decision-making throughout the development "
+            "lifecycle. Proper vision documentation ensures consistency across project phases."
+        ),
+        (
+            "The system architecture leverages FastAPI for backend services with PostgreSQL "
+            "for persistent storage and multi-tenant isolation. Frontend components are built "
+            "using Vue 3 with Vuetify for material design components. Real-time updates are "
+            "handled through WebSocket connections that provide live status updates to the "
+            "dashboard interface for monitoring agent execution progress."
+        ),
+        (
+            "Context management is critical for efficient token usage in large language models. "
+            "The system employs a two-dimensional prioritization model combining field priority "
+            "with depth configuration. This enables agents to access essential information while "
+            "staying within context budget limits. Priority levels range from critical to excluded, "
+            "while depth levels control the amount of detail included for each context field."
+        ),
+        (
+            "Multi-tenant isolation ensures secure separation of data across different users "
+            "and organizations. Each tenant operates in a completely isolated environment with "
+            "dedicated database partitions enforced through tenant_key filtering. Access controls "
+            "prevent cross-tenant data leakage. This architecture supports enterprise deployments "
+            "while maintaining strict data security and privacy requirements."
+        ),
+        (
+            "Agent job management provides lifecycle control for spawned agents including "
+            "creation, execution monitoring, cancellation, and handover coordination. The system "
+            "tracks context usage and supports manual succession via UI or slash commands. "
+            "Job status updates are broadcast through WebSocket events to enable "
+            "real-time UI updates and orchestrator coordination across distributed agents."
+        ),
+        (
+            "Testing strategy encompasses unit tests with pytest for service layer validation, "
+            "integration tests for API endpoints and database operations, and end-to-end tests "
+            "for complete workflow verification. Code coverage targets exceed 80 percent across "
+            "all critical paths. Frontend testing uses Vitest for component tests and Cypress "
+            "for browser-based integration testing of user workflows."
+        ),
+        (
+            "Authentication implements JWT tokens with refresh token rotation for enhanced security. "
+            "Password hashing uses bcrypt with configurable work factors. Rate limiting protects "
+            "against brute force attacks on authentication endpoints. Recovery mechanisms include "
+            "PIN-based password reset with expiration and rate limiting to prevent abuse while "
+            "maintaining user accessibility for account recovery scenarios."
+        ),
+    ]
+
+    # Calculate how many paragraphs needed to reach target
+    avg_chars = sum(len(p) for p in base_paragraphs) // len(base_paragraphs)
+    tokens_per_paragraph = avg_chars // 4
+    paragraphs_needed = max(1, tokens // tokens_per_paragraph)
+
+    # Generate document with varied content
+    paragraphs = []
+    for i in range(paragraphs_needed):
+        # Cycle through diverse paragraphs
+        para = base_paragraphs[i % len(base_paragraphs)]
+        # Add variation to prevent exact duplicates
+        variant = para.replace("system", f"system-v{i % 10}")
+        paragraphs.append(variant)
+
+    return "\n\n".join(paragraphs)

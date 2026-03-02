@@ -1,13 +1,13 @@
 """
-Unit tests for TemplateService (Handover 0123 - Phase 2)
+Unit tests for TemplateService CRUD operations (Handover 0123 - Phase 2)
 
 Tests cover:
-- CRUD operations
+- Template creation (success, missing tenant, error handling)
 - Template retrieval by ID and name
-- Tenant isolation
-- Error handling and edge cases
+- Template listing (success, empty, missing tenant)
+- Template update (success, not found, partial)
 
-Target: >80% line coverage
+Split from test_template_service.py.
 
 Updated Handover 0731: Migrated from dict returns to typed
 TemplateListResult, TemplateGetResult, TemplateCreateResult, TemplateUpdateResult.
@@ -26,55 +26,7 @@ from src.giljo_mcp.schemas.service_responses import (
     TemplateUpdateResult,
 )
 from src.giljo_mcp.services.template_service import TemplateService
-
-
-def _make_mock_session(**overrides):
-    """Create a properly configured mock async session.
-
-    The session is configured as an async context manager that returns itself
-    when used with ``async with``. All standard session methods (execute,
-    commit, refresh, add, delete) are set up with sensible defaults.
-
-    ``overrides`` can supply replacement mocks for any session attribute
-    (e.g. ``execute=AsyncMock(return_value=my_result)``).
-    """
-    session = AsyncMock()
-    session.__aenter__ = AsyncMock(return_value=session)
-    session.__aexit__ = AsyncMock(return_value=False)
-    session.execute = AsyncMock()
-    session.commit = AsyncMock()
-    session.refresh = AsyncMock()
-    session.add = Mock()
-    session.delete = Mock()
-
-    for key, value in overrides.items():
-        setattr(session, key, value)
-    return session
-
-
-def _make_mock_db_manager(session):
-    """Create a mock database manager that returns *session* from get_session_async."""
-    db_manager = Mock()
-    # get_session_async must be a plain Mock (NOT AsyncMock) so the caller
-    # receives the context-manager directly rather than a coroutine wrapper.
-    db_manager.get_session_async = Mock(return_value=session)
-    return db_manager
-
-
-@pytest.fixture
-def mock_db_manager():
-    """Create properly configured mock database manager."""
-    session = _make_mock_session()
-    db_manager = _make_mock_db_manager(session)
-    return db_manager, session
-
-
-@pytest.fixture
-def mock_tenant_manager():
-    """Create mock tenant manager."""
-    tenant_manager = Mock()
-    tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-    return tenant_manager
+from tests.unit.conftest import make_mock_db_manager, make_mock_session
 
 
 class TestTemplateServiceCRUD:
@@ -126,9 +78,9 @@ class TestTemplateServiceCRUD:
         from src.giljo_mcp.exceptions import BaseGiljoError
 
         # Arrange
-        session = _make_mock_session()
+        session = make_mock_session()
         session.__aenter__ = AsyncMock(side_effect=Exception("Database error"))
-        db_manager = _make_mock_db_manager(session)
+        db_manager = make_mock_db_manager(session)
 
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
@@ -158,8 +110,8 @@ class TestTemplateServiceCRUD:
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_template)
-        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
-        db_manager = _make_mock_db_manager(session)
+        session = make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = make_mock_db_manager(session)
 
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
@@ -192,8 +144,8 @@ class TestTemplateServiceCRUD:
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_template)
-        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
-        db_manager = _make_mock_db_manager(session)
+        session = make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = make_mock_db_manager(session)
 
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
@@ -215,8 +167,8 @@ class TestTemplateServiceCRUD:
         # Arrange
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=None)
-        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
-        db_manager = _make_mock_db_manager(session)
+        session = make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = make_mock_db_manager(session)
 
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
@@ -276,8 +228,8 @@ class TestTemplateServiceCRUD:
 
         mock_result = Mock()
         mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[mock_template1, mock_template2])))
-        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
-        db_manager = _make_mock_db_manager(session)
+        session = make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = make_mock_db_manager(session)
 
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
@@ -300,8 +252,8 @@ class TestTemplateServiceCRUD:
         # Arrange
         mock_result = Mock()
         mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[])))
-        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
-        db_manager = _make_mock_db_manager(session)
+        session = make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = make_mock_db_manager(session)
 
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
@@ -350,8 +302,8 @@ class TestTemplateServiceCRUD:
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_template)
-        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
-        db_manager = _make_mock_db_manager(session)
+        session = make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = make_mock_db_manager(session)
 
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
@@ -377,8 +329,8 @@ class TestTemplateServiceCRUD:
         # Arrange
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=None)
-        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
-        db_manager = _make_mock_db_manager(session)
+        session = make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = make_mock_db_manager(session)
 
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
@@ -403,8 +355,8 @@ class TestTemplateServiceCRUD:
 
         mock_result = Mock()
         mock_result.scalar_one_or_none = Mock(return_value=mock_template)
-        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
-        db_manager = _make_mock_db_manager(session)
+        session = make_mock_session(execute=AsyncMock(return_value=mock_result))
+        db_manager = make_mock_db_manager(session)
 
         tenant_manager = Mock()
         tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
@@ -419,119 +371,3 @@ class TestTemplateServiceCRUD:
         assert result.updated is True
         assert mock_template.name == "original-name"  # Unchanged
         assert mock_template.role == "original-role"  # Unchanged
-
-
-class TestTemplateServiceTenantIsolation:
-    """Test tenant isolation"""
-
-    @pytest.mark.asyncio
-    async def test_create_template_uses_provided_tenant_key(self):
-        """Test that explicit tenant_key is used"""
-        # Arrange
-        session = _make_mock_session()
-        db_manager = _make_mock_db_manager(session)
-        tenant_manager = Mock()
-
-        service = TemplateService(db_manager, tenant_manager)
-
-        # Act
-        result = await service.create_template(name="test", content="content", tenant_key="explicit-tenant")
-
-        # Assert - Handover 0731: typed TemplateCreateResult
-        assert isinstance(result, TemplateCreateResult)
-        assert result.tenant_key == "explicit-tenant"
-        # Verify tenant manager was NOT called
-        tenant_manager.get_current_tenant.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_list_templates_filters_by_tenant(self):
-        """Test that list_templates only returns templates for specific tenant"""
-        # This is verified by checking the SQL query uses tenant_key filter
-        # The actual filtering is done by SQLAlchemy, so we just verify
-        # the service constructs the correct query
-
-        mock_result = Mock()
-        mock_result.scalars = Mock(return_value=Mock(all=Mock(return_value=[])))
-        session = _make_mock_session(execute=AsyncMock(return_value=mock_result))
-        db_manager = _make_mock_db_manager(session)
-
-        tenant_manager = Mock()
-        tenant_manager.get_current_tenant = Mock(return_value="tenant-1")
-
-        service = TemplateService(db_manager, tenant_manager)
-
-        # Act
-        result = await service.list_templates()
-
-        # Assert - Handover 0731: typed TemplateListResult
-        assert isinstance(result, TemplateListResult)
-        assert hasattr(result, "templates")
-        # Verify execute was called (which means query was built with tenant filter)
-        session.execute.assert_awaited_once()
-
-
-class TestTemplateServiceErrorHandling:
-    """Test error handling"""
-
-    @pytest.mark.asyncio
-    async def test_create_template_database_exception(self):
-        """Test database exception handling in create"""
-        from src.giljo_mcp.exceptions import BaseGiljoError
-
-        # Arrange
-        session = _make_mock_session()
-        session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
-        db_manager = _make_mock_db_manager(session)
-
-        tenant_manager = Mock()
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-
-        service = TemplateService(db_manager, tenant_manager)
-
-        # Act & Assert - service wraps all unexpected exceptions as BaseGiljoError
-        with pytest.raises(BaseGiljoError) as exc_info:
-            await service.create_template(name="test", content="content")
-
-        assert "Connection lost" in str(exc_info.value)
-
-    @pytest.mark.asyncio
-    async def test_get_template_database_exception(self):
-        """Test database exception handling in get"""
-        from src.giljo_mcp.exceptions import BaseGiljoError
-
-        # Arrange
-        session = _make_mock_session()
-        session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
-        db_manager = _make_mock_db_manager(session)
-
-        tenant_manager = Mock()
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-
-        service = TemplateService(db_manager, tenant_manager)
-
-        # Act & Assert - exception-based pattern (Handover 0730)
-        with pytest.raises(BaseGiljoError) as exc_info:
-            await service.get_template(template_id="test-id")
-
-        assert "Connection lost" in str(exc_info.value)
-
-    @pytest.mark.asyncio
-    async def test_update_template_database_exception(self):
-        """Test database exception handling in update"""
-        from src.giljo_mcp.exceptions import BaseGiljoError
-
-        # Arrange
-        session = _make_mock_session()
-        session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
-        db_manager = _make_mock_db_manager(session)
-
-        tenant_manager = Mock()
-        tenant_manager.get_current_tenant = Mock(return_value="test-tenant")
-
-        service = TemplateService(db_manager, tenant_manager)
-
-        # Act & Assert - exception-based pattern (Handover 0730)
-        with pytest.raises(BaseGiljoError) as exc_info:
-            await service.update_template(template_id="test-id", name="new-name")
-
-        assert "Connection lost" in str(exc_info.value)
