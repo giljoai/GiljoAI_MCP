@@ -30,9 +30,11 @@ def mock_db_manager():
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
     session.add = Mock()
+    session.delete = Mock()
     session.flush = AsyncMock()
     session.rollback = AsyncMock()
     db_manager.get_session_async = Mock(return_value=session)
+    db_manager.get_tenant_session_async = Mock(return_value=session)
     return db_manager, session
 
 
