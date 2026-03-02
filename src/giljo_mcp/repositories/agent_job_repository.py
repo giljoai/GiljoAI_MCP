@@ -108,7 +108,7 @@ class AgentJobRepository:
             session: Async database session
             tenant_key: Tenant key for isolation
             job_id: AgentJob ID to update
-            status: New status (pending, active, completed, failed)
+            status: New status (active, completed, cancelled)
             started_at: Optional start timestamp for active status
             completed_at: Optional completion timestamp
 
