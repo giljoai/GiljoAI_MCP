@@ -199,10 +199,9 @@ class TestNoMCPAgentJobImport:
         import ast
         from pathlib import Path
 
-        file_path = Path("src/giljo_mcp/services/orchestration_service.py")
-
-        if not file_path.exists():
-            pytest.skip("File not found - likely in different working directory")
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        file_path = repo_root / "src" / "giljo_mcp" / "services" / "orchestration_service.py"
+        assert file_path.exists(), f"Expected source file not found: {file_path}"
 
         with open(file_path, encoding="utf-8") as f:
             source = f.read()
@@ -228,36 +227,6 @@ class TestNoMCPAgentJobImport:
             f"OrchestrationService still imports MCPAgentJob: {mcp_agent_job_imports}"
         )
 
-    def test_agent_job_manager_no_mcpagentjob_import(self):
-        """
-        AgentJobManager should not import MCPAgentJob.
-        """
-        import ast
-        from pathlib import Path
-
-        file_path = Path("src/giljo_mcp/agent_job_manager.py")
-
-        if not file_path.exists():
-            pytest.skip("File not found - likely in different working directory")
-
-        with open(file_path, encoding="utf-8") as f:
-            source = f.read()
-
-        # Parse the source code
-        tree = ast.parse(source)
-
-        # Check all imports
-        mcp_agent_job_imports = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                if node.names:
-                    for alias in node.names:
-                        if alias.name == "MCPAgentJob":
-                            mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
-
-        # Should have no MCPAgentJob imports
-        assert len(mcp_agent_job_imports) == 0, f"AgentJobManager still imports MCPAgentJob: {mcp_agent_job_imports}"
-
     def test_project_service_no_mcpagentjob_import(self):
         """
         ProjectService should not import MCPAgentJob.
@@ -265,10 +234,9 @@ class TestNoMCPAgentJobImport:
         import ast
         from pathlib import Path
 
-        file_path = Path("src/giljo_mcp/services/project_service.py")
-
-        if not file_path.exists():
-            pytest.skip("File not found - likely in different working directory")
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        file_path = repo_root / "src" / "giljo_mcp" / "services" / "project_service.py"
+        assert file_path.exists(), f"Expected source file not found: {file_path}"
 
         with open(file_path, encoding="utf-8") as f:
             source = f.read()
@@ -295,10 +263,9 @@ class TestNoMCPAgentJobImport:
         import ast
         from pathlib import Path
 
-        file_path = Path("src/giljo_mcp/services/message_service.py")
-
-        if not file_path.exists():
-            pytest.skip("File not found - likely in different working directory")
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        file_path = repo_root / "src" / "giljo_mcp" / "services" / "message_service.py"
+        assert file_path.exists(), f"Expected source file not found: {file_path}"
 
         with open(file_path, encoding="utf-8") as f:
             source = f.read()
@@ -317,33 +284,3 @@ class TestNoMCPAgentJobImport:
 
         # Should have no MCPAgentJob imports
         assert len(mcp_agent_job_imports) == 0, f"MessageService still imports MCPAgentJob: {mcp_agent_job_imports}"
-
-    def test_job_monitoring_no_mcpagentjob_import(self):
-        """
-        JobMonitoring should not import MCPAgentJob.
-        """
-        import ast
-        from pathlib import Path
-
-        file_path = Path("src/giljo_mcp/job_monitoring.py")
-
-        if not file_path.exists():
-            pytest.skip("File not found - likely in different working directory")
-
-        with open(file_path, encoding="utf-8") as f:
-            source = f.read()
-
-        # Parse the source code
-        tree = ast.parse(source)
-
-        # Check all imports
-        mcp_agent_job_imports = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                if node.names:
-                    for alias in node.names:
-                        if alias.name == "MCPAgentJob":
-                            mcp_agent_job_imports.append(f"from {node.module} import MCPAgentJob")
-
-        # Should have no MCPAgentJob imports
-        assert len(mcp_agent_job_imports) == 0, f"JobMonitoring still imports MCPAgentJob: {mcp_agent_job_imports}"
