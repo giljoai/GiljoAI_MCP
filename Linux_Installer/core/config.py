@@ -244,7 +244,7 @@ LOG_FILE=./logs/giljo_mcp.log
 GILJO_MCP_API_KEY=
 
 # Default tenant key (generated during installation)
-DEFAULT_TENANT_KEY={self.settings.get("default_tenant_key", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")}
+DEFAULT_TENANT_KEY={self.settings.get("default_tenant_key", "")}
 
 # Secret keys for session management
 GILJO_MCP_SECRET_KEY={self.generate_secret_key()}
@@ -468,6 +468,15 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                     "ready_to_launch": True,
                 },
             }
+
+            # Add tenant configuration (tenant key from installation)
+            tenant_key = self.settings.get("default_tenant_key", "")
+            if tenant_key:
+                config["tenant"] = {
+                    "enabled": True,
+                    "default_key": tenant_key,
+                    "key_header": "X-Tenant-Key",
+                }
 
             # Add security configuration (v3.0: Always included, no mode dependency)
             config["security"] = self._generate_security_config()
