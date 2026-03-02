@@ -156,20 +156,36 @@
       "title": "Test File Splitting",
       "color": "#E91E63",
       "handover": "handovers/0765e_test_file_splitting.md",
-      "status": "in_progress",
+      "status": "complete",
       "started_at": "2026-03-02T23:30:00Z",
-      "completed_at": null,
+      "completed_at": "2026-03-03T02:45:00Z",
       "planned_tasks": [
         "Split 19 oversized test files (>500 lines) into focused modules",
         "Maintain test isolation and fixture sharing",
         "Verify all tests still pass after reorganization",
         "Update any test discovery configuration"
       ],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "tasks_completed": [
+        "Wave 1: Split 3 files (1000+ lines) -> 11 modules (orchestration_service, service_responses, product_service)",
+        "Wave 2: Split 6 files (700-900 lines) -> 17 modules (project_service, user_service, task_service x2, multi_tenant_isolation, phase_labels)",
+        "Wave 3: Split 9 files (600-700 lines) -> 20 modules (message_tenant_isolation, statistics_repository, cli_rules, product_service_integration, thin_client_prompt, counters, medium_tenant_isolation, task_service_exceptions, template_renderer)",
+        "Wave 4: Split 17 files (500-600 lines) -> 37 modules (auth_models, template_validation, tenant_isolation_services, template_service x2, tenant_isolation, vision_summarizer, auth_endpoints, auth_manager_v3, context_manager, message_service_receive, successor_spawning, tool_accessor, field_priority, auth_service, agent_discovery, multi_tenant_comprehensive)",
+        "Created 3 new conftest.py files (services, repositories, integration updates) with shared fixtures",
+        "Added .gitleaks.toml to allowlist test fixture fake API keys",
+        "Fixed services conftest test_tenant_key to use TenantManager.generate_tenant_key()"
+      ],
+      "deviations": [
+        "Actual count was 35 oversized test files (not 19) — 0765a removals reduced some files but count methodology differed",
+        "Fixture/helper files (4 files: test_mock_agent_simulator, orchestrator_simulator, e2e_closeout_fixtures, tenant_helpers) excluded from splitting as they are infrastructure, not test modules",
+        "One subagent auto-committed test_template_service split independently (commit 09c71554)"
+      ],
+      "blockers_encountered": [
+        "services conftest.py test_tenant_key fixture used invalid format (f-string UUID) instead of TenantManager.generate_tenant_key() — caused test_project_service_exceptions failures, fixed immediately",
+        "gitleaks flagged test fixture fake API keys in new file paths — resolved by adding .gitleaks.toml allowlist for tests/ directory",
+        "mixed-line-ending hook required re-staging on every commit (expected behavior for Windows)"
+      ],
+      "notes_for_next": "All 35 oversized test files split into focused modules. 0 test files over 500 lines remain (1 fixture file excluded). 1410 tests passing, 342 skipped. Branch ready for 0765f (Security Hardening).",
+      "summary": "Split 35 oversized test files (>500 lines each) into 85 focused modules across 6 commits. Created/updated 3 conftest.py files for shared fixtures. Added .gitleaks.toml for test fixture allowlisting. Zero test regressions — 1410 passed, 342 skipped matches pre-split baseline exactly."
     },
     {
       "session_id": "0765f",
