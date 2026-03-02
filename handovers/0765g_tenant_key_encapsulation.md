@@ -239,3 +239,24 @@ Do NOT over-refactor. The method works correctly. Extract only the two clearest 
 3. Write completion summary to THIS handover (max 400 words)
 4. Commit: `cleanup(0765g): Remove hardcoded tenant key, fix encapsulation, refactor update_project`
 5. Spawn 0765h (Skipped Test Resolution) — see `prompts/0765_chain/0765g_launch.md` for spawn command
+
+---
+
+## Completion Summary
+
+**Status:** COMPLETE | **Date:** 2026-03-02 | **Commits:** 4
+
+### Task 1: Tenant Key Removal (11 files, 80 insertions, 28 deletions)
+Removed 14+ hardcoded occurrences of `tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd` from all production code. Backend: added `_get_default_tenant_key()` helper in `dependencies.py` (resolves from ConfigManager -> env var -> error), updated auth middleware, changed `RegisterUserRequest.tenant_key` default to None, added `default_tenant_key` to `/api/v1/config/frontend` response. Frontend: added `getDefaultTenantKey()` export to `api.js`, updated axios interceptor and McpIntegration.vue. Installers: both Windows and Linux installers now generate `tenant` section in config.yaml instead of hardcoding in .env template. Verified via `git grep`: zero hardcoded key instances remain.
+
+### Task 2: Prompts Encapsulation (2 files)
+Added `generate_implementation_prompt(prompt_type, **kwargs)` public method to `ThinClientPromptGenerator` as a routing method. Updated `prompts.py` endpoint to call the public method instead of directly invoking `_build_multi_terminal_orchestrator_prompt` and `_build_claude_code_execution_prompt` private methods.
+
+### Task 3: update_project Refactor (2 files + 1 new test file, 19 tests)
+Extracted `_apply_project_updates(project, updates)` for field validation/setattr and `_build_project_data(project)` static method for DTO construction from `update_project`. Added 19 unit tests covering both helpers.
+
+### Verification
+- Full test suite: 1441 passed, 342 skipped (19 new from Task 3)
+- Ruff lint: all changed core files pass
+- Frontend build: clean
+- Pre-commit hooks: all pass
