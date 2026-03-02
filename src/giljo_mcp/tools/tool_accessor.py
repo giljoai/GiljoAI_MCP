@@ -12,88 +12,23 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-from sqlalchemy import and_, select
-
 from src.giljo_mcp._config_io import read_config
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models import Product, Project
+from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.schemas.service_responses import (
-    CompleteMessageResult,
     MessageListResult,
     SendMessageResult,
     WorkflowStatus,
 )
-from src.giljo_mcp.services.context_service import ContextService
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.services.product_service import ProductService
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.services.task_service import TaskService
-from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.tenant import TenantManager
 
 
 logger = logging.getLogger(__name__)
-
-# ============================================================================
-# STANDALONE HELPER FUNCTIONS (For Testing and Tenant Isolation)
-# ============================================================================
-
-
-async def activate_project(project_id: str, tenant_key: str, session) -> dict[str, Any]:
-    """
-    Activate a project with tenant isolation (testable helper).
-
-    This is a standalone helper function that extracts the core logic
-    from ToolAccessor.gil_activate() for testing purposes.
-
-    Args:
-        project_id: Project ID to activate
-        tenant_key: Tenant isolation key
-        session: Database session
-
-    Returns:
-        Success/error dictionary with project details
-    """
-    try:
-        from datetime import datetime, timezone
-
-        # Get project with tenant isolation
-        res = await session.execute(
-            select(Project).where(and_(Project.id == project_id, Project.tenant_key == tenant_key))
-        )
-        project = res.scalar_one_or_none()
-
-        if not project:
-            raise ResourceNotFoundError("Project not found")
-
-        if project.status != "inactive":
-            raise ProjectStateError(f"Project cannot be activated from status '{project.status}'")
-
-        # Verify product belongs to same tenant (if exists)
-        if project.product_id:
-            # TENANT ISOLATION: Filter product by tenant_key
-            prod = await session.execute(
-                select(Product).where(and_(Product.id == project.product_id, Product.tenant_key == tenant_key))
-            )
-            product = prod.scalar_one_or_none()
-            if not product or not getattr(product, "is_active", False):
-                raise ProjectStateError("Parent product inactive or missing")
-
-        # Activate the project
-        project.status = "active"
-        project.updated_at = datetime.now(timezone.utc)
-        await session.commit()
-
-        return {
-            "project_id": str(project.id),
-            "status": "active",
-        }
-
-    except Exception:
-        logger.exception("Failed to activate project")
-        raise
 
 
 class ToolAccessor:
@@ -120,14 +55,12 @@ class ToolAccessor:
             test_session=test_session,
             websocket_manager=websocket_manager,  # Fix: Pass WebSocket manager for mission updates
         )
-        self._template_service = TemplateService(db_manager, tenant_manager)
         self._task_service = TaskService(db_manager, tenant_manager)
         self._message_service = MessageService(
             db_manager,
             tenant_manager,
             websocket_manager=websocket_manager,  # Pass WebSocket manager
         )
-        self._context_service = ContextService(db_manager, tenant_manager)
         self._orchestration_service = OrchestrationService(
             db_manager,
             tenant_manager,
@@ -242,38 +175,6 @@ class ToolAccessor:
             "message": f"Project '{project.name}' created successfully",
         }
 
-    async def list_projects(self, status: str | None = None, tenant_key: str | None = None) -> list[dict[str, Any]]:
-        """List all projects with optional status filter (delegates to ProjectService)"""
-        return await self._project_service.list_projects(status=status, tenant_key=tenant_key)
-
-    async def get_project(self, project_id: str) -> dict[str, Any]:
-        """Get a specific project by ID (delegates to ProjectService)"""
-        # SECURITY FIX: Pass tenant_key from context (Handover 0424 Phase 0)
-        tenant_key = self.tenant_manager.get_current_tenant()
-        return await self._project_service.get_project(project_id, tenant_key=tenant_key)
-
-    async def switch_project(self, project_id: str) -> dict[str, Any]:
-        """Switch to a different project (delegates to ProjectService)"""
-        # SECURITY FIX (Handover 0424): Always pass tenant_key for isolation
-        tenant_key = self.tenant_manager.get_current_tenant()
-        return await self._project_service.switch_project(project_id, tenant_key=tenant_key)
-
-    async def complete_project(self, project_id: str, summary: str | None = None) -> dict[str, Any]:
-        """Mark a project as completed (delegates to ProjectService)"""
-        # SECURITY FIX (Handover 0424): Always pass tenant_key for isolation
-        tenant_key = self.tenant_manager.get_current_tenant()
-        return await self._project_service.complete_project(project_id, summary, tenant_key=tenant_key)
-
-    async def cancel_project(self, project_id: str, reason: str | None = None) -> dict[str, Any]:
-        """Cancel a project (delegates to ProjectService)"""
-        tenant_key = self.tenant_manager.get_current_tenant()
-        return await self._project_service.cancel_project(project_id, tenant_key, reason)
-
-    async def restore_project(self, project_id: str) -> dict[str, Any]:
-        """Restore a completed or cancelled project (delegates to ProjectService)"""
-        tenant_key = self.tenant_manager.get_current_tenant()
-        return await self._project_service.restore_project(project_id, tenant_key=tenant_key)
-
     async def update_project_mission(self, project_id: str, mission: str) -> dict[str, Any]:
         """Update the mission field (delegates to ProjectService)"""
         # SECURITY FIX (Handover 0424): Always pass tenant_key for isolation
@@ -305,27 +206,6 @@ class ToolAccessor:
             priority=priority,
             from_agent=from_agent,
             tenant_key=tenant_key,
-        )
-
-    async def get_messages(self, agent_name: str, project_id: str | None = None) -> MessageListResult:
-        """Retrieve pending messages for an agent (delegates to MessageService)"""
-        tenant_key = self.tenant_manager.get_current_tenant()
-        return await self._message_service.get_messages(
-            agent_name=agent_name, project_id=project_id, tenant_key=tenant_key
-        )
-
-    async def complete_message(self, message_id: str, agent_name: str, result: str) -> CompleteMessageResult:
-        """Mark message as completed with result (delegates to MessageService)"""
-        tenant_key = self.tenant_manager.get_current_tenant()
-        return await self._message_service.complete_message(
-            message_id=message_id, agent_name=agent_name, result=result, tenant_key=tenant_key
-        )
-
-    async def broadcast(self, content: str, project_id: str, priority: str = "normal") -> SendMessageResult:
-        """Broadcast message to all agents in project (delegates to MessageService)"""
-        tenant_key = self.tenant_manager.get_current_tenant()
-        return await self._message_service.broadcast(
-            content=content, project_id=project_id, priority=priority, tenant_key=tenant_key
         )
 
     async def receive_messages(
@@ -381,22 +261,6 @@ class ToolAccessor:
         )
 
     # Task Tools
-
-    async def log_task(self, content: str, category: str | None = None, priority: str = "medium") -> dict[str, Any]:
-        """Quick task capture (delegates to TaskService)"""
-        tenant_key = self.tenant_manager.get_current_tenant()
-        # Resolve active product (required since Handover 0433)
-        product_service = ProductService(
-            db_manager=self.db_manager,
-            tenant_key=tenant_key,
-            websocket_manager=self._websocket_manager,
-            test_session=self._test_session,
-        )
-        active_product = await product_service.get_active_product()
-        product_id = active_product.id if active_product else None
-        return await self._task_service.log_task(
-            content=content, category=category, priority=priority, tenant_key=tenant_key, product_id=product_id
-        )
 
     async def create_task(
         self,
@@ -487,118 +351,6 @@ class ToolAccessor:
             "product_id": product_id,
             "message": f"Task '{title}' created successfully",
         }
-
-    # Task MCP tools retired Dec 2025 - list_tasks, update_task, assign_task, complete_task removed
-    # Web interface uses REST API (/api/v1/tasks/) via TaskService directly
-
-    # Context Tools (delegates to ContextService)
-
-    async def get_context_index(self, product_id: str | None = None) -> dict[str, Any]:
-        """Get the context index for intelligent querying (delegates to ContextService)"""
-        return await self._context_service.get_context_index(product_id=product_id)
-
-    async def get_vision(self, part: int = 1, max_tokens: int = 20000) -> dict[str, Any]:
-        """Get the vision document (delegates to ContextService)"""
-        return await self._context_service.get_vision(part=part, max_tokens=max_tokens)
-
-    async def get_vision_index(self) -> dict[str, Any]:
-        """Get the vision document index (delegates to ContextService)"""
-        return await self._context_service.get_vision_index()
-
-    async def get_product_settings(self, product_id: str | None = None) -> dict[str, Any]:
-        """Get all product settings for analysis (delegates to ContextService)"""
-        return await self._context_service.get_product_settings(product_id=product_id)
-
-    # Template Tools (delegates to TemplateService)
-
-    async def list_templates(self) -> dict[str, Any]:
-        """List available templates (delegates to TemplateService)"""
-        return await self._template_service.list_templates()
-
-    async def create_template(self, name: str, content: str, **kwargs) -> dict[str, Any]:
-        """Create a new template (delegates to TemplateService)"""
-        return await self._template_service.create_template(name=name, content=content, **kwargs)
-
-    async def update_template(self, template_id: str, **kwargs) -> dict[str, Any]:
-        """Update a template (delegates to TemplateService)"""
-        return await self._template_service.update_template(template_id=template_id, **kwargs)
-
-    async def set_product_path(
-        self,
-        project_path: str,
-        product_id: str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Set or update product's project path for agent export.
-
-        Args:
-            project_path: File system path to product folder
-            product_id: Optional specific product ID (uses active product if not specified)
-
-        Returns:
-            Update result dictionary
-        """
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                raise ValidationError("No tenant context available")
-
-            from .claude_export import get_product_for_tenant, validate_product_path
-
-            # Get product
-            product = await get_product_for_tenant(self.db_manager, tenant_key, product_id)
-            if not product:
-                raise ResourceNotFoundError("Product not found")
-
-            # Validate and update path
-            result = await validate_product_path(
-                db_manager=self.db_manager,
-                tenant_key=tenant_key,
-                product_id=str(product.id),
-                project_path=project_path,
-            )
-
-            return result
-
-        except Exception:
-            logger.exception("Failed to set product path")
-            raise
-
-    async def get_product_path(
-        self,
-        product_id: str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Get product's current project path.
-
-        Args:
-            product_id: Optional specific product ID (uses active product if not specified)
-
-        Returns:
-            Product path information
-        """
-        try:
-            tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                raise ValidationError("No tenant context available")
-
-            from .claude_export import get_product_for_tenant
-
-            # Get product
-            product = await get_product_for_tenant(self.db_manager, tenant_key, product_id)
-            if not product:
-                raise ResourceNotFoundError("Product not found")
-
-            return {
-                "product_id": str(product.id),
-                "product_name": product.name,
-                "project_path": product.project_path,
-                "has_path": bool(product.project_path),
-            }
-
-        except Exception:
-            logger.exception("Failed to get product path")
-            raise
 
     # Orchestration Tools
 
