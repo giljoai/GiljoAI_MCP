@@ -65,7 +65,7 @@ class AgentStatsResponse(BaseModel):
     messages_received: int
     tasks_assigned: int
     tasks_completed: int
-    average_response_time_seconds: float
+    average_response_time_seconds: Optional[float] = None
     last_activity: datetime
 
 
@@ -75,7 +75,7 @@ class MessageStatsResponse(BaseModel):
     acknowledged_messages: int
     completed_messages: int
     failed_messages: int
-    average_processing_time_seconds: float
+    average_processing_time_seconds: Optional[float] = None
     messages_per_hour: float
     peak_hour_messages: int
 
@@ -84,11 +84,11 @@ class PerformanceMetricsResponse(BaseModel):
     api_response_time_ms: float
     database_query_time_ms: float
     websocket_connections: int
-    active_sessions: int
+    active_sessions: Optional[int] = None
     memory_usage_mb: float
     cpu_usage_percent: float
     disk_usage_percent: float
-    error_rate_percent: float
+    error_rate_percent: Optional[float] = None
 
 
 class CallCountsResponse(BaseModel):
@@ -249,11 +249,42 @@ async def get_project_statistics_by_id(
     request: Request, project_id: str, current_user: User = Depends(get_current_active_user)
 ):
     """Get statistics for a specific project"""
-    stats = await get_project_statistics(request)
-    for stat in stats:
-        if stat.project_id == project_id:
-            return stat
-    raise HTTPException(status_code=404, detail="Project not found")
+    from api.app import state
+
+    tenant_key = getattr(request.state, "tenant_key", None)
+    if not tenant_key:
+        raise HTTPException(status_code=400, detail="Tenant key not found in request state")
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    stats_repo = StatisticsRepository(state.db_manager)
+    async with state.db_manager.get_session_async() as session:
+        # Direct single-project query instead of fetching all projects (N+1 fix)
+        project = await stats_repo.get_project_by_id(session, tenant_key, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        agent_count = await stats_repo.count_agents_for_project(session, tenant_key, project.id)
+        message_count = await stats_repo.count_messages_for_project(session, tenant_key, project.id)
+        task_count = await stats_repo.count_tasks_for_project(session, tenant_key, project.id)
+        completed_task_count = await stats_repo.count_completed_tasks_for_project(session, tenant_key, project.id)
+        last_message = await stats_repo.get_last_activity_for_project(session, tenant_key, project.id)
+
+        end_time = project.updated_at if project.status == "completed" else datetime.now(timezone.utc)
+        duration = (end_time - project.created_at).total_seconds()
+
+        return ProjectStatsResponse(
+            project_id=str(project.id),
+            name=project.name,
+            status=project.status,
+            duration_seconds=duration,
+            agent_count=agent_count,
+            message_count=message_count,
+            task_count=task_count,
+            completed_tasks=completed_task_count,
+            last_activity=last_message or project.updated_at,
+        )
 
 
 @router.get("/agents", response_model=list[AgentStatsResponse])
@@ -292,7 +323,7 @@ async def get_agent_statistics(
             task_count = agent_execution.messages_sent_count
             completed_count = agent_execution.messages_read_count
 
-            avg_response_time = 30.0
+            avg_response_time = None  # No real metric available yet
 
             last_sent = await stats_repo.get_last_message_sent_by_agent(session, tenant_key, agent_execution.agent_name)
 
@@ -372,7 +403,7 @@ async def get_message_statistics(
             session, tenant_key, status="failed", project_id=project_id, since=since
         )
 
-        avg_processing_time = 45.0
+        avg_processing_time = None  # No real metric available yet
 
         hours_in_range = max((now - since).total_seconds() / 3600, 1) if since else 24
         messages_per_hour = total / hours_in_range
@@ -417,11 +448,11 @@ async def get_performance_metrics(current_user: User = Depends(get_current_activ
     # Count WebSocket connections
     websocket_connections = len(state.connections) if state.connections else 0
 
-    # Count active sessions (simplified)
-    active_sessions = 1  # Current session
+    # Active sessions: no real tracking available yet
+    active_sessions = None
 
-    # Calculate error rate (simplified)
-    error_rate = 0.1  # 0.1% error rate
+    # Error rate: no real tracking available yet
+    error_rate = None
 
     db_query_time = 0
     if state.db_manager:
