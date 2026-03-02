@@ -9,6 +9,27 @@ from fastapi import Request
 from src.giljo_mcp.tenant import TenantManager
 
 
+def _get_default_tenant_key() -> str:
+    """Resolve default tenant key from config.yaml or environment variable.
+
+    Resolution order:
+    1. ConfigManager (loaded from config.yaml tenant.default_key)
+    2. DEFAULT_TENANT_KEY environment variable
+    """
+    from api.app import state
+
+    if hasattr(state, "config") and state.config and state.config.tenant.default_tenant_key:
+        return state.config.tenant.default_tenant_key
+
+    key = os.getenv("DEFAULT_TENANT_KEY")
+    if key:
+        return key
+
+    raise RuntimeError(
+        "No default tenant key configured. Set tenant.default_key in config.yaml or DEFAULT_TENANT_KEY in .env"
+    )
+
+
 async def get_tenant_key(request: Request) -> str:
     """
     Get tenant key from request state and ensure it's set in context.
@@ -29,13 +50,13 @@ async def get_tenant_key(request: Request) -> str:
         setup_mode = getattr(state.api_state.config, "setup_mode", False)
         if setup_mode:
             # In setup mode, use environment variable or proper default tenant key
-            default_tenant = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
+            default_tenant = _get_default_tenant_key()
             return default_tenant
 
     # For OPTIONS requests (CORS preflight), return default tenant without validation
     # OPTIONS requests should not fail due to missing tenant context
     if request.method == "OPTIONS":
-        default_tenant = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
+        default_tenant = _get_default_tenant_key()
         return default_tenant
 
     # Get from request state (set by middleware)
@@ -69,7 +90,7 @@ async def get_tenant_key(request: Request) -> str:
         pass  # If config read fails, allow fallback  # nosec B110
 
     # Fallback to default tenant (localhost mode only)
-    default_tenant = os.getenv("DEFAULT_TENANT_KEY", "tk_cyyOVf1HsbOCA8eFLEHoYUwiIIYhXjnd")
+    default_tenant = _get_default_tenant_key()
     # Only validate tenant if we have a database
     if hasattr(state, "db_manager") and state.db_manager:
         TenantManager.set_current_tenant(default_tenant)
