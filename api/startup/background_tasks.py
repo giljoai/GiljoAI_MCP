@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import SQLAlchemyError
 
 from api.app import APIState
 from src.giljo_mcp.database import DatabaseManager
@@ -40,7 +41,7 @@ async def cleanup_expired_download_tokens(state: APIState):
                         logger.info(f"Download token cleanup: {deleted_total} tokens removed")
                     else:
                         logger.debug("Download token cleanup: no tokens removed")
-        except Exception as e:  # noqa: PERF203 - Background task resilience: catch errors, continue loop
+        except (SQLAlchemyError, TypeError, ValueError, AttributeError) as e:  # noqa: PERF203
             logger.error(f"Error during download token cleanup: {e}", exc_info=True)
 
 
@@ -80,7 +81,7 @@ async def sync_api_metrics_to_db(state: APIState):
                         await session.execute(stmt)
                     await session.commit()
                     logger.info(f"Synced API metrics for {len(api_counts)} tenants.")
-                except Exception as e:
+                except SQLAlchemyError as e:
                     logger.error(f"Error during API metrics sync: {e}", exc_info=True)
                     # If sync fails, restore the counters
                     state.api_call_count.update(api_counts)
@@ -151,7 +152,7 @@ async def purge_expired_deleted_items(db_manager: DatabaseManager, tenant_manage
                     logger.debug("[Handover 0070] No expired deleted items to purge")
 
         logger.info("Startup purge complete")
-    except Exception as e:
+    except Exception as e:  # Broad catch: background task startup, non-fatal
         logger.error(f"Failed to purge expired deleted items: {e}", exc_info=True)
         logger.warning("Continuing startup despite purge failure")
 
@@ -171,7 +172,7 @@ async def init_background_tasks(state: APIState) -> None:
         cleanup_task = asyncio.create_task(cleanup_expired_download_tokens(state))
         state.cleanup_task = cleanup_task  # Store reference to prevent garbage collection
         logger.info("Download token cleanup task started (runs every 15 minutes)")
-    except Exception as e:
+    except Exception as e:  # Broad catch: background task startup, non-fatal
         logger.error(f"Failed to start download token cleanup task: {e}", exc_info=True)
 
     # Start API metrics sync task
@@ -180,7 +181,7 @@ async def init_background_tasks(state: APIState) -> None:
         metrics_sync_task = asyncio.create_task(sync_api_metrics_to_db(state))
         state.metrics_sync_task = metrics_sync_task
         logger.info("API metrics sync task started (runs every 5 minutes)")
-    except Exception as e:
+    except Exception as e:  # Broad catch: background task startup, non-fatal
         logger.error(f"Failed to start API metrics sync task: {e}", exc_info=True)
 
     # Run one-time purge of expired deleted items

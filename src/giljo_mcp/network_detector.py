@@ -54,7 +54,7 @@ class AdapterIPDetector:
             logger.warning(f"Adapter {adapter_id!r} has no IPv4 address")
             return None
 
-        except Exception as e:
+        except (OSError, KeyError, AttributeError) as e:
             logger.error(f"Failed to get IP for adapter {adapter_id!r}: {e}", exc_info=True)
             return None
 
@@ -107,7 +107,7 @@ class AdapterIPDetector:
             logger.debug(f"IP unchanged for {adapter_id!r}: {current_ip}")
             return False, current_ip, adapter_id
 
-        except Exception as e:
+        except (OSError, KeyError, AttributeError) as e:
             logger.error(f"IP change detection failed: {e}", exc_info=True)
             return False, None, None
 
@@ -151,7 +151,7 @@ class AdapterIPDetector:
             best = candidates[0]
             return (best["name"], best["ip"])
 
-        except Exception as e:
+        except (OSError, KeyError, AttributeError) as e:
             logger.error(f"Failed to get recommended adapter: {e}", exc_info=True)
             return None
 

@@ -99,7 +99,7 @@ class WebSocketEventListener:
                 extra={"product_id": product_id, "tenant_key": tenant_key, "sent_count": sent_count},
             )
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: event listener resilience, prevents crash
             self.logger.error(
                 f"Error handling product status change event: {e}",
                 extra={"error": str(e)},
@@ -147,7 +147,7 @@ class WebSocketEventListener:
                 },
             )
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: event listener resilience, prevents crash
             self.logger.error(
                 f"Error handling mission update event: {e}",
                 extra={"error": str(e)},
@@ -205,7 +205,7 @@ class WebSocketEventListener:
                 },
             )
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: event listener resilience, prevents crash
             self.logger.error(
                 f"Error handling agent creation event: {e}",
                 extra={"error": str(e)},

@@ -126,8 +126,8 @@
       "title": "Exception Narrowing",
       "color": "#FF9800",
       "handover": "handovers/0765d_exception_narrowing.md",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-02T23:00:00Z",
       "completed_at": null,
       "planned_tasks": [
         "Categorize 121 except-Exception instances into safe/intentional/risky buckets",

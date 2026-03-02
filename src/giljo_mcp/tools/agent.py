@@ -57,7 +57,7 @@ async def launch_agent(agent_id: str, tenant_key: str, session) -> dict[str, Any
             "status": "working",
         }
 
-    except Exception:
+    except Exception:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to launch agent")
         raise
 
@@ -104,7 +104,7 @@ async def log_interaction_legacy(interaction: dict[str, Any], tenant_key: str, s
         # If all checks pass, interaction is valid
         return None
 
-    except Exception:
+    except Exception:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to log interaction")
         raise
 

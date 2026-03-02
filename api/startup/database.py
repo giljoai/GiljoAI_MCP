@@ -32,7 +32,7 @@ async def init_database(state: APIState) -> None:
         state.config = get_config()  # Use the singleton getter
         logger.info("Configuration loaded successfully")
         # v3.0: DeploymentMode removed - server always binds 0.0.0.0, firewall controls access
-    except Exception as e:
+    except Exception as e:  # Broad catch: database initialization resilience
         logger.error(
             "config_load_failed",
             error_code=ErrorCode.API_INTERNAL_ERROR.value,
@@ -59,7 +59,7 @@ async def init_database(state: APIState) -> None:
             logger.debug(
                 f"Database config: host={state.config.database.host}, port={state.config.database.port}, database={state.config.database.database_name}"
             )
-        except Exception as e:
+        except Exception as e:  # Broad catch: database initialization resilience
             logger.exception(
                 "database_url_build_failed",
                 error_code=ErrorCode.DB_CONNECTION_FAILED.value,
@@ -86,7 +86,7 @@ async def init_database(state: APIState) -> None:
 
         state.system_prompt_service = SystemPromptService(state.db_manager)
         logger.info("System prompt service initialized")
-    except Exception as e:
+    except Exception as e:  # Broad catch: database initialization resilience
         logger.error(
             "database_init_failed",
             error_code=ErrorCode.DB_CONNECTION_FAILED.value,

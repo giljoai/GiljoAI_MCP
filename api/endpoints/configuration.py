@@ -385,7 +385,7 @@ async def update_database_password(update: DatabasePasswordUpdate, current_user:
 
         engine.dispose()
 
-    except Exception as e:
+    except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"Failed to update PostgreSQL password: {e!s}. Please verify current password is correct.",
@@ -399,7 +399,7 @@ async def update_database_password(update: DatabasePasswordUpdate, current_user:
         new_db_url = f"postgresql://{db_user}:{update.password}@{db_host}:{db_port}/{db_name}"
         set_key(env_path, "DATABASE_URL", new_db_url)
 
-    except Exception as e:
+    except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         # If .env update fails, we need to rollback PostgreSQL password
         try:
             rollback_db_url = f"postgresql://{db_user}:{update.password}@{db_host}:{db_port}/{db_name}"
@@ -425,7 +425,7 @@ async def update_database_password(update: DatabasePasswordUpdate, current_user:
             conn.execute(text("SELECT 1"))
         test_engine.dispose()
 
-    except Exception as e:
+    except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         raise HTTPException(
             status_code=500,
             detail=f"Password updated but connection test failed: {e!s}. Application restart required.",

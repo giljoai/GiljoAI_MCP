@@ -137,7 +137,7 @@ class AuthService:
         except (AuthenticationError, AuthorizationError):
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to authenticate user")
             raise BaseGiljoError(message=f"Authentication failed: {e!s}", context={"username": username}) from e
 
@@ -210,7 +210,7 @@ class AuthService:
 
         except ResourceNotFoundError:
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to update last login")
             raise BaseGiljoError(message=f"Failed to update last login: {e!s}", context={"user_id": user_id}) from e
 
@@ -257,7 +257,7 @@ class AuthService:
             async with self._get_session() as session:
                 return await self._check_setup_state_impl(session, tenant_key)
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to check setup state")
             raise BaseGiljoError(
                 message=f"Failed to check setup state: {e!s}", context={"tenant_key": tenant_key}
@@ -305,7 +305,7 @@ class AuthService:
             async with self._get_session() as session:
                 return await self._list_api_keys_impl(session, user_id, include_revoked)
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to list API keys")
             raise BaseGiljoError(message=f"Failed to list API keys: {e!s}", context={"user_id": user_id}) from e
 
@@ -363,7 +363,7 @@ class AuthService:
 
         except BaseGiljoError:
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to create API key")
             raise BaseGiljoError(
                 message=f"Failed to create API key: {e!s}", context={"user_id": user_id, "name": name}
@@ -447,7 +447,7 @@ class AuthService:
 
         except ResourceNotFoundError:
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to revoke API key")
             raise BaseGiljoError(
                 message=f"Failed to revoke API key: {e!s}", context={"key_id": key_id, "user_id": user_id}
@@ -515,7 +515,7 @@ class AuthService:
 
         except ValidationError:
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to register user")
             raise BaseGiljoError(message=f"Failed to register user: {e!s}", context={"username": username}) from e
 
@@ -722,7 +722,7 @@ class AuthService:
 
         except ValidationError:
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to create first admin")
             raise BaseGiljoError(message=f"Failed to create first admin: {e!s}", context={"username": username}) from e
 

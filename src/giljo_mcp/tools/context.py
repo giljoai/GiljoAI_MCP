@@ -76,7 +76,7 @@ async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
 
         return index
 
-    except Exception:
+    except Exception:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to get vision index")
         raise
 
@@ -166,7 +166,7 @@ async def get_vision_index() -> dict[str, Any]:
                 "message": "No vision index found - use MCP tools to initialize vision documents",
             }
 
-    except Exception:
+    except Exception:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to get vision index")
         raise
 
@@ -247,7 +247,7 @@ async def fetch_context(
                 "context": product_context,
             }
 
-    except Exception:
+    except Exception:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to fetch context")
         raise
 
@@ -301,7 +301,7 @@ async def get_context_history(
                 "agent_display_name": execution.agent_display_name,
             }
 
-    except Exception:
+    except Exception:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to get context history")
         raise
 
@@ -380,6 +380,6 @@ async def get_succession_context(
                 "succession_chain": succession_chain,
             }
 
-    except Exception:
+    except Exception:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to get succession context")
         raise
