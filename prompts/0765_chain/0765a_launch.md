@@ -81,4 +81,8 @@ Use Serena for codebase navigation: `find_symbol`, `find_referencing_symbols`, `
 After completing all tasks and committing:
 1. Update the chain log (status=complete)
 2. Report completion summary to the user
-3. Do NOT spawn the next terminal — the user will decide when to launch 0765b
+3. Spawn the next terminal using this command via Bash tool:
+
+```
+powershell.exe -Command "Start-Process wt -ArgumentList '--title \"0765b - Quick Tier 3 Fixes\" --tabColor \"#2196F3\" -d \"F:\GiljoAI_MCP\" cmd /k claude --dangerously-skip-permissions \"Execute handover 0765b. READ FIRST: F:\GiljoAI_MCP\prompts\0765_chain\0765b_launch.md — Full mission, protocols, subagent plan, chain log. Use Task tool subagents. Spawn next terminal when done.\"' -Verb RunAs"
+```
