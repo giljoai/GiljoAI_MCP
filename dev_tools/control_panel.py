@@ -1188,8 +1188,8 @@ class GiljoDevControlPanel:
             if not frontend_dir.exists():
                 raise FileNotFoundError(f"Frontend directory not found: {frontend_dir}")
 
-            # Check node_modules exists - offer to install if missing
-            if not (frontend_dir / "node_modules").exists():
+            # Check node_modules is properly installed (.package-lock.json is written by npm install)
+            if not (frontend_dir / "node_modules" / ".package-lock.json").exists():
                 response = messagebox.askyesno(
                     "Dependencies Missing",
                     "frontend/node_modules not found.\n\n"

@@ -433,16 +433,12 @@ const executionOrderPhases = computed(() => {
 /**
  * GiljoAI face icon (dark theme only)
  */
-const giljoFaceIcon = computed(() => {
-  return '/giljo_YW_Face.svg'
-})
+const giljoFaceIcon = '/giljo_YW_Face.svg'
 
 /**
  * Action icon color (dark theme only)
  */
-const actionIconColor = computed(() => {
-  return 'warning'
-})
+const actionIconColor = 'warning'
 
 function isOrchestrator(agent) {
   return agent?.agent_name === 'orchestrator' || agent?.agent_display_name === 'orchestrator'
@@ -1148,43 +1144,6 @@ async function copyToClipboard(text) {
           }
         }
 
-        &.agent-id-cell {
-          color: rgba(var(--v-theme-on-surface), 0.6);
-          font-family: 'Courier New', monospace;
-          font-size: 11px;
-
-          .id-container {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-          }
-
-          .id-row {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-          }
-
-          .id-label {
-            color: rgba(var(--v-theme-on-surface), 0.7);
-            font-size: 10px;
-            min-width: 35px;
-          }
-
-          .id-value {
-            background: rgba(var(--v-theme-on-surface), 0.1);
-            padding: 1px 4px;
-            border-radius: 2px;
-            border: none;
-            cursor: pointer;
-            font-family: inherit;
-          }
-
-          .id-value-button {
-            line-height: 1.2;
-          }
-        }
-
         &.status-cell {
           font-style: italic;
 
@@ -1217,11 +1176,6 @@ async function copyToClipboard(text) {
         .steps-skipped {
           color: #ff9800;
           font-weight: 600;
-        }
-
-        &.count-cell {
-          text-align: center;
-          color: #ccc;
         }
 
         .message-count-button {
@@ -1344,10 +1298,6 @@ async function copyToClipboard(text) {
       color: #ff9800;
     }
 
-    &.message-read {
-      background: rgba(76, 175, 80, 0.2);
-      color: #4caf50;
-    }
   }
 
   /* GiljoAI Face Icon - Handover 0358 */
@@ -1357,33 +1307,6 @@ async function copyToClipboard(text) {
     object-fit: contain;
   }
 
-  /* Agent Job Modal - Handover 0358 */
-  .mission-text {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    font-family: 'Roboto Mono', monospace;
-    font-size: 13px;
-    line-height: 1.5;
-    color: rgba(255, 255, 255, 0.9);
-    margin: 0;
-    max-height: 400px;
-    overflow-y: auto;
-  }
-
-  /* Close Out Project Button */
-  .closeout-btn {
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: none;
-    font-size: 15px;
-    padding: 12px 24px;
-    height: auto;
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-    }
-  }
 }
 
 /* Global avatar styles for modal consistency - Handover 0401b */

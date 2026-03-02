@@ -15,31 +15,23 @@
 
 import { computed } from 'vue'
 import { getAgentColor } from '@/config/agentColors'
+import { AGENT_STATUS_PRIORITY } from '@/utils/constants'
 
 export function useAgentData(agents) {
   /**
    * Priority sorting algorithm
    * Extracted from AgentCardGrid.vue to prevent duplication
    *
-   * Sort order (Handover 0491: Status simplification):
-   * 1. Status priority (blocked/silent → waiting → working → complete)
-   * 2. Agent type (orchestrator first)
-   * 3. Alphabetical by name
+   * Sort order: working > blocked > silent > waiting > complete > decommissioned
+   * Uses shared AGENT_STATUS_PRIORITY from constants.
+   *
+   * Secondary: orchestrator first
+   * Tertiary: alphabetical by name
    */
   const sortedAgents = computed(() => {
     return [...agents.value].sort((a, b) => {
-      // Status priority mapping
-      const priority = {
-        blocked: 1,
-        silent: 1,
-        waiting: 2,
-        working: 3,
-        complete: 4,
-        decommissioned: 5,
-      }
-
-      // Primary sort: status priority
-      const diff = (priority[a.status] || 999) - (priority[b.status] || 999)
+      // Primary sort: status priority (shared constant)
+      const diff = (AGENT_STATUS_PRIORITY[a.status] ?? 999) - (AGENT_STATUS_PRIORITY[b.status] ?? 999)
       if (diff !== 0) return diff
 
       // Secondary sort: orchestrator first
