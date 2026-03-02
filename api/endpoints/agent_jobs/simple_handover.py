@@ -109,8 +109,11 @@ async def simple_handover(
     if execution.agent_display_name != "orchestrator":
         raise HTTPException(status_code=400, detail="Only orchestrators can use handover")
 
-    # Get job for project_id
-    stmt = select(AgentJob).where(AgentJob.job_id == execution.job_id)
+    # Get job for project_id (tenant-scoped for defense-in-depth)
+    stmt = select(AgentJob).where(
+        AgentJob.job_id == execution.job_id,
+        AgentJob.tenant_key == current_user.tenant_key,
+    )
     result = await db.execute(stmt)
     job = result.scalars().first()
 
