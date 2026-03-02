@@ -11,9 +11,9 @@
       "title": "Dead Code Purge + Bridge Removal",
       "color": "#4CAF50",
       "handover": "handovers/0765a_dead_code_purge_bridge_removal.md",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-02T12:00:00Z",
+      "completed_at": "2026-03-02T16:40:00Z",
       "planned_tasks": [
         "Delete 19 dead ToolAccessor methods + activate_project function (1C+1D)",
         "Delete 7 confirmed dead files from orphan analysis",
@@ -33,11 +33,23 @@
         "Fix statistics endpoints — remove fakes and N+1 query (2B)",
         "Update 3 frontend test files for canonical event names"
       ],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "tasks_completed": [
+        "TG1: Deleted 19 dead ToolAccessor methods, activate_project, 7 dead files, 5 JobsTab functions, dead orchestration store, dead code batch (2,072 lines removed)",
+        "TG2: Removed EVENT_TYPE_ALIASES, _event_types_for_broadcast, emit_legacy_aliases param, bridge endpoint+router+auth, 5 legacy frontend handlers (189 lines removed)",
+        "TG3: Removed 6 argument alias fallbacks + dead request.state.user_id/user assignments",
+        "TG4: Fixed 25 stale doc refs — bridge docstrings, 8 schema labels, 11 httpx mocks, dev script, comments, status strings",
+        "TG5: Fixed 2 NEW-4 test failures, wrapped 3 prompt endpoints in Pydantic models, removed 4 fake stats + N+1 query, converted ActionIcons.vue to script setup"
+      ],
+      "deviations": [
+        "TG3: Kept items 7 (message/current_step) and 8 (github/git_integration) — not aliases, actively used",
+        "TG4: statistics_repository.py status string fix bundled into TG5 commit (shared file)"
+      ],
+      "blockers_encountered": [
+        "ruff auto-fixes required re-staging on TG1 and TG2 commits (expected behavior)",
+        "mixed-line-ending hook fix required re-staging on TG5 commit"
+      ],
+      "notes_for_next": "All Tier 1+2 items complete. 1410 tests passing, 342 skipped. Frontend builds clean. Branch ready for 0765b (Quick Tier 3 Fixes).",
+      "summary": "Completed all 5 task groups across 5 commits. Removed ~2,500 lines of dead code, bridge infrastructure, and alias patterns. Fixed 25 stale documentation references, 2 pre-existing test failures, 3 untyped prompt responses, 4 fake statistics, and converted 1 Vue component to script setup."
     },
     {
       "session_id": "0765b",
