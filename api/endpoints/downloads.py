@@ -534,7 +534,7 @@ async def generate_download_token(
 
     # Derive content_type from query or JSON body (compat with older tests)
     if not content_type and body:
-        content_type = body.get("content_type") or body.get("download_type")
+        content_type = body.get("content_type")
 
     # Validate content_type
     if content_type not in ["slash_commands", "agent_templates"]:
