@@ -10,7 +10,7 @@ Updated for exception-based error handling (Handover 0730).
 
 import random
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -186,18 +186,8 @@ class TestGetAgentMissionImplementationGate:
         # Mock session.execute for job, execution, project, and project executions
         session.execute = AsyncMock(side_effect=[job_result, exec_result, project_result, all_exec_result])
 
-        # Stub httpx to avoid real WebSocket bridge calls
-        with patch("httpx.AsyncClient") as MockHttpxClient:
-            mock_client = AsyncMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock()
-            MockHttpxClient.return_value = mock_client
-
-            # Call get_agent_mission
-            response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
+        # Call get_agent_mission
+        response = await orchestration_service.get_agent_mission(job_id=job.job_id, tenant_key="tenant-test")
 
         # Handover 0731c: Returns MissionResponse typed model
         # Verify successful response (not blocked)
