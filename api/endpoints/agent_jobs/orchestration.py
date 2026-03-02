@@ -294,10 +294,16 @@ async def launch_implementation(
     """
     logger.info(f"Launch implementation requested for project {project_id} by {current_user.username}")
 
-    # Get project with tenant isolation
-    project = await db.get(Project, project_id)
+    # Get project with tenant isolation (query-level filtering, not post-fetch check)
+    project_result = await db.execute(
+        select(Project).where(
+            Project.id == project_id,
+            Project.tenant_key == current_user.tenant_key,
+        )
+    )
+    project = project_result.scalar_one_or_none()
 
-    if not project or project.tenant_key != current_user.tenant_key:
+    if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
     # Check if already launched (idempotent)
