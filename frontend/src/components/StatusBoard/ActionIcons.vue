@@ -115,173 +115,152 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, computed } from 'vue'
 import { getAvailableActions, getActionConfig } from '@/utils/actionConfig'
 import api from '@/services/api'
 import { useClipboard } from '@/composables/useClipboard'
 
-export default {
-  name: 'ActionIcons',
-
-  props: {
-    job: {
-      type: Object,
-      required: true,
-      default: () => ({
-        job_id: '',
-        status: 'waiting',
-        agent_display_name: 'implementer',
-        unread_count: 0,
-      }),
-    },
-    claudeCodeCliMode: {
-      type: Boolean,
-      default: false,
-    },
+const props = defineProps({
+  job: {
+    type: Object,
+    required: true,
+    default: () => ({
+      job_id: '',
+      status: 'waiting',
+      agent_display_name: 'implementer',
+      unread_count: 0,
+    }),
   },
+  claudeCodeCliMode: {
+    type: Boolean,
+    default: false,
+  },
+})
 
-  emits: ['launch', 'copy-prompt', 'view-messages', 'hand-over'],
+const emit = defineEmits(['launch', 'copy-prompt', 'view-messages', 'hand-over'])
 
-  setup(props, { emit }) {
-    const { copy: clipboardCopy } = useClipboard()
+const { copy: clipboardCopy } = useClipboard()
 
-    const loadingStates = ref({
-      launch: false,
-      copyPrompt: false,
-      handOver: false,
-    })
+const loadingStates = ref({
+  launch: false,
+  copyPrompt: false,
+  handOver: false,
+})
 
-    const showCopySuccess = ref(false)
+const showCopySuccess = ref(false)
 
-    // Two-stage handover state
-    const handoverPending = ref(false)
-    const storedContinuationPrompt = ref('')
-    const showHandoverSnackbar = ref(false)
+// Two-stage handover state
+const handoverPending = ref(false)
+const storedContinuationPrompt = ref('')
+const showHandoverSnackbar = ref(false)
 
-    const availableActions = computed(() => {
-      return getAvailableActions(props.job, props.claudeCodeCliMode)
-    })
+const availableActions = computed(() => {
+  return getAvailableActions(props.job, props.claudeCodeCliMode)
+})
 
-    const getActionColor = (action) => {
-      const config = getActionConfig(action)
-      return config?.color || 'grey'
-    }
+const getActionColor = (action) => {
+  const config = getActionConfig(action)
+  return config?.color || 'grey'
+}
 
-    const getActionTooltip = (action) => {
-      const config = getActionConfig(action)
-      return config?.tooltip || ''
-    }
+const getActionTooltip = (action) => {
+  const config = getActionConfig(action)
+  return config?.tooltip || ''
+}
 
-    const handleLaunch = async () => {
-      // Two-stage handover: if pending, copy continuation prompt instead of normal launch
-      if (handoverPending.value && storedContinuationPrompt.value) {
-        loadingStates.value.launch = true
-        try {
-          await clipboardCopy(storedContinuationPrompt.value)
-          showCopySuccess.value = true
+const handleLaunch = async () => {
+  // Two-stage handover: if pending, copy continuation prompt instead of normal launch
+  if (handoverPending.value && storedContinuationPrompt.value) {
+    loadingStates.value.launch = true
+    try {
+      await clipboardCopy(storedContinuationPrompt.value)
+      showCopySuccess.value = true
 
-          // Reset handover state
-          handoverPending.value = false
-          storedContinuationPrompt.value = ''
-          showHandoverSnackbar.value = false
-
-          emit('hand-over', {
-            type: 'handOver',
-            job: props.job,
-            success: true,
-            stage: 'continuation',
-            message: 'Continuation prompt copied! Paste in a new terminal.',
-          })
-        } finally {
-          loadingStates.value.launch = false
-        }
-        return
-      }
-
-      loadingStates.value.launch = true
-      try {
-        emit('launch', props.job)
-      } finally {
-        loadingStates.value.launch = false
-      }
-    }
-
-    const handleCopyPrompt = async () => {
-      loadingStates.value.copyPrompt = true
-      try {
-        emit('copy-prompt', props.job)
-        showCopySuccess.value = true
-      } finally {
-        loadingStates.value.copyPrompt = false
-      }
-    }
-
-    const handleViewMessages = () => {
-      emit('view-messages', props.job)
-    }
-
-    const handleHandOver = async () => {
-      try {
-        loadingStates.value.handOver = true
-
-        // Call simple-handover endpoint - returns both retirement + continuation prompts
-        const response = await api.agentJobs.simpleHandover(props.job.job_id)
-
-        if (response.data.success) {
-          // Stage 1: Copy RETIREMENT prompt to clipboard (for old terminal)
-          await clipboardCopy(response.data.retirement_prompt)
-
-          // Store continuation prompt for Stage 2 (play button click)
-          storedContinuationPrompt.value = response.data.continuation_prompt
-          handoverPending.value = true
-          showHandoverSnackbar.value = true
-
-          // Emit stage 1 event
-          emit('hand-over', {
-            type: 'handOver',
-            job: props.job,
-            success: true,
-            stage: 'retirement',
-            message: 'Retirement prompt copied! Paste in old terminal, then click the pulsing launch button.',
-          })
-        } else {
-          throw new Error(response.data.error || 'Session refresh failed')
-        }
-      } catch (error) {
-        // Emit action event with failure info
-        emit('hand-over', {
-          type: 'handOver',
-          job: props.job,
-          success: false,
-          error: error.message,
-        })
-      } finally {
-        loadingStates.value.handOver = false
-      }
-    }
-
-    const dismissHandover = () => {
-      // Allow dismissing the snackbar without resetting state
-      // The pulsing button remains as visual cue
+      // Reset handover state
+      handoverPending.value = false
+      storedContinuationPrompt.value = ''
       showHandoverSnackbar.value = false
-    }
 
-    return {
-      availableActions,
-      loadingStates,
-      showCopySuccess,
-      handoverPending,
-      showHandoverSnackbar,
-      getActionColor,
-      getActionTooltip,
-      handleLaunch,
-      handleCopyPrompt,
-      handleViewMessages,
-      handleHandOver,
-      dismissHandover,
+      emit('hand-over', {
+        type: 'handOver',
+        job: props.job,
+        success: true,
+        stage: 'continuation',
+        message: 'Continuation prompt copied! Paste in a new terminal.',
+      })
+    } finally {
+      loadingStates.value.launch = false
     }
-  },
+    return
+  }
+
+  loadingStates.value.launch = true
+  try {
+    emit('launch', props.job)
+  } finally {
+    loadingStates.value.launch = false
+  }
+}
+
+const handleCopyPrompt = async () => {
+  loadingStates.value.copyPrompt = true
+  try {
+    emit('copy-prompt', props.job)
+    showCopySuccess.value = true
+  } finally {
+    loadingStates.value.copyPrompt = false
+  }
+}
+
+const handleViewMessages = () => {
+  emit('view-messages', props.job)
+}
+
+const handleHandOver = async () => {
+  try {
+    loadingStates.value.handOver = true
+
+    // Call simple-handover endpoint - returns both retirement + continuation prompts
+    const response = await api.agentJobs.simpleHandover(props.job.job_id)
+
+    if (response.data.success) {
+      // Stage 1: Copy RETIREMENT prompt to clipboard (for old terminal)
+      await clipboardCopy(response.data.retirement_prompt)
+
+      // Store continuation prompt for Stage 2 (play button click)
+      storedContinuationPrompt.value = response.data.continuation_prompt
+      handoverPending.value = true
+      showHandoverSnackbar.value = true
+
+      // Emit stage 1 event
+      emit('hand-over', {
+        type: 'handOver',
+        job: props.job,
+        success: true,
+        stage: 'retirement',
+        message: 'Retirement prompt copied! Paste in old terminal, then click the pulsing launch button.',
+      })
+    } else {
+      throw new Error(response.data.error || 'Session refresh failed')
+    }
+  } catch (error) {
+    // Emit action event with failure info
+    emit('hand-over', {
+      type: 'handOver',
+      job: props.job,
+      success: false,
+      error: error.message,
+    })
+  } finally {
+    loadingStates.value.handOver = false
+  }
+}
+
+const dismissHandover = () => {
+  // Allow dismissing the snackbar without resetting state
+  // The pulsing button remains as visual cue
+  showHandoverSnackbar.value = false
 }
 </script>
 
