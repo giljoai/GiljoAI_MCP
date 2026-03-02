@@ -148,6 +148,30 @@ class StatisticsRepository:
         result = await session.execute(query)
         return list(result.scalars().all())
 
+    async def get_project_by_id(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        project_id: str,
+    ) -> Project | None:
+        """
+        Get a single project by ID with tenant isolation.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation
+            project_id: Project UUID
+
+        Returns:
+            Project instance or None if not found
+        """
+        query = select(Project).where(
+            Project.tenant_key == tenant_key,
+            Project.id == project_id,
+        )
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
     async def count_agents_for_project(
         self,
         session: AsyncSession,
@@ -368,7 +392,7 @@ class StatisticsRepository:
             # Map legacy status to AgentExecution status
             if status == "active":
                 query = query.where(AgentExecution.status.in_(["waiting", "working"]))
-            elif status in ["idle", "waiting", "working", "decommissioned", "complete"]:
+            elif status in ["waiting", "working", "blocked", "complete", "silent", "decommissioned"]:
                 query = query.where(AgentExecution.status == status)
 
         query = query.limit(limit)
