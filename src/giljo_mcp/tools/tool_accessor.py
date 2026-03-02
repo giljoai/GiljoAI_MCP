@@ -422,7 +422,7 @@ class ToolAccessor:
                     "content_type": content_type,
                     "one_time_use": True,
                 }
-        except Exception:
+        except Exception:  # Broad catch: tool boundary, logs and re-raises
             logger.exception("Failed to generate download token")
             raise
 

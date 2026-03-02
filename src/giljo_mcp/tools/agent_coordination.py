@@ -229,7 +229,7 @@ async def spawn_agent(
                 "agent_id": new_agent_id,  # Executor (NEW instance)
             }
 
-    except Exception as e:
+    except Exception as e:  # Broad catch: tool boundary, logs and re-raises
         logger.error(f"[spawn_agent] Error: {e}", exc_info=True)
         return {
             "success": False,
@@ -368,7 +368,7 @@ async def get_agent_status(agent_id: str, tenant_key: str) -> dict[str, Any]:
                 "spawned_by": execution.spawned_by,
             }
 
-    except Exception as e:
+    except Exception as e:  # Broad catch: tool boundary, logs and re-raises
         logger.error(f"[get_agent_status] Error: {e}", exc_info=True)
         return {
             "success": False,
@@ -481,7 +481,7 @@ async def get_team_agents(
             "team": team_members,
         }
 
-    except Exception as e:
+    except Exception as e:  # Broad catch: tool boundary, logs and re-raises
         logger.error(f"[get_team_agents] Error: {e}", exc_info=True)
         return {
             "success": False,

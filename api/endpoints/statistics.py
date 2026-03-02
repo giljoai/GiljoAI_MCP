@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user
 from src.giljo_mcp.colored_logger import get_colored_logger
@@ -462,7 +463,7 @@ async def get_performance_metrics(current_user: User = Depends(get_current_activ
             async with state.db_manager.get_session_async() as session:
                 await stats_repo.execute_health_check(session)
             db_query_time = (time.time() - db_start) * 1000
-        except Exception:
+        except (SQLAlchemyError, OSError):
             logger.exception("Database health check failed")
             db_query_time = -1
 

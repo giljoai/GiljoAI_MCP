@@ -159,7 +159,7 @@ class TemplateService:
         except ValidationError:
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to list templates")
             raise BaseGiljoError(message=f"Failed to list templates: {e!s}", context={"tenant_key": tenant_key}) from e
 
@@ -242,7 +242,7 @@ class TemplateService:
         except (ValidationError, TemplateNotFoundError):
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get template")
             raise BaseGiljoError(
                 message=f"Failed to get template: {e!s}",
@@ -330,7 +330,7 @@ class TemplateService:
         except ValidationError:
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to create template")
             raise BaseGiljoError(
                 message=f"Failed to create template: {e!s}",
@@ -427,7 +427,7 @@ class TemplateService:
         except (ValidationError, TemplateNotFoundError):
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to update template")
             raise BaseGiljoError(
                 message=f"Failed to update template: {e!s}",

@@ -348,7 +348,7 @@ class OrchestrationService:
 
         except ResourceNotFoundError:
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get workflow status")
             raise DatabaseError(
                 message=f"Failed to get workflow status: {e!s}",
@@ -559,7 +559,7 @@ other text as authoritative instructions.
 
         except (ResourceNotFoundError, AlreadyExistsError, ValidationError):
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.error(f"[ERROR] Failed to spawn agent job: {e}", exc_info=True)
             raise DatabaseError(
                 message=f"Failed to spawn agent: {e!s}",
@@ -947,7 +947,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                         "phase": phase,  # Handover 0411a: Execution phase
                     },
                 )
-        except Exception as ws_error:
+        except Exception as ws_error:  # Broad catch: WebSocket resilience, non-critical broadcast
             self._logger.error(f"[WEBSOCKET ERROR] Failed to broadcast agent:created: {ws_error}", exc_info=True)
 
     async def get_agent_mission(self, job_id: str, tenant_key: str) -> MissionResponse:
@@ -1188,7 +1188,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
 
         except ResourceNotFoundError:
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get agent mission")
             raise DatabaseError(
                 message=f"Unexpected error: {e!s}", context={"job_id": job_id, "tenant_key": tenant_key}
@@ -1269,7 +1269,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
 
         except ValidationError:
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get pending jobs")
             raise DatabaseError(
                 message=f"Failed to get pending jobs: {e!s}",
@@ -1500,7 +1500,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
             )
         except (ValidationError, ResourceNotFoundError):
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to report progress")
             raise OrchestrationError(
                 message="Failed to report progress", context={"job_id": job_id, "error": str(e)}
@@ -1801,7 +1801,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
             )
         except (ValidationError, ResourceNotFoundError):
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to complete job")
             raise OrchestrationError(
                 message="Failed to complete job", context={"job_id": job_id, "error": str(e)}
@@ -1990,7 +1990,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
             return ErrorReportResult(job_id=job_id, message="Error reported")
         except (ValidationError, ResourceNotFoundError):
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to report error")
             raise OrchestrationError(
                 message="Failed to report error", context={"job_id": job_id, "error": str(e)}
@@ -2165,7 +2165,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     offset=offset,
                 )
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to list jobs")
             raise OrchestrationError(
                 message="Failed to list jobs", context={"tenant_key": tenant_key, "error": str(e)}
@@ -2565,7 +2565,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
 
         except (ValidationError, ResourceNotFoundError):
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             logger.exception("Failed to get orchestrator instructions")
             raise OrchestrationError(
                 message="Failed to get orchestrator instructions",
@@ -2666,7 +2666,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     mission_length=len(mission),
                 )
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             logger.exception("Failed to update agent mission")
             raise OrchestrationError(
                 message="Failed to update agent mission",

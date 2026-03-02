@@ -264,7 +264,7 @@ class WebSocketManager:
             websocket = self.active_connections[client_id]
             try:
                 await websocket.send_json(data)
-            except Exception as e:
+            except Exception as e:  # Broad catch: WebSocket handler resilience
                 logger.exception(
                     "websocket_send_json_error",
                     error_code=ErrorCode.WS_MESSAGE_SEND_FAILED.value,
@@ -341,7 +341,7 @@ class WebSocketManager:
                 if client_id in self.active_connections:
                     try:
                         await self.send_json(message, client_id)
-                    except Exception as e:
+                    except Exception as e:  # Broad catch: WebSocket handler resilience
                         logger.exception(
                             "websocket_notify_error",
                             error_code=ErrorCode.WS_MESSAGE_SEND_FAILED.value,

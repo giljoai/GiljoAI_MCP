@@ -55,7 +55,7 @@ async def init_event_bus(state: APIState) -> None:
         logger.info("=" * 70)
         logger.info("EVENT BUS INITIALIZATION COMPLETE")
         logger.info("=" * 70)
-    except Exception as e:
+    except Exception as e:  # Broad catch: startup resilience, non-fatal initialization
         logger.exception("=" * 70)
         logger.exception("FAILED TO INITIALIZE EVENT BUS")
         logger.exception("=" * 70)

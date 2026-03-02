@@ -59,7 +59,7 @@ async def init_validation(state: APIState) -> None:
             else:
                 logger.info("Setup state validation passed")
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: startup resilience, non-fatal initialization
             logger.error(f"Startup setup check failed: {e}", exc_info=True)
             # Don't crash the app on startup check failure
             logger.warning("Continuing startup despite setup check failure")
