@@ -1127,3 +1127,61 @@ def generate_realistic_document(tokens: int) -> str:
         paragraphs.append(variant)
 
     return "\n\n".join(paragraphs)
+
+
+# ============================================================================
+# Auth service shared fixtures
+# (extracted from test_auth_service.py during split)
+# ============================================================================
+
+
+@pytest_asyncio.fixture
+async def auth_service(db_manager, db_session):
+    """Create AuthService instance for testing with shared session (Handover 0324)"""
+    from src.giljo_mcp.services.auth_service import AuthService
+
+    return AuthService(
+        db_manager=db_manager,
+        websocket_manager=None,  # No WebSocket in tests
+        session=db_session,  # SHARED SESSION for test transaction isolation
+    )
+
+
+@pytest_asyncio.fixture
+async def auth_test_org(db_session):
+    """Create test organization for auth user fixtures (0424j: User.org_id NOT NULL)"""
+    unique_id = str(uuid4())[:8]
+    org = Organization(
+        id=str(uuid4()),
+        tenant_key=f"test_tenant_{unique_id}",
+        name=f"Test Organization {unique_id}",
+        slug=f"test-org-{unique_id}",
+        is_active=True,
+    )
+    db_session.add(org)
+    await db_session.commit()
+    await db_session.refresh(org)
+    return org
+
+
+@pytest_asyncio.fixture
+async def auth_user_with_password(db_session, auth_test_org):
+    """Create test user with known credentials for auth tests (returns user, password tuple)"""
+    unique_id = str(uuid4())[:8]
+    password = "Test1234!"
+    user = User(
+        id=str(uuid4()),
+        username=f"testuser_{unique_id}",
+        email=f"test_{unique_id}@example.com",
+        full_name="Test User",
+        password_hash=bcrypt.hash(password),
+        role="developer",
+        tenant_key=auth_test_org.tenant_key,  # Use org's tenant_key
+        org_id=auth_test_org.id,  # 0424j: User.org_id NOT NULL
+        is_active=True,
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user, password  # Return user + plaintext password for tests
