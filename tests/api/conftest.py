@@ -9,6 +9,7 @@ Provides fixtures specific to API integration testing including:
 - Automatic database cleanup between tests to prevent pollution
 """
 
+import secrets
 from unittest.mock import MagicMock
 
 import pytest_asyncio
@@ -16,6 +17,9 @@ from httpx import ASGITransport
 from httpx import AsyncClient as HTTPXAsyncClient
 from passlib.hash import bcrypt
 from sqlalchemy import text
+
+# Shared CSRF token for test fixtures (double-submit cookie pattern)
+_TEST_CSRF_TOKEN = secrets.token_urlsafe(32)
 
 
 # Override parent conftest autouse fixtures that open db_session transactions.
@@ -231,7 +235,11 @@ async def auth_headers(db_manager, api_client) -> dict:
         )
 
         # Use Cookie header because dependencies expect JWT in cookie 'access_token'
-        return {"Cookie": f"access_token={token}"}
+        # Include CSRF token in both cookie and header for double-submit pattern (0765f)
+        return {
+            "Cookie": f"access_token={token}; csrf_token={_TEST_CSRF_TOKEN}",
+            "X-CSRF-Token": _TEST_CSRF_TOKEN,
+        }
 
 
 @pytest_asyncio.fixture
@@ -411,7 +419,10 @@ async def auth_headers_tenant_a(db_manager):
             user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
         )
 
-        return {"Cookie": f"access_token={token}"}
+        return {
+            "Cookie": f"access_token={token}; csrf_token={_TEST_CSRF_TOKEN}",
+            "X-CSRF-Token": _TEST_CSRF_TOKEN,
+        }
 
 
 @pytest_asyncio.fixture
@@ -457,7 +468,10 @@ async def auth_headers_tenant_b(db_manager):
             user_id=user.id, username=user.username, role=user.role, tenant_key=user.tenant_key
         )
 
-        return {"Cookie": f"access_token={token}"}
+        return {
+            "Cookie": f"access_token={token}; csrf_token={_TEST_CSRF_TOKEN}",
+            "X-CSRF-Token": _TEST_CSRF_TOKEN,
+        }
 
 
 @pytest_asyncio.fixture

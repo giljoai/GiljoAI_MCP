@@ -15,6 +15,7 @@ from typing import Callable
 
 from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 
 logger = logging.getLogger(__name__)
@@ -36,25 +37,35 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
     """
 
     def __init__(
-        self, app, exempt_paths: list = None, cookie_name: str = "csrf_token", header_name: str = "X-CSRF-Token"
+        self,
+        app,
+        exempt_paths: list = None,
+        exempt_prefixes: list = None,
+        cookie_name: str = "csrf_token",
+        header_name: str = "X-CSRF-Token",
+        api_key_header: str = "X-API-Key",
     ):
         """
         Initialize CSRF protection middleware.
 
         Args:
             app: FastAPI application instance
-            exempt_paths: Paths excluded from CSRF validation (default: login, health)
+            exempt_paths: Exact paths excluded from CSRF validation
+            exempt_prefixes: Path prefixes excluded from CSRF validation
             cookie_name: Name of CSRF cookie (default: csrf_token)
             header_name: Name of CSRF header (default: X-CSRF-Token)
+            api_key_header: Header name for API key auth (requests with this header skip CSRF)
         """
         super().__init__(app)
-        self.exempt_paths = exempt_paths or ["/api/auth/login", "/api/auth/signup", "/api/health", "/api/metrics"]
+        self.exempt_paths = exempt_paths or []
+        self.exempt_prefixes = exempt_prefixes or []
         self.cookie_name = cookie_name
         self.header_name = header_name
+        self.api_key_header = api_key_header
         logger.info(
             f"CSRFProtectionMiddleware initialized: "
             f"cookie={cookie_name}, header={header_name}, "
-            f"exempt_paths={self.exempt_paths}"
+            f"exempt_paths={self.exempt_paths}, exempt_prefixes={self.exempt_prefixes}"
         )
 
     def _generate_token(self) -> str:
@@ -113,12 +124,18 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
             HTTPException: 403 if CSRF validation fails
         """
         # Exempt certain paths (login, public endpoints)
-        if request.url.path in self.exempt_paths:
+        path = request.url.path
+        if path in self.exempt_paths or any(path.startswith(p) for p in self.exempt_prefixes):
+            response = await call_next(request)
+            return response
+
+        # Skip CSRF for API key-authenticated requests (not cookie-based)
+        if request.headers.get(self.api_key_header):
             response = await call_next(request)
             return response
 
         # Only validate state-changing methods
-        # GET and OPTIONS are safe methods (no state changes)
+        # GET, HEAD, and OPTIONS are safe methods (no state changes)
         if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
             request_token = self._get_token_from_request(request)
             cookie_token = self._get_token_from_cookie(request)
@@ -131,10 +148,15 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
                     f"IP={request.client.host if request.client else 'unknown'}, "
                     f"has_cookie={bool(cookie_token)}, has_header={bool(request_token)}"
                 )
-                raise HTTPException(
+                # Return JSONResponse directly instead of raising HTTPException.
+                # BaseHTTPMiddleware wraps raised exceptions in an ExceptionGroup,
+                # which bypasses FastAPI's exception handlers and causes a 500.
+                return JSONResponse(
                     status_code=403,
-                    detail="CSRF validation failed - missing token. "
-                    "Include X-CSRF-Token header in state-changing requests.",
+                    content={
+                        "detail": "CSRF validation failed - missing token. "
+                        "Include X-CSRF-Token header in state-changing requests."
+                    },
                 )
 
             if request_token != cookie_token:
@@ -143,7 +165,11 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
                     f"path={request.url.path}, method={request.method}, "
                     f"IP={request.client.host if request.client else 'unknown'}"
                 )
-                raise HTTPException(status_code=403, detail="CSRF validation failed - invalid token")
+                # Return JSONResponse directly (same BaseHTTPMiddleware reason as above).
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "CSRF validation failed - invalid token"},
+                )
 
         # Process request
         response = await call_next(request)
@@ -155,8 +181,8 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
             response.set_cookie(
                 key=self.cookie_name,
                 value=token,
-                httponly=True,  # Prevent JavaScript access (XSS protection)
-                secure=True,  # HTTPS only (set to False for local dev)
+                httponly=False,  # Must be False: JS reads cookie for double-submit pattern
+                secure=request.url.scheme == "https",  # Adapt to connection scheme
                 samesite="strict",  # Strict same-site policy
                 max_age=3600,  # 1 hour expiry
             )

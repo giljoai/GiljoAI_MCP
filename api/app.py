@@ -106,8 +106,8 @@ try:
     from .middleware import (
         APIMetricsMiddleware,
         AuthMiddleware,
+        CSRFProtectionMiddleware,
         InputValidationMiddleware,
-        # CSRFProtectionMiddleware,  # Optional - requires frontend integration
         RateLimitMiddleware,
         SecurityHeadersMiddleware,
     )
@@ -386,8 +386,24 @@ def create_app() -> FastAPI:
     # Add API metrics middleware (executes 4th - counts API and MCP calls)
     app.add_middleware(APIMetricsMiddleware)
 
-    # CSRF protection middleware (optional - requires frontend integration)
-    # Handover 0129c: Uncomment when frontend is ready to send X-CSRF-Token headers
+    # CSRF protection middleware (executes after auth, before route handlers)
+    # Handover 0765f: Enabled with double-submit cookie pattern
+    app.add_middleware(
+        CSRFProtectionMiddleware,
+        exempt_paths=[
+            "/health",
+            "/api/health",
+            "/api/metrics",
+        ],
+        exempt_prefixes=[
+            "/api/auth/",  # Auth endpoints (login, register, refresh — no CSRF cookie yet)
+            "/api/setup/",  # Setup wizard (runs before auth is configured)
+            "/mcp",  # MCP-over-HTTP (API key auth, not cookie-based)
+            "/api/download/",  # Public download endpoints
+            "/api/mcp-installer/",  # MCP installer (Bearer token auth, not cookie-based)
+            "/ws",  # WebSocket endpoints
+        ],
+    )
 
     # v3.0: Setup mode middleware removed - unified authentication for all endpoints
 
