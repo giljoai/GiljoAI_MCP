@@ -155,7 +155,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/v1/config/frontend",  # Frontend config
             "/api/auth/me",  # Auth status check
             "/mcp",  # MCP-over-HTTP endpoint (handles own auth via X-API-Key)
-            "/api/v1/ws-bridge",  # Internal MCP-to-WebSocket bridge (localhost-only, no auth required)
             "/api/download/slash-commands.zip",  # Public slash command downloads
             "/api/download/install-script",  # Public install scripts
             "/api/download/agent-templates.zip",  # Optional-auth downloads (handles own auth logic)
