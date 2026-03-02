@@ -56,9 +56,9 @@
       "title": "Quick Tier 3 Fixes",
       "color": "#2196F3",
       "handover": "handovers/0765b_quick_tier3_fixes.md",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-02T17:00:00Z",
+      "completed_at": "2026-03-02T19:30:00Z",
       "planned_tasks": [
         "Fix NPM health check detection in startup.py and control_panel.py (3H)",
         "Remove 6 orphan CSS selectors (3C)",
@@ -68,11 +68,23 @@
         "Restrict CORS methods and headers in api/app.py and devpanel (3F)",
         "Remove H-24 speculative agentStore prefetch from ProjectsView"
       ],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "tasks_completed": [
+        "NPM health check hardened: startup.py + control_panel.py use .package-lock.json marker",
+        "Removed 9 orphan CSS selectors from JobsTab (5), ProjectTabs (2), AgentTableView (1), ActionIcons (1)",
+        "Removed 8 dead ProjectTabs emits + handleLaunchAgent dead code + template bindings",
+        "Unified agent sort priority via shared AGENT_STATUS_PRIORITY constant in constants.js",
+        "Restricted CORS to explicit methods/headers in api/app.py; documented devpanel wildcard",
+        "Removed speculative agentStore prefetch + useAgentStore import from ProjectsView"
+      ],
+      "deviations": [
+        "Static computed conversion (3C item 2.2) was moot — giljoFaceIcon and actionIconColor already removed during 0765a ActionIcons script setup conversion",
+        "Dev panel CORS kept as wildcard with explanatory comments (local dev tooling, not production)"
+      ],
+      "blockers_encountered": [
+        "mixed-line-ending hook fix required re-staging on constants.js"
+      ],
+      "notes_for_next": "All Tier 3 quick-win items complete. 1410 tests passing, 342 skipped. Frontend builds clean. Branch ready for 0765c (Design Token Migration).",
+      "summary": "Completed all 6 tasks in 1 commit: hardened NPM health checks, restricted CORS, removed 9 orphan CSS selectors, removed 8 dead emits + dead handler, unified agent sort priority via shared constant, removed speculative prefetch. 12 files changed, 34 insertions, 195 deletions."
     },
     {
       "session_id": "0765c",
