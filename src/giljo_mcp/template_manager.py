@@ -38,9 +38,9 @@ def apply_augmentation(content: str, augmentation: dict[str, Any]) -> str:
         return content
 
     # Extract dict fields (Handover 0423 - DB-backed augmentation removed)
-    aug_type = augmentation.get("type") or augmentation.get("augmentation_type", "append")
+    aug_type = augmentation.get("type", "append")
     aug_content = augmentation.get("content", "")
-    target = augmentation.get("target") or augmentation.get("target_section", "")
+    target = augmentation.get("target", "")
 
     # Apply augmentation based on type
     if aug_type == "append":

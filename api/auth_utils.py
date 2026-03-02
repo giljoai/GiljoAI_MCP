@@ -124,7 +124,7 @@ async def authenticate_websocket(websocket: WebSocket, db: AsyncSession = None) 
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]  # Remove 'Bearer ' prefix
 
-        api_key = headers.get("x-api-key") or headers.get("x-api-key".lower())
+        api_key = headers.get("x-api-key")
 
     # No credentials provided - reject
     if not token and not api_key:

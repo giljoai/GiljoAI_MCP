@@ -98,15 +98,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
         request.state.authenticated = auth_result.get("authenticated", False)
 
         if auth_result.get("authenticated"):
-            # Always set both user_id (string) and user (object if available)
-            request.state.user_id = auth_result.get("user_id") or auth_result.get("user")
-            request.state.user = auth_result.get("user_obj")  # User object or None
             request.state.is_auto_login = auth_result.get("is_auto_login", False)
             tenant_key = auth_result.get("tenant_key")
             if not tenant_key:
                 logger.warning(
                     "authenticated_missing_tenant_key",
-                    user_id=request.state.user_id,
+                    user_id=auth_result.get("user_id"),
                     path=request.url.path,
                 )
                 # Fall back to env var for setup/localhost mode only
