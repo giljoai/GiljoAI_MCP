@@ -47,34 +47,6 @@ class AgentPromptResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# Broadcast Messaging Schemas
-
-
-class BroadcastMessageRequest(BaseModel):
-    """
-    Schema for broadcasting a message to all agents in a project.
-    POST /api/agent-jobs/broadcast
-    """
-
-    project_id: str = Field(..., min_length=1, description="Project ID to broadcast to")
-    content: str = Field(..., min_length=1, max_length=10000, description="Message content (max 10000 chars)")
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class BroadcastMessageResponse(BaseModel):
-    """
-    Schema for broadcast message response.
-    """
-
-    broadcast_id: str = Field(..., description="Unique broadcast identifier (UUID)")
-    message_ids: list[str] = Field(..., description="List of created message IDs")
-    agent_count: int = Field(..., description="Number of agents messaged")
-    timestamp: str = Field(..., description="Broadcast timestamp (ISO format)")
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 # Project Closeout Schemas
 
 

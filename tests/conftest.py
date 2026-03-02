@@ -25,7 +25,6 @@ from src.giljo_mcp.config_manager import get_config
 # Import Product model for test_product fixture
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
-from src.giljo_mcp.services.product_service import ProductService
 from src.giljo_mcp.services.project_service import ProjectService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -165,16 +164,6 @@ async def project_service_with_session(db_session, db_manager, tenant_manager, t
     return ProjectService(
         db_manager=db_manager,
         tenant_manager=tenant_manager,
-        test_session=db_session,
-    )
-
-
-@pytest_asyncio.fixture(scope="function")
-async def product_service_with_session(db_session, db_manager, test_project):
-    """ProductService using shared test session for E2E/integration tests."""
-    return ProductService(
-        db_manager=db_manager,
-        tenant_key=test_project.tenant_key,
         test_session=db_session,
     )
 
@@ -599,57 +588,6 @@ async def tools_test_setup(
     # Stop all patches
     for p in patches:
         p.stop()
-
-
-@pytest.fixture
-def vision_test_files(tmp_path):
-    """Create temporary vision files for testing"""
-    vision_dir = tmp_path / "docs" / "Vision"
-    vision_dir.mkdir(parents=True)
-
-    # Create test vision files
-    (vision_dir / "overview.md").write_text(
-        """
-# Project Overview
-This is a test vision document with multiple sections.
-
-## Architecture
-The system follows a modular design.
-
-## Goals
-- Achieve 95% test coverage
-- Maintain code quality
-"""
-    )
-
-    (vision_dir / "technical_spec.md").write_text(
-        """
-# Technical Specification
-Detailed technical requirements.
-
-## Database Design
-Using SQLAlchemy with async support.
-
-## API Design
-REST API with FastAPI framework.
-"""
-    )
-
-    return vision_dir
-
-
-@pytest.fixture
-def mock_message_queue():
-    """Mock message queue for testing"""
-    from unittest.mock import AsyncMock, MagicMock
-
-    mock_queue = MagicMock()
-    mock_queue.send_message = AsyncMock(return_value={"success": True, "message_id": "test-msg-123"})
-    mock_queue.get_messages = AsyncMock(return_value={"success": True, "messages": []})
-    mock_queue.acknowledge_message = AsyncMock(return_value={"success": True})
-    mock_queue.complete_message = AsyncMock(return_value={"success": True})
-
-    return mock_queue
 
 
 @pytest_asyncio.fixture(scope="function")
