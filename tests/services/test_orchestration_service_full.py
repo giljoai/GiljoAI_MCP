@@ -106,33 +106,6 @@ async def test_agent_templates(db_manager: DatabaseManager, test_product: dict):
         }
 
 
-class TestProcessProductVision:
-    """Test process_product_vision functionality."""
-
-    @pytest.mark.asyncio
-    async def test_creates_project_from_vision(
-        self,
-        orchestration_service: OrchestrationService,
-        test_product: dict,
-        db_manager: DatabaseManager,
-    ):
-        """Test that process_product_vision creates a new project."""
-        # This test would require implementing process_product_vision
-        # which might not exist in the current implementation
-        pytest.skip("process_product_vision may not be implemented yet")
-
-    @pytest.mark.asyncio
-    async def test_uses_existing_project_when_provided(
-        self,
-        orchestration_service: OrchestrationService,
-        test_project: dict,
-        db_manager: DatabaseManager,
-    ):
-        """CRITICAL: Verify that providing project_id uses existing project, not creating duplicate."""
-        # This test verifies the fix for the duplicate project bug
-        pytest.skip("process_product_vision may not be implemented yet")
-
-
 class TestSpawnAgentJob:
     """Test agent spawning functionality."""
 

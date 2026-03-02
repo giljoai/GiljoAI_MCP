@@ -255,9 +255,9 @@
       "title": "Skipped Test Resolution",
       "color": "#607D8B",
       "handover": "handovers/0765h_skipped_test_resolution.md",
-      "status": "in_progress",
+      "status": "complete",
       "started_at": "2026-03-02T22:00:00Z",
-      "completed_at": null,
+      "completed_at": "2026-03-03T01:30:00Z",
       "planned_tasks": [
         "Triage all ~342 skipped tests into DELETE/REPLACE/FIX categories",
         "Delete obsolete and dead tests",
@@ -265,11 +265,25 @@
         "Rewrite dict-return test assertions for current Pydantic/exception API",
         "Achieve zero skipped tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
-      "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "tasks_completed": [
+        "Phase 1: Inventoried all 342 skipped tests — 42 module-level skip files (299 tests) + ~43 function-level skips across 20 files",
+        "Phase 2: Deleted 42 obsolete test files via git rm — 20 unit/0750b dict-return duplicates (172 tests) + 22 integration/0750c3 dead infrastructure files (127 tests)",
+        "Phase 3a: Deleted 26 dead test functions across 12 files (2 entire files removed) — dead fixtures, removed endpoints, duplicate coverage",
+        "Phase 3b: Fixed assertions in 8 test files — stats format, broadcast payload, field renames, websocket emissions, tool name updates",
+        "Phase 3c: Fixed 6 conditional skip tests (path fixes, removed try/except/skip wrappers) and deleted 6 permanently-blocked tests",
+        "Phase 4: Fixed dual_model test assertions — template injection prepends content to missions, changed strict equality to substring checks"
+      ],
+      "deviations": [
+        "No dict-to-Pydantic rewrites needed — all 0750b dict-return tests were duplicates of passing tests in tests/services/",
+        "All 0750c3 dead infrastructure tests were pure deletions — no equivalent functionality to rewrite for",
+        "Dual model test required assertion relaxation (== to in) due to template injection prepending content to mission strings"
+      ],
+      "blockers_encountered": [
+        "Deep-researcher agent too slow for inventory — switched to direct grep-based triage",
+        "test_spawn_creates_both_job_and_execution failed after fixes — template injection prepends content to job.mission, fixed with substring assertion"
+      ],
+      "notes_for_next": "All 342 skipped tests resolved. Final counts: 1453 passed, 0 skipped, 0 failed. Frontend builds clean. Branch ready for 0765i (Post-Sprint Quality Audit).",
+      "summary": "Resolved all 342 skipped tests: deleted 42 obsolete test files (299 tests) and 26 dead functions, fixed assertions in 8 files, fixed 6 conditional skips, deleted 6 permanently-blocked tests. Net result: 1453 passed, 0 skipped, 0 failed — up from 1441 passed + 342 skipped."
     },
     {
       "session_id": "0765i",

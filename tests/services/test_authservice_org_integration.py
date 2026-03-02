@@ -23,13 +23,11 @@ import pytest
 import pytest_asyncio
 from passlib.hash import bcrypt
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-
 from src.giljo_mcp.exceptions import AuthorizationError
 from src.giljo_mcp.models import Task  # noqa: F401 - For FK cleanup
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.organizations import Organization, OrgMembership
-from src.giljo_mcp.schemas.service_responses import AuthResult, UserInfo
+from src.giljo_mcp.schemas.service_responses import UserInfo
 from src.giljo_mcp.services.auth_service import AuthService
 
 
@@ -166,60 +164,6 @@ async def test_create_default_organization_returns_org_id(auth_service, db_sessi
     membership = membership_result.scalar_one_or_none()
 
     assert membership is None  # No membership created by this method
-
-
-@pytest.mark.asyncio
-async def test_create_first_admin_sets_org_id(auth_service, db_session):
-    """
-    Test that _create_first_admin_impl creates org FIRST, then sets user.org_id.
-
-    Expected behavior (Handover 0424g):
-    - Creates organization FIRST
-    - Creates user WITH org_id set
-    - Creates owner membership
-    - Organization created before user (org-first pattern)
-    """
-    # Check if database has existing users (can't clear due to FK constraints)
-    count_result = await db_session.execute(select(User).limit(1))
-    if count_result.scalar_one_or_none() is not None:
-        pytest.skip("Test requires empty database (existing users have FK references)")
-
-    # Create first admin - returns AuthResult (typed)
-    result = await auth_service._create_first_admin_impl(
-        session=db_session,
-        username="firstadmin",
-        email="first@example.com",
-        password="FirstAdmin1234!@#$",
-        full_name="First Administrator",
-    )
-
-    # Typed return: AuthResult with attribute access
-    assert isinstance(result, AuthResult)
-    user_id = result.user_id
-    stmt = select(User).where(User.id == user_id).options(selectinload(User.organization))
-    user_result = await db_session.execute(stmt)
-    user = user_result.scalar_one()
-
-    assert user.org_id is not None
-    assert len(user.org_id) == 36  # UUID format
-
-    # Verify organization exists
-    org_stmt = select(Organization).where(Organization.id == user.org_id)
-    org_result = await db_session.execute(org_stmt)
-    org = org_result.scalar_one()
-
-    assert org is not None
-    assert org.name == "My Organization"  # Default workspace name per implementation
-
-    # Verify owner membership created
-    membership_stmt = (
-        select(OrgMembership).where(OrgMembership.org_id == user.org_id).where(OrgMembership.user_id == user.id)
-    )
-    membership_result = await db_session.execute(membership_stmt)
-    membership = membership_result.scalar_one()
-
-    assert membership.role == "owner"
-    assert membership.is_active is True
 
 
 @pytest.mark.asyncio

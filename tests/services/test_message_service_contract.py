@@ -383,29 +383,6 @@ class TestBroadcastMessaging:
             )
 
 
-class TestMultiTenantIsolation:
-    """Test that multi-tenant isolation is enforced."""
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason="Requires integration test with real database sessions - covered in tests/api/test_messages_api.py"
-    )
-    async def test_multi_tenant_message_isolation(
-        self,
-        db_session: AsyncSession,
-        db_manager: DatabaseManager,
-        mock_websocket_manager: MagicMock,
-        test_product: Product,
-    ):
-        """
-        CRITICAL CONTRACT TEST: Verify multi-tenant isolation:
-        1. Messages from tenant A are not visible to tenant B
-        2. MessageService properly filters by tenant_key
-        3. Counter updates respect tenant boundaries
-        """
-        pass
-
-
 # ============================================================================
 # Edge Cases and Error Handling
 # ============================================================================

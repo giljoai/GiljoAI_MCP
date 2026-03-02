@@ -114,7 +114,6 @@ class TestSpawnAgentJobPhaseParameter:
 class TestSpawnWebSocketBroadcastPhase:
     """Tests that WebSocket broadcast data includes phase field."""
 
-    @pytest.mark.skip(reason="0750c3: websocket broadcast payload format changed")
     async def test_websocket_broadcast_includes_phase(self):
         """Verify agent:created WebSocket broadcast includes phase in data dict."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
@@ -148,14 +147,21 @@ class TestSpawnWebSocketBroadcastPhase:
         mock_template_row = MagicMock()
         mock_template_row.__getitem__ = lambda self, idx: "analyzer-1"
 
-        # Set up session.execute to return appropriate results for each query
+        # Query 1: Project lookup
         project_result = MagicMock()
         project_result.scalar_one_or_none = MagicMock(return_value=mock_project)
 
+        # Query 2: Template name validation
         template_validation_result = MagicMock()
         template_validation_result.fetchall = MagicMock(return_value=[mock_template_row])
 
-        # Template lookup for multi-terminal injection
+        # Query 3: Duplicate agent_display_name check (returns no duplicates)
+        duplicate_check_result = MagicMock()
+        duplicate_check_result.scalars = MagicMock(
+            return_value=MagicMock(all=MagicMock(return_value=[]))
+        )
+
+        # Query 4: Template lookup for multi-terminal injection
         mock_template = MagicMock()
         mock_template.id = str(uuid.uuid4())
         mock_template.system_instructions = "Test instructions"
@@ -172,6 +178,8 @@ class TestSpawnWebSocketBroadcastPhase:
                 return project_result
             elif call_count == 2:
                 return template_validation_result
+            elif call_count == 3:
+                return duplicate_check_result
             else:
                 return template_lookup_result
 
@@ -193,7 +201,6 @@ class TestSpawnWebSocketBroadcastPhase:
         assert "phase" in broadcast_data
         assert broadcast_data["phase"] == 2
 
-    @pytest.mark.skip(reason="0750c3: websocket broadcast payload format changed")
     async def test_websocket_broadcast_includes_none_phase_when_omitted(self):
         """Verify agent:created WebSocket broadcast includes phase=None when not specified."""
         from src.giljo_mcp.services.orchestration_service import OrchestrationService
@@ -225,12 +232,21 @@ class TestSpawnWebSocketBroadcastPhase:
         mock_template_row = MagicMock()
         mock_template_row.__getitem__ = lambda self, idx: "impl-1"
 
+        # Query 1: Project lookup
         project_result = MagicMock()
         project_result.scalar_one_or_none = MagicMock(return_value=mock_project)
 
+        # Query 2: Template name validation
         template_validation_result = MagicMock()
         template_validation_result.fetchall = MagicMock(return_value=[mock_template_row])
 
+        # Query 3: Duplicate agent_display_name check (returns no duplicates)
+        duplicate_check_result = MagicMock()
+        duplicate_check_result.scalars = MagicMock(
+            return_value=MagicMock(all=MagicMock(return_value=[]))
+        )
+
+        # Query 4: Template lookup for multi-terminal injection
         mock_template = MagicMock()
         mock_template.id = str(uuid.uuid4())
         mock_template.system_instructions = "Test instructions"
@@ -247,6 +263,8 @@ class TestSpawnWebSocketBroadcastPhase:
                 return project_result
             elif call_count == 2:
                 return template_validation_result
+            elif call_count == 3:
+                return duplicate_check_result
             else:
                 return template_lookup_result
 
