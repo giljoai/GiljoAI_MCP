@@ -641,7 +641,7 @@ SUCCESS CRITERIA:
             # Process the template
             return process_template(merged_content, variables, augmentations)
 
-        except Exception:
+        except Exception:  # Broad catch: template fallback, returns safe default
             logger.exception(f"Failed to get template for role '{role}'")
             # Return fallback template
             fallback = self._legacy_templates.get(role.lower(), f"Error loading template for role: {role}")

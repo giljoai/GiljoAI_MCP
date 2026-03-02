@@ -41,7 +41,7 @@ async def shutdown(state: APIState) -> None:
             with contextlib.suppress(asyncio.CancelledError):
                 await state.metrics_sync_task
         logger.info("Background tasks canceled")
-    except Exception as e:
+    except Exception as e:  # Broad catch: shutdown resilience, best-effort cleanup
         logger.error(f"Error canceling background tasks: {e}", exc_info=True)
 
     # Stop health monitoring gracefully
@@ -50,7 +50,7 @@ async def shutdown(state: APIState) -> None:
             logger.info("Stopping agent health monitoring...")
             await state.health_monitor.stop()
             logger.info("Agent health monitoring stopped")
-        except Exception as e:
+        except Exception as e:  # Broad catch: shutdown resilience, best-effort cleanup
             logger.error(f"Error stopping health monitor: {e}", exc_info=True)
 
     # Stop silence detector gracefully (Handover 0491)
@@ -59,7 +59,7 @@ async def shutdown(state: APIState) -> None:
             logger.info("Stopping silence detector...")
             await state.silence_detector.stop()
             logger.info("Silence detector stopped")
-        except Exception as e:
+        except Exception as e:  # Broad catch: shutdown resilience, best-effort cleanup
             logger.error(f"Error stopping silence detector: {e}", exc_info=True)
 
     # Close all WebSocket connections
@@ -68,7 +68,7 @@ async def shutdown(state: APIState) -> None:
         for ws in state.connections.values():
             await ws.close()
         logger.info("WebSocket connections closed")
-    except Exception as e:
+    except Exception as e:  # Broad catch: shutdown resilience, best-effort cleanup
         logger.error(f"Error closing WebSocket connections: {e}", exc_info=True)
 
     # Stop WebSocket broker (0379e)
@@ -77,7 +77,7 @@ async def shutdown(state: APIState) -> None:
             logger.info("Stopping WebSocket broker...")
             await state.websocket_broker.stop()
             logger.info("WebSocket broker stopped")
-        except Exception as e:
+        except Exception as e:  # Broad catch: shutdown resilience, best-effort cleanup
             logger.error(f"Error stopping WebSocket broker: {e}", exc_info=True)
 
     # Close database
@@ -86,5 +86,5 @@ async def shutdown(state: APIState) -> None:
             logger.info("Closing database connection...")
             await state.db_manager.close_async()  # Use close_async() for async engine
             logger.info("Database connection closed")
-        except Exception as e:
+        except Exception as e:  # Broad catch: shutdown resilience, best-effort cleanup
             logger.error(f"Error closing database: {e}", exc_info=True)

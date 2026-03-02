@@ -116,7 +116,7 @@ async def upload_vision_document(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except (ResourceNotFoundError, ValidationError, AuthorizationError, HTTPException):
         raise
-    except Exception as e:
+    except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Vision upload failed")
         # Handover 0508: Check for IntegrityError (duplicate constraint violation)
         error_str = str(e).lower()

@@ -9,6 +9,7 @@ from typing import Any, Optional
 from urllib.parse import quote_plus
 
 from sqlalchemy import Engine, create_engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool
@@ -181,11 +182,11 @@ class DatabaseManager:
                 with suppress(RuntimeError, OSError):
                     await session.rollback()
             raise
-        except Exception:
+        except Exception:  # Broad catch: session cleanup resilience
             # Regular exceptions - rollback and re-raise
             try:
                 await session.rollback()
-            except Exception as rollback_error:
+            except (SQLAlchemyError, RuntimeError) as rollback_error:
                 logger.error(
                     "session_rollback_failed",
                     error_code=ErrorCode.DB_TRANSACTION_ROLLBACK.value,

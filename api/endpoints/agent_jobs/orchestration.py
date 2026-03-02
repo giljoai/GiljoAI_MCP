@@ -204,7 +204,7 @@ async def launch_project(
         await db.commit()
         await db.refresh(project)
         logger.info(f"Project {project_id_str} launching implementation ({len(agents)} agents)")
-    except Exception as e:
+    except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         await db.rollback()
         logger.exception("Failed to update project status")
         raise HTTPException(
@@ -240,7 +240,7 @@ async def launch_project(
             },
         )
         logger.info(f"WebSocket event 'project:launched' broadcasted for {project_id_str}")
-    except Exception:
+    except Exception:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Failed to broadcast WebSocket event")
 
     return LaunchProjectResponse(

@@ -32,7 +32,7 @@ async def init_core_services(state: APIState) -> None:
         logger.info("Initializing tenant manager...")
         state.tenant_manager = TenantManager()  # TenantManager uses static methods
         logger.info("Tenant manager initialized successfully")
-    except Exception as e:
+    except Exception as e:  # Broad catch: startup resilience, non-fatal initialization
         logger.error(f"Failed to initialize tenant manager: {e}", exc_info=True)
         raise
 
@@ -41,7 +41,7 @@ async def init_core_services(state: APIState) -> None:
         logger.info("Initializing WebSocket manager...")
         state.websocket_manager = WebSocketManager()
         logger.info("WebSocket manager initialized successfully")
-    except Exception as e:
+    except Exception as e:  # Broad catch: startup resilience, non-fatal initialization
         logger.error(f"Failed to initialize WebSocket manager: {e}", exc_info=True)
         raise
 
@@ -57,7 +57,7 @@ async def init_core_services(state: APIState) -> None:
         state.websocket_broker = broker
         state.websocket_manager.attach_broker(broker)
         logger.info(f"WebSocket broker initialized: {broker.__class__.__name__}")
-    except Exception as e:
+    except Exception as e:  # Broad catch: startup resilience, non-fatal initialization
         logger.error(f"Failed to initialize WebSocket broker: {e}", exc_info=True)
         # Degrade gracefully: continue with local-only broadcasts.
 
@@ -68,7 +68,7 @@ async def init_core_services(state: APIState) -> None:
             state.db_manager, state.tenant_manager, websocket_manager=state.websocket_manager
         )
         logger.info("Tool accessor initialized successfully")
-    except Exception as e:
+    except Exception as e:  # Broad catch: startup resilience, non-fatal initialization
         logger.error(f"Failed to initialize tool accessor: {e}", exc_info=True)
         raise
 
@@ -79,7 +79,7 @@ async def init_core_services(state: APIState) -> None:
         # The db_manager provides sessions, not a single session
         state.auth = AuthManager(state.config, db=None)
         logger.info("Auth manager initialized (mode-independent authentication)")
-    except Exception as e:
+    except Exception as e:  # Broad catch: startup resilience, non-fatal initialization
         logger.error(f"Failed to initialize auth manager: {e}", exc_info=True)
         raise
 
@@ -105,5 +105,5 @@ async def init_core_services(state: APIState) -> None:
         heartbeat_task = asyncio.create_task(state.websocket_manager.start_heartbeat(interval=30))
         state.heartbeat_task = heartbeat_task  # Store reference to prevent garbage collection
         logger.info("WebSocket heartbeat started (interval: 30s)")
-    except Exception as e:
+    except Exception as e:  # Broad catch: startup resilience, non-fatal initialization
         logger.error(f"Failed to start heartbeat task: {e}", exc_info=True)

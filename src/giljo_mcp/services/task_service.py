@@ -178,7 +178,7 @@ class TaskService:
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to log task")
             raise BaseGiljoError(message=str(e), context={"operation": "log_task"}) from e
 
@@ -398,7 +398,7 @@ class TaskService:
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to list tasks")
             raise BaseGiljoError(message=str(e), context={"operation": "list_tasks"}) from e
 
@@ -507,7 +507,7 @@ class TaskService:
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to update task")
             raise BaseGiljoError(message=str(e), context={"operation": "update_task", "task_id": task_id}) from e
 
@@ -638,7 +638,7 @@ class TaskService:
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get task {task_id}")
             raise BaseGiljoError(message=str(e), context={"operation": "get_task", "task_id": task_id}) from e
 
@@ -699,7 +699,7 @@ class TaskService:
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to delete task {task_id}")
             raise BaseGiljoError(message=str(e), context={"operation": "delete_task", "task_id": task_id}) from e
 
@@ -803,7 +803,7 @@ class TaskService:
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to convert task {task_id} to project")
             raise BaseGiljoError(message=str(e), context={"operation": "convert_to_project", "task_id": task_id}) from e
 
@@ -970,7 +970,7 @@ class TaskService:
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to change task {task_id} status")
             raise BaseGiljoError(message=str(e), context={"operation": "change_status", "task_id": task_id}) from e
 
@@ -1046,7 +1046,7 @@ class TaskService:
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get task summary")
             raise BaseGiljoError(message=str(e), context={"operation": "get_summary"}) from e
 

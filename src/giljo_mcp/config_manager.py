@@ -483,7 +483,7 @@ class ConfigManager:
                 self.features.auto_handoff = feat.get("auto_handoff", self.features.auto_handoff)
                 self.features.dynamic_discovery = feat.get("dynamic_discovery", self.features.dynamic_discovery)
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: wraps in ConfigValidationError
             logger.exception("Error loading config file")
             raise ConfigValidationError(f"Failed to load config file: {e}") from e
 
@@ -620,7 +620,7 @@ class ConfigManager:
         try:
             self.load()
             logger.info("Configuration reloaded successfully")
-        except Exception:
+        except Exception:  # Broad catch: config reload boundary, logs and re-raises
             logger.exception("Failed to reload configuration")
             raise
 

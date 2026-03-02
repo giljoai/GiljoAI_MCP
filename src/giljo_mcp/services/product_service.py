@@ -227,7 +227,7 @@ class ProductService:
         except ValidationError:
             # Re-raise validation errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to create product")
             raise BaseGiljoError(
                 message=f"Failed to create product: {e!s}",
@@ -286,7 +286,7 @@ class ProductService:
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get product")
             raise BaseGiljoError(
                 message=f"Failed to get product: {e!s}",
@@ -338,7 +338,7 @@ class ProductService:
                 # Handover 0731b: Return list of Product ORM models directly
                 return list(products)
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to list products")
             raise BaseGiljoError(
                 message=f"Failed to list products: {e!s}", context={"tenant_key": self.tenant_key}
@@ -415,7 +415,7 @@ class ProductService:
         except (ResourceNotFoundError, ValidationError):
             # Re-raise our custom errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to update product")
             raise BaseGiljoError(
                 message=f"Failed to update product: {e!s}",
@@ -602,7 +602,7 @@ class ProductService:
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to activate product")
             raise BaseGiljoError(
                 message=f"Failed to activate product: {e!s}",
@@ -653,7 +653,7 @@ class ProductService:
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to deactivate product")
             raise BaseGiljoError(
                 message=f"Failed to deactivate product: {e!s}",
@@ -706,7 +706,7 @@ class ProductService:
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to delete product")
             raise BaseGiljoError(
                 message=f"Failed to delete product: {e!s}",
@@ -762,7 +762,7 @@ class ProductService:
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to restore product")
             raise BaseGiljoError(
                 message=f"Failed to restore product: {e!s}",
@@ -799,7 +799,7 @@ class ProductService:
                 # Purge date computation moved to endpoint layer
                 return list(deleted_products)
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to list deleted products")
             raise BaseGiljoError(
                 message=f"Failed to list deleted products: {e!s}", context={"tenant_key": self.tenant_key}
@@ -843,7 +843,7 @@ class ProductService:
                 # Handover 0731b: Return Product or None directly
                 return product
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get active product")
             raise BaseGiljoError(
                 message=f"Failed to get active product: {e!s}", context={"tenant_key": self.tenant_key}
@@ -905,7 +905,7 @@ class ProductService:
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get product statistics")
             raise BaseGiljoError(
                 message=f"Failed to get product statistics: {e!s}",
@@ -982,7 +982,7 @@ class ProductService:
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get cascade impact")
             raise BaseGiljoError(
                 message=f"Failed to get cascade impact: {e!s}",
@@ -1089,7 +1089,7 @@ class ProductService:
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to update git integration")
             raise BaseGiljoError(
                 message=f"Failed to update git integration: {e!s}",
@@ -1283,7 +1283,7 @@ class ProductService:
         except ResourceNotFoundError:
             # Re-raise resource not found errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to upload vision document")
             raise BaseGiljoError(
                 message=f"Failed to upload vision document: {e!s}",
@@ -1343,7 +1343,7 @@ class ProductService:
 
         except ValidationError:
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             logger.warning(f"Project path validation failed - invalid path: {project_path}, error: {e}")
             raise ValidationError("Invalid project path") from e
 
@@ -1667,7 +1667,7 @@ class ProductService:
         except DatabaseError:
             # Re-raise database errors as-is
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("[Product Purge] Failed to purge expired deleted products")
             raise BaseGiljoError(
                 message=f"Failed to purge expired deleted products: {e!s}",

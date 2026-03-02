@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import or_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
@@ -85,7 +86,7 @@ class SilenceDetector:
         while self.running:
             try:
                 await self._run_detection_cycle()
-            except Exception:
+            except Exception:  # Broad catch: background loop resilience, prevents monitoring crash
                 logger.exception("Silence detection cycle failed")
 
             await asyncio.sleep(self.scan_interval_seconds)
@@ -158,7 +159,7 @@ class SilenceDetector:
                     old_status=old_status,
                     new_status="silent",
                 )
-            except Exception:
+            except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
                 logger.exception(
                     "Failed to broadcast silent status for agent %s",
                     agent.agent_id,
@@ -223,7 +224,7 @@ async def auto_clear_silent(
             old_status=old_status,
             new_status="working",
         )
-    except Exception:
+    except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
         logger.exception(
             "Failed to broadcast auto-clear for agent %s",
             agent.agent_id,
@@ -280,7 +281,7 @@ async def clear_silent_status(
             old_status=old_status,
             new_status="working",
         )
-    except Exception:
+    except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
         logger.exception(
             "Failed to broadcast clear-silent for agent %s",
             agent.agent_id,
@@ -315,7 +316,7 @@ async def _get_silence_threshold(session: AsyncSession) -> int:
             threshold = settings.settings_data.get("agent_silence_threshold_minutes")
             if threshold is not None and isinstance(threshold, (int, float)):
                 return max(1, int(threshold))
-    except Exception:
+    except (SQLAlchemyError, KeyError, ValueError):
         logger.exception("Failed to read silence threshold from settings")
 
     return DEFAULT_SILENCE_THRESHOLD_MINUTES

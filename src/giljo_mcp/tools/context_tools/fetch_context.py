@@ -224,7 +224,7 @@ async def fetch_context(
         )
         data = result.get("data", {})
         error = None
-    except Exception as e:
+    except Exception as e:  # Broad catch: tool boundary, logs and re-raises
         logger.error("category_fetch_error", category=category, error=str(e), exc_info=True)
         data = {}
         error = {"category": category, "error": str(e)}
