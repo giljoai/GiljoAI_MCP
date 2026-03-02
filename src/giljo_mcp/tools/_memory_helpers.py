@@ -121,6 +121,6 @@ async def _fetch_github_commits(
             logger.info(f"Fetched {len(commits)} GitHub commits for {repo_owner}/{repo_name}")
             return commits
 
-    except Exception as exc:
+    except Exception as exc:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to fetch GitHub commits", extra={"error": str(exc)})
         return None

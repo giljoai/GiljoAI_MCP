@@ -483,7 +483,7 @@ class MessageService:
                                 f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_agent_ids)} recipient(s)"
                             )
 
-                    except Exception as ws_error:  # noqa: BLE001
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                         # Log WebSocket errors but don't fail the message send
                         self._logger.warning(f"Failed to emit WebSocket event for message {message_id}: {ws_error}")
                 else:
@@ -643,7 +643,7 @@ class MessageService:
                             message_type="broadcast",
                             content_preview=content[:100] if content else "",
                         )
-                    except Exception as ws_error:  # noqa: BLE001
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                         # Log WebSocket errors but don't fail the broadcast
                         self._logger.warning(f"Failed to emit WebSocket broadcast event: {ws_error}")
 
@@ -1296,7 +1296,7 @@ class MessageService:
                                 "result": result[:100] if result else "",
                             },
                         )
-                    except Exception as ws_error:  # noqa: BLE001
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                         # Log WebSocket errors but don't fail the completion
                         self._logger.warning(
                             f"Failed to emit WebSocket event for message completion {message_id}: {ws_error}"
@@ -1411,7 +1411,7 @@ class MessageService:
                             waiting_count=waiting_count,
                             read_count=read_count,
                         )
-                    except Exception as ws_error:  # noqa: BLE001
+                    except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                         self._logger.warning(f"Failed to emit WebSocket for ack: {ws_error}")
 
                 # Handover 0731c: Return AcknowledgeMessageResult typed model

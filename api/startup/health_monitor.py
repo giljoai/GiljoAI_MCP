@@ -64,6 +64,6 @@ async def init_health_monitor(state: APIState) -> None:
             logger.info(f"Agent health monitoring started (scan interval: {health_config.scan_interval_seconds}s)")
         else:
             logger.info("Agent health monitoring disabled in configuration")
-    except Exception as e:
+    except Exception as e:  # Broad catch: startup resilience, non-fatal initialization
         logger.error(f"Failed to start agent health monitoring: {e}", exc_info=True)
         logger.warning("Continuing without health monitoring")

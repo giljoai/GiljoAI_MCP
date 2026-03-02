@@ -74,7 +74,7 @@ class MCPSessionManager:
             logger.warning("Invalid API key provided")
             return None
 
-        except Exception as e:
+        except Exception as e:  # Broad catch: API boundary, converts to HTTP error
             logger.error(f"API key authentication error: {e}", exc_info=True)
             return None
 
@@ -117,7 +117,7 @@ class MCPSessionManager:
             )
             await self.db.execute(stmt)
             await self.db.commit()
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001 - API boundary: non-fatal IP logging
             logger.warning("Failed to log IP for API key %s: %s", api_key_id, e)
 
     async def get_or_create_session(self, api_key_value: str, project_id: str | None = None) -> MCPSession | None:

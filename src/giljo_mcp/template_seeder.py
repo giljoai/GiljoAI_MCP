@@ -100,7 +100,7 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
         logger.info(f"Refreshed {updated_count} templates for tenant '{tenant_key}'")
         return updated_count
 
-    except Exception as e:
+    except Exception as e:  # Broad catch: seeder boundary, logs and re-raises
         logger.error(f"Failed to refresh templates for tenant '{tenant_key}': {e}", exc_info=True)
         raise
 
@@ -250,7 +250,7 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
     except ValueError:
         # Re-raise validation errors
         raise
-    except Exception as e:
+    except Exception as e:  # Broad catch: seeder boundary, logs and re-raises
         # Log and re-raise database/unexpected errors
         logger.error(f"Failed to seed templates for tenant '{tenant_key}': {e}", exc_info=True)
         raise

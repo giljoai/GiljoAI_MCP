@@ -259,7 +259,7 @@ class ProjectService:
             raise BaseGiljoError(
                 message=f"Failed to create project: {e!s}", context={"name": name, "tenant_key": tenant_key}
             ) from e
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to create project")
             raise BaseGiljoError(
                 message=f"Failed to create project: {e!s}", context={"name": name, "tenant_key": tenant_key}
@@ -365,7 +365,7 @@ class ProjectService:
         except (ValueError, ResourceNotFoundError):
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get project")
             raise BaseGiljoError(
                 message=f"Failed to get project: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
@@ -462,7 +462,7 @@ class ProjectService:
         except ValidationError:
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to get active project")
             raise BaseGiljoError(message=f"Failed to get active project: {e!s}", context={}) from e
 
@@ -544,7 +544,7 @@ class ProjectService:
         except ValidationError:
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to list projects")
             raise BaseGiljoError(message=f"Failed to list projects: {e!s}", context={"tenant_key": tenant_key}) from e
 
@@ -621,7 +621,7 @@ class ProjectService:
         except (ResourceNotFoundError, ValidationError):
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to update mission")
             raise BaseGiljoError(
                 message=f"Failed to update mission: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
@@ -694,7 +694,7 @@ class ProjectService:
         except ValidationError:
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to complete project")
             raise BaseGiljoError(
                 message=f"Failed to complete project: {e!s}",
@@ -845,7 +845,7 @@ class ProjectService:
         except ResourceNotFoundError:
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to cancel project")
             raise BaseGiljoError(message=f"Failed to cancel project: {e!s}", context={"project_id": project_id}) from e
 
@@ -935,7 +935,7 @@ class ProjectService:
         except ResourceNotFoundError:
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to close out project")
             raise BaseGiljoError(
                 message=f"Failed to close out project: {e!s}",
@@ -1033,7 +1033,7 @@ class ProjectService:
         except (ResourceNotFoundError, ProjectStateError):
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to resume project")
             raise BaseGiljoError(
                 message=f"Failed to resume project: {e!s}", context={"project_id": project_id, "tenant_key": tenant_key}
@@ -1161,7 +1161,7 @@ class ProjectService:
         except (ResourceNotFoundError, ProjectStateError):
             # Re-raise our custom exceptions
             raise
-        except Exception as e:
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to activate project")
             raise BaseGiljoError(
                 message=f"Failed to activate project: {e!s}", context={"project_id": project_id}
@@ -2779,7 +2779,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             )
-        except Exception as ws_error:
+        except Exception as ws_error:  # Broad catch: WebSocket resilience, non-critical broadcast
             self._logger.error(
                 f"[WEBSOCKET ERROR] Failed to broadcast project:memory_updated: {ws_error}",
                 exc_info=True,
@@ -2814,7 +2814,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 },
             )
 
-        except Exception as ws_error:
+        except Exception as ws_error:  # Broad catch: WebSocket resilience, non-critical broadcast
             self._logger.error(
                 f"[WEBSOCKET ERROR] Failed to broadcast project:mission_updated: {ws_error}",
                 exc_info=True,
