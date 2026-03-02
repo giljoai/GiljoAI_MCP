@@ -2,11 +2,17 @@
 Shared pytest fixtures for unit tests (Handover 0605-0608)
 
 Provides correctly configured mocks for async database operations.
+Also provides synchronous DB fixtures for template validation tests.
 """
 
+import uuid
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from sqlalchemy.orm import Session
+
+from src.giljo_mcp.models import AgentTemplate, Product, User
 
 
 @pytest.fixture
@@ -63,5 +69,206 @@ def failing_db_manager():
     session = AsyncMock()
     session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
     session.__aexit__ = AsyncMock(return_value=False)
+    db_manager.get_session_async = Mock(return_value=session)
+    return db_manager
+
+
+# --- Synchronous DB fixtures for template validation tests ---
+
+
+@pytest.fixture(scope="function")
+def sync_db_manager():
+    """Create synchronous database manager for validation tests."""
+    from src.giljo_mcp.database import DatabaseManager
+    from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+    # Create sync database manager with test database URL
+    connection_string = PostgreSQLTestHelper.get_test_db_url()
+    # Convert async connection string to sync (replace postgresql+asyncpg with postgresql+psycopg2)
+    sync_connection_string = connection_string.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+
+    db_mgr = DatabaseManager(sync_connection_string, is_async=False)
+    return db_mgr
+
+
+@pytest.fixture
+def sync_db_session(sync_db_manager):
+    """Get synchronous database session for validation tests."""
+    with sync_db_manager.get_session() as session:
+        yield session
+
+
+def create_test_template(
+    db: Session,
+    tenant_key: str,
+    name: str = "test-agent",
+    role: str = "implementer",
+    is_active: bool = False,
+    system_prompt: str = "Test system prompt with enough characters to be valid",
+) -> AgentTemplate:
+    """Create test agent template in database."""
+    # Create template with only fields that exist in current DB schema
+    template = AgentTemplate(
+        id=str(uuid.uuid4()),
+        tenant_key=tenant_key,
+        name=name,
+        role=role,
+        category="role",
+        system_instructions=system_prompt,
+        is_active=is_active,
+        variables=[],
+        behavioral_rules=[],
+        success_criteria=[],
+        tool="claude",  # Default tool
+    )
+
+    # Don't set new 0103 fields if they don't exist in DB yet
+    # (cli_tool, background_color, model, tools columns may not be migrated)
+
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+# --- Auth manager v3 shared fixtures (split from test_auth_manager_v3.py) ---
+
+
+@pytest.fixture
+def mock_db_session():
+    """Mock async database session for auth manager testing."""
+    session = AsyncMock()
+    session.execute = AsyncMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.add = Mock()
+    return session
+
+
+@pytest.fixture
+def test_user(mock_db_session):
+    """Create a test user for authentication."""
+    user = User(
+        id=str(uuid.uuid4()),
+        username="test_user",
+        email="test@example.com",
+        password_hash="$2b$12$dummyhash",
+        role="developer",
+        is_active=True,
+        is_system_user=False,
+        tenant_key="default",
+        created_at=datetime.now(timezone.utc),
+    )
+    user.api_key = "gk_test_api_key_12345"
+    return user
+
+
+@pytest.fixture
+def localhost_user(mock_db_session):
+    """Create localhost system user."""
+    user = User(
+        id=str(uuid.uuid4()),
+        username="localhost",
+        email="localhost@local",
+        password_hash=None,
+        role="admin",
+        is_active=True,
+        is_system_user=True,
+        tenant_key="default",
+        created_at=datetime.now(timezone.utc),
+    )
+    return user
+
+
+@pytest.fixture
+def mock_config():
+    """Mock configuration object for auth manager testing."""
+    config = Mock()
+    config.server = Mock()
+    config.server.mode = "LOCAL"  # This should be ignored by v3
+    config.database = Mock()
+    config.database.type = "postgresql"
+    return config
+
+
+# --- Context manager test fixtures (split from test_context_manager.py) ---
+
+
+@pytest.fixture
+def sample_product():
+    """Create sample product with config_data"""
+    product = Product(
+        id="test-product-1",
+        tenant_key="test-tenant",
+        name="Test Product",
+        config_data={
+            "architecture": "FastAPI + PostgreSQL",
+            "tech_stack": ["Python 3.11", "PostgreSQL 18"],
+            "codebase_structure": {"api": "REST endpoints", "core": "Orchestration"},
+            "critical_features": ["Multi-tenant", "Agent coordination"],
+            "test_commands": ["pytest tests/"],
+            "test_config": {"coverage_threshold": 80},
+            "api_docs": "/docs/api.md",
+            "documentation_style": "Markdown",
+            "serena_mcp_enabled": True,
+            "database_type": "postgresql",
+            "frontend_framework": "Vue 3",
+            "backend_framework": "FastAPI",
+        },
+    )
+    return product
+
+
+@pytest.fixture
+def minimal_product():
+    """Create product with minimal config_data"""
+    product = Product(
+        id="test-product-minimal",
+        tenant_key="test-tenant",
+        name="Minimal Product",
+        config_data={"architecture": "Simple App", "serena_mcp_enabled": False},
+    )
+    return product
+
+
+@pytest.fixture
+def empty_product():
+    """Create product with no config_data"""
+    product = Product(id="test-product-empty", tenant_key="test-tenant", name="Empty Product", config_data={})
+    return product
+
+
+# --- Template service shared helpers (split from test_template_service.py) ---
+
+
+def make_mock_session(**overrides):
+    """Create a properly configured mock async session.
+
+    The session is configured as an async context manager that returns itself
+    when used with ``async with``. All standard session methods (execute,
+    commit, refresh, add, delete) are set up with sensible defaults.
+
+    ``overrides`` can supply replacement mocks for any session attribute
+    (e.g. ``execute=AsyncMock(return_value=my_result)``).
+    """
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.add = Mock()
+    session.delete = Mock()
+
+    for key, value in overrides.items():
+        setattr(session, key, value)
+    return session
+
+
+def make_mock_db_manager(session):
+    """Create a mock database manager that returns *session* from get_session_async."""
+    db_manager = Mock()
+    # get_session_async must be a plain Mock (NOT AsyncMock) so the caller
+    # receives the context-manager directly rather than a coroutine wrapper.
     db_manager.get_session_async = Mock(return_value=session)
     return db_manager

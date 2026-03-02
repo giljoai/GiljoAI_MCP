@@ -1,0 +1,6 @@
+[allowlist]
+description = "Allowlist for test fixtures containing fake API keys"
+
+paths = [
+    '''tests/.*''',
+]
