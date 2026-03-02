@@ -1814,6 +1814,67 @@ class ProjectService:
         )
         return result.scalar_one_or_none()
 
+    def _apply_project_updates(self, project, updates: dict[str, Any]) -> None:
+        """Apply validated field updates to a project model.
+
+        Args:
+            project: Project SQLAlchemy model instance
+            updates: Dict of field name -> value to apply
+
+        Raises:
+            ProjectStateError: Cannot change execution mode after staging
+        """
+        # Handover 0343: Lock execution_mode after staging (mission exists)
+        if "execution_mode" in updates and project.mission and project.mission.strip():
+            raise ProjectStateError(
+                message="Cannot change execution mode after staging. Mission has been generated.",
+                context={"project_id": str(project.id)},
+            )
+
+        # Update allowed fields (Handover 0260: Added execution_mode)
+        # Handover 0412: Added status, completed_at for archive endpoint
+        # Handover 0440a: Added project_type_id, series_number, subseries for taxonomy
+        allowed_fields = {
+            "name",
+            "description",
+            "mission",
+            "execution_mode",
+            "status",
+            "completed_at",
+            "project_type_id",
+            "series_number",
+            "subseries",
+        }
+        for field, value in updates.items():
+            if field in allowed_fields:
+                setattr(project, field, value)
+
+        project.updated_at = datetime.now(timezone.utc)
+
+    @staticmethod
+    def _build_project_data(project) -> ProjectData:
+        """Build ProjectData response from a Project model instance."""
+        return ProjectData(
+            id=project.id,
+            name=project.name,
+            status=project.status,
+            mission=project.mission,
+            description=project.description,
+            execution_mode=project.execution_mode,
+            meta_data=project.meta_data or {},
+            created_at=project.created_at.isoformat() if project.created_at else None,
+            updated_at=project.updated_at.isoformat() if project.updated_at else None,
+            activated_at=project.activated_at.isoformat() if project.activated_at else None,
+            completed_at=project.completed_at.isoformat() if project.completed_at else None,
+            product_id=project.product_id,
+            # Handover 0440a: Taxonomy fields
+            project_type_id=project.project_type_id,
+            project_type=project.project_type,
+            series_number=project.series_number,
+            subseries=project.subseries,
+            taxonomy_alias=project.taxonomy_alias,
+        )
+
     async def update_project(
         self, project_id: str, updates: dict[str, Any], websocket_manager: Any | None = None
     ) -> ProjectData:
@@ -1858,32 +1919,7 @@ class ProjectService:
             if not project:
                 raise ResourceNotFoundError(message="Project not found", context={"project_id": project_id})
 
-            # Handover 0343: Lock execution_mode after staging (mission exists)
-            if "execution_mode" in updates and project.mission and project.mission.strip():
-                raise ProjectStateError(
-                    message="Cannot change execution mode after staging. Mission has been generated.",
-                    context={"project_id": project_id},
-                )
-
-            # Update allowed fields (Handover 0260: Added execution_mode)
-            # Handover 0412: Added status, completed_at for archive endpoint
-            # Handover 0440a: Added project_type_id, series_number, subseries for taxonomy
-            allowed_fields = {
-                "name",
-                "description",
-                "mission",
-                "execution_mode",
-                "status",
-                "completed_at",
-                "project_type_id",
-                "series_number",
-                "subseries",
-            }
-            for field, value in updates.items():
-                if field in allowed_fields:
-                    setattr(project, field, value)
-
-            project.updated_at = datetime.now(timezone.utc)
+            self._apply_project_updates(project, updates)
 
             try:
                 await session.commit()
@@ -1916,26 +1952,7 @@ class ProjectService:
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"WebSocket broadcast failed: {ws_error}")
 
-            return ProjectData(
-                id=project.id,
-                name=project.name,
-                status=project.status,
-                mission=project.mission,
-                description=project.description,
-                execution_mode=project.execution_mode,
-                meta_data=project.meta_data or {},
-                created_at=project.created_at.isoformat() if project.created_at else None,
-                updated_at=project.updated_at.isoformat() if project.updated_at else None,
-                activated_at=project.activated_at.isoformat() if project.activated_at else None,
-                completed_at=project.completed_at.isoformat() if project.completed_at else None,
-                product_id=project.product_id,
-                # Handover 0440a: Taxonomy fields
-                project_type_id=project.project_type_id,
-                project_type=project.project_type,
-                series_number=project.series_number,
-                subseries=project.subseries,
-                taxonomy_alias=project.taxonomy_alias,
-            )
+            return self._build_project_data(project)
 
     async def launch_project(
         self,
