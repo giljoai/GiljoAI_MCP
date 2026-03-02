@@ -20,7 +20,6 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 class TestTenantIsolation:
     """Test multi-tenant isolation across all statistics methods"""
 
-    @pytest.mark.skip(reason="0750c3: project context stats format changed")
     @pytest.mark.asyncio
     @pytest.mark.tenant_isolation
     async def test_project_stats_tenant_isolation(self, db_session, stats_repo):
@@ -55,12 +54,14 @@ class TestTenantIsolation:
         tenant2_count = await stats_repo.count_total_projects(db_session, "tenant_2")
         assert tenant2_count == 1
 
-        # Verify context stats are isolated
+        # Verify context stats are isolated — returns stub (0.0, 0) since context columns removed
         avg1, peak1 = await stats_repo.get_project_context_stats(db_session, "tenant_1")
         avg2, peak2 = await stats_repo.get_project_context_stats(db_session, "tenant_2")
 
-        assert peak1 == 50000
-        assert peak2 == 75000
+        assert avg1 == 0.0
+        assert peak1 == 0
+        assert avg2 == 0.0
+        assert peak2 == 0
 
     @pytest.mark.asyncio
     @pytest.mark.tenant_isolation

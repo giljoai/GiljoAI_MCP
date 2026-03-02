@@ -126,45 +126,6 @@ class TestDepthConfigFieldStandardization:
         )
 
 
-class TestDepthConfigAPIRoundtrip:
-    """Test full API roundtrip with depth config."""
-
-    @pytest.mark.skip(reason="Requires test_user_with_session fixture - deferred to integration test suite")
-    @pytest.mark.asyncio
-    async def test_depth_config_api_roundtrip(self, async_client, test_user_with_session):
-        """Test complete roundtrip: POST depth config, GET returns same config."""
-        user, session_token = test_user_with_session
-
-        # POST depth config with vision_documents
-        depth_config_payload = {
-            "vision_documents": "full",
-            "product_core": "exclude",
-            "tech_stack": "required",
-            "architecture": "overview",
-            "testing": "none",
-            "memory_360": 1,
-            "git_history": 10,
-            "agent_templates": "minimal",
-        }
-
-        response = await async_client.post(
-            "/api/users/me/context/depth",
-            json=depth_config_payload,
-            headers={"Authorization": f"Bearer {session_token}"},
-        )
-        assert response.status_code == 200, f"POST depth config failed: {response.json()}"
-
-        # GET depth config
-        response = await async_client.get(
-            "/api/users/me/context/depth", headers={"Authorization": f"Bearer {session_token}"}
-        )
-        assert response.status_code == 200, f"GET depth config failed: {response.json()}"
-
-        data = response.json()
-        assert data["vision_documents"] == "full", "GET should return same vision_documents value as POST"
-        assert "vision_chunking" not in data, "GET should NOT return deprecated 'vision_chunking' field"
-
-
 class TestFrontendFieldNaming:
     """Test frontend uses correct field names."""
 

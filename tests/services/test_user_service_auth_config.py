@@ -16,7 +16,6 @@ from passlib.hash import bcrypt
 
 from src.giljo_mcp.exceptions import (
     AuthenticationError,
-    BaseGiljoError,
     ValidationError,
 )
 from src.giljo_mcp.models.auth import User
@@ -347,17 +346,6 @@ async def test_update_execution_mode_validation(user_service, test_user):
 # ============================================================================
 # TEST: Exception Handling & Edge Cases
 # ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_user_service_handles_database_errors(user_service, db_session):
-    """Test that UserService handles database errors gracefully"""
-    pytest.skip("Session close no-op with shared async session; skip graceful error check")
-    # Simulate database error by closing session
-    await db_session.close()
-
-    with pytest.raises(BaseGiljoError):
-        await user_service.list_users()
 
 
 @pytest.mark.asyncio

@@ -415,13 +415,6 @@ class TestOrchestratorSimulatorIntegration:
         )
 
     @pytest.mark.asyncio
-    async def test_simulator_with_real_database(self, db_session, test_data):
-        """Test simulator with real database (integration test)"""
-        # This test requires actual database setup
-        # Will be implemented after simulator class is created
-        pytest.skip("Integration test - requires full database setup")
-
-    @pytest.mark.asyncio
     async def test_simulator_performance(self, perf_simulator: OrchestratorSimulator, tmp_path: Path):
         """Test simulator completes in under 30 seconds"""
         import time

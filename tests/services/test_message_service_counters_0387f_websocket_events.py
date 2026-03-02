@@ -194,7 +194,6 @@ async def test_message_acknowledged_event_includes_counters(
     assert call_args.kwargs["read_count"] == 1  # incremented from 0
 
 
-@pytest.mark.skip(reason="0750c3: broadcast counter format changed")
 @pytest.mark.asyncio
 async def test_broadcast_message_includes_counters_for_multiple_recipients(
     message_service: MessageService,
@@ -232,9 +231,7 @@ async def test_broadcast_message_includes_counters_for_multiple_recipients(
     assert mock_websocket_manager.broadcast_message_received.called
     received_call_args = mock_websocket_manager.broadcast_message_received.call_args
 
-    # Each recipient should have waiting_count = 1
-    # Note: The broadcast creates individual messages for each recipient
-    # so the waiting_count shown should be for the recipients collectively
+    # For broadcasts with multiple recipients, waiting_count is None
+    # (per-recipient count would be misleading; frontend uses +1 fallback)
     assert "waiting_count" in received_call_args.kwargs
-    # The waiting_count parameter should reflect that recipients now have 1 waiting message
-    assert received_call_args.kwargs["waiting_count"] == 1
+    assert received_call_args.kwargs["waiting_count"] is None
