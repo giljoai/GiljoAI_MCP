@@ -176,6 +176,7 @@ async def handle_initialize(
             "protocol_version": protocol_version,
             "client_capabilities": capabilities,
         },
+        tenant_key=tenant_key,
     )
 
     logger.info(f"MCP session initialized: {session_id} (client: {client_info.get('name', 'unknown')})")
@@ -927,6 +928,7 @@ async def handle_tools_call(
                     "success": True,
                 }
             },
+            tenant_key=tenant_key,
         )
 
         logger.info(f"Tool executed successfully: {tool_name} (session: {session_id})")
