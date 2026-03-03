@@ -167,10 +167,7 @@ async def check_first_login(
         db: Database session
 
     Returns:
-        must_change_password and must_set_pin flags
-
-    Raises:
-        HTTPException: 404 if user not found
+        must_change_password and must_set_pin flags (safe defaults for unknown users)
     """
     # Find user by username
     stmt = select(User).where(User.username == request_data.username)
@@ -178,7 +175,8 @@ async def check_first_login(
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        # Return safe defaults for non-existent users to prevent username enumeration
+        return CheckFirstLoginResponse(must_change_password=False, must_set_pin=False)
 
     return CheckFirstLoginResponse(
         must_change_password=user.must_change_password or False, must_set_pin=user.must_set_pin or False
