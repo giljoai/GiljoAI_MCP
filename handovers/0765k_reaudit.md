@@ -118,3 +118,104 @@ Write to THIS handover as a Completion Summary:
 3. Commit: `audit(0765k): Post-remediation re-audit — score X.X/10`
 4. Report verdict to user
 5. Do NOT spawn another terminal
+
+---
+
+## Completion Summary: Post-Remediation Re-Audit Report
+
+**Date:** 2026-03-02
+**Auditor:** Fresh agent (0765k), independent of implementing and prior auditing agents
+**Branch:** `0760-perfect-score`
+
+### Prerequisite Results
+
+| Check | Result |
+|-------|--------|
+| pytest tests/ -x -q | 1453 passed, 0 skipped, 0 failed |
+| ruff check src/ api/ | 2 pre-existing issues (unchanged from 0765i) |
+| npm run build (frontend) | Clean (chunk size warning only) |
+
+### Fix Verification: 10/10 Confirmed
+
+All 10 fixes from 0765j verified by direct code inspection:
+
+| # | Fix | Verdict | Evidence |
+|---|-----|---------|----------|
+| 1 | VisionDocument tenant filter | VERIFIED | context.py:246-248 has `.where(VisionDocument.tenant_key == tenant_key)` |
+| 2 | MCP session tenant filter | VERIFIED | mcp_session.py:193-197 accepts tenant_key, callers in mcp_http.py pass it |
+| 3 | Debug cross-tenant query removed | VERIFIED | vision_documents.py:160-189 clean, zero debug/cross-tenant code |
+| 4 | SQLAlchemy `.is_(None)` | VERIFIED | downloads.py:315 uses `.is_(None)` correctly |
+| 5 | Dead test fixtures deleted | VERIFIED | All conftest files reviewed, smoke/conftest.py explicitly cleaned |
+| 6 | Dead tool files deleted | VERIFIED | tools/agent.py and tools/claude_export.py gone, zero dangling imports |
+| 7 | AgentJobModal centralized | VERIFIED | Imports from `@/config/agentColors`, zero hardcoded hex colors |
+| 8 | Fabricated peak_hour removed | VERIFIED | statistics.py:420 sets `peak_hour_messages=None`, zero random.randint |
+| 9 | Dead message store exports | VERIFIED | messages.js exports 7 items (down from 18), remaining are consumed |
+| 10 | Stale pycache + orchestration.py | VERIFIED | orchestration.py gone, zero stale .pyc files in tests/ |
+
+**Post-fix regressions: ZERO.** No broken imports, no test collection failures, no component errors.
+
+### Quality Score: 8.5/10
+
+| # | Dimension | Score | Key Findings |
+|---|-----------|-------|-------------|
+| 1 | Lint cleanliness | 9.5 | 2 pre-existing ruff issues (unused noqa in statistics.py, RUF005 in orchestration_service.py) |
+| 2 | Dead code | 7.5 | ~14 dead backend methods (template_manager, TemplateService, UserService, AgentJobRepository), ~1,132 lines dead test infrastructure (e2e_closeout_fixtures, vision_document_fixtures, test_factories), ~240 lines dead CSS classes, multiple dead frontend exports |
+| 3 | Pattern compliance | 9.5 | No dict-return regressions. 2 bare dict returns in agent_management.py (LOW). Clean exception pattern throughout |
+| 4 | Tenant isolation | 8.5 | 3 critical fixes verified. Remaining: mcp_session.py internal calls (update_session_data, delete_session) skip tenant filter; setup_security.py cross-tenant user count |
+| 5 | Security posture | 7.5 | CSRF enabled, CORS restricted. NEW: hardcoded JWT secret in mcp_installer.py, unauthenticated network endpoints (/detect-ip, /adapters), username enumeration in auth_pin_recovery.py |
+| 6 | Test health | 8.0 | 1453 pass, 0 skip, 0 fail. But ~1,132 lines dead test fixture files remain (e2e_closeout_fixtures.py, vision_document_fixtures.py, test_factories.py, root conftest dead re-exports) |
+| 7 | Frontend hygiene | 7.0 | 27 findings: status color system fragmented across 5 sources with conflicting values, ~240 lines dead CSS utility classes in agent-colors.scss, dead SCSS tokens in design-tokens.scss, multiple dead store exports, dead API_CONFIG.ENDPOINTS |
+| 8 | Exception handling | 10.0 | All broad catches annotated with consistent taxonomy. Perfect. |
+| 9 | Code organization | 8.5 | All oversized functions reduced below 250 lines. mcp_http.py at 1061 lines is large but functional. Clean separation of concerns. |
+| 10 | Documentation sync | 9.0 | Mostly clean. Minor: stale vision endpoint entries in api.js, empty section header in services conftest, stale field names in base_fixtures.py TestData |
+
+**Total: 85.0/100 = 8.5/10**
+
+### Verdict: FAIL (< 9.5 threshold)
+
+The 0765j remediation improved the score from 8.2 to 8.5/10. All 10 original findings are confirmed fixed with zero regressions. However, the fresh audit uncovered issues the original 0765i audit missed, particularly in security posture and frontend infrastructure.
+
+### New Findings Summary (54 total across all domains)
+
+**SECURITY (3) -- fix immediately:**
+1. `api/endpoints/mcp_installer.py:37` -- Hardcoded fallback JWT secret for installer token generation
+2. `api/endpoints/network.py:47,100` -- /detect-ip and /adapters endpoints have no authentication
+3. `api/endpoints/auth_pin_recovery.py:176` -- Username enumeration via check_first_login 404 response
+
+**HIGH (4):**
+1. `api/endpoints/ai_tools.py:214` -- Hardcoded placeholder API key returned to users
+2. Frontend: Agent color value mismatch between design-tokens.scss and agentColors.js (SCSS tokens never used)
+3. Frontend: Status color system has 5 independent non-reconciled sources with conflicting values
+4. `api/endpoints/mcp_session.py:213,248` -- Internal calls (update_session_data, delete_session) skip tenant filter
+
+**MEDIUM (25) -- top items:**
+- Backend: 3 dead counter methods in AgentJobRepository, 2 dead methods in template_manager.py
+- API: Always-null metrics in statistics.py schemas, unnecessary db.commit in simple_handover.py, cross-tenant user count in setup_security.py, mcp_http.py at 1061 lines
+- Tests: ~1,132 lines dead fixture infrastructure (e2e_closeout_fixtures.py, vision_document_fixtures.py, test_factories.py, root conftest dead re-exports)
+- Frontend: Dead CSS utility classes (~240 lines), dead SCSS token sections, dead exports in constants.js/tasks.js/messages.js, dead API_CONFIG.ENDPOINTS, dead function canLaunchAgent
+
+**LOW (22):** Dead exports, minor accessibility gaps, stale references, placeholder file
+
+### Recommendation
+
+**Not merge-ready.** Fix the 3 SECURITY items before merge (estimated 30 min):
+1. Remove hardcoded JWT fallback in mcp_installer.py (generate random secret at startup)
+2. Add auth to network.py endpoints
+3. Return generic response for non-existent users in check_first_login
+
+The 4 HIGH items and dead code cleanup should follow in a subsequent session. After SECURITY fixes, estimated score: ~8.8/10. Reaching 9.5 requires the dead code purge (tests + frontend SCSS) and status color consolidation.
+
+### Prioritized Fix List (Top 10)
+
+| Priority | Item | File(s) | Effort |
+|----------|------|---------|--------|
+| 1. SECURITY | Remove hardcoded JWT fallback secret | api/endpoints/mcp_installer.py:37 | 15 min |
+| 2. SECURITY | Add auth to network endpoints | api/endpoints/network.py:47,100 | 5 min |
+| 3. SECURITY | Fix username enumeration | api/endpoints/auth_pin_recovery.py:176 | 5 min |
+| 4. HIGH | Make tenant_key required in get_session | api/endpoints/mcp_session.py:193 | 15 min |
+| 5. HIGH | Delete dead test fixtures | tests/fixtures/e2e_closeout_fixtures.py, vision_document_fixtures.py, test_factories.py | 10 min |
+| 6. HIGH | Consolidate status color system | frontend/src/ (5 files) | 45 min |
+| 7. MEDIUM | Delete dead SCSS utility classes | frontend/src/styles/agent-colors.scss:158-394 | 10 min |
+| 8. MEDIUM | Delete dead SCSS token sections | frontend/src/styles/design-tokens.scss | 10 min |
+| 9. MEDIUM | Delete dead backend methods | template_manager.py, AgentJobRepository | 15 min |
+| 10. MEDIUM | Remove dead frontend exports | constants.js, tasks.js, messages.js, api.js | 15 min |
