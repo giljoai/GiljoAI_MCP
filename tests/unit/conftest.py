@@ -58,21 +58,6 @@ def mock_tenant_manager():
     return tenant_manager
 
 
-@pytest.fixture
-def failing_db_manager():
-    """
-    Create a database manager that raises exceptions.
-
-    Useful for testing error handling paths.
-    """
-    db_manager = Mock()
-    session = AsyncMock()
-    session.__aenter__ = AsyncMock(side_effect=Exception("Connection lost"))
-    session.__aexit__ = AsyncMock(return_value=False)
-    db_manager.get_session_async = Mock(return_value=session)
-    return db_manager
-
-
 # --- Synchronous DB fixtures for template validation tests ---
 
 
@@ -160,23 +145,6 @@ def test_user(mock_db_session):
         created_at=datetime.now(timezone.utc),
     )
     user.api_key = "gk_test_api_key_12345"
-    return user
-
-
-@pytest.fixture
-def localhost_user(mock_db_session):
-    """Create localhost system user."""
-    user = User(
-        id=str(uuid.uuid4()),
-        username="localhost",
-        email="localhost@local",
-        password_hash=None,
-        role="admin",
-        is_active=True,
-        is_system_user=True,
-        tenant_key="default",
-        created_at=datetime.now(timezone.utc),
-    )
     return user
 
 
