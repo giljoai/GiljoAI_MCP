@@ -162,25 +162,8 @@ class MessageService:
         """
         try:
             async with self._get_session() as session:
-                # TENANT ISOLATION: Require tenant_key, fall back to context
-                if not tenant_key:
-                    tenant_key = self.tenant_manager.get_current_tenant()
-                if not tenant_key:
-                    raise ValidationError(
-                        message="No tenant context available",
-                        context={"operation": "send_message", "project_id": project_id},
-                    )
-
-                result = await session.execute(
-                    select(Project).where(and_(Project.tenant_key == tenant_key, Project.id == project_id))
-                )
-                project = result.scalar_one_or_none()
-
-                if not project:
-                    raise ResourceNotFoundError(
-                        message="Project not found or access denied",
-                        context={"project_id": project_id, "tenant_key": tenant_key},
-                    )
+                # Validate inputs and resolve project
+                tenant_key, project = await self._validate_send_message_inputs(session, tenant_key, project_id)
 
                 # Handover 0410: Detect broadcast intent before fan-out resolution
                 is_broadcast_fanout = "all" in to_agents
@@ -284,211 +267,26 @@ class MessageService:
                     f"for message {message_id}"
                 )
 
-                # Handover 0387f: Update message counters instead of JSONB persistence
-                # Wrapped in deadlock retry: concurrent broadcasts can deadlock when
-                # updating overlapping AgentExecution counter rows (PG SQLSTATE 40P01).
-                # Recipients are sorted above to ensure deterministic lock ordering.
-                sender_execution = None
-                if messages:
-                    sender_ref = from_agent or "orchestrator"
-                    for _attempt in range(_DEADLOCK_MAX_RETRIES):
-                        try:
-                            # Step 1: Increment sender's sent_count by 1 (regardless of recipient count)
-                            # Handover 0429: Get latest instance when matching by agent_id
-                            sender_result = await session.execute(
-                                select(AgentExecution)
-                                .join(AgentJob)
-                                .where(
-                                    and_(
-                                        AgentJob.project_id == project.id,
-                                        AgentExecution.tenant_key == project.tenant_key,
-                                        (AgentExecution.agent_display_name == sender_ref)
-                                        | (AgentExecution.agent_id == sender_ref),
-                                    )
-                                )
-                                .order_by(AgentExecution.started_at.desc())
-                                .limit(1)
-                            )
-                            sender_execution = sender_result.scalar_one_or_none()
-
-                            if sender_execution:
-                                await self._repo.increment_sent_count(
-                                    session=session,
-                                    agent_id=sender_execution.agent_id,
-                                    tenant_key=project.tenant_key,
-                                )
-
-                            # Step 2: Increment each recipient's waiting_count by 1
-                            # (recipients already sorted for consistent lock ordering)
-                            for msg in messages:
-                                recipient_id = msg.to_agents[0] if msg.to_agents else None
-                                if recipient_id:
-                                    await self._repo.increment_waiting_count(
-                                        session=session,
-                                        agent_id=recipient_id,
-                                        tenant_key=project.tenant_key,
-                                    )
-
-                            # Commit counter updates
-                            await session.commit()
-                            self._logger.info(
-                                f"[COUNTER] Updated counters: sender +1 sent, "
-                                f"{len(messages)} recipients +1 waiting each"
-                            )
-                            break  # Success — exit retry loop
-
-                        except OperationalError as db_err:
-                            pgcode = getattr(getattr(db_err, "orig", None), "pgcode", None)
-                            if pgcode == _PG_DEADLOCK_CODE and _attempt < _DEADLOCK_MAX_RETRIES - 1:
-                                await session.rollback()
-                                backoff = (_DEADLOCK_BASE_DELAY * (2**_attempt)) + random.uniform(
-                                    0, _DEADLOCK_JITTER_MAX
-                                )
-                                self._logger.warning(
-                                    "[DEADLOCK] Counter update deadlock on attempt %d/%d, "
-                                    "retrying in %.3fs (project_id=%s)",
-                                    _attempt + 1,
-                                    _DEADLOCK_MAX_RETRIES,
-                                    backoff,
-                                    project_id,
-                                )
-                                await asyncio.sleep(backoff)
-                                continue
-                            if pgcode == _PG_DEADLOCK_CODE:
-                                self._logger.exception(
-                                    "[DEADLOCK] Counter update failed after %d retries (project_id=%s)",
-                                    _DEADLOCK_MAX_RETRIES,
-                                    project_id,
-                                )
-                                raise RetryExhaustedError(
-                                    message=f"Deadlock retry exhausted after {_DEADLOCK_MAX_RETRIES} attempts",
-                                    context={"operation": "counter_update", "project_id": project_id},
-                                ) from db_err
-                            raise  # Non-deadlock OperationalError — propagate immediately
-
-                        except (ValueError, KeyError) as counter_error:
-                            self._logger.warning("Failed to update message counters: %s", counter_error)
-                            break  # Non-retriable — exit loop
+                # Update message counters (sent/waiting) with deadlock retry
+                sender_execution = await self._handle_send_message_side_effects(
+                    session, messages, project, from_agent, project_id
+                )
 
                 # Emit WebSocket events if manager is available
-                if self._websocket_manager and messages:
-                    self._logger.info(f"[WEBSOCKET DEBUG] Calling broadcast_message_sent for message {message_id}")
-                    try:
-                        # Determine to_agent: None for broadcasts (including ['all']), specific agent for direct messages
-                        to_agent_value = None
-                        if len(to_agents) == 1 and to_agents[0] != "all":
-                            to_agent_value = to_agents[0]
-
-                        # Determine recipient agent IDs (agent_ids) for explicit job identifiers in event payloads
-                        recipient_agent_ids = []
-                        if to_agents and to_agents[0] == "all":
-                            # Broadcast: Get ALL agent executions in the project, EXCLUDING sender
-                            # TENANT ISOLATION: Filter by tenant_key
-                            result = await session.execute(
-                                select(AgentExecution)
-                                .join(AgentJob)
-                                .where(
-                                    and_(
-                                        AgentJob.project_id == project.id,
-                                        AgentExecution.status.in_(["waiting", "working", "blocked"]),
-                                        AgentExecution.tenant_key == tenant_key,
-                                    )
-                                )
-                            )
-                            all_executions = result.scalars().all()
-                            # Exclude sender from recipients to prevent self-notification
-                            sender_ref = from_agent or "orchestrator"
-                            recipient_agent_ids = [
-                                execution.agent_id
-                                for execution in all_executions
-                                if sender_ref not in (execution.agent_display_name, execution.agent_id)
-                            ]
-                            self._logger.info(
-                                f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_agent_ids)} recipients "
-                                f"(excluded sender: {sender_ref})"
-                            )
-                        else:
-                            # Direct message: resolved_to_agents already contains agent_ids
-                            recipient_agent_ids = resolved_to_agents
-                            self._logger.info(f"[WEBSOCKET DEBUG] Direct message to: {recipient_agent_ids}")
-
-                        # Handover 0387g: Fetch updated counter values after commit
-                        # Refresh sender execution to get updated counter
-                        sender_sent_count = None
-                        if sender_execution:
-                            await session.refresh(sender_execution)
-                            sender_sent_count = sender_execution.messages_sent_count
-
-                        # For recipient counter, get first recipient's waiting count
-                        # Handover 0429: Get latest instance by agent_id
-                        # TENANT ISOLATION: Filter by tenant_key
-                        recipient_waiting_count = None
-                        if recipient_agent_ids:
-                            recipient_result = await session.execute(
-                                select(AgentExecution)
-                                .where(
-                                    and_(
-                                        AgentExecution.agent_id == recipient_agent_ids[0],
-                                        AgentExecution.tenant_key == tenant_key,
-                                    )
-                                )
-                                .order_by(AgentExecution.started_at.desc())
-                                .limit(1)
-                            )
-                            first_recipient = recipient_result.scalar_one_or_none()
-                            if first_recipient:
-                                await session.refresh(first_recipient)
-                                recipient_waiting_count = first_recipient.messages_waiting_count
-
-                        # Event 1: Broadcast to SENDER (increments "Messages Sent")
-                        # Handover 0407: Use sender's agent_id (executor UUID) instead of project ID
-                        # The frontend resolves by agent_id to find the correct job in the store
-                        await self._websocket_manager.broadcast_message_sent(
-                            message_id=message_id,
-                            job_id=sender_execution.agent_id if sender_execution else "",
-                            project_id=project.id,
-                            tenant_key=project.tenant_key,
-                            from_agent=from_agent or "orchestrator",
-                            to_agent=to_agent_value,
-                            to_job_ids=recipient_agent_ids,
-                            message_type=message_type,
-                            content_preview=content[:200] if content else "",
-                            priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
-                            sender_sent_count=sender_sent_count,
-                            recipient_waiting_count=recipient_waiting_count,
-                        )
-                        self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_sent {message_id}")
-
-                        # Event 2: Broadcast to RECIPIENT(S) (increments "Messages Waiting")
-                        # Emit message:received event to recipients
-                        # Handover 0407: Use sender's agent_id for from_job_id consistency
-                        # Only send waiting_count for single-recipient messages; for broadcasts
-                        # the count is per-recipient so omit it (frontend uses +1 fallback)
-                        if recipient_agent_ids:
-                            ws_waiting_count = recipient_waiting_count if len(recipient_agent_ids) == 1 else None
-                            await self._websocket_manager.broadcast_message_received(
-                                message_id=message_id,
-                                job_id=sender_execution.agent_id if sender_execution else "",
-                                project_id=project.id,
-                                tenant_key=project.tenant_key,
-                                from_agent=from_agent or "orchestrator",
-                                to_agent_ids=recipient_agent_ids,
-                                message_type=message_type,
-                                content_preview=content[:200] if content else "",
-                                priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
-                                waiting_count=ws_waiting_count,
-                            )
-                            self._logger.info(
-                                f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_agent_ids)} recipient(s)"
-                            )
-
-                    except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
-                        # Log WebSocket errors but don't fail the message send
-                        self._logger.warning(f"Failed to emit WebSocket event for message {message_id}: {ws_error}")
-                else:
-                    self._logger.debug(
-                        f"[WEBSOCKET DEBUG] Skipping broadcast for message {message_id} - websocket_manager is None"
-                    )
+                await self._broadcast_message_events(
+                    session,
+                    messages,
+                    message_id,
+                    project,
+                    tenant_key,
+                    to_agents,
+                    resolved_to_agents,
+                    from_agent,
+                    message_type,
+                    content,
+                    priority,
+                    sender_execution,
+                )
 
                 # Handover 0731c: Build typed response (SendMessageResult)
                 response = SendMessageResult(
@@ -559,6 +357,279 @@ class MessageService:
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to send message")
             raise BaseGiljoError(message=str(e), context={"operation": "send_message", "project_id": project_id}) from e
+
+    async def _validate_send_message_inputs(
+        self,
+        session: AsyncSession,
+        tenant_key: Optional[str],
+        project_id: str,
+    ) -> tuple[str, Any]:
+        """Validate tenant context and resolve project for send_message.
+
+        Returns:
+            Tuple of (validated_tenant_key, project) after verification.
+
+        Raises:
+            ValidationError: If no tenant context is available.
+            ResourceNotFoundError: If the project is not found or access is denied.
+        """
+        # TENANT ISOLATION: Require tenant_key, fall back to context
+        if not tenant_key:
+            tenant_key = self.tenant_manager.get_current_tenant()
+        if not tenant_key:
+            raise ValidationError(
+                message="No tenant context available",
+                context={"operation": "send_message", "project_id": project_id},
+            )
+
+        result = await session.execute(
+            select(Project).where(and_(Project.tenant_key == tenant_key, Project.id == project_id))
+        )
+        project = result.scalar_one_or_none()
+
+        if not project:
+            raise ResourceNotFoundError(
+                message="Project not found or access denied",
+                context={"project_id": project_id, "tenant_key": tenant_key},
+            )
+
+        return tenant_key, project
+
+    async def _handle_send_message_side_effects(
+        self,
+        session: AsyncSession,
+        messages: list,
+        project: Any,
+        from_agent: Optional[str],
+        project_id: str,
+    ) -> Any:
+        """Update message counters (sent/waiting) with deadlock retry.
+
+        Handover 0387f: Update message counters instead of JSONB persistence.
+        Wrapped in deadlock retry: concurrent broadcasts can deadlock when
+        updating overlapping AgentExecution counter rows (PG SQLSTATE 40P01).
+
+        Returns:
+            The sender's AgentExecution record, or None if not found.
+        """
+        sender_execution = None
+        if messages:
+            sender_ref = from_agent or "orchestrator"
+            for _attempt in range(_DEADLOCK_MAX_RETRIES):
+                try:
+                    # Step 1: Increment sender's sent_count by 1 (regardless of recipient count)
+                    # Handover 0429: Get latest instance when matching by agent_id
+                    sender_result = await session.execute(
+                        select(AgentExecution)
+                        .join(AgentJob)
+                        .where(
+                            and_(
+                                AgentJob.project_id == project.id,
+                                AgentExecution.tenant_key == project.tenant_key,
+                                (AgentExecution.agent_display_name == sender_ref)
+                                | (AgentExecution.agent_id == sender_ref),
+                            )
+                        )
+                        .order_by(AgentExecution.started_at.desc())
+                        .limit(1)
+                    )
+                    sender_execution = sender_result.scalar_one_or_none()
+
+                    if sender_execution:
+                        await self._repo.increment_sent_count(
+                            session=session,
+                            agent_id=sender_execution.agent_id,
+                            tenant_key=project.tenant_key,
+                        )
+
+                    # Step 2: Increment each recipient's waiting_count by 1
+                    # (recipients already sorted for consistent lock ordering)
+                    for msg in messages:
+                        recipient_id = msg.to_agents[0] if msg.to_agents else None
+                        if recipient_id:
+                            await self._repo.increment_waiting_count(
+                                session=session,
+                                agent_id=recipient_id,
+                                tenant_key=project.tenant_key,
+                            )
+
+                    # Commit counter updates
+                    await session.commit()
+                    self._logger.info(
+                        f"[COUNTER] Updated counters: sender +1 sent, {len(messages)} recipients +1 waiting each"
+                    )
+                    break  # Success — exit retry loop
+
+                except OperationalError as db_err:
+                    pgcode = getattr(getattr(db_err, "orig", None), "pgcode", None)
+                    if pgcode == _PG_DEADLOCK_CODE and _attempt < _DEADLOCK_MAX_RETRIES - 1:
+                        await session.rollback()
+                        backoff = (_DEADLOCK_BASE_DELAY * (2**_attempt)) + random.uniform(0, _DEADLOCK_JITTER_MAX)
+                        self._logger.warning(
+                            "[DEADLOCK] Counter update deadlock on attempt %d/%d, retrying in %.3fs (project_id=%s)",
+                            _attempt + 1,
+                            _DEADLOCK_MAX_RETRIES,
+                            backoff,
+                            project_id,
+                        )
+                        await asyncio.sleep(backoff)
+                        continue
+                    if pgcode == _PG_DEADLOCK_CODE:
+                        self._logger.exception(
+                            "[DEADLOCK] Counter update failed after %d retries (project_id=%s)",
+                            _DEADLOCK_MAX_RETRIES,
+                            project_id,
+                        )
+                        raise RetryExhaustedError(
+                            message=f"Deadlock retry exhausted after {_DEADLOCK_MAX_RETRIES} attempts",
+                            context={"operation": "counter_update", "project_id": project_id},
+                        ) from db_err
+                    raise  # Non-deadlock OperationalError — propagate immediately
+
+                except (ValueError, KeyError) as counter_error:
+                    self._logger.warning("Failed to update message counters: %s", counter_error)
+                    break  # Non-retriable — exit loop
+
+        return sender_execution
+
+    async def _broadcast_message_events(
+        self,
+        session: AsyncSession,
+        messages: list,
+        message_id: Optional[str],
+        project: Any,
+        tenant_key: str,
+        to_agents: list[str],
+        resolved_to_agents: list[str],
+        from_agent: Optional[str],
+        message_type: str,
+        content: str,
+        priority: str,
+        sender_execution: Any,
+    ) -> None:
+        """Emit WebSocket events for sent/received messages.
+
+        Broadcasts message_sent event to the sender and message_received event
+        to each recipient via the WebSocket manager.
+        """
+        if self._websocket_manager and messages:
+            self._logger.info(f"[WEBSOCKET DEBUG] Calling broadcast_message_sent for message {message_id}")
+            try:
+                # Determine to_agent: None for broadcasts (including ['all']), specific agent for direct messages
+                to_agent_value = None
+                if len(to_agents) == 1 and to_agents[0] != "all":
+                    to_agent_value = to_agents[0]
+
+                # Determine recipient agent IDs (agent_ids) for explicit job identifiers in event payloads
+                recipient_agent_ids = []
+                if to_agents and to_agents[0] == "all":
+                    # Broadcast: Get ALL agent executions in the project, EXCLUDING sender
+                    # TENANT ISOLATION: Filter by tenant_key
+                    result = await session.execute(
+                        select(AgentExecution)
+                        .join(AgentJob)
+                        .where(
+                            and_(
+                                AgentJob.project_id == project.id,
+                                AgentExecution.status.in_(["waiting", "working", "blocked"]),
+                                AgentExecution.tenant_key == tenant_key,
+                            )
+                        )
+                    )
+                    all_executions = result.scalars().all()
+                    # Exclude sender from recipients to prevent self-notification
+                    sender_ref = from_agent or "orchestrator"
+                    recipient_agent_ids = [
+                        execution.agent_id
+                        for execution in all_executions
+                        if sender_ref not in (execution.agent_display_name, execution.agent_id)
+                    ]
+                    self._logger.info(
+                        f"[WEBSOCKET DEBUG] Broadcast to all: {len(recipient_agent_ids)} recipients "
+                        f"(excluded sender: {sender_ref})"
+                    )
+                else:
+                    # Direct message: resolved_to_agents already contains agent_ids
+                    recipient_agent_ids = resolved_to_agents
+                    self._logger.info(f"[WEBSOCKET DEBUG] Direct message to: {recipient_agent_ids}")
+
+                # Handover 0387g: Fetch updated counter values after commit
+                # Refresh sender execution to get updated counter
+                sender_sent_count = None
+                if sender_execution:
+                    await session.refresh(sender_execution)
+                    sender_sent_count = sender_execution.messages_sent_count
+
+                # For recipient counter, get first recipient's waiting count
+                # Handover 0429: Get latest instance by agent_id
+                # TENANT ISOLATION: Filter by tenant_key
+                recipient_waiting_count = None
+                if recipient_agent_ids:
+                    recipient_result = await session.execute(
+                        select(AgentExecution)
+                        .where(
+                            and_(
+                                AgentExecution.agent_id == recipient_agent_ids[0],
+                                AgentExecution.tenant_key == tenant_key,
+                            )
+                        )
+                        .order_by(AgentExecution.started_at.desc())
+                        .limit(1)
+                    )
+                    first_recipient = recipient_result.scalar_one_or_none()
+                    if first_recipient:
+                        await session.refresh(first_recipient)
+                        recipient_waiting_count = first_recipient.messages_waiting_count
+
+                # Event 1: Broadcast to SENDER (increments "Messages Sent")
+                # Handover 0407: Use sender's agent_id (executor UUID) instead of project ID
+                # The frontend resolves by agent_id to find the correct job in the store
+                await self._websocket_manager.broadcast_message_sent(
+                    message_id=message_id,
+                    job_id=sender_execution.agent_id if sender_execution else "",
+                    project_id=project.id,
+                    tenant_key=project.tenant_key,
+                    from_agent=from_agent or "orchestrator",
+                    to_agent=to_agent_value,
+                    to_job_ids=recipient_agent_ids,
+                    message_type=message_type,
+                    content_preview=content[:200] if content else "",
+                    priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
+                    sender_sent_count=sender_sent_count,
+                    recipient_waiting_count=recipient_waiting_count,
+                )
+                self._logger.info(f"[WEBSOCKET DEBUG] Successfully broadcast message_sent {message_id}")
+
+                # Event 2: Broadcast to RECIPIENT(S) (increments "Messages Waiting")
+                # Emit message:received event to recipients
+                # Handover 0407: Use sender's agent_id for from_job_id consistency
+                # Only send waiting_count for single-recipient messages; for broadcasts
+                # the count is per-recipient so omit it (frontend uses +1 fallback)
+                if recipient_agent_ids:
+                    ws_waiting_count = recipient_waiting_count if len(recipient_agent_ids) == 1 else None
+                    await self._websocket_manager.broadcast_message_received(
+                        message_id=message_id,
+                        job_id=sender_execution.agent_id if sender_execution else "",
+                        project_id=project.id,
+                        tenant_key=project.tenant_key,
+                        from_agent=from_agent or "orchestrator",
+                        to_agent_ids=recipient_agent_ids,
+                        message_type=message_type,
+                        content_preview=content[:200] if content else "",
+                        priority={"low": 0, "normal": 1, "high": 2}.get(priority, 1),
+                        waiting_count=ws_waiting_count,
+                    )
+                    self._logger.info(
+                        f"[WEBSOCKET DEBUG] Successfully broadcast message_received to {len(recipient_agent_ids)} recipient(s)"
+                    )
+
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
+                # Log WebSocket errors but don't fail the message send
+                self._logger.warning(f"Failed to emit WebSocket event for message {message_id}: {ws_error}")
+        else:
+            self._logger.debug(
+                f"[WEBSOCKET DEBUG] Skipping broadcast for message {message_id} - websocket_manager is None"
+            )
 
     async def broadcast(
         self,

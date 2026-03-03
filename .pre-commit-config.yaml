@@ -148,6 +148,18 @@ repos:
         exclude: ^(tests/|migrations/|handovers/)
         pass_filenames: true
 
+  # ESLint warning budget - freezes warning count at current level (0760-perfect-score)
+  # Run manually: pre-commit run eslint-warning-budget --all-files
+  - repo: local
+    hooks:
+      - id: eslint-warning-budget
+        name: ESLint warning budget
+        entry: bash -c 'cd frontend && npx eslint src/ --max-warnings=124'
+        language: system
+        files: ^frontend/src/.*\.(js|vue)$
+        pass_filenames: false
+        stages: [manual]
+
 # Configuration for specific file types
 files: |
   (?x)^(
