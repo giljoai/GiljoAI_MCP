@@ -9,8 +9,11 @@ import logging
 import socket
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+
+from src.giljo_mcp.auth.dependencies import get_current_active_user
+from src.giljo_mcp.models import User
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +48,7 @@ class NetworkAdaptersResponse(BaseModel):
 
 
 @router.get("/detect-ip", response_model=NetworkDetectionResponse)
-async def detect_ip():
+async def detect_ip(current_user: User = Depends(get_current_active_user)):
     """
     Detect server network information for LAN mode configuration.
 
@@ -98,7 +101,7 @@ async def detect_ip():
 
 
 @router.get("/adapters", response_model=NetworkAdaptersResponse)
-async def get_network_adapters():
+async def get_network_adapters(current_user: User = Depends(get_current_active_user)):
     """
     Detect all network adapters for LAN mode configuration.
 

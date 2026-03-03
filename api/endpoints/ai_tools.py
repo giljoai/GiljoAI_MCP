@@ -209,9 +209,10 @@ async def generate_ai_tool_config(
 
     logger.info(f"Generating config for tool '{tool_id}' with server URL: {server_url}")
 
-    # Note: This endpoint should create an API key and use HTTP transport
-    # For now, using a placeholder API key - should be integrated with API key creation
-    api_key = "placeholder-api-key-please-use-wizard"
+    # API key must be created separately via the API Keys dashboard page.
+    # The config generator shows a placeholder prompt so the user knows
+    # to substitute their real key before running the command.
+    api_key = "<YOUR_API_KEY>"
 
     # Generate configuration based on tool
     config_generators = {
