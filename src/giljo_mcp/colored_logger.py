@@ -194,27 +194,6 @@ class LogFilter(logging.Filter):
         return not any(pattern.lower() in message for pattern in self.exclude_patterns)
 
 
-def create_filtered_logger(name: str, exclude_patterns: list[str] = None, level: int = logging.INFO) -> ColoredLogger:
-    """Create a colored logger with message filtering.
-
-    Args:
-        name: Logger name
-        exclude_patterns: List of patterns to exclude from logs
-        level: Logging level
-
-    Returns:
-        Filtered colored logger instance
-    """
-    logger = get_colored_logger(name, level)
-
-    # Add filter to all handlers
-    log_filter = LogFilter(exclude_patterns)
-    for handler in logger.handlers:
-        handler.addFilter(log_filter)
-
-    return logger
-
-
 # Convenience functions for colored output
 def print_error(message: str):
     """Print an error message in red."""
