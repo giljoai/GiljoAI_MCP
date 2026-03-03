@@ -204,13 +204,19 @@ class MCPSessionManager:
 
         return session
 
-    async def update_session_data(self, session_id: str, data: dict[str, Any], merge: bool = True) -> bool:
+    async def update_session_data(
+        self, session_id: str, data: dict[str, Any], merge: bool = True, tenant_key: str | None = None
+    ) -> bool:
         """Update the JSON session_data blob for a session.
 
         When merge is True (default), new keys are merged into existing data.
         When False, the entire blob is replaced.
+
+        Args:
+            tenant_key: When provided, the lookup is scoped to this tenant
+                        (recommended for multi-tenant isolation).
         """
-        session = await self.get_session(session_id)
+        session = await self.get_session(session_id, tenant_key=tenant_key)
         if not session:
             return False
 
@@ -245,9 +251,16 @@ class MCPSessionManager:
 
         return count
 
-    async def delete_session(self, session_id: str) -> bool:
-        """Delete a specific session by ID. Returns True if a session was removed."""
+    async def delete_session(self, session_id: str, tenant_key: str | None = None) -> bool:
+        """Delete a specific session by ID. Returns True if a session was removed.
+
+        Args:
+            tenant_key: When provided, the DELETE is scoped to this tenant
+                        (recommended for multi-tenant isolation).
+        """
         stmt = delete(MCPSession).where(MCPSession.session_id == session_id)
+        if tenant_key is not None:
+            stmt = stmt.where(MCPSession.tenant_key == tenant_key)
         result = await self.db.execute(stmt)
         await self.db.commit()
 
