@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 import pytest_asyncio
 
-from src.giljo_mcp.models import Message, Project, Task
+from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.config import ApiMetrics
 from src.giljo_mcp.repositories.statistics_repository import StatisticsRepository
@@ -73,26 +73,6 @@ async def test_messages(db_session, test_tenant_key, test_project_with_data):
         messages.append(msg)
     await db_session.commit()
     return messages
-
-
-@pytest_asyncio.fixture
-async def test_tasks(db_session, test_tenant_key, test_project_with_data):
-    """Create test tasks"""
-    tasks = []
-    for i in range(5):
-        task = Task(
-            id=f"task_{i:03d}",
-            tenant_key=test_tenant_key,
-            project_id=test_project_with_data.id,
-            title=f"Task {i}",
-            description=f"Test task {i}",
-            status="completed" if i < 3 else "pending",
-            created_at=datetime.now(timezone.utc),
-        )
-        db_session.add(task)
-        tasks.append(task)
-    await db_session.commit()
-    return tasks
 
 
 @pytest_asyncio.fixture

@@ -78,7 +78,7 @@ class MessageStatsResponse(BaseModel):
     failed_messages: int
     average_processing_time_seconds: Optional[float] = None
     messages_per_hour: float
-    peak_hour_messages: int
+    peak_hour_messages: Optional[int] = None
 
 
 class PerformanceMetricsResponse(BaseModel):
@@ -409,8 +409,6 @@ async def get_message_statistics(
         hours_in_range = max((now - since).total_seconds() / 3600, 1) if since else 24
         messages_per_hour = total / hours_in_range
 
-        peak_hour_messages = int(messages_per_hour * 1.5)
-
         return MessageStatsResponse(
             total_messages=total,
             pending_messages=pending,
@@ -419,7 +417,7 @@ async def get_message_statistics(
             failed_messages=failed,
             average_processing_time_seconds=avg_processing_time,
             messages_per_hour=messages_per_hour,
-            peak_hour_messages=peak_hour_messages,
+            peak_hour_messages=None,
         )
 
 

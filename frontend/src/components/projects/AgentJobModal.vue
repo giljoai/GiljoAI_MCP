@@ -88,7 +88,7 @@
 
 <script setup>
 import { computed, watch, ref } from 'vue'
-import { AGENT_HASH_PALETTE, AGENT_FALLBACK_COLOR } from '@/utils/constants'
+import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
 
 // Props
 const props = defineProps({
@@ -173,11 +173,9 @@ function getStatusColor(status) {
   }
 }
 
-// Agent avatar helpers
-function getAgentColor(agentName) {
-  if (!agentName) return AGENT_FALLBACK_COLOR
-  const hash = agentName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  return AGENT_HASH_PALETTE[hash % AGENT_HASH_PALETTE.length]
+// Agent avatar helpers - uses centralized agentColors config
+function getAgentColor(displayName) {
+  return getAgentColorConfig(displayName).hex
 }
 
 function getAgentAbbr(agentName) {
