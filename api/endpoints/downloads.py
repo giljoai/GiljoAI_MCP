@@ -312,7 +312,7 @@ async def download_agent_templates(
         # Unauthenticated: Use system default templates (tenant_key IS NULL)
         logger.info("Generating agent templates ZIP (unauthenticated - system defaults)")
 
-        stmt = select(AgentTemplate).where(AgentTemplate.tenant_key is None).order_by(AgentTemplate.name)
+        stmt = select(AgentTemplate).where(AgentTemplate.tenant_key.is_(None)).order_by(AgentTemplate.name)
 
         if active_only:
             stmt = stmt.where(AgentTemplate.is_active)
