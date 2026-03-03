@@ -14,6 +14,7 @@ Phase 2.1 of v3.0 consolidation project.
 
 import logging
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -33,13 +34,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # JWT secret for token generation
-# Load from environment variable or use default for development
-SECRET_KEY = os.getenv("MCP_INSTALLER_SECRET_KEY", "giljo-mcp-installer-default-dev-key")
+# Load from environment variable; generate a random secret per-process if unset
+_GENERATED_FALLBACK_SECRET = secrets.token_urlsafe(32)
+SECRET_KEY = os.getenv("MCP_INSTALLER_SECRET_KEY") or _GENERATED_FALLBACK_SECRET
 
-# Warn if using default secret in production
-if SECRET_KEY == "giljo-mcp-installer-default-dev-key":
+if SECRET_KEY is _GENERATED_FALLBACK_SECRET:
     logger.warning(
-        "Using default MCP installer secret key. Set MCP_INSTALLER_SECRET_KEY environment variable for production."
+        "MCP_INSTALLER_SECRET_KEY not set. Using ephemeral random secret; "
+        "installer download tokens will not survive server restarts. "
+        "Set MCP_INSTALLER_SECRET_KEY environment variable for production."
     )
 
 ALGORITHM = "HS256"
