@@ -102,47 +102,6 @@ export const API_CONFIG = {
     reconnectionAttempts: 10,
     debug: import.meta.env.VITE_WS_DEBUG === 'true' || false,
   },
-  ENDPOINTS: {
-    // Project Management
-    projects: '/api/v1/projects/',
-    project: '/api/v1/projects/:id',
-
-    // Agent Jobs Management (Handover 0119 - Migrated from /api/v1/agents)
-    agentJobs: '/api/agent-jobs/',
-    agentJob: '/api/agent-jobs/:jobId',
-    agentJobStatus: '/api/agent-jobs/:jobId/status',
-
-    // Messages
-    messages: '/api/v1/messages/',
-    message: '/api/v1/messages/:id',
-
-    // Tasks
-    tasks: '/api/v1/tasks/',
-    task: '/api/v1/tasks/:id',
-
-    // Vision Documents
-    vision: '/api/v1/context/vision',
-    visionChunk: '/api/v1/context/vision/:part',
-
-    // Configuration
-    settings: '/api/v1/config/',
-    context: '/api/v1/context/',
-
-    // Templates
-    templates: '/api/v1/templates/',
-    template: '/api/v1/templates/:id',
-    templateHistory: '/api/v1/templates/:id/history',
-    templateRestore: '/api/v1/templates/:id/restore/:archiveId',
-
-    // Prompts (Handover 0119 - Standardized to /api/v1/prompts)
-    prompts: '/api/v1/prompts/',
-    promptAgent: '/api/v1/prompts/agent/:jobId',
-    promptOrchestrator: '/api/v1/prompts/orchestrator/:projectId',
-
-    // Statistics
-    stats: '/api/v1/stats/',
-    health: '/health',
-  },
 }
 
 export default API_CONFIG
