@@ -135,31 +135,6 @@ export const useTaskStore = defineStore('tasks', () => {
     }
   }
 
-  function moveTask(taskId, newStatus) {
-    // Local update for drag-and-drop (optimistic update)
-    const task = tasks.value.find((t) => t.id === taskId)
-    if (task) {
-      const oldStatus = task.status
-      task.status = newStatus
-
-      // Sync with backend
-      changeTaskStatus(taskId, newStatus).catch(() => {
-        // Revert on error
-        task.status = oldStatus
-      })
-    }
-  }
-
-  function updateTaskFromWebSocket(updatedTask) {
-    const index = tasks.value.findIndex((t) => t.id === updatedTask.id)
-    if (index !== -1) {
-      tasks.value[index] = { ...tasks.value[index], ...updatedTask }
-    } else {
-      // New task from WebSocket
-      tasks.value.push(updatedTask)
-    }
-  }
-
   async function fetchTaskSummary(productId) {
     try {
       const response = await api.tasks.summary(productId)
@@ -270,8 +245,6 @@ export const useTaskStore = defineStore('tasks', () => {
     updateTask,
     deleteTask,
     changeTaskStatus,
-    moveTask,
-    updateTaskFromWebSocket,
     clearError,
     handleRealtimeUpdate,
     fetchTaskSummary,
