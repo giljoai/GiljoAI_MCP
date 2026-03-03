@@ -403,8 +403,8 @@
     justify-content: center;
     font-size: 0.625rem;
     font-weight: 700;
-    color: #ffffff;
-    border: 2px solid #ffffff;
+    color: #0e1c2d;
+    border: 2px solid rgba(255, 255, 255, 0.2);
     flex-shrink: 0;
   }
 
@@ -442,7 +442,7 @@
     border-radius: 9999px;
     font-size: 0.625rem;
     font-weight: 600;
-    color: #ffffff;
+    color: #0e1c2d;
     gap: 4px;
   }
 
@@ -1083,7 +1083,7 @@
               <div class="agent-mini-swatch-label">light</div>
             </div>
           </div>
-          <div class="agent-chip" style="background: #FFC300; color: #0e1c2d;">TE Tester</div>
+          <div class="agent-chip" style="background: #FFC300;">TE Tester</div>
           <div class="agent-hex-list">#FFC300 / #E6B000 / #FFD633</div>
         </div>
 
@@ -1134,32 +1134,6 @@
         </div>
       </div>
 
-      <div class="card">
-        <h4>CSS Variable Set (agent-colors.scss)</h4>
-        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Used in some components as pill badges</p>
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-          <div class="status-item">
-            <span class="status-pill" style="background: rgba(144,164,174,0.2); color: #90a4ae; border-color: rgba(144,164,174,0.4);">waiting</span>
-            <span class="token-label">--status-waiting: #90a4ae</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: rgba(52,152,219,0.2); color: #3498db; border-color: rgba(52,152,219,0.4);">working</span>
-            <span class="token-label">--status-working: #3498db</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: rgba(255,195,0,0.2); color: #ffc300; border-color: rgba(255,195,0,0.4);">complete</span>
-            <span class="token-label">--status-complete: #ffc300</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: rgba(198,41,140,0.2); color: #c6298c; border-color: rgba(198,41,140,0.4);">failure</span>
-            <span class="token-label">--status-failure: #c6298c</span>
-          </div>
-          <div class="status-item">
-            <span class="status-pill" style="background: rgba(230,126,34,0.2); color: #e67e22; border-color: rgba(230,126,34,0.4);">blocked</span>
-            <span class="token-label">--status-blocked: #e67e22</span>
-          </div>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -1211,6 +1185,59 @@
         <div class="type-meta">monospace | Roboto Mono | 13px | bg: rgba(0,0,0,0.3)</div>
       </div>
     </div>
+
+    <!-- Text Color Roles -->
+    <div class="card" style="margin-top: 24px;">
+      <h4>Text Color Roles</h4>
+      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 20px;">
+        Static labels use primary text (#e1e1e1). Dynamic values &mdash; user-created names, data identifiers &mdash; use brand yellow (#ffc300).
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+
+        <div>
+          <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 6px; font-weight: 600;">Page titles</p>
+          <p style="font-size: 1.5rem; font-weight: 400;">
+            <span style="color: #e1e1e1;">Project: </span><span style="color: #ffc300;">GiljoAI MCP Platform</span>
+          </p>
+          <div class="type-meta">static label #e1e1e1 | dynamic value #ffc300</div>
+        </div>
+
+        <div>
+          <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 6px; font-weight: 600;">List items</p>
+          <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background: rgba(225,225,225,0.05); border-radius: 8px;">
+            <p style="font-size: 0.875rem; margin: 0;">
+              <span style="color: #8f97b7;">Product: </span><span style="color: #ffc300;">Hardware Monitor Pro</span>
+            </p>
+            <p style="font-size: 0.875rem; margin: 0;">
+              <span style="color: #8f97b7;">Task: </span><span style="color: #ffc300;">Implement WebSocket reconnection</span>
+            </p>
+            <p style="font-size: 0.875rem; margin: 0;">
+              <span style="color: #8f97b7;">Agent: </span><span style="color: #ffc300;">Backend-Implementer</span>
+            </p>
+          </div>
+          <div class="type-meta">static label #8f97b7 (secondary) | dynamic value #ffc300</div>
+        </div>
+
+        <div>
+          <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 6px; font-weight: 600;">Inline references</p>
+          <p style="font-size: 0.875rem; color: #e1e1e1;">
+            The orchestrator assigned <span style="color: #ffc300; font-weight: 500;">auth-refactor-task</span> to
+            <span style="color: #ffc300; font-weight: 500;">Backend-Implementer</span> in
+            <span style="color: #ffc300; font-weight: 500;">GiljoAI MCP Platform</span>.
+          </p>
+          <div class="type-meta">body text #e1e1e1 | dynamic names #ffc300 weight 500</div>
+        </div>
+
+      </div>
+
+      <div style="margin-top: 24px; padding: 16px; background: rgba(255,195,0,0.05); border: 1px solid rgba(255,195,0,0.2); border-radius: 8px;">
+        <p style="font-size: 0.75rem; font-weight: 600; color: #ffc300; margin-bottom: 8px;">Rule</p>
+        <p style="font-size: 0.875rem; color: #e1e1e1; margin: 0;">
+          If the text was <strong>created by the user</strong> or <strong>identifies a specific entity</strong> (project name, task name, product name, agent name), render it in <code style="color: #ffc300;">#ffc300</code>. Everything else stays <code style="color: #e1e1e1;">#e1e1e1</code> or <code style="color: #8f97b7;">#8f97b7</code>.
+        </p>
+      </div>
+    </div>
   </section>
 
   <!-- ============================================
@@ -1256,39 +1283,26 @@
       </div>
 
       <div class="card">
-        <h4>Elevation (variables.scss)</h4>
+        <h4>Elevation (Dark Theme — Surface Lightening)</h4>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">
+          In dark themes, elevation is communicated by lightening the surface — not by shadows (which are invisible on dark backgrounds). Higher elevation = lighter surface + optional subtle depth shadow.
+        </p>
         <div class="shadow-row">
-          <div class="shadow-box" style="box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);">
-            <span class="shadow-name">sm</span>
-            <span class="shadow-value">0 1px 2px 0 rgba(0,0,0,0.05)</span>
+          <div class="shadow-box" style="background: #0e1c2d; border: 1px solid rgba(255,255,255,0.15); box-shadow: none;">
+            <span class="shadow-name">Flat (0)</span>
+            <span class="shadow-value">#0e1c2d<br>no shadow</span>
           </div>
-          <div class="shadow-box" style="box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            <span class="shadow-name">md</span>
-            <span class="shadow-value">0 4px 6px -1px rgba(0,0,0,0.1)</span>
+          <div class="shadow-box" style="background: #182739; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+            <span class="shadow-name">Raised (1)</span>
+            <span class="shadow-value">#182739<br>0 2px 8px rgba(0,0,0,0.3)</span>
           </div>
-          <div class="shadow-box" style="box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
-            <span class="shadow-name">lg</span>
-            <span class="shadow-value">0 10px 15px -3px rgba(0,0,0,0.1)</span>
+          <div class="shadow-box" style="background: #1e3147; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+            <span class="shadow-name">Elevated (2)</span>
+            <span class="shadow-value">#1e3147<br>0 4px 12px rgba(0,0,0,0.4)</span>
           </div>
-          <div class="shadow-box" style="box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-            <span class="shadow-name">xl</span>
-            <span class="shadow-value">0 20px 25px -5px rgba(0,0,0,0.1)</span>
-          </div>
-        </div>
-
-        <h4 style="margin-top: 24px;">Elevation (design-tokens.scss)</h4>
-        <div class="shadow-row">
-          <div class="shadow-box" style="box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <span class="shadow-name">subtle</span>
-            <span class="shadow-value">0 2px 4px rgba(0,0,0,0.1)</span>
-          </div>
-          <div class="shadow-box" style="box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
-            <span class="shadow-name">medium</span>
-            <span class="shadow-value">0 4px 8px rgba(0,0,0,0.15)</span>
-          </div>
-          <div class="shadow-box" style="box-shadow: 0 8px 16px rgba(0,0,0,0.2);">
-            <span class="shadow-name">strong</span>
-            <span class="shadow-value">0 8px 16px rgba(0,0,0,0.2)</span>
+          <div class="shadow-box" style="background: #243b53; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+            <span class="shadow-name">Overlay (3)</span>
+            <span class="shadow-value">#243b53<br>0 8px 24px rgba(0,0,0,0.5)</span>
           </div>
         </div>
       </div>
@@ -1296,53 +1310,30 @@
 
     <!-- Border Radius -->
     <div class="card" style="margin-top: 24px;">
-      <h4>Border Radius</h4>
-      <div class="grid-2" style="gap: 24px;">
-        <div>
-          <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 12px; font-weight: 600;">variables.scss scale</p>
-          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 4px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">sm<br>4px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 8px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">md<br>8px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 12px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">lg<br>12px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 16px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">xl<br>16px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 9999px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">full<br>9999px</span>
-            </div>
-          </div>
+      <h4>Border Radius (Unified Scale)</h4>
+      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">
+        Single scale replacing both variables.scss and design-tokens.scss duplicates.
+      </p>
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+        <div style="text-align: center;">
+          <div style="width: 80px; height: 80px; background: #1e3147; border: 2px solid #315074; border-radius: 4px;"></div>
+          <span class="spacing-label" style="margin-top: 8px; display: block;"><strong>sharp</strong><br>4px</span>
+          <span style="font-size: 0.625rem; color: #8f97b7;">badges, tiny elements</span>
         </div>
-        <div>
-          <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 12px; font-weight: 600;">design-tokens.scss scale (duplicate)</p>
-          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 8px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">small<br>8px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 10px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">medium<br>10px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 16px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">large<br>16px</span>
-            </div>
-            <div style="text-align: center;">
-              <div style="width: 48px; height: 48px; background: #1e3147; border: 1px solid #315074; border-radius: 24px;"></div>
-              <span class="spacing-label" style="margin-top: 4px;">pill<br>24px</span>
-            </div>
-          </div>
+        <div style="text-align: center;">
+          <div style="width: 80px; height: 80px; background: #1e3147; border: 2px solid #315074; border-radius: 8px;"></div>
+          <span class="spacing-label" style="margin-top: 8px; display: block;"><strong>default</strong><br>8px</span>
+          <span style="font-size: 0.625rem; color: #8f97b7;">cards, buttons, inputs</span>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 80px; height: 80px; background: #1e3147; border: 2px solid #315074; border-radius: 16px;"></div>
+          <span class="spacing-label" style="margin-top: 8px; display: block;"><strong>rounded</strong><br>16px</span>
+          <span style="font-size: 0.625rem; color: #8f97b7;">containers, panels</span>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 80px; height: 80px; background: #1e3147; border: 2px solid #315074; border-radius: 9999px;"></div>
+          <span class="spacing-label" style="margin-top: 8px; display: block;"><strong>pill</strong><br>9999px</span>
+          <span style="font-size: 0.625rem; color: #8f97b7;">chips, avatars, pills</span>
         </div>
       </div>
     </div>
@@ -1385,24 +1376,249 @@
 
     <div class="grid-3">
       <div class="tool-swatch">
-        <div class="tool-dot" style="background: #E67E22;"></div>
+        <div class="tool-dot" style="background: #DE7356;"></div>
         <div>
           <div class="tool-name">Claude Code</div>
-          <div class="tool-hex">#E67E22</div>
+          <div class="tool-hex">#DE7356 (Anthropic brand)</div>
         </div>
       </div>
       <div class="tool-swatch">
-        <div class="tool-dot" style="background: #9B59B6;"></div>
+        <div class="tool-dot" style="background: #FFFFFF; border: 1px solid rgba(255,255,255,0.3);"></div>
         <div>
           <div class="tool-name">Codex CLI</div>
-          <div class="tool-hex">#9B59B6</div>
+          <div class="tool-hex">#FFFFFF (white)</div>
         </div>
       </div>
       <div class="tool-swatch">
-        <div class="tool-dot" style="background: #3498DB;"></div>
+        <div class="tool-dot" style="background: #8b5cf6;"></div>
         <div>
           <div class="tool-name">Gemini</div>
-          <div class="tool-hex">#3498DB</div>
+          <div class="tool-hex">#8B5CF6 (purple)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================
+       LOGOS & ICON STANDARDS
+       ============================================ -->
+  <section class="section">
+    <h2 class="section-title">Logos &amp; Icon Standards</h2>
+    <p class="section-subtitle">Icon assets in frontend/public/ and their usage contexts</p>
+
+    <!-- Three-tier brand hierarchy -->
+    <div class="card">
+      <h4>Brand Hierarchy</h4>
+      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 20px;">Three distinct brand marks, each with a specific role</p>
+
+      <!-- Tier 1: Company Logo -->
+      <div style="margin-bottom: 32px;">
+        <p style="font-size: 0.75rem; color: #ffc300; font-weight: 600; margin-bottom: 12px;">1. Company Logo &mdash; GiljoAI</p>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 12px;">The full company logo. Fades in on page load (Login, FirstLogin). Represents the company brand.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+          <div style="text-align: center; min-width: 140px;">
+            <div style="width: 120px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="Giljo_YW.svg" alt="Company Logo" style="max-width: 100px; max-height: 64px;" onerror="this.parentElement.innerHTML='<span style=color:#ffc300;font-size:10px>Giljo_YW.svg</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">Giljo_YW.svg</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">Login page, AppBar (36px height)</span>
+          </div>
+          <div style="text-align: center; min-width: 140px;">
+            <div style="width: 120px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="Giljoai_Y.svg" alt="Yellow Logo" style="max-width: 100px; max-height: 64px;" onerror="this.parentElement.innerHTML='<span style=color:#ffc300;font-size:10px>Giljoai_Y.svg</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">Giljoai_Y.svg</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">Yellow variant</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tier 2: Product Logo -->
+      <div style="margin-bottom: 32px;">
+        <p style="font-size: 0.75rem; color: #ffc300; font-weight: 600; margin-bottom: 12px;">2. Product Logo &mdash; GiljoAI MCP</p>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 12px;">The product wordmark. Always visible in the AppBar upper-left. Identifies the specific product.</p>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #182739; border-radius: 8px; max-width: 300px;">
+          <img src="Giljo_YW.svg" alt="AppBar" style="height: 36px;" onerror="this.innerHTML='<span style=color:#ffc300;>Logo</span>'">
+          <span style="font-size: 1rem; color: #e1e1e1; font-weight: 500;">GiljoAI MCP</span>
+        </div>
+        <div class="type-meta" style="margin-top: 8px;">AppBar: Giljo_YW.svg + text, surface background (#182739)</div>
+      </div>
+
+      <!-- Tier 3: Gil the Mascot -->
+      <div>
+        <p style="font-size: 0.75rem; color: #ffc300; font-weight: 600; margin-bottom: 12px;">3. Gil the Mascot</p>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 12px;">The animated mascot face. Used as agent icon throughout the app, and large on the Welcome/home screen (with blinking animation via GilMascot.vue component).</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+          <div style="text-align: center; min-width: 120px;">
+            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="giljo_YW_Face.svg" alt="Gil Active" style="max-width: 56px; max-height: 56px;" onerror="this.parentElement.innerHTML='<span style=color:#ffc300;font-size:10px>YW_Face</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">giljo_YW_Face.svg</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">Agent icon (active)</span>
+          </div>
+          <div style="text-align: center; min-width: 120px;">
+            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="Giljo_gray_Face.svg" alt="Gil Inactive" style="max-width: 56px; max-height: 56px;" onerror="this.parentElement.innerHTML='<span style=color:#8f97b7;font-size:10px>Gray_Face</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">Giljo_gray_Face.svg</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">Agent icon (inactive)</span>
+          </div>
+          <div style="text-align: center; min-width: 120px;">
+            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="Giljo_BY_Face.svg" alt="Gil BY" style="max-width: 56px; max-height: 56px;" onerror="this.parentElement.innerHTML='<span style=color:#ffc300;font-size:10px>BY_Face</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">Giljo_BY_Face.svg</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">Blue/yellow variant</span>
+          </div>
+          <div style="text-align: center; min-width: 120px;">
+            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; border: 2px solid rgba(255,195,0,0.3);">
+              <span style="font-size: 0.625rem; color: #8f97b7; text-align: center;">GilMascot.vue<br>(SVG component)</span>
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">GilMascot.vue</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">Welcome screen (150px, animated blink)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Tool Icons -->
+    <div class="card" style="margin-top: 24px;">
+      <h4>AI Tool Icons</h4>
+      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 20px;">Third-party AI tool integrations &mdash; all icon variants per tool</p>
+
+      <!-- Claude -->
+      <div style="margin-bottom: 24px;">
+        <p style="font-size: 0.75rem; color: #DE7356; font-weight: 600; margin-bottom: 12px;">Claude Code &mdash; <code style="color: #DE7356;">#DE7356</code></p>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+          <div style="text-align: center; min-width: 120px;">
+            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="claude_pix.svg" alt="Claude Pix" style="max-width: 48px; max-height: 48px;" onerror="this.parentElement.innerHTML='<span style=color:#DE7356;font-size:10px>claude_pix.svg</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">claude_pix.svg</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">Primary icon (TemplateManager,<br>AiToolConfigWizard, Export)</span>
+          </div>
+          <div style="text-align: center; min-width: 120px;">
+            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="Claude_AI_symbol.svg" alt="Claude Symbol" style="max-width: 48px; max-height: 48px;" onerror="this.parentElement.innerHTML='<span style=color:#DE7356;font-size:10px>Claude_AI_symbol.svg</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">Claude_AI_symbol.svg</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">Symbol variant<br>(AgentDetailsModal)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Codex -->
+      <div style="margin-bottom: 24px;">
+        <p style="font-size: 0.75rem; color: #FFFFFF; font-weight: 600; margin-bottom: 12px;">Codex CLI &mdash; <code style="color: #FFFFFF;">#FFFFFF</code></p>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+          <div style="text-align: center; min-width: 120px;">
+            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="codex_logo.svg" alt="Codex Logo" style="max-width: 48px; max-height: 48px;" onerror="this.parentElement.innerHTML='<span style=color:#FFFFFF;font-size:10px>codex_logo.svg</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">codex_logo.svg</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">Full logo<br>(AgentDetailsModal)</span>
+          </div>
+          <div style="text-align: center; min-width: 120px;">
+            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="icons/codex_mark.svg" alt="Codex Mark" style="max-width: 48px; max-height: 48px;" onerror="this.parentElement.innerHTML='<span style=color:#FFFFFF;font-size:10px>codex_mark.svg</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">icons/codex_mark.svg</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">Mark (dark bg)<br>(TemplateManager)</span>
+          </div>
+          <div style="text-align: center; min-width: 120px;">
+            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="icons/codex_mark_white.svg" alt="Codex Mark White" style="max-width: 48px; max-height: 48px;" onerror="this.parentElement.innerHTML='<span style=color:#FFFFFF;font-size:10px>codex_mark_white.svg</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">icons/codex_mark_white.svg</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">White mark (light bg)<br>(AiToolConfigWizard)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gemini -->
+      <div style="margin-bottom: 24px;">
+        <p style="font-size: 0.75rem; color: #8b5cf6; font-weight: 600; margin-bottom: 12px;">Gemini &mdash; <code style="color: #8b5cf6;">#8B5CF6</code></p>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+          <div style="text-align: center; min-width: 120px;">
+            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="gemini-icon.svg" alt="Gemini" style="max-width: 48px; max-height: 48px;" onerror="this.parentElement.innerHTML='<span style=color:#8b5cf6;font-size:10px>gemini-icon.svg</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">gemini-icon.svg</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">Single icon variant</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Serena -->
+      <div>
+        <p style="font-size: 0.75rem; color: #8f97b7; font-weight: 600; margin-bottom: 12px;">Serena &mdash; MCP integration</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+          <div style="text-align: center; min-width: 120px;">
+            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+              <img src="Serena.png" alt="Serena" style="max-width: 48px; max-height: 48px;" onerror="this.parentElement.innerHTML='<span style=color:#8f97b7;font-size:10px>Serena.png</span>'">
+            </div>
+            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">Serena.png</span><br>
+            <span style="font-size: 0.625rem; color: #8f97b7;">MCP integration</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav & State Icons -->
+    <div class="card" style="margin-top: 24px;">
+      <h4>Nav &amp; State Icons</h4>
+      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Giljo face variants used for navigation and state indication</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+        <div style="text-align: center; min-width: 100px;">
+          <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+            <img src="icons/Giljo_YW_Face.svg" alt="" style="max-width: 40px; max-height: 40px;" onerror="this.parentElement.innerHTML='<span style=color:#ffc300;font-size:9px>YW_Face</span>'">
+          </div>
+          <span style="font-size: 0.625rem; color: #e1e1e1;">Active Jobs</span>
+        </div>
+        <div style="text-align: center; min-width: 100px;">
+          <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+            <img src="icons/Giljo_Inactive_Dark.svg" alt="" style="max-width: 40px; max-height: 40px;" onerror="this.parentElement.innerHTML='<span style=color:#8f97b7;font-size:9px>Inactive</span>'">
+          </div>
+          <span style="font-size: 0.625rem; color: #e1e1e1;">Inactive Jobs</span>
+        </div>
+        <div style="text-align: center; min-width: 100px;">
+          <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+            <img src="icons/Giljo_BY_active.svg" alt="" style="max-width: 40px; max-height: 40px;" onerror="this.parentElement.innerHTML='<span style=color:#ffc300;font-size:9px>BY_active</span>'">
+          </div>
+          <span style="font-size: 0.625rem; color: #e1e1e1;">Active state</span>
+        </div>
+        <div style="text-align: center; min-width: 100px;">
+          <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+            <img src="icons/Giljo_BY_thinker.svg" alt="" style="max-width: 40px; max-height: 40px;" onerror="this.parentElement.innerHTML='<span style=color:#ffc300;font-size:9px>Thinker</span>'">
+          </div>
+          <span style="font-size: 0.625rem; color: #e1e1e1;">Thinking state</span>
+        </div>
+        <div style="text-align: center; min-width: 100px;">
+          <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+            <img src="icons/Giljo_gray_Face_happy.svg" alt="" style="max-width: 40px; max-height: 40px;" onerror="this.parentElement.innerHTML='<span style=color:#8f97b7;font-size:9px>Happy</span>'">
+          </div>
+          <span style="font-size: 0.625rem; color: #e1e1e1;">Happy</span>
+        </div>
+        <div style="text-align: center; min-width: 100px;">
+          <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
+            <img src="icons/Giljo_gray_Face_sleeping.svg" alt="" style="max-width: 40px; max-height: 40px;" onerror="this.parentElement.innerHTML='<span style=color:#8f97b7;font-size:9px>Sleeping</span>'">
+          </div>
+          <span style="font-size: 0.625rem; color: #e1e1e1;">Sleeping</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Icon Usage Rules -->
+    <div class="card" style="margin-top: 24px;">
+      <div style="padding: 16px; background: rgba(255,195,0,0.05); border: 1px solid rgba(255,195,0,0.2); border-radius: 8px;">
+        <p style="font-size: 0.75rem; font-weight: 600; color: #ffc300; margin-bottom: 8px;">Icon Usage Rules</p>
+        <div style="font-size: 0.875rem; color: #e1e1e1; display: flex; flex-direction: column; gap: 6px;">
+          <p style="margin: 0;"><strong>Agent avatars:</strong> Use <code>giljo_YW_Face.svg</code> (active) or <code>Giljo_gray_Face.svg</code> (inactive)</p>
+          <p style="margin: 0;"><strong>Navigation:</strong> Material Design Icons (<code>mdi-*</code>) for all standard nav items</p>
+          <p style="margin: 0;"><strong>AI tools:</strong> Custom SVG per tool &mdash; never use MDI substitutes</p>
+          <p style="margin: 0;"><strong>Brand logo:</strong> <code>Giljo_YW.svg</code> in AppBar, max-height 36px</p>
+          <p style="margin: 0;"><strong>Favicon:</strong> <code>favicon.ico</code> (root) &mdash; Giljo face</p>
+          <p style="margin: 0;"><strong>Icon directory:</strong> All icon variants live in <code>frontend/public/icons/</code></p>
         </div>
       </div>
     </div>
@@ -1449,155 +1665,6 @@
     </div>
   </section>
 
-  <!-- ============================================
-       11. DISCREPANCIES
-       ============================================ -->
-  <section class="section">
-    <h2 class="section-title" style="color: #c6298c; border-bottom-color: rgba(198,41,140,0.4);">Discrepancies Found</h2>
-    <p class="section-subtitle">Real mismatches between design-tokens.scss, agent-colors.scss, agentColors.js, theme.js, and main.scss</p>
-
-    <div class="disc-section">
-
-      <!-- A. Agent Colors -->
-      <div class="disc-subtitle">A. Agent Colors &mdash; design-tokens.scss vs agent-colors.scss / agentColors.js</div>
-      <table class="disc-table">
-        <thead>
-          <tr>
-            <th>Role</th>
-            <th>design-tokens.scss</th>
-            <th>agent-colors.scss / agentColors.js</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Analyzer</td>
-            <td><span class="disc-inline-swatch" style="background: #e1564b;"></span><code>#e1564b</code></td>
-            <td><span class="disc-inline-swatch" style="background: #e74c3c;"></span><code>#e74c3c</code></td>
-          </tr>
-          <tr>
-            <td>Implementor</td>
-            <td><span class="disc-inline-swatch" style="background: #3493bf;"></span><code>#3493bf</code></td>
-            <td><span class="disc-inline-swatch" style="background: #3498db;"></span><code>#3498db</code></td>
-          </tr>
-          <tr>
-            <td>Tester</td>
-            <td><span class="disc-inline-swatch" style="background: #d4a574;"></span><code>#d4a574</code></td>
-            <td><span class="disc-inline-swatch" style="background: #ffc300;"></span><code>#ffc300</code></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- B. Status Colors -->
-      <div class="disc-subtitle">B. Status Colors &mdash; design-tokens.scss vs agent-colors.scss CSS vars</div>
-      <table class="disc-table">
-        <thead>
-          <tr>
-            <th>Status</th>
-            <th>design-tokens.scss</th>
-            <th>agent-colors.scss</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>waiting</td>
-            <td><span class="disc-inline-swatch" style="background: #ffd700;"></span><code>#ffd700</code></td>
-            <td><span class="disc-inline-swatch" style="background: #90a4ae;"></span><code>#90a4ae</code></td>
-          </tr>
-          <tr>
-            <td>working</td>
-            <td><span class="disc-inline-swatch" style="background: #ffd700;"></span><code>#ffd700</code></td>
-            <td><span class="disc-inline-swatch" style="background: #3498db;"></span><code>#3498db</code></td>
-          </tr>
-          <tr>
-            <td>complete</td>
-            <td><span class="disc-inline-swatch" style="background: #67bd6d;"></span><code>#67bd6d</code></td>
-            <td><span class="disc-inline-swatch" style="background: #ffc300;"></span><code>#ffc300</code></td>
-          </tr>
-          <tr>
-            <td>failed / failure</td>
-            <td><span class="disc-inline-swatch" style="background: #e53935;"></span><code>#e53935</code></td>
-            <td><span class="disc-inline-swatch" style="background: #c6298c;"></span><code>#c6298c</code></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- C. Font Family -->
-      <div class="disc-subtitle">C. Font Family Conflict</div>
-      <p class="disc-text"><code>design-tokens.scss</code> declares <code>"Cairo", sans-serif</code></p>
-      <p class="disc-text"><code>main.scss</code> body applies <code>"Roboto", sans-serif</code> &mdash; this is what renders in the browser</p>
-
-      <!-- D. Primary Text Color -->
-      <div class="disc-subtitle">D. Primary Text Color</div>
-      <p class="disc-text">
-        <code>design-tokens.scss</code>: <span class="disc-inline-swatch" style="background: #e0e0e0;"></span><code>#e0e0e0</code>
-        &nbsp;&nbsp;vs&nbsp;&nbsp;
-        <code>theme.js / main.scss</code>: <span class="disc-inline-swatch" style="background: #e1e1e1;"></span><code>#e1e1e1</code>
-      </p>
-
-      <!-- E. Duplicate Radius Systems -->
-      <div class="disc-subtitle">E. Duplicate Radius Systems</div>
-      <table class="disc-table">
-        <thead>
-          <tr>
-            <th>variables.scss</th>
-            <th>design-tokens.scss</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>sm = <code>4px</code></td>
-            <td>small = <code>8px</code></td>
-          </tr>
-          <tr>
-            <td>md = <code>8px</code></td>
-            <td>medium = <code>10px</code></td>
-          </tr>
-          <tr>
-            <td>lg = <code>12px</code></td>
-            <td>large = <code>16px</code></td>
-          </tr>
-          <tr>
-            <td>xl = <code>16px</code></td>
-            <td>pill = <code>24px</code></td>
-          </tr>
-          <tr>
-            <td>full = <code>9999px</code></td>
-            <td>&mdash;</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- F. Duplicate Shadow Systems -->
-      <div class="disc-subtitle">F. Duplicate Shadow Systems</div>
-      <table class="disc-table">
-        <thead>
-          <tr>
-            <th>variables.scss</th>
-            <th>design-tokens.scss</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>sm: <code>0 1px 2px 0 rgba(0,0,0,0.05)</code></td>
-            <td>subtle: <code>0 2px 4px rgba(0,0,0,0.1)</code></td>
-          </tr>
-          <tr>
-            <td>md: <code>0 4px 6px -1px rgba(0,0,0,0.1)</code></td>
-            <td>medium: <code>0 4px 8px rgba(0,0,0,0.15)</code></td>
-          </tr>
-          <tr>
-            <td>lg: <code>0 10px 15px -3px rgba(0,0,0,0.1)</code></td>
-            <td>strong: <code>0 8px 16px rgba(0,0,0,0.2)</code></td>
-          </tr>
-          <tr>
-            <td>xl: <code>0 20px 25px -5px rgba(0,0,0,0.1)</code></td>
-            <td>&mdash;</td>
-          </tr>
-        </tbody>
-      </table>
-
-    </div>
-  </section>
 
 </div>
 
