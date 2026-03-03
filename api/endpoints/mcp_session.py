@@ -190,9 +190,11 @@ class MCPSessionManager:
         logger.info(f"Created new MCP session: {new_session.session_id} (tenant: {user.tenant_key})")
         return new_session
 
-    async def get_session(self, session_id: str) -> MCPSession | None:
+    async def get_session(self, session_id: str, tenant_key: str | None = None) -> MCPSession | None:
         """Retrieve a session by ID, returning None if expired or not found."""
         stmt = select(MCPSession).where(MCPSession.session_id == session_id)
+        if tenant_key is not None:
+            stmt = stmt.where(MCPSession.tenant_key == tenant_key)
         result = await self.db.execute(stmt)
         session = result.scalar_one_or_none()
 

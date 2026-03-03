@@ -156,7 +156,7 @@ class JSONRPCErrorResponse(BaseModel):
 
 
 async def handle_initialize(
-    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str
+    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str, tenant_key: str | None = None
 ) -> dict[str, Any]:
     """
     Handle MCP initialize request
@@ -296,7 +296,7 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
 
 
 async def handle_tools_list(
-    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str
+    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str, tenant_key: str | None = None
 ) -> dict[str, Any]:
     """
     Handle tools/list request
@@ -305,7 +305,7 @@ async def handle_tools_list(
     Tools in HIDDEN_FROM_SCHEMA_TOOLS are excluded from the response but remain callable.
     """
     # Get session to extract tenant context
-    session = await session_manager.get_session(session_id)
+    session = await session_manager.get_session(session_id, tenant_key=tenant_key)
     if not session:
         raise HTTPException(status_code=401, detail="Session expired")
 
@@ -783,7 +783,11 @@ async def handle_tools_list(
 
 
 async def handle_tools_call(
-    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str, request: Request
+    params: dict[str, Any],
+    session_manager: MCPSessionManager,
+    session_id: str,
+    request: Request,
+    tenant_key: str | None = None,
 ) -> dict[str, Any]:
     """
     Handle tools/call request
@@ -797,7 +801,7 @@ async def handle_tools_call(
         raise HTTPException(status_code=400, detail="Tool name required")
 
     # Get session for tenant context
-    session = await session_manager.get_session(session_id)
+    session = await session_manager.get_session(session_id, tenant_key=tenant_key)
     if not session:
         raise HTTPException(status_code=401, detail="Session expired")
 
@@ -1035,11 +1039,11 @@ async def mcp_endpoint(
 
     try:
         if method == "initialize":
-            result = await handle_initialize(params, session_manager, session.session_id)
+            result = await handle_initialize(params, session_manager, session.session_id, session.tenant_key)
         elif method == "tools/list":
-            result = await handle_tools_list(params, session_manager, session.session_id)
+            result = await handle_tools_list(params, session_manager, session.session_id, session.tenant_key)
         elif method == "tools/call":
-            result = await handle_tools_call(params, session_manager, session.session_id, request)
+            result = await handle_tools_call(params, session_manager, session.session_id, request, session.tenant_key)
         else:
             return JSONRPCErrorResponse(
                 error=JSONRPCError(code=-32601, message=f"Method not found: {method}", data={"method": method}),
