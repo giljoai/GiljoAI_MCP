@@ -296,23 +296,9 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
 }
 
 
-async def handle_tools_list(
-    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str, tenant_key: str | None = None
-) -> dict[str, Any]:
-    """
-    Handle tools/list request
-
-    Returns list of available tools with schemas.
-    Tools in HIDDEN_FROM_SCHEMA_TOOLS are excluded from the response but remain callable.
-    """
-    # Get session to extract tenant context
-    session = await session_manager.get_session(session_id, tenant_key=tenant_key)
-    if not session:
-        raise HTTPException(status_code=401, detail="Session expired")
-
-    # Complete tool catalog matching ALL methods in tool_map (handle_tools_call)
-    # This ensures MCP clients can discover and use all available orchestration tools
-    tools = [
+def _build_project_tools() -> list[dict[str, Any]]:
+    """Build tool definitions for project management and orchestrator instructions."""
+    return [
         # Project Management Tools
         {
             "name": "create_project",
@@ -377,6 +363,12 @@ async def handle_tools_list(
                 "required": ["job_id"],
             },
         },
+    ]
+
+
+def _build_message_tools() -> list[dict[str, Any]]:
+    """Build tool definitions for inter-agent messaging."""
+    return [
         # Message Communication Tools
         # Handover 0500: Document all supported recipient formats (UUIDs, display names, broadcast)
         {
@@ -465,6 +457,12 @@ async def handle_tools_list(
                 "required": [],
             },
         },
+    ]
+
+
+def _build_task_and_utility_tools() -> list[dict[str, Any]]:
+    """Build tool definitions for task management, health checks, and downloads."""
+    return [
         # Task Management Tools (MCP tools retired Dec 2025 - only create_task kept)
         {
             "name": "create_task",
@@ -518,6 +516,12 @@ async def handle_tools_list(
                 "required": ["content_type"],
             },
         },
+    ]
+
+
+def _build_agent_coordination_tools() -> list[dict[str, Any]]:
+    """Build tool definitions for agent coordination and orchestration."""
+    return [
         # Agent Coordination Tools (Handover 0045)
         {
             "name": "get_pending_jobs",
@@ -654,6 +658,12 @@ async def handle_tools_list(
         # Handover 0083: core /gil_* commands
         # NOTE: gil_activate, gil_launch, gil_handover removed (0388, 0391) - users perform these via web UI
         # gil_handover removed in 0391: REST API endpoint handles succession, MCP tool had tenant_key bug
+    ]
+
+
+def _build_context_and_closeout_tools() -> list[dict[str, Any]]:
+    """Build tool definitions for context fetching, project closeout, and 360 memory."""
+    return [
         # Unified Context Tool (Handover 0350a, updated 0430)
         {
             "name": "fetch_context",
@@ -771,6 +781,31 @@ async def handle_tools_list(
                 "required": ["project_id", "summary", "key_outcomes", "decisions_made"],
             },
         },
+    ]
+
+
+async def handle_tools_list(
+    params: dict[str, Any], session_manager: MCPSessionManager, session_id: str, tenant_key: str | None = None
+) -> dict[str, Any]:
+    """
+    Handle tools/list request
+
+    Returns list of available tools with schemas.
+    Tools in HIDDEN_FROM_SCHEMA_TOOLS are excluded from the response but remain callable.
+    """
+    # Get session to extract tenant context
+    session = await session_manager.get_session(session_id, tenant_key=tenant_key)
+    if not session:
+        raise HTTPException(status_code=401, detail="Session expired")
+
+    # Complete tool catalog matching ALL methods in tool_map (handle_tools_call)
+    # This ensures MCP clients can discover and use all available orchestration tools
+    tools = [
+        *_build_project_tools(),
+        *_build_message_tools(),
+        *_build_task_and_utility_tools(),
+        *_build_agent_coordination_tools(),
+        *_build_context_and_closeout_tools(),
     ]
 
     # Filter out hidden tools (still callable, just not advertised)
