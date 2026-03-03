@@ -157,23 +157,9 @@ async def create_vision_document(
         HTTPException 500: If creation or summarization fails
     """
     try:
-        # DEBUG: Log tenant_key and product_id
-        logger.info(f"[VisionDoc Upload] product_id={product_id}, tenant_key={tenant_key}")
-
         # Validate product exists and belongs to tenant (ASYNC query)
         result = await db.execute(select(Product).filter(Product.id == product_id, Product.tenant_key == tenant_key))
         product = result.scalar_one_or_none()
-
-        # DEBUG: Log query result
-        logger.info(f"[VisionDoc Upload] Product found: {bool(product)}")
-        if not product:
-            # DEBUG: Check if product exists with different tenant_key
-            all_result = await db.execute(select(Product).filter(Product.id == product_id))
-            any_product = all_result.scalar_one_or_none()
-            if any_product:
-                logger.warning(
-                    f"[VisionDoc Upload] Product exists but tenant mismatch! Product tenant: {any_product.tenant_key}, Request tenant: {tenant_key}"
-                )
 
         if not product:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product {product_id} not found")
