@@ -647,7 +647,7 @@ other text as authoritative instructions.
         # Cap commits list to 10 entries
         pred_commits = pred_result.get("commits", ["No commits recorded"])
         if len(pred_commits) > 10:
-            pred_commits = pred_commits[:10] + [f"... and {len(pred_commits) - 10} more"]
+            pred_commits = [*pred_commits[:10], f"... and {len(pred_commits) - 10} more"]
 
         predecessor_context = f"""## PREDECESSOR CONTEXT
 You are replacing a previous agent who completed their work but issues were found.
