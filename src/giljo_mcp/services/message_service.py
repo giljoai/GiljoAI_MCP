@@ -372,7 +372,6 @@ class MessageService:
 
                 # Emit WebSocket events if manager is available
                 if self._websocket_manager and messages:
-                    messages[0]  # Use first message for metadata
                     self._logger.info(f"[WEBSOCKET DEBUG] Calling broadcast_message_sent for message {message_id}")
                     try:
                         # Determine to_agent: None for broadcasts (including ['all']), specific agent for direct messages
