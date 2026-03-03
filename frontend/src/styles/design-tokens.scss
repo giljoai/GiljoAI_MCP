@@ -179,39 +179,3 @@ $shadow-subtle: 0 2px 4px rgba(0, 0, 0, 0.1);
 $shadow-medium: 0 4px 8px rgba(0, 0, 0, 0.15);
 $shadow-strong: 0 8px 16px rgba(0, 0, 0, 0.2);
 
-// =========================================================================
-// 11. MIXINS - Reusable Style Patterns
-// =========================================================================
-
-@mixin container-base {
-  border: $border-container;
-  border-radius: $radius-container;
-  padding: $spacing-container-padding;
-  background: $color-container-background;
-}
-
-@mixin panel-header-base {
-  font-size: $typography-panel-header-size;
-  font-weight: $typography-panel-header-weight;
-  color: $typography-panel-header-color;
-  margin-bottom: 12px;
-}
-
-@mixin panel-content-base {
-  background: $color-panel-background;
-  border-radius: $radius-panel-content;
-  padding: $spacing-panel-content-padding;
-  min-height: $spacing-panel-min-height;
-  font-size: $typography-panel-content-size;
-  font-weight: $typography-panel-content-weight;
-  color: $typography-panel-content-color;
-}
-
-@mixin orchestrator-card-base {
-  display: flex;
-  align-items: center;
-  background: $color-orchestrator-card-background;
-  border: 1px solid $color-orchestrator-card-border;
-  border-radius: $radius-pill;
-  padding: 8px 16px;
-}

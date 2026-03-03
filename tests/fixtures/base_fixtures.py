@@ -229,32 +229,6 @@ async def test_messages(db_session, test_agent_jobs, test_project) -> list:
     return messages
 
 
-# E2E Closeout Workflow Fixtures
-@pytest_asyncio.fixture(scope="function")
-async def e2e_closeout_fixtures(db_session, db_manager):
-    """
-    Create E2E closeout workflow test fixtures.
-
-    Creates:
-    - Test user (test@example.com / testpassword)
-    - Test product (active)
-    - Test project (Mock Project, active)
-    - 3 completed agent jobs
-
-    Returns:
-        dict: Fixtures (user, product, project, agents, tenant_key)
-    """
-    from tests.fixtures.e2e_closeout_fixtures import E2ECloseoutFixtures
-
-    fixture_creator = E2ECloseoutFixtures(db_manager)
-    fixtures = await fixture_creator.create_all_fixtures(db_session)
-
-    # Verify fixtures were created
-    await fixture_creator.verify_fixtures(db_session, fixtures["tenant_key"])
-
-    return fixtures
-
-
 # Note: Synchronous database fixtures have been removed.
 # All tests should use async PostgreSQL fixtures for consistency with production.
 # If you have synchronous tests, they should be migrated to async.
