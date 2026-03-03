@@ -97,7 +97,6 @@ class EnhancedChunker:
         # Calculate search window
         search_start = max(0, target_pos - search_range)
         search_end = min(content_len, target_pos + search_range)
-        content[search_start:search_end]
 
         # Try each boundary type
         for boundary_type, pattern in boundaries:
