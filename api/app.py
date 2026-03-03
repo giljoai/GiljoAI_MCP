@@ -206,74 +206,13 @@ async def lifespan(app: FastAPI):
     logger.info("API shutdown complete")
 
 
-def create_app() -> FastAPI:
-    """Create and configure FastAPI application"""
+def _configure_middleware(app: FastAPI) -> None:
+    """Configure all middleware for the FastAPI application.
 
-    app = FastAPI(
-        title="GiljoAI MCP Orchestrator API v3.0.0",
-        description="""
-        ## Multi-Agent Orchestration System REST API
-
-        The GiljoAI MCP Orchestrator provides a comprehensive REST API for managing AI agent orchestration,
-        enabling coordinated development teams that can tackle projects of unlimited complexity.
-
-        ### Key Features:
-        - **Project Management**: Create and manage development projects with AI agents
-        - **Agent Orchestration**: Coordinate multiple specialized AI agents working together
-        - **Message Queue**: Reliable inter-agent communication with acknowledgment
-        - **Task Tracking**: Capture and manage technical debt and work items
-        - **Configuration**: Flexible runtime and tenant-specific configuration
-        - **Real-time Updates**: WebSocket support for live monitoring
-        - **Statistics**: Comprehensive metrics and performance monitoring
-
-        ### Authentication:
-        API authentication can be enabled via configuration. Supports API key and OAuth methods.
-
-        ### WebSocket:
-        Connect to `/ws/{client_id}` for real-time updates on projects, agents, and messages.
-
-        ### Rate Limiting:
-        Rate limiting can be configured per tenant. Default: 60 requests/minute.
-        """,
-        version="3.0.0",
-        lifespan=lifespan,
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
-        openapi_tags=[
-            {
-                "name": "projects",
-                "description": "Project management operations - create, update, and monitor AI development projects",
-            },
-            {
-                "name": "Agent Management",
-                "description": "Agent management operations - vision chunking, job coordination, and context search (Handover 0017)",
-            },
-            {
-                "name": "messages",
-                "description": "Inter-agent messaging - send, acknowledge, and complete messages between agents",
-            },
-            {"name": "tasks", "description": "Task management - track and manage development tasks and technical debt"},
-            {"name": "context", "description": "Context operations - access vision documents and project context"},
-            {"name": "configuration", "description": "Configuration management - system and tenant-specific settings"},
-            {
-                "name": "statistics",
-                "description": "Statistics and monitoring - system metrics, performance, and health checks",
-            },
-        ],
-        servers=[
-            {"url": "http://localhost:7272", "description": "Local development server"},
-            {"url": "http://0.0.0.0:7272", "description": "LAN accessible server"},
-            {"url": "https://api.giljoai.com", "description": "Production server (future)"},
-        ],
-        contact={
-            "name": "GiljoAI Support",
-            "url": "https://github.com/giljoai/mcp-orchestrator",
-            "email": "support@giljoai.com",
-        },
-        license_info={"name": "MIT License", "url": "https://opensource.org/licenses/MIT"},
-    )
-
+    Sets up CORS, security headers, rate limiting, authentication,
+    CSRF protection, input validation, and API metrics middleware.
+    Middleware is added in reverse order of execution (last added = first executed).
+    """
     # Configure CORS - use explicit origins from config.yaml security section
     from src.giljo_mcp._config_io import read_config as _read_app_config
 
@@ -417,6 +356,13 @@ def create_app() -> FastAPI:
         allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-Tenant-Key", "X-CSRF-Token"],
     )
 
+
+def _register_routers(app: FastAPI) -> None:
+    """Register all API routers on the FastAPI application.
+
+    Includes routers for projects, agents, messages, tasks, configuration,
+    MCP endpoints, organizations, and other feature modules.
+    """
     # Include routers
     # Handover 0046 Issue #4: Router prefix moved to router definition
     # Handover 0126: Modular products module (prefix and tags defined in module __init__.py)
@@ -473,6 +419,14 @@ def create_app() -> FastAPI:
     app.include_router(org_crud.router, prefix="/api/organizations", tags=["organizations"])
     app.include_router(org_members.router, prefix="/api/organizations", tags=["organization-members"])
     app.include_router(org_members.transfer_router, prefix="/api/organizations", tags=["organization-transfer"])
+
+
+def _register_event_handlers(app: FastAPI) -> None:
+    """Register route handlers, WebSocket endpoint, and exception handlers.
+
+    Sets up the root endpoint, health check, WebSocket endpoint for real-time
+    updates, and global exception handlers.
+    """
 
     @app.get("/")
     async def root():
@@ -645,6 +599,80 @@ def create_app() -> FastAPI:
 
     # Note: db_manager is exposed on app.state in lifespan() AFTER initialization
     # Setting it here would be None since lifespan hasn't run yet
+
+
+def create_app() -> FastAPI:
+    """Create and configure FastAPI application"""
+
+    app = FastAPI(
+        title="GiljoAI MCP Orchestrator API v3.0.0",
+        description="""
+        ## Multi-Agent Orchestration System REST API
+
+        The GiljoAI MCP Orchestrator provides a comprehensive REST API for managing AI agent orchestration,
+        enabling coordinated development teams that can tackle projects of unlimited complexity.
+
+        ### Key Features:
+        - **Project Management**: Create and manage development projects with AI agents
+        - **Agent Orchestration**: Coordinate multiple specialized AI agents working together
+        - **Message Queue**: Reliable inter-agent communication with acknowledgment
+        - **Task Tracking**: Capture and manage technical debt and work items
+        - **Configuration**: Flexible runtime and tenant-specific configuration
+        - **Real-time Updates**: WebSocket support for live monitoring
+        - **Statistics**: Comprehensive metrics and performance monitoring
+
+        ### Authentication:
+        API authentication can be enabled via configuration. Supports API key and OAuth methods.
+
+        ### WebSocket:
+        Connect to `/ws/{client_id}` for real-time updates on projects, agents, and messages.
+
+        ### Rate Limiting:
+        Rate limiting can be configured per tenant. Default: 60 requests/minute.
+        """,
+        version="3.0.0",
+        lifespan=lifespan,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+        openapi_tags=[
+            {
+                "name": "projects",
+                "description": "Project management operations - create, update, and monitor AI development projects",
+            },
+            {
+                "name": "Agent Management",
+                "description": "Agent management operations - vision chunking, job coordination, and context search (Handover 0017)",
+            },
+            {
+                "name": "messages",
+                "description": "Inter-agent messaging - send, acknowledge, and complete messages between agents",
+            },
+            {"name": "tasks", "description": "Task management - track and manage development tasks and technical debt"},
+            {"name": "context", "description": "Context operations - access vision documents and project context"},
+            {"name": "configuration", "description": "Configuration management - system and tenant-specific settings"},
+            {
+                "name": "statistics",
+                "description": "Statistics and monitoring - system metrics, performance, and health checks",
+            },
+        ],
+        servers=[
+            {"url": "http://localhost:7272", "description": "Local development server"},
+            {"url": "http://0.0.0.0:7272", "description": "LAN accessible server"},
+            {"url": "https://api.giljoai.com", "description": "Production server (future)"},
+        ],
+        contact={
+            "name": "GiljoAI Support",
+            "url": "https://github.com/giljoai/mcp-orchestrator",
+            "email": "support@giljoai.com",
+        },
+        license_info={"name": "MIT License", "url": "https://opensource.org/licenses/MIT"},
+    )
+
+    # Configure middleware, routers, and event handlers
+    _configure_middleware(app)
+    _register_routers(app)
+    _register_event_handlers(app)
 
     return app
 
