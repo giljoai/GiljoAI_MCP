@@ -243,7 +243,9 @@ async def chunk_vision_document(
         if vision_doc_id:
             from src.giljo_mcp.models.products import VisionDocument
 
-            stmt = select(VisionDocument).where(VisionDocument.id == vision_doc_id)
+            stmt = select(VisionDocument).where(
+                VisionDocument.id == vision_doc_id, VisionDocument.tenant_key == tenant_key
+            )
             vision_result = await db.execute(stmt)
             vision_doc = vision_result.scalar_one_or_none()
             if vision_doc:
