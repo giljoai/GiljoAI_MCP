@@ -183,8 +183,5 @@
 </template>
 
 <script setup>
-import { useTheme } from 'vuetify'
 import CodexMarkIcon from '@/components/icons/CodexMarkIcon.vue'
-
-const theme = useTheme()
 </script>
