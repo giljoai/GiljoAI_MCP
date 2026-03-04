@@ -110,7 +110,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useTheme, useDisplay } from 'vuetify'
+import { useDisplay } from 'vuetify'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -130,7 +130,6 @@ const props = defineProps({
 
 const emit = defineEmits(['toggle-drawer'])
 
-const theme = useTheme()
 const { mobile } = useDisplay()
 const router = useRouter()
 const userStore = useUserStore()

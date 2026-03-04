@@ -20,7 +20,7 @@ Orchestration: get_orchestrator_instructions, spawn_agent_job, etc.
   - Implemented in: api/endpoints/mcp_http.py via OrchestrationService
   - Database: AgentJob, AgentExecution, Project, Product tables
 
-Projects: activate_project, list_projects, etc.
+Projects: list_projects, etc.
   - Implemented in: api/endpoints/mcp_http.py via ProjectService
   - Database: Project table
   - Note: Project creation uses REST API (POST /api/v1/projects/), not MCP tools

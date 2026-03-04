@@ -7,9 +7,6 @@
 </template>
 
 <script setup>
-import { useTheme } from 'vuetify'
-
-const theme = useTheme()
 </script>
 
 <style scoped>
