@@ -369,7 +369,7 @@ const formatDate = (timestamp) => {
       hour: '2-digit',
       minute: '2-digit',
     })
-  } catch (e) {
+  } catch {
     return timestamp
   }
 }
@@ -383,7 +383,7 @@ const formatCommitDate = (timestamp) => {
       day: 'numeric',
       year: 'numeric',
     })
-  } catch (e) {
+  } catch {
     return timestamp
   }
 }

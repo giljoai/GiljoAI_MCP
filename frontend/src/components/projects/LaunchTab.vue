@@ -179,7 +179,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '@/services/api'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { useAgentJobsStore } from '@/stores/agentJobsStore'
 import { useProjectStateStore } from '@/stores/projectStateStore'
@@ -244,48 +243,6 @@ const projectId = computed(() => {
 })
 
 /**
- * Filter out orchestrator from agents list (since it's shown in Default Agent)
- */
-const nonOrchestratorAgents = computed(() => {
-  return sortedJobs.value.filter((agent) => agent.agent_display_name !== 'orchestrator')
-})
-
-/**
- * Get current orchestrator execution (most recent by started_at)
- * Handover 0700i: Removed instance_number sorting - use timestamp instead
- */
-const currentOrchestrator = computed(() => {
-  if (!sortedJobs.value || sortedJobs.value.length === 0) return null
-
-  // Find orchestrator jobs, sort by started_at descending (most recent first)
-  const orchestrators = sortedJobs.value
-    .filter((agent) => agent.agent_display_name === 'orchestrator')
-    .sort((a, b) => {
-      const aTime = a.started_at ? new Date(a.started_at).getTime() : 0
-      const bTime = b.started_at ? new Date(b.started_at).getTime() : 0
-      return bTime - aTime // descending
-    })
-
-  return orchestrators[0] || null
-})
-
-/**
- * Handover 0506: Check if orchestrator needs re-launch
- * True when orchestrator is null or in terminal state (complete/handed_over)
- */
-const needsOrchestratorRelaunch = computed(() => {
-  if (!currentOrchestrator.value) return true
-  const terminalStates = ['complete', 'handed_over', 'silent', 'decommissioned']
-  return terminalStates.includes(currentOrchestrator.value.status)
-})
-
-/**
- * Orchestrator avatar color - always tan (agent's brand color)
- * Status is shown via text label, not avatar color
- */
-const orchestratorAvatarColor = computed(() => getAgentColorConfig('orchestrator').hex)
-
-/**
  * Get agent color based on type
  */
 const getAgentColor = (displayName) => {
@@ -340,46 +297,10 @@ const showMissionEditModal = ref(false)
 const selectedAgentForEdit = ref(null)
 
 /**
- * Get instance number for multi-instance agents
- */
-function getInstanceNumber(agent) {
-  const displayName = agent.agent_display_name?.toLowerCase()
-  if (!displayName) return 1
-
-  const sameTypeAgents = sortedJobs.value.filter((a) => a.agent_display_name?.toLowerCase() === displayName)
-  const index = sameTypeAgents.findIndex(
-    (a) => (a.agent_id || a.job_id) === (agent.agent_id || agent.job_id),
-  )
-
-  return index + 1
-}
-
-/**
  * Handle Edit Description button
  */
 function editDescription() {
   emit('edit-description')
-}
-
-/**
- * Handle Edit Agent Mission button
- */
-function handleEditAgentMission(agent) {
-  const agentId = agent.agent_id || agent.job_id
-  const missionContent = agent.mission || ''
-  emit('edit-agent-mission', agentId, missionContent)
-}
-
-/**
- * Handle Info icon click for Orchestrator
- */
-function handleOrchestratorInfo() {
-  selectedAgent.value = {
-    agent_display_name: 'orchestrator',
-    agent_name: 'Orchestrator',
-    id: 'orchestrator',
-  }
-  showDetailsModal.value = true
 }
 
 /**

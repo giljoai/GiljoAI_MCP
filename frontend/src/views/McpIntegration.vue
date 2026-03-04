@@ -389,7 +389,6 @@ Questions? Let me know!
 <script setup>
 import { ref, computed } from 'vue'
 import { format } from 'date-fns'
-import api from '@/services/api'
 import { getApiBaseURL, getDefaultTenantKey } from '@/config/api'
 import { useClipboard } from '@/composables/useClipboard'
 
@@ -556,7 +555,7 @@ Questions? Let me know!`
 function formatExpiryDate(dateString) {
   try {
     return format(new Date(dateString), "MMMM d, yyyy 'at' h:mm a")
-  } catch (error) {
+  } catch {
     return dateString
   }
 }

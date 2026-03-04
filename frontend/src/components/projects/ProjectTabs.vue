@@ -618,7 +618,7 @@ async function handleCancelStaging() {
 /**
  * Handle closeout project
  */
-async function handleCloseoutProject(closeoutData) {
+async function handleCloseoutProject(_closeoutData) {
   try {
     // Navigate to projects list after closeout
     router.push('/projects')

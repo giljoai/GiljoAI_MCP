@@ -152,7 +152,7 @@ function humanizeTimestamp(timestamp) {
   if (!timestamp) return 'Never'
   try {
     return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
-  } catch (err) {
+  } catch {
     return 'Unknown'
   }
 }

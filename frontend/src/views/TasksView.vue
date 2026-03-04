@@ -519,7 +519,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/stores/tasks'
 import { useProductStore } from '@/stores/products'
 import { useAgentStore } from '@/stores/agents'
@@ -544,8 +544,6 @@ const showCreateDialog = ref(false)
 const editingTask = ref(null)
 const taskForm = ref(null)
 const saving = ref(false)
-
-const user = computed(() => userStore.currentUser)
 
 // Dialog state
 const showNoProductDialog = ref(false)
@@ -599,10 +597,6 @@ const userFilteredTasks = computed(() => {
     return []
   }
   return tasks.value.filter((task) => task.product_id === productId)
-})
-
-const agentOptions = computed(() => {
-  return agentStore.agents.map((agent) => agent.name)
 })
 
 const filteredTasks = computed(() => {
@@ -811,7 +805,7 @@ async function saveTask() {
   try {
     if (editingTask.value) {
       // Exclude parent_task_id from updates (feature not used)
-      const { parent_task_id, ...taskData } = currentTask.value
+      const { parent_task_id: _parent_task_id, ...taskData } = currentTask.value
       await taskStore.updateTask(editingTask.value.id, taskData)
     } else {
       // Add current product_id to new task
@@ -820,7 +814,7 @@ async function saveTask() {
         currentTask.value.product_id = productId
       }
       // Exclude parent_task_id from creation (feature not used)
-      const { parent_task_id, ...taskData } = currentTask.value
+      const { parent_task_id: _parent_task_id, ...taskData } = currentTask.value
       await taskStore.createTask(taskData)
     }
     cancelTask()
