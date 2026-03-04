@@ -194,33 +194,6 @@ class AuthManager:
         # All clients require credentials (unified auth)
         return await self._validate_network_credentials(request)
 
-    def _get_client_ip(self, request: Request) -> str:
-        """
-        Get client IP from request (handles proxies).
-
-        Args:
-            request: FastAPI Request object
-
-        Returns:
-            str: Client IP address
-        """
-        # Check X-Forwarded-For (reverse proxy)
-        forwarded_for = request.headers.get("X-Forwarded-For", "").strip()
-        if forwarded_for:
-            # Take first IP (original client)
-            return forwarded_for.split(",")[0].strip()
-
-        # Check X-Real-IP (nginx)
-        real_ip = request.headers.get("X-Real-IP", "").strip()
-        if real_ip:
-            return real_ip
-
-        # Direct connection
-        if hasattr(request, "client") and request.client:
-            return request.client.host
-
-        return "unknown"
-
     async def _validate_network_credentials(self, request: Request) -> dict[str, Any]:
         """
         Validate JWT token or API key for network clients.

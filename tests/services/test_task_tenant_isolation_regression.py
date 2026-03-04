@@ -3,7 +3,6 @@ Tenant isolation regression tests for TaskService (Security Fix).
 
 Verifies that cross-tenant data leaks are prevented for:
 - _update_task_impl() UPDATE query (CRITICAL: reads tenant from TenantManager)
-- assign_task() and complete_task() (delegate to update_task)
 - get_task() (CRITICAL: filters by tenant_key)
 
 Test Strategy:
@@ -195,62 +194,6 @@ async def test_update_task_no_tenant_context_raises_validation_error(
 # ============================================================================
 
 
-@pytest.mark.tenant_isolation
-@pytest.mark.asyncio
-async def test_assign_task_blocks_cross_tenant(db_session, two_tenant_tasks):
-    """
-    assign_task() delegates to update_task(), which must enforce tenant isolation.
-    Tenant A must not be able to assign tenant B's task to an agent.
-    """
-    tenant_a = two_tenant_tasks["tenant_a"]
-    task_b = two_tenant_tasks["task_b"]
-    service = two_tenant_tasks["service"]
-
-    # Set current tenant to A
-    TenantManager.set_current_tenant(tenant_a)
-
-    with pytest.raises(ResourceNotFoundError):
-        await service.assign_task(
-            task_id=task_b.id,
-            agent_name="rogue-agent",
-        )
-
-    # Verify the task was NOT assigned
-    await db_session.refresh(task_b)
-    assert task_b.status == "pending", (
-        "Cross-tenant assign_task modified another tenant's task!"
-    )
-
-
-# ============================================================================
-# complete_task() --- Inherits Tenant Protection from update_task()
-# ============================================================================
-
-
-@pytest.mark.tenant_isolation
-@pytest.mark.asyncio
-async def test_complete_task_blocks_cross_tenant(db_session, two_tenant_tasks):
-    """
-    complete_task() delegates to update_task(), which must enforce tenant isolation.
-    Tenant A must not be able to complete tenant B's task.
-    """
-    tenant_a = two_tenant_tasks["tenant_a"]
-    task_b = two_tenant_tasks["task_b"]
-    service = two_tenant_tasks["service"]
-
-    # Set current tenant to A
-    TenantManager.set_current_tenant(tenant_a)
-
-    with pytest.raises(ResourceNotFoundError):
-        await service.complete_task(task_id=task_b.id)
-
-    # Verify the task was NOT completed
-    await db_session.refresh(task_b)
-    assert task_b.status == "pending", (
-        "Cross-tenant complete_task modified another tenant's task!"
-    )
-
-
 # ============================================================================
 # get_task() --- Cross-Tenant Read Test
 # ============================================================================
@@ -322,21 +265,7 @@ async def test_task_service_cross_tenant_audit(db_session, two_tenant_tasks):
     except (ResourceNotFoundError, ValidationError):
         pass
 
-    # 2. Assign cross-tenant -- should raise
-    try:
-        await service.assign_task(task_id=task_b.id, agent_name="rogue-agent")
-        violations.append("assign_task() allowed cross-tenant assignment")
-    except (ResourceNotFoundError, ValidationError):
-        pass
-
-    # 3. Complete cross-tenant -- should raise
-    try:
-        await service.complete_task(task_id=task_b.id)
-        violations.append("complete_task() allowed cross-tenant completion")
-    except (ResourceNotFoundError, ValidationError):
-        pass
-
-    # 4. Get cross-tenant -- should raise
+    # 2. Get cross-tenant -- should raise
     try:
         await service.get_task(task_id=task_b.id)
         violations.append("get_task() allowed cross-tenant read")

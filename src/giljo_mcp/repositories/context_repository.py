@@ -301,27 +301,6 @@ class ContextRepository:
         )
         return list(result.scalars().all())
 
-    async def get_summary_by_id(
-        self, session: AsyncSession, tenant_key: str, context_id: str
-    ) -> MCPContextSummary | None:
-        """
-        Get a specific summary by context_id.
-
-        Args:
-            session: Async database session
-            tenant_key: Tenant key for isolation
-            context_id: Context ID to retrieve
-
-        Returns:
-            MCPContextSummary instance or None if not found
-        """
-        result = await session.execute(
-            select(MCPContextSummary).where(
-                MCPContextSummary.tenant_key == tenant_key, MCPContextSummary.context_id == context_id
-            )
-        )
-        return result.scalar_one_or_none()
-
     async def get_token_reduction_stats(
         self, session: AsyncSession, tenant_key: str, product_id: str | None = None
     ) -> dict:

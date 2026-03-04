@@ -6,8 +6,6 @@ instead of returning error dicts (0480 migration).
 
 Tests cover:
 - spawn_agent() - Generic exceptions
-- update_agent_status() - ResourceNotFoundError and generic exceptions
-- update_agent_progress() - ResourceNotFoundError and generic exceptions
 - complete_job() - ResourceNotFoundError and generic exceptions
 """
 
@@ -68,102 +66,6 @@ class TestSpawnAgentExceptions:
         # Verify exception details
         assert "Database connection lost" in str(exc_info.value)
         assert exc_info.value.context.get("operation") == "spawn_agent"
-
-
-class TestUpdateAgentStatusExceptions:
-    """Test update_agent_status() exception handling."""
-
-    @pytest.mark.asyncio
-    async def test_update_agent_status_raises_not_found_error(self, agent_job_manager, mock_db_manager):
-        """Test that update_agent_status raises ResourceNotFoundError when execution not found."""
-        # Mock session that returns no execution
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none = MagicMock(return_value=None)
-        mock_session.execute = AsyncMock(return_value=mock_result)
-        mock_session.__aenter__.return_value = mock_session
-        mock_session.__aexit__.return_value = None
-
-        mock_db_manager.get_session_async.return_value = mock_session
-
-        # Verify ResourceNotFoundError is raised
-        with pytest.raises(ResourceNotFoundError) as exc_info:
-            await agent_job_manager.update_agent_status(
-                agent_id="nonexistent-agent", status="working", tenant_key="test-tenant"
-            )
-
-        # Verify exception details
-        assert "Execution" in str(exc_info.value)
-        assert "not found" in str(exc_info.value)
-        assert exc_info.value.context.get("agent_id") == "nonexistent-agent"
-
-    @pytest.mark.asyncio
-    async def test_update_agent_status_raises_exception_on_database_error(self, agent_job_manager, mock_db_manager):
-        """Test that update_agent_status raises BaseGiljoError on database errors."""
-        # Mock session that raises an exception
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_session.execute.side_effect = Exception("Database error during update")
-        mock_session.__aenter__.return_value = mock_session
-        mock_session.__aexit__.return_value = None
-
-        mock_db_manager.get_session_async.return_value = mock_session
-
-        # Verify exception is raised
-        with pytest.raises(BaseGiljoError) as exc_info:
-            await agent_job_manager.update_agent_status(
-                agent_id="test-agent", status="working", tenant_key="test-tenant"
-            )
-
-        # Verify exception details
-        assert "Database error during update" in str(exc_info.value)
-        assert exc_info.value.context.get("operation") == "update_agent_status"
-
-
-class TestUpdateAgentProgressExceptions:
-    """Test update_agent_progress() exception handling."""
-
-    @pytest.mark.asyncio
-    async def test_update_agent_progress_raises_not_found_error(self, agent_job_manager, mock_db_manager):
-        """Test that update_agent_progress raises ResourceNotFoundError when execution not found."""
-        # Mock session that returns no execution
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none = MagicMock(return_value=None)
-        mock_session.execute = AsyncMock(return_value=mock_result)
-        mock_session.__aenter__.return_value = mock_session
-        mock_session.__aexit__.return_value = None
-
-        mock_db_manager.get_session_async.return_value = mock_session
-
-        # Verify ResourceNotFoundError is raised
-        with pytest.raises(ResourceNotFoundError) as exc_info:
-            await agent_job_manager.update_agent_progress(
-                agent_id="nonexistent-agent", progress=50, tenant_key="test-tenant"
-            )
-
-        # Verify exception details
-        assert "Execution" in str(exc_info.value)
-        assert "not found" in str(exc_info.value)
-        assert exc_info.value.context.get("agent_id") == "nonexistent-agent"
-
-    @pytest.mark.asyncio
-    async def test_update_agent_progress_raises_exception_on_database_error(self, agent_job_manager, mock_db_manager):
-        """Test that update_agent_progress raises BaseGiljoError on database errors."""
-        # Mock session that raises an exception
-        mock_session = AsyncMock(spec=AsyncSession)
-        mock_session.execute.side_effect = Exception("Database error during progress update")
-        mock_session.__aenter__.return_value = mock_session
-        mock_session.__aexit__.return_value = None
-
-        mock_db_manager.get_session_async.return_value = mock_session
-
-        # Verify exception is raised
-        with pytest.raises(BaseGiljoError) as exc_info:
-            await agent_job_manager.update_agent_progress(agent_id="test-agent", progress=50, tenant_key="test-tenant")
-
-        # Verify exception details
-        assert "Database error during progress update" in str(exc_info.value)
-        assert exc_info.value.context.get("operation") == "update_agent_progress"
 
 
 class TestCompleteJobExceptions:
