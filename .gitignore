@@ -146,6 +146,7 @@ certs/*.pem
 api_keys.json
 secrets.json
 credentials.json
+Linux_Installer/credentials/
 
 # User-specific config (should use .example templates)
 config.yaml

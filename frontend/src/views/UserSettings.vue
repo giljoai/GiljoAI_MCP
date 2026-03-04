@@ -205,7 +205,6 @@
 <script setup>
 import { ref, provide, onMounted, onUnmounted, watch } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
-import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import TemplateManager from '@/components/TemplateManager.vue'
@@ -224,7 +223,6 @@ import api from '@/services/api'
 
 // Stores and Theme
 const settingsStore = useSettingsStore()
-const userStore = useUserStore()
 const router = useRouter()
 
 // WebSocket for real-time Git integration updates
