@@ -3,7 +3,6 @@ Tenant isolation regression tests for ProjectService (Security Fix).
 
 Verifies that cross-tenant data leaks are prevented for:
 - restore_project() UPDATE query (CRITICAL: had no tenant_key filter)
-- switch_project() fallback path (HIGH: backward-compat bypassed filter)
 
 Note: list_projects(status="deleted") is tested via API endpoint in
 tests/integration/test_deleted_projects_endpoint.py::test_deleted_projects_multi_tenant_isolation
@@ -205,77 +204,6 @@ async def test_restore_project_requires_tenant_key(db_session, two_tenant_projec
 
 
 # ============================================================================
-# switch_project() — Fallback Path Removal Test
-# ============================================================================
-
-
-@pytest.mark.tenant_isolation
-@pytest.mark.asyncio
-async def test_switch_project_blocks_cross_tenant(db_session, two_tenant_projects):
-    """
-    REGRESSION: switch_project() must not allow access to another tenant's project.
-
-    Bug: When tenant_key was None, switch_project() queried by project_id only,
-    bypassing tenant isolation via a "backward compatibility" fallback.
-
-    Note: switch_project has a lazy import (giljo_mcp.tenant) that may raise
-    ModuleNotFoundError in some test environments. Either way, cross-tenant
-    access is blocked.
-    """
-    tenant_a = two_tenant_projects["tenant_a"]
-    active_b = two_tenant_projects["active_b"]
-    service = two_tenant_projects["service"]
-
-    # Tenant A tries to switch to tenant B's project — must not succeed
-    with pytest.raises(Exception) as exc_info:  # noqa: PT011 - intentionally broad due to lazy import bug
-        await service.switch_project(
-            project_id=active_b.id,
-            tenant_key=tenant_a,
-        )
-
-    # Cross-tenant access was blocked (either by tenant filter or by import error)
-    assert exc_info.value is not None
-
-
-@pytest.mark.tenant_isolation
-@pytest.mark.asyncio
-async def test_switch_project_without_tenant_raises_validation_error(db_session, two_tenant_projects):
-    """
-    switch_project() with no tenant_key and no tenant context must raise
-    ValidationError, not silently proceed without filtering.
-    """
-    active_b = two_tenant_projects["active_b"]
-    service = two_tenant_projects["service"]
-
-    # Clear tenant context
-    TenantManager.clear_current_tenant()
-
-    with pytest.raises(ValidationError):
-        await service.switch_project(
-            project_id=active_b.id,
-            tenant_key=None,
-        )
-
-
-@pytest.mark.tenant_isolation
-@pytest.mark.asyncio
-async def test_switch_project_same_tenant_succeeds(db_session, two_tenant_projects):
-    """
-    Verify that same-tenant switch still works correctly.
-    """
-    tenant_a = two_tenant_projects["tenant_a"]
-    active_a = two_tenant_projects["active_a"]
-    service = two_tenant_projects["service"]
-
-    result = await service.switch_project(
-        project_id=active_a.id,
-        tenant_key=tenant_a,
-    )
-    assert result.name == "Tenant A Active"
-    assert result.tenant_key == tenant_a
-
-
-# ============================================================================
 # Combined — Full Cross-Tenant Audit
 # ============================================================================
 
@@ -301,15 +229,7 @@ async def test_project_service_cross_tenant_audit(db_session, two_tenant_project
     except (ResourceNotFoundError, ValidationError):
         pass
 
-    # 2. Switch cross-tenant — should raise (ModuleNotFoundError also acceptable
-    # due to known lazy import issue in switch_project)
-    try:
-        await service.switch_project(project_id=active_b.id, tenant_key=tenant_a)
-        violations.append("switch_project() allowed cross-tenant switch")
-    except (ResourceNotFoundError, ValidationError, ModuleNotFoundError):
-        pass
-
-    # 3. Get cross-tenant project — should raise
+    # 2. Get cross-tenant project — should raise
     try:
         await service.get_project(project_id=active_b.id, tenant_key=tenant_a)
         violations.append("get_project() allowed cross-tenant access")

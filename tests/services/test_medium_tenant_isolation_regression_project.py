@@ -200,37 +200,26 @@ async def test_medium_defense_in_depth_audit(two_tenant_products):
     tenant_manager = TenantManager()
     violations = []
 
-    # 1. update_quality_standards cross-tenant
+    # 1. get_cascade_impact cross-tenant
     product_service_a = ProductService(
         db_manager=data["db_manager"],
         tenant_key=data["tenant_a"],
         test_session=data["db_session"],
     )
     try:
-        await product_service_a.update_quality_standards(
-            product_id=data["product_b"].id,
-            quality_standards="Hijacked!",
-            tenant_key=data["tenant_a"],
-        )
-        violations.append("update_quality_standards() allowed cross-tenant update")
-    except ResourceNotFoundError:
-        pass
-
-    # 2. get_cascade_impact cross-tenant
-    try:
         await product_service_a.get_cascade_impact(product_id=data["product_b"].id)
         violations.append("get_cascade_impact() allowed cross-tenant access")
     except ResourceNotFoundError:
         pass
 
-    # 3. get_product_statistics cross-tenant
+    # 2. get_product_statistics cross-tenant
     try:
         await product_service_a.get_product_statistics(product_id=data["product_b"].id)
         violations.append("get_product_statistics() allowed cross-tenant access")
     except ResourceNotFoundError:
         pass
 
-    # 4. get_project cross-tenant
+    # 3. get_project cross-tenant
     project_service_a = ProjectService(
         db_manager=data["db_manager"],
         tenant_manager=tenant_manager,

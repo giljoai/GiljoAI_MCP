@@ -60,7 +60,6 @@ from src.giljo_mcp.schemas.service_responses import (
     ProjectPurgeResult,
     ProjectResumeResult,
     ProjectSummaryResult,
-    ProjectSwitchResult,
     SoftDeleteResult,
 )
 from src.giljo_mcp.tenant import TenantManager
@@ -2196,67 +2195,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
 
             return OperationResult(
                 message=f"Project {project_id} restored successfully",
-            )
-
-    # ============================================================================
-    # State & Metrics
-    # ============================================================================
-
-    async def switch_project(self, project_id: str, tenant_key: str | None = None) -> ProjectSwitchResult:
-        """
-        Switch to a different project context.
-
-        This updates the tenant context and creates/activates a session
-        for the target project.
-
-        Args:
-            project_id: Project UUID to switch to
-            tenant_key: Tenant key for multi-tenant isolation (uses context if not provided)
-
-        Returns:
-            Project details dictionary
-
-        Raises:
-            ValidationError: No tenant context available
-            ResourceNotFoundError: Project not found or access denied
-
-        Example:
-            >>> result = await service.switch_project("abc-123", tenant_key="tenant-abc")
-            >>> print(f"Switched to: {result['name']}")
-        """
-        async with self._get_session() as db_session:
-            # TENANT ISOLATION: Require tenant_key, fall back to context
-            if not tenant_key:
-                tenant_key = self.tenant_manager.get_current_tenant()
-            if not tenant_key:
-                raise ValidationError(
-                    message="No tenant context available",
-                    context={"operation": "switch_project", "project_id": project_id},
-                )
-
-            result = await db_session.execute(
-                select(Project).where(and_(Project.tenant_key == tenant_key, Project.id == project_id))
-            )
-            project = result.scalar_one_or_none()
-
-            if not project:
-                raise ResourceNotFoundError(
-                    message="Project not found or access denied",
-                    context={"project_id": project_id, "tenant_key": tenant_key},
-                )
-
-            # Set tenant context
-            self.tenant_manager.set_current_tenant(project.tenant_key)
-
-            # NOTE: Session tracking removed (Handover 0423 - dead code cleanup)
-
-            self._logger.info(f"Switched to project '{project.name}' (ID: {project_id})")
-
-            return ProjectSwitchResult(
-                project_id=str(project.id),
-                name=project.name,
-                mission=project.mission,
-                tenant_key=project.tenant_key,
             )
 
     # ============================================================================

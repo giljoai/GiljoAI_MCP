@@ -245,18 +245,6 @@ class DatabaseManager:
             return f"postgresql://{username}:{password}@{host}:{port}/{database}"
         return f"postgresql://{username}@{host}:{port}/{database}"
 
-    def get_tenant_filter(self, tenant_key: str) -> dict[str, Any]:
-        """
-        Get filter dictionary for tenant isolation.
-
-        Args:
-            tenant_key: The tenant key to filter by
-
-        Returns:
-            Filter dictionary for SQLAlchemy queries
-        """
-        return {"tenant_key": tenant_key}
-
     def apply_tenant_filter(self, query: Any, model: Any, tenant_key: Optional[str] = None) -> Any:
         """
         Apply tenant filtering to a query using TenantManager.
@@ -283,17 +271,6 @@ class DatabaseManager:
             PermissionError: If entity belongs to different tenant
         """
         TenantManager.ensure_tenant_isolation(entity, tenant_key)
-
-    def with_tenant(self, tenant_key: str):
-        """
-        Context manager for tenant-scoped operations.
-
-        Usage:
-            with db_manager.with_tenant("tk_abc123..."):
-                # All database operations use this tenant
-                session = db_manager.get_session()
-        """
-        return TenantManager.with_tenant(tenant_key)
 
     @asynccontextmanager
     async def get_tenant_session_async(self, tenant_key: str):

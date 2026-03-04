@@ -8,7 +8,7 @@ Tests that WebSocket events include correct counter values:
 - Broadcast message events include correct counters for all recipients
 
 Split from test_message_service_counters_0387f.py during test reorganization.
-Updated for Handover 0731c: Typed returns (SendMessageResult, AcknowledgeMessageResult, etc.)
+Updated for Handover 0731c: Typed returns (SendMessageResult, etc.)
 """
 
 from unittest.mock import MagicMock
@@ -20,7 +20,6 @@ import pytest
 from src.giljo_mcp.models.agent_identity import AgentExecution
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.schemas.service_responses import (
-    AcknowledgeMessageResult,
     SendMessageResult,
 )
 from src.giljo_mcp.services.message_service import MessageService
@@ -140,58 +139,6 @@ async def test_message_received_event_includes_waiting_counter(
     # This will fail until we add the parameter to the broadcast call
     assert "waiting_count" in call_args.kwargs
     assert call_args.kwargs["waiting_count"] == 1
-
-
-@pytest.mark.asyncio
-async def test_message_acknowledged_event_includes_counters(
-    message_service: MessageService,
-    test_project_with_agents: tuple[Project, list[AgentExecution]],
-    db_session: AsyncSession,
-    test_tenant_key: str,
-    mock_websocket_manager: MagicMock,
-):
-    """Test that message:acknowledged event includes waiting_count and read_count."""
-    project, agents = test_project_with_agents
-    orchestrator = agents[0]  # sender
-    analyzer = agents[1]  # recipient
-
-    # Send message first
-    result = await message_service.send_message(
-        to_agents=[analyzer.agent_id],
-        content="Test message",
-        project_id=project.id,
-        from_agent=orchestrator.agent_display_name,
-        tenant_key=test_tenant_key,
-    )
-    # Handover 0731c: send_message returns SendMessageResult typed model
-    assert isinstance(result, SendMessageResult)
-    message_id = result.message_id
-
-    # Reset mock to track only acknowledge call
-    mock_websocket_manager.reset_mock()
-
-    # Acknowledge message
-    ack_result = await message_service.acknowledge_message(
-        message_id=message_id,
-        agent_id=analyzer.agent_id,
-        tenant_key=test_tenant_key,
-    )
-    # Handover 0731c: acknowledge_message returns AcknowledgeMessageResult typed model
-    assert isinstance(ack_result, AcknowledgeMessageResult)
-    assert ack_result.acknowledged is True
-
-    # Verify WebSocket broadcast_message_acknowledged was called
-    assert mock_websocket_manager.broadcast_message_acknowledged.called
-
-    # Get the call arguments
-    call_args = mock_websocket_manager.broadcast_message_acknowledged.call_args
-
-    # Verify waiting_count and read_count are included in the call
-    # This will fail until we add the parameters to the broadcast call
-    assert "waiting_count" in call_args.kwargs
-    assert "read_count" in call_args.kwargs
-    assert call_args.kwargs["waiting_count"] == 0  # decremented from 1
-    assert call_args.kwargs["read_count"] == 1  # incremented from 0
 
 
 @pytest.mark.asyncio

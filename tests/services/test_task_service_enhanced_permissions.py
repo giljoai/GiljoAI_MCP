@@ -2,7 +2,6 @@
 Test suite for TaskService permission helpers - split from test_task_service_enhanced.py
 
 Covers:
-- can_modify_task (permission helper)
 - can_delete_task (permission helper)
 """
 
@@ -69,39 +68,6 @@ async def test_task(db_session, test_tenant_key, test_product, test_project, tes
 # ============================================================================
 # TEST: Permission Helpers (unchanged - already return bool)
 # ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_can_modify_task_as_creator(task_service, test_task, test_user):
-    """Test creator can modify their own task"""
-    can_modify = task_service.can_modify_task(test_task, test_user)
-    assert can_modify is True
-
-
-@pytest.mark.asyncio
-async def test_can_modify_task_as_admin(task_service, test_task, admin_user):
-    """Test admin can modify any task in tenant"""
-    can_modify = task_service.can_modify_task(test_task, admin_user)
-    assert can_modify is True
-
-
-@pytest.mark.asyncio
-async def test_can_modify_task_denied(task_service, test_task, db_session, test_tenant_key):
-    """Test other developer cannot modify task they didn't create"""
-    other_user = User(
-        id=str(uuid4()),
-        username=f"otherdev_{uuid4().hex[:6]}",
-        email=f"otherdev_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hash("Password123"),
-        role="developer",
-        tenant_key=test_tenant_key,
-        is_active=True,
-    )
-    db_session.add(other_user)
-    await db_session.commit()
-
-    can_modify = task_service.can_modify_task(test_task, other_user)
-    assert can_modify is False
 
 
 @pytest.mark.asyncio
