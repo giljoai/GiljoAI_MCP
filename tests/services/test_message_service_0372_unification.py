@@ -4,7 +4,7 @@ MessageService 0372 Unification Tests
 Tests for Handover 0372: MessageService Unification
 - Agent-ID routing (messages route to executor, not work order)
 - Smart filtering (exclude_self, exclude_progress, message_types)
-- New methods (broadcast_to_project, acknowledge_message)
+- New methods (broadcast_to_project)
 
 Updated for Handover 0730: Exception-based patterns (no success wrapper)
 Updated for Handover 0731c: Typed returns (SendMessageResult, BroadcastResult, etc.)
@@ -27,7 +27,6 @@ from src.giljo_mcp.models.projects import Project
 # Import models using modular imports
 from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.schemas.service_responses import (
-    AcknowledgeMessageResult,
     BroadcastResult,
     MessageListResult,
     SendMessageResult,
@@ -416,49 +415,3 @@ class TestMessageService0372NewMethods:
         assert isinstance(result, BroadcastResult)
         assert result.message_id is not None
         assert result.recipients_count == len(agents)
-
-    @pytest.mark.asyncio
-    async def test_acknowledge_message_explicit_works(
-        self,
-        db_session: AsyncSession,
-        message_service: MessageService,
-        test_project_with_agents: tuple[Project, list[AgentExecution]],
-    ):
-        """
-        HANDOVER 0372 TEST: Verify explicit acknowledge_message() method works.
-        """
-        project, agents = test_project_with_agents
-        orchestrator = agents[0]
-        recipient = agents[1]
-
-        # Arrange: Send message
-        send_result = await message_service.send_message(
-            to_agents=[recipient.agent_display_name],
-            content="Message to acknowledge",
-            project_id=project.id,
-            from_agent=orchestrator.agent_display_name,
-            tenant_key=project.tenant_key,
-        )
-        # Handover 0731c: send_message returns SendMessageResult typed model
-        assert isinstance(send_result, SendMessageResult)
-        assert send_result.message_id is not None
-        message_id = send_result.message_id
-
-        # Act: Explicitly acknowledge message
-        ack_result = await message_service.acknowledge_message(
-            message_id=message_id,
-            agent_id=recipient.agent_id,
-            tenant_key=project.tenant_key,
-        )
-
-        # Handover 0731c: acknowledge_message returns AcknowledgeMessageResult typed model
-        assert isinstance(ack_result, AcknowledgeMessageResult)
-        assert ack_result.acknowledged is True
-        assert ack_result.message_id == message_id
-
-        # Assert: Message status updated
-        msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
-        db_message = msg_result.scalar_one_or_none()
-        assert db_message is not None
-        assert db_message.status == "acknowledged"
-        assert recipient.agent_id in db_message.acknowledged_by

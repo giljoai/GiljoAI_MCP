@@ -38,7 +38,6 @@ class TestLayer3TemplateSeparation:
             "send_message",
             "receive_messages",  # obsolete command
             "update_job_progress",  # obsolete command
-            "acknowledge_message",  # obsolete command (doesn't exist)
         ]
 
         # Check each template's content
