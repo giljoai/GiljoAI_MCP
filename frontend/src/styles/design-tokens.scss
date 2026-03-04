@@ -34,7 +34,7 @@ $color-border-tertiary: rgba(255, 255, 255, 0.05); // Row separators (5% opacity
 // 3. COLOR TOKENS - Text Colors
 // =========================================================================
 
-$color-text-primary: #e0e0e0; // Main text
+$color-text-primary: #e1e1e1; // Main text
 $color-text-secondary: #999; // Labels, headers
 $color-text-tertiary: #ccc; // Subdued text
 $color-text-highlight: #ffd700; // Yellow - status, waiting
@@ -43,12 +43,12 @@ $color-text-highlight: #ffd700; // Yellow - status, waiting
 // 4. COLOR TOKENS - Agent Avatar Colors
 // =========================================================================
 
-$color-agent-orchestrator: #d4a574; // Gold/tan - primary orchestrator color
-$color-agent-analyzer: #e1564b; // Red
-$color-agent-implementor: #3493bf; // Blue
-$color-agent-tester: #d4a574; // Gold/tan variant
-$color-agent-researcher: #27ae60; // Green
-$color-agent-reviewer: #9b59b6; // Purple
+$color-agent-orchestrator: #d4a574; // Tan - matches agentColors.js
+$color-agent-analyzer: #e74c3c; // Red - matches agentColors.js
+$color-agent-implementor: #3498db; // Blue - matches agentColors.js
+$color-agent-tester: #ffc300; // Yellow - matches agentColors.js
+$color-agent-researcher: #27ae60; // Green (documenter alias) - matches agentColors.js
+$color-agent-reviewer: #9b59b6; // Purple - matches agentColors.js
 
 // Avatar text color (light)
 $color-avatar-text-light: #000; // Text on light backgrounds (orchestrator)
@@ -57,11 +57,11 @@ $color-avatar-text-light: #000; // Text on light backgrounds (orchestrator)
 // 5. COLOR TOKENS - Status Colors
 // =========================================================================
 
-$color-status-waiting: #ffd700; // Yellow italic
-$color-status-working: #ffd700; // Yellow italic
-$color-status-complete: #67bd6d; // Green
-$color-status-failed: #e53935; // Red
-$color-status-cancelled: #ff9800; // Orange
+$color-status-waiting: #ffd700; // Yellow - matches statusConfig.js
+$color-status-working: #ffffff; // White - matches statusConfig.js
+$color-status-complete: #67bd6d; // Green - matches statusConfig.js
+$color-status-failed: #c6298c; // Pink - matches statusConfig.js (failure)
+$color-status-blocked: #ff9800; // Orange - matches statusConfig.js
 
 // =========================================================================
 // 5b. COLOR TOKENS - Additional Status Colors
@@ -108,7 +108,7 @@ $spacing-table-header-padding: 12px 16px; // Header cell padding
 // =========================================================================
 
 // Font family
-$typography-font-primary: "Cairo", sans-serif;
+$typography-font-primary: "Roboto", sans-serif;
 
 // Font sizes
 $typography-font-size-header: 1.125rem; // 18px - Panel headers
@@ -124,7 +124,7 @@ $typography-panel-header-color: $color-text-secondary; // #999
 // Panel content typography
 $typography-panel-content-size: 0.875rem; // 14px
 $typography-panel-content-weight: 400; // Normal weight
-$typography-panel-content-color: $color-text-primary; // #e0e0e0
+$typography-panel-content-color: $color-text-primary; // #e1e1e1
 
 // Font weights
 $typography-font-weight-normal: 400;
@@ -140,23 +140,28 @@ $border-width-thin: 1px; // Row separators
 $border-width-standard: 2px; // Container borders
 $border-width-thick: 3px; // Active tab borders
 
-// Border radius
-$border-radius-small: 8px; // Input fields
-$border-radius-medium: 10px; // Panels, buttons
-$border-radius-large: 16px; // Main container
-$border-radius-pill: 24px; // Orchestrator card
+// Border radius — unified 4-token scale (design system)
+$border-radius-sharp: 4px; // Tight corners, scrollbars
+$border-radius-default: 8px; // Inputs, panels, buttons
+$border-radius-rounded: 16px; // Containers, cards
+$border-radius-pill: 9999px; // Pills, tags
+
+// Backward-compatible aliases
+$border-radius-small: $border-radius-sharp;
+$border-radius-medium: $border-radius-default;
+$border-radius-large: $border-radius-rounded;
 
 // Container border (complete specification)
 $border-container: 2px solid rgba(255, 255, 255, 0.2);
 
-// Border radius tokens (aliases)
-$radius-container: 16px; // Main container border-radius
-$radius-panel-content: 10px; // Panel content border-radius
-$radius-small: 8px; // Small radius
-$radius-medium: 10px; // Medium radius
-$radius-large: 16px; // Large radius
-$radius-pill: 24px; // Pill-shaped radius
-$radius-scrollbar: 4px; // Scrollbar border-radius
+// Semantic radius aliases
+$radius-container: $border-radius-rounded;
+$radius-panel-content: $border-radius-default;
+$radius-small: $border-radius-sharp;
+$radius-medium: $border-radius-default;
+$radius-large: $border-radius-rounded;
+$radius-pill: $border-radius-pill;
+$radius-scrollbar: $border-radius-sharp;
 
 // =========================================================================
 // 9. UI COMPONENT COLORS (Orchestrator Card, Scrollbars, etc)
@@ -172,10 +177,11 @@ $color-scrollbar-thumb-background: rgba(255, 255, 255, 0.2); // Scrollbar thumb
 $color-scrollbar-thumb-hover-background: rgba(255, 255, 255, 0.3); // Scrollbar thumb on hover
 
 // =========================================================================
-// 10. SHADOW TOKENS
+// 10. ELEVATION TOKENS (surface lightening, not shadows)
 // =========================================================================
 
-$shadow-subtle: 0 2px 4px rgba(0, 0, 0, 0.1);
-$shadow-medium: 0 4px 8px rgba(0, 0, 0, 0.15);
-$shadow-strong: 0 8px 16px rgba(0, 0, 0, 0.2);
+$elevation-flat: #0e1c2d; // Base surface
+$elevation-raised: #182739; // Cards, panels
+$elevation-elevated: #1e3147; // Modals, dropdowns
+$elevation-overlay: #243b53; // Overlays, popovers
 
