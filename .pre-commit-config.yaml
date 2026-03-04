@@ -154,7 +154,7 @@ repos:
     hooks:
       - id: eslint-warning-budget
         name: ESLint warning budget
-        entry: bash -c 'cd frontend && npx eslint src/ --max-warnings=124'
+        entry: bash -c 'cd frontend && npx eslint src/ --max-warnings=8'
         language: system
         files: ^frontend/src/.*\.(js|vue)$
         pass_filenames: false
