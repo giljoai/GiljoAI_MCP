@@ -1291,63 +1291,6 @@ class ProductService:
             ) from e
 
     # ============================================================================
-    # Validation Methods
-    # ============================================================================
-
-    @staticmethod
-    def validate_project_path(project_path: str) -> bool:
-        """
-        Validate project path for agent export functionality (Handover 0084).
-
-        Args:
-            project_path: File system path to validate
-
-        Returns:
-            True if valid, raises ValidationError if invalid
-
-        Raises:
-            ValidationError: If path is invalid, doesn't exist, isn't a directory, or isn't writable
-
-        Example:
-            >>> ProductService.validate_project_path("/path/to/project")
-            True
-        """
-        from pathlib import Path
-
-        if not project_path:
-            return True  # Optional field
-
-        try:
-            # Expand user home directory if present
-            path = Path(project_path).expanduser()
-
-            # Check if path exists and is a directory
-            if not path.exists():
-                logger.warning(f"Project path validation failed - does not exist: {path}")
-                raise ValidationError("Project path does not exist")
-
-            if not path.is_dir():
-                logger.warning(f"Project path validation failed - not a directory: {path}")
-                raise ValidationError("Project path is not a directory")
-
-            # Check if path is writable (for .claude/agents creation)
-            try:
-                test_dir = path / ".claude_test_write"
-                test_dir.mkdir(exist_ok=True)
-                test_dir.rmdir()
-            except (PermissionError, OSError) as e:
-                logger.warning(f"Project path validation failed - not writable: {path}")
-                raise ValidationError("Project path is not writable") from e
-
-            return True
-
-        except ValidationError:
-            raise
-        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
-            logger.warning(f"Project path validation failed - invalid path: {project_path}, error: {e}")
-            raise ValidationError("Invalid project path") from e
-
-    # ============================================================================
     # WebSocket Event Emission (Handover 0139a)
     # ============================================================================
 
