@@ -212,8 +212,10 @@ class RegisterUserResponse(BaseModel):
     id: str
     username: str
     email: str | None
+    full_name: str | None = None
     role: str
     tenant_key: str
+    is_active: bool = True
     message: str
 
 
