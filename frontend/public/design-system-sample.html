@@ -943,6 +943,477 @@
         </div>
       </div>
     </div>
+
+    <!-- Toggles, Radios, Progress Bars -->
+    <div class="grid-2" style="margin-top: 24px;">
+
+      <!-- Toggles -->
+      <div class="card">
+        <h4>Toggle Switch</h4>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Source: App.vue global styling</p>
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+
+          <!-- OFF state -->
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="position: relative; width: 42px; height: 24px; cursor: default;">
+              <div style="width: 42px; height: 14px; border-radius: 7px; background: rgba(33,150,243,0.2); position: absolute; top: 5px;"></div>
+              <div style="width: 20px; height: 20px; border-radius: 50%; background: rgba(33,150,243,0.4); position: absolute; top: 2px; left: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
+            </div>
+            <div>
+              <span style="font-size: 0.875rem; color: #e1e1e1;">OFF</span>
+              <div class="token-label">thumb: rgba(33,150,243,0.4) | track: rgba(33,150,243,0.2)</div>
+            </div>
+          </div>
+
+          <!-- ON state -->
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="position: relative; width: 42px; height: 24px; cursor: default;">
+              <div style="width: 42px; height: 14px; border-radius: 7px; background: rgba(76,175,80,0.3); position: absolute; top: 5px; box-shadow: 0 0 8px 2px rgba(255,195,0,0.5);"></div>
+              <div style="width: 20px; height: 20px; border-radius: 50%; background: #67bd6d; position: absolute; top: 2px; left: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
+            </div>
+            <div>
+              <span style="font-size: 0.875rem; color: #e1e1e1;">ON</span>
+              <div class="token-label">thumb: #67bd6d (success) | track: rgba(76,175,80,0.3) | glow: #ffc300</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Radio Buttons -->
+      <div class="card">
+        <h4>Radio Buttons</h4>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Inherits Vuetify primary (#ffc300)</p>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+
+          <!-- Unselected -->
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #8f97b7; background: transparent; flex-shrink: 0;"></div>
+            <div>
+              <span style="font-size: 0.875rem; color: #e1e1e1;">Unselected</span>
+              <div class="token-label">border: 2px solid #8f97b7</div>
+            </div>
+          </div>
+
+          <!-- Selected -->
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #ffc300; background: transparent; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #ffc300;"></div>
+            </div>
+            <div>
+              <span style="font-size: 0.875rem; color: #e1e1e1;">Selected</span>
+              <div class="token-label">border + fill: #ffc300 (primary)</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Bars -->
+    <div class="card" style="margin-top: 24px;">
+      <h4>Progress Bars</h4>
+      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 20px;">Stepper bar: yellow (#ffc300) while in progress, green (#67bd6d) at 100%. v-progress-linear uses Vuetify theme colors.</p>
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+
+        <!-- Stepper progress (as seen on Settings) -->
+        <div>
+          <p style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500; margin-bottom: 8px;">Stepper Bar (Settings checklist)</p>
+          <div style="position: relative; height: 18px; margin-bottom: 4px;">
+            <div style="position: absolute; left: 0; right: 0; height: 18px; background: rgba(225,225,225,0.18); border-radius: 9px;"></div>
+            <div style="position: absolute; left: 0; width: 35%; height: 18px; background: #ffc300; border-radius: 9px;"></div>
+            <div style="position: absolute; left: 0; right: 0; height: 18px; display: flex; justify-content: space-between; align-items: center; padding: 0 4px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffc300;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffc300;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: rgba(225,225,225,0.4);"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: rgba(225,225,225,0.4);"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: rgba(225,225,225,0.4);"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: rgba(225,225,225,0.4);"></div>
+            </div>
+          </div>
+          <div class="token-label">fill: #ffc300 (secondary) | track: rgba(on-surface, 0.18) | dots: #ffc300 done, gray pending</div>
+        </div>
+
+        <!-- Stepper complete -->
+        <div>
+          <p style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500; margin-bottom: 8px;">Stepper Bar (100% complete)</p>
+          <div style="position: relative; height: 18px; margin-bottom: 4px;">
+            <div style="position: absolute; left: 0; right: 0; height: 18px; background: rgba(225,225,225,0.18); border-radius: 9px;"></div>
+            <div style="position: absolute; left: 0; width: 100%; height: 18px; background: #67bd6d; border-radius: 9px;"></div>
+            <div style="position: absolute; left: 0; right: 0; height: 18px; display: flex; justify-content: space-between; align-items: center; padding: 0 4px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #67bd6d;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #67bd6d;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #67bd6d;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #67bd6d;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #67bd6d;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #67bd6d;"></div>
+            </div>
+          </div>
+          <div class="token-label">fill: #67bd6d (success) when all steps complete | Source: StartupQuickStart.vue</div>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid rgba(49,80,116,0.4); margin: 4px 0;">
+
+        <!-- v-progress-linear variants -->
+        <p style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500; margin-bottom: -8px;">v-progress-linear (thin bar variant)</p>
+
+        <!-- Primary -->
+        <div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="font-size: 0.75rem; color: #e1e1e1;">Primary (loading)</span>
+            <span class="token-label">#ffc300</span>
+          </div>
+          <div style="width: 100%; height: 6px; background: rgba(255,195,0,0.15); border-radius: 3px; overflow: hidden;">
+            <div style="width: 65%; height: 100%; background: #ffc300; border-radius: 3px;"></div>
+          </div>
+        </div>
+
+        <!-- Success -->
+        <div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="font-size: 0.75rem; color: #e1e1e1;">Success (complete)</span>
+            <span class="token-label">#67bd6d</span>
+          </div>
+          <div style="width: 100%; height: 6px; background: rgba(103,189,109,0.15); border-radius: 3px; overflow: hidden;">
+            <div style="width: 100%; height: 100%; background: #67bd6d; border-radius: 3px;"></div>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="font-size: 0.75rem; color: #e1e1e1;">Error (weak/failed)</span>
+            <span class="token-label">#c6298c</span>
+          </div>
+          <div style="width: 100%; height: 6px; background: rgba(198,41,140,0.15); border-radius: 3px; overflow: hidden;">
+            <div style="width: 25%; height: 100%; background: #c6298c; border-radius: 3px;"></div>
+          </div>
+        </div>
+
+        <div class="token-label" style="margin-top: 4px;">
+          Password strength example: error &lt; 40%, warning (#ffc300) &lt; 70%, success &ge; 70% (FirstLogin.vue)
+        </div>
+      </div>
+    </div>
+
+    <!-- Checkboxes & Dropdowns -->
+    <div class="grid-2" style="margin-top: 24px;">
+
+      <!-- Checkboxes -->
+      <div class="card">
+        <h4>Checkboxes</h4>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Vuetify defaults with color="primary". No custom overrides.</p>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 20px; height: 20px; border-radius: 4px; border: 2px solid #8f97b7; background: transparent; flex-shrink: 0;"></div>
+            <div>
+              <span style="font-size: 0.875rem; color: #e1e1e1;">Unchecked</span>
+              <div class="token-label">border: 2px solid #8f97b7</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 20px; height: 20px; border-radius: 4px; border: 2px solid #ffc300; background: #ffc300; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <span style="font-size: 0.75rem; color: #0e1c2d; font-weight: 700;">&#10003;</span>
+            </div>
+            <div>
+              <span style="font-size: 0.875rem; color: #e1e1e1;">Checked</span>
+              <div class="token-label">fill + border: #ffc300 | check: #0e1c2d</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dropdowns -->
+      <div class="card">
+        <h4>Dropdown / Select</h4>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Always variant="outlined", density="compact". Vuetify defaults.</p>
+        <div style="display: flex; flex-direction: column; gap: 12px; max-width: 300px;">
+          <div>
+            <span class="input-label">Default</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border: 1px solid rgba(225,225,225,0.2); border-radius: 8px; background: transparent; margin-top: 6px;">
+              <span style="font-size: 0.875rem; color: #8f97b7;">Select option...</span>
+              <span style="color: #8f97b7; font-size: 0.75rem;">&#9660;</span>
+            </div>
+          </div>
+          <div>
+            <span class="input-label">Focused / Open</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border: 2px solid #ffc300; border-radius: 8px; background: transparent; margin-top: 6px;">
+              <span style="font-size: 0.875rem; color: #e1e1e1;">Sort by name</span>
+              <span style="color: #ffc300; font-size: 0.75rem;">&#9650;</span>
+            </div>
+            <div style="margin-top: 2px; border: 1px solid #315074; border-radius: 8px; background: #182739; overflow: hidden;">
+              <div style="padding: 8px 14px; font-size: 0.875rem; color: #e1e1e1; background: rgba(255,195,0,0.12);">Sort by name</div>
+              <div style="padding: 8px 14px; font-size: 0.875rem; color: #e1e1e1;">Sort by date</div>
+              <div style="padding: 8px 14px; font-size: 0.875rem; color: #e1e1e1;">Sort by status</div>
+            </div>
+          </div>
+          <div class="token-label">focus border: #ffc300 | menu bg: #182739 | selected: rgba(255,195,0,0.12)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================
+       3b. TABS & NAVIGATION
+       ============================================ -->
+  <section class="section">
+    <h2 class="section-title">Tabs &amp; Navigation</h2>
+    <p class="section-subtitle">Tab styles, sidebar navigation, and wayfinding patterns</p>
+
+    <div class="grid-2">
+
+      <!-- Tabs -->
+      <div class="card">
+        <h4>Tabs</h4>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Source: global-tabs.scss. Slider hidden. Opacity-based states.</p>
+
+        <!-- Bordered tab demo -->
+        <div style="margin-bottom: 20px;">
+          <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 8px; font-weight: 600;">Bordered Tabs (Settings style)</p>
+          <div style="display: flex; gap: 0;">
+            <div style="padding: 8px 16px; border: 1px solid #315074; border-bottom: none; border-radius: 8px 8px 0 0; background: #182739; font-size: 0.875rem; color: #e1e1e1; font-weight: 500; opacity: 1;">Active</div>
+            <div style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0; background: transparent; font-size: 0.875rem; color: #e1e1e1; opacity: 0.6;">Inactive</div>
+            <div style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0; background: rgba(225,225,225,0.04); font-size: 0.875rem; color: #e1e1e1; opacity: 0.8;">Hover</div>
+            <div style="padding: 8px 16px; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0; background: transparent; font-size: 0.875rem; color: #e1e1e1; opacity: 0.3;">Disabled</div>
+          </div>
+          <div style="border: 1px solid #315074; border-radius: 0 8px 8px 8px; padding: 16px; background: #182739;">
+            <span style="font-size: 0.75rem; color: #8f97b7;">Tab content panel</span>
+          </div>
+        </div>
+
+        <!-- Button toggle tab demo -->
+        <div>
+          <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 8px; font-weight: 600;">Button Toggle Tabs (ProjectTabs style)</p>
+          <div style="display: flex; gap: 0; border: 1px solid #315074; border-radius: 8px; overflow: hidden;">
+            <div style="padding: 8px 16px; background: #182739; color: #e1e1e1; font-size: 0.75rem; font-weight: 500; border-right: 1px solid #315074;">Active</div>
+            <div style="padding: 8px 16px; background: transparent; color: #8f97b7; font-size: 0.75rem; border-right: 1px solid #315074;">Inactive</div>
+            <div style="padding: 8px 16px; background: transparent; color: #8f97b7; font-size: 0.75rem;">Inactive</div>
+          </div>
+          <div class="token-label" style="margin-top: 8px;">active bg: #182739 | inactive: transparent, opacity 0.6 | slider: hidden</div>
+        </div>
+      </div>
+
+      <!-- Navigation Sidebar -->
+      <div class="card">
+        <h4>Navigation Sidebar</h4>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Source: NavigationDrawer.vue. Width: 180px. Surface background.</p>
+        <div style="background: #182739; border-radius: 8px; padding: 8px; width: 200px;">
+          <!-- Active item -->
+          <div style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 8px; background: rgba(255,195,0,0.12); margin-bottom: 4px;">
+            <span style="color: #ffc300; font-size: 1rem;">&#9733;</span>
+            <span style="color: #ffc300; font-size: 0.875rem; font-weight: 500;">Active Item</span>
+          </div>
+          <!-- Inactive items -->
+          <div style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 8px; margin-bottom: 4px;">
+            <span style="color: #8f97b7; font-size: 1rem;">&#9744;</span>
+            <span style="color: #e1e1e1; font-size: 0.875rem;">Inactive</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 8px; background: rgba(225,225,225,0.04);">
+            <span style="color: #8f97b7; font-size: 1rem;">&#9744;</span>
+            <span style="color: #e1e1e1; font-size: 0.875rem; opacity: 0.8;">Hover</span>
+          </div>
+        </div>
+        <div class="token-label" style="margin-top: 12px;">active: text #ffc300, bg rgba(255,195,0,0.12)</div>
+        <div class="token-label">inactive: text #e1e1e1, icon #8f97b7</div>
+        <div class="token-label">sidebar bg: #182739 (surface)</div>
+
+        <!-- Collapse chevron -->
+        <div style="margin-top: 16px;">
+          <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 8px; font-weight: 600;">Collapse Chevron</p>
+          <div style="display: flex; gap: 16px; align-items: center;">
+            <div style="width: 32px; height: 32px; background: #182739; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #8f97b7;">&#9664;</div>
+            <div style="width: 32px; height: 32px; background: rgba(255,195,0,0.1); border: 1px solid #ffc300; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #ffc300;">&#9664;</div>
+          </div>
+          <div class="token-label" style="margin-top: 4px;">default: surface bg, border 0.2 | hover: primary bg 10%, primary border</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generic Chips -->
+    <div class="card" style="margin-top: 24px;">
+      <h4>Generic Chips</h4>
+      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Non-agent chips used in AppBar, status indicators, and labels. All size="small", variant varies.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+
+        <!-- Connected chip -->
+        <div style="text-align: center;">
+          <div style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; background: rgba(103,189,109,0.2); color: #67bd6d; font-size: 0.75rem; font-weight: 500;">
+            <span style="font-size: 0.625rem;">&#9679;</span> Connected
+          </div>
+          <div class="token-label">success tonal</div>
+        </div>
+
+        <!-- Reconnecting chip -->
+        <div style="text-align: center;">
+          <div style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; background: rgba(255,195,0,0.2); color: #ffc300; font-size: 0.75rem; font-weight: 500;">
+            <span style="font-size: 0.625rem;">&#8635;</span> Reconnecting
+          </div>
+          <div class="token-label">warning tonal</div>
+        </div>
+
+        <!-- Disconnected chip -->
+        <div style="text-align: center;">
+          <div style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; background: rgba(198,41,140,0.2); color: #c6298c; font-size: 0.75rem; font-weight: 500;">
+            <span style="font-size: 0.625rem;">&#10005;</span> Disconnected
+          </div>
+          <div class="token-label">error tonal</div>
+        </div>
+
+        <!-- Active product chip -->
+        <div style="text-align: center;">
+          <div style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; background: #ffc300; color: #0e1c2d; font-size: 0.75rem; font-weight: 600;">
+            &#9673; Active: TinyContacts
+          </div>
+          <div class="token-label">primary flat</div>
+        </div>
+
+        <!-- Inactive product chip -->
+        <div style="text-align: center;">
+          <div style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; background: transparent; color: #8f97b7; font-size: 0.75rem; border: 1px solid #8f97b7;">
+            &#9673; No Product
+          </div>
+          <div class="token-label">grey text, disabled</div>
+        </div>
+
+        <!-- Series chip -->
+        <div style="text-align: center;">
+          <div style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 9999px; background: #315074; color: #e1e1e1; font-size: 0.75rem; font-weight: 500;">
+            0760
+          </div>
+          <div class="token-label">project type chip</div>
+        </div>
+      </div>
+      <div class="token-label" style="margin-top: 12px;">
+        Pattern: tonal = 20% bg + solid text | flat = solid bg + contrast text | Hover: translateY(-1px) + subtle shadow
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================
+       3c. DIALOGS, ALERTS & TOASTS
+       ============================================ -->
+  <section class="section">
+    <h2 class="section-title">Dialogs, Alerts &amp; Toasts</h2>
+    <p class="section-subtitle">Overlay modals, inline alerts, and toast notifications</p>
+
+    <div class="grid-2">
+
+      <!-- Dialogs -->
+      <div class="card">
+        <h4>Dialogs / Modals</h4>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Source: BaseDialog.vue. Sizes: sm=400, md=500, lg=650, xl=800px.</p>
+        <div style="position: relative; padding: 16px; background: rgba(0,0,0,0.5); border-radius: 8px;">
+          <div style="background: #182739; border-radius: 8px; overflow: hidden; max-width: 320px; margin: 0 auto;">
+            <!-- Title bars by type -->
+            <div style="display: flex; flex-direction: column; gap: 0;">
+              <div style="padding: 10px 16px; background: #8f97b7; color: white; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                <span>&#9432; Info Dialog</span><span style="opacity: 0.7; cursor: pointer;">&#10005;</span>
+              </div>
+              <div style="padding: 10px 16px; background: #ffc300; color: rgba(0,0,0,0.87); font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                <span>&#9888; Warning Dialog</span><span style="opacity: 0.5; cursor: pointer;">&#10005;</span>
+              </div>
+              <div style="padding: 10px 16px; background: #c6298c; color: white; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                <span>&#9888; Danger Dialog</span><span style="opacity: 0.7; cursor: pointer;">&#10005;</span>
+              </div>
+              <div style="padding: 10px 16px; background: #67bd6d; color: white; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                <span>&#10003; Success Dialog</span><span style="opacity: 0.7; cursor: pointer;">&#10005;</span>
+              </div>
+            </div>
+            <div style="padding: 16px; font-size: 0.75rem; color: #8f97b7;">Dialog content area on surface bg (#182739)</div>
+          </div>
+        </div>
+        <div class="token-label" style="margin-top: 12px;">overlay: dark scrim | surface: #182739 | z-index: 2500</div>
+        <div class="token-label">info: #8f97b7 | warning: #ffc300 | danger: #c6298c | success: #67bd6d</div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="card">
+        <h4>Alerts (v-alert)</h4>
+        <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Source: AppAlert.vue. Default variant: tonal.</p>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="padding: 12px 16px; border-radius: 8px; background: rgba(103,189,109,0.12); border-left: 4px solid #67bd6d; display: flex; align-items: center; gap: 10px;">
+            <span style="color: #67bd6d; font-size: 1rem;">&#10003;</span>
+            <span style="color: #e1e1e1; font-size: 0.875rem;">Success alert message</span>
+          </div>
+          <div style="padding: 12px 16px; border-radius: 8px; background: rgba(198,41,140,0.12); border-left: 4px solid #c6298c; display: flex; align-items: center; gap: 10px;">
+            <span style="color: #c6298c; font-size: 1rem;">&#9888;</span>
+            <span style="color: #e1e1e1; font-size: 0.875rem;">Error alert message</span>
+          </div>
+          <div style="padding: 12px 16px; border-radius: 8px; background: rgba(255,195,0,0.12); border-left: 4px solid #ffc300; display: flex; align-items: center; gap: 10px;">
+            <span style="color: #ffc300; font-size: 1rem;">&#9888;</span>
+            <span style="color: #e1e1e1; font-size: 0.875rem;">Warning alert message</span>
+          </div>
+          <div style="padding: 12px 16px; border-radius: 8px; background: rgba(143,151,183,0.12); border-left: 4px solid #8f97b7; display: flex; align-items: center; gap: 10px;">
+            <span style="color: #8f97b7; font-size: 1rem;">&#9432;</span>
+            <span style="color: #e1e1e1; font-size: 0.875rem;">Info alert message</span>
+          </div>
+        </div>
+        <div class="token-label" style="margin-top: 12px;">tonal variant: 12% bg opacity + solid icon/border</div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="card" style="margin-top: 24px;">
+      <h4>Toast Notifications</h4>
+      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Source: ToastManager.vue. Default position: bottom-right. Width: 300-500px. Slide-in animation.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+        <div style="min-width: 240px; padding: 12px 16px; border-radius: 8px; background: #67bd6d; color: white; display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1rem;">&#10003;</span>
+          <div>
+            <div style="font-size: 0.875rem; font-weight: 500;">Success toast</div>
+            <div style="font-size: 0.625rem; opacity: 0.8;">Auto-dismiss: 4s</div>
+          </div>
+        </div>
+        <div style="min-width: 240px; padding: 12px 16px; border-radius: 8px; background: #c6298c; color: white; display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1rem;">&#9888;</span>
+          <div>
+            <div style="font-size: 0.875rem; font-weight: 500;">Error toast</div>
+            <div style="font-size: 0.625rem; opacity: 0.8;">Persistent (no auto-dismiss)</div>
+          </div>
+        </div>
+        <div style="min-width: 240px; padding: 12px 16px; border-radius: 8px; background: #ffc300; color: rgba(0,0,0,0.87); display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1rem;">&#9888;</span>
+          <div>
+            <div style="font-size: 0.875rem; font-weight: 500;">Warning toast</div>
+            <div style="font-size: 0.625rem; opacity: 0.7;">Auto-dismiss: 6s</div>
+          </div>
+        </div>
+        <div style="min-width: 240px; padding: 12px 16px; border-radius: 8px; background: #8f97b7; color: white; display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1rem;">&#9432;</span>
+          <div>
+            <div style="font-size: 0.875rem; font-weight: 500;">Info toast</div>
+            <div style="font-size: 0.625rem; opacity: 0.8;">Auto-dismiss: 5s</div>
+          </div>
+        </div>
+      </div>
+      <div class="token-label" style="margin-top: 12px;">z-index: 9999 | animation: 0.3s ease slide-in from right | error toasts require manual dismiss</div>
+    </div>
+
+    <!-- Loading Spinners -->
+    <div class="card" style="margin-top: 24px;">
+      <h4>Loading Spinners</h4>
+      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">v-progress-circular. Always indeterminate. Always color="primary" (#ffc300).</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-end;">
+        <div style="text-align: center;">
+          <div style="width: 18px; height: 18px; border: 2px solid rgba(255,195,0,0.3); border-top-color: #ffc300; border-radius: 50%; margin: 0 auto 8px;"></div>
+          <span style="font-size: 0.75rem; color: #e1e1e1;">Small</span>
+          <div class="token-label">18px, width 2</div>
+          <div class="token-label">inline loaders</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 48px; height: 48px; border: 3px solid rgba(255,195,0,0.3); border-top-color: #ffc300; border-radius: 50%; margin: 0 auto 8px;"></div>
+          <span style="font-size: 0.75rem; color: #e1e1e1;">Medium</span>
+          <div class="token-label">48px</div>
+          <div class="token-label">content areas</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 64px; height: 64px; border: 4px solid rgba(255,195,0,0.3); border-top-color: #ffc300; border-radius: 50%; margin: 0 auto 8px;"></div>
+          <span style="font-size: 0.75rem; color: #e1e1e1;">Large</span>
+          <div class="token-label">64px</div>
+          <div class="token-label">full-page loading</div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ============================================
@@ -1457,20 +1928,6 @@
             <span style="font-size: 0.625rem; color: #8f97b7;">Agent icon (active)</span>
           </div>
           <div style="text-align: center; min-width: 120px;">
-            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
-              <img src="Giljo_gray_Face.svg" alt="Gil Inactive" style="max-width: 56px; max-height: 56px;" onerror="this.parentElement.innerHTML='<span style=color:#8f97b7;font-size:10px>Gray_Face</span>'">
-            </div>
-            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">Giljo_gray_Face.svg</span><br>
-            <span style="font-size: 0.625rem; color: #8f97b7;">Agent icon (inactive)</span>
-          </div>
-          <div style="text-align: center; min-width: 120px;">
-            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
-              <img src="Giljo_BY_Face.svg" alt="Gil BY" style="max-width: 56px; max-height: 56px;" onerror="this.parentElement.innerHTML='<span style=color:#ffc300;font-size:10px>BY_Face</span>'">
-            </div>
-            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">Giljo_BY_Face.svg</span><br>
-            <span style="font-size: 0.625rem; color: #8f97b7;">Blue/yellow variant</span>
-          </div>
-          <div style="text-align: center; min-width: 120px;">
             <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; border: 2px solid rgba(255,195,0,0.3);">
               <span style="font-size: 0.625rem; color: #8f97b7; text-align: center;">GilMascot.vue<br>(SVG component)</span>
             </div>
@@ -1511,20 +1968,6 @@
       <div style="margin-bottom: 24px;">
         <p style="font-size: 0.75rem; color: #FFFFFF; font-weight: 600; margin-bottom: 12px;">Codex CLI &mdash; <code style="color: #FFFFFF;">#FFFFFF</code></p>
         <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
-          <div style="text-align: center; min-width: 120px;">
-            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
-              <img src="codex_logo.svg" alt="Codex Logo" style="max-width: 48px; max-height: 48px;" onerror="this.parentElement.innerHTML='<span style=color:#FFFFFF;font-size:10px>codex_logo.svg</span>'">
-            </div>
-            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">codex_logo.svg</span><br>
-            <span style="font-size: 0.625rem; color: #8f97b7;">Full logo<br>(AgentDetailsModal)</span>
-          </div>
-          <div style="text-align: center; min-width: 120px;">
-            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
-              <img src="icons/codex_mark.svg" alt="Codex Mark" style="max-width: 48px; max-height: 48px;" onerror="this.parentElement.innerHTML='<span style=color:#FFFFFF;font-size:10px>codex_mark.svg</span>'">
-            </div>
-            <span style="font-size: 0.75rem; color: #e1e1e1; font-weight: 500;">icons/codex_mark.svg</span><br>
-            <span style="font-size: 0.625rem; color: #8f97b7;">Mark (dark bg)<br>(TemplateManager)</span>
-          </div>
           <div style="text-align: center; min-width: 120px;">
             <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
               <img src="icons/codex_mark_white.svg" alt="Codex Mark White" style="max-width: 48px; max-height: 48px;" onerror="this.parentElement.innerHTML='<span style=color:#FFFFFF;font-size:10px>codex_mark_white.svg</span>'">
@@ -1568,6 +2011,14 @@
     <div class="card" style="margin-top: 24px;">
       <h4>Nav &amp; State Icons</h4>
       <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">Giljo face variants used for navigation and state indication</p>
+
+      <div style="padding: 16px; background: rgba(255,195,0,0.05); border: 1px solid rgba(255,195,0,0.2); border-radius: 8px; margin-bottom: 20px;">
+        <p style="font-size: 0.75rem; font-weight: 600; color: #ffc300; margin-bottom: 8px;">Rule</p>
+        <p style="font-size: 0.875rem; color: #e1e1e1; margin: 0;">
+          Any default agent, AI, or bot icon from Vue component libraries (<code>mdi-robot</code>, <code>mdi-account</code>, etc.) must be replaced with <code>icons/Giljo_YW_Face.svg</code>. Never use generic library icons to represent agents or AI &mdash; always use the Giljo face.
+        </p>
+      </div>
+
       <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
         <div style="text-align: center; min-width: 100px;">
           <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
@@ -1580,24 +2031,6 @@
             <img src="icons/Giljo_Inactive_Dark.svg" alt="" style="max-width: 40px; max-height: 40px;" onerror="this.parentElement.innerHTML='<span style=color:#8f97b7;font-size:9px>Inactive</span>'">
           </div>
           <span style="font-size: 0.625rem; color: #e1e1e1;">Inactive Jobs</span>
-        </div>
-        <div style="text-align: center; min-width: 100px;">
-          <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
-            <img src="icons/Giljo_BY_active.svg" alt="" style="max-width: 40px; max-height: 40px;" onerror="this.parentElement.innerHTML='<span style=color:#ffc300;font-size:9px>BY_active</span>'">
-          </div>
-          <span style="font-size: 0.625rem; color: #e1e1e1;">Active state</span>
-        </div>
-        <div style="text-align: center; min-width: 100px;">
-          <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
-            <img src="icons/Giljo_BY_thinker.svg" alt="" style="max-width: 40px; max-height: 40px;" onerror="this.parentElement.innerHTML='<span style=color:#ffc300;font-size:9px>Thinker</span>'">
-          </div>
-          <span style="font-size: 0.625rem; color: #e1e1e1;">Thinking state</span>
-        </div>
-        <div style="text-align: center; min-width: 100px;">
-          <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
-            <img src="icons/Giljo_gray_Face_happy.svg" alt="" style="max-width: 40px; max-height: 40px;" onerror="this.parentElement.innerHTML='<span style=color:#8f97b7;font-size:9px>Happy</span>'">
-          </div>
-          <span style="font-size: 0.625rem; color: #e1e1e1;">Happy</span>
         </div>
         <div style="text-align: center; min-width: 100px;">
           <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px;">
