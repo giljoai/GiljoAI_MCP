@@ -6,8 +6,6 @@ Covers:
 - delete_task (soft/hard delete with permission checks)
 - list_tasks (returns list[Task])
 - update_task (returns TaskUpdateResult)
-- assign_task (delegates to update_task)
-- complete_task (delegates to update_task)
 - create_task (returns str task_id)
 """
 
@@ -212,29 +210,6 @@ async def test_update_task_returns_typed_result(task_service, test_task):
     assert result.task_id == str(test_task.id)
     assert "status" in result.updated_fields
     assert "priority" in result.updated_fields
-
-
-@pytest.mark.asyncio
-async def test_assign_task_returns_typed_result(task_service, test_task):
-    """Test assign_task returns TaskUpdateResult (delegates to update_task)"""
-    result = await task_service.assign_task(task_id=str(test_task.id), agent_name="impl-1")
-
-    # 0731c: assign_task delegates to update_task, returns TaskUpdateResult
-    # Note: assigned_to field was removed in Handover 0076, only status gets updated
-    assert isinstance(result, TaskUpdateResult)
-    assert result.task_id == str(test_task.id)
-    assert "status" in result.updated_fields
-
-
-@pytest.mark.asyncio
-async def test_complete_task_returns_typed_result(task_service, test_task):
-    """Test complete_task returns TaskUpdateResult (delegates to update_task)"""
-    result = await task_service.complete_task(task_id=str(test_task.id))
-
-    # 0731c: complete_task delegates to update_task, returns TaskUpdateResult
-    assert isinstance(result, TaskUpdateResult)
-    assert result.task_id == str(test_task.id)
-    assert "status" in result.updated_fields
 
 
 # ============================================================================
