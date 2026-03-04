@@ -1,4 +1,3 @@
-# ruff: noqa: A005
 """
 Statistics and monitoring API endpoints
 

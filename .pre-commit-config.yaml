@@ -33,7 +33,7 @@ repos:
   # Python linting and formatting - RE-ENABLED after 0707-LINT cleanup
   # Excludes: tests (lint in CI), installer scripts (use print), dev tools
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.1
+    rev: v0.15.0
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
