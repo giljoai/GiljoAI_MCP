@@ -721,7 +721,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
@@ -1165,7 +1165,7 @@ function isWorking(project) {
     const launched = tabsStore.isLaunched === true
     const sameId = current?.id === project.id || current?.project_id === project.id
     return launched && sameId
-  } catch (e) {
+  } catch {
     return false
   }
 }

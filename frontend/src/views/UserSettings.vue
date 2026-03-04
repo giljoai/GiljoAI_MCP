@@ -219,8 +219,6 @@ import McpIntegrationCard from '@/components/settings/integrations/McpIntegratio
 import SerenaIntegrationCard from '@/components/settings/integrations/SerenaIntegrationCard.vue'
 import GitIntegrationCard from '@/components/settings/integrations/GitIntegrationCard.vue'
 import setupService from '@/services/setupService'
-import api from '@/services/api'
-
 // Stores and Theme
 const settingsStore = useSettingsStore()
 const router = useRouter()

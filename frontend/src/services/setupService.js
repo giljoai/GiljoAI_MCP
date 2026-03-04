@@ -212,7 +212,7 @@ class SetupService {
         const errorBody = await response.json()
         console.error('[SETUP_SERVICE] Error response body:', errorBody)
         errorDetail = errorBody.detail || JSON.stringify(errorBody)
-      } catch (e) {
+      } catch {
         // Response body not JSON, use statusText
       }
       throw new Error(`HTTP ${response.status}: ${errorDetail}`)
@@ -255,7 +255,7 @@ class SetupService {
         if (response.ok) {
           return true
         }
-      } catch (error) {
+      } catch {
         // Backend not ready yet, continue polling
       }
 
