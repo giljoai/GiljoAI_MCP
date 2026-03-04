@@ -34,8 +34,5 @@
 </template>
 
 <script setup>
-import { useTheme } from 'vuetify'
 import AiToolConfigWizard from '@/components/AiToolConfigWizard.vue'
-
-const theme = useTheme()
 </script>

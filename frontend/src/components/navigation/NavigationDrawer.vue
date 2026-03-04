@@ -58,8 +58,6 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import { useTheme } from 'vuetify'
 import { useRoute } from 'vue-router'
-import { useUserStore } from '@/stores/user'
-import { useSettingsStore } from '@/stores/settings'
 import { useProjectStore } from '@/stores/projects'  // Product/Project State Fix
 
 const props = defineProps({
@@ -81,8 +79,6 @@ const emit = defineEmits(['update:model-value', 'toggle-rail'])
 
 const theme = useTheme()
 const route = useRoute()
-const userStore = useUserStore()
-const settingsStore = useSettingsStore()
 const projectStore = useProjectStore()  // Product/Project State Fix
 
 // Track which nav item is selected (ensure single active item)
