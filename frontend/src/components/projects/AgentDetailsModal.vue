@@ -269,7 +269,6 @@
 
 <script setup>
 import { ref, computed, watch, getCurrentInstance } from 'vue'
-import { useTheme } from 'vuetify'
 import api from '@/services/api'
 import { useClipboard } from '@/composables/useClipboard'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'

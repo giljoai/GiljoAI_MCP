@@ -32,8 +32,7 @@ import { createVuetify } from 'vuetify'
 import JobsTab from '@/components/projects/JobsTab.vue'
 import LaunchTab from '@/components/projects/LaunchTab.vue'
 import { useAgentData } from '@/composables/useAgentData'
-import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
 const vuetify = createVuetify()
 
@@ -107,7 +106,7 @@ vi.mock('@/composables/useAgentJobs', () => ({
 // Mock stores
 vi.mock('@/stores/websocket', () => ({
   useWebSocketStore: () => ({
-    onConnectionChange: vi.fn((cb) => () => {}),
+    onConnectionChange: vi.fn((_cb) => () => {}),
   }),
 }))
 
@@ -212,7 +211,7 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
          * CURRENT: :data-agent-type="agent.agent_display_name"
          * EXPECTED: :data-agent-display-name="agent.agent_display_name"
          */
-        const agent = createMockAgent({
+        const _agent = createMockAgent({
           job_id: 'job-123',
           agent_display_name: 'Frontend Tester',
         })
@@ -256,7 +255,7 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
          * Old attribute should be removed completely
          * Tests relying on data-agent-type will break (intentionally)
          */
-        const agent = createMockAgent({
+        const _agent = createMockAgent({
           job_id: 'job-456',
           agent_display_name: 'Code Reviewer',
         })
@@ -322,7 +321,7 @@ describe('PHASE 0414b: AgentDisplayName Migration - RED Tests (Failing)', () => 
          * CURRENT: Line 30 shows {{ agent.agent_name || agent.agent_display_name }}
          * EXPECTED: {{ agent.agent_name || agent.agent_display_name }}
          */
-        const agent = createMockAgent({
+        const _agent = createMockAgent({
           agent_name: 'My Custom Tester',
           agent_display_name: 'Frontend Tester',
         })

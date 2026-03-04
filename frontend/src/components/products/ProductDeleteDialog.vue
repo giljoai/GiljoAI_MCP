@@ -80,7 +80,7 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 
 const props = defineProps({
