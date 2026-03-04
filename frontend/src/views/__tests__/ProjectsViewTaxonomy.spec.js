@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises, config } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { createVuetify } from 'vuetify'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import ProjectsView from '../ProjectsView.vue'
 import { useProjectStore } from '@/stores/projects'

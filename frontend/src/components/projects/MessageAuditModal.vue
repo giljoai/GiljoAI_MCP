@@ -294,10 +294,6 @@ function handleClose() {
   emit('close')
 }
 
-function selectMessage(message) {
-  selectedMessage.value = message
-}
-
 function toggleMessageExpansion(messageId) {
   if (expandedMessages.value.has(messageId)) {
     expandedMessages.value.delete(messageId)

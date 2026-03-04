@@ -238,7 +238,7 @@ describe('Projects View - Accessibility (a11y)', () => {
       const wrapper = createWrapper()
 
       // Main content should have proper role
-      const mainContent = wrapper.find('[role="main"]')
+      const _mainContent = wrapper.find('[role="main"]')
       // If not explicitly set, container should at least be semantic
       expect(wrapper.find('v-container').exists()).toBe(true)
     })
@@ -334,7 +334,7 @@ describe('Projects View - Accessibility (a11y)', () => {
       ]
 
       interactiveElements.forEach((selector) => {
-        const element = wrapper.find(selector)
+        const _element = wrapper.find(selector)
         // All interactive elements should be accessible
       })
     })

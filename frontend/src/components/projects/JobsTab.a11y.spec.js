@@ -255,7 +255,7 @@ describe('JobsTab Accessibility Tests', () => {
 
       // Test ArrowRight
       const eventRight = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })
-      const preventDefaultSpy = vi.spyOn(eventRight, 'preventDefault')
+      const _preventDefaultSpy = vi.spyOn(eventRight, 'preventDefault')
       agentsScroll.element.dispatchEvent(eventRight)
 
       // Note: Event handling happens in component, so we can't directly test preventDefault

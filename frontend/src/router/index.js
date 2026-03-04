@@ -255,7 +255,7 @@ router.beforeEach(async (to, from, next) => {
         next('/welcome')
         return
       }
-    } catch (error) {
+    } catch {
       // Network error - continue (will fail at auth check if needed)
     }
   }
@@ -276,7 +276,7 @@ router.beforeEach(async (to, from, next) => {
           next('/login')
           return
         }
-      } catch (error) {
+      } catch {
         // On error, allow access (conservative for fresh installs)
       }
     }
@@ -297,7 +297,7 @@ router.beforeEach(async (to, from, next) => {
         const success = await userStore.fetchCurrentUser()
         if (!success) throw new Error('Auth check failed')
       }
-    } catch (error) {
+    } catch {
       // Not authenticated, redirect to login
       next({
         path: '/login',

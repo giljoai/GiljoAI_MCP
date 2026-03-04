@@ -211,7 +211,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '@/services/api'
 import { format, formatDistanceToNow } from 'date-fns'
 

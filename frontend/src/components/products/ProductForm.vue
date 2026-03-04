@@ -885,37 +885,6 @@ function goPrevTab() {
   }
 }
 
-// Tab validation
-const tabValidation = computed(() => {
-  return {
-    basic: {
-      valid: !!productForm.value.name,
-      hasError: !productForm.value.name,
-      hasWarning: false,
-    },
-    vision: {
-      valid: true,
-      hasError: false,
-      hasWarning: visionFiles.value.length === 0 && props.existingVisionDocuments.length === 0,
-    },
-    tech: {
-      valid: true,
-      hasError: false,
-      hasWarning: !productForm.value.configData.tech_stack.languages,
-    },
-    arch: {
-      valid: true,
-      hasError: false,
-      hasWarning: !productForm.value.configData.architecture.pattern,
-    },
-    features: {
-      valid: true,
-      hasError: false,
-      hasWarning: !productForm.value.configData.features.core,
-    },
-  }
-})
-
 // Computed v-model for dialog
 const isOpen = computed({
   get: () => props.modelValue,

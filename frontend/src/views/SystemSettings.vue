@@ -200,7 +200,7 @@ async function saveNetworkSettings() {
   try {
     // Save CORS origins back to config
     const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1]
-    const response = await fetch(`${getApiBaseURL()}/api/v1/config`, {
+    await fetch(`${getApiBaseURL()}/api/v1/config`, {
       method: 'PATCH',
       credentials: 'include',
       headers: {

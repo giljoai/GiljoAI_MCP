@@ -598,12 +598,6 @@ const mcpHttpSnippet = computed(() => {
   )
 })
 
-function stepTone(step) {
-  if (!step) return 'primary'
-  if (step.id === 'integrations' && (props.gitEnabled || props.serenaEnabled)) return 'success'
-  return accentColor.value
-}
-
 function openDetails(step) {
   detailsStep.value = step
   showDetails.value = true
