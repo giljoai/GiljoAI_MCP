@@ -250,36 +250,3 @@ class VisionChunkingError(VisionError):
 
 class VisionParsingError(VisionError):
     """Raised when vision document parsing fails."""
-
-
-def create_error_from_exception(exc: Exception, context: Optional[dict] = None) -> BaseGiljoError:
-    """
-    Convert a standard Python exception to a GiljoAI exception.
-
-    Args:
-        exc: The original exception
-        context: Optional context to add to the error
-
-    Returns:
-        A BaseGiljoError or appropriate subclass
-    """
-    if isinstance(exc, BaseGiljoError):
-        # Already a GiljoAI exception, just update context if needed
-        if context:
-            exc.context.update(context)
-        return exc
-
-    # Map common Python exceptions to appropriate GiljoAI exceptions
-    import builtins
-
-    mapping = {
-        builtins.FileNotFoundError: GiljoFileNotFoundError,
-        builtins.PermissionError: GiljoPermissionError,
-        ConnectionError: DatabaseConnectionError,
-        TimeoutError: ResourceExhaustedError,
-        ValueError: ValidationError,
-        KeyError: DataValidationError,
-    }
-
-    exception_class = mapping.get(type(exc), BaseGiljoError)
-    return exception_class(message=str(exc), context=context or {"original_type": type(exc).__name__})

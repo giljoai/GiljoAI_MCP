@@ -5,7 +5,6 @@ Single source of truth for all template operations
 """
 
 import logging
-import re
 from typing import Any, Optional
 
 from .database import DatabaseManager
@@ -102,25 +101,6 @@ def process_template(
             processed = processed.replace(f"{{{key}}}", str(value))
 
     return processed
-
-
-def extract_variables(content: str) -> list[str]:
-    """
-    Extract variable names from template content.
-
-    Args:
-        content: Template content with {variable} placeholders
-
-    Returns:
-        List of unique variable names in order of first appearance
-    """
-    seen = set()
-    result = []
-    for var in re.findall(r"\{(\w+)\}", content):
-        if var not in seen:
-            seen.add(var)
-            result.append(var)
-    return result
 
 
 class UnifiedTemplateManager:
@@ -821,40 +801,3 @@ Use Serena MCP tools for semantic code analysis:
 - find_referencing_symbols: Map dependencies
 """,
         )
-
-
-# Module-level template manager holder
-class _TemplateManagerHolder:
-    """Lazy singleton holder to avoid global statement."""
-
-    _instance: Optional[UnifiedTemplateManager] = None
-
-    @classmethod
-    def get_instance(cls, db_manager: Optional[DatabaseManager] = None, redis_client=None) -> UnifiedTemplateManager:
-        if cls._instance is None:
-            cls._instance = UnifiedTemplateManager(db_manager, redis_client)
-        elif db_manager and cls._instance.db_manager is None:
-            # Update with database manager if not previously set
-            cls._instance.db_manager = db_manager
-            # Re-initialize cache with new db_manager
-            if db_manager:
-                cls._instance.cache = TemplateCache(db_manager, redis_client)
-                logger.info("TemplateCache re-initialized with database manager")
-        return cls._instance
-
-
-def get_template_manager(
-    db_manager: Optional[DatabaseManager] = None,
-    redis_client=None,
-) -> UnifiedTemplateManager:
-    """
-    Get the singleton template manager instance.
-
-    Args:
-        db_manager: Optional database manager
-        redis_client: Optional Redis client for Layer 2 caching
-
-    Returns:
-        UnifiedTemplateManager instance
-    """
-    return _TemplateManagerHolder.get_instance(db_manager, redis_client)
