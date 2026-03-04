@@ -1122,7 +1122,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                         extra={"job_id": job_id, "agent_id": execution.agent_id},
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
-                    # Do not fail mission fetch on WebSocket bridge issues
+                    # Do not fail mission fetch on WebSocket broadcast issues
                     self._logger.warning(f"[WEBSOCKET] Failed to emit status events: {ws_error}")
 
             if not execution or not job:

@@ -66,12 +66,6 @@ async def check_first_run(request: Request) -> Dict[str, Any]:
             admin_exists = await _has_admin_user()
             return {"first_run": not admin_exists}
 
-            # ORIGINAL QUERY (for rollback):
-            # from sqlalchemy import select
-            # from src.giljo_mcp.models import User
-            # result = await session.execute(select(User).where(User.role == "admin").limit(1))
-            # return result.scalar_one_or_none() is not None
-
     except Exception as e:  # pragma: no cover - defensive logging
         logger.warning("DB-based first-run detection failed in check_first_run: %s", e)
         # Safe default on DB error: treat as not first run to avoid blocking login
