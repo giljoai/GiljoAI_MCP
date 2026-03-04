@@ -26,15 +26,6 @@ export const PROJECT_TYPE_COLOR_SWATCHES = [
 // Default color for the project type color picker
 export const DEFAULT_SWATCH_COLOR = '#E91E63'
 
-// Hash palette for deterministic agent avatar colors (unknown roles)
-export const AGENT_HASH_PALETTE = [
-  '#1976D2', '#388E3C', '#D32F2F', '#7B1FA2',
-  '#F57C00', '#0097A7', '#C2185B', '#5D4037',
-]
-
-// Fallback color for agents without a name
-export const AGENT_FALLBACK_COLOR = '#757575'
-
 // CLI tool display colors for template manager
 export const CLI_TOOL_COLORS = {
   claude: '#1976D2',

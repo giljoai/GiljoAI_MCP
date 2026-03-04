@@ -120,8 +120,6 @@ import { useStalenessMonitor } from '@/composables/useStalenessMonitor'
 import api from '@/services/api'
 import StatusChip from '@/components/StatusBoard/StatusChip.vue'
 import ActionIcons from '@/components/StatusBoard/ActionIcons.vue'
-import { shouldShowLaunchAction } from '@/utils/actionConfig'
-
 /**
  * AgentTableView Component
  *
@@ -160,12 +158,8 @@ const emit = defineEmits(['row-click', 'launch-agent'])
 
 // Reuse shared logic from composable (NO DUPLICATION)
 const {
-  getStatusColor,
   getAgentDisplayNameColor,
   getAgentAbbreviation,
-  getMessageCounts,
-  getHealthColor,
-  getHealthIcon,
 } = useAgentData(computed(() => props.agents))
 
 // Handover 0230: Clipboard functionality
@@ -192,19 +186,6 @@ const headers = [
 // Handle row click event
 function handleRowClick(event, { item }) {
   emit('row-click', item)
-}
-
-/**
- * Handover 0229: Determine if agent can be launched
- * Handover 0260: Consolidated to use actionConfig.shouldShowLaunchAction()
- *
- * Terminal states: cannot be launched
- * Blocked state: cannot be launched
- * Claude Code mode: only orchestrator can be launched
- */
-function canLaunchAgent(agent) {
-  // Handover 0260: Use consolidated function from actionConfig.js
-  return shouldShowLaunchAction(agent, props.usingClaudeCodeSubagents)
 }
 
 /**

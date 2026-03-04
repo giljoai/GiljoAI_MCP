@@ -9,12 +9,6 @@ export function immutableMapSet(map, key, value) {
   return next
 }
 
-export function immutableMapDelete(map, key) {
-  const next = new Map(map)
-  next.delete(key)
-  return next
-}
-
 export function immutableObjectPatch(obj, patch) {
   return { ...(obj || {}), ...(patch || {}) }
 }

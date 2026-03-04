@@ -138,7 +138,6 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { API_CONFIG } from '@/config/api'
 import api from '@/services/api'
 import DOMPurify from 'dompurify'
 

@@ -251,8 +251,6 @@ const success = ref('')
 const lockoutMessage = ref('')
 const attemptsRemaining = ref(null)
 const pinForm = ref(null)
-const resetForm = ref(null)
-
 // Validation rules
 const rules = {
   required: (value) => !!value || 'This field is required',

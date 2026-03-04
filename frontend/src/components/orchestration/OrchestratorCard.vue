@@ -125,7 +125,7 @@ const { mobile } = useDisplay()
 const isMobile = computed(() => mobile.value || window.innerWidth < 600)
 
 // Composables
-const { copy, copied } = useClipboard()
+const { copy } = useClipboard()
 
 // Reactive state
 const showCopySuccess = ref(false)

@@ -115,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '@/services/api'
 
 // State
@@ -123,26 +123,9 @@ const activeTemplates = ref([])
 const loading = ref(false)
 const showCopyFeedback = ref(false)
 const copyFeedbackMessage = ref('')
-const downloadingPersonal = ref(false)
 const downloadingProduct = ref(false)
 const loadingProduct = ref(false)
 const loadingPersonal = ref(false)
-
-// Template role icon mapping
-const roleIcons = {
-  orchestrator: 'mdi-connection',
-  analyzer: 'mdi-magnify',
-  implementor: 'mdi-code-braces',
-  tester: 'mdi-test-tube',
-  documenter: 'mdi-file-document-edit',
-  reviewer: 'mdi-eye-check',
-  default: 'mdi-robot',
-}
-
-// Methods
-function getTemplateIcon(role) {
-  return roleIcons[role?.toLowerCase()] || roleIcons.default
-}
 
 // Generate natural language instructions with download token
 async function generateAgentTemplateInstructions(installType = 'product') {
@@ -270,34 +253,6 @@ async function loadActiveTemplates() {
     activeTemplates.value = []
   } finally {
     loading.value = false
-  }
-}
-
-// Download methods for agent templates
-async function downloadPersonalAgents() {
-  try {
-    downloadingPersonal.value = true
-    const response = await fetch('/api/download/agent-templates.zip?active_only=true', {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`Download failed with status ${response.status}`)
-    }
-
-    const blob = await response.blob()
-    triggerFileDownload(blob, 'agent-templates.zip')
-
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Downloaded personal agent templates'
-  } catch (error) {
-    console.error('[CLAUDE EXPORT] Failed to download personal agents:', error)
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = `Download failed: ${error.message}`
-  } finally {
-    downloadingPersonal.value = false
   }
 }
 

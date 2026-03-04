@@ -5,7 +5,7 @@
  * Tests for api.prompts.implementation() method
  * Note: The api service is mocked in tests/setup.js
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { api } from '@/services/api'
 
 describe('api.js - Prompts Service', () => {

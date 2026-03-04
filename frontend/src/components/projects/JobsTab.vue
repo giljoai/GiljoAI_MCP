@@ -829,7 +829,7 @@ async function handleHandOver(agent) {
  * Handle Stop Project button click (Handover 0498)
  * Calls termination prompt endpoint and copies prompt to clipboard
  */
-async function handleStopProject(agent) {
+async function handleStopProject(_agent) {
   try {
     const response = await api.prompts.termination(projectId.value)
 

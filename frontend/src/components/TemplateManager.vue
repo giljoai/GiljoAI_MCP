@@ -778,8 +778,6 @@ import { useToast } from '@/composables/useToast'
 import { useClipboard } from '@/composables/useClipboard'
 import DOMPurify from 'dompurify'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
-import { CLI_TOOL_COLORS } from '@/utils/constants'
-
 const { copy: clipboardCopy } = useClipboard()
 
 // Handover 0335: WebSocket setup for real-time export status updates
@@ -793,30 +791,6 @@ const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
 // (v-window-item lazy loads components)
 const templateExportEvent = inject('templateExportEvent', ref(null))
 
-// Utility functions (inline to avoid external dependency)
-function generatePersonalAgentsInstructions(downloadUrl) {
-  return `Download from: ${downloadUrl}
-
-Once downloaded:
-1. Extract the ZIP file
-2. For macOS/Linux: Extract to ~/.claude/agents/
-3. For Windows: Extract to %USERPROFILE%\\.claude\\agents\\
-4. Restart your AI coding tool
-
-This download link expires in 15 minutes but can be used multiple times.`
-}
-
-function generateProductAgentsInstructions(downloadUrl) {
-  return `Download from: ${downloadUrl}
-
-Once downloaded:
-1. Extract the ZIP file
-2. Extract to .claude/agents/ in your current project root
-3. Restart your AI coding tool
-
-This download link expires in 15 minutes but can be used multiple times.`
-}
-
 async function copyToClipboardSafe(text, onSuccess, onError) {
   const success = await clipboardCopy(text)
   if (success) {
@@ -824,17 +798,6 @@ async function copyToClipboardSafe(text, onSuccess, onError) {
   } else {
     if (onError) onError(new Error('Failed to copy to clipboard'))
   }
-}
-
-function downloadBlob(response, filename) {
-  const url = window.URL.createObjectURL(new Blob([response.data]))
-  const link = document.createElement('a')
-  link.href = url
-  link.setAttribute('download', filename)
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  window.URL.revokeObjectURL(url)
 }
 
 // Reactive data
@@ -940,27 +903,6 @@ const statusOptions = [
   { title: 'Active', value: 'active' },
   { title: 'Archived', value: 'archived' },
   { title: 'Draft', value: 'draft' },
-]
-
-const toolOptions = [
-  {
-    title: 'Claude',
-    value: 'claude',
-    logo: '/claude_pix.svg',
-    color: CLI_TOOL_COLORS.claude,
-  },
-  {
-    title: 'Codex',
-    value: 'codex',
-    logo: '/icons/codex_mark.svg',
-    color: CLI_TOOL_COLORS.codex,
-  },
-  {
-    title: 'Gemini',
-    value: 'gemini',
-    logo: '/gemini-icon.svg',
-    color: CLI_TOOL_COLORS.gemini,
-  },
 ]
 
 // CLI tool options for create/edit modal (Handover 0103)
@@ -1285,46 +1227,6 @@ const copyPreview = async () => {
   )
 }
 
-const saveTemplate = async () => {
-  saving.value = true
-  try {
-    const data = {
-      name: editingTemplate.value.name,
-      category: 'role', // Automatically set to 'role' for all templates
-      role: editingTemplate.value.role || null,
-      description: editingTemplate.value.description,
-      system_instructions: editingTemplate.value.template,
-      cli_tool: editingTemplate.value.cli_tool,
-      behavioral_rules: editingTemplate.value.behavioral_rules || [],
-      success_criteria: editingTemplate.value.success_criteria || [],
-      tags: editingTemplate.value.tags || [],
-      is_default: editingTemplate.value.is_default || false,
-    }
-
-    if (editingTemplate.value.id) {
-      await api.templates.update(editingTemplate.value.id, {
-        name: data.name,
-        system_instructions: data.system_instructions,
-        description: data.description,
-        cli_tool: data.cli_tool,
-        behavioral_rules: data.behavioral_rules,
-        success_criteria: data.success_criteria,
-        tags: data.tags,
-        is_default: data.is_default,
-      })
-    } else {
-      await api.templates.create(data)
-    }
-
-    await loadTemplates()
-    closeEditDialog()
-  } catch (error) {
-    console.error('Failed to save template:', error)
-  } finally {
-    saving.value = false
-  }
-}
-
 const previewTemplate = (template) => {
   previewingTemplate.value = template
   previewVariables.value = (template.variables || []).map((v) => ({
@@ -1461,8 +1363,6 @@ const handleTemplateExported = (data) => {
   const tenantKey = data.tenant_key
   const templateIds = data.template_ids
   const exportedAt = data.exported_at
-  const exportType = data.export_type
-
   // Validate required fields
   if (!tenantKey || !templateIds || !exportedAt) {
     return
@@ -1475,13 +1375,10 @@ const handleTemplateExported = (data) => {
 
   // Update local template state with new export timestamp
   const templateIdSet = new Set(templateIds)
-  let updateCount = 0
-
   templates.value.forEach((template) => {
     if (templateIdSet.has(template.id)) {
       template.last_exported_at = exportedAt
       template.may_be_stale = false // Clear staleness indicator
-      updateCount++
     }
   })
 

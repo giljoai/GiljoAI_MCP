@@ -258,23 +258,6 @@ const passwordRequirements = computed(() => [
   },
 ])
 
-const passwordStrength = computed(() => {
-  const metRequirements = passwordRequirements.value.filter((req) => req.met).length
-  return (metRequirements / passwordRequirements.value.length) * 100
-})
-
-const passwordStrengthColor = computed(() => {
-  if (passwordStrength.value < 40) return 'error'
-  if (passwordStrength.value < 70) return 'warning'
-  return 'success'
-})
-
-const passwordStrengthText = computed(() => {
-  if (passwordStrength.value < 40) return 'Weak'
-  if (passwordStrength.value < 70) return 'Good'
-  return 'Strong'
-})
-
 // All requirements satisfied?
 const passwordMeetsAll = computed(() => passwordRequirements.value.every((r) => r.met))
 
