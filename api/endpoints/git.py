@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from api.dependencies.websocket import WebSocketDependency, get_websocket_dependency
 from src.giljo_mcp._config_io import read_config, write_config
-from src.giljo_mcp.auth.dependencies import get_current_user
+from src.giljo_mcp.auth.dependencies import get_current_active_user
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class GitToggleResponse(BaseModel):
 @router.post("/toggle", response_model=GitToggleResponse)
 async def toggle_git_integration(
     request: GitToggleRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_active_user),
     ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
 ) -> GitToggleResponse:
     """
@@ -82,7 +82,7 @@ async def toggle_git_integration(
 
     # Emit WebSocket event for real-time UI updates
     try:
-        tenant_key = current_user.get("tenant_key") if isinstance(current_user, dict) else current_user.tenant_key
+        tenant_key = current_user.tenant_key
         await ws_dep.broadcast_to_tenant(
             tenant_key=tenant_key,
             event_type="product:git:settings:changed",
@@ -102,7 +102,7 @@ async def toggle_git_integration(
 
 @router.post("/settings", response_model=GitToggleResponse)
 async def update_git_settings(
-    request: GitSettingsRequest, current_user: dict = Depends(get_current_user)
+    request: GitSettingsRequest, current_user=Depends(get_current_active_user)
 ) -> GitToggleResponse:
     """
     Update Git advanced settings at the system level.
@@ -128,7 +128,7 @@ async def update_git_settings(
     except OSError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-    logger.info(f"Git settings updated by user {current_user['username']}")
+    logger.info(f"Git settings updated by user {current_user.username}")
 
     return GitToggleResponse(
         success=True,
@@ -139,7 +139,7 @@ async def update_git_settings(
 
 
 @router.get("/settings")
-async def get_git_settings(current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
+async def get_git_settings(current_user=Depends(get_current_active_user)) -> dict[str, Any]:
     """
     Get current Git integration settings from config.
     """

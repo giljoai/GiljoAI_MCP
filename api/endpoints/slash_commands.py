@@ -23,7 +23,6 @@ class SlashCommandRequest(BaseModel):
     """Request model for slash command execution"""
 
     command: str  # e.g., "gil_handover"
-    tenant_key: str
     project_id: Optional[str] = None
     arguments: dict[str, Any] = {}
 
@@ -66,7 +65,7 @@ async def execute_slash_command(request: SlashCommandRequest, current_user: User
     async with state.db_manager.get_session_async() as session:
         result = await handler(
             db_session=session,
-            tenant_key=request.tenant_key,
+            tenant_key=current_user.tenant_key,
             project_id=request.project_id,
             **request.arguments,
         )
