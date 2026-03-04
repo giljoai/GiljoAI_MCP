@@ -440,14 +440,32 @@
         "Researched 8 frontend config files and 6 Vue components, extracted all design tokens",
         "Built self-contained HTML sample page as design system single source of truth",
         "Resolved all 6 discrepancies with user — all decisions applied to the sample page",
-        "User-approved design decisions documented directly in the HTML reference"
+        "User-approved design decisions documented directly in the HTML reference",
+        "Added all AI tool icon variants (claude_pix, Claude_AI_symbol, codex_mark_white) with usage context per component",
+        "Removed light-theme-only assets (Giljo_gray_Face, Giljo_BY_Face, codex_logo, codex_mark, Giljo_BY_active, Giljo_BY_thinker, Giljo_gray_Face_happy)",
+        "Added brand hierarchy (Company Logo, Product Logo, Gil the Mascot) and nav/state icons",
+        "Added toggle switches (OFF: faded blue, ON: green #67bd6d + yellow glow), radio buttons (#ffc300 primary), checkboxes (#ffc300 fill)",
+        "Added dropdown/select (outlined variant, focus border #ffc300, menu bg #182739, selected highlight rgba(255,195,0,0.12))",
+        "Added progress bars — stepper bar (yellow in-progress, green at 100%) + v-progress-linear (primary/success/error)",
+        "Added tabs (bordered Settings style + button toggle ProjectTabs style) with opacity-based states",
+        "Added navigation sidebar (active: #ffc300 text + rgba bg, collapse chevron with hover)",
+        "Added generic chips (Connected/Reconnecting/Disconnected tonal, Active Product flat, series chip)",
+        "Added dialogs/modals (4 title bar colors: info/warning/danger/success, surface bg #182739, sizes sm-xl)",
+        "Added alerts (v-alert tonal variant: 12% bg + left border + icon for success/error/warning/info)",
+        "Added toast notifications (success 4s, warning 6s, info 5s, error persistent; bottom-right; 300-500px; slide-in)",
+        "Added loading spinners (v-progress-circular: 18px/48px/64px, always primary #ffc300, always indeterminate)",
+        "Added Giljo icon replacement rule: all default agent/AI/bot icons from Vue libraries must use Giljo_YW_Face.svg"
       ],
       "deviations": [
         "vuetify.js does not exist — theme lives in config/theme.js",
         "Discovered statusConfig.js as additional source of status colors",
-        "All 6 original discrepancies resolved during interactive review with user"
+        "All 6 original discrepancies resolved during interactive review with user",
+        "Progress bars are not gradient — solid yellow (#ffc300) that switches to green (#67bd6d) at 100% completion",
+        "Toggle OFF state uses faded blue rgba(33,150,243,0.4), not the expected #1e3147"
       ],
-      "blockers_encountered": [],
+      "blockers_encountered": [
+        "Chrome MCP browser extension lost connection mid-session — required multiple reconnection attempts"
+      ],
       "design_decisions": {
         "single_source_of_truth": "frontend/design-system-sample.html — all future frontend work must reference this file for colors, typography, spacing, and component patterns",
         "agent_colors": "Canonical source: agent-colors.scss / agentColors.js. design-tokens.scss values must be corrected to match",
@@ -460,8 +478,8 @@
         "agent_avatar_border": "Subtle: 2px solid rgba(255,255,255,0.2), not solid white",
         "dynamic_text_color": "#ffc300 (brand yellow) for user-created names and entity identifiers (project names, task names, product names, agent names). Static labels stay #e1e1e1 or #8f97b7"
       },
-      "notes_for_next": "frontend/design-system-sample.html is the SINGLE SOURCE OF TRUTH for all design decisions. All discrepancies resolved. Codebase files that need updating to match: design-tokens.scss (agent colors, status colors, font family, primary text color, radius/shadow scales), agent-colors.scss (status CSS vars), main.scss (already correct). The HTML file documents layout layers, color palette, interactive elements, agent roles, status badges, typography with text color roles, spacing, elevation, gradients, and AI tool colors.",
-      "summary": "Built and iteratively refined design system sample page with user. Resolved all 6 discrepancies through interactive review. Established frontend/design-system-sample.html as the single source of truth for the design system. Key decisions: agent-colors.scss/agentColors.js canonical for agent colors, statusConfig.js canonical for status colors, Roboto font, #e1e1e1 text, unified 4-token radius scale, surface-lightening elevation, cutout badge text, #ffc300 for dynamic entity names."
+      "notes_for_next": "frontend/public/design-system-sample.html is the SINGLE SOURCE OF TRUTH for all design decisions. It now covers the COMPLETE component library: layout layers, color palette, buttons, text inputs, toggles, radio buttons, checkboxes, dropdowns, progress bars, tabs, navigation sidebar, chips, dialogs, alerts, toasts, spinners, agent role colors, status badges, typography with text color roles, spacing, elevation, border radius, gradients, AI tool colors + icons, brand hierarchy, nav/state icons, and scrollbar styling. Codebase files that need updating to match: design-tokens.scss (agent colors, status colors, font family, primary text color, radius/shadow scales), agent-colors.scss (status CSS vars).",
+      "summary": "Built and iteratively refined comprehensive design system sample page with user across 3 commits. Resolved all 6 discrepancies through interactive review. Established frontend/public/design-system-sample.html as the single source of truth. Added full interactive component library: toggles, radios, checkboxes, dropdowns, progress bars (stepper + linear), tabs (2 styles), navigation sidebar, generic chips, dialogs (4 types), alerts (4 types), toast notifications (4 types with auto-dismiss timers), loading spinners (3 sizes). Documented all AI tool icon variants with component usage context. Removed all light-theme-only assets. Added Giljo icon replacement rule for all agent/AI icons."
     }
   ],
   "chain_summary": "The 0765 Perfect Score Sprint (11 sessions, 0765a-k) improved code quality from 7.8 to 8.5/10. Sessions 0765a-h executed: dead code purge (2,500+ lines), Tier 3 quick fixes, design token migration, exception narrowing, test file splitting, CSRF hardening, tenant key removal, and 342 skipped tests resolved. Session 0765i independently audited at 8.2/10 with 10-item fix list. Session 0765j remediated all 10 findings. Session 0765k re-audited at 8.5/10, confirming all fixes landed but finding 54 new issues (3 SECURITY, 4 HIGH) the original audit missed. VERDICT: FAIL — not merge-ready until 3 SECURITY items fixed. Final: 1453 tests pass, 0 skips, frontend builds clean.",
