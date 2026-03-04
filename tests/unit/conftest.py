@@ -6,13 +6,12 @@ Also provides synchronous DB fixtures for template validation tests.
 """
 
 import uuid
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 from sqlalchemy.orm import Session
 
-from src.giljo_mcp.models import AgentTemplate, Product, User
+from src.giljo_mcp.models import AgentTemplate, Product
 
 
 @pytest.fixture
@@ -114,49 +113,6 @@ def create_test_template(
     db.commit()
     db.refresh(template)
     return template
-
-
-# --- Auth manager v3 shared fixtures (split from test_auth_manager_v3.py) ---
-
-
-@pytest.fixture
-def mock_db_session():
-    """Mock async database session for auth manager testing."""
-    session = AsyncMock()
-    session.execute = AsyncMock()
-    session.commit = AsyncMock()
-    session.refresh = AsyncMock()
-    session.add = Mock()
-    return session
-
-
-@pytest.fixture
-def test_user(mock_db_session):
-    """Create a test user for authentication."""
-    user = User(
-        id=str(uuid.uuid4()),
-        username="test_user",
-        email="test@example.com",
-        password_hash="$2b$12$dummyhash",
-        role="developer",
-        is_active=True,
-        is_system_user=False,
-        tenant_key="default",
-        created_at=datetime.now(timezone.utc),
-    )
-    user.api_key = "gk_test_api_key_12345"
-    return user
-
-
-@pytest.fixture
-def mock_config():
-    """Mock configuration object for auth manager testing."""
-    config = Mock()
-    config.server = Mock()
-    config.server.mode = "LOCAL"  # This should be ignored by v3
-    config.database = Mock()
-    config.database.type = "postgresql"
-    return config
 
 
 # --- Context manager test fixtures (split from test_context_manager.py) ---
