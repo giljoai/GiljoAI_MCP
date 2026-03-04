@@ -29,8 +29,6 @@ from src.giljo_mcp.tenant import TenantManager
 from tests.fixtures.base_fixtures import (
     db_manager,
     db_session,
-    test_agent_jobs,
-    test_messages,
     test_project,
 )
 
@@ -41,8 +39,6 @@ pytest_plugins = ["tests.pytest_postgresql_plugin"]
 __all__ = [
     "db_manager",
     "db_session",
-    "test_agent_jobs",
-    "test_messages",
     "test_project",
 ]
 
