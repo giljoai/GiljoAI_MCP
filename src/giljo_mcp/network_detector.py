@@ -154,11 +154,3 @@ class AdapterIPDetector:
         except (OSError, KeyError, AttributeError) as e:
             logger.error(f"Failed to get recommended adapter: {e}", exc_info=True)
             return None
-
-    def format_serving_address(
-        self, adapter_name: Optional[str], ip: Optional[str], port: int, protocol: str = "http"
-    ) -> str:
-        """Format serving address for logging."""
-        if adapter_name and ip:
-            return f"{adapter_name}: {protocol}://{ip}:{port}"
-        return f"localhost: {protocol}://127.0.0.1:{port}"
