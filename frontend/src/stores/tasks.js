@@ -145,9 +145,6 @@ export const useTaskStore = defineStore('tasks', () => {
     }
   }
 
-  function clearError() {
-    error.value = null
-  }
 
   // Watch for product changes and reload tasks
   watch(
@@ -245,7 +242,6 @@ export const useTaskStore = defineStore('tasks', () => {
     updateTask,
     deleteTask,
     changeTaskStatus,
-    clearError,
     handleRealtimeUpdate,
     fetchTaskSummary,
   }

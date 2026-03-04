@@ -68,16 +68,6 @@ export const useNotificationStore = defineStore('notifications', () => {
     })
   }
 
-  function removeNotification(id) {
-    const index = notifications.value.findIndex((n) => n.id === id)
-    if (index !== -1) {
-      notifications.value.splice(index, 1)
-    }
-  }
-
-  function clearAll() {
-    notifications.value = []
-  }
 
   return {
     // State
@@ -93,7 +83,5 @@ export const useNotificationStore = defineStore('notifications', () => {
     addNotification,
     markAsRead,
     markAllAsRead,
-    removeNotification,
-    clearAll,
   }
 })
