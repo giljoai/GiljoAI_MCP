@@ -242,58 +242,6 @@ class TemplateCache:
             except (ValueError, KeyError, RuntimeError) as e:
                 logger.warning(f"Redis cache invalidation error: {e}")
 
-    async def invalidate_all(self, tenant_key: Optional[str] = None) -> None:
-        """
-        Invalidate all cached templates.
-
-        Args:
-            tenant_key: Optional tenant to invalidate (None = all tenants)
-        """
-        if tenant_key:
-            # Invalidate only templates for specific tenant
-            keys_to_remove = [k for k in self._memory_cache if f":{tenant_key}:" in k]
-            for key in keys_to_remove:
-                del self._memory_cache[key]
-            logger.info(f"Memory cache cleared for tenant: {tenant_key}")
-        else:
-            # Clear entire memory cache
-            self._memory_cache.clear()
-            logger.info("Memory cache cleared (all tenants)")
-
-        # Clear Redis cache pattern (if available)
-        if self.redis:
-            try:
-                pattern = f"template:{tenant_key}:*" if tenant_key else "template:*"
-                await self._delete_redis_pattern(pattern)
-                logger.info(f"Redis cache cleared (pattern: {pattern})")
-            except (ValueError, KeyError, RuntimeError) as e:
-                logger.warning(f"Redis cache clear error: {e}")
-
-    def get_cache_stats(self) -> dict:
-        """
-        Get cache performance statistics.
-
-        Returns:
-            Dict with hit rate, miss rate, and cache sizes
-        """
-        total_requests = self._cache_hits + self._cache_misses
-        hit_rate = (self._cache_hits / total_requests * 100) if total_requests > 0 else 0.0
-
-        return {
-            "hits": self._cache_hits,
-            "misses": self._cache_misses,
-            "total_requests": total_requests,
-            "hit_rate_percent": round(hit_rate, 2),
-            "memory_cache_size": len(self._memory_cache),
-            "redis_enabled": self.redis is not None,
-        }
-
-    def reset_stats(self) -> None:
-        """Reset cache statistics counters"""
-        self._cache_hits = 0
-        self._cache_misses = 0
-        logger.info("Cache statistics reset")
-
     # Redis helper methods (async wrappers)
 
     async def _get_from_redis(self, key: str) -> Optional[bytes]:

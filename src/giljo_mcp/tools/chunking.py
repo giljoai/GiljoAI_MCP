@@ -4,7 +4,6 @@ Supports documents up to 100K+ tokens with natural boundary preservation.
 Based on proven chunking implementation with enhancements.
 """
 
-import hashlib
 import logging
 import re
 from typing import Any, Optional
@@ -276,81 +275,3 @@ class EnhancedChunker:
             chunk["total_chunks"] = total_chunks
 
         return chunks
-
-    def chunk_multiple_documents(self, documents: list[dict[str, str]]) -> list[dict[str, Any]]:
-        """
-        Chunk multiple documents intelligently.
-        Tries to keep related content together.
-
-        Args:
-            documents: List of dicts with 'name' and 'content' keys
-
-        Returns:
-            List of chunks with metadata
-        """
-        all_chunks = []
-
-        # First, try to fit small documents together
-        combined_content = []
-        combined_size = 0
-
-        for doc in documents:
-            doc_content = doc["content"]
-            doc_size = len(doc_content)
-            doc_tokens = self.estimate_tokens(doc_content)
-
-            # If this document alone needs chunking, process separately
-            if doc_tokens > self.max_tokens:
-                # First, process any accumulated content
-                if combined_content:
-                    combined_text = "\n\n---\n\n".join([f"# {d['name']}\n\n{d['content']}" for d in combined_content])
-                    chunks = self.chunk_content(combined_text, "combined")
-                    all_chunks.extend(chunks)
-                    combined_content = []
-                    combined_size = 0
-
-                # Then process the large document
-                doc_text = f"# {doc['name']}\n\n{doc_content}"
-                chunks = self.chunk_content(doc_text, doc["name"])
-                all_chunks.extend(chunks)
-
-            # If adding this would exceed limit, flush accumulated
-            elif combined_size + doc_size > self.chars_per_chunk:
-                if combined_content:
-                    combined_text = "\n\n---\n\n".join([f"# {d['name']}\n\n{d['content']}" for d in combined_content])
-                    chunks = self.chunk_content(combined_text, "combined")
-                    all_chunks.extend(chunks)
-
-                # Start new accumulation
-                combined_content = [doc]
-                combined_size = doc_size
-
-            # Otherwise, accumulate
-            else:
-                combined_content.append(doc)
-                combined_size += doc_size
-
-        # Process any remaining accumulated content
-        if combined_content:
-            combined_text = "\n\n---\n\n".join([f"# {d['name']}\n\n{d['content']}" for d in combined_content])
-            chunks = self.chunk_content(combined_text, "combined")
-            all_chunks.extend(chunks)
-
-        # Renumber chunks sequentially
-        for i, chunk in enumerate(all_chunks, 1):
-            chunk["chunk_number"] = i
-            chunk["total_chunks"] = len(all_chunks)
-
-        return all_chunks
-
-    def calculate_content_hash(self, content: str) -> str:
-        """
-        Calculate MD5 hash of content for change detection.
-
-        Args:
-            content: Text content
-
-        Returns:
-            MD5 hash string
-        """
-        return hashlib.md5(content.encode("utf-8"), usedforsecurity=False).hexdigest()
