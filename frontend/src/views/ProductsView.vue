@@ -311,9 +311,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useSettingsStore } from '@/stores/settings'
-import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
-import { useFieldPriority } from '@/composables/useFieldPriority'
 import { useAutoSave } from '@/composables/useAutoSave'
 import api from '@/services/api'
 import ActivationWarningDialog from '@/components/products/ActivationWarningDialog.vue'
@@ -324,11 +322,7 @@ import ProductForm from '@/components/products/ProductForm.vue'
 
 const productStore = useProductStore()
 const settingsStore = useSettingsStore()
-const router = useRouter()
 const { showToast } = useToast()
-const { getPriorityForField, getPriorityLabel, getPriorityColor, getPriorityTooltip } =
-  useFieldPriority()
-
 // State
 const loading = ref(false)
 const search = ref('')
@@ -341,8 +335,6 @@ const deletingProduct = ref(null)
 const selectedProduct = ref(null)
 const saving = ref(false)
 const deleting = ref(false)
-const formValid = ref(false)
-const formRef = ref(null)
 const visionFiles = ref([])
 const existingVisionDocuments = ref([])
 const detailsVisionDocuments = ref([])
@@ -365,27 +357,7 @@ const currentActiveProduct = ref(null)
 // Soft delete recovery state
 const showDeletedProductsDialog = ref(false)
 const deletedProducts = ref([])
-const loadingDeletedProducts = ref(false)
 const restoringProductId = ref(null)
-
-// Wizard tab order and navigation helpers
-const tabOrder = ['basic', 'vision', 'tech', 'arch', 'features']
-const isFirstTab = computed(() => tabOrder.indexOf(dialogTab.value) === 0)
-const isLastTab = computed(() => tabOrder.indexOf(dialogTab.value) === tabOrder.length - 1)
-
-function goNextTab() {
-  const idx = tabOrder.indexOf(dialogTab.value)
-  if (idx >= 0 && idx < tabOrder.length - 1) {
-    dialogTab.value = tabOrder[idx + 1]
-  }
-}
-
-function goPrevTab() {
-  const idx = tabOrder.indexOf(dialogTab.value)
-  if (idx > 0) {
-    dialogTab.value = tabOrder[idx - 1]
-  }
-}
 
 const productForm = ref({
   name: '',
@@ -426,80 +398,9 @@ const sortOptions = [
   { label: 'Date Created (Oldest)', value: 'date-oldest' },
 ]
 
-// Handover 0051: Testing strategies with enhanced dropdown
-const testingStrategies = [
-  {
-    value: 'TDD',
-    title: 'TDD (Test-Driven Development)',
-    subtitle: 'Write tests before implementation code',
-    icon: 'mdi-test-tube',
-  },
-  {
-    value: 'BDD',
-    title: 'BDD (Behavior-Driven Development)',
-    subtitle: 'Tests based on user stories and behavior specs',
-    icon: 'mdi-comment-text-multiple',
-  },
-  {
-    value: 'Integration-First',
-    title: 'Integration-First',
-    subtitle: 'Focus on testing component interactions',
-    icon: 'mdi-connection',
-  },
-  {
-    value: 'E2E-First',
-    title: 'E2E-First',
-    subtitle: 'Prioritize end-to-end user workflow tests',
-    icon: 'mdi-path',
-  },
-  {
-    value: 'Manual',
-    title: 'Manual Testing',
-    subtitle: 'User-driven QA and exploratory testing',
-    icon: 'mdi-human-male',
-  },
-  {
-    value: 'Hybrid',
-    title: 'Hybrid Approach',
-    subtitle: 'Combination of multiple testing strategies',
-    icon: 'mdi-view-grid-plus',
-  },
-]
-
 // Handover 0051: Unsaved changes computed
 const hasUnsavedChanges = computed(() => {
   return autoSave.value?.hasUnsavedChanges.value || false
-})
-
-// Handover 0051: Tab validation indicators
-const tabValidation = computed(() => {
-  return {
-    basic: {
-      valid: !!productForm.value.name,
-      hasError: !productForm.value.name,
-      hasWarning: false,
-    },
-    vision: {
-      valid: true,
-      hasError: false,
-      hasWarning: visionFiles.value.length === 0 && existingVisionDocuments.value.length === 0,
-    },
-    tech: {
-      valid: true,
-      hasError: false,
-      hasWarning: !productForm.value.configData.tech_stack.languages,
-    },
-    arch: {
-      valid: true,
-      hasError: false,
-      hasWarning: !productForm.value.configData.architecture.pattern,
-    },
-    features: {
-      valid: true,
-      hasError: false,
-      hasWarning: !productForm.value.configData.features.core,
-    },
-  }
 })
 
 // Computed
@@ -543,30 +444,6 @@ const filteredProducts = computed(() => {
   return sorted
 })
 
-const totalProducts = computed(() => productStore.productCount)
-// Handover 0320: Use store as single source of truth
-const activeProducts = computed(() => (productStore.activeProduct ? 1 : 0))
-
-const totalTasks = computed(() => {
-  return Object.values(productStore.productMetrics).reduce(
-    (sum, metrics) => sum + (metrics.totalTasks || 0),
-    0,
-  )
-})
-
-const totalAgents = computed(() => {
-  return Object.values(productStore.productMetrics).reduce(
-    (sum, metrics) => sum + (metrics.activeAgents || 0),
-    0,
-  )
-})
-
-// Vision document aggregate stats for product details (Handover 0246b: removed totalChunks)
-const totalFileSize = computed(() => {
-  const bytes = detailsVisionDocuments.value.reduce((sum, doc) => sum + (doc.file_size || 0), 0)
-  return formatFileSize(bytes)
-})
-
 const deletedProductsCount = computed(() => {
   return deletedProducts.value.length
 })
@@ -593,10 +470,6 @@ function isProductActive(product) {
   return productStore.activeProduct?.id === product.id
 }
 
-function getProductInitial(product) {
-  return product.name?.charAt(0).toUpperCase() || '?'
-}
-
 function getCompletedProjectsCount(product) {
   // Calculate completed projects: total - unfinished
   const totalProjects = product.project_count || 0
@@ -613,16 +486,6 @@ function getVisionChunkedCount(product) {
 function getVisionTotalChunks(product) {
   if (!product.vision_documents) return 0
   return product.vision_documents.reduce((sum, doc) => sum + (doc.chunk_count || 0), 0)
-}
-
-function getProductMetric(productId, metric) {
-  return productStore.productMetrics[productId]?.[metric] || 0
-}
-
-function getTaskProgress(productId) {
-  const metrics = productStore.productMetrics[productId]
-  if (!metrics || !metrics.totalTasks) return 0
-  return (metrics.completedTasks / metrics.totalTasks) * 100
 }
 
 // Handover 0050: Enhanced activation with warning dialog
@@ -678,7 +541,7 @@ async function toggleProductActivation(product) {
 }
 
 // Handover 0050: Confirm activation after warning
-async function confirmActivation(productId) {
+async function confirmActivation(_productId) {
   try {
     // User confirmed - NOW actually activate the product
     await api.products.activate(pendingActivation.value.id)
@@ -722,11 +585,6 @@ function formatDate(dateString) {
     month: 'short',
     day: 'numeric',
   })
-}
-
-function removeVisionFile(index) {
-  visionFiles.value = visionFiles.value.filter((_, i) => i !== index)
-  visionUploadError.value = null // Clear error when file is removed
 }
 
 // Handover 0320: Handler for ProductForm upload-vision event
@@ -806,12 +664,6 @@ function validateVisionFiles() {
   return true
 }
 
-function formatFileSize(bytes) {
-  if (bytes < 1024) return `${bytes  } B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)  } KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)  } MB`
-}
-
 async function showProductDetails(product) {
   selectedProduct.value = product
 
@@ -878,28 +730,6 @@ async function loadExistingVisionDocuments(productId) {
   } catch (error) {
     console.error('Failed to load vision documents:', error)
     existingVisionDocuments.value = []
-  }
-}
-
-async function deleteVisionDocument(doc) {
-  try {
-    await api.visionDocuments.delete(doc.id)
-
-    // Remove from list
-    existingVisionDocuments.value = existingVisionDocuments.value.filter((d) => d.id !== doc.id)
-
-    showToast({
-      message: `${doc.filename} deleted`,
-      type: 'success',
-      duration: 3000,
-    })
-  } catch (error) {
-    console.error('Failed to delete vision document:', error)
-    showToast({
-      message: 'Failed to delete vision document',
-      type: 'error',
-      duration: 5000,
-    })
   }
 }
 
@@ -1252,11 +1082,6 @@ async function restoreProduct(product) {
   }
 }
 
-// Handover 0049: Helper to check if a field has priority
-function hasFieldPriority(fieldPath) {
-  return getPriorityForField(fieldPath) !== null
-}
-
 // Handover 0051: Watch for dialog open/close to initialize auto-save
 watch(showDialog, (isOpen) => {
   if (isOpen) {
@@ -1276,13 +1101,6 @@ watch(showDialog, (isOpen) => {
     // Check for existing cache
     const cached = autoSave.value.restoreFromCache()
     if (cached) {
-      const metadata = autoSave.value.getCacheMetadata()
-      const ageMinutes = metadata?.ageMinutes ?? 0
-      const TTL_MINUTES = 15
-      // Snapshot current initial state for comparison
-      const initialSnapshot = JSON.parse(JSON.stringify(productForm.value))
-      const differs = JSON.stringify(cached) !== JSON.stringify(initialSnapshot)
-
       // Updated policy:
       // - Editing existing product: DO NOT restore cached drafts at all. Always
       //   trust the latest values loaded from the backend to avoid wiping valid
@@ -1312,7 +1130,7 @@ onMounted(async () => {
   // Load field priority configuration for badge display (Handover 0049)
   try {
     await settingsStore.fetchFieldPriorityConfig()
-  } catch (error) {
+  } catch {
     // Field priority config not available
   }
   // Handover 0051: Add beforeunload listener

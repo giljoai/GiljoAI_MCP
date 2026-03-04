@@ -63,7 +63,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
 
         saveToLocalStorage()
-      } catch (serverError) {
+      } catch {
         // Using local settings, server not available
       }
     } catch (err) {
@@ -84,7 +84,7 @@ export const useSettingsStore = defineStore('settings', () => {
       // Then sync with server
       try {
         await api.settings.update(settings.value)
-      } catch (serverError) {
+      } catch {
         // Settings saved locally, server sync failed
       }
     } catch (err) {
@@ -115,7 +115,7 @@ export const useSettingsStore = defineStore('settings', () => {
     saveToLocalStorage()
     try {
       await api.settings.update(settings.value)
-    } catch (serverError) {
+    } catch {
       // Settings saved locally, server sync failed silently
     }
   }

@@ -12,7 +12,7 @@ import { useProjectTabsStore } from './projectTabs'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notifications'
 
-export const STORE_REGISTRY = {
+const STORE_REGISTRY = {
   agentJobs: () => useAgentJobsStore(),
   agents: () => useAgentStore(),
   messages: () => useMessageStore(),
@@ -26,7 +26,7 @@ export const STORE_REGISTRY = {
 }
 
 // Handover 0463: Project-scoped event types that require project filtering
-export const PROJECT_SCOPED_EVENTS = new Set([
+const PROJECT_SCOPED_EVENTS = new Set([
   'agent:status_changed',
   'agent:created',
   'agent:spawn',
@@ -373,7 +373,7 @@ export const EVENT_MAP = {
  * - flat structures: { type, tenant_key, ... }
  * - nested structures: { type, data: { tenant_key, ... } }
  */
-export function normalizeWebsocketEvent(rawEvent) {
+function normalizeWebsocketEvent(rawEvent) {
   if (!rawEvent || typeof rawEvent !== 'object') {
     return { type: undefined, payload: {} }
   }

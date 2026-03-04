@@ -16,9 +16,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { nextTick } from 'vue'
 
 describe('UserSettings - Vision Summarization', () => {
   let mockApi
@@ -129,13 +127,13 @@ describe('UserSettings - Vision Summarization', () => {
   it('reverts vision summarization state on API error', async () => {
     mockApi.put.mockRejectedValueOnce(new Error('API Error'))
 
-    const toggleVisionSummarization = async (enabled, currentValue) => {
+    const toggleVisionSummarization = async (enabled, _currentValue) => {
       try {
         const result = await mockApi.put('/api/settings/general', {
           settings: { vision_summarization_enabled: enabled },
         })
         return result.data.settings.vision_summarization_enabled
-      } catch (error) {
+      } catch {
         // Revert on error
         return !enabled
       }
@@ -163,7 +161,7 @@ describe('UserSettings - Vision Summarization', () => {
       if (isLoading) {
         return false // Prevent if already loading
       }
-      const result = await mockApi.put('/api/settings/general', {
+      const _result = await mockApi.put('/api/settings/general', {
         settings: { vision_summarization_enabled: enabled },
       })
       return true

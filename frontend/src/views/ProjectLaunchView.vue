@@ -187,7 +187,7 @@ function handleEditMission(missionData) {
   showEditDialog.value = true
 }
 
-function handleEditAgentMission(agentData) {
+function handleEditAgentMission(_agentData) {
   showNotification('Agent mission editing coming soon', 'info', 'mdi-information')
 }
 

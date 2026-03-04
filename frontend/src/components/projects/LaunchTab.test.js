@@ -265,12 +265,12 @@ describe('LaunchTab.vue - Pencil Edit Icons', () => {
     const wrapper = createWrapper()
     const agentCards = wrapper.findAll('.agent-slim-card')
 
-    const displayNames = {
+    const _displayNames = {
       analyzer: '#e1564b',
       implementor: '#3493bf',
     }
 
-    agentCards.forEach((card, index) => {
+    agentCards.forEach((card, _index) => {
       const avatarDiv = card.find('.agent-avatar')
       const style = avatarDiv.attributes('style')
 

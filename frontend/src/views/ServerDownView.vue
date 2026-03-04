@@ -116,7 +116,7 @@ const retryConnection = async () => {
     } catch {
       router.push('/login')
     }
-  } catch (error) {
+  } catch {
     // Server still unreachable - reset auto-retry countdown
     autoRetrySeconds.value = 10
     autoRetryProgress.value = 100

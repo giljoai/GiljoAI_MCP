@@ -466,7 +466,7 @@ describe('Projects Workflow Integration Tests', () => {
       const wrapper = createWrapper()
 
       // Delete a project first
-      const projectToDelete = projectStore.projects.find((p) => p.id === 'proj-api')
+      const _projectToDelete = projectStore.projects.find((p) => p.id === 'proj-api')
       await projectStore.deleteProject('proj-api')
       await wrapper.vm.$nextTick()
 

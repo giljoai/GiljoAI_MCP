@@ -22,9 +22,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
 import JobsTab from './JobsTab.vue'
-import AgentCardEnhanced from './AgentCardEnhanced.vue'
 import MessageStream from './MessageStream.vue'
 import MessageInput from './MessageInput.vue'
 

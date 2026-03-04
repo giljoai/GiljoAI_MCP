@@ -232,7 +232,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   /**
    * Handle disconnection and attempt reconnect
    */
-  function handleDisconnect(event) {
+  function handleDisconnect(_event) {
     const wasConnected = connectionStatus.value === 'connected'
 
     connectionStatus.value = 'disconnected'

@@ -88,21 +88,3 @@ export function getAgentColor(displayName) {
   const canonical = AGENT_SYNONYMS[normalizedType] || normalizedType
   return AGENT_COLORS[canonical] || AGENT_COLORS.orchestrator
 }
-
-/**
- * Get agent badge ID with instance number
- * @param {string} displayName - Agent display name
- * @param {number} instanceNumber - Instance number (1, 2, 3, etc.)
- * @returns {string} Badge ID (e.g., "Im", "I2", "I3")
- */
-export function getAgentBadgeId(displayName, instanceNumber = 1) {
-  const color = getAgentColor(displayName)
-
-  if (instanceNumber === 1) {
-    return color.badge
-  }
-
-  // For multiple instances: I2, I3, etc.
-  const firstLetter = color.badge.charAt(0)
-  return `${firstLetter}${instanceNumber}`
-}
