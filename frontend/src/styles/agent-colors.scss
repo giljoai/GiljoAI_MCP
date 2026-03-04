@@ -51,12 +51,12 @@
   --agent-card-border: rgba(255, 255, 255, 0.1);
   --agent-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 
-  /* Status Badge Colors */
-  --status-waiting: #90a4ae;
-  --status-working: #3498db;
-  --status-complete: #ffc300;
+  /* Status Badge Colors — matches statusConfig.js */
+  --status-waiting: #ffd700;
+  --status-working: #ffffff;
+  --status-complete: #67bd6d;
   --status-failure: #c6298c;
-  --status-blocked: #e67e22;
+  --status-blocked: #ff9800;
 
   /* Launch Prompt Tool Colors */
   --tool-claude-code: #e67e22;
