@@ -55,6 +55,8 @@ try:
     from src.giljo_mcp.auth import AuthManager
     from src.giljo_mcp.database import DatabaseManager
     from src.giljo_mcp.models import Project
+    from src.giljo_mcp.models.agent_identity import AgentJob
+    from src.giljo_mcp.models.tasks import Message
     from src.giljo_mcp.system_prompts import SystemPromptService
     from src.giljo_mcp.tenant import TenantManager
     from src.giljo_mcp.tools.tool_accessor import ToolAccessor
@@ -546,16 +548,41 @@ def _register_event_handlers(app: FastAPI) -> None:
                     entity_id = data.get("entity_id")
 
                     try:
-                        # Get tenant key for entity if needed
+                        # Resolve tenant key for ALL entity types (tenant isolation)
                         tenant_key = None
-                        if entity_type == "project" and state.db_manager:
-                            # Get project tenant for validation
+                        if state.db_manager:
                             async with state.db_manager.get_session_async() as session:
-                                stmt = select(Project).where(Project.id == entity_id)
-                                result = await session.execute(stmt)
-                                project = result.scalar_one_or_none()
-                                if project:
-                                    tenant_key = project.tenant_key
+                                if entity_type == "project":
+                                    stmt = select(Project).where(Project.id == entity_id)
+                                    result = await session.execute(stmt)
+                                    project = result.scalar_one_or_none()
+                                    if project:
+                                        tenant_key = project.tenant_key
+                                elif entity_type == "agent":
+                                    stmt = select(AgentJob).where(AgentJob.job_id == entity_id)
+                                    result = await session.execute(stmt)
+                                    agent_job = result.scalar_one_or_none()
+                                    if agent_job:
+                                        tenant_key = agent_job.tenant_key
+                                elif entity_type == "message":
+                                    stmt = select(Message).where(Message.id == entity_id)
+                                    result = await session.execute(stmt)
+                                    message = result.scalar_one_or_none()
+                                    if message:
+                                        tenant_key = message.tenant_key
+
+                        # Deny subscription if tenant can't be resolved
+                        if not tenant_key:
+                            await websocket.send_json(
+                                {
+                                    "type": "error",
+                                    "error": "subscription_denied",
+                                    "message": f"Cannot resolve tenant for {entity_type}:{entity_id}",
+                                    "entity_type": entity_type,
+                                    "entity_id": entity_id,
+                                }
+                            )
+                            continue
 
                         await state.websocket_manager.subscribe(client_id, entity_type, entity_id, tenant_key)
                         await websocket.send_json(
