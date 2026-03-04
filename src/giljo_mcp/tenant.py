@@ -9,10 +9,7 @@ import hashlib
 import secrets
 import string
 from contextvars import ContextVar
-from datetime import datetime, timezone
 from typing import Any, ClassVar, Optional
-
-from src.giljo_mcp.exceptions import ValidationError as TenantValidationError
 
 
 # Thread-safe context variable for current tenant
@@ -269,59 +266,6 @@ class TenantManager:
                 f"Expected: {cls.hash_tenant_key(expected_key)}, "
                 f"Got: {cls.hash_tenant_key(entity.tenant_key)}"
             )
-
-    @classmethod
-    def batch_validate_keys(cls, tenant_keys: list[str]) -> dict[str, bool]:
-        """
-        Validate multiple tenant keys efficiently.
-
-        Args:
-            tenant_keys: List of tenant keys to validate
-
-        Returns:
-            Dictionary mapping each key to its validation result
-        """
-        results = {}
-        for key in tenant_keys:
-            results[key] = cls.validate_tenant_key(key)
-        return results
-
-    @classmethod
-    def export_tenant_metadata(cls, tenant_key: str) -> dict[str, Any]:
-        """
-        Export metadata about a tenant (for debugging/admin).
-
-        Args:
-            tenant_key: The tenant key to export metadata for
-
-        Returns:
-            Dictionary with tenant metadata (no sensitive data)
-        """
-        if not cls.validate_tenant_key(tenant_key):
-            raise TenantValidationError("Invalid tenant key")
-
-        return {
-            "key_hash": cls.hash_tenant_key(tenant_key),
-            "key_prefix": cls.KEY_PREFIX,
-            "key_length": cls.KEY_LENGTH,
-            "is_valid": True,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
-    @classmethod
-    def register_test_tenant(cls, tenant_key: str) -> None:
-        """Register a tenant key for testing. Bypasses normal format validation.
-
-        Only for use in test fixtures. Production code should never call this.
-        """
-        cls._validation_cache[tenant_key] = True
-
-    @classmethod
-    def clear_cache(cls) -> None:
-        """
-        Clear the validation cache (useful for testing).
-        """
-        cls._validation_cache.clear()
 
 
 # Convenience functions for common operations

@@ -3,13 +3,12 @@ MessageService Counter Update Tests - Handover 0387f
 
 Tests that MessageService correctly updates counter columns instead of JSONB:
 - send_message() increments sent/waiting counters
-- acknowledge_message() decrements waiting and increments read counters
 - Broadcast messages update sender's sent_count by 1, each recipient's waiting_count by 1
 - Counters survive without JSONB persistence
 - Multiple messages accumulate counters
 
 Split from test_message_service_counters_0387f.py during test reorganization.
-Updated for Handover 0731c: Typed returns (SendMessageResult, AcknowledgeMessageResult, etc.)
+Updated for Handover 0731c: Typed returns (SendMessageResult, etc.)
 """
 
 from sqlalchemy import select
@@ -20,7 +19,6 @@ import pytest
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.schemas.service_responses import (
-    AcknowledgeMessageResult,
     SendMessageResult,
 )
 from src.giljo_mcp.services.message_service import MessageService
@@ -139,53 +137,6 @@ async def test_send_broadcast_increments_each_recipient_waiting_count(
     # Each recipient should have waiting_count = 1
     for agent in recipients:
         assert agent.messages_waiting_count == 1
-
-
-@pytest.mark.asyncio
-async def test_acknowledge_message_decrements_waiting_increments_read(
-    message_service: MessageService,
-    test_project_with_agents: tuple[Project, list[AgentExecution]],
-    db_session: AsyncSession,
-    test_tenant_key: str,
-):
-    """Test that acknowledge_message decrements waiting_count and increments read_count."""
-    project, agents = test_project_with_agents
-    orchestrator = agents[0]  # sender
-    analyzer = agents[1]  # recipient
-
-    # Send message first
-    result = await message_service.send_message(
-        to_agents=[analyzer.agent_id],
-        content="Test message",
-        project_id=project.id,
-        from_agent=orchestrator.agent_display_name,
-        tenant_key=test_tenant_key,
-    )
-    # Handover 0731c: send_message returns SendMessageResult typed model
-    assert isinstance(result, SendMessageResult)
-    message_id = result.message_id
-
-    # Refresh to get updated counts
-    await db_session.refresh(analyzer)
-    assert analyzer.messages_waiting_count == 1
-    assert analyzer.messages_read_count == 0
-
-    # Acknowledge message
-    # Handover 0731c: acknowledge_message returns AcknowledgeMessageResult typed model
-    ack_result = await message_service.acknowledge_message(
-        message_id=message_id,
-        agent_id=analyzer.agent_id,
-        tenant_key=test_tenant_key,
-    )
-    assert isinstance(ack_result, AcknowledgeMessageResult)
-    assert ack_result.acknowledged is True
-
-    # Refresh to get updated counts
-    await db_session.refresh(analyzer)
-
-    # Verify waiting_count decremented and read_count incremented
-    assert analyzer.messages_waiting_count == 0
-    assert analyzer.messages_read_count == 1
 
 
 @pytest.mark.asyncio

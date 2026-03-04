@@ -569,42 +569,6 @@ class TaskService:
 
         return TaskUpdateResult(task_id=task_id, updated_fields=updated_fields)
 
-    async def assign_task(self, task_id: str, agent_name: str) -> TaskUpdateResult:
-        """
-        Assign a task to an agent.
-
-        Args:
-            task_id: Task UUID
-            agent_name: Name of agent to assign to
-
-        Returns:
-            TaskUpdateResult with task_id and updated field names
-
-        Example:
-            >>> result = await service.assign_task(
-            ...     task_id="abc-123",
-            ...     agent_name="impl-1"
-            ... )
-            >>> print(result.updated_fields)
-        """
-        return await self.update_task(task_id, assigned_to=agent_name, status="assigned")
-
-    async def complete_task(self, task_id: str) -> TaskUpdateResult:
-        """
-        Mark a task as completed.
-
-        Args:
-            task_id: Task UUID
-
-        Returns:
-            TaskUpdateResult with task_id and updated field names
-
-        Example:
-            >>> result = await service.complete_task("abc-123")
-            >>> print(result.updated_fields)
-        """
-        return await self.update_task(task_id, status="completed")
-
     # ============================================================================
     # Enhanced Operations (Handover 0322 Phase 3)
     # ============================================================================
@@ -1104,34 +1068,6 @@ class TaskService:
     # ============================================================================
     # Permission Helpers (Handover 0322 Phase 3)
     # ============================================================================
-
-    def can_modify_task(self, task: Task, user) -> bool:
-        """
-        Check if user can modify task.
-
-        Rules:
-        - Admin: can modify any task in tenant
-        - Developer: can modify own tasks (created_by_user_id)
-        - Viewer: cannot modify
-
-        Args:
-            task: Task to check
-            user: User attempting modification
-
-        Returns:
-            True if user can modify task, False otherwise
-
-        Example:
-            >>> if service.can_modify_task(task, current_user):
-            ...     # Allow modification
-        """
-
-        # Admin can modify any task in their tenant
-        if user.role == "admin":
-            return task.tenant_key == user.tenant_key
-
-        # Developer can modify tasks they created
-        return task.tenant_key == user.tenant_key and task.created_by_user_id == user.id
 
     def can_delete_task(self, task: Task, user) -> bool:
         """
