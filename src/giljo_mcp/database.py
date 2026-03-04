@@ -295,22 +295,6 @@ class DatabaseManager:
         """
         return TenantManager.with_tenant(tenant_key)
 
-    @contextmanager
-    def get_tenant_session(self, tenant_key: str):
-        """
-        Get a session with automatic tenant filtering.
-
-        Args:
-            tenant_key: Tenant key for this session
-
-        Yields:
-            Session configured with tenant context
-        """
-        with TenantManager.with_tenant(tenant_key), self.get_session() as session:
-            # Add tenant key to session info for reference
-            session.info["tenant_key"] = tenant_key
-            yield session
-
     @asynccontextmanager
     async def get_tenant_session_async(self, tenant_key: str):
         """
@@ -327,30 +311,6 @@ class DatabaseManager:
                 # Add tenant key to session info for reference
                 session.info["tenant_key"] = tenant_key
                 yield session
-
-    def validate_tenant_key(self, tenant_key: Optional[str]) -> bool:
-        """
-        Validate a tenant key using TenantManager.
-
-        Args:
-            tenant_key: Key to validate
-
-        Returns:
-            True if valid, False otherwise
-        """
-        return TenantManager.validate_tenant_key(tenant_key)
-
-    def generate_tenant_key(self, project_name: Optional[str] = None) -> str:
-        """
-        Generate a new tenant key for a project.
-
-        Args:
-            project_name: Optional project name for metadata
-
-        Returns:
-            New tenant key
-        """
-        return TenantManager.generate_tenant_key(project_name)
 
 
 # Module-level database manager holder
