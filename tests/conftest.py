@@ -72,7 +72,7 @@ async def setup_agent_coordination(db_manager, db_session):
     """
     Auto-setup fixture to inject db_manager and session into agent_coordination module.
 
-    This allows spawn_agent() and get_agent_status() to work in tests with proper
+    This allows spawn_agent() to work in tests with proper
     session isolation (Handover 0366c).
     """
     from src.giljo_mcp.tools import agent_coordination

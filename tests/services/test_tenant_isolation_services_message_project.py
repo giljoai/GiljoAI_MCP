@@ -165,36 +165,3 @@ async def test_project_service_update_mission_blocks_cross_tenant(db_session, tw
     # Verify mission was NOT changed
     await db_session.refresh(project_b)
     assert project_b.mission == "Test mission B", "Cross-tenant mission was modified! Data corruption."
-
-
-@pytest.mark.tenant_isolation
-@pytest.mark.asyncio
-async def test_project_service_switch_project_blocks_cross_tenant(db_session, two_tenant_service_setup):
-    """
-    Test: project_service.py switch_project() - Line 1950
-
-    Verify that switch_project() filters by tenant_key.
-    Tenant A should NOT be able to switch to Tenant B's project.
-
-    Updated (0730-fix): switch_project now raises ResourceNotFoundError
-    instead of returning {"success": False}.
-
-    Note: This test currently has a known code bug (ModuleNotFoundError in switch_project).
-    We expect either ResourceNotFoundError (correct behavior) or any exception (due to bug).
-    """
-    tenant_a = two_tenant_service_setup["tenant_a"]
-    project_b = two_tenant_service_setup["project_b"]
-    project_service_a = two_tenant_service_setup["project_service_a"]
-
-    # Tenant A tries to switch to Tenant B's project - should raise an exception
-    # Note: switch_project has a code bug (imports giljo_mcp instead of src.giljo_mcp)
-    # but the key point is that cross-tenant access should NOT succeed
-    with pytest.raises(Exception) as exc_info:
-        await project_service_a.switch_project(
-            project_id=project_b.id,  # Tenant B's project!
-            tenant_key=tenant_a,
-        )
-
-    # Verify cross-tenant access was blocked (either by tenant isolation or by code bug)
-    # Either way, the malicious operation was NOT allowed
-    assert exc_info.value is not None

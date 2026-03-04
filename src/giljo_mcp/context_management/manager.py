@@ -112,25 +112,6 @@ class ContextManagementSystem:
             "average_relevance": avg_relevance,
         }
 
-    def create_condensed_mission(
-        self, tenant_key: str, product_id: str, full_content: str, condensed_mission: str
-    ) -> dict[str, Any]:
-        """
-        Create condensed mission and track context prioritization.
-
-        Args:
-            tenant_key: Tenant key for multi-tenant isolation
-            product_id: Product ID
-            full_content: Original full context
-            condensed_mission: Condensed mission text
-
-        Returns:
-            Summary statistics dict
-        """
-        return self.summarizer.create_summary(
-            tenant_key=tenant_key, product_id=product_id, full_content=full_content, condensed_mission=condensed_mission
-        )
-
     def get_token_reduction_stats(self, tenant_key: str, product_id: str | None = None) -> dict[str, Any]:
         """
         Get context prioritization statistics.
@@ -156,20 +137,3 @@ class ContextManagementSystem:
             List of MCPContextIndex instances
         """
         return self.indexer.get_chunks_by_product(tenant_key, product_id)
-
-    def delete_product_context(self, tenant_key: str, product_id: str) -> int:
-        """
-        Delete all context for a product.
-
-        Args:
-            tenant_key: Tenant key for multi-tenant isolation
-            product_id: Product ID
-
-        Returns:
-            Number of chunks deleted
-        """
-        count = self.indexer.delete_chunks_by_product(tenant_key, product_id)
-
-        logger.info(f"Deleted all context for product {product_id}: {count} chunks")
-
-        return count

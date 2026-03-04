@@ -10,7 +10,6 @@ Use specific module imports for clarity and maintainability:
 
     from src.giljo_mcp.models.auth import User, APIKey, ApiKeyIpLog, MCPSession
     from src.giljo_mcp.models.projects import Project, ProjectType
-    from src.giljo_mcp.models.agents import AgentInteraction, Job
     from src.giljo_mcp.models.agent_identity import AgentJob, AgentExecution
     from src.giljo_mcp.models.products import Product, VisionDocument
     from src.giljo_mcp.models.tasks import Task, Message
@@ -35,7 +34,6 @@ src/giljo_mcp/models/
 ├── auth.py            → User, APIKey, MCPSession
 ├── products.py        → Product, VisionDocument, Vision
 ├── projects.py        → Project, ProjectType
-├── agents.py          → AgentInteraction, Job
 ├── agent_identity.py  → AgentJob, AgentExecution (Handover 0366a)
 ├── templates.py       → AgentTemplate, TemplateArchive, TemplateUsageStats
 ├── tasks.py           → Task, Message
@@ -66,12 +64,6 @@ from .agent_identity import (
     AgentExecution,
     AgentJob,
     AgentTodoItem,
-)
-
-# Agent models
-from .agents import (
-    AgentInteraction,
-    Job,
 )
 
 # Auth models
@@ -152,7 +144,6 @@ from .templates import (
 __all__ = [
     "APIKey",
     "AgentExecution",
-    "AgentInteraction",
     "AgentJob",
     "AgentTemplate",
     "AgentTodoItem",
@@ -168,7 +159,6 @@ __all__ = [
     "DownloadToken",
     "GitCommit",
     "GitConfig",
-    "Job",
     "LargeDocumentIndex",
     "MCPContextIndex",
     "MCPContextSummary",
