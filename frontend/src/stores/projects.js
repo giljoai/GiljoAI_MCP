@@ -307,9 +307,6 @@ export const useProjectStore = defineStore('projects', () => {
     }
   }
 
-  function clearError() {
-    error.value = null
-  }
 
   // Handle real-time updates from WebSocket
   function handleRealtimeUpdate(data) {
@@ -391,7 +388,6 @@ export const useProjectStore = defineStore('projects', () => {
     restoreCompletedProject,
     purgeDeletedProject,
     purgeAllDeletedProjects,
-    clearError,
     handleRealtimeUpdate,
   }
 })
