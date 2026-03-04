@@ -483,18 +483,3 @@ export function initWebsocketEventRouter({
 
   isInitialized = true
 }
-
-/**
- * Test-only reset helper (vitest module cache is shared across tests).
- */
-export function __resetWebsocketEventRouterForTests() {
-  unregister.forEach((fn) => {
-    try {
-      fn?.()
-    } catch {
-      // ignore
-    }
-  })
-  unregister = []
-  isInitialized = false
-}
