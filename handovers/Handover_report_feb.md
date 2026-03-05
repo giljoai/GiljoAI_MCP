@@ -522,21 +522,22 @@ TECHNICAL_DEBT_v2 triage ─┐
 
 ## Section 6: March 2026 Test Run Findings — Need Investigation
 
-**Status**: NEEDS TRIAGE — Investigate truth, relevancy, and effort for each item before creating handovers.
+**Status**: PARTIAL TRIAGE COMPLETE — 5 items resolved via 0766/0767/0768 research chains (2026-03-04). Remaining items need investigation.
 
 **Date**: 2026-03-04
+**Triage Session**: 2026-03-04 — 3 research chains (0766a, 0767a, 0768a) + 1 combined implementation (0767b+0768b). Commit: `1ed52edf`
 
 **Source**: TinyContacts alpha orchestrator test run + MCP Enhancement List review + Continuation Workflow Proposal review
 
 ### Continuation Workflow Gaps (from PROPOSAL_Continuation_Workflow_Enhancements.md, Feb 2026)
 
-All 5 issues confirmed still present as of March 2026:
+3 of 5 issues confirmed still present. 2 debunked by 0766a research (2026-03-04):
 
 | # | Issue | Severity | Status | Notes |
 |---|-------|----------|--------|-------|
-| CW-1 | Mission Overwrites — `update_project_mission()` has no `mode="append"` | Critical | OPEN | Multi-phase projects lose previous mission context on update |
+| CW-1 | Mission Overwrites — `update_project_mission()` has no `mode="append"` | ~~Critical~~ | **NOT A BUG** | Researched in 0766a. Overwrite is by design — continuation orchestrators are explicitly prohibited from calling this (`thin_prompt_generator.py:152`: "Do NOT re-write the project mission"). Single-write tool used only during initial staging. |
 | CW-2 | Orchestrator Cannot Reactivate — no `reopen_job()` tool | Critical | INVESTIGATE | Orchestrator handover (0498) may partially cover this use case. Need to verify if handover makes reopen_job unnecessary |
-| CW-3 | Todo List Overwrites — `report_progress()` expects full array, no append mode | Medium | OPEN | Continuation sessions start with empty todo lists |
+| CW-3 | Todo List Overwrites — `report_progress()` expects full array, no append mode | ~~Medium~~ | **NOT A BUG** | Researched in 0766a. Replace strategy is correct — agents send FULL list every call. Handover protocol depends on replace to transition old->finalized to new->fresh. Append would cause duplication. |
 | CW-4 | Duration Timer Not Reactivated | Medium | OPEN | No mechanism to resume timing across sessions |
 | CW-5 | `set_agent_status` Missing | Low | OPEN | Only report_error() and complete_job() exist for status changes |
 
@@ -544,7 +545,7 @@ All 5 issues confirmed still present as of March 2026:
 
 | # | Issue | Severity | Notes |
 |---|-------|----------|-------|
-| RT-1 | `fetch_context()` single-category-per-call | Medium | Forces 5 sequential calls instead of 1. Every orchestrator hits this. Was this an intentional design constraint? |
+| RT-1 | `fetch_context()` single-category-per-call | ~~Medium~~ | **BY DESIGN + FIXED** (0768a/b). Single-category enforced by Handover 0351 for token budget safety (~42K worst case). Misleading MCP schema (advertised `default=['all']` but rejected it) fixed in `1ed52edf`. Dead `_flatten_results()` removed. |
 | RT-2 | Polling loop protocol is too prescriptive | Low | Agent wasted ~21 tool calls monitoring independent background agents. Protocol should make monitoring situational, not mandatory. Documentation fix only. |
 | RT-3 | `progress_percent` in MCP response shows 0% until agents complete | Low | Tracks agent completion count, not aggregate todo progress. NOTE: This is NOT a UI issue — the dashboard uses todo steps (3/5, 4/5) as progress indicator, not percentages. The % is only in MCP tool responses to agents. Investigate if this even matters or is just verbose chat noise. |
 | RT-4 | Todo chicken-and-egg on closeout | Low | Final todo "Close project with 360 memory" can't be marked complete before doing it, but closeout validation blocks if it's incomplete. Minor workflow friction, documented workaround exists. |
@@ -564,9 +565,9 @@ All 5 issues confirmed still present as of March 2026:
 | Enhancement # | Title | Priority | Effort | Notes |
 |---------------|-------|----------|--------|-------|
 | #38 | Remediation Agent Spawning Protocol | P1 | E2 | Enhanced CLOSEOUT_BLOCKED response with remediation guidance |
-| #39 | get_agent_mission() datetime serialization error | P1 | E1 | Intermittent — first call fails, retry works |
+| #39 | get_agent_mission() datetime serialization error | ~~P1~~ | ~~E1~~ | **ALREADY FIXED** by 0731c typed returns. Researched in 0767a. Defense-in-depth `default=str` added to `json.dumps` in `1ed52edf`. |
 | #44 | Document background agent execution pattern | P1 | E1 | Protocol says "NEVER use run_in_background" but it works excellently |
-| #36 | Batch category fetching for fetch_context | P2 | E1 | Same as RT-1 above |
+| #36 | Batch category fetching for fetch_context | ~~P2~~ | ~~E1~~ | **BY DESIGN + FIXED** — Same as RT-1. Schema corrected in `1ed52edf`. |
 | #40 | Workflow status doesn't distinguish orchestrator from sub-agents | P2 | E1 | |
 | #41 | Per-agent status in workflow response | P2 | E2 | |
 | #42 | Failed vs Blocked status display | P2 | E1 | Same as RT-6 above — may be non-issue for UI |
@@ -598,4 +599,15 @@ Tested via GUI at http://localhost:7274:
 
 ---
 
-**Next Steps**: Each item marked OPEN or INVESTIGATE should be triaged for truth (is this still an issue?), relevancy (does it affect community release?), and effort (E1/E2/E3). Items that survive triage should be converted to numbered handovers.
+### Triage Progress (2026-03-04)
+
+| Chain | Items Investigated | Result | Commit |
+|-------|-------------------|--------|--------|
+| 0766 (CW-1, CW-3) | Mission overwrites, Todo overwrites | **NOT A BUG** — by design | -- |
+| 0767 (#39) | Datetime serialization | **ALREADY FIXED** (0731c) + defense-in-depth | `1ed52edf` |
+| 0768 (RT-1, #36) | fetch_context batch | **BY DESIGN** (0351) + misleading schema fixed | `1ed52edf` |
+
+**Resolved**: 5 items (CW-1, CW-3, RT-1, #39, #36)
+**Remaining OPEN**: CW-2, CW-4, CW-5, RT-2, RT-3, RT-4, RT-5, RT-6, VD-1, #38, #40, #41, #42, #43, #44, #50
+
+**Next Steps**: Continue triage of remaining 16 items. Priority candidates: #38 (P1 remediation protocol), RT-5 (360 Memory "Unknown" title), RT-6/#42 (failed vs blocked display), #44 (background agent docs).
