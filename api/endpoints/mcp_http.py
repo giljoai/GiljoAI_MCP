@@ -683,7 +683,6 @@ def _build_context_and_closeout_tools() -> list[dict[str, Any]]:
                         "items": {
                             "type": "string",
                             "enum": [
-                                "all",
                                 "product_core",
                                 "vision_documents",
                                 "tech_stack",
@@ -696,8 +695,7 @@ def _build_context_and_closeout_tools() -> list[dict[str, Any]]:
                                 "self_identity",
                             ],
                         },
-                        "description": "Categories to fetch. ['all'] for everything.",
-                        "default": ["all"],
+                        "description": "Exactly ONE category per call. To fetch multiple categories, make parallel tool calls — one per category.",
                     },
                     "depth_config": {
                         "type": "object",
@@ -985,7 +983,7 @@ async def handle_tools_call(
         # Convert result to JSON string for proper formatting
         # Handover 0731c: Convert Pydantic models to dicts for JSON serialization
         serializable_result = result.model_dump() if isinstance(result, BaseModel) else result
-        result_text = json.dumps(serializable_result, indent=2, ensure_ascii=False)
+        result_text = json.dumps(serializable_result, indent=2, ensure_ascii=False, default=str)
 
         return {"content": [{"type": "text", "text": result_text}], "isError": False}
 

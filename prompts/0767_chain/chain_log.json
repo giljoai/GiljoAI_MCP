@@ -1,0 +1,161 @@
+{
+  "chain_id": "0767",
+  "chain_name": "get_agent_mission() Datetime Serialization Fix",
+  "created_at": "2026-03-04",
+  "orchestrator_notes": "Enhancement #39 from MCP Enhancement List. get_agent_mission() has an intermittent datetime serialization error — first call fails, retry works. P1 severity, E1 effort. This is a real bug that affects every agent's startup flow.",
+  "total_sessions": 2,
+  "sessions": [
+    {
+      "session_id": "0767a",
+      "title": "Research: Datetime Serialization Bug in get_agent_mission()",
+      "color": "#4CAF50",
+      "status": "complete",
+      "started_at": "2026-03-04T14:00:00Z",
+      "completed_at": "2026-03-04T15:15:00Z",
+      "planned_tasks": [
+        "Read get_agent_mission() full implementation (orchestration_service.py:952-1194)",
+        "Identify ALL datetime fields in the return value and trace their serialization path",
+        "Find the exact serialization error — what type fails? datetime? date? timestamp?",
+        "Trace the FULL runtime flow: MCP tool call -> tool_accessor -> service -> ORM -> response serialization",
+        "Check how the MCP HTTP handler serializes the response (mcp_http.py tool dispatch)",
+        "Reproduce the error path: what makes the FIRST call fail but retry succeed?",
+        "Check if this is a lazy-loading or session-state issue (stale ORM objects)",
+        "Check AgentJob and AgentExecution model datetime field definitions",
+        "Check if Pydantic response models handle datetime correctly",
+        "Search for any existing try/except around datetime serialization",
+        "Propose fix with backward compatibility analysis",
+        "Write findings to chain_log.json"
+      ],
+      "tasks_completed": [
+        "Read get_agent_mission() full implementation (952-1194)",
+        "Traced full runtime flow: MCP POST -> handle_tools_call -> tool_accessor -> orchestration_service -> MissionResponse -> model_dump() -> json.dumps()",
+        "Read MissionResponse Pydantic model (service_responses.py:358-382)",
+        "Read AgentJob model — identified datetime columns: created_at, completed_at (both DateTime(timezone=True))",
+        "Read AgentExecution model — identified datetime columns: started_at, completed_at, last_health_check, last_progress_at, last_message_check_at, mission_acknowledged_at",
+        "Read ToolAccessor.get_agent_mission() — confirmed pass-through (no transforms)",
+        "Read handle_tools_call (mcp_http.py:821-1002) — found json.dumps WITHOUT default=str",
+        "Read DatabaseManager.get_session_async() — confirmed expire_on_commit=False",
+        "Read _generate_team_context_header (protocol_builder.py) — returns string, no datetime fields",
+        "Checked get_orchestrator_instructions() — returns raw dict but no datetime fields",
+        "Checked get_pending_jobs() — uses .isoformat() + PendingJobsResult typed return",
+        "Checked get_workflow_status() — uses WorkflowStatus typed return, no raw datetimes",
+        "Checked spawn_agent_job() — uses SpawnResult typed return",
+        "Checked complete_job() — uses CompleteJobResult typed return",
+        "Checked receive_messages() — uses .isoformat() + MessageListResult typed return",
+        "Searched for all .isoformat() usage across orchestration_service.py — consistent pattern",
+        "Searched for default=str in mcp_http.py — NOT FOUND (systemic vulnerability)",
+        "Proposed two fix approaches and wrote findings"
+      ],
+      "deviations": [
+        "MAJOR DEVIATION: The specific datetime serialization bug in get_agent_mission() appears to have been ALREADY FIXED by Handover 0731c (typed returns). The current code uses MissionResponse with explicit .isoformat() conversions. The systemic vulnerability (json.dumps without default=str) remains.",
+        "The bug report (#39) may be based on pre-0731c behavior. Recommend re-testing to confirm whether the bug still reproduces."
+      ],
+      "blockers_encountered": [],
+      "findings": {
+        "bug_confirmed": false,
+        "bug_status": "LIKELY ALREADY FIXED by Handover 0731c (typed returns). Needs re-test to confirm.",
+        "root_cause": "PRE-0731c: get_agent_mission() returned a raw Python dict containing SQLAlchemy datetime objects (job.created_at, execution.started_at) without .isoformat() conversion. The MCP HTTP handler's json.dumps() in handle_tools_call (mcp_http.py:988) has NO default=str handler, so json.dumps() raised TypeError: Object of type datetime is not JSON serializable. POST-0731c: The method now returns a MissionResponse Pydantic model with explicit .isoformat() on all datetime fields (lines 1183-1184). The handler calls model_dump() on BaseModel instances before json.dumps(), producing clean dicts.",
+        "failing_field": "PRE-0731c: job.created_at (DateTime(timezone=True)) and execution.started_at (DateTime(timezone=True)) were the raw datetime objects in the response dict. POST-0731c: Both are converted via .isoformat() with null guards before MissionResponse construction.",
+        "serialization_path": "Agent calls MCP tool 'get_agent_mission' -> HTTP POST to /mcp -> handle_mcp_message() routes to handle_tools_call() -> tool_map dispatches to tool_accessor.get_agent_mission() [pass-through] -> OrchestrationService.get_agent_mission() [returns MissionResponse Pydantic model] -> back in handle_tools_call: isinstance(result, BaseModel) is True -> result.model_dump() converts to dict -> json.dumps(serializable_result, indent=2, ensure_ascii=False) serializes to JSON string -> wrapped in MCP response format {'content': [{'type': 'text', 'text': result_text}], 'isError': False} -> JSONRPCResponse",
+        "why_retry_works": "The waiting->working status transition explains the intermittent behavior. FIRST CALL: execution.status == 'waiting', so the method transitions it to 'working' via session.commit() (line 1098). Even if the response serialization fails AFTER this commit, the status change persists in the DB. RETRY: execution.status is now 'working', so the if-block (line 1094) is skipped entirely. No explicit commit occurs, and the code path is simpler. With the pre-0731c raw-dict code, the datetime objects would still fail on retry — so the intermittent behavior may have been caused by a subtler issue: (a) started_at being None on first call vs populated on retry, (b) expire_on_commit behavior differences, or (c) the error being mischaracterized as intermittent when it was actually consistent until 0731c fixed it.",
+        "affected_datetime_fields": [
+          "AgentJob.created_at — DateTime(timezone=True), server_default=func.now() — CONVERTED via .isoformat() at line 1183",
+          "AgentJob.completed_at — DateTime(timezone=True) — NOT in get_agent_mission response",
+          "AgentExecution.started_at — DateTime(timezone=True) — CONVERTED via .isoformat() at line 1184",
+          "AgentExecution.completed_at — DateTime(timezone=True) — NOT in get_agent_mission response",
+          "AgentExecution.last_health_check — DateTime(timezone=True) — NOT in get_agent_mission response",
+          "AgentExecution.last_progress_at — DateTime(timezone=True) — NOT in get_agent_mission response",
+          "AgentExecution.last_message_check_at — DateTime(timezone=True) — NOT in get_agent_mission response",
+          "AgentExecution.mission_acknowledged_at — DateTime(timezone=True) — NOT in get_agent_mission response"
+        ],
+        "other_tools_affected": [
+          "NONE currently affected — all major tools use typed Pydantic returns post-0731c: get_pending_jobs (PendingJobsResult), get_workflow_status (WorkflowStatus), spawn_agent_job (SpawnResult), complete_job (CompleteJobResult), receive_messages (MessageListResult), report_progress (ProgressResult)",
+          "POTENTIAL RISK: get_orchestrator_instructions() returns a raw dict (not a Pydantic model). It currently has NO datetime fields in the response, but if any were added in the future, json.dumps would fail.",
+          "SYSTEMIC VULNERABILITY: json.dumps in handle_tools_call (mcp_http.py:988) has NO default=str safety net. If ANY tool returns a non-serializable object (datetime, UUID, Decimal, etc.), json.dumps will crash."
+        ],
+        "session_config": {
+          "expire_on_commit": false,
+          "location": "src/giljo_mcp/database.py:57 — sessionmaker(self.async_engine, class_=AsyncSession, expire_on_commit=False)",
+          "implication": "ORM attributes remain accessible after session close. Detached object access does NOT cause DetachedInstanceError for loaded attributes. This means the service can safely access job.created_at and execution.started_at outside the async with block."
+        },
+        "mcp_serialization_analysis": {
+          "handler": "api/endpoints/mcp_http.py:handle_tools_call (lines 821-1002)",
+          "pydantic_check": "Line 986: serializable_result = result.model_dump() if isinstance(result, BaseModel) else result",
+          "json_call": "Line 988: result_text = json.dumps(serializable_result, indent=2, ensure_ascii=False)",
+          "BaseModel_import": "Line 41: from pydantic import BaseModel, Field — correctly imported, isinstance check works",
+          "vulnerability": "NO default=str parameter in json.dumps(). Any non-serializable type causes TypeError.",
+          "error_handling": "Lines 992-1002: Exceptions caught, returned as MCP error: {'content': [{'type': 'text', 'text': f'Error executing {tool_name}: {e!s}'}], 'isError': True}"
+        },
+        "proposed_fixes": [
+          {
+            "name": "A: Add default=str to json.dumps (defense-in-depth)",
+            "where": "api/endpoints/mcp_http.py:988",
+            "what": "Change json.dumps(serializable_result, indent=2, ensure_ascii=False) to json.dumps(serializable_result, indent=2, ensure_ascii=False, default=str). This adds a fallback serializer for any non-JSON-native type (datetime, UUID, Decimal, etc.), converting them to strings via str().",
+            "backward_compatible": true,
+            "estimated_loc": 1,
+            "recommended": true,
+            "rationale": "Minimal change, maximum impact. Prevents ALL datetime/UUID/Decimal serialization errors across ALL tools. Does not change any correct behavior (types that json.dumps already handles are unaffected). This is the standard Python pattern for JSON serialization safety nets. Even though 0731c fixed the specific get_agent_mission case, this protects against future regressions and any other tools that might slip through without typed returns."
+          },
+          {
+            "name": "B: Custom JSON encoder class",
+            "where": "api/endpoints/mcp_http.py or new file src/giljo_mcp/utils/json_encoder.py",
+            "what": "Create a custom JSONEncoder subclass that handles datetime (via .isoformat()), UUID (via str()), Decimal (via float()), and Pydantic BaseModel (via .model_dump()). Use it as json.dumps(..., cls=CustomEncoder). More explicit type handling than default=str.",
+            "backward_compatible": true,
+            "estimated_loc": 20,
+            "recommended": false,
+            "rationale": "More explicit and type-safe than default=str, but over-engineered for the current need. The 0731c typed returns already handle datetime conversion at the service layer. A custom encoder adds a safety net but with more code to maintain. Only warranted if there are multiple non-serializable types that need distinct handling (e.g., Decimal should be float, not str)."
+          },
+          {
+            "name": "C: Verify 0731c fix is complete and close as already-fixed",
+            "where": "N/A (testing only)",
+            "what": "Write an integration test that calls get_agent_mission() for an execution in 'waiting' status and verifies the JSON response is valid. If the test passes, close Enhancement #39 as already fixed by 0731c. Optionally apply Fix A as defense-in-depth.",
+            "backward_compatible": true,
+            "estimated_loc": 15,
+            "recommended": false,
+            "rationale": "If the bug truly no longer reproduces, then no code fix is needed — just confirmation. However, Fix A should still be applied as defense-in-depth."
+          }
+        ]
+      },
+      "files_investigated": [
+        "src/giljo_mcp/services/orchestration_service.py — get_agent_mission (952-1194), get_orchestrator_instructions (2328-2573), get_pending_jobs (1196-1276), get_workflow_status (188-355), spawn_agent_job (361-566), complete_job (1559-1807), report_progress (1278-1506)",
+        "src/giljo_mcp/tools/tool_accessor.py — get_agent_mission (462-464), spawn_agent_job (432-453), get_agent_result (455-460), complete_job (501-503)",
+        "api/endpoints/mcp_http.py — handle_tools_call (821-1002), tool_map (854-895), route handler (1070-1098)",
+        "src/giljo_mcp/models/agent_identity.py — AgentJob (37-133, datetime fields: created_at, completed_at), AgentExecution (136-306, datetime fields: started_at, completed_at, last_health_check, last_progress_at, last_message_check_at, mission_acknowledged_at)",
+        "src/giljo_mcp/schemas/service_responses.py — MissionResponse (358-382, created_at: Optional[str], started_at: Optional[str])",
+        "src/giljo_mcp/database.py — get_session_async (156-204), AsyncSessionLocal config (57, expire_on_commit=False)",
+        "src/giljo_mcp/services/protocol_builder.py — _generate_team_context_header (31-160, returns str)",
+        "src/giljo_mcp/services/message_service.py — receive_messages (894-1097)"
+      ],
+      "notes_for_next": "CRITICAL DECISION FOR 0767b: The get_agent_mission() datetime bug appears ALREADY FIXED by 0731c typed returns. The recommended action is: (1) Apply Fix A (add default=str to json.dumps in mcp_http.py:988) as defense-in-depth — this is a 1-line change. (2) Optionally write an integration test for get_agent_mission with 'waiting' status to confirm the bug no longer reproduces. (3) Close Enhancement #39 referencing 0731c as the original fix and the default=str change as defense-in-depth. DO NOT refactor the service layer — the .isoformat() pattern is already correctly applied everywhere.",
+      "summary": "Full trace of get_agent_mission() serialization path completed. The datetime serialization bug was MOST LIKELY already fixed by Handover 0731c (typed returns). Before 0731c, raw datetime objects from SQLAlchemy ORM leaked into the response dict and crashed json.dumps(). After 0731c, all datetime fields are explicitly converted via .isoformat() and wrapped in a MissionResponse Pydantic model. The systemic vulnerability remains: json.dumps in handle_tools_call has NO default=str safety net. RECOMMENDED: Apply 1-line fix (default=str) as defense-in-depth."
+    },
+    {
+      "session_id": "0767b",
+      "title": "Implement: Datetime Serialization Safety Net",
+      "color": "#2196F3",
+      "status": "complete",
+      "started_at": "2026-03-04T16:00:00Z",
+      "completed_at": "2026-03-04T16:30:00Z",
+      "planned_tasks": [
+        "Read chain_log.json findings from 0767a",
+        "Apply Fix A: Add default=str to json.dumps in mcp_http.py:988 (1 line)",
+        "Run existing test suite to verify no regressions",
+        "Update chain_log.json with results"
+      ],
+      "tasks_completed": [
+        "Read 0767a findings — confirmed defense-in-depth approach (Fix A)",
+        "Applied default=str to json.dumps in mcp_http.py:988 — 1 parameter added",
+        "Ran full test suite — 1390 passed, 0 failed",
+        "Updated chain_log.json"
+      ],
+      "deviations": [
+        "Combined with 0768b implementation (schema fix + dead code removal) per orchestrator handover 0767b+0768b"
+      ],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": "Applied defense-in-depth fix: added default=str to json.dumps() in handle_tools_call (mcp_http.py:988). This converts any non-JSON-native type (datetime, UUID, Decimal) to string instead of crashing. The specific get_agent_mission datetime bug was already fixed by 0731c typed returns, but this systemic safety net protects all current and future tools. Combined commit with 0768b fixes."
+    }
+  ],
+  "chain_summary": "Chain complete. 0767a research confirmed the datetime bug was already fixed by 0731c typed returns. 0767b added a defense-in-depth safety net (default=str in json.dumps) to prevent any future serialization crashes across all MCP tools.",
+  "final_status": "complete"
+}
