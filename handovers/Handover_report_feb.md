@@ -517,3 +517,85 @@ TECHNICAL_DEBT_v2 triage ─┐
 | Phase 4 (Release) | 3-5h | Gating step |
 | **Pre-release total** | **25-38h** | |
 | Phase 5 (Post-release) | 16-24h+ | No rush |
+
+---
+
+## Section 6: March 2026 Test Run Findings — Need Investigation
+
+**Status**: NEEDS TRIAGE — Investigate truth, relevancy, and effort for each item before creating handovers.
+
+**Date**: 2026-03-04
+
+**Source**: TinyContacts alpha orchestrator test run + MCP Enhancement List review + Continuation Workflow Proposal review
+
+### Continuation Workflow Gaps (from PROPOSAL_Continuation_Workflow_Enhancements.md, Feb 2026)
+
+All 5 issues confirmed still present as of March 2026:
+
+| # | Issue | Severity | Status | Notes |
+|---|-------|----------|--------|-------|
+| CW-1 | Mission Overwrites — `update_project_mission()` has no `mode="append"` | Critical | OPEN | Multi-phase projects lose previous mission context on update |
+| CW-2 | Orchestrator Cannot Reactivate — no `reopen_job()` tool | Critical | INVESTIGATE | Orchestrator handover (0498) may partially cover this use case. Need to verify if handover makes reopen_job unnecessary |
+| CW-3 | Todo List Overwrites — `report_progress()` expects full array, no append mode | Medium | OPEN | Continuation sessions start with empty todo lists |
+| CW-4 | Duration Timer Not Reactivated | Medium | OPEN | No mechanism to resume timing across sessions |
+| CW-5 | `set_agent_status` Missing | Low | OPEN | Only report_error() and complete_job() exist for status changes |
+
+### Orchestration Runtime Friction (from March 2026 test run)
+
+| # | Issue | Severity | Notes |
+|---|-------|----------|-------|
+| RT-1 | `fetch_context()` single-category-per-call | Medium | Forces 5 sequential calls instead of 1. Every orchestrator hits this. Was this an intentional design constraint? |
+| RT-2 | Polling loop protocol is too prescriptive | Low | Agent wasted ~21 tool calls monitoring independent background agents. Protocol should make monitoring situational, not mandatory. Documentation fix only. |
+| RT-3 | `progress_percent` in MCP response shows 0% until agents complete | Low | Tracks agent completion count, not aggregate todo progress. NOTE: This is NOT a UI issue — the dashboard uses todo steps (3/5, 4/5) as progress indicator, not percentages. The % is only in MCP tool responses to agents. Investigate if this even matters or is just verbose chat noise. |
+| RT-4 | Todo chicken-and-egg on closeout | Low | Final todo "Close project with 360 memory" can't be marked complete before doing it, but closeout validation blocks if it's incomplete. Minor workflow friction, documented workaround exists. |
+| RT-5 | 360 Memory entry title shows "Unknown" instead of project title | Low | Entry #27 displayed as "Unknown" in UI. Should show project name. Also "Type: Sequence: #27" display is confusing. |
+| RT-6 | Failed vs Blocked agents display identically on dashboard | Medium | Both show as "need input". Should visually distinguish terminal (failed) vs recoverable (blocked) states. |
+
+### Vision Document Pipeline (broken)
+
+| # | Issue | Severity | Notes |
+|---|-------|----------|-------|
+| VD-1 | `fetch_context(vision_documents, depth=light)` returns "summary_not_available" | Medium | Light summary consolidation hasn't been run/built. Links to TODO_vision_summarizer_llm_upgrade.md. Chunking and summary (light/medium/full) integration appears broken. Needs investigation of current state. |
+
+### MCP Enhancement List Open Items (from F:\TinyContacts\MCP_ENHANCEMENT_LIST.md)
+
+28 of 51 items resolved (55%). Key unresolved items that may warrant handovers:
+
+| Enhancement # | Title | Priority | Effort | Notes |
+|---------------|-------|----------|--------|-------|
+| #38 | Remediation Agent Spawning Protocol | P1 | E2 | Enhanced CLOSEOUT_BLOCKED response with remediation guidance |
+| #39 | get_agent_mission() datetime serialization error | P1 | E1 | Intermittent — first call fails, retry works |
+| #44 | Document background agent execution pattern | P1 | E1 | Protocol says "NEVER use run_in_background" but it works excellently |
+| #36 | Batch category fetching for fetch_context | P2 | E1 | Same as RT-1 above |
+| #40 | Workflow status doesn't distinguish orchestrator from sub-agents | P2 | E1 | |
+| #41 | Per-agent status in workflow response | P2 | E2 | |
+| #42 | Failed vs Blocked status display | P2 | E1 | Same as RT-6 above — may be non-issue for UI |
+| #43 | Progress percent calculation | P2 | E1 | Same as RT-3 above — may be non-issue for UI |
+| #50 | Platform detection cmd.exe vs GNU bash | P2 | E1 | Windows timeout vs sleep confusion |
+
+### Manual Product Testing Results (March 2026)
+
+Tested via GUI at http://localhost:7274:
+
+| Feature | Create | Edit | Delete | Other | Status |
+|---------|--------|------|--------|-------|--------|
+| Tasks | ✅ | - | ✅ | Convert to project ✅, Complete ✅ | WORKING |
+| Projects | ✅ | ✅ | ✅ | Activate ✅, Cancel ✅, Complete ✅ | WORKING |
+| Products | ✅ | ✅ | ✅ | - | WORKING |
+| Terminate project | - | - | - | Not yet tested | PENDING |
+| Orchestrator handover | - | - | - | Not yet tested | PENDING |
+
+### What Worked Well
+
+- Agent spawning clean, zero failures
+- MCP messaging reliable — team roster delivery, completion reports
+- `get_workflow_status()` observability is genuinely useful
+- `complete_job()` validation caught premature close attempts — good guardrail
+- `close_project_and_update_memory()` correctly blocks until orchestrator job complete
+- Both agents completed autonomously with zero intervention
+- `staging_directive` in send_message() response cleanly gates staging-to-implementation boundary
+- 360 Memory correctly appends and provides full sequential history
+
+---
+
+**Next Steps**: Each item marked OPEN or INVESTIGATE should be triaged for truth (is this still an issue?), relevancy (does it affect community release?), and effort (E1/E2/E3). Items that survive triage should be converted to numbered handovers.
