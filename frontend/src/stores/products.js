@@ -371,6 +371,8 @@ export const useProductStore = defineStore('products', () => {
     effectiveProductId,
 
     // Actions
+    fetchProducts,
+    setCurrentProduct,
     fetchProductById,
     fetchProductMetrics,
     createProduct,
