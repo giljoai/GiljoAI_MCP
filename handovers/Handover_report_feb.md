@@ -564,7 +564,7 @@ TECHNICAL_DEBT_v2 triage ─┐
 
 | Enhancement # | Title | Priority | Effort | Notes |
 |---------------|-------|----------|--------|-------|
-| #38 | Remediation Agent Spawning Protocol | P1 | E2 | Enhanced CLOSEOUT_BLOCKED response with remediation guidance |
+| #38 | Remediation Agent Spawning Protocol | ~~P1~~ | ~~E2~~ | **FIXED** in `9ee450af`. Researched in 0800a: COMPLETION_BLOCKED gate works, CLOSEOUT_BLOCKED gate works but orchestrators had NO recovery instructions. Fixed: CLI prompt drain-and-complete pattern, multi-terminal user-directed reactivation, enriched blocker responses with `issue_type`/`suggested_action`. |
 | #39 | get_agent_mission() datetime serialization error | ~~P1~~ | ~~E1~~ | **ALREADY FIXED** by 0731c typed returns. Researched in 0767a. Defense-in-depth `default=str` added to `json.dumps` in `1ed52edf`. |
 | #44 | Document background agent execution pattern | P1 | E1 | Protocol says "NEVER use run_in_background" but it works excellently |
 | #36 | Batch category fetching for fetch_context | ~~P2~~ | ~~E1~~ | **BY DESIGN + FIXED** — Same as RT-1. Schema corrected in `1ed52edf`. |
@@ -606,8 +606,9 @@ Tested via GUI at http://localhost:7274:
 | 0766 (CW-1, CW-3) | Mission overwrites, Todo overwrites | **NOT A BUG** — by design | -- |
 | 0767 (#39) | Datetime serialization | **ALREADY FIXED** (0731c) + defense-in-depth | `1ed52edf` |
 | 0768 (RT-1, #36) | fetch_context batch | **BY DESIGN** (0351) + misleading schema fixed | `1ed52edf` |
+| 0800 (#38) | Remediation protocol | **FIXED** — orchestrator CLOSEOUT_BLOCKED recovery + enriched responses | `9ee450af` |
 
-**Resolved**: 5 items (CW-1, CW-3, RT-1, #39, #36)
-**Remaining OPEN**: CW-2, CW-4, CW-5, RT-2, RT-3, RT-4, RT-5, RT-6, VD-1, #38, #40, #41, #42, #43, #44, #50
+**Resolved**: 6 items (CW-1, CW-3, RT-1, #38, #39, #36)
+**Remaining OPEN**: CW-2, CW-4, CW-5, RT-2, RT-3, RT-4, RT-5, RT-6, VD-1, #40, #41, #42, #43, #44, #50
 
-**Next Steps**: Continue triage of remaining 16 items. Priority candidates: #38 (P1 remediation protocol), RT-5 (360 Memory "Unknown" title), RT-6/#42 (failed vs blocked display), #44 (background agent docs).
+**Next Steps**: Continue triage of remaining 15 items. Priority candidates: RT-5 (360 Memory "Unknown" title), RT-6/#42 (failed vs blocked display), #44 (background agent docs), CW-2 (orchestrator prompt caching).
