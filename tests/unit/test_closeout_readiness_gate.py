@@ -81,21 +81,40 @@ class TestCheckAgentReadiness:
         agent_b = _make_execution(str(uuid4()), "ui-builder", "working")
         agent_c = _make_execution(str(uuid4()), "tester", "silent")
 
-        scalars_mock = Mock()
-        scalars_mock.all.return_value = [agent_a, agent_b, agent_c]
-        result_mock = Mock()
-        result_mock.scalars.return_value = scalars_mock
-        session.execute = AsyncMock(return_value=result_mock)
+        call_count = {"n": 0}
+
+        async def mock_execute(*args, **kwargs):
+            call_count["n"] += 1
+            result = Mock()
+            if call_count["n"] == 1:
+                # Execution query
+                scalars = Mock()
+                scalars.all.return_value = [agent_a, agent_b, agent_c]
+                result.scalars.return_value = scalars
+            else:
+                # Todo queries — return empty
+                scalars = Mock()
+                scalars.all.return_value = []
+                result.scalars.return_value = scalars
+            return result
+
+        session.execute = AsyncMock(side_effect=mock_execute)
 
         is_ready, blockers = await _check_agent_readiness(
             session, project_id, "test-tenant"
         )
 
         assert is_ready is False
-        assert len(blockers) == 2
-        blocker_names = {b["agent_name"] for b in blockers}
+        agent_blockers = [b for b in blockers if "_summary" not in b]
+        assert len(agent_blockers) == 2
+        blocker_names = {b["agent_name"] for b in agent_blockers}
         assert "ui-builder" in blocker_names
         assert "tester" in blocker_names
+        # Verify enriched fields
+        for b in agent_blockers:
+            assert "issue_type" in b
+            assert "suggested_action" in b
+            assert b["issue_type"] == "still_working"
 
     @pytest.mark.asyncio
     async def test_decommissioned_agents_skipped(self):
@@ -236,6 +255,11 @@ class TestCloseoutGateIntegration:
                 scalars = MagicMock()
                 scalars.all.return_value = [agent_working]
                 result.scalars.return_value = scalars
+            elif call_count["n"] == 4:
+                # Todo query for the working agent — return empty
+                scalars = MagicMock()
+                scalars.all.return_value = []
+                result.scalars.return_value = scalars
             return result
 
         mock_session.execute = AsyncMock(side_effect=mock_execute)
@@ -254,8 +278,10 @@ class TestCloseoutGateIntegration:
         assert "agents have unfinished work" in str(exc_info.value)
         assert exc_info.value.context["status"] == "CLOSEOUT_BLOCKED"
         assert "blockers" in exc_info.value.context
-        assert len(exc_info.value.context["blockers"]) == 1
-        assert exc_info.value.context["blockers"][0]["agent_name"] == "impl-1"
+        agent_blockers = [b for b in exc_info.value.context["blockers"] if "_summary" not in b]
+        assert len(agent_blockers) == 1
+        assert agent_blockers[0]["agent_name"] == "impl-1"
+        assert agent_blockers[0]["issue_type"] == "still_working"
 
     @pytest.mark.asyncio
     async def test_force_decommissions_and_proceeds(self):
@@ -304,6 +330,11 @@ class TestCloseoutGateIntegration:
                 scalars.all.return_value = [agent_working]
                 result.scalars.return_value = scalars
             elif call_count["n"] == 4:
+                # Todo query for the working agent — return empty
+                scalars = MagicMock()
+                scalars.all.return_value = []
+                result.scalars.return_value = scalars
+            elif call_count["n"] == 5:
                 # Force decommission query — returns same working agent
                 scalars = MagicMock()
                 scalars.all.return_value = [agent_working]

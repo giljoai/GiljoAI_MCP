@@ -116,6 +116,11 @@ async def _check_closeout_readiness(
                     "agent_name": execution.agent_name or execution.agent_display_name,
                     "issue_type": "still_working",
                     "status": execution.status,
+                    "suggested_action": (
+                        f"Send message to agent asking for status, or drain messages via "
+                        f"receive_messages(agent_id='{execution.agent_id}') and force-complete "
+                        f"via complete_job(job_id='{execution.job_id}')"
+                    ),
                 }
             )
             continue  # Don't check further issues for this agent
@@ -130,6 +135,11 @@ async def _check_closeout_readiness(
                     "agent_name": execution.agent_name or execution.agent_display_name,
                     "issue_type": "unread_messages",
                     "messages_waiting": execution.messages_waiting_count,
+                    "suggested_action": (
+                        f"Agent has {execution.messages_waiting_count} unread messages. "
+                        f"Drain via receive_messages(agent_id='{execution.agent_id}'), "
+                        f"process, then complete_job(job_id='{execution.job_id}')"
+                    ),
                 }
             )
 
@@ -146,6 +156,7 @@ async def _check_closeout_readiness(
             pending_count = sum(1 for t in incomplete_todos if t.status == "pending")
             in_progress_count = sum(1 for t in incomplete_todos if t.status == "in_progress")
             summary["agents_with_incomplete_todos"] += 1
+            incomplete_names = [t.content for t in incomplete_todos]
             blockers.append(
                 {
                     "job_id": execution.job_id,
@@ -154,7 +165,13 @@ async def _check_closeout_readiness(
                     "issue_type": "incomplete_todos",
                     "pending_count": pending_count,
                     "in_progress_count": in_progress_count,
-                    "incomplete_items": [t.content for t in incomplete_todos],
+                    "incomplete_items": incomplete_names,
+                    "suggested_action": (
+                        f"Agent has {len(incomplete_todos)} incomplete TODO items: "
+                        f"{incomplete_names[:5]}. Update via "
+                        f"report_progress(job_id='{execution.job_id}', todo_items=[...]) "
+                        f"marking as completed, then complete_job(job_id='{execution.job_id}')"
+                    ),
                 }
             )
 
@@ -172,13 +189,20 @@ async def _check_closeout_readiness(
             pending_count = sum(1 for t in orch_incomplete if t.status == "pending")
             in_progress_count = sum(1 for t in orch_incomplete if t.status == "in_progress")
             summary["orchestrator_incomplete_todos"] = len(orch_incomplete)
+            orch_incomplete_names = [t.content for t in orch_incomplete]
             blockers.append(
                 {
                     "job_id": orchestrator_job_id,
                     "issue_type": "orchestrator_incomplete_todos",
                     "pending_count": pending_count,
                     "in_progress_count": in_progress_count,
-                    "incomplete_items": [t.content for t in orch_incomplete],
+                    "incomplete_items": orch_incomplete_names,
+                    "suggested_action": (
+                        f"Orchestrator has {len(orch_incomplete)} incomplete TODO items: "
+                        f"{orch_incomplete_names[:5]}. Update via "
+                        f"report_progress(job_id='{orchestrator_job_id}', todo_items=[...]) "
+                        f"marking as completed"
+                    ),
                 }
             )
 

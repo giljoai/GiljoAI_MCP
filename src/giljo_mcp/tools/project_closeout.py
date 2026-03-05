@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError, ValidationError
-from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
@@ -239,7 +239,8 @@ async def _check_agent_readiness(
     Check whether all agents in the project are ready for closeout.
 
     Returns (is_ready, blockers) where blockers is a list of dicts
-    describing each non-complete agent.
+    describing each non-complete agent with issue_type, todo details,
+    suggested_action, and a trailing summary entry.
     """
     exec_stmt = (
         select(AgentExecution)
@@ -255,21 +256,72 @@ async def _check_agent_readiness(
     executions = result.scalars().all()
 
     blockers: list[dict[str, Any]] = []
+    summary = {
+        "agents_checked": 0,
+        "still_working": 0,
+        "with_unread_messages": 0,
+        "with_incomplete_todos": 0,
+    }
+
     for execution in executions:
         if execution.status in _SKIP_STATUSES:
             continue
+        summary["agents_checked"] += 1
         if execution.status == "complete":
             continue
 
+        # Agent is not complete — it's blocking closeout
+        agent_id = execution.agent_id
+        agent_name = execution.agent_name or execution.agent_display_name
+        job_id = execution.job_id
+        messages_waiting = execution.messages_waiting_count or 0
+
+        summary["still_working"] += 1
+        if messages_waiting > 0:
+            summary["with_unread_messages"] += 1
+
+        # Query incomplete todos
+        incomplete_stmt = select(AgentTodoItem).where(
+            AgentTodoItem.job_id == job_id,
+            AgentTodoItem.tenant_key == tenant_key,
+            AgentTodoItem.status.in_(["pending", "in_progress"]),
+        )
+        incomplete_result = await session.execute(incomplete_stmt)
+        incomplete_todos = incomplete_result.scalars().all()
+        incomplete_count = len(incomplete_todos)
+        incomplete_names = [t.content for t in incomplete_todos[:5]]
+        if incomplete_count > 0:
+            summary["with_incomplete_todos"] += 1
+
+        # Build suggested_action with all relevant remediation steps
+        steps = []
+        if messages_waiting > 0:
+            steps.append(f"Drain {messages_waiting} unread messages via receive_messages(agent_id='{agent_id}')")
+        if incomplete_count > 0:
+            steps.append(
+                f"Update {incomplete_count} incomplete TODOs via "
+                f"report_progress(job_id='{job_id}', todo_items=[...]) "
+                f"marking as completed/skipped"
+            )
+        steps.append(f"Force-complete via complete_job(job_id='{job_id}')")
+        suggested_action = ". ".join(steps) + "."
+
         blockers.append(
             {
-                "agent_id": execution.agent_id,
-                "agent_name": execution.agent_name or execution.agent_display_name,
+                "agent_id": agent_id,
+                "agent_name": agent_name,
                 "status": execution.status,
-                "job_id": execution.job_id,
-                "messages_waiting": execution.messages_waiting_count or 0,
+                "job_id": job_id,
+                "issue_type": "still_working",
+                "messages_waiting": messages_waiting,
+                "incomplete_todo_count": incomplete_count,
+                "incomplete_todo_names": incomplete_names,
+                "suggested_action": suggested_action,
             }
         )
+
+    if blockers:
+        blockers.append({"_summary": summary})
 
     return (len(blockers) == 0, blockers)
 

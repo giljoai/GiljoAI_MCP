@@ -1,0 +1,296 @@
+{
+  "chain_id": "0800",
+  "chain_name": "Remediation Agent Spawning Protocol (#38)",
+  "created_at": "2026-03-05",
+  "orchestrator_notes": "Enhancement #38. When CLOSEOUT_BLOCKED fires, the orchestrator needs clear remediation guidance. complete_job() already has COMPLETION_BLOCKED enforcement (unread messages + incomplete todos block status change). Research needed: (1) Is COMPLETION_BLOCKED actually working end-to-end? (2) What does the orchestrator see when closeout is blocked? (3) Does the CLOSEOUT_BLOCKED response give enough info for the orchestrator to act? (4) In multi-terminal mode, can the orchestrator give the user a copy-paste prompt to reactivate a stuck agent? (5) In CLI subagent mode, can the orchestrator respawn a Task tool agent to finish the work? The MCP server is passive — it cannot spawn agents. It can only return instructions.",
+  "total_sessions": 2,
+  "sessions": [
+    {
+      "session_id": "0800a",
+      "title": "Research: Remediation Protocol Gap Analysis",
+      "color": "#4CAF50",
+      "status": "complete",
+      "started_at": "2026-03-05T12:00:00Z",
+      "completed_at": "2026-03-05T13:30:00Z",
+      "planned_tasks": [
+        "Read complete_job() COMPLETION_BLOCKED logic (orchestration_service.py:1639-1688)",
+        "Read _check_agent_readiness() in project_closeout.py:233-274",
+        "Read close_project_and_update_memory() CLOSEOUT_BLOCKED response (project_closeout.py:126-134)",
+        "Read write_360_memory.py _check_closeout_readiness() — the richer CLOSEOUT_BLOCKED implementation",
+        "Read thin_prompt_generator.py build_retirement_prompt() — retirement flow for context exhaustion",
+        "Read protocol_builder.py _generate_agent_protocol() — Phase 4 completion instructions",
+        "Read protocol_builder.py _build_ch5_reference() — orchestrator completion protocol",
+        "Read thin_prompt_generator.py _build_claude_code_execution_prompt() — CLI mode orchestrator",
+        "Read thin_prompt_generator.py _build_multi_terminal_orchestrator_prompt() — multi-terminal orchestrator",
+        "Read docs/ORCHESTRATOR.md CLOSEOUT_BLOCKED handling section",
+        "Search all COMPLETION_BLOCKED and CLOSEOUT_BLOCKED references across codebase",
+        "Read api/endpoints/mcp_http.py COMPLETION_BLOCKED error handling",
+        "Read project_closeout.py _force_decommission_agents()",
+        "Synthesize findings across all 6 research tasks"
+      ],
+      "tasks_completed": [
+        "Read complete_job() COMPLETION_BLOCKED logic (orchestration_service.py:1559-1807)",
+        "Read _check_agent_readiness() in project_closeout.py:232-273",
+        "Read close_project_and_update_memory() CLOSEOUT_BLOCKED response (project_closeout.py:34-223)",
+        "Read write_360_memory.py _check_closeout_readiness() (lines 47-200) — richer CLOSEOUT_BLOCKED",
+        "Read thin_prompt_generator.py build_retirement_prompt() (lines 159-291)",
+        "Read protocol_builder.py _generate_agent_protocol() (lines 163-369) — Phase 4 completion",
+        "Read protocol_builder.py _build_ch5_reference() (lines 821-908) — orchestrator CH5",
+        "Read protocol_builder.py _build_ch1_mission() — staging-only, no completion",
+        "Read protocol_builder.py _build_ch4_error_handling() — status transitions, no CLOSEOUT",
+        "Read protocol_builder.py _build_ch3_spawning_rules() — no completion handling",
+        "Read thin_prompt_generator.py _build_claude_code_execution_prompt() (lines 1275-1546)",
+        "Read thin_prompt_generator.py _build_multi_terminal_orchestrator_prompt() (lines 1548-1676)",
+        "Read docs/ORCHESTRATOR.md CLOSEOUT_BLOCKED section (lines 701-783)",
+        "Read api/endpoints/mcp_http.py COMPLETION_BLOCKED suppression (lines 990-1001)",
+        "Read project_closeout.py _force_decommission_agents() (lines 276-309)",
+        "Searched COMPLETION_BLOCKED across entire codebase (7 source files)",
+        "Searched CLOSEOUT_BLOCKED across entire codebase (10 source files)",
+        "Synthesized gap analysis across all 6 categories"
+      ],
+      "deviations": [
+        "Discovered TWO separate CLOSEOUT_BLOCKED implementations: project_closeout.py (simpler, raises exception) and write_360_memory.py (richer, returns dict). Handover only mentioned project_closeout.py.",
+        "docs/ORCHESTRATOR.md contains detailed CLOSEOUT_BLOCKED handling patterns that are NOT injected into any runtime prompt — this is documentation-only knowledge."
+      ],
+      "blockers_encountered": [],
+      "findings": {
+        "completion_blocked_gate": {
+          "works": true,
+          "response_quality": "sufficient",
+          "agent_knows_about_it": true,
+          "self_remediation_possible": true,
+          "details": {
+            "response_contains": {
+              "error_code": "COMPLETION_BLOCKED",
+              "message": "COMPLETION_BLOCKED: Complete all TODO items and read all messages before calling complete_job()",
+              "context_reasons": "Up to 2 entries: unread messages with IDs + incomplete TODO names",
+              "context_unread_messages": "integer count",
+              "context_incomplete_todos": "integer count"
+            },
+            "agent_pre_warning": "Phase 4 of _generate_agent_protocol() warns: 'System will REJECT your completion. Response will list specific blockers.' But does NOT name the error code 'COMPLETION_BLOCKED' explicitly.",
+            "remediation_instructions_in_response": "YES — tells agent to call receive_messages() and lists up to 5 message IDs. Names up to 5 incomplete TODO items.",
+            "staleness_mechanism": "NONE — no TTL, no heartbeat timeout, no automatic decommission for stuck agents",
+            "mcp_http_handling": "api/endpoints/mcp_http.py line 992: COMPLETION_BLOCKED validation errors are logged at DEBUG instead of ERROR to avoid console pollution. Error still returned to agent in MCP format."
+          },
+          "gaps": [
+            "No staleness/timeout mechanism — agent can stay 'working' forever with no automatic cleanup",
+            "Phase 4 protocol does not name the error code 'COMPLETION_BLOCKED' — agent sees it for the first time when rejected (minor, since the error message is self-explanatory)",
+            "No retry guidance in error response — doesn't say 'fix these issues then call complete_job() again'"
+          ]
+        },
+        "closeout_blocked_gate": {
+          "works": true,
+          "response_quality": "insufficient",
+          "orchestrator_knows_what_to_do": false,
+          "differentiates_stuck_vs_working": "partial",
+          "includes_remediation_steps": false,
+          "details": {
+            "two_implementations": {
+              "project_closeout_py": {
+                "function": "_check_agent_readiness() at lines 232-273",
+                "caller": "close_project_and_update_memory() at line 126",
+                "mechanism": "Raises ProjectStateError exception",
+                "response_contains": {
+                  "status": "CLOSEOUT_BLOCKED",
+                  "blockers": "list of {agent_id, agent_name, status, job_id, messages_waiting}",
+                  "hint": "Resolve all blockers or pass force=true to auto-decommission remaining agents."
+                },
+                "differentiates_issue_types": false,
+                "includes_todo_details": false,
+                "includes_summary": false,
+                "richness": "BASIC — only status and messages_waiting per agent"
+              },
+              "write_360_memory_py": {
+                "function": "_check_closeout_readiness() at lines 47-200",
+                "caller": "write_360_memory() at line 312, only when entry_type='project_completion' and author_job_id is provided",
+                "mechanism": "Returns dict with success=false (non-exception path)",
+                "response_contains": {
+                  "error": "CLOSEOUT_BLOCKED",
+                  "blockers": "list with issue_type differentiation: still_working, unread_messages, incomplete_todos, orchestrator_incomplete_todos",
+                  "summary": "{agents_checked, still_working, agents_with_unread, agents_with_incomplete_todos, orchestrator_incomplete_todos}",
+                  "action_required": "Resolve all blockers before closeout. Use report_error() if unable to resolve."
+                },
+                "differentiates_issue_types": true,
+                "includes_todo_details": true,
+                "includes_incomplete_item_names": true,
+                "richness": "GOOD — per-agent issue type, counts, and item names"
+              }
+            },
+            "force_decommission": "project_closeout.py supports force=true which calls _force_decommission_agents() to set all active agents to 'decommissioned' status"
+          },
+          "gaps": [
+            "project_closeout.py CLOSEOUT_BLOCKED is much less rich than write_360_memory.py — no issue_type, no todo details, no summary counts",
+            "Neither implementation includes per-blocker REMEDIATION STEPS (e.g., 'send message to agent X asking for status', 'call receive_messages(agent_id=X) to drain their queue')",
+            "Neither implementation generates a copy-paste reactivation prompt for multi-terminal mode",
+            "The 'action_required' field is generic ('Resolve all blockers...') — not per-blocker actionable instructions",
+            "No differentiation between 'agent is actively working and making progress' vs 'agent is stuck/dead/context-exhausted'"
+          ]
+        },
+        "cli_mode_remediation": {
+          "orchestrator_can_act_for_agent": true,
+          "how": "The orchestrator CAN call receive_messages(agent_id=X), report_progress(job_id=X), and complete_job(job_id=X) on behalf of any agent in the same tenant. The retirement prompt (build_retirement_prompt) already demonstrates this full pattern: drain messages, mark todos as skipped, force-complete. Nothing in the auth/tenant model prevents cross-agent operations within the same tenant.",
+          "gaps": [
+            "CRITICAL: The CLI implementation prompt (_build_claude_code_execution_prompt) does NOT tell the orchestrator it can act on behalf of stuck agents. Section 7 'When You're Done' just says 'Ensure all have status=complete' with no fallback if they don't.",
+            "CRITICAL: No CLOSEOUT_BLOCKED handling instructions in the CLI prompt at all — the orchestrator has no idea what to do if closeout fails",
+            "The retirement prompt has the full remediation pattern but it only fires on context exhaustion, not on normal closeout failure",
+            "The orchestrator could respawn a Task tool subagent to finish work, but is never told this is an option"
+          ]
+        },
+        "multi_terminal_remediation": {
+          "orchestrator_can_guide_user": true,
+          "reactivation_prompt_possible": true,
+          "gaps": [
+            "CRITICAL: The multi-terminal prompt (_build_multi_terminal_orchestrator_prompt) Section 5 'Project Closeout' only covers the happy path ('When all agents show status complete'). No handling for when they don't.",
+            "No instructions for generating a paste-able reactivation prompt for the user",
+            "System does NOT track which terminal an agent is running in — orchestrator cannot say 'go to terminal 3'",
+            "docs/ORCHESTRATOR.md has the CLOSEOUT_BLOCKED handling pattern (send messages to agents by issue_type) but this documentation is NOT injected into any runtime prompt",
+            "Section 4 'Handling Agent Issues' mentions spawning fresh agents for tester problems but not for closeout remediation"
+          ]
+        },
+        "gap_categories": {
+          "A_agent_self_remediation": {
+            "severity": "LOW",
+            "assessment": "Mostly working. Agents are warned about completion requirements in Phase 4 protocol. COMPLETION_BLOCKED error response is actionable with message IDs and TODO names. Only minor gap: error code name not mentioned in advance, no explicit 'retry after fixing' instruction.",
+            "items": [
+              "Phase 4 does not name 'COMPLETION_BLOCKED' error code (minor)",
+              "Error response does not say 'fix these then retry complete_job()' (minor)",
+              "No staleness timeout for agents that never attempt completion (systemic)"
+            ]
+          },
+          "B_orchestrator_remediation": {
+            "severity": "HIGH",
+            "assessment": "Major gap. Neither the CLI nor multi-terminal orchestrator prompt includes ANY CLOSEOUT_BLOCKED handling instructions. The orchestrator has no idea what to do when closeout fails. The retirement prompt demonstrates the full remediation pattern but only fires on context exhaustion.",
+            "items": [
+              "CLI prompt: no CLOSEOUT_BLOCKED handling, no 'act on behalf of agent' instructions",
+              "Multi-terminal prompt: no CLOSEOUT_BLOCKED handling, no 'tell user to reactivate agent' instructions",
+              "docs/ORCHESTRATOR.md has the pattern but it's not injected into prompts",
+              "Retirement prompt has full pattern but wrong trigger (context exhaustion, not closeout failure)"
+            ]
+          },
+          "C_response_richness": {
+            "severity": "MEDIUM",
+            "assessment": "Split quality. write_360_memory.py has good response richness (issue_type differentiation, todo names, summary). project_closeout.py is basic (just status + messages_waiting). Neither includes per-blocker remediation steps or reactivation prompts.",
+            "items": [
+              "project_closeout.py CLOSEOUT_BLOCKED lacks issue_type, todo details, summary",
+              "Neither response includes per-blocker suggested actions",
+              "Neither response includes reactivation prompt for multi-terminal mode",
+              "No differentiation between 'actively progressing' vs 'stuck/dead' agents"
+            ]
+          },
+          "D_missing_features": {
+            "severity": "MEDIUM",
+            "assessment": "Several useful features are missing but not critical for MVP.",
+            "items": [
+              "No staleness/timeout mechanism for agents that never complete",
+              "No per-blocker remediation steps in CLOSEOUT_BLOCKED response",
+              "No reactivation prompt generation for multi-terminal mode",
+              "No 'last_activity_at' or heartbeat tracking to differentiate stuck vs active agents",
+              "Orchestrator prompts don't include explicit CLOSEOUT_BLOCKED handling section"
+            ]
+          }
+        },
+        "overall_assessment": "partially-implemented",
+        "assessment_rationale": "The enforcement gates (COMPLETION_BLOCKED and CLOSEOUT_BLOCKED) work correctly. The agent self-remediation path for COMPLETION_BLOCKED is good. But there is a CRITICAL gap: orchestrators in BOTH execution modes receive NO instructions about handling CLOSEOUT_BLOCKED. The system blocks the closeout correctly but then leaves the orchestrator with no idea how to recover. The retirement prompt proves the remediation pattern works — it just needs to be exposed during normal closeout flow too.",
+        "proposed_fixes": [
+          {
+            "name": "Add CLOSEOUT_BLOCKED handling to CLI orchestrator prompt",
+            "type": "instruction",
+            "description": "Add a new section to _build_claude_code_execution_prompt() after 'When You're Done' that handles the case where get_workflow_status shows agents not complete. Instructions: (1) check each agent's status, (2) for stuck agents: drain their messages via receive_messages(agent_id=X), mark their todos as skipped via report_progress(job_id=X), then force-complete via complete_job(job_id=X), (3) for actively working agents: wait and check again. This mirrors the retirement prompt pattern but for normal closeout.",
+            "files_to_change": ["src/giljo_mcp/thin_prompt_generator.py"],
+            "backward_compatible": true,
+            "estimated_loc": 40,
+            "recommended": true,
+            "rationale": "Highest impact fix. The orchestrator already CAN act on behalf of agents (tenant auth allows it), it just doesn't KNOW it can. This is purely an instruction gap."
+          },
+          {
+            "name": "Add CLOSEOUT_BLOCKED handling to multi-terminal orchestrator prompt",
+            "type": "instruction",
+            "description": "Add a new section to _build_multi_terminal_orchestrator_prompt() after 'Project Closeout' for when agents are NOT complete. Instructions: (1) send message to stuck agents asking them to complete, (2) if agent terminal is closed/dead, tell user to open a new terminal and paste a continuation prompt, (3) provide the user with the agent's job_id and a get_agent_mission() call to paste. Since the orchestrator cannot act on behalf of agents in multi-terminal mode (agents are in separate terminals), the remediation is user-directed.",
+            "files_to_change": ["src/giljo_mcp/thin_prompt_generator.py"],
+            "backward_compatible": true,
+            "estimated_loc": 35,
+            "recommended": true,
+            "rationale": "Critical for multi-terminal UX. Without this, the orchestrator just says 'all agents should be complete' and has no fallback."
+          },
+          {
+            "name": "Enrich project_closeout.py CLOSEOUT_BLOCKED response to match write_360_memory.py",
+            "type": "response",
+            "description": "Upgrade _check_agent_readiness() in project_closeout.py to include issue_type differentiation (still_working, unread_messages, incomplete_todos), todo item names, and a summary dict — matching the richer format in write_360_memory.py's _check_closeout_readiness(). Also add per-blocker suggested_action field.",
+            "files_to_change": ["src/giljo_mcp/tools/project_closeout.py"],
+            "backward_compatible": true,
+            "estimated_loc": 50,
+            "recommended": true,
+            "rationale": "Consistency fix. Two CLOSEOUT_BLOCKED paths should return the same quality of data. The richer response enables orchestrators to make better remediation decisions."
+          },
+          {
+            "name": "Add per-blocker remediation steps to CLOSEOUT_BLOCKED responses",
+            "type": "response",
+            "description": "In both CLOSEOUT_BLOCKED paths, add a 'suggested_action' field per blocker: for still_working -> 'Send message asking for status or call complete_job(job_id=X) to force-complete', for unread_messages -> 'Call receive_messages(agent_id=X) to drain queue', for incomplete_todos -> 'Call report_progress(job_id=X) to mark todos as skipped'. These are mode-agnostic suggestions the orchestrator can adapt to its execution mode.",
+            "files_to_change": ["src/giljo_mcp/tools/project_closeout.py", "src/giljo_mcp/tools/write_360_memory.py"],
+            "backward_compatible": true,
+            "estimated_loc": 30,
+            "recommended": true,
+            "rationale": "Makes CLOSEOUT_BLOCKED responses self-documenting. Even without prompt changes, an intelligent orchestrator could follow these per-blocker suggestions."
+          },
+          {
+            "name": "Add agent staleness tracking (last_activity_at field)",
+            "type": "protocol",
+            "description": "Add a last_activity_at timestamp to AgentExecution, updated on every report_progress(), receive_messages(), and send_message() call. This allows CLOSEOUT_BLOCKED to differentiate 'agent is actively working (last_activity 30s ago)' vs 'agent appears stuck (last_activity 10min ago)'. Include staleness_minutes in CLOSEOUT_BLOCKED blocker entries.",
+            "files_to_change": ["src/giljo_mcp/models/agent.py", "src/giljo_mcp/services/orchestration_service.py", "src/giljo_mcp/tools/project_closeout.py", "src/giljo_mcp/tools/write_360_memory.py"],
+            "backward_compatible": true,
+            "estimated_loc": 40,
+            "recommended": false,
+            "rationale": "Nice-to-have for distinguishing stuck vs active agents. Requires DB migration. Lower priority than prompt/response fixes. Could be deferred to a future enhancement."
+          }
+        ]
+      },
+      "files_investigated": [
+        "src/giljo_mcp/services/orchestration_service.py (complete_job: lines 1559-1807)",
+        "src/giljo_mcp/tools/project_closeout.py (close_project_and_update_memory: 34-223, _check_agent_readiness: 232-273, _force_decommission_agents: 276-309)",
+        "src/giljo_mcp/tools/write_360_memory.py (_check_closeout_readiness: 47-200, CLOSEOUT_BLOCKED return: 319-329)",
+        "src/giljo_mcp/thin_prompt_generator.py (build_retirement_prompt: 159-291, _build_claude_code_execution_prompt: 1275-1546, _build_multi_terminal_orchestrator_prompt: 1548-1676)",
+        "src/giljo_mcp/services/protocol_builder.py (_generate_agent_protocol: 163-369, _build_orchestrator_protocol: 911-947, _build_ch1_mission: 530-563, _build_ch3_spawning_rules: 672-753, _build_ch4_error_handling: 756-818, _build_ch5_reference: 821-908)",
+        "api/endpoints/mcp_http.py (COMPLETION_BLOCKED debug suppression: line 992)",
+        "docs/ORCHESTRATOR.md (CLOSEOUT_BLOCKED section: lines 701-783)"
+      ],
+      "notes_for_next": "IMPLEMENTATION PRIORITIES for 0800b: (1) Add CLOSEOUT_BLOCKED handling section to _build_claude_code_execution_prompt() in thin_prompt_generator.py — this is the highest-impact fix, ~40 LOC. Mirror the retirement prompt's drain-and-complete pattern. (2) Add CLOSEOUT_BLOCKED handling section to _build_multi_terminal_orchestrator_prompt() — user-directed remediation, ~35 LOC. (3) Enrich _check_agent_readiness() in project_closeout.py to match write_360_memory.py quality — add issue_type, todo details, summary. (4) Add per-blocker suggested_action to both CLOSEOUT_BLOCKED response paths. (5) SKIP staleness tracking (requires DB migration, lower priority). Total estimated: ~155 LOC across 3 files. All backward-compatible, no DB migrations needed for fixes 1-4.",
+      "summary": "The COMPLETION_BLOCKED gate works well — agents are pre-warned and the error response is actionable. The CLOSEOUT_BLOCKED gate enforcement works but has a CRITICAL orchestrator instruction gap: neither CLI nor multi-terminal orchestrator prompts include ANY handling for when closeout is blocked. The system correctly blocks premature closeout but then provides no recovery path. The retirement prompt (build_retirement_prompt) already demonstrates the full remediation pattern (drain messages, skip todos, force-complete) but it only fires on context exhaustion, not on normal closeout failure. Four recommended fixes: (1) CLI prompt CLOSEOUT_BLOCKED handling section, (2) multi-terminal prompt CLOSEOUT_BLOCKED handling section, (3) enrich project_closeout.py response to match write_360_memory.py, (4) add per-blocker suggested_action fields. All backward-compatible, ~155 LOC total, no DB migrations."
+    },
+    {
+      "session_id": "0800b",
+      "title": "Implement: Remediation Protocol Enhancements",
+      "color": "#2196F3",
+      "status": "complete",
+      "started_at": "2026-03-05T14:00:00Z",
+      "completed_at": "2026-03-05T15:00:00Z",
+      "planned_tasks": [
+        "Read 0800a findings from chain_log.json",
+        "Fix 1: Add CLOSEOUT_BLOCKED handling to _build_claude_code_execution_prompt() in thin_prompt_generator.py (~40 LOC)",
+        "Fix 2: Add CLOSEOUT_BLOCKED handling to _build_multi_terminal_orchestrator_prompt() in thin_prompt_generator.py (~35 LOC)",
+        "Fix 3: Enrich _check_agent_readiness() in project_closeout.py to match write_360_memory.py quality (~50 LOC)",
+        "Fix 4: Add per-blocker suggested_action to both CLOSEOUT_BLOCKED response paths (~30 LOC)",
+        "Run test suite",
+        "Update chain_log.json"
+      ],
+      "tasks_completed": [
+        "Read 0800a findings and build_retirement_prompt() reference pattern",
+        "Fix 1: Added CLOSEOUT_BLOCKED recovery section to _build_claude_code_execution_prompt() — drain messages, update todos, force-complete pattern (mirroring retirement prompt STEP 2)",
+        "Fix 2: Added CLOSEOUT_BLOCKED recovery section to _build_multi_terminal_orchestrator_prompt() — user-directed remediation with send_message + reactivation prompt for closed terminals",
+        "Fix 3: Enriched _check_agent_readiness() in project_closeout.py — added AgentTodoItem query, issue_type field, incomplete_todo_count/names, summary dict appended to blockers",
+        "Fix 4: Added suggested_action field to all 4 blocker types in write_360_memory.py (still_working, unread_messages, incomplete_todos, orchestrator_incomplete_todos) and project_closeout.py (integrated into Fix 3)",
+        "Updated existing closeout readiness gate tests to handle enriched response format (new todo queries + _summary entry)",
+        "Run full test suite: 1390 passed, 0 failed"
+      ],
+      "deviations": [
+        "Fix 3: Simplified issue_type logic — since _check_agent_readiness already filters out complete and decommissioned agents, all remaining agents are always 'still_working'. Made suggested_action context-aware (includes drain/todo steps only when relevant) rather than branching on issue_type.",
+        "Fix 3: Summary is appended as a trailing {'_summary': {...}} entry in the blockers list rather than a separate field, to maintain backward compatibility with callers that iterate blockers.",
+        "Updated 3 existing tests in test_closeout_readiness_gate.py to handle the new AgentTodoItem query and _summary entry — these were not net-new tests but necessary mock adjustments."
+      ],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": "All 4 fixes implemented across 3 source files. CLI orchestrator prompt now includes drain-and-complete recovery flow for non-complete agents. Multi-terminal orchestrator prompt now includes send-message-first + user-directed reactivation fallback. project_closeout.py _check_agent_readiness() now returns enriched blockers with issue_type, todo details, and per-blocker suggested_action. write_360_memory.py _check_closeout_readiness() blocker entries now include suggested_action. All backward-compatible, no DB migrations. 1390 tests passing."
+    }
+  ],
+  "chain_summary": "Chain complete. CLOSEOUT_BLOCKED enforcement gates were already working; the gap was that orchestrators received no recovery instructions when closeout was blocked. Fixed by: (1) adding drain-and-complete recovery to CLI orchestrator prompt, (2) adding user-directed recovery to multi-terminal orchestrator prompt, (3) enriching project_closeout.py CLOSEOUT_BLOCKED response with issue_type + todo details + summary, (4) adding per-blocker suggested_action to both CLOSEOUT_BLOCKED response paths.",
+  "final_status": "complete"
+}
