@@ -17,9 +17,8 @@
 | 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0498 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409 only |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
-| 0700-0750 | Code Cleanup Series | 0700-0750 ALL COMPLETE, 0731 legacy DEFERRED, 0732 fixes COMPLETE |
-| 0760 | Perfect Score Proposal | Research COMPLETE — validated by 8+4 research agents, proposal refined |
-| 0765a-i | Perfect Score Sprint Series | Active — 9 handovers, chain log at `prompts/0765_chain/chain_log.json` |
+| 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-i sprint Active, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
+| 0800+ | Enhancement & Feature Series | New work starts here |
 
 ---
 
@@ -423,7 +422,8 @@ completed/reference/
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
-**0700-0750** (Code Cleanup): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy/0732 (deferred/ready), 0740-0750 (complete)
+**0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy/0732 (deferred/ready), 0740-0750 (complete), 0760 (proposal), 0765a-i (sprint), 0766-0768 (triage chains). **Do NOT use for non-quality work.**
+**0800+** (Enhancement & Feature Series): Available for new feature/enhancement work
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
