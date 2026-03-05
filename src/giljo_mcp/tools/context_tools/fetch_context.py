@@ -325,30 +325,3 @@ async def _fetch_category(
         # No depth param for product_core
 
     return await tool_func(**kwargs)
-
-
-def _flatten_results(results: dict[str, Any]) -> dict[str, Any]:
-    """
-    Flatten nested category results into single dict with prefixed keys.
-
-    Transforms:
-        {
-            "product_core": {"name": "Test", "features": ["A"]},
-            "tech_stack": {"languages": ["Python"]}
-        }
-
-    Into:
-        {
-            "product_core_name": "Test",
-            "product_core_features": ["A"],
-            "tech_stack_languages": ["Python"]
-        }
-    """
-    flat = {}
-    for category, data in results.items():
-        if isinstance(data, dict):
-            for key, value in data.items():
-                flat[f"{category}_{key}"] = value
-        else:
-            flat[category] = data
-    return flat
