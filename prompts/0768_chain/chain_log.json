@@ -1,0 +1,193 @@
+{
+  "chain_id": "0768",
+  "chain_name": "fetch_context() Batch Category Support",
+  "created_at": "2026-03-04",
+  "orchestrator_notes": "RT-1 / Enhancement #36. fetch_context() forces agents to make 5 sequential MCP calls (one per category) instead of 1 batch call. The MCP schema already accepts a categories ARRAY — investigate whether the backend actually processes multiple categories or silently takes only the first. Every orchestrator hits this. P2 severity, E1 effort.",
+  "total_sessions": 2,
+  "sessions": [
+    {
+      "session_id": "0768a",
+      "title": "Research: fetch_context() Single-Category-Per-Call Limitation",
+      "color": "#4CAF50",
+      "status": "complete",
+      "started_at": "2026-03-04T14:00:00Z",
+      "completed_at": "2026-03-04T14:45:00Z",
+      "planned_tasks": [
+        "Read fetch_context() implementation in context_tools/fetch_context.py:73-249",
+        "Read the older context.py:173-251 fetch_context (check if this is dead code or a different path)",
+        "Read ToolAccessor.fetch_context (tool_accessor.py:594-637) to understand the pass-through",
+        "Trace the FULL runtime flow: MCP tool call -> mcp_http.py dispatch -> tool_accessor -> fetch_context function",
+        "Determine: does the function iterate over the categories array or only process one?",
+        "Check if categories=['vision_documents','tech_stack','architecture'] actually returns all 3 or just the first",
+        "Read the MCP schema definition for fetch_context in mcp_http.py (~line 669) — does it document single vs batch?",
+        "Read thin_prompt_generator.py and protocol_builder.py — how are agents instructed to call fetch_context?",
+        "Check if there's a token budget or response size constraint that makes batching impractical",
+        "If single-category is by design, document WHY (token limits? response size? sequential dependency?)",
+        "If it's a bug/oversight, propose the fix to enable true batch category fetching",
+        "Write findings to chain_log.json"
+      ],
+      "tasks_completed": [
+        "Traced full runtime flow: mcp_http.py -> tool_map -> ToolAccessor.fetch_context -> context_tools/fetch_context.py:fetch_context",
+        "Confirmed ToolAccessor.fetch_context (tool_accessor.py:626) imports from context_tools/fetch_context.py (active impl)",
+        "Confirmed context.py:fetch_context (lines 173-251) is NOT dead code — separate entry point for agent executors (takes agent_id, resolves product_id, delegates to same context_tools/fetch_context.py)",
+        "Read full fetch_context() body — THREE explicit guards reject multi-category (Handover 0351)",
+        "Read _fetch_category() — dispatches to per-category internal tools via CATEGORY_TOOLS dict",
+        "Read _flatten_results() — exists but NEVER called in current code (dead code due to single-category enforcement)",
+        "Read MCP schema (mcp_http.py:669-700) — MISLEADING: advertises default=['all'] and includes 'all' in enum, but backend rejects both",
+        "Read thin_prompt_generator.py — orchestrator told to call get_orchestrator_instructions() which returns per-category framing pointers",
+        "Read protocol_builder.py STEP 2 — get_orchestrator_instructions() returns context_fetch_instructions with critical/important/reference tiers",
+        "Read MissionPlanner._build_fetch_instructions() — builds individual per-category fetch instructions based on user priority config",
+        "Confirmed token budgets: categories range from ~100 (product_core) to 24K (vision_documents full) — batching all could yield ~42K tokens",
+        "Documented design rationale and proposed fixes"
+      ],
+      "deviations": [],
+      "blockers_encountered": [],
+      "findings": {
+        "batch_supported": false,
+        "active_implementation": "src/giljo_mcp/tools/context_tools/fetch_context.py:fetch_context (lines 73-249)",
+        "dead_code_paths": [
+          {
+            "path": "src/giljo_mcp/tools/context.py:fetch_context (lines 173-251)",
+            "status": "NOT dead code — separate entry point for agent executors. Takes agent_id + tenant_key, resolves product_id/project_id via AgentExecution/AgentJob/Project/Product join, then delegates to the SAME context_tools/fetch_context.py function. Used by executor-facing context endpoint."
+          },
+          {
+            "path": "src/giljo_mcp/tools/context_tools/fetch_context.py:_flatten_results (lines 329-353)",
+            "status": "DEAD CODE — exists but never called. Was designed for output_format='flat' with multi-category responses, but single-category enforcement makes it unreachable."
+          }
+        ],
+        "categories_handling": "THREE explicit guards enforce single-category (Handover 0351): (1) categories is None -> error SINGLE_CATEGORY_REQUIRED, (2) 'all' in categories -> error ALL_NOT_ALLOWED, (3) len(categories) > 1 -> error SINGLE_CATEGORY_REQUIRED. After guards: category = categories[0], processes exactly one category via _fetch_category() dispatch.",
+        "response_structure": {
+          "single_category_example": {
+            "source": "fetch_context",
+            "categories_requested": ["tech_stack"],
+            "categories_returned": ["tech_stack"],
+            "data": {"tech_stack": {"...": "category data"}},
+            "metadata": {
+              "format": "structured",
+              "apply_user_config": true,
+              "depth_config_applied": {"tech_stack": null}
+            }
+          },
+          "multi_category_response": "N/A — rejected with error before processing"
+        },
+        "agent_instructions_say": {
+          "mcp_schema": "MISLEADING — mcp_http.py:681-700 defines categories as array with enum including 'all', default=['all'], description says 'Categories to fetch. [\"all\"] for everything.' But backend rejects both 'all' and multi-category.",
+          "thin_prompt_orchestrator": "Orchestrator told to call get_orchestrator_instructions() (Step 2 in protocol). This returns context_fetch_instructions with per-category framing pointers organized by priority tier (critical/important/reference). Each pointer is a single-category fetch_context call.",
+          "continuation_prompt": "Shows fetch_context(categories=['memory_360']) — single category example.",
+          "protocol_builder": "STEP 2 references get_orchestrator_instructions() which returns framing instructions. The framing architecture (MissionPlanner._build_fetch_instructions) generates individual per-category instructions based on user priority config.",
+          "explicit_one_at_a_time_instruction": false,
+          "implicit_one_at_a_time_via_framing": true,
+          "explanation": "Agents are not EXPLICITLY told 'one category at a time', but the framing architecture structures each category as an individual fetch instruction, so orchestrators naturally call one at a time."
+        },
+        "is_by_design": true,
+        "design_reasons": [
+          "Token budget safety — categories range from ~100 to 24K tokens each; batching all could produce ~42K tokens in a single MCP response, risking context window overflow",
+          "SaaS security — Code-level enforcement that LLMs cannot bypass via prompt injection (comment: 'Code-level enforcement - LLM cannot bypass via prompt injection')",
+          "Priority-based fetching — framing architecture enables orchestrators to fetch CRITICAL categories first (product_core, memory_360), then IMPORTANT (tech_stack, architecture), then REFERENCE (testing, git_history). Sequential calls allow priority ordering.",
+          "Depth control per category — each category has independent depth settings (vision_documents: light/medium/full, memory_360: last_n_projects, git_history: commits). Single-category calls allow precise depth control.",
+          "Introduced in Handover 0351 as an intentional security/reliability constraint"
+        ],
+        "token_budget_constraint": true,
+        "token_budget_details": {
+          "product_core": "~100 tokens",
+          "vision_documents": "0-24K tokens (depth: none/light/medium/full)",
+          "tech_stack": "200-400 tokens",
+          "architecture": "300-1.5K tokens",
+          "testing": "0-400 tokens",
+          "memory_360": "500-5K tokens (last_n_projects: 1/3/5/10)",
+          "git_history": "500-5K tokens (commits: 10/25/50/100)",
+          "agent_templates": "400-2.4K tokens (detail: minimal/standard/full)",
+          "project": "~300 tokens",
+          "self_identity": "~1-3K tokens",
+          "worst_case_batch_all": "~42K tokens — would overwhelm most agent context windows"
+        },
+        "mcp_schema_inconsistency": {
+          "issue": "MCP schema (mcp_http.py:681-700) advertises categories=['all'] as default and includes 'all' in enum, but backend rejects it. This misleads agents and wastes a failed call if they try the default.",
+          "schema_says": "default: ['all'], enum includes 'all', description: 'Categories to fetch. [\"all\"] for everything.'",
+          "backend_does": "Returns error ALL_NOT_ALLOWED with message 'categories=[\"all\"] is not allowed'",
+          "severity": "Low — agents learn from error response, but wastes one round-trip"
+        },
+        "proposed_fixes": [
+          {
+            "name": "Approach A: Fix Misleading MCP Schema",
+            "type": "protocol",
+            "description": "Remove 'all' from categories enum, remove default=['all'], update description to explicitly state 'Exactly ONE category per call. Call separately for each category.' This prevents agents from trying invalid batch calls.",
+            "files_to_change": ["api/endpoints/mcp_http.py"],
+            "backward_compatible": true,
+            "estimated_loc": 8,
+            "recommended": true,
+            "rationale": "Zero-risk fix. Eliminates the misleading schema that contradicts the backend enforcement. Agents will no longer waste a call trying categories=['all']. No backend changes needed."
+          },
+          {
+            "name": "Approach B: Close as By-Design",
+            "type": "documentation",
+            "description": "Document the single-category-per-call constraint as intentional (Handover 0351). Update Enhancement #36 to closed-wontfix. The framing architecture is the designed pattern for orchestrator context fetching.",
+            "files_to_change": [],
+            "backward_compatible": true,
+            "estimated_loc": 0,
+            "recommended": false,
+            "rationale": "Valid but leaves the misleading MCP schema in place. Agents will still waste calls trying categories=['all']."
+          },
+          {
+            "name": "Approach C: Schema Fix + Agent Parallelism Hint",
+            "type": "protocol",
+            "description": "Fix MCP schema (Approach A) AND add a hint in the framing instructions that agents CAN make multiple fetch_context calls in parallel (as separate MCP tool calls, each with one category). This is already possible but agents may not realize it.",
+            "files_to_change": ["api/endpoints/mcp_http.py", "src/giljo_mcp/mission_planner.py"],
+            "backward_compatible": true,
+            "estimated_loc": 15,
+            "recommended": true,
+            "rationale": "Best of both worlds: fixes misleading schema AND encourages agents to parallelize their single-category calls. 5 parallel calls is nearly as fast as 1 batch call, while maintaining per-category token budget safety."
+          }
+        ]
+      },
+      "files_investigated": [
+        "src/giljo_mcp/tools/context_tools/fetch_context.py (full file — fetch_context, _fetch_category, _flatten_results, CATEGORY_TOOLS, DEFAULT_DEPTHS, ALL_CATEGORIES)",
+        "src/giljo_mcp/tools/context.py (fetch_context — alternate entry point for agent executors)",
+        "src/giljo_mcp/tools/tool_accessor.py (ToolAccessor.fetch_context — pass-through, lines 594-637)",
+        "api/endpoints/mcp_http.py (MCP schema definition, lines 265-274 and 669-714; tool_map dispatch, line 880)",
+        "src/giljo_mcp/thin_prompt_generator.py (orchestrator startup prompt, continuation prompt, 360 memory hint)",
+        "src/giljo_mcp/services/protocol_builder.py (STEP 2 context fetch, context variables warning)",
+        "src/giljo_mcp/mission_planner.py (MissionPlanner._build_fetch_instructions — framing architecture)",
+        "src/giljo_mcp/services/orchestration_service.py (OrchestrationService.get_orchestrator_instructions — full response assembly)",
+        "src/giljo_mcp/config/defaults.py (priority system documentation)",
+        "src/giljo_mcp/tools/context_tools/ (directory listing — 10 per-category handler files)"
+      ],
+      "notes_for_next": "0768b should focus on Approach A+C: (1) Fix the misleading MCP schema by removing 'all' from enum and updating description. (2) Add parallelism hint to framing instructions so agents call 5 categories in parallel rather than sequentially. The single-category-per-call constraint is correct and should be maintained. Do NOT implement batch support — the token budget safety is intentional. The _flatten_results function is dead code and could be removed as cleanup.",
+      "summary": "fetch_context() single-category-per-call is BY DESIGN (Handover 0351). Three explicit code guards reject multi-category and 'all' requests. Design serves token budget safety (~42K worst case if batched), SaaS security (code-level LLM enforcement), and priority-based fetching. The MCP schema is MISLEADING — advertises default=['all'] but backend rejects it. Recommended fix: update MCP schema to match reality + add parallelism hint so agents can fire 5 single-category calls simultaneously."
+    },
+    {
+      "session_id": "0768b",
+      "title": "Implement: Fix Misleading fetch_context Schema + Dead Code Removal",
+      "color": "#2196F3",
+      "status": "complete",
+      "started_at": "2026-03-04T16:00:00Z",
+      "completed_at": "2026-03-04T16:30:00Z",
+      "planned_tasks": [
+        "Read chain_log.json findings from 0768a",
+        "Fix misleading MCP schema: remove 'all' from enum, remove default=['all'], update description",
+        "Remove dead _flatten_results() function from fetch_context.py",
+        "Optionally add parallelism hint to mission_planner framing instructions",
+        "Run existing test suite",
+        "Update chain_log.json with results"
+      ],
+      "tasks_completed": [
+        "Read 0768a findings — confirmed Approach A+C (schema fix + parallelism hint)",
+        "Fixed MCP schema: removed 'all' from categories enum, removed default=['all'], updated description to 'Exactly ONE category per call. To fetch multiple categories, make parallel tool calls — one per category.'",
+        "Verified _flatten_results has zero callers (grep across entire codebase — only in handovers and chain logs)",
+        "Removed dead _flatten_results() function from fetch_context.py (lines 330-354)",
+        "Skipped Fix 4 (parallelism hint in mission_planner) — _build_fetch_instructions returns structured data not text, and the schema description already includes the parallelism hint",
+        "Ran full test suite — 1390 passed, 0 failed",
+        "Updated chain_log.json"
+      ],
+      "deviations": [
+        "Combined with 0767b implementation (json.dumps safety net) per orchestrator handover 0767b+0768b",
+        "Skipped Fix 4 (parallelism hint in mission_planner) — the method returns data structures, not text instructions. The parallelism guidance is already in the updated schema description."
+      ],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": "Fixed misleading fetch_context MCP schema that advertised default=['all'] and included 'all' in enum despite the backend rejecting both. Agents no longer waste a failed call trying invalid defaults. Removed dead _flatten_results() function (unreachable since Handover 0351 single-category enforcement). Combined commit with 0767b fix."
+    }
+  ],
+  "chain_summary": "Chain complete. 0768a confirmed single-category-per-call is by design (token budget safety, SaaS security). 0768b fixed the misleading MCP schema and removed dead code. No batch support added — the existing architecture with parallel single-category calls is the correct pattern.",
+  "final_status": "complete"
+}
