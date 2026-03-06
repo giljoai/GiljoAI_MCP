@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-05 (0800-0807 triage chains closed out)
+**Last Updated:** 2026-03-06 (0808-0811 Tier 2 triage complete, 20/21 Feb items resolved)
 
 ---
 
@@ -18,7 +18,7 @@
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-i sprint Active, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
-| 0800+ | Enhancement & Feature Series | 0800-0807 triage chains COMPLETE |
+| 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved) |
 
 ---
 
@@ -130,7 +130,8 @@
 
 | ID | Title | Status |
 |----|-------|--------|
-| 0800-0807 | Feb Report Triage Chains (14/21 items resolved) | **COMPLETE** (2026-03-05, research+implementation across 11 handovers) |
+| 0800-0807 | Feb Report Tier 1 Triage (14/21 items resolved) | **COMPLETE** (2026-03-05, research+implementation across 11 handovers) |
+| 0808-0811 | Feb Report Tier 2 Triage (6 items -> 20/21 resolved) | **COMPLETE** (2026-03-06, `f665c861`) — CW-2 SUPERSEDED, CW-4 NON-ISSUE, #40 FIXED, #41 SUPERSEDED, #50 FIXED |
 
 ### Recently Completed (February 2026)
 
@@ -438,7 +439,8 @@ completed/reference/
 **0601-0700** (Migration): 0600-0631
 **0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy/0732 (deferred/ready), 0740-0750 (complete), 0760 (proposal), 0765a-i (sprint), 0766-0768 (triage chains). **Do NOT use for non-quality work.**
 **0800-0807** (Enhancement & Triage): 0800a/b, 0801a/b, 0802a/b, 0803a, 0804a, 0805a, 0806a, 0807a (all complete)
-**0808+** (Enhancement & Feature Series): Available for new feature/enhancement work
+**0808-0811** (Tier 2 Triage): 0808a, 0809a, 0810a, 0811a (all research complete, fixes in `f665c861`)
+**0812+** (Enhancement & Feature Series): Available for new feature/enhancement work
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
