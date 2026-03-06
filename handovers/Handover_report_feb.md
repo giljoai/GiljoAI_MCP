@@ -539,16 +539,16 @@ TECHNICAL_DEBT_v2 triage ─┐
 | CW-2 | Orchestrator Cannot Reactivate — no `reopen_job()` tool | Critical | INVESTIGATE | Orchestrator handover (0498) may partially cover this use case. Need to verify if handover makes reopen_job unnecessary |
 | CW-3 | Todo List Overwrites — `report_progress()` expects full array, no append mode | ~~Medium~~ | **NOT A BUG** | Researched in 0766a. Replace strategy is correct — agents send FULL list every call. Handover protocol depends on replace to transition old->finalized to new->fresh. Append would cause duplication. |
 | CW-4 | Duration Timer Not Reactivated | Medium | OPEN | No mechanism to resume timing across sessions |
-| CW-5 | `set_agent_status` Missing | Low | OPEN | Only report_error() and complete_job() exist for status changes |
+| CW-5 | `set_agent_status` Missing | ~~Low~~ | **BY DESIGN** | Researched in 0807a: controlled lifecycle is intentional — 13 transitions mapped, all covered by purpose-built methods. Generic setter would allow dangerous transitions. False `blocked→report_progress()→working` claim in protocol_builder.py fixed in `2ccb16c1`. |
 
 ### Orchestration Runtime Friction (from March 2026 test run)
 
 | # | Issue | Severity | Notes |
 |---|-------|----------|-------|
 | RT-1 | `fetch_context()` single-category-per-call | ~~Medium~~ | **BY DESIGN + FIXED** (0768a/b). Single-category enforced by Handover 0351 for token budget safety (~42K worst case). Misleading MCP schema (advertised `default=['all']` but rejected it) fixed in `1ed52edf`. Dead `_flatten_results()` removed. |
-| RT-2 | Polling loop protocol is too prescriptive | Low | Agent wasted ~21 tool calls monitoring independent background agents. Protocol should make monitoring situational, not mandatory. Documentation fix only. |
-| RT-3 | `progress_percent` in MCP response shows 0% until agents complete | Low | Tracks agent completion count, not aggregate todo progress. NOTE: This is NOT a UI issue — the dashboard uses todo steps (3/5, 4/5) as progress indicator, not percentages. The % is only in MCP tool responses to agents. Investigate if this even matters or is just verbose chat noise. |
-| RT-4 | Todo chicken-and-egg on closeout | Low | Final todo "Close project with 360 memory" can't be marked complete before doing it, but closeout validation blocks if it's incomplete. Minor workflow friction, documented workaround exists. |
+| RT-2 | Polling loop protocol is too prescriptive | ~~Low~~ | **FIXED** in `2ccb16c1`. Researched in 0804a: `~20s` orchestrator polling loop + `2-3 min` intervals removed. Replaced with user-consent auto-monitoring + token cost warning. Agent `receive_messages()` for cross-communication untouched. |
+| RT-3 | `progress_percent` in MCP response shows 0% until agents complete | ~~Low~~ | **NON-ISSUE** — Researched in 0805a: two correct progress values exist (project-level agent completion ratio + per-agent todo ratio). Dashboard uses step counts (3/5), not percentages. "0%" was mathematically correct. No code changes needed. |
+| RT-4 | Todo chicken-and-egg on closeout | ~~Low~~ | **BY DESIGN** — Researched in 0806a: intended flow is do closeout work → `report_progress()` mark todos complete → `complete_job()`. Continuation prompt already documents this sequence. "Chicken-and-egg" was a misunderstanding of the flow. |
 | RT-5 | 360 Memory entry title shows "Unknown" instead of project title | ~~Low~~ | **FIXED** in `3af60863`. Researched in 0802a: frontend field name mismatch — API returns `entry_type` but Vue read `entry.type` (undefined). Fixed CloseoutModal.vue + added project_name to title. |
 | RT-6 | Failed vs Blocked agents display identically on dashboard | ~~Medium~~ | **BY DESIGN** — Researched in 0803a: `failed` status was intentionally removed in Handover 0491 (Feb 2026). All errors go to `blocked`. The 0491 simplification was a deliberate architectural decision. |
 
@@ -571,7 +571,7 @@ TECHNICAL_DEBT_v2 triage ─┐
 | #40 | Workflow status doesn't distinguish orchestrator from sub-agents | P2 | E1 | |
 | #41 | Per-agent status in workflow response | P2 | E2 | |
 | #42 | Failed vs Blocked status display | ~~P2~~ | ~~E1~~ | **BY DESIGN** — Same as RT-6. `failed` removed in 0491, `blocked` is the single error state. |
-| #43 | Progress percent calculation | P2 | E1 | Same as RT-3 above — may be non-issue for UI |
+| #43 | Progress percent calculation | ~~P2~~ | ~~E1~~ | **NON-ISSUE** — Same as RT-3. Math is correct, dashboard doesn't render percentages. |
 | #50 | Platform detection cmd.exe vs GNU bash | P2 | E1 | Windows timeout vs sleep confusion |
 
 ### Manual Product Testing Results (March 2026)
@@ -610,8 +610,12 @@ Tested via GUI at http://localhost:7274:
 | 0801 (#44) | run_in_background protocol | **FIXED** — stale prohibition updated to neutral guidance | `6824d63b` |
 | 0802 (RT-5) | 360 Memory "Unknown" title | **FIXED** — frontend field name mismatch `entry.type` vs `entry_type` | `3af60863` |
 | 0803 (RT-6, #42) | Failed vs blocked display | **BY DESIGN** — `failed` removed in 0491, single `blocked` state | -- |
+| 0804 (RT-2) | Polling loop protocol | **FIXED** — prescriptive intervals replaced with user-consent auto-monitoring | `2ccb16c1` |
+| 0805 (RT-3, #43) | Progress percent 0% | **NON-ISSUE** — math correct, dashboard uses step counts not % | -- |
+| 0806 (RT-4) | Todo chicken-and-egg | **BY DESIGN** — intended flow already documented in continuation prompt | -- |
+| 0807 (CW-5) | set_agent_status missing | **BY DESIGN** — controlled lifecycle intentional, false doc claim fixed | `2ccb16c1` |
 
-**Resolved**: 10 items (CW-1, CW-3, RT-1, RT-5, RT-6, #36, #38, #39, #42, #44)
-**Remaining OPEN**: CW-2, CW-4, CW-5, RT-2, RT-3, RT-4, VD-1, #40, #41, #43, #50
+**Resolved**: 14 items (CW-1, CW-3, CW-5, RT-1, RT-2, RT-3, RT-4, RT-5, RT-6, #36, #38, #39, #42, #43, #44)
+**Remaining OPEN**: CW-2, CW-4, VD-1, #40, #41, #50
 
-**Next Steps**: Continue triage of remaining 11 items. Priority candidates: CW-2 (orchestrator prompt caching), #40 (workflow status orchestrator distinction), #50 (platform detection cmd vs bash), CW-4 (continuation prompt bloat).
+**Next Steps**: Tier 2 triage — CW-2 (reopen_job), CW-4 (duration timer), #40 (workflow orchestrator distinction), #50 (platform detection). Tier 3: VD-1 (vision pipeline), #41 (per-agent status).
