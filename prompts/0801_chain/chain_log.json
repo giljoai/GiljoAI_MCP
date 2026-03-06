@@ -1,0 +1,148 @@
+{
+  "chain_id": "0801",
+  "chain_name": "Background Agent run_in_background Protocol Fix (#44)",
+  "created_at": "2026-03-05",
+  "orchestrator_notes": "Enhancement #44. Protocol says 'NEVER use run_in_background' but background agent execution works excellently in practice. P1 severity, E1 effort. Research: find where the prohibition is, trace if run_in_background actually causes problems, determine if this is just a stale protocol instruction.",
+  "total_sessions": 2,
+  "sessions": [
+    {
+      "session_id": "0801a",
+      "title": "Research: run_in_background Protocol Contradiction",
+      "color": "#4CAF50",
+      "status": "complete",
+      "started_at": "2026-03-05T00:00:00Z",
+      "completed_at": "2026-03-05T00:30:00Z",
+      "planned_tasks": [
+        "Search entire codebase for 'run_in_background' and 'NEVER.*background' references",
+        "Read protocol_builder.py — find where agents are told NEVER to use run_in_background",
+        "Read thin_prompt_generator.py — check if background execution is referenced",
+        "Trace the FULL flow: what happens when an orchestrator uses Task tool with run_in_background=true?",
+        "Check: does run_in_background refer to Claude Code's Task tool, or to a GiljoAI MCP feature?",
+        "Check: is there an actual technical limitation, or is this just a stale warning from early development?",
+        "Search for any bugs/issues caused by background execution in git history or handovers",
+        "Determine: is this a protocol text fix, a feature documentation gap, or a real limitation?",
+        "Write findings to chain_log.json"
+      ],
+      "tasks_completed": [
+        "Search entire codebase for 'run_in_background' and 'NEVER.*background' references",
+        "Read protocol_builder.py — find where agents are told NEVER to use run_in_background",
+        "Read thin_prompt_generator.py — check if background execution is referenced",
+        "Trace the FULL flow: what happens when an orchestrator uses Task tool with run_in_background=true?",
+        "Check: does run_in_background refer to Claude Code's Task tool, or to a GiljoAI MCP feature?",
+        "Check: is there an actual technical limitation, or is this just a stale warning from early development?",
+        "Search for any bugs/issues caused by background execution in git history or handovers",
+        "Determine: is this a protocol text fix, a feature documentation gap, or a real limitation?",
+        "Write findings to chain_log.json"
+      ],
+      "deviations": [],
+      "blockers_encountered": [],
+      "findings": {
+        "prohibition_location": {
+          "original": {
+            "file": "handovers/Reference_docs/testrun_Jan_2nd.md",
+            "line": 133,
+            "text": "**CRITICAL**: NEVER use `run_in_background=true` - agents must run in foreground for observability."
+          },
+          "current_softened_version": {
+            "file": "src/giljo_mcp/thin_prompt_generator.py",
+            "line": 1413,
+            "text": "**DEFAULT**: Run agents in foreground for observability. Use `run_in_background=true` only when the user's project description explicitly requests background execution or parallel monitoring.",
+            "softened_in_commit": "69573dd8",
+            "commit_message": "fix: Resolve broadcast deadlock + add closeout readiness gate — includes 'Soften run_in_background directive from CRITICAL/NEVER to DEFAULT so LLM can honor explicit user requests for background execution'"
+          },
+          "protocol_builder_py": "NO references to run_in_background — not involved",
+          "database_templates": "NO NEVER/run_in_background text found in SQL backup"
+        },
+        "what_it_refers_to": "Claude Code's Task tool parameter `run_in_background=true`. The prohibition was specifically about spawning subagents via the Task tool with this parameter. It is NOT about a GiljoAI MCP feature. Note: there is a SEPARATE and UNRELATED use of `run_in_background=True` on the Bash tool (for spawning Windows Terminal tabs), which was always RECOMMENDED — see handover 0411 (SUPERSEDED).",
+        "is_stale": true,
+        "stale_explanation": "The original 'NEVER' prohibition was written during early January 2026 testing (testrun_Jan_2nd.md) when background execution was untested and observability was a concern. It was already partially fixed in commit 69573dd8 (Feb 22, 2026) which softened it from CRITICAL/NEVER to DEFAULT. However, the current text is STILL overly restrictive — it says 'only when the user's project description explicitly requests background execution', which is unnecessarily conservative given that background execution works reliably.",
+        "technical_limitation": "NONE FOUND. Searched for: (1) silence_detector — monitors agent health cross-tenant, no dependency on foreground/background execution mode; (2) agent_health_monitor — background monitoring service, independent of agent execution mode; (3) MCP tool calls — work identically in foreground and background Task execution since the MCP server connection is per-API-key session, not per-Task mode; (4) git history — no commits fixing background execution bugs; (5) handovers — no reports of background execution failures. The only observability difference is that foreground agents show real-time output in the orchestrator's terminal, while background agents require polling via TaskOutput. This is a UX preference, not a technical limitation.",
+        "two_different_uses_of_run_in_background": {
+          "task_tool": {
+            "parameter": "Task(run_in_background=true)",
+            "purpose": "Spawn a Claude Code subagent that runs asynchronously, returning a task_id for later polling",
+            "status": "WORKS — no technical issues found",
+            "current_protocol_text": "Overly restrictive DEFAULT guidance"
+          },
+          "bash_tool": {
+            "parameter": "Bash(run_in_background=True)",
+            "purpose": "Run a shell command non-blocking (e.g., spawning Windows Terminal tabs)",
+            "status": "WORKS and was always RECOMMENDED (0411 handover)",
+            "current_protocol_text": "Not mentioned in current protocol (0411 is SUPERSEDED)"
+          }
+        },
+        "evolution_timeline": [
+          {
+            "when": "Jan 2, 2026",
+            "what": "testrun_Jan_2nd.md written with CRITICAL/NEVER prohibition",
+            "reason": "Early testing, conservative stance, observability concerns"
+          },
+          {
+            "when": "~Jan 2026",
+            "what": "NEVER text copied into thin_prompt_generator.py spawning section",
+            "reason": "Protocol codified from test run notes"
+          },
+          {
+            "when": "Jan 28, 2026",
+            "what": "Database backup taken — NEVER text NOT in database templates",
+            "reason": "Prohibition was only in Python code, not stored in DB"
+          },
+          {
+            "when": "Feb 22, 2026",
+            "what": "Commit 69573dd8 softened CRITICAL/NEVER to DEFAULT",
+            "reason": "Recognized as overly restrictive, softened to allow user-requested background execution"
+          },
+          {
+            "when": "Mar 5, 2026",
+            "what": "Enhancement #44 filed — protocol still too restrictive",
+            "reason": "Background execution works excellently in practice"
+          }
+        ],
+        "proposed_fix": {
+          "action": "Update thin_prompt_generator.py line 1413",
+          "current_text": "**DEFAULT**: Run agents in foreground for observability. Use `run_in_background=true` only when the user's project description explicitly requests background execution or parallel monitoring.",
+          "proposed_text": "**Spawning Mode**: Use foreground (default) when you need to observe agent output in real-time. Use `run_in_background=true` for independent parallel agents — poll status via `get_workflow_status()`. Background execution is fully supported and reliable.",
+          "rationale": "No technical limitation exists. The restriction was a stale early-development precaution. Background execution enables efficient parallel agent orchestration. The guidance should be neutral/encouraging rather than restrictive, letting the orchestrator choose based on the task pattern (sequential vs parallel).",
+          "also_consider": "The protocol could explicitly recommend background execution for parallel independent agents (e.g., running a researcher and implementor simultaneously on unrelated files), while recommending foreground for sequential dependent tasks where the orchestrator needs to see output before spawning the next agent."
+        }
+      },
+      "files_investigated": [
+        "src/giljo_mcp/thin_prompt_generator.py (line 1413 — current softened prohibition)",
+        "src/giljo_mcp/services/protocol_builder.py (NO references to run_in_background)",
+        "src/giljo_mcp/services/silence_detector.py (background health monitor, independent of agent execution mode)",
+        "src/giljo_mcp/monitoring/agent_health_monitor.py (background monitoring, independent of agent execution mode)",
+        "src/giljo_mcp/services/orchestration_service.py (NO foreground/observability references)",
+        "handovers/Reference_docs/testrun_Jan_2nd.md (line 133 — original CRITICAL/NEVER prohibition)",
+        "handovers/completed/0411_windows_terminal_agent_spawning-SUPERSEDED-C.md (Bash tool run_in_background, RECOMMENDED)",
+        "handovers/Handover_report_feb.md (line 569 — #44 enhancement entry)",
+        "backups/giljo_mcp_pre_migration_20260128_113346.sql (NO NEVER text in DB)"
+      ],
+      "notes_for_next": "Single-line fix in thin_prompt_generator.py:1413. Replace the overly restrictive DEFAULT text with neutral guidance that lets orchestrators freely choose foreground vs background based on task pattern. No other files need changes. The testrun_Jan_2nd.md reference doc is historical and does NOT need updating (it's a completed test log, not active protocol).",
+      "summary": "The 'NEVER use run_in_background' prohibition originated in testrun_Jan_2nd.md (Jan 2, 2026) as an early-development precaution when background execution was untested. It was copied into thin_prompt_generator.py and already partially softened in commit 69573dd8 (Feb 22, 2026) from CRITICAL/NEVER to DEFAULT. However, the current text is STILL overly restrictive. No technical limitation exists — silence_detector, health_monitor, MCP connections, and tool calls all work identically in background mode. The fix is a single-line text change in thin_prompt_generator.py:1413 to make the guidance neutral and let orchestrators choose based on task pattern."
+    },
+    {
+      "session_id": "0801b",
+      "title": "Implement: Background Agent Protocol Fix",
+      "color": "#2196F3",
+      "status": "complete",
+      "started_at": "2026-03-05T01:00:00Z",
+      "completed_at": "2026-03-05T01:15:00Z",
+      "planned_tasks": [
+        "Update thin_prompt_generator.py line 1413 — replace overly restrictive DEFAULT text with neutral guidance",
+        "Run tests to verify no regressions",
+        "Commit with reference to #44"
+      ],
+      "tasks_completed": [
+        "Update thin_prompt_generator.py line 1413 — replace overly restrictive DEFAULT text with neutral guidance",
+        "Run tests to verify no regressions (1390 passed)",
+        "Commit with reference to #44"
+      ],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": "Single-line protocol text fix applied at thin_prompt_generator.py:1413. Changed overly restrictive DEFAULT guidance to neutral Spawning Mode guidance that lets orchestrators freely choose foreground vs background based on task pattern. All 1390 tests passing."
+    }
+  ],
+  "chain_summary": "Chain complete. Research (0801a) confirmed no technical limitation exists for background execution. Implementation (0801b) updated protocol text from restrictive to neutral guidance. Enhancement #44 resolved.",
+  "final_status": "complete"
+}
