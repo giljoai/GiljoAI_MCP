@@ -1410,7 +1410,7 @@ START NOW:
                     "- Do NOT use agent_display_name (e.g., 'implementer') - it will fail",
                     "",
                     "### Spawning Strategy",
-                    "**DEFAULT**: Run agents in foreground for observability. Use `run_in_background=true` only when the user's project description explicitly requests background execution or parallel monitoring.",
+                    "**Spawning Mode**: Use foreground (default) when you need to observe agent output in real-time. Use `run_in_background=true` for independent parallel agents — poll status via `get_workflow_status()`. Background execution is fully supported and reliable.",
                     "",
                     "Choose spawning approach based on job requirements:",
                     "- **Sequential**: Spawn one agent, wait for completion, then next (best for dependent tasks)",
