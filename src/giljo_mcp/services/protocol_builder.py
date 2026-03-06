@@ -232,15 +232,7 @@ tell me and I'll use /gil_add to save it to your dashboard."
     return f"""## Agent Lifecycle Protocol (5 Phases)
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
-0. **ENVIRONMENT DETECTION**:
-   Detect your OS before executing tasks:
-   Call: python -c "import platform; print(platform.system())"
-   Store result (Windows/Linux/Darwin) and adapt shell commands to your platform
-   - Sleep: Windows 'timeout /t N /nobreak' | Unix 'sleep N'
-   - Clear: Windows 'cls' | Unix 'clear'
-   - Path separator: Windows '\\' | Unix '/'
-
-   **CONTEXT AWARENESS**: Your mission contains authoritative values including `project_path`.
+0. **CONTEXT AWARENESS**: Your mission contains authoritative values including `project_path`.
    When creating files or referencing directories, use context-provided paths.
    Do NOT hardcode paths observed in your terminal environment.
 
@@ -571,16 +563,6 @@ def _build_ch2_startup(orchestrator_id: str, project_id: str) -> str:
 ════════════════════════════════════════════════════════════════════════════
 
 Follow these steps IN ORDER (Steps 1-7 for staging):
-
-── STEP 0: Detect Environment ──────────────────────────────────────────────
-Before planning, detect your development environment:
-Call: python -c "import platform; print(platform.system())"
-Store result (Windows/Linux/Darwin) - use platform-appropriate commands in agent missions
-
-Platform command reference:
-- Sleep: Windows 'timeout /t N /nobreak' | Unix 'sleep N'
-- Clear: Windows 'cls' | Unix 'clear'
-- Path separator: Windows '\\' | Unix '/'
 
 ── STEP 1: Verify MCP ──────────────────────────────────────────────────────
 Call: health_check()
