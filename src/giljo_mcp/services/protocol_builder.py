@@ -232,7 +232,16 @@ tell me and I'll use /gil_add to save it to your dashboard."
     return f"""## Agent Lifecycle Protocol (5 Phases)
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
-0. **CONTEXT AWARENESS**: Your mission contains authoritative values including `project_path`.
+0. **ENVIRONMENT DETECTION**:
+   Detect your shell and OS before executing tasks:
+   Call: `python -c "import platform; print(platform.system())"`
+   Then check your shell: `echo $SHELL` (Unix) or `$PSVersionTable` (PowerShell)
+   Adapt commands to your actual shell environment:
+   - Sleep: PowerShell `Start-Sleep -Seconds N` | Bash/Zsh `sleep N`
+   - Clear: PowerShell `cls` | Bash/Zsh `clear`
+   - Path separator: Windows `\\` | Unix `/` (but `/` works in most Windows shells)
+
+   **CONTEXT AWARENESS**: Your mission contains authoritative values including `project_path`.
    When creating files or referencing directories, use context-provided paths.
    Do NOT hardcode paths observed in your terminal environment.
 
@@ -562,7 +571,16 @@ def _build_ch2_startup(orchestrator_id: str, project_id: str) -> str:
                        CH2: STARTUP SEQUENCE
 ════════════════════════════════════════════════════════════════════════════
 
-Follow these steps IN ORDER (Steps 1-7 for staging):
+Follow these steps IN ORDER (Steps 0-7 for staging):
+
+── STEP 0: Detect Environment ──────────────────────────────────────────────
+Detect your shell and OS before planning:
+Call: `python -c "import platform; print(platform.system())"`
+Then check your shell: `echo $SHELL` (Unix) or `$PSVersionTable` (PowerShell)
+Store results and adapt commands for agent missions to match their shell:
+- Sleep: PowerShell `Start-Sleep -Seconds N` | Bash/Zsh `sleep N`
+- Clear: PowerShell `cls` | Bash/Zsh `clear`
+- Path separator: Windows `\\` | Unix `/` (but `/` works in most Windows shells)
 
 ── STEP 1: Verify MCP ──────────────────────────────────────────────────────
 Call: health_check()
