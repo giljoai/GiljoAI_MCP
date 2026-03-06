@@ -626,8 +626,8 @@ Tested via GUI at http://localhost:7274:
 | 0809a | CW-4 (duration timer) | **NON-ISSUE** | Timer works correctly — same AgentExecution row reused across handovers |
 | 0810a | #40 (orchestrator distinction) | **VALID P3/E1** | job_type added to AgentWorkflowDetail (~3 lines) |
 | 0810a | #41 (per-agent status) | **SUPERSEDED** | Resolved by commit `a00a863e` (agents array with full detail) |
-| 0811a | #50 (platform detection) | **VALID BUG** | Incorrect `timeout` removed from protocol_builder.py prompts |
+| 0811a | #50 (platform detection) | **VALID BUG** | Fixed: cmd.exe `timeout` replaced with shell-aware commands (PowerShell `Start-Sleep` / Bash `sleep`). Platform detection kept — agents run on Windows, Linux, macOS in various shells. |
 
-Fixes committed: `f665c861`
+Fixes committed: `f665c861` (initial), `b810dc41` (corrected #50 — fix not remove)
 
-**Next Steps**: Only VD-1 (vision document pipeline) remains — links to `TODO_vision_summarizer_llm_upgrade.md`. Tier 3 investigation needed.
+**Remaining OPEN**: VD-1 (vision document pipeline) — Tier 3 investigation needed, links to `TODO_vision_summarizer_llm_upgrade.md`.
