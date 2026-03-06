@@ -1,0 +1,106 @@
+{
+  "chain_id": "0806",
+  "chain_name": "Todo Chicken-and-Egg on Closeout (RT-4)",
+  "created_at": "2026-03-05",
+  "orchestrator_notes": "RT-4. Final todo 'Close project with 360 memory' can't be marked complete before doing it, but closeout validation (COMPLETION_BLOCKED) blocks if it's incomplete. Minor workflow friction. Feb report says 'documented workaround exists'. Likely close as by-design or document the workaround in the protocol.",
+  "total_sessions": 2,
+  "sessions": [
+    {
+      "session_id": "0806a",
+      "title": "Research: Todo Chicken-and-Egg",
+      "color": "#4CAF50",
+      "status": "complete",
+      "started_at": "2026-03-05T16:00:00Z",
+      "completed_at": "2026-03-05T16:30:00Z",
+      "planned_tasks": [
+        "Read complete_job() COMPLETION_BLOCKED logic â€” does it check ALL todos or just non-orchestrator todos?",
+        "Read the orchestrator protocol â€” does it tell orchestrators to add a 'closeout' todo item?",
+        "Check: what is the documented workaround? Is it 'mark todo as complete, then do closeout'?",
+        "Check: does the orchestrator mark its own closeout todo BEFORE or AFTER calling close_project?",
+        "Trace the FULL flow: orchestrator has todo 'Close project' -> tries complete_job -> COMPLETION_BLOCKED -> what next?",
+        "Determine: is this a real bug, a protocol gap, or just minor friction with a known workaround?",
+        "Write findings to chain_log.json"
+      ],
+      "tasks_completed": [
+        "Read complete_job() COMPLETION_BLOCKED logic (orchestration_service.py:1559-1807) - checks ALL todos, no exemptions",
+        "Read orchestrator protocol in thin_prompt_generator.py - continuation prompt line 147 documents correct sequence",
+        "Read both CLOSEOUT_BLOCKED implementations: project_closeout.py and write_360_memory.py",
+        "Verified workaround: mark todos completed via report_progress() BEFORE calling complete_job()",
+        "Traced full flow: write_360_memory -> report_progress(mark todos completed) -> complete_job -> close_project",
+        "Determined: NOT a real bug - standard 2-step sequence orchestrators handle naturally",
+        "Verified 0800b chain already added CLOSEOUT_BLOCKED recovery instructions to both prompt modes",
+        "Written findings to chain_log.json"
+      ],
+      "deviations": [
+        "No deviations. Research confirmed hypothesis: by-design behavior with documented workaround."
+      ],
+      "blockers_encountered": [],
+      "findings": {
+        "completion_blocked_mechanism": {
+          "location": "src/giljo_mcp/services/orchestration_service.py lines 1639-1688",
+          "behavior": "Queries ALL AgentTodoItem rows where status != completed. Raises ValidationError COMPLETION_BLOCKED. No exemptions.",
+          "scope": "Checks ALL todos indiscriminately"
+        },
+        "closeout_todo_origin": {
+          "created_by": "Orchestrator agent via report_progress() - NOT system-created",
+          "explanation": "Orchestrator creates its own todo list. Close project items are orchestrator-authored."
+        },
+        "workaround_exists_and_is_documented": {
+          "documented_at": "src/giljo_mcp/thin_prompt_generator.py line 147",
+          "exact_text": "proceed to closeout (update your own todos to completed via report_progress, then complete_job, then close_project_and_update_memory)",
+          "correct_sequence": [
+            "1. Do the closeout work (write 360 memory, drain messages)",
+            "2. Call report_progress() marking ALL todos as completed",
+            "3. Call complete_job() - succeeds because all todos completed",
+            "4. Optionally call close_project_and_update_memory()"
+          ],
+          "why_it_works": "Orchestrator performs closeout ACTIONS first, marks TODO completed to record it, then calls complete_job(). Todo tracks completion, not permission."
+        },
+        "why_not_a_bug": {
+          "assessment": "BY DESIGN",
+          "reasoning": [
+            "Chicken-and-egg framing based on misunderstanding. Orchestrator does NOT need complete_job() to perform closeout actions.",
+            "Correct flow: (1) Do the work, (2) Mark todo done, (3) complete_job(). Standard 2-step, not circular.",
+            "Continuation prompt documents this exact sequence at line 147.",
+            "write_360_memory() checks OTHER agents only (when entry_type=project_completion).",
+            "close_project_and_update_memory() checks OTHER agents, not calling orchestrator.",
+            "0800b chain already added CLOSEOUT_BLOCKED recovery to both CLI and multi-terminal prompts."
+          ]
+        },
+        "related_work": {
+          "chain_0800": "CLOSEOUT_BLOCKED recovery instructions added to orchestrator prompts in 0800b.",
+          "handover_0431": "Pre-closeout verification protocol in write_360_memory.py",
+          "handover_0392": "Simplified todo_items parameter for report_progress()"
+        },
+        "recommendation": "CLOSE RT-4 AS BY-DESIGN. No code changes needed. Workaround is the intended flow. 0800b strengthened orchestrator closeout guidance."
+      },
+      "files_investigated": [
+        "src/giljo_mcp/services/orchestration_service.py (complete_job: 1559-1807, report_progress: 1278-1506)",
+        "src/giljo_mcp/tools/project_closeout.py (close_project_and_update_memory: 35-224, _check_agent_readiness: 233-326)",
+        "src/giljo_mcp/tools/write_360_memory.py (_check_closeout_readiness: 48-225, write_360_memory: 228-475)",
+        "src/giljo_mcp/thin_prompt_generator.py (continuation: 96-157, retirement: 160-292, completion: 1513-1567, closeout: 1695-1732)",
+        "src/giljo_mcp/tools/tool_accessor.py (complete_job: 502, close_project: 512)",
+        "handovers/Handover_report_feb.md (RT-4: line 551)",
+        "prompts/0800_chain/chain_log.json (related CLOSEOUT_BLOCKED research)"
+      ],
+      "notes_for_next": "0806b session NOT NEEDED. RT-4 is by-design. Recommend cancelling 0806b.",
+      "summary": "RT-4 is NOT a bug. complete_job() checks ALL todos, but intended flow is: (1) perform closeout actions, (2) mark todos completed via report_progress(), (3) call complete_job(). Documented in continuation prompt line 147. 0800b chain strengthened recovery instructions. Close as BY-DESIGN."
+    },
+    {
+      "session_id": "0806b",
+      "title": "Implement: Todo Chicken-and-Egg Fix",
+      "color": "#2196F3",
+      "status": "cancelled",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": "Cancelled. 0806a research determined no fix needed - RT-4 is by-design.",
+      "summary": "Not needed. Research determined issue is by-design, not a bug."
+    }
+  ],
+  "chain_summary": "RT-4 CLOSED AS BY-DESIGN. The todo chicken-and-egg is a misunderstanding of intended sequence. Orchestrator: (1) do work, (2) mark todos completed, (3) complete_job(). Documented in continuation prompt. 0800b added CLOSEOUT_BLOCKED recovery. No code changes. 0806b cancelled.",
+  "final_status": "complete"
+}
