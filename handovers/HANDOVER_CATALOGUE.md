@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-02-28 (0411a/b, 0497a-e, 0498 closed out + reconciliation)
+**Last Updated:** 2026-03-05 (0800-0807 triage chains closed out)
 
 ---
 
@@ -18,7 +18,7 @@
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-i sprint Active, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
-| 0800+ | Enhancement & Feature Series | New work starts here |
+| 0800+ | Enhancement & Feature Series | 0800-0807 triage chains COMPLETE |
 
 ---
 
@@ -72,6 +72,14 @@
 | 0497e | Fresh Agent Recovery Flow (Successor Spawning) | 2026-02-25 | COMPLETE (`c6592915`) |
 | 0498 | Early Termination Protocol + Dashboard Reduction | 2026-02-26 | COMPLETE (4 commits + 8 follow-up fixes, handover modal + retirement flow) |
 | 0750 | Code Quality Cleanup Sprint (7 phases + audits) | 2026-03-01 | COMPLETE — score 6.6 to 7.8/10, 24 findings resolved, 15 handovers archived to completed/0700_series/ |
+| 0800a/b | Remediation Protocol (#38) | 2026-03-05 | COMPLETE — CLOSEOUT_BLOCKED recovery + enriched blocker responses (`9ee450af`) |
+| 0801a/b | Background Agent Protocol (#44) | 2026-03-05 | COMPLETE — stale prohibition updated to neutral guidance (`6824d63b`) |
+| 0802a/b | 360 Memory "Unknown" Title (RT-5) | 2026-03-05 | COMPLETE — frontend field mismatch fix (`3af60863`) |
+| 0803a | Failed vs Blocked Display (RT-6, #42) | 2026-03-05 | BY DESIGN — `failed` removed in 0491 |
+| 0804a | Polling Loop Protocol (RT-2) | 2026-03-05 | COMPLETE — prescriptive intervals replaced with user-consent (`2ccb16c1`) |
+| 0805a | Progress Percent (RT-3, #43) | 2026-03-05 | NON-ISSUE — math correct, dashboard uses step counts |
+| 0806a | Todo Chicken-and-Egg (RT-4) | 2026-03-05 | BY DESIGN — intended flow already documented |
+| 0807a | set_agent_status Missing (CW-5) | 2026-03-05 | BY DESIGN — controlled lifecycle intentional, false doc claim fixed |
 
 ### Greptile Security Series (1000-1014) - SECURITY
 
@@ -117,6 +125,12 @@
 ---
 
 ## Completed (In completed/ Folder)
+
+### Recently Completed (March 2026)
+
+| ID | Title | Status |
+|----|-------|--------|
+| 0800-0807 | Feb Report Triage Chains (14/21 items resolved) | **COMPLETE** (2026-03-05, research+implementation across 11 handovers) |
 
 ### Recently Completed (February 2026)
 
@@ -423,7 +437,8 @@ completed/reference/
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy/0732 (deferred/ready), 0740-0750 (complete), 0760 (proposal), 0765a-i (sprint), 0766-0768 (triage chains). **Do NOT use for non-quality work.**
-**0800+** (Enhancement & Feature Series): Available for new feature/enhancement work
+**0800-0807** (Enhancement & Triage): 0800a/b, 0801a/b, 0802a/b, 0803a, 0804a, 0805a, 0806a, 0807a (all complete)
+**0808+** (Enhancement & Feature Series): Available for new feature/enhancement work
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
