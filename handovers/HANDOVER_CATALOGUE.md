@@ -80,6 +80,10 @@
 | 0805a | Progress Percent (RT-3, #43) | 2026-03-05 | NON-ISSUE — math correct, dashboard uses step counts |
 | 0806a | Todo Chicken-and-Egg (RT-4) | 2026-03-05 | BY DESIGN — intended flow already documented |
 | 0807a | set_agent_status Missing (CW-5) | 2026-03-05 | BY DESIGN — controlled lifecycle intentional, false doc claim fixed |
+| 0766a | Mission Overwrite Research (CW-1, CW-3) | 2026-03-04 | NOT A BUG — overwrite by design, continuation orchestrators prohibited from calling |
+| 0767a | Datetime Serialization Research (#39) | 2026-03-04 | ALREADY FIXED (0731c) + defense-in-depth `default=str` (`1ed52edf`) |
+| 0767b+0768b | Combined Implementation (serialization + schema) | 2026-03-04 | COMPLETE (`1ed52edf`) |
+| 0768a | fetch_context Batch Research (RT-1, #36) | 2026-03-04 | BY DESIGN (0351) + misleading schema fixed (`1ed52edf`) |
 
 ### Greptile Security Series (1000-1014) - SECURITY
 
