@@ -252,6 +252,8 @@ class OrchestrationService:
 
                 # Handover 0491: Count by simplified execution statuses
                 executions = [row[0] for row in rows]
+                # Handover 0808: Map job_id -> job_type for workflow detail
+                job_type_map = {row[1].job_id: row[1].job_type or "" for row in rows}
                 active_count = sum(1 for execution in executions if execution.status == "working")
                 completed_count = sum(1 for execution in executions if execution.status == "complete")
                 pending_count = sum(1 for execution in executions if execution.status == "waiting")
@@ -322,6 +324,7 @@ class OrchestrationService:
                                 agent_name=execution.agent_name or "",
                                 display_name=execution.agent_display_name or "",
                                 status=execution.status or "",
+                                job_type=job_type_map.get(execution.job_id, ""),
                                 unread_messages=execution.messages_waiting_count or 0,
                                 todos=AgentTodoCounts(
                                     completed=counts.get("completed", 0),
