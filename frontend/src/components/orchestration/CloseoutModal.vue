@@ -84,7 +84,7 @@
                 <div class="d-flex align-center w-100">
                   <v-icon icon="mdi-book-open-page-variant" class="mr-2" size="small" />
                   <span class="font-weight-medium">
-                    Entry #{{ entry.sequence }} - {{ formatEntryType(entry.type) }}
+                    {{ entry.project_name || 'Entry #' + entry.sequence }} - {{ formatEntryType(entry.entry_type) }}
                   </span>
                   <v-spacer />
                   <span class="text-caption text-grey">
@@ -160,13 +160,12 @@
 
                 <!-- Metadata -->
                 <div class="metadata-section mt-4 pt-3" style="border-top: 1px solid rgba(0,0,0,0.12)">
-                  <div class="d-flex text-caption text-grey">
-                    <div class="mr-4">
-                      <strong>Type:</strong> {{ entry.type }}
-                    </div>
-                    <div v-if="entry.sequence">
-                      <strong>Sequence:</strong> #{{ entry.sequence }}
-                    </div>
+                  <div class="text-caption text-grey">
+                    <strong>Type:</strong> {{ formatEntryType(entry.entry_type) }}
+                    <span v-if="entry.sequence" class="ml-3">|</span>
+                    <span v-if="entry.sequence" class="ml-3"><strong>Sequence:</strong> #{{ entry.sequence }}</span>
+                    <span v-if="entry.source" class="ml-3">|</span>
+                    <span v-if="entry.source" class="ml-3"><strong>Source:</strong> {{ entry.source }}</span>
                   </div>
                 </div>
               </v-expansion-panel-text>
