@@ -797,7 +797,7 @@ waiting ─[get_agent_mission()]─→ working (auto-transition on first fetch)
 working ─[report_progress()]─→ working (updates progress/todos)
 working ─[complete_job()]─→ complete
 working ─[report_error()]─→ blocked
-blocked ─[report_progress()]─→ working (resume from blocked)
+blocked ─[complete_job()]─→ complete (orchestrator force-completes blocked agent)
 
 Note: All report_error() calls set status to "blocked". Use "BLOCKED: <reason>"
 message format when asking for clarification vs actual errors.
@@ -837,21 +837,21 @@ When you (or a fresh orchestrator instance) enters implementation phase:
 
 1. Retrieve execution plan via get_agent_mission(job_id, tenant_key)
 2. Follow coordination strategy you defined in Step 7
-3. Monitor agent progress via receive_messages() every 2-3 minutes
-4. Coordinate handoffs between dependent agents
+3. Coordinate handoffs between dependent agents
+4. Ask user if they want you to auto-monitor agents (sleep and periodically check progress and message queues). Warn user this can drastically increase token consumption.
 
 COORDINATION PATTERNS:
 
 Sequential Pattern:
-  Spawn agent A → Poll receive_messages() → Wait for completion →
+  Spawn agent A → Wait for completion →
   Send handoff message (using agent_id UUID) → Spawn agent B → Repeat
 
 Parallel Pattern:
-  Spawn all agents → Poll receive_messages() every 2-3 min →
+  Spawn all agents → Check progress when user requests or when auto-monitoring →
   Coordinate as agents finish → Track completion states
 
 Hybrid Pattern:
-  Spawn parallel batch 1 → Monitor → Wait for batch 1 complete →
+  Spawn parallel batch 1 → Wait for batch 1 complete →
   Send handoff messages (using agent_id UUIDs) → Spawn batch 2 → Repeat
 
 MESSAGING RULE: UUID-ONLY ADDRESSING
