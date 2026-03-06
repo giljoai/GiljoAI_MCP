@@ -307,6 +307,7 @@ class AgentWorkflowDetail(BaseModel):
     agent_name: str = ""
     display_name: str = ""
     status: str = ""
+    job_type: str = ""
     unread_messages: int = 0
     todos: AgentTodoCounts = AgentTodoCounts()
 
