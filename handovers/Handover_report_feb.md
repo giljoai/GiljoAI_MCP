@@ -615,7 +615,19 @@ Tested via GUI at http://localhost:7274:
 | 0806 (RT-4) | Todo chicken-and-egg | **BY DESIGN** — intended flow already documented in continuation prompt | -- |
 | 0807 (CW-5) | set_agent_status missing | **BY DESIGN** — controlled lifecycle intentional, false doc claim fixed | `2ccb16c1` |
 
-**Resolved**: 14 items (CW-1, CW-3, CW-5, RT-1, RT-2, RT-3, RT-4, RT-5, RT-6, #36, #38, #39, #42, #43, #44)
-**Remaining OPEN**: CW-2, CW-4, VD-1, #40, #41, #50
+**Resolved**: 20 items (CW-1, CW-2, CW-3, CW-4, CW-5, RT-1, RT-2, RT-3, RT-4, RT-5, RT-6, #36, #38, #39, #40, #41, #42, #43, #44, #50)
+**Remaining OPEN**: VD-1 (vision document pipeline — Tier 3)
 
-**Next Steps**: Tier 2 triage — CW-2 (reopen_job), CW-4 (duration timer), #40 (workflow orchestrator distinction), #50 (platform detection). Tier 3: VD-1 (vision pipeline), #41 (per-agent status).
+### Tier 2 Results (0808-0811, 2026-03-06)
+
+| Session | Item | Verdict | Detail |
+|---------|------|---------|--------|
+| 0808a | CW-2 (reopen_job) | **SUPERSEDED** | 0497e successor spawning + 0498 handover cover reactivation |
+| 0809a | CW-4 (duration timer) | **NON-ISSUE** | Timer works correctly — same AgentExecution row reused across handovers |
+| 0810a | #40 (orchestrator distinction) | **VALID P3/E1** | job_type added to AgentWorkflowDetail (~3 lines) |
+| 0810a | #41 (per-agent status) | **SUPERSEDED** | Resolved by commit `a00a863e` (agents array with full detail) |
+| 0811a | #50 (platform detection) | **VALID BUG** | Incorrect `timeout` removed from protocol_builder.py prompts |
+
+Fixes committed: `f665c861`
+
+**Next Steps**: Only VD-1 (vision document pipeline) remains — links to `TODO_vision_summarizer_llm_upgrade.md`. Tier 3 investigation needed.
