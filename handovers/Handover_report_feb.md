@@ -549,8 +549,8 @@ TECHNICAL_DEBT_v2 triage ─┐
 | RT-2 | Polling loop protocol is too prescriptive | Low | Agent wasted ~21 tool calls monitoring independent background agents. Protocol should make monitoring situational, not mandatory. Documentation fix only. |
 | RT-3 | `progress_percent` in MCP response shows 0% until agents complete | Low | Tracks agent completion count, not aggregate todo progress. NOTE: This is NOT a UI issue — the dashboard uses todo steps (3/5, 4/5) as progress indicator, not percentages. The % is only in MCP tool responses to agents. Investigate if this even matters or is just verbose chat noise. |
 | RT-4 | Todo chicken-and-egg on closeout | Low | Final todo "Close project with 360 memory" can't be marked complete before doing it, but closeout validation blocks if it's incomplete. Minor workflow friction, documented workaround exists. |
-| RT-5 | 360 Memory entry title shows "Unknown" instead of project title | Low | Entry #27 displayed as "Unknown" in UI. Should show project name. Also "Type: Sequence: #27" display is confusing. |
-| RT-6 | Failed vs Blocked agents display identically on dashboard | Medium | Both show as "need input". Should visually distinguish terminal (failed) vs recoverable (blocked) states. |
+| RT-5 | 360 Memory entry title shows "Unknown" instead of project title | ~~Low~~ | **FIXED** in `3af60863`. Researched in 0802a: frontend field name mismatch — API returns `entry_type` but Vue read `entry.type` (undefined). Fixed CloseoutModal.vue + added project_name to title. |
+| RT-6 | Failed vs Blocked agents display identically on dashboard | ~~Medium~~ | **BY DESIGN** — Researched in 0803a: `failed` status was intentionally removed in Handover 0491 (Feb 2026). All errors go to `blocked`. The 0491 simplification was a deliberate architectural decision. |
 
 ### Vision Document Pipeline (broken)
 
@@ -566,11 +566,11 @@ TECHNICAL_DEBT_v2 triage ─┐
 |---------------|-------|----------|--------|-------|
 | #38 | Remediation Agent Spawning Protocol | ~~P1~~ | ~~E2~~ | **FIXED** in `9ee450af`. Researched in 0800a: COMPLETION_BLOCKED gate works, CLOSEOUT_BLOCKED gate works but orchestrators had NO recovery instructions. Fixed: CLI prompt drain-and-complete pattern, multi-terminal user-directed reactivation, enriched blocker responses with `issue_type`/`suggested_action`. |
 | #39 | get_agent_mission() datetime serialization error | ~~P1~~ | ~~E1~~ | **ALREADY FIXED** by 0731c typed returns. Researched in 0767a. Defense-in-depth `default=str` added to `json.dumps` in `1ed52edf`. |
-| #44 | Document background agent execution pattern | P1 | E1 | Protocol says "NEVER use run_in_background" but it works excellently |
+| #44 | Document background agent execution pattern | ~~P1~~ | ~~E1~~ | **FIXED** in `6824d63b`. Researched in 0801a: stale prohibition from Jan 2026 testing, already softened in Feb, now fully neutral guidance. No technical limitation exists. |
 | #36 | Batch category fetching for fetch_context | ~~P2~~ | ~~E1~~ | **BY DESIGN + FIXED** — Same as RT-1. Schema corrected in `1ed52edf`. |
 | #40 | Workflow status doesn't distinguish orchestrator from sub-agents | P2 | E1 | |
 | #41 | Per-agent status in workflow response | P2 | E2 | |
-| #42 | Failed vs Blocked status display | P2 | E1 | Same as RT-6 above — may be non-issue for UI |
+| #42 | Failed vs Blocked status display | ~~P2~~ | ~~E1~~ | **BY DESIGN** — Same as RT-6. `failed` removed in 0491, `blocked` is the single error state. |
 | #43 | Progress percent calculation | P2 | E1 | Same as RT-3 above — may be non-issue for UI |
 | #50 | Platform detection cmd.exe vs GNU bash | P2 | E1 | Windows timeout vs sleep confusion |
 
@@ -607,8 +607,11 @@ Tested via GUI at http://localhost:7274:
 | 0767 (#39) | Datetime serialization | **ALREADY FIXED** (0731c) + defense-in-depth | `1ed52edf` |
 | 0768 (RT-1, #36) | fetch_context batch | **BY DESIGN** (0351) + misleading schema fixed | `1ed52edf` |
 | 0800 (#38) | Remediation protocol | **FIXED** — orchestrator CLOSEOUT_BLOCKED recovery + enriched responses | `9ee450af` |
+| 0801 (#44) | run_in_background protocol | **FIXED** — stale prohibition updated to neutral guidance | `6824d63b` |
+| 0802 (RT-5) | 360 Memory "Unknown" title | **FIXED** — frontend field name mismatch `entry.type` vs `entry_type` | `3af60863` |
+| 0803 (RT-6, #42) | Failed vs blocked display | **BY DESIGN** — `failed` removed in 0491, single `blocked` state | -- |
 
-**Resolved**: 6 items (CW-1, CW-3, RT-1, #38, #39, #36)
-**Remaining OPEN**: CW-2, CW-4, CW-5, RT-2, RT-3, RT-4, RT-5, RT-6, VD-1, #40, #41, #42, #43, #44, #50
+**Resolved**: 10 items (CW-1, CW-3, RT-1, RT-5, RT-6, #36, #38, #39, #42, #44)
+**Remaining OPEN**: CW-2, CW-4, CW-5, RT-2, RT-3, RT-4, VD-1, #40, #41, #43, #50
 
-**Next Steps**: Continue triage of remaining 15 items. Priority candidates: RT-5 (360 Memory "Unknown" title), RT-6/#42 (failed vs blocked display), #44 (background agent docs), CW-2 (orchestrator prompt caching).
+**Next Steps**: Continue triage of remaining 11 items. Priority candidates: CW-2 (orchestrator prompt caching), #40 (workflow status orchestrator distinction), #50 (platform detection cmd vs bash), CW-4 (continuation prompt bloat).
