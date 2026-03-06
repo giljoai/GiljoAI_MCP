@@ -145,7 +145,7 @@ FIRST ACTIONS (DO NOT RE-STAGE):
 
 AFTER CONTEXT GATHERING — decide next action based on workflow status:
 - If all agents completed: proceed to closeout (update your own todos to completed via report_progress, then complete_job, then close_project_and_update_memory)
-- If agents still working: resume monitoring loop (~20s intervals)
+- If agents still working: ask user if they want you to auto-monitor agents (sleep and periodically check progress and message queues). Warn user this can drastically increase token consumption.
 - If agents blocked: send messages to resolve blockers
 - If agents failed: assess and re-spawn if needed
 
