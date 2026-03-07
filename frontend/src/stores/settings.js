@@ -5,6 +5,9 @@ import api from '@/services/api'
 
 export const useSettingsStore = defineStore('settings', () => {
   // State
+  const httpProto = window.location.protocol === 'https:' ? 'https' : 'http'
+  const wsProto = window.location.protocol === 'https:' ? 'wss' : 'ws'
+
   const settings = ref({
     theme: 'dark',
     notifications: {
@@ -13,8 +16,8 @@ export const useSettingsStore = defineStore('settings', () => {
     },
     compactView: false,
     showMascot: true,
-    apiUrl: 'http://localhost:6002',
-    wsUrl: 'ws://localhost:6003',
+    apiUrl: `${httpProto}://localhost:6002`,
+    wsUrl: `${wsProto}://localhost:6003`,
   })
 
   const loading = ref(false)
@@ -138,8 +141,8 @@ export const useSettingsStore = defineStore('settings', () => {
       },
       compactView: false,
       showMascot: true,
-      apiUrl: 'http://localhost:6002',
-      wsUrl: 'ws://localhost:6003',
+      apiUrl: `${httpProto}://localhost:6002`,
+      wsUrl: `${wsProto}://localhost:6003`,
     }
     applyTheme()
     saveToLocalStorage()
