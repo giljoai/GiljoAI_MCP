@@ -1,5 +1,7 @@
 # Server Architecture & Tech Stack
 
+> **Edition Context (2026-03-07):** This document describes the GiljoAI MCP Community Edition architecture. The full system serves two editions from one codebase (split before public release). Community Edition includes everything documented here. SaaS Edition layers on top with OAuth/SSO, billing, org management, and enterprise deployment. Tenant isolation infrastructure exists in both editions -- Community uses it silently (single implicit tenant), SaaS uses it explicitly (multi-org). See [0770 SaaS Edition Proposal](../handovers/0770_SAAS_EDITION_PROPOSAL.md) for the architectural decision record.
+
 **Document Version**: 10_21_2025
 **Status**: Single Source of Truth
 **Last Updated**: 2025-01-05 (Harmonized)
@@ -1425,6 +1427,8 @@ frontend/
 ├── index.html             # HTML template
 └── package.json           # NPM dependencies
 ```
+
+> **Edition Note:** The two-layout auth pattern below is Community Edition's single-user authentication. SaaS Edition replaces this with OAuth/SSO providers and multi-org session management.
 
 ### Two-Layout Authentication Pattern (SaaS-Ready Architecture)
 

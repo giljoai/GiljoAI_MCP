@@ -1,8 +1,10 @@
+> **Note (2026-03-07):** References to SaaS timelines in this document predate the GiljoAI Community License adoption. Current strategy: Community Edition first, SaaS fork later (timing TBD). See LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md.
+
 ---
-**Document Type:** Product Vision & User Journey  
-**Last Updated:** 2025-01-05  
-**Related Documents:** [start_to_finish_agent_FLOW.md](./start_to_finish_agent_FLOW.md) (technical verification), [dynamiccontext_patrik.md](./dynamiccontext_patrik.md) (dynamic agent discovery & context modes)  
-**Harmonization Status:** ✅ Aligned with codebase (Handovers 0088, 0102, 0073)  
+**Document Type:** Product Vision & User Journey
+**Last Updated:** 2025-01-05
+**Related Documents:** [start_to_finish_agent_FLOW.md](./start_to_finish_agent_FLOW.md) (technical verification), [dynamiccontext_patrik.md](./dynamiccontext_patrik.md) (dynamic agent discovery & context modes)
+**Harmonization Status:** ✅ Aligned with codebase (Handovers 0088, 0102, 0073)
 ---
 
 [Developer note] I need to harmonize terminology in this document: **"product"** refers to the top-level organizational unit (a software product being built), **"project"** refers to work initiatives under a product, **"tasks"** are work items that can exist standalone or under a product, and **"jobs"** are the execution phases when agents work on a project. This document describes both the **GiljoAI application itself** and the **products/projects/tasks/jobs as features within the application**. I may have used these terms inconsistently throughout - keeping this note as a clarification.

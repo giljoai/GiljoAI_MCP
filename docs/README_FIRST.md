@@ -12,12 +12,14 @@
 - **[Installation Flow & Process](INSTALLATION_FLOW_PROCESS.md)** - Complete installation walkthrough and cross-platform setup
 - **[First Launch Experience](user_guides/FIRST_LAUNCH_EXPERIENCE.md)** - Step-by-step onboarding from install to dashboard
 - **[MCP-over-HTTP Integration](api/MCP_OVER_HTTP_INTEGRATION.md)** - Connecting Claude Code via HTTP transport (zero dependencies)
+- **[Edition & Licensing Strategy](../LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md)** - Community Edition (single-user, free) vs SaaS Edition (multi-user, commercial). Architecture split: [0770 SaaS Edition Proposal](../handovers/0770_SAAS_EDITION_PROPOSAL.md)
 
 ### 📌 Single Source of Truth (SSoT) Documents
 
 **Authoritative references for critical workflows** - These documents are maintained as the definitive source for their topics:
 
 - **[Orchestrator Context Flow SSoT](architecture/ORCHESTRATOR_CONTEXT_FLOW_SSoT.md)** - Complete orchestrator workflow from user setup to agent execution (13 context cards, 77% context prioritization, 9 context sources)
+- **[SaaS Edition Proposal (0770)](../handovers/0770_SAAS_EDITION_PROPOSAL.md)** - Architectural decision record: Community vs SaaS split, fork strategy (one repo now, split before publish), resolved licensing decisions
 
 **New Implementation Features** (October 2025):
 
@@ -578,7 +580,6 @@ database:
 
 ### Core Documentation
 
-- **`CLAUDE.md`** - Agent context and coding guidelines for Claude Code
 - **[Server Architecture & Tech Stack](SERVER_ARCHITECTURE_TECH_STACK.md)** - Detailed system design and patterns
 - **`docs/guides/`** - Setup and configuration guides
 
@@ -711,6 +712,7 @@ cd frontend/ && npm run dev
 - **Issues**: https://github.com/patrik-giljoai/GiljoAI-MCP/issues
 - **Documentation**: `docs/README_FIRST.md` (this file)
 - **License**: See LICENSE file
+- **Edition**: GiljoAI MCP Community Edition (GiljoAI Community License v1.0). See [Licensing Philosophy](../LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md)
 - **Contributing**: See CONTRIBUTING.md
 
 ---
