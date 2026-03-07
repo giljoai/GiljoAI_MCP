@@ -1,7 +1,7 @@
 # 0770: SaaS / Community / Enterprise Edition Planning
 
 **Date:** 2026-03-03
-**Status:** DISCUSSION DRAFT — No implementation yet
+**Status:** DECISIONS RECORDED (2026-03-07) — Key strategic decisions resolved
 **Priority:** Strategic planning
 **Prerequisite:** 0765 series complete (10/10 code quality baseline)
 **Decision maker:** Gil
@@ -43,10 +43,20 @@ The GiljoAI MCP codebase is approaching 10/10 code quality via the 0765 sprint s
 - Shared `core/` package, edition-specific wrappers
 - Cleanest architecture, highest upfront cost
 
-**Tradeoffs:**
+**Option D: Single repo now, split before publish (hybrid)**
+- Build everything (SaaS, OAuth, billing) in the single repo
+- Split into public (Community) + private (SaaS) repos before publishing
+- Private repo imports public repo as a dependency, layers SaaS on top
+- Avoids merge debt while keeping development velocity
+
+**DECIDED (2026-03-07):** Option D chosen — single repo now, plugin/extension
+split before publish. Private repo layers SaaS on top of public Community repo.
+
+**Tradeoffs (historical context):**
 - A is fastest to ship community edition but creates merge debt
 - B keeps one codebase but adds complexity everywhere
 - C is best long-term but requires significant restructuring
+- D (chosen) balances development speed with clean separation at publish time
 
 ### D2: Tenant Key Provisioning (SaaS + Enterprise)
 
@@ -186,11 +196,62 @@ The GiljoAI MCP codebase is approaching 10/10 code quality via the 0765 sprint s
 
 ---
 
+## Resolved Decisions (2026-03-07)
+
+The following strategic decisions were made on 2026-03-07.
+
+### Licensing
+
+**GiljoAI Community License v1.0** adopted (commit `9dd6e9e8`). Single-user
+free, multi-user requires a commercial license. This replaces the prior MIT
+default and the open questions around MIT/Apache/AGPL.
+
+Reference: `LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md`
+
+### Release Priority
+
+**Community Edition ships first.** SaaS infrastructure follows after the
+Community Edition is published.
+
+### Fork Strategy
+
+**One repo for now, split before publish.** All development (SaaS, OAuth,
+billing, etc.) continues in the single repo. Before publishing the Community
+Edition, the repo splits into:
+
+- **Public repo (Community Edition)** -- published under GiljoAI Community
+  License v1.0
+- **Private repo (SaaS Edition)** -- imports the public repo as a dependency
+  and layers SaaS features on top
+
+### Community / SaaS Split
+
+| Layer | Public Repo (Community) | Private Repo (SaaS) |
+|-------|-------------------------|----------------------|
+| Orchestration | Core orchestration engine | -- |
+| Agents | Agent management | -- |
+| Auth | Single-user auth | OAuth, MFA, SSO |
+| Tenancy | Tenant isolation (hidden) | Org & team management |
+| Realtime | WebSocket, MCP transport | -- |
+| Frontend | Dashboard (CE branding) | Multi-user admin tools |
+| Licensing | CE branding + license check | -- |
+| Billing | -- | Billing, subscriptions |
+| Analytics | -- | Usage analytics, metering |
+| Onboarding | -- | SaaS onboarding flows |
+| Deployment | -- | SaaS deployment configs |
+
+### Reference
+
+- Commit: `9dd6e9e8` (license adoption + edition branding)
+- Doc: `LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md`
+
+---
+
 ## Open Questions for Gil
 
-1. Is community edition the first priority, or SaaS infrastructure?
+1. ~~Is community edition the first priority, or SaaS infrastructure?~~ **RESOLVED: Community Edition first.**
 2. Should community support multi-product or be locked to single product?
 3. Auth provider preference: build in-house, Auth0, Clerk, or Keycloak?
 4. Billing model preference: flat subscription, per-seat, usage-based, or hybrid?
 5. Target timeline: when do you want community edition shipped? SaaS MVP?
-6. Licensing: what license for community edition? (MIT, Apache 2.0, AGPL?)
+6. ~~Licensing: what license for community edition? (MIT, Apache 2.0, AGPL?)~~ **RESOLVED: GiljoAI Community License v1.0 (adopted 2026-03-07, commit `9dd6e9e8`).**

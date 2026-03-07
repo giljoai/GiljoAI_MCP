@@ -1,3 +1,5 @@
+> **Note (2026-03-07):** This is an informal developer vision document. The project now uses the GiljoAI Community License v1.0 (single-user free, multi-user requires commercial license). Strategy: one repo now, Community Edition + SaaS fork later. See LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md for details.
+
  this changes alot, ok so based on all this information, let me describe how I would like things to work.  as we
 know the this MCP server app, is a context communication frame work.  The developer creates a "produt" uploads a
 vision or product proposal, fills out fields like tech stack , behaviors or project guidlines for the ai agents.
