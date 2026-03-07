@@ -1,25 +1,41 @@
 # Handover 0083: Harmonize User-Facing Slash Commands to /gil_* Pattern
 
 ---
-**⚠️ CRITICAL UPDATE (2025-11-12): DEFERRED TO HANDOVER 0512**
 
-This handover has been **reorganized** into the 0500 series remediation project:
+## Completion Summary (2026-03-07)
 
-**New Scope**: Handover 0512 - Documentation and Knowledge Base
-**Parent Project**: Projectplan_500.md
-**Status**: Deferred until after critical remediation (Handovers 0500-0514 complete)
+**Status**: COMPLETED (via alternative implementation path)
+**Closed By**: Investigation session 2026-03-07
+**Resolution**: The `/gil_*` pattern was adopted organically through successive handovers (0388, 0461, 0700d) without requiring the migration plan described below.
 
-**Reason**: The refactoring (Handovers 0120-0130) left 23 critical implementation gaps that must be fixed BEFORE proceeding with this enhancement. Slash command harmonization is now part of Phase 4 documentation cleanup. See:
-- **Investigation Reports**: Products, Projects, Settings, Orchestration breakage
-- **Master Plan**: `handovers/Projectplan_500.md`
-- **New Handover**: `handovers/0512_documentation_knowledge_base.md`
+### What Happened
+- The `/mcp__gil__*` verbose pattern proposed in this handover **never existed in production code**
+- Commands were created directly with `/gil_*` naming from the start
+- 3 of 5 proposed commands were **removed entirely** (moved to web UI):
+  - `/gil_activate` removed in 0388 (web UI activation)
+  - `/gil_launch` removed in 0388 (web UI launch)
+  - `/gil_handover` removed in 0461/0700d (UI button)
+- Only 2 active slash commands remain, both already harmonized:
+  - `/gil_add` - create tasks/projects
+  - `/gil_get_claude_agents` - download agent templates
 
-**Original scope below** (preserved for historical reference):
+### MCP Naming Investigation (2026-03-07)
+- Slash commands and MCP tools are **orthogonal concerns** (different entry points)
+- MCP tools use plain names server-side; clients auto-prefix with `mcp__<servername>__`
+- The `/gil_*` slash command prefix follows standard Claude Code conventions
+- Zero code changes needed; only ~25 stale doc files reference removed commands
+
+### Verdict
+The goal of this handover (simple, memorable `/gil_*` commands) was achieved through architectural evolution rather than the migration plan below. The system ended up **more harmonized** than proposed: fewer commands, clearer separation between CLI (file ops) and web UI (orchestration).
+
+---
+
+**Original handover below** (preserved for historical reference):
 
 ---
 
 **Date**: 2025-11-02
-**Status**: Deferred - See Handover 0512
+**Status**: COMPLETED (2026-03-07) - Via alternative implementation path
 **Priority**: Medium (after 0500-0514)
 **Scope**: Slash Command UX Simplification, User-Facing Tool Naming
 
