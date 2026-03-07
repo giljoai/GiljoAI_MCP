@@ -288,7 +288,19 @@ Every decision prioritizes developer experience:
 - **Immediate Value**: Works out of the box, no complex setup
 - **Progressive Disclosure**: Simple for simple cases, powerful when needed
 - **Tool Philosophy**: Does one thing exceptionally well
-- **Open Core**: Essential features free forever
+- **Community Edition**: Full product, free for single-user use (GiljoAI Community License v1.0)
+
+### Two-Edition Architecture (Decided 2026-03-07)
+
+GiljoAI MCP ships as two editions from a single codebase (split before public release):
+
+**Community Edition** (public, free for single-user):
+Core orchestration, agent management, single-user auth, tenant isolation (hidden), WebSocket/MCP, full dashboard, CE branding.
+
+**SaaS Edition** (private, commercial license for multi-user):
+Layers on top of Community with OAuth/SSO, billing, org/team management, multi-user admin, usage metering, enterprise deployment (Docker/K8s).
+
+The private SaaS repo imports the Community repo as a dependency -- no forking, no merge debt. See `handovers/0770_SAAS_EDITION_PROPOSAL.md` for the full decision record.
 
 #### Customizable User Experience
 

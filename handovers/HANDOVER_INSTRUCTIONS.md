@@ -53,6 +53,28 @@ This is a **commercial product** that ships to real users. Every shortcut become
 
 ---
 
+## Edition Scope: Community vs SaaS (IMPORTANT)
+
+The codebase serves two editions. All development happens in one repo today; the split happens before public release. **Know which edition your work targets.**
+
+| Community Edition (public repo) | SaaS Edition (private repo, layered on top) |
+|--------------------------------|---------------------------------------------|
+| Core orchestration engine | OAuth / MFA / SSO |
+| Agent management & templates | Billing & subscription (Stripe) |
+| Single-user auth (login/password) | Organization & team management |
+| Tenant isolation (kept, hidden in single-user) | Multi-user admin tools |
+| WebSocket & MCP protocol | Usage analytics & metering |
+| Frontend dashboard | SaaS onboarding flows |
+| Community Edition branding | SaaS deployment configs (Docker/K8s) |
+
+**Rules for agents:**
+1. **If your feature is in the Community column**: Build it normally. It ships to everyone.
+2. **If your feature is in the SaaS column**: Build it in the same repo but design it to be extractable. Use clear module boundaries.
+3. **Tenant isolation stays in both editions.** Community uses it silently (single implicit tenant). SaaS uses it explicitly (multi-org).
+4. **Reference**: See `handovers/0770_SAAS_EDITION_PROPOSAL.md` for the full architectural decision record and `LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md` for licensing details.
+
+---
+
 ## Entity Hierarchy & Cascading Impact (CRITICAL)
 
 Every handover plan must account for the full ownership hierarchy and its cascading implications. Changes are never made in pure isolation.
@@ -745,7 +767,6 @@ config_path = 'F:\\GiljoAI_MCP\\config.yaml'
 
 If anything is unclear about the handover process, ask the user or check:
 - `/docs/README_FIRST.md` - Project navigation
-- `/CLAUDE.md` - Development environment guidance
 - Previous handovers in `/handovers/` - Examples and patterns
 
 ---

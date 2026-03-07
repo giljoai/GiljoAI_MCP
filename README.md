@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-green)](https://fastapi.tiangolo.com/)
 [![Vue 3](https://img.shields.io/badge/Vue-3.0%2B-brightgreen)](https://vuejs.org/)
 [![Security](https://img.shields.io/badge/Security-Scanned-success)](SECURITY.md)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+[![License](https://img.shields.io/badge/License-GiljoAI%20Community-blue)](LICENSE)
 [![Setup Time](https://img.shields.io/badge/Setup-6--10%20minutes-success)]()
 [![Context](https://img.shields.io/badge/Context-Unlimited-orange)]()
 
@@ -15,6 +15,21 @@
 [**Quick Start**](#quick-start) | [**Features**](#key-features) | [**Architecture**](#architecture-overview) | [**Documentation**](#documentation)
 
 </div>
+
+---
+
+## Edition
+
+This is the **GiljoAI MCP Community Edition** -- the full orchestration platform, free for single-user use under the [GiljoAI Community License v1.0](LICENSE).
+
+**What's included in Community Edition:**
+- Core orchestration engine (mission planning, agent coordination, context management)
+- Agent management (templates, spawning, communication, job lifecycle)
+- Single-user authentication (login/password, JWT)
+- WebSocket & MCP protocol (real-time communication, tool integration)
+- Full frontend dashboard (projects, agents, messages, settings)
+
+**SaaS Edition** (multi-user, multi-org) is developed separately and adds OAuth/SSO, billing, team management, and enterprise deployment. Multi-user use requires a [commercial license](LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md).
 
 ---
 
