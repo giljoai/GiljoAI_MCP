@@ -42,6 +42,7 @@ Priority: CRITICAL - Enables Commercial Product
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -56,6 +57,25 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 logger = logging.getLogger(__name__)
+
+
+def _get_ssl_protocol() -> str:
+    """Get HTTP protocol based on SSL configuration in config.yaml.
+
+    Returns:
+        "https" if ssl_enabled is True in config.yaml, "http" otherwise.
+    """
+    try:
+        import yaml
+
+        config_path = Path(__file__).parent.parent.parent / "config.yaml"
+        if config_path.exists():
+            with open(config_path) as f:
+                config = yaml.safe_load(f) or {}
+            return "https" if config.get("features", {}).get("ssl_enabled", False) else "http"
+    except (OSError, ValueError, ImportError):
+        pass
+    return "http"
 
 
 def build_continuation_prompt(
@@ -96,7 +116,8 @@ def build_continuation_prompt(
         pass  # nosec B110
 
     mcp_port = config.server.api_port
-    mcp_url = f"http://{mcp_host}:{mcp_port}/mcp"
+    mcp_proto = _get_ssl_protocol()
+    mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}/mcp"
 
     # Build project display
     project_display = f' "{project_name}"' if project_name else ""
@@ -535,7 +556,8 @@ class ThinClientPromptGenerator:
             config = get_config()
             mcp_host = self._get_external_host()
             mcp_port = config.server.api_port
-            mcp_url = f"http://{mcp_host}:{mcp_port}"
+            mcp_proto = self._get_protocol()
+            mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}"
 
             thin_prompt = self._generate_continuation_prompt(
                 project_name=project.name,
@@ -700,7 +722,8 @@ class ThinClientPromptGenerator:
             mcp_host = config.server.api_host
 
         mcp_port = config.server.api_port
-        mcp_url = f"http://{mcp_host}:{mcp_port}"
+        mcp_proto = self._get_protocol()
+        mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}"
 
         # Generate API key hint (if configured)
         api_key_configured = bool(config.server.api_key)
@@ -806,7 +829,8 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
             mcp_host = config.server.api_host
 
         mcp_port = config.server.api_port
-        mcp_url = f"http://{mcp_host}:{mcp_port}"
+        mcp_proto = self._get_protocol()
+        mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}"
 
         # Generate API key hint (if configured)
         api_key_configured = bool(config.server.api_key)
@@ -1135,6 +1159,10 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         config = get_config()
         return config.server.api_host
 
+    def _get_protocol(self) -> str:
+        """Get HTTP protocol based on SSL configuration."""
+        return _get_ssl_protocol()
+
     async def generate_staging_prompt(self, orchestrator_id: str, project_id: str, agent_id: str = None) -> str:
         """
         Generate thin-client orchestrator staging prompt (Handover 0415).
@@ -1192,7 +1220,8 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         config = get_config()
         mcp_host = self._get_external_host()
         mcp_port = config.server.api_port
-        mcp_url = f"http://{mcp_host}:{mcp_port}"
+        mcp_proto = self._get_protocol()
+        mcp_url = f"{mcp_proto}://{mcp_host}:{mcp_port}"
 
         # Handover 0415: Thin client prompt with explicit "YOUR" labels
         # Handover 0424: Added health_check as mandatory first step

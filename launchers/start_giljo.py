@@ -97,19 +97,23 @@ class GiljoLauncher:
             "Dashboard", [sys.executable, "-m", "http.server", str(dashboard_port), "--directory", "frontend"]
         )
 
+        ssl_enabled = self.config.get("features", {}).get("ssl_enabled", False)
+        http_proto = "https" if ssl_enabled else "http"
+        ws_proto = "wss" if ssl_enabled else "ws"
+
         print()
         print("All services started successfully!")
         print()
         print("Access points:")
-        print(f"  Dashboard: http://localhost:{dashboard_port}")
-        print(f"  API Docs: http://localhost:{api_port}/docs")
-        print(f"  WebSocket: ws://localhost:{ws_port}")
+        print(f"  Dashboard: {http_proto}://localhost:{dashboard_port}")
+        print(f"  API Docs: {http_proto}://localhost:{api_port}/docs")
+        print(f"  WebSocket: {ws_proto}://localhost:{ws_port}")
         print()
 
         # Open browser if configured
         if self.config.get("features", {}).get("auto_start_browser", True):
             time.sleep(2)
-            webbrowser.open(f"http://localhost:{dashboard_port}")
+            webbrowser.open(f"{http_proto}://localhost:{dashboard_port}")
 
     def shutdown(self, signum=None, frame=None):
         """Gracefully shut down all services"""
