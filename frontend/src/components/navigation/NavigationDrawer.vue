@@ -51,6 +51,14 @@
       </v-list-item>
     </v-list>
 
+    <template v-slot:append>
+      <div v-if="edition === 'community'" class="edition-footer pa-3 text-center">
+        <div v-if="!rail" class="text-caption edition-label">
+          Community Edition
+        </div>
+      </div>
+    </template>
+
   </v-navigation-drawer>
 </template>
 
@@ -59,6 +67,7 @@ import { computed, ref, watch, onMounted } from 'vue'
 import { useTheme } from 'vuetify'
 import { useRoute } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'  // Product/Project State Fix
+import configService from '@/services/configService'
 
 const props = defineProps({
   modelValue: {
@@ -83,6 +92,18 @@ const projectStore = useProjectStore()  // Product/Project State Fix
 
 // Track which nav item is selected (ensure single active item)
 const selected = ref([])
+
+// Edition state
+const edition = ref('')
+
+async function checkEdition() {
+  try {
+    await configService.fetchConfig()
+    edition.value = configService.getEdition()
+  } catch {
+    edition.value = 'community'
+  }
+}
 
 // Dynamic Giljo icon for Jobs based on route (dark theme only)
 const jobsIcon = computed(() => {
@@ -150,7 +171,10 @@ const updateSelectedFromRoute = () => {
   selected.value = best ? [best.name] : []
 }
 
-onMounted(updateSelectedFromRoute)
+onMounted(() => {
+  updateSelectedFromRoute()
+  checkEdition()
+})
 watch(
   () => route.path,
   () => updateSelectedFromRoute(),
@@ -196,5 +220,15 @@ watch(
 
 .edge-toggle-tab:active {
   transform: scale(0.95);
+}
+
+.edition-footer {
+  border-top: 1px solid rgba(var(--v-border-color), 0.15);
+}
+
+.edition-label {
+  color: #ffc300;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 </style>
