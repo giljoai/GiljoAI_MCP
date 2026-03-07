@@ -19,7 +19,7 @@ from uuid import UUID
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.endpoints.dependencies import get_auth_service
@@ -648,6 +648,26 @@ async def register_user(
     # Rate limiting: 3 attempts per minute (Handover 1009)
     rate_limiter = get_rate_limiter()
     rate_limiter.check_rate_limit(http_request, limit=3, window=60, raise_on_limit=True)
+
+    # Community Edition licensing check
+    config = get_config()
+    edition = getattr(config, "edition", None) or "community"
+    if edition == "community":
+        from api.endpoints.dependencies import get_db_manager
+
+        db_manager = await get_db_manager()
+        async with db_manager.get_session_async() as db:
+            result = await db.execute(select(func.count(User.id)))
+            user_count = result.scalar() or 0
+        if user_count >= 1:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "GiljoAI Community Edition is licensed for single-user use. "
+                    "Multi-user deployments require a Commercial License. "
+                    "Contact licensing@giljoai.com to obtain one."
+                ),
+            )
 
     # Service raises ValidationError on failure (0480 migration)
     user_data = await auth_service.register_user(
