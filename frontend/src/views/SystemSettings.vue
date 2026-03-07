@@ -53,6 +53,7 @@
         <NetworkSettingsTab
           :config="networkSettings"
           :cors-origins="corsOrigins"
+          :ssl-enabled="sslEnabled"
           :loading="loading.network"
           @refresh="loadNetworkSettings"
           @save="saveNetworkSettings"
@@ -145,6 +146,7 @@ const networkSettings = ref({
   frontendPort: 7274,
 })
 const corsOrigins = ref([])
+const sslEnabled = ref(false)
 
 // Configuration modal state
 const showClaudeConfigModal = ref(false)
@@ -183,6 +185,9 @@ async function loadNetworkSettings() {
     // Set CORS origins
     corsOrigins.value = config.security?.cors?.allowed_origins || []
 
+    // Set SSL/HTTPS status
+    sslEnabled.value = Boolean(config.features?.ssl_enabled)
+
   } catch (error) {
     console.error('[SYSTEM SETTINGS] Failed to load network settings:', error)
 
@@ -191,6 +196,7 @@ async function loadNetworkSettings() {
     networkSettings.value.apiPort = 7272
     networkSettings.value.frontendPort = 7274
     corsOrigins.value = []
+    sslEnabled.value = false
   } finally {
     loading.value.network = false
   }
