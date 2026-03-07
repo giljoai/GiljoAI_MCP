@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-06 (0808-0811 Tier 2 triage complete, 20/21 Feb items resolved)
+**Last Updated:** 2026-03-07 (0083 closed - slash command harmonization completed via alternative path)
 
 ---
 
@@ -80,6 +80,7 @@
 | 0805a | Progress Percent (RT-3, #43) | 2026-03-05 | NON-ISSUE — math correct, dashboard uses step counts |
 | 0806a | Todo Chicken-and-Egg (RT-4) | 2026-03-05 | BY DESIGN — intended flow already documented |
 | 0807a | set_agent_status Missing (CW-5) | 2026-03-05 | BY DESIGN — controlled lifecycle intentional, false doc claim fixed |
+| 0083 | Harmonize Slash Commands to /gil_* | 2026-03-07 | COMPLETED (adopted organically via 0388/0461/0700d, no code changes needed) |
 | 0766a | Mission Overwrite Research (CW-1, CW-3) | 2026-03-04 | NOT A BUG — overwrite by design, continuation orchestrators prohibited from calling |
 | 0767a | Datetime Serialization Research (#39) | 2026-03-04 | ALREADY FIXED (0731c) + defense-in-depth `default=str` (`1ed52edf`) |
 | 0767b+0768b | Combined Implementation (serialization + schema) | 2026-03-04 | COMPLETE (`1ed52edf`) |
@@ -100,7 +101,7 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0083 | Harmonize Slash Commands | Deferred | Low | Post-v1.0 |
+| ~~0083~~ | ~~Harmonize Slash Commands~~ | **COMPLETED** | - | Adopted organically via 0388/0461/0700d (2026-03-07) |
 | 0250 | HTTPS Enablement | Deferred | Low | Optional feature |
 | 0284 | Address get_available_agents | Deferred | Low | Enhancement |
 | 0731 | Legacy Code Removal | Deferred | Medium | Post-v1.0 (separate from completed 0731a-d typed returns) |
@@ -134,6 +135,7 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0083 | Harmonize Slash Commands to /gil_* | **COMPLETED** (2026-03-07, adopted organically via 0388/0461/0700d — no code changes needed) |
 | 0800-0807 | Feb Report Tier 1 Triage (14/21 items resolved) | **COMPLETE** (2026-03-05, research+implementation across 11 handovers) |
 | 0808-0811 | Feb Report Tier 2 Triage (6 items -> 20/21 resolved) | **COMPLETE** (2026-03-06, `f665c861`) — CW-2 SUPERSEDED, CW-4 NON-ISSUE, #40 FIXED, #41 SUPERSEDED, #50 FIXED |
 
