@@ -446,9 +446,13 @@ def _register_event_handlers(app: FastAPI) -> None:
     @app.get("/")
     async def root():
         """Root endpoint"""
+        edition = "community"
+        if hasattr(app.state, "config") and app.state.config:
+            edition = getattr(app.state.config, "edition", None) or "community"
         return {
             "name": "GiljoAI MCP Orchestrator",
             "version": "3.0.0",
+            "edition": edition,
             "status": "operational",
             "endpoints": {"api": "/docs", "websocket": "/ws", "health": "/health"},
         }
@@ -645,7 +649,7 @@ def create_app() -> FastAPI:
     """Create and configure FastAPI application"""
 
     app = FastAPI(
-        title="GiljoAI MCP Orchestrator API v3.0.0",
+        title="GiljoAI MCP Orchestrator API v3.0.0 - Community Edition",
         description="""
         ## Multi-Agent Orchestration System REST API
 
@@ -706,7 +710,10 @@ def create_app() -> FastAPI:
             "url": "https://github.com/giljoai/mcp-orchestrator",
             "email": "support@giljoai.com",
         },
-        license_info={"name": "MIT License", "url": "https://opensource.org/licenses/MIT"},
+        license_info={
+            "name": "GiljoAI Community License v1.0",
+            "url": "https://github.com/patrik-giljoai/GiljoAI_MCP/blob/master/LICENSE",
+        },
     )
 
     # Configure middleware, routers, and event handlers
