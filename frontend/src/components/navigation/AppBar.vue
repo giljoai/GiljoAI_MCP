@@ -113,96 +113,32 @@
         <UserProfileDialog v-if="currentUser" v-model="profileDialog" :user="currentUser" />
 
         <!-- About Dialog -->
-        <v-dialog v-model="aboutDialog" max-width="460">
+        <v-dialog v-model="aboutDialog" max-width="380">
           <v-card>
-            <v-card-title class="d-flex align-center pa-4">
-              <v-img
-                src="/Giljo_YW.svg"
-                alt="GiljoAI"
-                height="28"
-                width="auto"
-                max-width="120"
-                class="mr-3"
-              ></v-img>
-              <span class="text-h6">About</span>
-            </v-card-title>
-
-            <v-divider />
-
-            <v-card-text class="pa-5">
-              <v-list density="compact" class="pa-0">
-                <v-list-item class="px-0">
-                  <template v-slot:prepend>
-                    <v-icon size="small" class="mr-3">mdi-tag</v-icon>
-                  </template>
-                  <v-list-item-title class="text-body-2">Edition</v-list-item-title>
-                  <template v-slot:append>
-                    <span class="text-body-2 edition-value">Community Edition</span>
-                  </template>
-                </v-list-item>
-
-                <v-list-item class="px-0">
-                  <template v-slot:prepend>
-                    <v-icon size="small" class="mr-3">mdi-application-brackets</v-icon>
-                  </template>
-                  <v-list-item-title class="text-body-2">Version</v-list-item-title>
-                  <template v-slot:append>
-                    <span class="text-body-2">3.0.0</span>
-                  </template>
-                </v-list-item>
-
-                <v-list-item class="px-0">
-                  <template v-slot:prepend>
-                    <v-icon size="small" class="mr-3">mdi-license</v-icon>
-                  </template>
-                  <v-list-item-title class="text-body-2">License</v-list-item-title>
-                  <template v-slot:append>
-                    <v-chip
-                      :color="licenseStatus === 'Licensed' ? 'success' : 'warning'"
-                      size="small"
-                      variant="flat"
-                    >
-                      {{ licenseStatus }}
-                    </v-chip>
-                  </template>
-                </v-list-item>
-              </v-list>
-
-              <v-divider class="my-4" />
-
-              <p class="text-body-2 text-medium-emphasis mb-3">
-                GiljoAI Community License v1.0 &mdash; free for single-user use.
-                Multi-user deployments require a Commercial License.
-              </p>
-
-              <div class="d-flex ga-2">
-                <v-btn
-                  variant="outlined"
-                  size="small"
-                  href="https://github.com/patrik-giljoai/GiljoAI_MCP/blob/master/LICENSE"
-                  target="_blank"
-                  prepend-icon="mdi-open-in-new"
-                >
-                  View License
-                </v-btn>
-                <v-btn
-                  v-if="licenseStatus === 'Unlicensed'"
-                  variant="outlined"
-                  size="small"
-                  href="mailto:licensing@giljoai.com"
-                  prepend-icon="mdi-email-outline"
-                >
-                  Get License
-                </v-btn>
-              </div>
+            <v-btn
+              icon="mdi-close"
+              size="x-small"
+              variant="text"
+              style="position: absolute; right: 8px; top: 8px;"
+              @click="aboutDialog = false"
+            />
+            <v-card-text class="pa-5 text-body-2">
+              <div class="font-weight-bold mb-3">GiljoAI MCP Orchestrator</div>
+              Version 3.0.0<br />
+              Community Edition<br />
+              License: {{ licenseStatus }}<br /><br />
+              GiljoAI Community License v1.0<br />
+              Free for single-user use. Multi-user deployments require a Commercial License.<br /><br />
+              <a
+                href="https://github.com/patrik-giljoai/GiljoAI_MCP/blob/master/LICENSE"
+                target="_blank"
+                class="about-link"
+              >View License</a>
+              <template v-if="licenseStatus === 'Unlicensed'">
+                &nbsp;&middot;&nbsp;
+                <a href="mailto:licensing@giljoai.com" class="about-link">Get a License</a>
+              </template>
             </v-card-text>
-
-            <v-divider />
-
-            <v-card-actions class="pa-3">
-              <v-spacer />
-              <v-btn variant="text" @click="aboutDialog = false">Close</v-btn>
-            </v-card-actions>
           </v-card>
         </v-dialog>
       </div>
@@ -305,8 +241,7 @@ const handleLogout = async () => {
 <style scoped>
 /* AppBar styling */
 
-.edition-value {
+.about-link {
   color: #ffc300;
-  font-weight: 500;
 }
 </style>
