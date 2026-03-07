@@ -139,6 +139,72 @@
           />
         </div>
 
+        <!-- HTTPS Status -->
+        <v-divider class="my-6" />
+
+        <div data-test="https-status-section">
+          <h3 class="text-h6 mb-3">HTTPS Encryption</h3>
+
+          <v-alert
+            :type="props.sslEnabled ? 'success' : 'info'"
+            variant="tonal"
+            class="mb-4"
+            data-test="https-status-alert"
+          >
+            <div class="d-flex align-center">
+              <v-icon start>{{ props.sslEnabled ? 'mdi-lock' : 'mdi-lock-open-outline' }}</v-icon>
+              <div>
+                <strong>HTTPS:</strong>
+                {{ props.sslEnabled ? 'Enabled' : 'Disabled' }}
+              </div>
+            </div>
+          </v-alert>
+
+          <div v-if="!props.sslEnabled">
+            <div
+              class="d-flex align-center cursor-pointer mb-3"
+              data-test="https-setup-toggle"
+              @click="showHttpsInstructions = !showHttpsInstructions"
+            >
+              <v-icon start size="small">
+                {{ showHttpsInstructions ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
+              </v-icon>
+              <span class="text-subtitle-2 text-medium-emphasis">How to enable HTTPS</span>
+            </div>
+
+            <v-alert
+              v-if="showHttpsInstructions"
+              type="info"
+              variant="outlined"
+              class="mb-4"
+              data-test="https-setup-instructions"
+            >
+              <div class="text-body-2">
+                <p class="mb-2">To enable HTTPS encryption:</p>
+
+                <p class="mb-1"><strong>1.</strong> Generate a certificate:</p>
+                <pre class="ml-4 mb-3"><code>python scripts/generate_ssl_cert.py</code></pre>
+
+                <p class="mb-1"><strong>2.</strong> Or provide your own certificates in <code>config.yaml</code>:</p>
+                <pre class="ml-4 mb-3"><code>features:
+  ssl_enabled: true
+paths:
+  ssl_cert: /path/to/cert.pem
+  ssl_key: /path/to/key.pem</code></pre>
+
+                <p class="mb-2"><strong>3.</strong> Restart the server</p>
+
+                <p class="mb-1">
+                  For production deployments, use Let's Encrypt for trusted certificates.
+                </p>
+                <p class="mb-0">
+                  See <code>docs/security/HTTPS_SETUP.md</code> for detailed instructions.
+                </p>
+              </div>
+            </v-alert>
+          </div>
+        </div>
+
         <!-- Network Configuration Info -->
         <v-divider class="my-6" />
 
@@ -188,6 +254,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  sslEnabled: {
+    type: Boolean,
+    default: false,
+  },
   loading: {
     type: Boolean,
     default: false,
@@ -198,6 +268,9 @@ const emit = defineEmits(['refresh', 'save'])
 
 // Local state for CORS management (disabled for now)
 const newOrigin = ref('')
+
+// Local state for HTTPS setup instructions toggle
+const showHttpsInstructions = ref(false)
 
 // Methods
 function handleRefresh() {
