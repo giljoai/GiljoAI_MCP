@@ -496,6 +496,7 @@ async def get_frontend_configuration():
             "api_keys_required": api_keys_required,
             "default_tenant_key": default_tenant_key,
         },
+        "edition": state.config.get_nested("edition", "community"),
     }
 
 
