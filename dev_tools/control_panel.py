@@ -2660,6 +2660,10 @@ pg_restore -l {backup_file.name} | head -20
 
         self.update_status_message("Starting pristine reset...")
 
+        # Cache DB credentials BEFORE deleting .env (which contains the password)
+        self.update_status_message("Caching database credentials before cleanup...")
+        self.get_db_credentials()
+
         errors = []
         deleted = []
 
