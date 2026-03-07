@@ -996,7 +996,8 @@ class UnifiedInstaller:
             # Download NLTK data for vision summarization (Handover 0345b)
             self._print_info("Downloading NLTK data for vision summarization...")
             try:
-                nltk_result = self._download_nltk_data(pip_executable)
+                python_executable = self.platform.get_venv_python(self.venv_dir)
+                nltk_result = self._download_nltk_data(python_executable)
                 if nltk_result["success"]:
                     self._print_success("NLTK data downloaded successfully")
                 else:
@@ -1283,9 +1284,8 @@ class UnifiedInstaller:
                 )
                 session.add(demo_job)
 
-                # Create first execution (completed after reaching 85% context)
-                first_agent_id = str(uuid4())
                 # Create orchestrator execution (active)
+                first_agent_id = str(uuid4())
                 orchestrator_execution = AgentExecution(
                     agent_id=first_agent_id,
                     job_id=job_id,
@@ -1296,16 +1296,11 @@ class UnifiedInstaller:
                     completed_at=None,
                     progress=35,
                     current_task="Monitoring implementation agents and coordinating integration testing",
-                    context_used=35000,
-                    context_budget=100000,
                     health_status="healthy",
-                    last_progress_at=datetime.now(timezone.utc),  # Current time to avoid immediate staleness alert
+                    last_progress_at=datetime.now(timezone.utc),
                     agent_name="Orchestrator",
                 )
                 session.add(orchestrator_execution)
-
-                # Update first execution to point to successor
-                first_execution.succeeded_by = second_agent_id
 
                 await session.commit()
 
@@ -1503,8 +1498,8 @@ class UnifiedInstaller:
             "pinia",
             "axios",
             "lodash-es",  # Imported by useAutoSave.js
-            "vuedraggable",  # Imported by UserSettings.vue
-            "socket.io-client",
+            "date-fns",
+            "dompurify",
         ]
 
         for dep in critical_deps:
