@@ -18,15 +18,6 @@
           max-width="140"
           class="ml-2"
         ></v-img>
-        <v-chip
-          v-if="edition === 'community'"
-          size="x-small"
-          variant="outlined"
-          color="grey"
-          class="ml-2 text-caption"
-        >
-          Community
-        </v-chip>
       </div>
 
       <!-- Spacer -->
@@ -104,6 +95,14 @@
             <v-divider />
 
             <v-list-item
+              prepend-icon="mdi-information-outline"
+              title="About"
+              @click="aboutDialog = true"
+            />
+
+            <v-divider />
+
+            <v-list-item
               v-if="currentUser"
               prepend-icon="mdi-logout"
               title="Logout"
@@ -112,6 +111,100 @@
           </v-list>
         </v-menu>
         <UserProfileDialog v-if="currentUser" v-model="profileDialog" :user="currentUser" />
+
+        <!-- About Dialog -->
+        <v-dialog v-model="aboutDialog" max-width="460">
+          <v-card>
+            <v-card-title class="d-flex align-center pa-4">
+              <v-img
+                src="/Giljo_YW.svg"
+                alt="GiljoAI"
+                height="28"
+                width="auto"
+                max-width="120"
+                class="mr-3"
+              ></v-img>
+              <span class="text-h6">About</span>
+            </v-card-title>
+
+            <v-divider />
+
+            <v-card-text class="pa-5">
+              <v-list density="compact" class="pa-0">
+                <v-list-item class="px-0">
+                  <template v-slot:prepend>
+                    <v-icon size="small" class="mr-3">mdi-tag</v-icon>
+                  </template>
+                  <v-list-item-title class="text-body-2">Edition</v-list-item-title>
+                  <template v-slot:append>
+                    <span class="text-body-2 edition-value">Community Edition</span>
+                  </template>
+                </v-list-item>
+
+                <v-list-item class="px-0">
+                  <template v-slot:prepend>
+                    <v-icon size="small" class="mr-3">mdi-application-brackets</v-icon>
+                  </template>
+                  <v-list-item-title class="text-body-2">Version</v-list-item-title>
+                  <template v-slot:append>
+                    <span class="text-body-2">3.0.0</span>
+                  </template>
+                </v-list-item>
+
+                <v-list-item class="px-0">
+                  <template v-slot:prepend>
+                    <v-icon size="small" class="mr-3">mdi-license</v-icon>
+                  </template>
+                  <v-list-item-title class="text-body-2">License</v-list-item-title>
+                  <template v-slot:append>
+                    <v-chip
+                      :color="licenseStatus === 'Licensed' ? 'success' : 'warning'"
+                      size="small"
+                      variant="flat"
+                    >
+                      {{ licenseStatus }}
+                    </v-chip>
+                  </template>
+                </v-list-item>
+              </v-list>
+
+              <v-divider class="my-4" />
+
+              <p class="text-body-2 text-medium-emphasis mb-3">
+                GiljoAI Community License v1.0 &mdash; free for single-user use.
+                Multi-user deployments require a Commercial License.
+              </p>
+
+              <div class="d-flex ga-2">
+                <v-btn
+                  variant="outlined"
+                  size="small"
+                  href="https://github.com/patrik-giljoai/GiljoAI_MCP/blob/master/LICENSE"
+                  target="_blank"
+                  prepend-icon="mdi-open-in-new"
+                >
+                  View License
+                </v-btn>
+                <v-btn
+                  v-if="licenseStatus === 'Unlicensed'"
+                  variant="outlined"
+                  size="small"
+                  href="mailto:licensing@giljoai.com"
+                  prepend-icon="mdi-email-outline"
+                >
+                  Get License
+                </v-btn>
+              </div>
+            </v-card-text>
+
+            <v-divider />
+
+            <v-card-actions class="pa-3">
+              <v-spacer />
+              <v-btn variant="text" @click="aboutDialog = false">Close</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
       </div>
     </div>
   </v-app-bar>
@@ -145,14 +238,29 @@ const router = useRouter()
 const userStore = useUserStore()
 const wsStore = useWebSocketStore()
 const profileDialog = ref(false)
-const edition = ref('')
+const aboutDialog = ref(false)
+const licenseStatus = ref('Licensed')
 
 onMounted(async () => {
   try {
     await configService.fetchConfig()
-    edition.value = configService.getEdition()
+    const edition = configService.getEdition()
+    if (edition === 'community') {
+      const apiBaseUrl =
+        window.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:7272'
+      const response = await fetch(`${apiBaseUrl}/api/setup/status`, {
+        method: 'GET',
+        cache: 'no-cache',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if ((data.total_users_count || 0) > 1) {
+          licenseStatus.value = 'Unlicensed'
+        }
+      }
+    }
   } catch {
-    edition.value = 'community'
+    // Silently fail
   }
 })
 
@@ -196,4 +304,9 @@ const handleLogout = async () => {
 
 <style scoped>
 /* AppBar styling */
+
+.edition-value {
+  color: #ffc300;
+  font-weight: 500;
+}
 </style>
