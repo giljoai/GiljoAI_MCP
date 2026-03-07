@@ -209,6 +209,8 @@ inline-quotes = "double"
     "PLR2004", # Magic values OK in tests
     "S311",   # Random OK in tests
     "SLF001", # Private member access OK in tests - need to verify internal state
+    "T201",   # Print allowed in test runners, manual tests, and fixtures
+    "BLE001", # Broad exception OK in test setup/teardown helpers
 ]
 "**/conftest.py" = [
     "ARG",    # Unused arguments OK in pytest fixtures
@@ -221,6 +223,67 @@ inline-quotes = "double"
 ]
 "startup.py" = [
     "E402",   # Module-level import not at top - early initialization required
+    "T201",   # CLI entry point - print() for user-facing startup output
+    "BLE001", # Broad exception OK for graceful startup error handling
+]
+
+# --- CLI scripts and launchers (print() is the user interface) ---
+"scripts/**/*.py" = [
+    "T201",   # CLI scripts use print() for user-facing output
+    "BLE001", # Broad exception OK for graceful error handling in CLI tools
+    "INP001", # No __init__.py needed in scripts
+]
+"launchers/**/*.py" = [
+    "T201",   # Launchers use print() for startup messages
+    "BLE001", # Broad exception OK for graceful launcher error handling
+    "INP001", # No __init__.py needed in launchers
+]
+"dev_tools/**/*.py" = [
+    "T201",   # Dev tools use print() for CLI output
+    "BLE001", # Broad exception OK for dev tool error handling
+    "INP001", # No __init__.py needed in dev tools
+]
+"Linux_Installer/**/*.py" = [
+    "T201",   # Installer uses print() for user-facing output
+    "BLE001", # Broad exception OK for installer error handling
+    "INP001", # No __init__.py needed in installer
+]
+"handovers/**/*.py" = [
+    "T201",   # Handover scripts use print() for output
+    "BLE001", # Broad exception OK for transient handover scripts
+    "INP001", # No __init__.py needed in handovers
+]
+"frontend/tests/**/*.py" = [
+    "T201",   # Test helpers use print() for output
+    "INP001", # No __init__.py needed in frontend test helpers
+]
+
+# --- Root-level CLI entry points ---
+"backup.py" = [
+    "T201",   # CLI tool - print() for user-facing backup output
+    "BLE001", # Broad exception OK for graceful error handling
+]
+"install.py" = [
+    "T201",   # CLI installer - print() for user-facing output
+    "BLE001", # Broad exception OK for graceful install error handling
+]
+"reset.py" = [
+    "T201",   # CLI tool - print() for user-facing reset output
+    "BLE001", # Broad exception OK for graceful error handling
+]
+"restart_services.py" = [
+    "T201",   # CLI tool - print() for user-facing service restart output
+    "BLE001", # Broad exception OK for graceful error handling
+]
+"serve_frontend.py" = [
+    "T201",   # CLI tool - print() for user-facing server output
+]
+"uninstall.py" = [
+    "T201",   # CLI tool - print() for user-facing uninstall output
+    "BLE001", # Broad exception OK for graceful error handling
+]
+"startup_prod.py" = [
+    "BLE001", # Broad exception OK for graceful production startup error handling
 ]
 
 # --- Examples and CLI tools ---
