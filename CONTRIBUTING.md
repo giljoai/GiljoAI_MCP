@@ -2,6 +2,19 @@
 
 Thank you for your interest in contributing to GiljoAI Agent Orchestration MCP Server.
 
+## Intellectual Property Agreement
+
+By submitting a pull request or any other contribution to this repository, you agree that:
+
+1. **You irrevocably assign all intellectual property rights** in your contribution to GiljoAI LLC.
+2. **You have the right** to make this assignment (the code is yours, not your employer's, unless you have permission).
+3. **GiljoAI LLC may use your contribution without restriction**, including in proprietary and commercial products such as the GiljoAI Platform (SaaS).
+4. **You retain the right** to use your own contributions in your other projects.
+
+This assignment is necessary because GiljoAI distributes the Software under both the GiljoAI Community License (free for single-user) and commercial licenses. Without full IP ownership, we cannot offer commercial licenses.
+
+If you do not agree with these terms, please do not submit contributions. You are still welcome to fork the repository for your own use under the terms of the [LICENSE](LICENSE).
+
 ## Development Setup
 
 ```bash
