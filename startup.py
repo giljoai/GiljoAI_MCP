@@ -430,6 +430,30 @@ def get_config_ports() -> Tuple[int, int]:
     return DEFAULT_API_PORT, DEFAULT_FRONTEND_PORT
 
 
+def get_ssl_enabled() -> bool:
+    """
+    Check if SSL is enabled in config.yaml.
+
+    Returns:
+        True if ssl_enabled is set in features config, False otherwise
+    """
+    try:
+        import yaml
+
+        config_path = Path.cwd() / "config.yaml"
+
+        if config_path.exists():
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+
+            return bool(config.get("features", {}).get("ssl_enabled", False))
+
+    except Exception:
+        pass
+
+    return False
+
+
 def get_network_ip() -> Optional[str]:
     """
     Get network IP address for display purposes.
@@ -938,8 +962,11 @@ def run_startup(
     print_info("Checking setup completion status...")
     is_first_run, state = check_first_run()
 
-    # Step 6: Get ports from config
+    # Step 6: Get ports and SSL config
     api_port, frontend_port = get_config_ports()
+    ssl_enabled = get_ssl_enabled()
+    http_proto = "https" if ssl_enabled else "http"
+    ws_proto = "wss" if ssl_enabled else "ws"
 
     # Step 7: Check port availability
     print_header("Port Availability")
@@ -996,10 +1023,10 @@ def run_startup(
         network_ip = get_network_ip()
         if network_ip:
             print_info("Login to your published IP on your PC to begin setup!")
-            print_success(f"Setup URL: http://{network_ip}:{frontend_port}/setup")
+            print_success(f"Setup URL: {http_proto}://{network_ip}:{frontend_port}/setup")
         else:
             print_info("Login to your published IP on your PC to begin setup!")
-            print_success(f"Localhost URL: http://localhost:{frontend_port}/setup")
+            print_success(f"Localhost URL: {http_proto}://localhost:{frontend_port}/setup")
 
         print_header("Welcome to GiljoAI's Agent Orchestration MCP Server! -Gil")
     else:
@@ -1012,27 +1039,27 @@ def run_startup(
             # Open welcome setup first to enforce admin credential update before setup
             target_route = "/welcome"
             if network_ip:
-                setup_url = f"http://{network_ip}:{frontend_port}{target_route}"
+                setup_url = f"{http_proto}://{network_ip}:{frontend_port}{target_route}"
                 print_info("First-run detected - opening welcome setup screen at network IP...")
                 print_info("(Using network IP avoids localhost auto-login)")
             else:
-                setup_url = f"http://localhost:{frontend_port}{target_route}"
+                setup_url = f"{http_proto}://localhost:{frontend_port}{target_route}"
                 print_info("First-run detected - opening welcome setup screen...")
 
             open_browser(setup_url, delay=2)
         else:
             # Open dashboard - localhost is fine for existing users
-            dashboard_url = f"http://localhost:{frontend_port}"
+            dashboard_url = f"{http_proto}://localhost:{frontend_port}"
             print_info("Opening dashboard...")
             open_browser(dashboard_url, delay=2)
 
     # Step 10: Display status
     print_header("Services Running")
-    print_success(f"API Server: http://localhost:{api_port}")
-    print_success(f"API Docs: http://localhost:{api_port}/docs")
+    print_success(f"API Server: {http_proto}://localhost:{api_port}")
+    print_success(f"API Docs: {http_proto}://localhost:{api_port}/docs")
 
     if frontend_process:
-        print_success(f"Frontend: http://localhost:{frontend_port}")
+        print_success(f"Frontend: {http_proto}://localhost:{frontend_port}")
 
     print_info("\nPress Ctrl+C to stop all services")
 

@@ -297,6 +297,19 @@ def _configure_middleware(app: FastAPI) -> None:
         except (RuntimeError, ValueError, OSError, KeyError) as e:
             logger.warning(f"Network IP detection failed: {e} - continuing with static CORS config")
 
+    # Add HTTPS origin variants when SSL is enabled
+    ssl_enabled = config.get("features", {}).get("ssl_enabled", False)
+    if ssl_enabled:
+        https_origins = []
+        for origin in cors_origins.copy():
+            if origin.startswith("http://"):
+                https_variant = "https://" + origin[len("http://") :]
+                if https_variant not in cors_origins:
+                    https_origins.append(https_variant)
+        if https_origins:
+            cors_origins.extend(https_origins)
+            logger.info(f"Added HTTPS CORS origins for SSL mode: {https_origins}")
+
     logger.info(f"Configuring CORS with origins: {cors_origins}")
 
     # Add middleware in reverse order of execution

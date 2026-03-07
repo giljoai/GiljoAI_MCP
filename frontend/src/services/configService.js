@@ -58,7 +58,8 @@ class ConfigService {
       } else {
         const currentHost = window.location.hostname
         const apiPort = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
-        configUrl = `http://${currentHost}:${apiPort}/api/v1/config/frontend`
+        const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
+        configUrl = `${protocol}://${currentHost}:${apiPort}/api/v1/config/frontend`
       }
 
       this.log(`Fetching config from ${configUrl}`)
@@ -107,7 +108,7 @@ class ConfigService {
           port: fallbackPort,
         },
         websocket: {
-          url: `ws://${fallbackHost}:${fallbackPort}`,
+          url: `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${fallbackHost}:${fallbackPort}`,
         },
         mode: 'unknown',
         security: {
@@ -131,7 +132,8 @@ class ConfigService {
     }
 
     const { host, port } = this.config.api
-    return `http://${host}:${port}`
+    const protocol = this.config.api?.protocol || (window.location.protocol === 'https:' ? 'https' : 'http')
+    return `${protocol}://${host}:${port}`
   }
 
   /**
