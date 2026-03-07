@@ -16,6 +16,14 @@
               />
               <h1 class="text-h5 font-weight-bold">GiljoAI MCP Login</h1>
               <p class="text-body-2 text-medium-emphasis mt-2">Agent Orchestration System</p>
+              <v-chip
+                size="small"
+                variant="outlined"
+                color="grey"
+                class="mt-2 text-caption"
+              >
+                Community Edition
+              </v-chip>
             </div>
           </v-card-title>
 

@@ -173,6 +173,14 @@ class ConfigService {
   }
 
   /**
+   * Get product edition (e.g., "community")
+   * @returns {string} Edition identifier
+   */
+  getEdition() {
+    return this.config?.edition || 'community'
+  }
+
+  /**
    * Check if config was fetched successfully or is using fallback
    * @returns {boolean} True if using fallback config
    */

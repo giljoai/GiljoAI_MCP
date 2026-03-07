@@ -18,6 +18,15 @@
           max-width="140"
           class="ml-2"
         ></v-img>
+        <v-chip
+          v-if="edition === 'community'"
+          size="x-small"
+          variant="outlined"
+          color="grey"
+          class="ml-2 text-caption"
+        >
+          Community
+        </v-chip>
       </div>
 
       <!-- Spacer -->
@@ -109,7 +118,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
@@ -120,6 +129,7 @@ import UserProfileDialog from '@/components/UserProfileDialog.vue'
 import NotificationDropdown from '@/components/navigation/NotificationDropdown.vue'
 import RoleBadge from '@/components/common/RoleBadge.vue'
 import api from '@/services/api'
+import configService from '@/services/configService'
 
 const props = defineProps({
   currentUser: {
@@ -135,6 +145,16 @@ const router = useRouter()
 const userStore = useUserStore()
 const wsStore = useWebSocketStore()
 const profileDialog = ref(false)
+const edition = ref('')
+
+onMounted(async () => {
+  try {
+    await configService.fetchConfig()
+    edition.value = configService.getEdition()
+  } catch {
+    edition.value = 'community'
+  }
+})
 
 const getRoleColor = (role) => {
   if (!role) return 'grey'
