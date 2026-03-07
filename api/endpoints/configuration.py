@@ -479,13 +479,18 @@ async def get_frontend_configuration():
     default_tenant_key = state.config.tenant.default_tenant_key or ""
 
     # v3.0 Unified Architecture: No 'mode' field in response
+    api_protocol = "https" if ssl_enabled else "http"
+
     return {
         "api": {
             "host": frontend_host,  # Frontend connection host (external_host from config)
             "port": api_port,
+            "protocol": api_protocol,
+            "ssl_enabled": ssl_enabled,
         },
         "websocket": {
             "url": ws_url,
+            "protocol": ws_protocol,
         },
         "security": {
             "api_keys_required": api_keys_required,

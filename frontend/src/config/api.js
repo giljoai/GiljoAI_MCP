@@ -6,8 +6,9 @@ import configService from '@/services/configService'
 // CRITICAL: Use window.API_BASE_URL first (set in index.html) for production mode
 const API_PORT = import.meta.env.VITE_API_PORT || window.API_PORT || '7272'
 const API_HOST = import.meta.env.VITE_API_HOST || window.API_HOST || window.location.hostname
+const DEFAULT_PROTOCOL = window.location.protocol === 'https:' ? 'https' : 'http'
 const DEFAULT_BASE_URL =
-  window.API_BASE_URL || (import.meta.env.DEV ? '' : `http://${API_HOST}:${API_PORT}`)
+  window.API_BASE_URL || (import.meta.env.DEV ? '' : `${DEFAULT_PROTOCOL}://${API_HOST}:${API_PORT}`)
 
 // Configuration object that will be updated after fetching from backend
 let runtimeConfig = null
@@ -33,7 +34,8 @@ export async function initializeApiConfig() {
     // - Dev: use same-origin + Vite proxy to avoid CORS
     // - Prod: use explicit host:port from backend
     const devMode = import.meta.env.DEV === true
-    const newBaseURL = devMode ? '' : `http://${runtimeConfig.api.host}:${runtimeConfig.api.port}`
+    const apiProtocol = runtimeConfig.api?.protocol || DEFAULT_PROTOCOL
+    const newBaseURL = devMode ? '' : `${apiProtocol}://${runtimeConfig.api.host}:${runtimeConfig.api.port}`
 
     // Update API and WebSocket config
     API_CONFIG.REST_API.baseURL = newBaseURL
@@ -94,7 +96,8 @@ export const API_CONFIG = {
     },
   },
   WEBSOCKET: {
-    url: import.meta.env.VITE_WS_URL || `ws://${API_HOST}:${API_PORT}`,
+    url: import.meta.env.VITE_WS_URL ||
+      (window.location.protocol === 'https:' ? `wss://${API_HOST}:${API_PORT}` : `ws://${API_HOST}:${API_PORT}`),
     port: parseInt(API_PORT, 10),
     reconnection: true,
     reconnectionDelay: 1000,

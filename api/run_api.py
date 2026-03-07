@@ -23,6 +23,7 @@ try:
         print_highlight,
         print_info,
         print_success,
+        print_warning,
         setup_colored_logging,
     )
 
@@ -30,7 +31,7 @@ try:
 except ImportError:
     COLORED_LOGGING_AVAILABLE = False
     # Fallback
-    print_success = print_error = print_info = print_highlight = print
+    print_success = print_error = print_info = print_highlight = print_warning = print
 
 # Import PortManager for centralized port management
 try:
@@ -259,20 +260,71 @@ def main():
     print_info(f"Auto-reload: {'Enabled' if args.reload else 'Disabled'}")
     print_info(f"Log level: {args.log_level.upper()}")
 
+    # SSL Configuration Priority:
+    # 1. Command-line arguments (--ssl-keyfile, --ssl-certfile)
+    # 2. config.yaml paths (paths.ssl_cert, paths.ssl_key)
+    # 3. Environment variables (SSL_CERT_FILE, SSL_KEY_FILE)
+    ssl_config = {}
+
+    # Try command-line arguments first
     if args.ssl_keyfile and args.ssl_certfile:
-        print_success(f"SSL enabled with cert: {args.ssl_certfile}")
         ssl_config = {"ssl_keyfile": args.ssl_keyfile, "ssl_certfile": args.ssl_certfile}
-    else:
-        ssl_config = {}
-        print_info("Running in HTTP mode (no SSL)")
+        print_success(f"SSL enabled via CLI: {args.ssl_certfile}")
+
+    # Try config.yaml if no CLI args
+    if not ssl_config:
+        try:
+            import yaml
+
+            config_path = Path(__file__).parent.parent / "config.yaml"
+            if config_path.exists():
+                with open(config_path) as f:
+                    config = yaml.safe_load(f) or {}
+
+                ssl_enabled = config.get("features", {}).get("ssl_enabled", False)
+                ssl_cert = config.get("paths", {}).get("ssl_cert")
+                ssl_key = config.get("paths", {}).get("ssl_key")
+
+                if ssl_enabled and ssl_cert and ssl_key:
+                    cert_path = Path(ssl_cert)
+                    key_path = Path(ssl_key)
+
+                    if cert_path.exists() and key_path.exists():
+                        ssl_config = {"ssl_keyfile": str(key_path), "ssl_certfile": str(cert_path)}
+                        print_success(f"SSL enabled via config.yaml: {cert_path}")
+                    else:
+                        print_warning("SSL enabled in config but certificate files not found:")
+                        if not cert_path.exists():
+                            print_warning(f"  Cert: {cert_path} (not found)")
+                        if not key_path.exists():
+                            print_warning(f"  Key:  {key_path} (not found)")
+                        print_info("Falling back to HTTP mode")
+        except (OSError, ValueError, ImportError) as e:
+            logger.warning(f"Failed to load SSL config from config.yaml: {e}")
+
+    # Try environment variables as last resort
+    if not ssl_config:
+        ssl_cert_env = os.getenv("SSL_CERT_FILE")
+        ssl_key_env = os.getenv("SSL_KEY_FILE")
+        if ssl_cert_env and ssl_key_env:
+            cert_path = Path(ssl_cert_env)
+            key_path = Path(ssl_key_env)
+            if cert_path.exists() and key_path.exists():
+                ssl_config = {"ssl_keyfile": str(key_path), "ssl_certfile": str(cert_path)}
+                print_success(f"SSL enabled via environment: {cert_path}")
+
+    if not ssl_config:
+        print_info("Running in HTTP mode (no SSL configured)")
 
     print_info("-" * 60)
+    http_proto = "https" if ssl_config else "http"
+    ws_proto = "wss" if ssl_config else "ws"
     print_info("API Endpoints:")
-    print_info(f"  Documentation: http://{args.host}:{args.port}/docs")
-    print_info(f"  ReDoc: http://{args.host}:{args.port}/redoc")
-    print_info(f"  OpenAPI JSON: http://{args.host}:{args.port}/openapi.json")
-    print_success(f"  Health Check: http://{args.host}:{args.port}/health")
-    print_success(f"  WebSocket: ws://{args.host}:{args.port}/ws/{{client_id}}")
+    print_info(f"  Documentation: {http_proto}://{args.host}:{args.port}/docs")
+    print_info(f"  ReDoc: {http_proto}://{args.host}:{args.port}/redoc")
+    print_info(f"  OpenAPI JSON: {http_proto}://{args.host}:{args.port}/openapi.json")
+    print_success(f"  Health Check: {http_proto}://{args.host}:{args.port}/health")
+    print_success(f"  WebSocket: {ws_proto}://{args.host}:{args.port}/ws/{{client_id}}")
     print_info("-" * 60)
     print_info("Available API Routes:")
     print_info("  /api/v1/projects - Project management")
