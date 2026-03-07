@@ -535,4 +535,203 @@ describe('NetworkSettingsTab.vue', () => {
       expect(html).toContain('Default: 7274')
     })
   })
+
+  describe('HTTPS Status Section', () => {
+    it('displays HTTPS status section with data-test attribute', async () => {
+      wrapper = mount(NetworkSettingsTab, {
+        props: {
+          config: defaultConfig,
+          corsOrigins: defaultCorsOrigins,
+          sslEnabled: false,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      const section = wrapper.find('[data-test="https-status-section"]')
+      expect(section.exists()).toBe(true)
+    })
+
+    it('shows "HTTPS: Disabled" when sslEnabled is false', async () => {
+      wrapper = mount(NetworkSettingsTab, {
+        props: {
+          config: defaultConfig,
+          corsOrigins: defaultCorsOrigins,
+          sslEnabled: false,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      const section = wrapper.find('[data-test="https-status-section"]')
+      expect(section.text()).toContain('Disabled')
+    })
+
+    it('shows "HTTPS: Enabled" when sslEnabled is true', async () => {
+      wrapper = mount(NetworkSettingsTab, {
+        props: {
+          config: defaultConfig,
+          corsOrigins: defaultCorsOrigins,
+          sslEnabled: true,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      const section = wrapper.find('[data-test="https-status-section"]')
+      expect(section.text()).toContain('Enabled')
+    })
+
+    it('shows setup instructions toggle when HTTPS is disabled', async () => {
+      wrapper = mount(NetworkSettingsTab, {
+        props: {
+          config: defaultConfig,
+          corsOrigins: defaultCorsOrigins,
+          sslEnabled: false,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      const toggle = wrapper.find('[data-test="https-setup-toggle"]')
+      expect(toggle.exists()).toBe(true)
+      expect(toggle.text()).toContain('How to enable HTTPS')
+    })
+
+    it('hides setup instructions toggle when HTTPS is enabled', async () => {
+      wrapper = mount(NetworkSettingsTab, {
+        props: {
+          config: defaultConfig,
+          corsOrigins: defaultCorsOrigins,
+          sslEnabled: true,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      const toggle = wrapper.find('[data-test="https-setup-toggle"]')
+      expect(toggle.exists()).toBe(false)
+    })
+
+    it('instructions are collapsed by default', async () => {
+      wrapper = mount(NetworkSettingsTab, {
+        props: {
+          config: defaultConfig,
+          corsOrigins: defaultCorsOrigins,
+          sslEnabled: false,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      const instructions = wrapper.find('[data-test="https-setup-instructions"]')
+      expect(instructions.exists()).toBe(false)
+    })
+
+    it('shows instructions after clicking the toggle', async () => {
+      wrapper = mount(NetworkSettingsTab, {
+        props: {
+          config: defaultConfig,
+          corsOrigins: defaultCorsOrigins,
+          sslEnabled: false,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      const toggle = wrapper.find('[data-test="https-setup-toggle"]')
+      await toggle.trigger('click')
+      await wrapper.vm.$nextTick()
+
+      const instructions = wrapper.find('[data-test="https-setup-instructions"]')
+      expect(instructions.exists()).toBe(true)
+      expect(instructions.text()).toContain('generate_ssl_cert.py')
+      expect(instructions.text()).toContain('ssl_enabled')
+      expect(instructions.text()).toContain('Restart the server')
+    })
+
+    it('collapses instructions after clicking the toggle twice', async () => {
+      wrapper = mount(NetworkSettingsTab, {
+        props: {
+          config: defaultConfig,
+          corsOrigins: defaultCorsOrigins,
+          sslEnabled: false,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      const toggle = wrapper.find('[data-test="https-setup-toggle"]')
+
+      // Click to expand
+      await toggle.trigger('click')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-test="https-setup-instructions"]').exists()).toBe(true)
+
+      // Click to collapse
+      await toggle.trigger('click')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-test="https-setup-instructions"]').exists()).toBe(false)
+    })
+
+    it('defaults sslEnabled to false when prop not provided', async () => {
+      wrapper = mount(NetworkSettingsTab, {
+        props: {
+          config: defaultConfig,
+          corsOrigins: defaultCorsOrigins,
+          loading: false,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      const section = wrapper.find('[data-test="https-status-section"]')
+      expect(section.exists()).toBe(true)
+      expect(section.text()).toContain('Disabled')
+    })
+
+    it('does not show HTTPS section when loading', async () => {
+      wrapper = mount(NetworkSettingsTab, {
+        props: {
+          config: defaultConfig,
+          corsOrigins: defaultCorsOrigins,
+          sslEnabled: false,
+          loading: true,
+        },
+        global: {
+          plugins: [vuetify],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+      const section = wrapper.find('[data-test="https-status-section"]')
+      expect(section.exists()).toBe(false)
+    })
+  })
 })
