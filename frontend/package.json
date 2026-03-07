@@ -3,6 +3,7 @@
   "version": "3.0.0",
   "description": "GiljoAI MCP Coding Orchestrator - Dashboard UI",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "scripts": {
     "dev": "vite",
