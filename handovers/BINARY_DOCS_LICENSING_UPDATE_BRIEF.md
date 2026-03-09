@@ -23,7 +23,7 @@ The correct terminology is:
 
 ## Architectural North Star: Community vs SaaS Edition Split
 
-The product is being developed in a single repository today. Before public release, it will split into two repos: a public Community Edition and a private SaaS Edition. The private repo imports the public repo as a dependency and layers SaaS features on top.
+The product is being developed in a single repository with two long-lived branches: `main` (Community Edition, public) and `saas` (SaaS Edition, private). Merge direction is one-way: `main → saas`. When CE goes public, `main` pushes to a public GitHub remote; `saas` pushes only to a private remote. SaaS-only code is physically isolated in `saas/` directories. See `docs/EDITION_ISOLATION_GUIDE.md` for the full specification.
 
 **Any architecture diagrams in these files should reflect this two-edition model if they show system boundaries, deployment, or feature scope.**
 
