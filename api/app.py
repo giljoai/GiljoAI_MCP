@@ -451,7 +451,7 @@ def _register_event_handlers(app: FastAPI) -> None:
             edition = getattr(app.state.config, "edition", None) or "community"
         return {
             "name": "GiljoAI MCP Orchestrator",
-            "version": "3.0.0",
+            "version": "1.0.0",
             "edition": edition,
             "status": "operational",
             "endpoints": {"api": "/docs", "websocket": "/ws", "health": "/health"},
@@ -649,7 +649,7 @@ def create_app() -> FastAPI:
     """Create and configure FastAPI application"""
 
     app = FastAPI(
-        title="GiljoAI MCP Orchestrator API v3.0.0 - Community Edition",
+        title="GiljoAI MCP Orchestrator API v1.0.0 - Community Edition",
         description="""
         ## Multi-Agent Orchestration System REST API
 
@@ -674,7 +674,7 @@ def create_app() -> FastAPI:
         ### Rate Limiting:
         Rate limiting can be configured per tenant. Default: 60 requests/minute.
         """,
-        version="3.0.0",
+        version="1.0.0",
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",

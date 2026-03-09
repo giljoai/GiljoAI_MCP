@@ -1,5 +1,5 @@
 # GiljoAI MCP - Core Dependencies
-# Python 3.13+ required
+# Python 3.12+ required (see pyproject.toml for canonical version spec)
 #
 # This file contains ONLY the essential packages needed to run GiljoAI MCP.
 # For development tools, install: pip install -r dev-requirements.txt
