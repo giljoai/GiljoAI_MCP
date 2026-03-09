@@ -20,6 +20,7 @@
 
 - **[Orchestrator Context Flow SSoT](architecture/ORCHESTRATOR_CONTEXT_FLOW_SSoT.md)** - Complete orchestrator workflow from user setup to agent execution (13 context cards, 77% context prioritization, 9 context sources)
 - **[SaaS Edition Proposal (0770)](../handovers/0770_SAAS_EDITION_PROPOSAL.md)** - Architectural decision record: Community vs SaaS split, fork strategy (one repo now, split before publish), resolved licensing decisions
+- **[Edition Isolation Guide](EDITION_ISOLATION_GUIDE.md)** - Authoritative guide for CE/SaaS code separation: directory structure, import rules, conditional loading patterns, git workflow, migration strategy
 
 **New Implementation Features** (October 2025):
 

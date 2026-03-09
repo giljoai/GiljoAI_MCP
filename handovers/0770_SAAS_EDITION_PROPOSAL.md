@@ -22,6 +22,8 @@ The GiljoAI MCP codebase is approaching 10/10 code quality via the 0765 sprint s
 | **Enterprise** | Corporate IT | Multi-user on WAN/LAN | Single org, one tenant key | install.py |
 | **SaaS** | Gil only | Multi-org, multi-user | Full multi-tenancy | Docker/K8s, not install.py |
 
+> **Update (2026-03-08):** The edition model has been simplified to TWO editions: Community Edition and SaaS Edition. Enterprise is a deployment mode of SaaS (self-hosted by corporate IT using the SaaS codebase), not a separate edition with its own codebase or branch. All references to "Enterprise" as a distinct edition in this document are superseded by this decision. See `docs/EDITION_ISOLATION_GUIDE.md` for the current architecture.
+
 ---
 
 ## Key Decisions Needed
@@ -51,6 +53,8 @@ The GiljoAI MCP codebase is approaching 10/10 code quality via the 0765 sprint s
 
 **DECIDED (2026-03-07):** Option D chosen — single repo now, plugin/extension
 split before publish. Private repo layers SaaS on top of public Community repo.
+
+> **Refined (2026-03-08):** Implementation approach specified — single repo with two long-lived branches (`main` = CE, `saas` = SaaS). SaaS code isolated in dedicated `saas/` directories using physical separation and conditional loading. Merge direction: `main → saas` only. When publishing, `main` pushes to a public remote (CE), `saas` pushes to a private remote. Full specification in `docs/EDITION_ISOLATION_GUIDE.md`.
 
 **Tradeoffs (historical context):**
 - A is fastest to ship community edition but creates merge debt
@@ -250,8 +254,8 @@ Edition, the repo splits into:
 ## Open Questions for Gil
 
 1. ~~Is community edition the first priority, or SaaS infrastructure?~~ **RESOLVED: Community Edition first.**
-2. Should community support multi-product or be locked to single product?
+2. ~~Should community support multi-product or be locked to single product?~~ **RESOLVED (2026-03-08): Keep multi-product in CE. The single-active-product database constraint (Handover 0050) already prevents confusion. Stripping multi-product would be rework with no UX benefit. D3 CLOSED.**
 3. Auth provider preference: build in-house, Auth0, Clerk, or Keycloak?
 4. Billing model preference: flat subscription, per-seat, usage-based, or hybrid?
-5. Target timeline: when do you want community edition shipped? SaaS MVP?
+5. ~~Target timeline: when do you want community edition shipped? SaaS MVP?~~ **RESOLVED (2026-03-08): CE ships April 5, 2026 (4-week sprint from Mar 9). SaaS MVP target: CE ship date + 20 weeks. D7 CLOSED.**
 6. ~~Licensing: what license for community edition? (MIT, Apache 2.0, AGPL?)~~ **RESOLVED: GiljoAI Community License v1.0 (adopted 2026-03-07, commit `9dd6e9e8`).**
