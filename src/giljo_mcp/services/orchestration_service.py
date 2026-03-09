@@ -2683,7 +2683,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
         return {
             "status": "healthy",
             "server": "giljo-mcp",
-            "version": "3.1.0",
+            "version": "1.0.0",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "database": "connected",
             "message": "GiljoAI MCP server is operational",
