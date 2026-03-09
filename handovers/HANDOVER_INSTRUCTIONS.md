@@ -53,25 +53,43 @@ This is a **commercial product** that ships to real users. Every shortcut become
 
 ---
 
-## Edition Scope: Community vs SaaS (IMPORTANT)
+## Edition Scope: Community vs SaaS (MANDATORY)
 
-The codebase serves two editions. All development happens in one repo today; the split happens before public release. **Know which edition your work targets.**
+The codebase serves TWO editions (not three — Enterprise is a deployment mode of SaaS, not a separate codebase). Development happens in one repo with two long-lived branches: `main` (CE) and `saas`.
 
-| Community Edition (public repo) | SaaS Edition (private repo, layered on top) |
-|--------------------------------|---------------------------------------------|
+**Know which edition your work targets BEFORE writing code.**
+
+| Community Edition (CE) | SaaS Edition |
+|------------------------|-------------|
+| Branch: `main` (public) | Branch: `saas` (private) |
 | Core orchestration engine | OAuth / MFA / SSO |
 | Agent management & templates | Billing & subscription (Stripe) |
-| Single-user auth (login/password) | Organization & team management |
-| Tenant isolation (kept, hidden in single-user) | Multi-user admin tools |
+| Single-user auth (login/password, JWT) | Organization & team management |
+| Tenant isolation (kept, hidden in single-user) | Multi-user admin tools, viewer roles |
 | WebSocket & MCP protocol | Usage analytics & metering |
 | Frontend dashboard | SaaS onboarding flows |
-| Community Edition branding | SaaS deployment configs (Docker/K8s) |
+| Community Edition branding | Twilio, email notifications |
+| `python install.py` deployment | Docker/K8s deployment |
 
-**Rules for agents:**
-1. **If your feature is in the Community column**: Build it normally. It ships to everyone.
-2. **If your feature is in the SaaS column**: Build it in the same repo but design it to be extractable. Use clear module boundaries.
-3. **Tenant isolation stays in both editions.** Community uses it silently (single implicit tenant). SaaS uses it explicitly (multi-org).
-4. **Reference**: See `handovers/0770_SAAS_EDITION_PROPOSAL.md` for the full architectural decision record and `LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md` for licensing details.
+### Code Isolation Rules
+
+SaaS-only code MUST live in designated directories:
+- Backend services: `src/giljo_mcp/saas/`
+- API endpoints: `api/saas_endpoints/`
+- Middleware: `api/saas_middleware/`
+- Frontend: `frontend/src/saas/`
+- Tests: `tests/saas/`
+- Database migrations (new tables only): `migrations/saas_versions/`
+
+**Import direction rule:** CE code NEVER imports from `saas/` directories. SaaS code may import from CE code. If CE needs to invoke SaaS functionality, use the conditional registration pattern in `app.py`.
+
+**Deletion test:** If all `saas/` directories were deleted, CE must still start, serve requests, and pass all CE tests. If it doesn't, there is a dependency leak — fix it.
+
+**Placement decision:** Does the feature require external infrastructure (Stripe, Twilio, LDAP, OAuth provider) or only make sense with multiple users/orgs? → `saas/` directory. Does it improve core orchestration for any user including solo? → CE directory.
+
+**Existing SaaS-adjacent code stays in CE.** TenantManager, Organization model, multi-user auth, API key system, WebSocket broker — these are in CE directories because CE needs them to function. Do NOT move them to `saas/`.
+
+**Full reference:** `docs/EDITION_ISOLATION_GUIDE.md` — the authoritative guide for directory structure, conditional loading patterns, git workflow, and migration strategy.
 
 ---
 

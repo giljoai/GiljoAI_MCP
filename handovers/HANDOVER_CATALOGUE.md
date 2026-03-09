@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-07 (0083 closed - slash command harmonization completed via alternative path)
+**Last Updated:** 2026-03-08 (0765a-s Perfect Score Sprint moved to Completed)
 
 ---
 
@@ -17,7 +17,8 @@
 | 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0498 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409 only |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
-| 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-i sprint Active, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
+| 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
+| 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture Ready |
 | 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved) |
 
 ---
@@ -28,16 +29,8 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0765a | Dead Code Purge + Bridge Removal | Ready | HIGH | Tier 1+2 + all bridge removals (~7 hrs) |
-| 0765b | Quick Tier 3 Fixes | Ready (after 0765a) | MEDIUM | NPM, CSS, emits, sort, CORS, H-24 (~5 hrs) |
-| 0765c | Design Token Migration | Ready (after 0765b) | MEDIUM | 108 hardcoded colors to tokens (~5 hrs) |
-| 0765d | Exception Narrowing | Ready (after 0765a) | MEDIUM | ~20 safe catch-alls of 121 (~7 hrs) |
-| 0765e | Test File Splitting | Ready (after 0765d) | LOW-MEDIUM | 19 oversized test files (~10 hrs) |
-| 0765f | Security Hardening | Ready (after 0765a) | HIGH | CSRF, tenant isolation, test coupling (~10 hrs) |
-| 0765g | Tenant Key + Encapsulation | Ready (after 0765f) | HIGH (SaaS blocker) | Hardcoded key removal, prompts fix (~8 hrs) |
-| 0765h | Skipped Test Resolution | Ready (after 0765g) | HIGH | Triage+resolve all ~342 skipped tests (~8-12 hrs) |
-| 0765i | Post-Sprint Quality Audit | Ready (after 0765h) | HIGH | Independent fresh-agent audit, 10-dimension score (~2-3 hrs) |
 | 0409 | Unified Client Quick Setup | Ready | Medium | Future enhancement |
+| 0771 | Edition Isolation Architecture & Documentation | Ready | Critical | 10 deliverables: Edition Isolation Guide (new), doc updates (8), SaaS directory scaffold (1). Pre-requisite for all SaaS work. |
 
 ### Recently Closed (February 2026 - from Active)
 
@@ -81,6 +74,7 @@
 | 0806a | Todo Chicken-and-Egg (RT-4) | 2026-03-05 | BY DESIGN — intended flow already documented |
 | 0807a | set_agent_status Missing (CW-5) | 2026-03-05 | BY DESIGN — controlled lifecycle intentional, false doc claim fixed |
 | 0083 | Harmonize Slash Commands to /gil_* | 2026-03-07 | COMPLETED (adopted organically via 0388/0461/0700d, no code changes needed) |
+| 0765a-s | Perfect Score Sprint (19 sessions) | 2026-03-08 | COMPLETE — 67 commits, ~12K lines removed, 1390 tests / 0 skipped, score 8.35/10 (target 9.5 not reached, stopped at diminishing returns) |
 | 0766a | Mission Overwrite Research (CW-1, CW-3) | 2026-03-04 | NOT A BUG — overwrite by design, continuation orchestrators prohibited from calling |
 | 0767a | Datetime Serialization Research (#39) | 2026-03-04 | ALREADY FIXED (0731c) + defense-in-depth `default=str` (`1ed52edf`) |
 | 0767b+0768b | Combined Implementation (serialization + schema) | 2026-03-04 | COMPLETE (`1ed52edf`) |
@@ -104,7 +98,7 @@
 | ~~0083~~ | ~~Harmonize Slash Commands~~ | **COMPLETED** | - | Adopted organically via 0388/0461/0700d (2026-03-07) |
 | 0250 | HTTPS Enablement | Deferred | Low | Optional feature |
 | 0284 | Address get_available_agents | Deferred | Low | Enhancement |
-| 0731 | Legacy Code Removal | Deferred | Medium | Post-v1.0 (separate from completed 0731a-d typed returns) |
+| ~~0731~~ | ~~Legacy Code Removal~~ | **SUPERSEDED** | - | All items resolved by 0745/0765 sprints (2026-03-08) |
 | 0732 | Open Source Release Packaging | Deferred | Medium | Post-v1.0 (0732 API Fixes now COMPLETE, this is the release packaging handover) |
 | 1014 | Security Auditing | Deferred | Medium | Enterprise compliance |
 | 9999 | One-Liner Installation System | Deferred | Low | Parking lot / future ideas |
@@ -135,6 +129,7 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0765a-s | Perfect Score Sprint (19 sessions) | **COMPLETE** (2026-03-08, 67 commits, ~12K+ lines dead code removed, 1390 tests pass / 0 skipped) |
 | 0083 | Harmonize Slash Commands to /gil_* | **COMPLETED** (2026-03-07, adopted organically via 0388/0461/0700d — no code changes needed) |
 | 0800-0807 | Feb Report Tier 1 Triage (14/21 items resolved) | **COMPLETE** (2026-03-05, research+implementation across 11 handovers) |
 | 0808-0811 | Feb Report Tier 2 Triage (6 items -> 20/21 resolved) | **COMPLETE** (2026-03-06, `f665c861`) — CW-2 SUPERSEDED, CW-4 NON-ISSUE, #40 FIXED, #41 SUPERSEDED, #50 FIXED |
@@ -288,6 +283,22 @@ Located in `handovers/cancelled/`:
 - 0750a-d: Final scrub (except cleanup, console.log removal, archive, orphan components)
 - **Result**: ~15,800 lines removed, architecture score 8/10
 - **Location**: `0700_series/` folder + `completed/` folder
+
+### Perfect Score Sprint (0765a-s)
+**Status:** 100% Complete (March 2026)
+- 0765a: Dead code purge + WebSocket bridge removal (~2,500 lines removed)
+- 0765b: Quick Tier 3 fixes (NPM, CORS, CSS, emits, sort, prefetch)
+- 0765c: Design token migration (zero hardcoded hex colors)
+- 0765d: Exception narrowing (10 narrowed, 163 annotated)
+- 0765e: Test file splitting (35 files split into 85 modules)
+- 0765f: Security hardening (CSRF enabled, 2 tenant isolation fixes)
+- 0765g: Tenant key encapsulation (zero hardcoded tenant keys)
+- 0765h: Skipped test resolution (342 skipped tests -> 0)
+- 0765i-r: 4 independent quality audits + 3 remediation rounds (scores: 8.2, 8.5, 8.5, 8.35)
+- 0765s: Final remediation (cross-tenant slash command fix, 3 crash bugs, ~4,893 lines removed)
+- **Result**: 67 commits, ~12,000+ lines dead code removed, 1,390 tests pass / 0 skipped, ESLint budget locked at 8, CSRF end-to-end
+- **Note**: Target 9.5/10 not reached (best 8.5/10) — stopped due to diminishing returns across shifting audit criteria
+- **Location**: `completed/` folder + `0765_chain_log-C.json`
 
 ### Typed Service Returns (0731a-d)
 **Status:** 100% Complete (February 2026)
@@ -443,7 +454,8 @@ completed/reference/
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
-**0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy/0732 (deferred/ready), 0740-0750 (complete), 0760 (proposal), 0765a-i (sprint), 0766-0768 (triage chains). **Do NOT use for non-quality work.**
+**0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy/0732 (deferred/ready), 0740-0750 (complete), 0760 (proposal), 0765a-s (sprint, COMPLETE), 0766-0768 (triage chains). **Do NOT use for non-quality work.**
+**0770-0799** (Edition Strategy & SaaS Architecture): 0770 (SaaS Edition Proposal, complete), 0771 (Edition Isolation Architecture, ready)
 **0800-0807** (Enhancement & Triage): 0800a/b, 0801a/b, 0802a/b, 0803a, 0804a, 0805a, 0806a, 0807a (all complete)
 **0808-0811** (Tier 2 Triage): 0808a, 0809a, 0810a, 0811a (all research complete, fixes in `f665c861`)
 **0812+** (Enhancement & Feature Series): Available for new feature/enhancement work
@@ -453,7 +465,7 @@ completed/reference/
 
 - **0411**: "Jobs Tab Duration UX" (completed Jan) vs "Windows Terminal Agent Spawning" (SUPERSEDED Feb 24, split to 0411a+0411b) - RESOLVED
 - **0481**: 2 files with same number - consolidate
-- **0731**: "Typed Service Returns a-d" (COMPLETE) vs "Legacy Code Removal" (DEFERRED) - different scope, acceptable
+- **0731**: "Typed Service Returns a-d" (COMPLETE) vs "Legacy Code Removal" (SUPERSEDED 2026-03-08) - different scope, both closed
 - **1000**: Main roadmap + status report - acceptable (one is reference)
 
 ### Current Gaps Available
