@@ -3,7 +3,7 @@
 **Handover ID:** 0732
 **Priority:** P1 - HIGH (CE launch blocker)
 **Estimated Effort:** 2-3 hours
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Edition Scope:** CE
 **Dependencies:** 0765 (complete), 0731 typed returns (complete)
 
@@ -59,9 +59,9 @@ Fix remaining "MIT" and "open source" references in shipping files:
 
 ## 3. Success Criteria
 
-- [ ] CHANGELOG.md covers all major 2026 work (Jan through March)
-- [ ] No shipping file references "MIT", "open source", or "open core"
-- [ ] requirements.txt Python version matches pyproject.toml
+- [x] CHANGELOG.md covers all major 2026 work (Jan through March)
+- [x] No shipping file references "MIT", "open source", or "open core"
+- [x] requirements.txt Python version matches pyproject.toml
 - [ ] All tests still pass
 
 ---
