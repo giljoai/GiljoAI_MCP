@@ -252,7 +252,7 @@ class ConfigManager:
 
         # Application metadata (restored from cleanup)
         self.app_name = "GiljoAI MCP Coding Orchestrator"
-        self.app_version = "0.1.0"
+        self.app_version = "1.0.0"
 
         # Raw config dict cache (populated by _load_from_file, used by get_nested)
         self._raw_config: dict = {}
@@ -313,7 +313,7 @@ class ConfigManager:
             del data["installation"]["mode"]
 
         # Add v3 fields
-        data["version"] = "3.0.0"
+        data["version"] = "1.0.0"
 
         # Map old mode to deployment context (informational only)
         data["deployment_context"] = old_mode
