@@ -5,6 +5,10 @@
 **Status**: Living Document
 **Harmonization Status**: ✅ Aligned with codebase
 
+> **Licensing Note (2026-03-07):** This project uses the **GiljoAI Community License v1.0** (single-user free, multi-user requires commercial license). This is NOT an OSI open-source license. Do not reference MIT, open source, or open core. See `LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md`.
+>
+> **Edition Note (2026-03-08):** Two editions — Community Edition (CE, public, `main` branch) and SaaS Edition (private, `saas` branch). Enterprise is a deployment mode of SaaS, not a separate edition. SaaS-only code is physically isolated in `saas/` directories. See `docs/EDITION_ISOLATION_GUIDE.md`.
+
 ---
 
 ## Quick Links to Harmonized Documents
