@@ -148,6 +148,18 @@ repos:
         exclude: ^(tests/|migrations/|handovers/)
         pass_filenames: true
 
+  # CE/SaaS import boundary enforcement
+  # Prevents Community Edition code from importing SaaS-only modules
+  - repo: local
+    hooks:
+      - id: saas-import-boundary
+        name: CE/SaaS import boundary check
+        entry: python scripts/check_saas_import_boundary.py
+        language: system
+        files: \.(py|js|ts|vue|jsx|tsx)$
+        exclude: ^(.*saas/.*|.*__pycache__/.*|handovers/|.*\.md$)
+        pass_filenames: true
+
   # ESLint warning budget - freezes warning count at current level (0760-perfect-score)
   # Run manually: pre-commit run eslint-warning-budget --all-files
   - repo: local
