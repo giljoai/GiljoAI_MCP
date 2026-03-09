@@ -184,7 +184,7 @@ async def handle_initialize(
     # Return server capabilities
     return {
         "protocolVersion": "2024-11-05",
-        "serverInfo": {"name": "giljo-mcp", "version": "3.0.0"},
+        "serverInfo": {"name": "giljo-mcp", "version": "1.0.0"},
         "capabilities": {"tools": {"listChanged": False}},
     }
 
