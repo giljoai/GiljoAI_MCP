@@ -178,10 +178,10 @@ async def get_product_info(current_user: User = Depends(get_current_active_user)
 
     return ProductInfoResponse(
         product="GiljoAI MCP Server",
-        version="3.1.0",
+        version="1.0.0",
         build="production",
-        python_version="3.11+",
-        database="PostgreSQL 14+",
+        python_version="3.12+",
+        database="PostgreSQL 18",
         features=[
             "Multi-tenant orchestration",
             "context prioritization and orchestration",

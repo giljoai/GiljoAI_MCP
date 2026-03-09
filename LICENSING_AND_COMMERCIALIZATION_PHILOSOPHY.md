@@ -42,7 +42,7 @@ We welcome and encourage contributions. Bug fixes, features, documentation, all 
 
 When you contribute code back to this repository (via pull request or patch), you are assigning the intellectual property rights of that contribution to GiljoAI LLC. In plain terms: you are donating the code to us.
 
-Why? Because we ship this software under two license tracks -- the free Community License and paid Commercial Licenses. If we do not own the IP for every line of code, we legally cannot offer commercial licenses. This is standard practice for dual-licensed open source projects.
+Why? Because we ship this software under two license tracks -- the free Community License and paid Commercial Licenses. If we do not own the IP for every line of code, we legally cannot offer commercial licenses. This is standard practice for dual-licensed projects.
 
 What you keep:
 - **You can still use your own code** in your other projects. The assignment is about our copy in our repository, not about your ability to reuse your own work.
@@ -56,7 +56,7 @@ If that does not work for you, no hard feelings. You are welcome to fork the rep
 
 The downloadable version of GiljoAI MCP is branded as the **Community Edition**. This is the full product. It is not limited, locked down, or missing features compared to what we run ourselves.
 
-The branding exists so users know which edition they are running and so we can maintain a clear distinction between the open-source release and any commercial or hosted offering we might build in the future.
+The branding exists so users know which edition they are running and so we can maintain a clear distinction between the Community Edition and any commercial or hosted offering we might build in the future.
 
 ## Summary
 

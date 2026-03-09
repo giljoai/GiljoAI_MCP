@@ -1,170 +1,88 @@
-# Handover 0732: Open Source Release Packaging Sprint
+# Handover 0732: CE Release Packaging
 
 **Handover ID:** 0732
-**Priority:** P2 - MEDIUM
-**Estimated Effort:** 3-5 hours
-**Status:** DEFERRED (execute after remaining features complete)
-**Branch:** Create `release/0732-packaging` from master
-**Dependencies:** 0731 (typed service returns - must be merged first)
+**Priority:** P1 - HIGH (CE launch blocker)
+**Estimated Effort:** 2-3 hours
+**Status:** IN PROGRESS
+**Edition Scope:** CE
+**Dependencies:** 0765 (complete), 0731 typed returns (complete)
 
 ---
 
 ## 1. Mission & Context
 
 ### What We're Doing
-Package the codebase for open source release. The code quality is solid (architecture score ~8.5/10 after 0731). This handover addresses the community/release score (~6/10) by adding the artifacts that experienced developers expect in the first 60 seconds of evaluating a repository.
+Package the Community Edition codebase for public release. Code quality is solid (8.35/10 after 0765 sprint, 1,390 tests pass / 0 skipped). This handover addresses the release artifacts that developers expect when evaluating a repository.
 
 ### Why This Matters
-First impressions drive adoption. A developer evaluating GiljoAI MCP will check:
-1. Can I see what it does? (screenshots)
-2. Can I run it? (Docker)
-3. Can I contribute? (templates)
-4. Do the tests pass? (fix failures)
-5. What changed recently? (changelog)
+First impressions drive adoption. A developer evaluating GiljoAI MCP will check: Can I contribute? (templates) What changed recently? (changelog) Is it maintained? (recent activity). Code quality won't matter if they bounce before reading any code.
 
-Code quality won't matter if they bounce before reading any code.
-
-### What Already Exists
-- README.md (good - badges, quick start, architecture overview)
-- LICENSE (MIT)
+### What Already Exists (No Work Needed)
+- README.md (good -- badges, quick start, architecture overview)
+- LICENSE (GiljoAI Community License v1.0)
 - CONTRIBUTING.md (added in 0745 series)
 - CODE_OF_CONDUCT.md (added in 0745 series)
 - SECURITY.md (added in 0745 series)
-- CI pipeline (.github/workflows/ci.yml - 5 jobs)
+- CI pipeline (.github/workflows/ -- 4 workflow files)
+- GitHub issue templates (bug_report.md, feature_request.md) -- DONE
+- GitHub PR template (PULL_REQUEST_TEMPLATE.md) -- DONE
+- All tests passing (1,390 pass, 0 skip, 0 fail) -- DONE via 0765 sprint
+
+### What's Descoped
+- **Docker:** CE ships via `python install.py`. Docker is not needed for CE. If Docker is ever wanted for SaaS server deployment, it's a separate task (not a release blocker).
+- **README Screenshots:** Deferred to 0732b (requires running instance, manual capture).
 
 ---
 
-## 2. Tasks
+## 2. Remaining Tasks
 
-### Task 1: GitHub Issue & PR Templates (20 min)
+### Task 1: Update CHANGELOG.md (~1-2 hours)
 
-Create `.github/ISSUE_TEMPLATE/bug_report.md`:
-- Steps to reproduce
-- Expected vs actual behavior
-- Environment (OS, Python version, PostgreSQL version)
-- Logs/screenshots
+The existing `docs/CHANGELOG.md` ends at v3.3.0 (2025-12-21). Three months of major work is undocumented. Update to cover all 2026 work.
 
-Create `.github/ISSUE_TEMPLATE/feature_request.md`:
-- Problem description
-- Proposed solution
-- Alternatives considered
+Structure as release-oriented milestones, not individual handovers. Key work to cover:
+- v4.0.0 (2026-03): Perfect Score Sprint, CE release packaging, edition isolation
+- v3.7.0 (2026-02-late): Multi-terminal production parity, early termination protocol
+- v3.6.0 (2026-02-mid): Tenant isolation audit, API key security hardening, agent status simplification
+- v3.5.0 (2026-02-early): Typed service returns, code cleanup sprint (15,800 lines removed)
+- v3.4.0 (2026-01): Exception handling remediation, 360 Memory normalization, agent lifecycle
 
-Create `.github/PULL_REQUEST_TEMPLATE.md`:
-- Summary of changes
-- Type (bug fix / feature / refactor / docs)
-- Testing checklist
-- Screenshots (if UI changes)
+Keep entries high-level. Link to handover catalogue for details.
 
-### Task 2: README Screenshots (30 min)
+### Task 2: Fix Convention Violations in Project Docs (~15 min)
 
-Capture and add 3-4 screenshots to README:
-- Dashboard overview (main view after login)
-- Agent monitoring / Jobs tab (shows real-time agent status)
-- Project launch view (orchestrator workflow)
-- Settings page (shows configurability)
-
-Store in `docs/screenshots/` and reference from README with relative paths.
-
-Note: This requires a running instance. Take screenshots manually or use Playwright.
-
-### Task 3: CHANGELOG.md (15 min)
-
-Generate from conventional commits using git log:
-```bash
-git log --pretty=format:"- %s" --no-merges v0.1.0..HEAD
-```
-
-Or install git-cliff for auto-generation. Structure as:
-- v3.3.x (Current) - Typed service returns, code cleanup, audit
-- v3.2.x - Orchestrator workflow, GUI redesign
-- v3.1.x - Backend refactoring, remediation
-- v3.0.x - Context management v2, 360 memory
-
-Keep it high-level. Link to handover docs for details.
-
-### Task 4: Fix Pre-Existing Test Failures (1-2 hours)
-
-12 pre-existing test failures identified in 0731b chain log:
-- consolidation_service tests
-- orchestration_consolidation tests
-- project_service_exceptions tests
-- vision_summarizer_multi_level tests
-
-Also: Install `pytest-timeout` to fix the test suite hanging issue.
-
-```bash
-pip install pytest-timeout
-# Add to pyproject.toml [project.optional-dependencies] or requirements-dev.txt
-```
-
-Run `pytest tests/ --timeout=30 -v` and fix all failures.
-
-### Task 5: Dockerfile + docker-compose.yml (2-3 hours)
-
-Create `Dockerfile`:
-- Multi-stage build (builder + runtime)
-- Python 3.11+ base image
-- Copy requirements, install deps
-- Copy source code
-- Expose API port (from config.yaml, default 7171)
-- CMD: `python startup.py`
-
-Create `docker-compose.yml`:
-- PostgreSQL 18 service (with health check)
-- GiljoAI MCP service (depends on postgres)
-- Frontend build (or serve from backend)
-- Volume mounts for data persistence
-- Environment variables for config
-
-Create `docker-compose.dev.yml` (optional):
-- Hot reload for development
-- Exposed PostgreSQL port for debugging
-
-Update README with Docker quick start:
-```bash
-docker compose up -d
-# Visit http://localhost:7171
-```
+Fix remaining "MIT" and "open source" references in shipping files:
+- `LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md` lines 45, 59 -- replace "open source" with correct terminology
+- `requirements.txt` line 2 -- says "Python 3.13+" but pyproject.toml says ">=3.10"
 
 ---
 
 ## 3. Success Criteria
 
-- [ ] GitHub issue templates work (test by creating issue on GitHub)
-- [ ] PR template appears when opening new PR
-- [ ] README has 3-4 screenshots showing key workflows
-- [ ] CHANGELOG.md covers major versions
-- [ ] All tests pass with `pytest --timeout=30`
-- [ ] `docker compose up` launches working instance from clean clone
-- [ ] Community score >= 8/10
+- [ ] CHANGELOG.md covers all major 2026 work (Jan through March)
+- [ ] No shipping file references "MIT", "open source", or "open core"
+- [ ] requirements.txt Python version matches pyproject.toml
+- [ ] All tests still pass
 
 ---
 
-## 4. Subagent Recommendations
+## 4. Previously Completed Tasks (No Action Needed)
 
-| Task | Agent | Can Parallel? |
-|------|-------|---------------|
-| GitHub templates | documentation-manager | Yes |
-| CHANGELOG | documentation-manager | Yes |
-| Test fixes | tdd-implementor | Yes |
-| Dockerfile | installation-flow-agent | After templates |
-| Screenshots | Manual (requires running instance) | After Docker |
+| Task | Status | Evidence |
+|------|--------|---------|
+| GitHub issue/PR templates | DONE | `.github/ISSUE_TEMPLATE/` + `.github/PULL_REQUEST_TEMPLATE.md` |
+| Fix test failures | DONE | 0765 sprint: 1,390 pass / 0 skip / 0 fail |
+| pytest-timeout | DONE | Already in pyproject.toml |
 
-Tasks 1-3 can run in parallel. Task 4 is independent. Task 5 depends on nothing but is the most complex.
+## 5. Descoped Tasks
 
----
-
-## 5. Estimated Impact
-
-| Metric | Before | After |
-|--------|--------|-------|
-| Community/release score | ~6/10 | ~8-9/10 |
-| Time to first run (new dev) | 15-30 min (manual install) | 2 min (docker compose up) |
-| Issue submission quality | Unstructured | Templated |
-| PR quality | No checklist | Structured checklist |
+| Task | Reason | Where |
+|------|--------|-------|
+| Dockerfile + docker-compose | CE ships via `install.py`. Docker not needed for CE or self-hosted SaaS. | Descoped entirely |
+| README screenshots | Requires running instance, manual capture | Deferred to 0732b |
 
 ---
 
 **Created**: 2026-02-11
-**Execute When**: After remaining features are implemented, before public release
-**Depends On**: 0731 merged to master
+**Rewritten**: 2026-03-08 (reduced scope: Docker descoped, screenshots deferred to 0732b, tasks 1+4 marked done)
+**Execute When**: Before CE public release
