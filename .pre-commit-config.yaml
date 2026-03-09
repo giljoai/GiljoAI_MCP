@@ -57,7 +57,7 @@ repos:
         exclude: ^(tests/fixtures/|.*\.min\.js)
       - id: check-yaml
         args: [--allow-multiple-documents]
-      - id: check-json
+      # check-json moved to local hook below (WDAC blocks the .exe on Windows)
       - id: check-toml
       - id: check-added-large-files
         args: ["--maxkb=1000"]
@@ -136,6 +136,15 @@ repos:
       - id: prettier
         types_or: [yaml] # Removed markdown - not needed for docs
         exclude: ^(frontend/|node_modules/)
+
+  # JSON syntax check (local hook - avoids WDAC .exe block on Windows)
+  - repo: local
+    hooks:
+      - id: check-json
+        name: check json
+        entry: python -c "import json,sys;[json.load(open(f,encoding='utf-8')) for f in sys.argv[1:]]"
+        language: system
+        types: [json]
 
   # Deprecated model detection (Handover 0358d)
   - repo: local

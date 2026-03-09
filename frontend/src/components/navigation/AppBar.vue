@@ -124,7 +124,7 @@
             />
             <v-card-text class="pa-5 text-body-2">
               <div class="font-weight-bold mb-3">GiljoAI MCP Orchestrator</div>
-              Version 3.0.0<br />
+              Version 1.0.0<br />
               Community Edition<br />
               License: {{ licenseStatus }}<br /><br />
               GiljoAI Community License v1.0<br />

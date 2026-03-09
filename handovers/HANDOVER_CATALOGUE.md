@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-08 (0765a-s Perfect Score Sprint moved to Completed)
+**Last Updated:** 2026-03-08 (0732 CE Release Packaging updated to IN PROGRESS, 0732b deferred)
 
 ---
 
@@ -99,7 +99,8 @@
 | 0250 | HTTPS Enablement | Deferred | Low | Optional feature |
 | 0284 | Address get_available_agents | Deferred | Low | Enhancement |
 | ~~0731~~ | ~~Legacy Code Removal~~ | **SUPERSEDED** | - | All items resolved by 0745/0765 sprints (2026-03-08) |
-| 0732 | Open Source Release Packaging | Deferred | Medium | Post-v1.0 (0732 API Fixes now COMPLETE, this is the release packaging handover) |
+| 0732 | CE Release Packaging | **IN PROGRESS** | HIGH | CE launch blocker. CHANGELOG done, convention fixes done. Screenshots deferred to 0732b. Docker descoped. (Note: 0732 API Fixes is a separate, COMPLETE handover) |
+| 0732b | README Screenshots | Deferred | Low | Requires running instance with sample data. Post-launch or pre-launch polish. |
 | 1014 | Security Auditing | Deferred | Medium | Enterprise compliance |
 | 9999 | One-Liner Installation System | Deferred | Low | Parking lot / future ideas |
 
@@ -454,7 +455,7 @@ completed/reference/
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
-**0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy/0732 (deferred/ready), 0740-0750 (complete), 0760 (proposal), 0765a-s (sprint, COMPLETE), 0766-0768 (triage chains). **Do NOT use for non-quality work.**
+**0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy (SUPERSEDED), 0732 release packaging (IN PROGRESS), 0732b screenshots (deferred), 0740-0750 (complete), 0760 (proposal), 0765a-s (sprint, COMPLETE), 0766-0768 (triage chains). **Do NOT use for non-quality work.**
 **0770-0799** (Edition Strategy & SaaS Architecture): 0770 (SaaS Edition Proposal, complete), 0771 (Edition Isolation Architecture, ready)
 **0800-0807** (Enhancement & Triage): 0800a/b, 0801a/b, 0802a/b, 0803a, 0804a, 0805a, 0806a, 0807a (all complete)
 **0808-0811** (Tier 2 Triage): 0808a, 0809a, 0810a, 0811a (all research complete, fixes in `f665c861`)
@@ -466,6 +467,7 @@ completed/reference/
 - **0411**: "Jobs Tab Duration UX" (completed Jan) vs "Windows Terminal Agent Spawning" (SUPERSEDED Feb 24, split to 0411a+0411b) - RESOLVED
 - **0481**: 2 files with same number - consolidate
 - **0731**: "Typed Service Returns a-d" (COMPLETE) vs "Legacy Code Removal" (SUPERSEDED 2026-03-08) - different scope, both closed
+- **0732**: "API Consistency Fixes" (COMPLETE 2026-02-23) vs "CE Release Packaging" (IN PROGRESS) - different scope
 - **1000**: Main roadmap + status report - acceptable (one is reference)
 
 ### Current Gaps Available
