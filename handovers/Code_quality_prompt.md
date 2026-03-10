@@ -1,122 +1,155 @@
 # Code Quality Audit Prompt
 
-**Purpose:** Invoke this prompt to run a comprehensive code quality audit against the 0700 cleanup baseline. Agents reading this should launch parallel subagents and report findings with a quality score.
+**Purpose:** Reusable prompt for comprehensive code quality audits. Agents reading this should launch parallel subagents and report findings with a per-dimension quality score.
 
 **Usage:** Ask an agent: "Read `handovers/Code_quality_prompt.md` and execute the audit."
 
 **Frequency:** After every 15-30 commits, or before any release milestone.
 
+**Baseline:** 0765 sprint (March 2026) — 8.35/10, 1,390 tests / 0 skipped, zero ruff issues, ESLint budget 8 warnings.
+
 ---
 
 ## Instructions for the Executing Agent
 
-You are performing a **post-cleanup code health audit** against the 0700 series baseline (architecture score 8/10, zero lint errors, ~15,800 lines removed). Your job is to detect drift from that clean state.
+You are performing a code health audit. Your job is to detect drift from the established clean baseline and score the codebase on 10 dimensions.
 
 ### Step 1: Scope the Audit
 
 Determine the commit range to audit:
 
 ```bash
-# See recent commits since last known-clean state
 git log --oneline -30
-git diff --stat HEAD~30..HEAD  # Adjust range as needed
+git diff --stat HEAD~30..HEAD
 ```
 
 Count files changed, lines added/removed. This frames the audit scope.
 
-### Step 2: Quick Lint Check
+### Step 2: Automated Checks
 
-Run this directly (do NOT delegate to a subagent - it takes seconds):
+Run these directly (do NOT delegate to subagents):
 
 ```bash
+# Backend linting (baseline: 0 issues)
 ruff check src/ api/
+
+# Frontend linting (baseline: 8 warnings max)
+cd frontend && npx eslint src/ --max-warnings 8
+
+# Frontend build (baseline: clean build, 0 warnings)
+cd frontend && npm run build
+
+# CE/SaaS import boundary (baseline: 0 violations)
+python scripts/check_saas_import_boundary.py src/ api/ frontend/src/
+
+# Test suite (baseline: 1,390+ pass, 0 skip, 0 fail)
+python -m pytest tests/ -q --timeout=60
 ```
 
-**Baseline:** Zero issues. Any issues are regressions.
+Record all results. Any regression from baseline is a finding.
 
 ### Step 3: Launch Parallel Audit Subagents
 
-Launch **4 subagents in parallel** using the `deep-researcher` agent type. Each covers one domain:
+Launch **5 subagents in parallel** using the `deep-researcher` agent type:
 
 #### Subagent 1: Backend Source Code (`src/giljo_mcp/`)
 
 Search for:
 - **Dead methods**: Use `find_referencing_symbols` on any method that looks unused. Zero refs = dead code.
-- **Dict return regression**: After 0480/0730, services MUST raise exceptions (not return `{"success": False, ...}`). Grep for `return {"success": False` or `return {"error":` in services.
-- **Bare expressions**: Statements that compute a value but never assign it (e.g., `len(x) // 4` on its own line).
-- **Stale status values**: After 0491, valid agent statuses are ONLY: `waiting`, `working`, `blocked`, `complete`, `silent`, `decommissioned`. Flag any code referencing old statuses (`active`, `pending`, `preparing`, `running`, `queued`, `paused`, `review`, `planning`, `failed`, `cancelled`, `completed`).
+- **Dict return regression**: Services MUST raise exceptions (not `return {"success": False, ...}`). Grep for `return {"success": False` or `return {"error":` in services and tools.
+- **Broad exception catches**: `except Exception` without an inline justification comment. After 0765d, all broad catches must be annotated.
+- **Stale status values**: Valid agent statuses are ONLY: `waiting`, `working`, `blocked`, `complete`, `silent`, `decommissioned`. Flag any code referencing old statuses (`active`, `pending`, `preparing`, `running`, `queued`, `paused`, `review`, `planning`, `failed`, `cancelled`, `completed`).
+- **Oversized functions**: Methods >200 lines. Classes >1000 lines.
 - **Duplicate logic**: Service layer vs tool layer doing the same thing.
-- **Oversized functions**: Methods >250 lines that should be extracted.
 - **Config reading pattern**: Repeated `yaml.safe_load(open("config.yaml"))` instead of using config_manager.
 
-#### Subagent 2: API Endpoints (`api/`)
+#### Subagent 2: API Endpoints & Security (`api/`)
 
 Search for:
 - **Tenant isolation gaps**: Every DB query MUST filter by `tenant_key`. Look for endpoints that query without it.
-- **Dict returns in endpoints**: After 0480, endpoints should raise `HTTPException`, not return `{"success": False}`.
-- **Fake/placeholder data**: Any `random.randint()`, hardcoded metrics, or TODO stubs.
-- **Duplicate endpoints**: Same functionality exposed on multiple routes.
-- **Dead code in endpoints**: Unused imports, unreachable branches, commented-out blocks.
+- **Auth gaps**: Every endpoint MUST use `Depends(get_current_active_user)` except explicitly public ones (login, health, setup). Admin-only endpoints must check role.
+- **CSRF protection**: Verify CSRF double-submit cookie is enforced on state-changing endpoints.
+- **Dict returns in endpoints**: Endpoints should raise `HTTPException`, not return dicts.
+- **Secrets in source**: Grep for hardcoded API keys, passwords, tokens (except test fixtures).
+- **CORS configuration**: Verify origins are restricted, not wildcarded in production.
 - **Oversized handler functions**: Single endpoint handlers >200 lines.
 
 #### Subagent 3: Test Suite (`tests/`)
 
 Search for:
-- **Dead test fixtures**: Files in `tests/fixtures/` that are never imported by any test.
-- **Unused imports**: Imports at top of test files that are never used.
-- **Stale `__pycache__`**: Bytecode from deleted test modules (check `tests/*/__pycache__/` for .pyc files without matching .py).
+- **Skipped tests**: Any `@pytest.mark.skip` or `pytest.skip()`. Baseline is zero skips.
+- **Dead test fixtures**: Files in `tests/fixtures/` never imported by any test.
+- **Stale `__pycache__`**: Bytecode from deleted test modules.
 - **Oversized test files**: Files >500 lines that should be split.
-- **No-op fixtures**: Fixtures that just pass through without adding value.
+- **Test coverage gaps**: Are there service methods with zero test coverage? Check critical paths (auth, tenant isolation, orchestration).
 
 #### Subagent 4: Frontend (`frontend/src/`)
 
 Search for:
-- **Dead code in views**: Unused variables (`const x = useX()` where `x` is never referenced in template or script).
-- **Dead config fields**: Config objects with properties that are never read by consuming code.
-- **Dead infrastructure**: Event handlers, confirmation dialogs, or UI patterns wired up but never triggered.
-- **Dead store state**: Pinia/Vuex state properties that are set but never read.
-- **Stale references**: References to removed backend features.
+- **Dead code**: Unused variables, dead store state, event handlers wired but never triggered.
+- **Design token compliance**: Hardcoded hex colors instead of Vuetify theme tokens or `design-tokens.scss` variables. After 0765c, zero hardcoded colors is the baseline.
+- **Accessibility**: Interactive elements missing ARIA labels.
+- **`!important` overrides**: Flag any that aren't compensating for a documented Vuetify bug.
+- **Stale backend references**: Frontend calling endpoints or using features that no longer exist.
+- **Duplicated utilities**: Same logic reimplemented in multiple components (e.g., clipboard, date formatting).
 
-### Step 4: Consolidate Findings
+#### Subagent 5: Convention & Documentation Compliance
 
-After all subagents complete, compile results into a single report with this structure:
+Search for:
+- **Forbidden terminology**: Grep all shipping files for "MIT", "open source", "open core". These violate the GiljoAI Community License v1.0.
+- **Version consistency**: All public-facing version numbers should match (pyproject.toml, package.json, app.py, AppBar.vue, etc.).
+- **CE/SaaS import boundary**: CE code (`src/giljo_mcp/`, `api/`, `frontend/src/` excluding `saas/` dirs) must NEVER import from `saas/` directories.
+- **Documentation sync**: Do docstrings and inline comments match current behavior? Flag stale references to removed features, old status values, or deleted files.
+- **Commented-out code**: Should be deleted, not commented. Git has the history.
+- **No AI signatures**: No "Generated by", "Co-Authored-By", or similar in source code (commits are fine).
 
-```
+### Step 4: Consolidate and Score
+
+After all subagents complete, compile results using the **10-Dimension Rubric**:
+
+```markdown
 ## Code Quality Audit Report
 **Date:** YYYY-MM-DD
 **Commit Range:** [first]...[last] (N commits)
-**Files Changed:** N files, +X/-Y lines
+**Auditor:** [agent session identifier]
 
-### Lint Status
-- Issues found: N (baseline: 0)
+### Automated Check Results
+- Ruff: N issues (baseline: 0)
+- ESLint: N warnings (baseline: 8)
+- Frontend build: clean / N warnings
+- CE/SaaS boundary: N violations (baseline: 0)
+- Tests: N pass / N skip / N fail (baseline: 1,390+ / 0 / 0)
+
+### 10-Dimension Rubric Scoring
+
+| # | Dimension | Score | Notes |
+|---|-----------|-------|-------|
+| 1 | **Lint cleanliness** | X/10 | Ruff + ESLint results |
+| 2 | **Dead code density** | X/10 | Unreferenced methods, dead vars, dead store state |
+| 3 | **Pattern compliance** | X/10 | Exceptions not dicts, correct error handling |
+| 4 | **Tenant isolation** | X/10 | Every DB query filters by tenant_key |
+| 5 | **Security posture** | X/10 | CSRF, CORS, auth coverage, no secrets in source |
+| 6 | **Test health** | X/10 | Zero skips, zero failures, no dead fixtures |
+| 7 | **Frontend hygiene** | X/10 | Design tokens, no dead vars, accessibility |
+| 8 | **Exception handling** | X/10 | All broad catches annotated with justification |
+| 9 | **Code organization** | X/10 | No oversized functions/classes, clear separation |
+| 10 | **Convention & docs** | X/10 | No forbidden terms, version consistency, doc sync |
+
+**Overall Score: X.X/10** (baseline: 8.35, target: >= 8.0)
 
 ### Findings by Severity
 
 #### SECURITY (fix immediately)
-- [tenant isolation gaps, auth bypass, etc.]
+- [tenant isolation gaps, auth bypass, CSRF gaps, secrets]
 
 #### HIGH (fix before next release)
-- [dead methods >50 lines, dict return regressions, fake data]
+- [dead methods >50 lines, dict return regressions, broad catches]
 
 #### MEDIUM (fix in next cleanup pass)
-- [stale statuses, oversized functions, dead config fields]
+- [stale statuses, oversized functions, dead config, doc drift]
 
 #### LOW (housekeeping)
-- [unused imports, dead fixtures, stale pycache]
-
-### Migration Blockers
-- [inverted dependencies, ToolAccessor direct calls, 
-  test files importing dead layers]
-
-### Quality Score
-Rate the codebase 1-10 based on:
-- Lint cleanliness (0 issues = 10/10)
-- Dead code density (0 dead methods = 10/10)
-- Pattern compliance (exceptions not dicts, tenant isolation)
-- Test health (no dead fixtures, no stale imports)
-- Frontend hygiene (no dead vars, no dead config)
-
-**Overall Score: X/10** (baseline from 0700: 8/10, target: >= 7/10)
+- [unused imports, dead fixtures, stale pycache, cosmetic]
 ```
 
 ### Step 5: Prioritized Action List
@@ -133,32 +166,19 @@ For each item, include: file path, line number, what to do, estimated effort.
 
 ## What This Audit Does NOT Cover
 
-- **Feature correctness** - This is a code hygiene audit, not a functional test.
-- **Performance** - No load testing or query optimization analysis.
-- **Full test execution** - We check test code quality, not whether tests pass (run `pytest` separately).
-- **Frontend build** - We check source code quality, not whether `npm run build` succeeds.
+- **Feature correctness** — This is a code hygiene audit, not a functional test.
+- **Performance** — No load testing or query optimization analysis.
+- **SaaS-specific code** — Code in `saas/` directories is audited separately when that edition is active.
 
 ---
 
-## Historical Context
+## False Positive Prevention (Lessons from 0725 + 0765)
 
-The 0700 cleanup series (Feb 2026) achieved:
-- ~15,800 lines removed across ~110 files
-- Zero ruff lint issues (down from 21K accumulated violations)
-- Architecture score 8/10
-- 7 deprecated DB columns dropped
-- Dict-to-exception migration (0480/0730 series)
-- Agent status simplified to 6 values (0491)
+A previous audit (0725) had a 75%+ false positive rate. Four subsequent 0765 audits had shifting criteria. To avoid both problems:
 
-This audit ensures we don't regress from that baseline. Every finding is measured against the 0700 clean state.
-
----
-
-## 0725 Audit Precedent Warning
-
-A previous code health audit (0725) had a **75%+ false positive rate** due to naive static analysis. To avoid repeating this:
-
-- **Always verify with `find_referencing_symbols`** before flagging dead code. LSP-based analysis catches real usage.
-- **Check git blame/log** before flagging something as "newly introduced" - it may be pre-existing.
+- **Always verify with `find_referencing_symbols`** before flagging dead code. LSP-based analysis catches real usage that grep misses.
+- **Check git blame/log** before flagging something as "newly introduced" — it may be pre-existing.
 - **Distinguish product integration code from dead code**: References to `claude-code`, `codex`, `gemini` are product features, not bloat.
 - **Slash commands infrastructure is intentional**: `SlashCommandSetup.vue`, `slash_commands/__init__.py`, `/slash/execute` endpoint are all live.
+- **Use the same 10 dimensions every time**. Do not invent new criteria mid-audit. If a new concern arises, note it as an addendum, don't retroactively change the scoring.
+- **Score what you find, not what you feel**. Each dimension has a concrete definition. A codebase with zero dead code scores 10/10 on dead code even if other dimensions are weak.
