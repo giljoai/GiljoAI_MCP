@@ -484,6 +484,13 @@ async def export_templates_to_claude_code(
             content_parts.append(template.system_instructions.strip())
             content_parts.append("\n")
 
+            # Handover 0813: Add user_instructions (role identity prose)
+            user_instructions = (template.user_instructions or "").strip()
+            if user_instructions:
+                content_parts.append("\n")
+                content_parts.append(user_instructions)
+                content_parts.append("\n")
+
             # Add behavioral rules if present
             if template.behavioral_rules and len(template.behavioral_rules) > 0:
                 content_parts.append("\n## Behavioral Rules\n")

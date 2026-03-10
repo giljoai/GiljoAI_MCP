@@ -192,6 +192,11 @@ def render_generic_agent(template: AgentTemplate) -> str:
         f"\n{template.system_instructions or ''}",
     ]
 
+    # Role identity prose (user_instructions -- Handover 0813)
+    role_prose = (template.user_instructions or "").strip()
+    if role_prose:
+        parts.append(f"\n{role_prose}")
+
     # Add behavioral rules section if present
     rules = template.behavioral_rules or []
     if isinstance(rules, list) and rules:
