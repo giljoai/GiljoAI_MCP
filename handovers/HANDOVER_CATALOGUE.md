@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-09 (0732 COMPLETE, 0409 DEFERRED post-launch)
+**Last Updated:** 2026-03-09 (0250/0732/0771 archived, 0409/0284 DEFERRED, 9999 DELETED, reference docs moved)
 
 ---
 
@@ -18,7 +18,7 @@
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
-| 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture Ready |
+| 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
 | 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved) |
 
 ---
@@ -29,8 +29,9 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0409 | Unified Client Quick Setup | **DEFERRED** | Low | Post-launch. All underlying UI components exist (MCP wizard, slash commands, agent export). Revisit if user feedback indicates setup friction. |
-| 0771 | Edition Isolation Architecture & Documentation | Ready | Critical | 10 deliverables: Edition Isolation Guide (new), doc updates (8), SaaS directory scaffold (1). Pre-requisite for all SaaS work. |
+| 0732b | README Screenshots | Deferred | Low | 30 min. Requires running instance with sample data. |
+| 1014 | Security Event Auditing | Deferred | Medium | Enterprise compliance. No requirement yet. |
+| TODO_vision | Vision Summarizer LLM Upgrade | Deferred | Low | Phase 1 incomplete. Current Sumy works. |
 
 ### Recently Closed (February 2026 - from Active)
 
@@ -96,8 +97,8 @@
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | ~~0083~~ | ~~Harmonize Slash Commands~~ | **COMPLETED** | - | Adopted organically via 0388/0461/0700d (2026-03-07) |
-| 0250 | HTTPS Enablement | Deferred | Low | Optional feature |
-| 0284 | Address get_available_agents | Deferred | Low | Enhancement |
+| 0250 | HTTPS Enablement | **COMPLETE** | Low | Done (`c5443b7d`, `86aa4106`). Archived. |
+| 0284 | Address get_available_agents | **DEFERRED** | Low | Architecture evolved past this. Archived. |
 | ~~0731~~ | ~~Legacy Code Removal~~ | **SUPERSEDED** | - | All items resolved by 0745/0765 sprints (2026-03-08) |
 | 0732 | CE Release Packaging | **COMPLETE** | HIGH | All tasks done: CHANGELOG updated, convention violations fixed, requirements.txt aligned. Screenshots deferred to 0732b. Docker descoped. (Note: 0732 API Fixes is a separate, COMPLETE handover) |
 | 0732b | README Screenshots | Deferred | Low | Requires running instance with sample data. Post-launch or pre-launch polish. |
@@ -456,7 +457,7 @@ completed/reference/
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
 **0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy (SUPERSEDED), 0732 release packaging (COMPLETE), 0732b screenshots (deferred), 0740-0750 (complete), 0760 (proposal), 0765a-s (sprint, COMPLETE), 0766-0768 (triage chains). **Do NOT use for non-quality work.**
-**0770-0799** (Edition Strategy & SaaS Architecture): 0770 (SaaS Edition Proposal, complete), 0771 (Edition Isolation Architecture, ready)
+**0770-0799** (Edition Strategy & SaaS Architecture): 0770 (SaaS Edition Proposal, complete), 0771 (Edition Isolation Architecture, COMPLETE)
 **0800-0807** (Enhancement & Triage): 0800a/b, 0801a/b, 0802a/b, 0803a, 0804a, 0805a, 0806a, 0807a (all complete)
 **0808-0811** (Tier 2 Triage): 0808a, 0809a, 0810a, 0811a (all research complete, fixes in `f665c861`)
 **0812+** (Enhancement & Feature Series): Available for new feature/enhancement work
