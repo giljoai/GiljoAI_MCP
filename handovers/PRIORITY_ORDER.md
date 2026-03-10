@@ -35,7 +35,7 @@ Last updated: 2026-03-09
 | ID | Title | Reason |
 |----|-------|--------|
 | 0284 | get_available_agents Enhancement | Architecture evolved past this. Archived. |
-| TECHNICAL_DEBT_v2 | Technical Debt Register (Oct 2025) | Nearly all items resolved by 0400-0500 series. |
+| TECHNICAL_DEBT_v2 | Technical Debt Register (Oct 2025) | Deleted 2026-03-09. Replaced by `techdebt_march_2026.md`. |
 
 ## Housekeeping Done (2026-03-09)
 
@@ -47,5 +47,6 @@ Last updated: 2026-03-09
 - [x] Delete `claude_code_agent_teams_integration_review.md` (one-off analysis, no future reference value)
 - [x] Move `Handover_report_feb.md` to `Reference_docs/`
 - [x] Update HANDOVER_CATALOGUE.md with all status changes
-- [ ] Move remaining reference docs to `Reference_docs/`: `TECHNICAL_DEBT_v2.md`, `LOG_ANALYSIS_GUIDE.md`, `Agent instructions and where they live.md`, `Code_quality_prompt.md`
+- [x] `TECHNICAL_DEBT_v2.md` deleted and replaced by `techdebt_march_2026.md` (198 lines vs 2720)
+- [ ] Move remaining reference docs to `Reference_docs/`: `LOG_ANALYSIS_GUIDE.md`, `Agent instructions and where they live.md`, `Code_quality_prompt.md`
 - [ ] Update `handovers/README.md` priority table
