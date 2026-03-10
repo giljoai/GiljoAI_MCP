@@ -12,28 +12,7 @@ These have some implementation but gaps remain.
 
 ---
 
-### 1. Task-Agent Execution Integration
-
-**Priority**: MEDIUM-HIGH
-**Effort**: ~8 hours (reduced from original 16h estimate - schema work is done)
-**Dependencies**: None
-
-**What's done**:
-- Task model has `job_id` FK to MCPAgentJob (added in Handover 0381)
-- Indexed with `idx_task_job` and `idx_task_tenant_job`
-- 10 MCP tools for task CRUD exist
-
-**What's missing**:
-- No `execute_task_with_agent()` MCP tool - can't assign a task and auto-spawn a job
-- No `orchestrate_from_product_tasks()` - can't orchestrate from task list
-- No background status sync between jobs and tasks (job completes, task stays `in_progress`)
-- No REST endpoints for task execution (`POST /tasks/{id}/execute`)
-
-**The gap**: Tasks and agent jobs are linked in the schema but disconnected in workflow. Users create tasks, manually spawn jobs, and manually update task status. The FK exists but nothing automates the lifecycle.
-
----
-
-### 2. MCP Agent Coordination Tools
+### 1. MCP Agent Coordination Tools
 
 **Priority**: MEDIUM
 **Effort**: 2-4 hours to verify completeness
@@ -50,7 +29,7 @@ These have some implementation but gaps remain.
 
 ---
 
-### 3. Agent Behavior Customization
+### 2. Agent Behavior Customization
 
 **Priority**: LOW-MEDIUM
 **Effort**: 6-8 hours
@@ -107,7 +86,8 @@ For git archaeology purposes, these items were in TECHNICAL_DEBT_v2.md and confi
 | MCP Slash Commands | Resolved with different pattern (MCP tools returning instructions instead of `.claude/commands/` files). |
 | Serena Advanced Settings | Intentionally removed per Handover 0277. Simple boolean toggle retained. |
 | Orchestrator Self-Counting | Agent discovery returns templates not instances. Design change resolved the issue. |
+| Task-Agent Execution Integration | Dead schema -- `task.job_id` FK always NULL, never read/written. Tasks are isolated tech debt lists that convert to projects, not jobs. Cleanup handover 0812 created. |
 
 ---
 
-**Next review**: When Items 1-3 are revisited for priority.
+**Next review**: When Items 1-2 are revisited for priority.
