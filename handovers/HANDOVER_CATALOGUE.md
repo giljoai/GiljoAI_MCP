@@ -102,7 +102,7 @@
 | 0732 | CE Release Packaging | **COMPLETE** | HIGH | All tasks done: CHANGELOG updated, convention violations fixed, requirements.txt aligned. Screenshots deferred to 0732b. Docker descoped. (Note: 0732 API Fixes is a separate, COMPLETE handover) |
 | 0732b | README Screenshots | Deferred | Low | Requires running instance with sample data. Post-launch or pre-launch polish. |
 | 1014 | Security Auditing | Deferred | Medium | Enterprise compliance |
-| 9999 | One-Liner Installation System | Deferred | Low | Parking lot / future ideas |
+| ~~9999~~ | ~~One-Liner Installation System~~ | **DELETED** | - | Obsolete -- website already directs users to GitHub. `python startup.py` is the install path. (2026-03-09) |
 
 ### Reference Documents (Not Actionable)
 

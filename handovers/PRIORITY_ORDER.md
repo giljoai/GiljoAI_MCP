@@ -19,7 +19,7 @@ Last updated: 2026-03-07
 | 1 | 0732 | Release Packaging (Docker, GitHub templates, README screenshots, CHANGELOG) | 3-5 hrs | Launch blocker. First impressions. Docker = 2-minute setup for new users. |
 | 2 | 0409 | Unified Client Quick Setup (start with Claude Code only) | 4-6 hrs | Reduces onboarding from 6+ steps to copy-paste. Ship Claude path first, Codex/Gemini later. |
 | 3 | 0731 | Legacy Code Removal (scoped fresh scan) | 8-12 hrs | Code health before going public. Remove dead code, Ollama refs, stale compat layers. Line refs are stale -- needs re-scan. |
-| 4 | 9999 | One-Liner Installation System | 8-12 hrs | curl/bash + irm/iex install scripts. Polish for marketing. Can ship after Docker. |
+| ~~4~~ | ~~9999~~ | ~~One-Liner Installation System~~ | -- | DELETED (2026-03-09). Website directs to GitHub; `python startup.py` is the install path. |
 
 ## Deferred (Not Blocking Launch)
 

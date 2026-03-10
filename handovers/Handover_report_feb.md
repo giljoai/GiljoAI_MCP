@@ -422,7 +422,7 @@ Not tied to specific handovers:
 | 0731 | Legacy Code Removal | Post-v1.0 (separate from completed 0731a-d typed returns) |
 | 0732 (release) | Open Source Release Packaging | Post-v1.0 |
 | 1014 | Security Auditing | Enterprise compliance |
-| 9999 | One-Liner Installation System | Parking lot / future ideas |
+| ~~9999~~ | ~~One-Liner Installation System~~ | DELETED (2026-03-09) -- obsolete |
 
 ### Root Files to Move to Reference_docs/
 
@@ -505,7 +505,7 @@ TECHNICAL_DEBT_v2 triage ─┐
 |---|----------|-------|-------|-----------|
 | 8 | 0731 | Legacy Code Removal | 16-24h | Remove 89+ backward compat layers. Post-v1.0 migration period. |
 | 9 | 1014 | Security Auditing | TBD | Enterprise compliance. Deferred until requirements defined. |
-| 10 | 9999 | One-Liner Installation System | TBD | Parking lot. |
+| ~~10~~ | ~~9999~~ | ~~One-Liner Installation System~~ | -- | DELETED (2026-03-09). |
 
 ### Estimated Total
 
