@@ -12,23 +12,7 @@ Frontend UX gaps worth addressing before or shortly after CE launch.
 
 ---
 
-### 1. Enhanced Agent Cards with Project Context
-
-**Priority**: HIGH
-**Effort**: 8-10 hours
-**Dependencies**: None
-
-**What's missing**:
-- No `EnhancedAgentCard.vue` component
-- Agent cards show agent metadata only, not what they're working on
-- No project-specific job display per agent
-- No copyable project instructions for manual coordination
-
-**Why it matters**: Users can't see agent-level job assignments. You can see "5 jobs running" in the project Jobs tab but not "the implementer is working on the API endpoint task" from the Agents view.
-
----
-
-### 2. Project-Product Association UI
+### 1. Project-Product Association UI
 
 **Priority**: HIGH
 **Effort**: 3-4 hours
@@ -54,7 +38,7 @@ These have some implementation but gaps remain.
 
 ---
 
-### 3. Task-Agent Execution Integration
+### 2. Task-Agent Execution Integration
 
 **Priority**: MEDIUM-HIGH
 **Effort**: ~8 hours (reduced from original 16h estimate - schema work is done)
@@ -75,7 +59,7 @@ These have some implementation but gaps remain.
 
 ---
 
-### 4. MCP Agent Coordination Tools
+### 3. MCP Agent Coordination Tools
 
 **Priority**: MEDIUM
 **Effort**: 2-4 hours to verify completeness
@@ -92,7 +76,7 @@ These have some implementation but gaps remain.
 
 ---
 
-### 5. Agent Behavior Customization
+### 4. Agent Behavior Customization
 
 **Priority**: LOW-MEDIUM
 **Effort**: 6-8 hours
@@ -140,6 +124,7 @@ For git archaeology purposes, these items were in TECHNICAL_DEBT_v2.md and confi
 |------|-----------|
 | Dashboard Agent Monitoring UI | Per-project monitoring fully implemented (`JobsTab.vue`, `agentJobsStore.js`, WebSocket routing, full test coverage). Global dashboard view dropped by design -- not needed for CE. |
 | Orchestrator Launch UI Workflow | Fully implemented as thin-client copy-paste architecture (Handover 0088). Stage/Implement/Agent prompts auto-copied to clipboard via `ProjectTabs.vue` and `JobsTab.vue`. Deliberate design -- no automated terminal launch needed. |
+| Enhanced Agent Cards | Jobs tab (`JobsTab.vue`) already shows per-agent status, duration, steps, messages, execution order, and actions within project context. No separate Agents view exists or is needed -- the Jobs tab IS the agent monitoring view. |
 | Implementation Phase Gate | `implementation_launched_at` field added. Handover 0487 complete. |
 | Duplicate Orchestrator Creation | `_ensure_orchestrator_fixture()` uses exclusion-based filter. Handover 0485. |
 | Frontend API Pattern Debt | OrchestratorCard.vue, TemplateArchive.vue migrated to namespaced API. Handover 0396. |
@@ -150,4 +135,4 @@ For git archaeology purposes, these items were in TECHNICAL_DEBT_v2.md and confi
 
 ---
 
-**Next review**: After CE launch items (1-2) are addressed.
+**Next review**: After CE launch item (1) is addressed.
