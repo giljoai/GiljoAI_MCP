@@ -21,7 +21,8 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import AgentTemplate, User
 from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
-from src.giljo_mcp.template_validation import get_role_color, slugify_name, validate_system_prompt
+from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
+from src.giljo_mcp.template_validation import get_role_color, slugify_name
 
 from .dependencies import get_template_service
 from .models import TemplateCreate, TemplateResponse, TemplateUpdate
@@ -165,10 +166,8 @@ async def create_template(
     if await template_service.check_template_name_exists(session, context["tenant_key"], generated_name):
         raise HTTPException(status_code=400, detail=f"Agent name '{generated_name}' already exists")
 
-    # Validate system prompt
-    is_valid, error_msg = validate_system_prompt(template.system_instructions)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail=error_msg)
+    # Inject canonical MCP bootstrap — ignore whatever the frontend sends
+    canonical_bootstrap = _get_mcp_bootstrap_section()
 
     # Auto-assign background color
     background_color = template.background_color or get_role_color(template.role)
@@ -182,8 +181,8 @@ async def create_template(
             # Generic fallback for non-Claude templates
             description = f"{template.role} agent template" if template.role else "Agent template"
 
-    # Extract variables
-    variables = re.findall(r"\{(\w+)\}", template.system_instructions)
+    # Extract variables from user_instructions (if any)
+    variables = re.findall(r"\{(\w+)\}", template.user_instructions or "")
 
     if template.is_default and template.role:
         existing_defaults = await template_service.get_default_templates_by_role(
@@ -203,7 +202,8 @@ async def create_template(
         cli_tool=template.cli_tool,
         background_color=background_color,
         description=description,
-        system_instructions=template.system_instructions,
+        system_instructions=canonical_bootstrap,
+        user_instructions=template.user_instructions or "",
         model=template.model or "sonnet",
         tools=None,
         variables=variables,

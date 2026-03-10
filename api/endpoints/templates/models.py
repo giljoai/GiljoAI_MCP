@@ -25,7 +25,10 @@ class TemplateCreate(BaseModel):
     custom_suffix: Optional[str] = Field(None, description="Custom suffix for name generation")
     background_color: Optional[str] = Field(None, description="Background color (hex)")
     description: Optional[str] = Field(None, description="Template description")
-    system_instructions: str = Field(..., description="System prompt content")
+    system_instructions: Optional[str] = Field(
+        None, description="Ignored on create; backend always injects canonical MCP bootstrap"
+    )
+    user_instructions: Optional[str] = Field(None, description="User-customizable role identity prose (max 50KB)")
     model: Optional[str] = Field("sonnet", description="Model: sonnet, opus, haiku, inherit")
     tools: Optional[str] = Field(None, description="Tool selection (null = inherit all)")
     behavioral_rules: Optional[list[str]] = Field(default_factory=list)
@@ -36,12 +39,12 @@ class TemplateCreate(BaseModel):
     # Legacy fields
     category: Optional[str] = Field(None, description="Template category (deprecated)")
 
-    @field_validator("system_instructions")
+    @field_validator("user_instructions")
     @classmethod
-    def validate_template_size(cls, v: str) -> str:
-        """Validate template content size (max 100KB)"""
-        if len(v.encode("utf-8")) > MAX_TEMPLATE_SIZE:
-            raise ValueError(f"Template content exceeds maximum size of {MAX_TEMPLATE_SIZE / 1024}KB")
+    def validate_user_instructions_size(cls, v: Optional[str]) -> Optional[str]:
+        """Validate user instructions size (max 50KB)"""
+        if v and len(v.encode("utf-8")) > MAX_USER_INSTRUCTIONS_SIZE:
+            raise ValueError("User instructions exceed 50KB limit")
         return v
 
 

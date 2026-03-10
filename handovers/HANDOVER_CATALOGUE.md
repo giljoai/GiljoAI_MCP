@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved), 0812 schema cleanup NOT STARTED, 0813 template context separation COMPLETE |
+| 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved), 0812 schema cleanup NOT STARTED, 0813 template context separation COMPLETE, 0814 template manager UI redesign NOT STARTED |
 
 ---
 
@@ -31,6 +31,7 @@
 |----|-------|--------|----------|-------|
 | 0259 | Notification Health Alert - Add Project Context | Not Started | Medium | Health alerts missing project name + click-to-navigate. ~2-4 hours. |
 | 0813 | Agent Template Context Separation | **COMPLETE** | High | Separate role identity from protocols in templates. Fix user_instructions export gap. Archived to `completed/`. |
+| 0814 | Template Manager UI Redesign | Not Started | High | Fix 403-on-save bug, add user_instructions editor, inject bootstrap on create, unify export renderers. ~8-12 hours. Continues in `0813-template-context-separation` branch. |
 | 0732b | README Screenshots | Deferred | Low | 30 min. Requires running instance with sample data. |
 | 1014 | Security Event Auditing | Deferred | Medium | Enterprise compliance. No requirement yet. |
 | TODO_vision | Vision Summarizer LLM Upgrade | Deferred | Low | Phase 1 incomplete. Current Sumy works. |
