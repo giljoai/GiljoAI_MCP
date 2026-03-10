@@ -131,20 +131,6 @@ class TemplateHistoryResponse(BaseModel):
     avg_generation_ms_at_archive: Optional[float]
 
 
-class TemplateDiffResponse(BaseModel):
-    """Response model for template diff comparison"""
-
-    template_id: str
-    template_name: str
-    tenant_version: str
-    system_version: Optional[str]
-    has_system_template: bool
-    is_customized: bool
-    diff_html: Optional[str] = Field(None, description="HTML diff output")
-    diff_unified: Optional[str] = Field(None, description="Unified diff format")
-    changes_summary: dict = Field(default_factory=dict, description="Summary of changes")
-
-
 class TemplatePreviewRequest(BaseModel):
     """Request model for template preview"""
 

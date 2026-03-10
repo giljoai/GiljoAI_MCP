@@ -256,14 +256,6 @@
             @click="viewHistory(item)"
           />
           <v-btn
-            icon="mdi-compare"
-            size="small"
-            variant="text"
-            title="Compare with System Default"
-            aria-label="Compare template with system default"
-            @click="viewDiff(item)"
-          />
-          <v-btn
             icon="mdi-refresh"
             size="small"
             variant="text"
@@ -663,92 +655,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Diff Viewer Dialog -->
-    <v-dialog v-model="diffDialog" max-width="1200px" scrollable persistent retain-focus>
-      <v-card v-draggable>
-        <v-card-title class="d-flex align-center">
-          <v-icon color="primary" class="mr-2">mdi-compare</v-icon>
-          <span class="text-h5">Template Comparison</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="diffDialog = false" />
-        </v-card-title>
-        <v-card-text>
-          <v-container v-if="diffData">
-            <v-row>
-              <v-col cols="12">
-                <v-alert
-                  v-if="!diffData.has_system_template"
-                  type="info"
-                  variant="tonal"
-                  class="mb-4"
-                >
-                  No system template available for comparison. This is a custom template.
-                </v-alert>
-                <v-alert
-                  v-else-if="diffData.changes_summary.is_identical"
-                  type="success"
-                  variant="tonal"
-                  class="mb-4"
-                >
-                  This template is identical to the system default.
-                </v-alert>
-                <v-alert v-else type="info" variant="tonal" class="mb-4">
-                  <div class="d-flex justify-space-between">
-                    <div>
-                      <strong>Changes Summary:</strong>
-                      <span class="ml-4"
-                        ><v-chip size="small" color="success" class="mr-2"
-                          >+{{ diffData.changes_summary.lines_added }} lines</v-chip
-                        ></span
-                      >
-                      <span
-                        ><v-chip size="small" color="error"
-                          >-{{ diffData.changes_summary.lines_removed }} lines</v-chip
-                        ></span
-                      >
-                    </div>
-                    <div>
-                      <span class="text-caption"
-                        >Tenant: v{{ diffData.tenant_version }} | System: v{{
-                          diffData.system_version
-                        }}</span
-                      >
-                    </div>
-                  </div>
-                </v-alert>
-              </v-col>
-              <v-col cols="12">
-                <v-tabs v-model="diffViewTab" bg-color="transparent">
-                  <v-tab value="unified">Unified Diff</v-tab>
-                  <v-tab value="side-by-side">Side by Side</v-tab>
-                </v-tabs>
-                <v-window v-model="diffViewTab" class="mt-4">
-                  <v-window-item value="unified">
-                    <v-card variant="outlined" class="diff-viewer">
-                      <pre class="pa-4">{{ diffData.diff_unified || 'No differences found.' }}</pre>
-                    </v-card>
-                  </v-window-item>
-                  <v-window-item value="side-by-side">
-                    <v-card variant="outlined" class="diff-viewer">
-                      <div class="pa-4 diff-html-container" v-html="sanitizedDiffHtml"></div>
-                    </v-card>
-                  </v-window-item>
-                </v-window>
-              </v-col>
-            </v-row>
-          </v-container>
-          <div v-else class="text-center pa-8">
-            <v-progress-circular indeterminate color="primary" />
-            <p class="mt-4">Loading comparison...</p>
-          </div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="diffDialog = false">Close</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- Error Snackbar (Red styled error notification) -->
     <v-snackbar
       v-model="errorSnackbar"
@@ -782,7 +688,6 @@ import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import { useClipboard } from '@/composables/useClipboard'
-import DOMPurify from 'dompurify'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
 const { copy: clipboardCopy } = useClipboard()
 
@@ -839,7 +744,6 @@ const previewDialog = ref(false)
 const deleteDialog = ref(false)
 const historyDialog = ref(false)
 const resetDialog = ref(false)
-const diffDialog = ref(false)
 
 // Template being edited
 const editingTemplate = ref({
@@ -872,9 +776,6 @@ const historyTemplate = ref(null)
 const resettingTemplate = ref(null)
 const resetting = ref(false)
 
-// Diff viewer data
-const diffData = ref(null)
-const diffViewTab = ref('unified')
 
 // Table configuration
 const headers = [
@@ -987,11 +888,6 @@ const remainingUserSlots = computed(() => {
 })
 const systemReservedSlots = computed(() => activeStats.value.systemReserved ?? 1)
 const userAgentLimit = computed(() => activeStats.value.userLimit ?? 7)
-
-// Sanitized diff HTML for safe rendering
-const sanitizedDiffHtml = computed(() => {
-  return diffData.value?.diff_html ? DOMPurify.sanitize(diffData.value.diff_html) : ''
-})
 
 // Methods
 const loadTemplates = async () => {
@@ -1339,20 +1235,6 @@ const resetTemplate = async () => {
   }
 }
 
-const viewDiff = async (template) => {
-  diffData.value = null
-  diffDialog.value = true
-  diffViewTab.value = 'unified'
-
-  try {
-    const response = await api.templates.diff(template.id)
-    diffData.value = response.data
-  } catch (error) {
-    console.error('Failed to load template diff:', error)
-    // Show error notification
-  }
-}
-
 // Handover 0335: Handle template export WebSocket event (Enhanced with debugging)
 const handleTemplateExported = (data) => {
   // Normalize payload - WebSocket store flattens nested data structure
@@ -1491,60 +1373,6 @@ watch(
     }
   }
 
-  .diff-viewer {
-    background: var(--v-theme-background);
-    color: var(--v-theme-on-surface);
-    max-height: 600px;
-    overflow: auto;
-
-    pre {
-      white-space: pre-wrap;
-      word-break: break-word;
-      margin: 0;
-      font-family: 'Roboto Mono', monospace;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .diff-html-container {
-      :deep(table) {
-        background: var(--v-theme-background);
-        color: var(--v-theme-on-surface);
-        border-collapse: collapse;
-        width: 100%;
-        font-size: 12px;
-        font-family: 'Roboto Mono', monospace;
-
-        td,
-        th {
-          padding: 2px 10px;
-          border: 1px solid var(--v-theme-on-surface-variant);
-          vertical-align: top;
-        }
-
-        th {
-          background: var(--v-theme-surface);
-          color: var(--v-theme-primary);
-          font-weight: 600;
-        }
-
-        .diff_add {
-          background-color: rgba(var(--v-theme-success), 0.1);
-          color: var(--v-theme-success);
-        }
-
-        .diff_sub {
-          background-color: rgba(var(--v-theme-error), 0.1);
-          color: var(--v-theme-error);
-        }
-
-        .diff_chg {
-          background-color: rgba(var(--v-theme-warning), 0.1);
-          color: var(--v-theme-warning);
-        }
-      }
-    }
-  }
 }
 
 // Custom toggle colors: green when ON, faded blue when OFF
