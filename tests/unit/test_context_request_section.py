@@ -1,8 +1,12 @@
 """
 Tests for context request behavioral instructions in agent templates (Handover 0109).
 
-Verifies that all agent templates include instructions on when and how to request
-broader project context from the orchestrator via MCP messaging.
+Handover 0813 update: Context request instructions are no longer in system_instructions
+(which is now a slim bootstrap). They are delivered via full_protocol from
+_generate_agent_protocol() in protocol_builder.py.
+
+Tests that check system_instructions now verify the slim bootstrap instead.
+Tests for the helper function and orchestrator response section remain unchanged.
 """
 
 import pytest
@@ -18,130 +22,101 @@ from src.giljo_mcp.template_seeder import (
 
 @pytest.mark.asyncio
 class TestContextRequestSection:
-    """Test suite for context request instructions (Handover 0109)."""
+    """Test suite for context request instructions (Handover 0109, updated 0813)."""
 
-    async def test_context_request_section_exists(self, db_session: AsyncSession):
-        """Verify context request section present in all templates."""
-        tenant_key = "test_tenant_context"
+    async def test_context_request_in_full_protocol(self, db_session: AsyncSession):
+        """Verify context request guidance is delivered via full_protocol, not system_instructions.
 
-        # Seed templates
-        # Note: orchestrator is a SYSTEM_MANAGED_ROLE and is skipped during seeding
+        Handover 0813: Context request content moved from system_instructions to
+        full_protocol delivered by _generate_agent_protocol().
+        """
+        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
+
+        protocol = _generate_agent_protocol(
+            job_id="test-job", tenant_key="test-tenant", agent_name="implementer"
+        )
+        # full_protocol should contain context request guidance
+        assert "REQUEST_CONTEXT:" in protocol, "full_protocol should contain REQUEST_CONTEXT prefix"
+        assert "Requesting Broader Context" in protocol, (
+            "full_protocol should contain context request guidance"
+        )
+
+    async def test_system_instructions_has_slim_bootstrap(self, db_session: AsyncSession):
+        """Verify system_instructions is now slim bootstrap (Handover 0813)."""
+        tenant_key = "test_tenant_context_0813"
+
         count = await seed_tenant_templates(db_session, tenant_key)
         assert count == 5, "Should seed 5 default templates (orchestrator is system-managed)"
 
-        # Fetch all templates
-        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
-        templates = result.scalars().all()
-
-        # Verify all templates have context request instructions
-        for template in templates:
-            system_inst = template.system_instructions
-            assert "REQUESTING BROADER CONTEXT" in system_inst, (
-                f"{template.role} missing REQUESTING BROADER CONTEXT section"
-            )
-
-    async def test_context_request_when_to_request(self, db_session: AsyncSession):
-        """Verify section includes 'When to Request Context' guidance."""
-        tenant_key = "test_tenant_when"
-
-        await seed_tenant_templates(db_session, tenant_key)
-
-        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
+        result = await db_session.execute(
+            select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
+        )
         templates = result.scalars().all()
 
         for template in templates:
             system_inst = template.system_instructions
-            assert "When to Request Context" in system_inst, (
-                f"{template.role} missing 'When to Request Context' subsection"
+            # Slim bootstrap should reference get_agent_mission for protocols
+            assert "get_agent_mission" in system_inst, (
+                f"{template.role} bootstrap should reference get_agent_mission"
             )
-            # Should mention common scenarios
-            assert "unclear" in system_inst.lower() or "ambiguous" in system_inst.lower(), (
-                f"{template.role} should mention unclear/ambiguous scenarios"
+            assert "full_protocol" in system_inst, (
+                f"{template.role} bootstrap should reference full_protocol"
             )
-
-    async def test_context_request_how_to_request(self, db_session: AsyncSession):
-        """Verify section includes 'How to Request Context' with MCP tool usage."""
-        tenant_key = "test_tenant_how"
-
-        await seed_tenant_templates(db_session, tenant_key)
-
-        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
-        templates = result.scalars().all()
-
-        for template in templates:
-            system_inst = template.system_instructions
-            assert "How to Request Context" in system_inst, (
-                f"{template.role} missing 'How to Request Context' subsection"
-            )
-            # Should reference send_message MCP tool
-            assert "send_message" in system_inst, f"{template.role} should reference send_message tool"
-            assert "REQUEST_CONTEXT:" in system_inst, f"{template.role} should show REQUEST_CONTEXT message format"
-
-    async def test_context_request_message_format_examples(self, db_session: AsyncSession):
-        """Verify section includes good/bad message format examples."""
-        tenant_key = "test_tenant_examples"
-
-        await seed_tenant_templates(db_session, tenant_key)
-
-        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
-        templates = result.scalars().all()
-
-        for template in templates:
-            system_inst = template.system_instructions
-            # Should have good examples (✅) and bad examples (❌)
-            assert "Good:" in system_inst or "✅" in system_inst, f"{template.role} should have good example patterns"
-            assert "Bad:" in system_inst or "❌" in system_inst, f"{template.role} should have bad example patterns"
-
-    async def test_context_request_wait_for_response(self, db_session: AsyncSession):
-        """Verify section instructs agents to wait for orchestrator response."""
-        tenant_key = "test_tenant_wait"
-
-        await seed_tenant_templates(db_session, tenant_key)
-
-        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
-        templates = result.scalars().all()
-
-        for template in templates:
-            system_inst = template.system_instructions
-            assert "receive_messages" in system_inst, (
-                f"{template.role} should mention receive_messages for checking responses"
-            )
-            assert "wait" in system_inst.lower() or "check" in system_inst.lower(), (
-                f"{template.role} should instruct to wait/check for response"
+            # Old protocol sections should NOT be in system_instructions
+            assert "REQUESTING BROADER CONTEXT" not in system_inst, (
+                f"{template.role} should not have context request section in bootstrap"
             )
 
-    async def test_context_request_audit_trail_documentation(self, db_session: AsyncSession):
-        """Verify section mentions documenting context requests for audit trail."""
-        tenant_key = "test_tenant_audit"
+    async def test_full_protocol_has_messaging_prefixes(self, db_session: AsyncSession):
+        """Verify full_protocol contains all messaging prefixes including REQUEST_CONTEXT."""
+        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
-        await seed_tenant_templates(db_session, tenant_key)
+        protocol = _generate_agent_protocol(
+            job_id="test-job", tenant_key="test-tenant", agent_name="tester"
+        )
+        assert "BLOCKER:" in protocol
+        assert "PROGRESS:" in protocol
+        assert "COMPLETE:" in protocol
+        assert "READY:" in protocol
+        assert "REQUEST_CONTEXT:" in protocol
 
-        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
-        templates = result.scalars().all()
+    async def test_full_protocol_has_context_request_specificity_guidance(self, db_session: AsyncSession):
+        """Verify full_protocol tells agents to be specific about context needs."""
+        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
-        for template in templates:
-            system_inst = template.system_instructions
-            assert "progress" in system_inst.lower() and "report" in system_inst.lower(), (
-                f"{template.role} should mention reporting context requests in progress"
-            )
+        protocol = _generate_agent_protocol(
+            job_id="test-job", tenant_key="test-tenant", agent_name="analyzer"
+        )
+        # Should instruct agents to be specific
+        assert "specific" in protocol.lower() or "REQUEST_CONTEXT:" in protocol
 
-    async def test_context_request_benefits_listed(self, db_session: AsyncSession):
-        """Verify section lists benefits of using context request protocol."""
-        tenant_key = "test_tenant_benefits"
+    async def test_full_protocol_instructs_wait_for_response(self, db_session: AsyncSession):
+        """Verify full_protocol tells agents to wait for orchestrator response."""
+        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
-        await seed_tenant_templates(db_session, tenant_key)
+        protocol = _generate_agent_protocol(
+            job_id="test-job", tenant_key="test-tenant", agent_name="implementer"
+        )
+        assert "receive_messages" in protocol
+        assert "wait" in protocol.lower() or "Wait" in protocol
 
-        result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
-        templates = result.scalars().all()
+    async def test_full_protocol_has_send_message_for_context(self, db_session: AsyncSession):
+        """Verify full_protocol references send_message for context requests."""
+        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
 
-        for template in templates:
-            system_inst = template.system_instructions
-            # Should have "Benefits:" section
-            assert "Benefits:" in system_inst or "benefit" in system_inst.lower(), (
-                f"{template.role} should list benefits of context request protocol"
-            )
-            # Should mention audit trail
-            assert "audit" in system_inst.lower(), f"{template.role} benefits should mention audit trail"
+        protocol = _generate_agent_protocol(
+            job_id="test-job", tenant_key="test-tenant", agent_name="documenter"
+        )
+        assert "send_message" in protocol
+
+    async def test_full_protocol_warns_against_guessing(self, db_session: AsyncSession):
+        """Verify full_protocol tells agents not to guess at ambiguities."""
+        from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
+
+        protocol = _generate_agent_protocol(
+            job_id="test-job", tenant_key="test-tenant", agent_name="reviewer"
+        )
+        assert "guess" in protocol.lower() or "Do NOT guess" in protocol
 
     def test_orchestrator_response_instructions(self):
         """Verify orchestrator context response section has required content.
