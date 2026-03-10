@@ -799,7 +799,7 @@ const headers = [
   { title: 'Created', key: 'created_at', sortable: true, width: '11%' },
   { title: 'Completed', key: 'completed_at', sortable: true, width: '11%', align: 'center' },
   { title: 'Status', key: 'status', sortable: true, width: '13%', align: 'center' },
-  { title: '', key: 'menu', sortable: false, width: '4%', align: 'center' },
+  { title: 'Actions', key: 'menu', sortable: false, width: '4%', align: 'center' },
 ]
 
 // --- Inline taxonomy state and logic (Handover 0440c) ---
