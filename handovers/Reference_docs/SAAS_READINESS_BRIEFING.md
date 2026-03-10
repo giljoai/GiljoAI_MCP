@@ -231,7 +231,7 @@ These must complete before publishing the Community Edition:
 | 1 | 0732 | **Release Packaging** -- Dockerfile, docker-compose.yml, GitHub issue/PR templates, README screenshots, CHANGELOG.md, fix 12 pre-existing test failures | 3-5 hrs | Ready |
 | 2 | 0409 | **Quick Setup Buttons** -- Copy-paste install prompts for Claude Code (Codex/Gemini later). Backend endpoint + frontend dialog in ProductIntroTour | 4-6 hrs | Not Started |
 | 3 | 0731 | **Legacy Code Removal** -- Fresh scan needed (line refs stale after 0765 sprint). ~89 legacy patterns: agent message queue compat, deprecated model fields, Ollama refs, commented code, stale type-ignores | 8-12 hrs | Needs re-scan |
-| 4 | 9999 | **One-Liner Install Scripts** -- `curl|bash` (macOS/Linux) + `irm|iex` (Windows), pre-flight checks, delegates to install.py | 8-12 hrs | Deferred |
+| ~~4~~ | ~~9999~~ | ~~One-Liner Install Scripts~~ | -- | DELETED (2026-03-09). Website directs to GitHub. |
 
 ### SaaS Implementation Phases (25-35 weeks after CE)
 
@@ -308,7 +308,7 @@ These components are **already built** and reduce SaaS implementation effort:
 
 | Category | Items | Effort |
 |----------|-------|--------|
-| CE Launch Blockers | 0732 + 0409 + 0731 + 9999 | 24-35 hours (~1-2 dev-weeks) |
+| CE Launch Blockers | 0732 + 0409 + 0731 | 16-23 hours (~1 dev-week) |
 | SaaS Phases 1-6 | Full SaaS implementation | 25-35 weeks |
 | Nice-to-haves | Vision upgrade + agent enhancement | 18-29 hours |
 | Housekeeping | Archive 0250, update catalogue, move reference docs | 1-2 hours |
