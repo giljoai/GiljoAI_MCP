@@ -139,22 +139,6 @@
           </v-chip>
         </template>
 
-        <template v-slot:item.variables="{ item }">
-          <v-tooltip v-if="item.variables && item.variables.length > 0">
-            <template v-slot:activator="{ props }">
-              <v-chip v-bind="props" size="small" variant="outlined">
-                {{ item.variables.length }} vars
-              </v-chip>
-            </template>
-            <div>
-              <div v-for="variable in item.variables" :key="variable">
-                {{ variable }}
-              </div>
-            </div>
-          </v-tooltip>
-          <span v-else class="text-grey">None</span>
-        </template>
-
         <template v-slot:item.updated_at="{ item }">
           <span class="text-caption">{{ formatDate(item.updated_at) }}</span>
         </template>
@@ -224,14 +208,6 @@
 
         <template v-slot:item.actions="{ item }">
           <v-btn
-            icon="mdi-eye"
-            size="small"
-            variant="text"
-            title="Preview"
-            aria-label="Preview template"
-            @click="previewTemplate(item)"
-          />
-          <v-btn
             icon="mdi-pencil"
             size="small"
             variant="text"
@@ -246,14 +222,6 @@
             title="Duplicate"
             aria-label="Duplicate template"
             @click="duplicateTemplate(item)"
-          />
-          <v-btn
-            icon="mdi-history"
-            size="small"
-            variant="text"
-            title="Version History"
-            aria-label="View template version history"
-            @click="viewHistory(item)"
           />
           <v-btn
             icon="mdi-refresh"
@@ -480,33 +448,25 @@
                 </v-alert>
               </v-col>
 
-              <!-- Preview Window (Collapsible) -->
+              <!-- Preview Window (Always visible when content exists) -->
               <v-col v-if="previewContent" cols="12">
-                <v-expansion-panels>
-                  <v-expansion-panel>
-                    <v-expansion-panel-title>
-                      <div class="d-flex align-center">
-                        <v-icon class="mr-2" color="primary">mdi-eye</v-icon>
-                        <span>Preview</span>
-                      </div>
-                    </v-expansion-panel-title>
-                    <v-expansion-panel-text>
-                      <div class="preview-container">
-                        <v-btn
-                          size="small"
-                          prepend-icon="mdi-content-copy"
-                          variant="outlined"
-                          class="mb-2"
-                          aria-label="Copy preview to clipboard"
-                          @click="copyPreview"
-                        >
-                          Copy to Clipboard
-                        </v-btn>
-                        <pre class="preview-content">{{ previewContent }}</pre>
-                      </div>
-                    </v-expansion-panel-text>
-                  </v-expansion-panel>
-                </v-expansion-panels>
+                <div class="d-flex align-center mb-2">
+                  <v-icon class="mr-2" color="primary">mdi-eye</v-icon>
+                  <span class="text-subtitle-2">Preview</span>
+                </div>
+                <div class="preview-container">
+                  <v-btn
+                    size="small"
+                    prepend-icon="mdi-content-copy"
+                    variant="outlined"
+                    class="mb-2"
+                    aria-label="Copy preview to clipboard"
+                    @click="copyPreview"
+                  >
+                    Copy to Clipboard
+                  </v-btn>
+                  <pre class="preview-content">{{ previewContent }}</pre>
+                </div>
               </v-col>
             </v-row>
           </v-container>
@@ -518,66 +478,6 @@
           <v-btn color="primary" variant="flat" :loading="saving" @click="saveTemplateAndPreview">
             Save and Generate Preview
           </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Preview Dialog -->
-    <v-dialog v-model="previewDialog" max-width="800px" persistent retain-focus>
-      <v-card v-draggable>
-        <v-card-title class="d-flex align-center">
-          <span class="text-h5">Template Preview: {{ previewingTemplate.name }}</span>
-          <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            aria-label="Close"
-            @click="previewDialog = false"
-          />
-        </v-card-title>
-
-        <v-card-text>
-          <v-container>
-            <v-row>
-              <v-col cols="12">
-                <div class="text-subtitle-2 mb-2">Variable Values</div>
-                <v-text-field
-                  v-for="variable in previewVariables"
-                  :key="variable.name"
-                  v-model="variable.value"
-                  :label="variable.name"
-                  density="compact"
-                  class="mb-2"
-                />
-              </v-col>
-              <v-col cols="12">
-                <div class="text-subtitle-2 mb-2">Augmentations</div>
-                <v-textarea
-                  v-model="previewAugmentations"
-                  label="Add runtime augmentations"
-                  rows="3"
-                  variant="outlined"
-                  density="compact"
-                />
-              </v-col>
-              <v-col cols="12">
-                <v-btn color="primary" :loading="generating" @click="generatePreview">
-                  Generate Preview
-                </v-btn>
-              </v-col>
-              <v-col v-if="generatedMission" cols="12">
-                <div class="text-subtitle-2 mb-2">Generated Mission</div>
-                <v-card variant="outlined" class="pa-4 generated-mission">
-                  <pre>{{ generatedMission }}</pre>
-                </v-card>
-              </v-col>
-            </v-row>
-          </v-container>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="previewDialog = false"> Close </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -611,16 +511,6 @@
           </v-btn>
         </v-card-actions>
       </v-card>
-    </v-dialog>
-
-    <!-- Version History Dialog -->
-    <v-dialog v-model="historyDialog" max-width="900px" scrollable persistent retain-focus>
-      <TemplateArchive
-        v-if="historyDialog"
-        :template="historyTemplate"
-        @close="historyDialog = false"
-        @restore="handleRestore"
-      />
     </v-dialog>
 
     <!-- Reset Confirmation Dialog -->
@@ -682,7 +572,6 @@
 <script setup>
 import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
 import api from '@/services/api'
-import TemplateArchive from './TemplateArchive.vue'
 import { format } from 'date-fns'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
@@ -716,7 +605,6 @@ const templates = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
-const generating = ref(false)
 const activeStats = ref({
   totalActive: null,
   totalCapacity: null,
@@ -740,9 +628,7 @@ const filterStatus = ref(null)
 
 // Dialogs
 const editDialog = ref(false)
-const previewDialog = ref(false)
 const deleteDialog = ref(false)
-const historyDialog = ref(false)
 const resetDialog = ref(false)
 
 // Template being edited
@@ -757,20 +643,10 @@ const editingTemplate = ref({
   user_instructions: '',
   model: 'sonnet',
   tools: null,
-  variables: [],
 })
-
-// Template being previewed
-const previewingTemplate = ref({})
-const previewVariables = ref([])
-const previewAugmentations = ref('')
-const generatedMission = ref('')
 
 // Template being deleted
 const deletingTemplate = ref(null)
-
-// Template for history view
-const historyTemplate = ref(null)
 
 // Template being reset
 const resettingTemplate = ref(null)
@@ -782,7 +658,6 @@ const headers = [
   { title: 'Agent Name', key: 'name', align: 'start' },
   { title: 'Role', key: 'role', align: 'start' },
   { title: 'Tool', key: 'cli_tool', align: 'start' },
-  { title: 'Variables', key: 'variables', align: 'center' },
   { title: 'Active', key: 'is_active', align: 'center' },
   { title: 'Export Status', key: 'export_status', align: 'center', sortable: false },
   { title: 'Updated', key: 'updated_at', align: 'start' },
@@ -832,20 +707,6 @@ const filteredTemplates = computed(() => {
   }
 
   return filtered
-})
-
-const detectedVariables = computed(() => {
-  const regex = /\{([^}]+)\}/g
-  const matches = []
-  let match
-
-  while ((match = regex.exec(editingTemplate.value.user_instructions)) !== null) {
-    if (!matches.includes(match[1])) {
-      matches.push(match[1])
-    }
-  }
-
-  return matches
 })
 
 // Computed properties for Handover 0103 modal
@@ -983,7 +844,7 @@ const openCreateDialog = () => {
   editDialog.value = true
 }
 
-const editTemplate = (template) => {
+const editTemplate = async (template) => {
   editingTemplate.value = {
     ...template,
     user_instructions: template.user_instructions || '',
@@ -995,6 +856,16 @@ const editTemplate = (template) => {
   }
   previewContent.value = ''
   editDialog.value = true
+
+  // Auto-load preview for existing templates
+  if (template.id) {
+    try {
+      const previewResponse = await api.templates.preview(template.id, {})
+      previewContent.value = previewResponse.data.preview
+    } catch (error) {
+      console.error('Failed to load preview:', error)
+    }
+  }
 }
 
 const duplicateTemplate = (template) => {
@@ -1121,38 +992,6 @@ const copyPreview = async () => {
   )
 }
 
-const previewTemplate = (template) => {
-  previewingTemplate.value = template
-  previewVariables.value = (template.variables || []).map((v) => ({
-    name: v,
-    value: '',
-  }))
-  previewAugmentations.value = ''
-  generatedMission.value = ''
-  previewDialog.value = true
-}
-
-const generatePreview = async () => {
-  generating.value = true
-  try {
-    const variables = {}
-    previewVariables.value.forEach((v) => {
-      variables[v.name] = v.value
-    })
-
-    const response = await api.templates.preview(previewingTemplate.value.id, {
-      variables,
-      augmentations: previewAugmentations.value,
-    })
-
-    generatedMission.value = response.data.mission
-  } catch (error) {
-    console.error('Failed to generate preview:', error)
-  } finally {
-    generating.value = false
-  }
-}
-
 const confirmDelete = (template) => {
   deletingTemplate.value = template
   deleteDialog.value = true
@@ -1169,21 +1008,6 @@ const deleteTemplate = async () => {
     console.error('Failed to delete template:', error)
   } finally {
     deleting.value = false
-  }
-}
-
-const viewHistory = (template) => {
-  historyTemplate.value = template
-  historyDialog.value = true
-}
-
-const handleRestore = async (version) => {
-  try {
-    await api.templates.restore(version.template_id, version.id)
-    await loadTemplates()
-    historyDialog.value = false
-  } catch (error) {
-    console.error('Failed to restore template version:', error)
   }
 }
 
@@ -1337,17 +1161,6 @@ watch(
 
     :deep(.v-field__input) {
       color: var(--v-theme-on-surface);
-    }
-  }
-
-  .generated-mission {
-    background: var(--v-theme-background);
-    color: var(--v-theme-on-surface);
-
-    pre {
-      white-space: pre-wrap;
-      word-break: break-word;
-      margin: 0;
     }
   }
 
