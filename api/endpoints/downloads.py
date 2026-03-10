@@ -81,62 +81,6 @@ def create_zip_archive(files: dict[str, str]) -> bytes:
     return zip_buffer.read()
 
 
-def generate_yaml_frontmatter(
-    name: str,
-    role: str,
-    tool: str,
-    description: Optional[str] = None,
-) -> str:
-    """
-    Generate YAML frontmatter for Claude Code agent template.
-
-    Format:
-    ---
-    name: orchestrator
-    description: Orchestrator agent
-    tools: ["mcp__giljo_mcp__*"]
-    model: sonnet
-    ---
-
-    Args:
-        name: Agent name (e.g., "orchestrator")
-        role: Agent role (e.g., "orchestrator")
-        tool: Preferred AI tool (e.g., "claude")
-        description: Optional custom description
-
-    Returns:
-        YAML frontmatter string with --- delimiters
-    """
-    # Use custom description or generate default
-    if description is None:
-        description = f"{role.capitalize()} agent"
-
-    # Escape description if it contains special YAML characters
-    if any(char in description for char in ['"', "'", ":", "\n"]):
-        description = description.replace('"', '\\"')
-        description = f'"{description}"'
-
-    # Map tool to Claude Code model
-    model_map = {
-        "claude": "sonnet",
-        "codex": "sonnet",
-        "gemini": "sonnet",
-    }
-    model = model_map.get(tool.lower(), "sonnet")
-
-    # Build YAML frontmatter
-    yaml_lines = [
-        "---",
-        f"name: {name}",
-        f"description: {description}",
-        'tools: ["mcp__giljo_mcp__*"]',
-        f"model: {model}",
-        "---",
-    ]
-
-    return "\n".join(yaml_lines) + "\n"
-
-
 def render_install_script(
     template_content: str,
     server_url: str,

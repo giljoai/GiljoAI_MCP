@@ -451,10 +451,10 @@
                 </v-text-field>
               </v-col>
 
-              <!-- System Prompt -->
+              <!-- Role & Expertise Editor (Handover 0814: replaces System Prompt) -->
               <v-col cols="12">
                 <div class="d-flex align-center mb-2">
-                  <span class="text-subtitle-2">System Prompt</span>
+                  <span class="text-subtitle-2">Role & Expertise</span>
                   <v-tooltip location="top">
                     <template v-slot:activator="{ props }">
                       <v-icon v-bind="props" size="small" color="primary" class="ml-2"
@@ -462,24 +462,30 @@
                       >
                     </template>
                     <span
-                      >Required field - Enter the agent's system prompt (minimum 20
-                      characters)</span
+                      >Describe this agent's specialization, expertise, and personality.
+                      This content defines who the agent is.</span
                     >
                   </v-tooltip>
                 </div>
                 <v-textarea
-                  v-model="editingTemplate.template"
-                  label="System Prompt"
-                  :rules="[
-                    (v) => !!v || 'System prompt is required',
-                    (v) => (v && v.length >= 20) || 'Minimum 20 characters required',
-                  ]"
+                  v-model="editingTemplate.user_instructions"
+                  label="Role & Expertise"
+                  hint="Describe this agent's specialization, expertise, and personality."
+                  persistent-hint
                   rows="12"
                   variant="outlined"
                   density="compact"
                   class="template-editor"
-                  aria-label="Agent system prompt"
+                  aria-label="Agent role and expertise"
                 />
+              </v-col>
+
+              <!-- Protocol Notice (Handover 0814) -->
+              <v-col cols="12">
+                <v-alert type="info" variant="tonal" density="compact">
+                  GiljoAI automatically injects orchestration protocols at runtime. These handle
+                  MCP connectivity, lifecycle management, and team coordination.
+                </v-alert>
               </v-col>
 
               <!-- Preview Window (Collapsible) -->
@@ -840,15 +846,14 @@ const editingTemplate = ref({
   id: null,
   name: '',
   role: '',
-  cli_tool: 'claude', // NEW
-  custom_suffix: '', // NEW
-  background_color: '', // NEW
+  cli_tool: 'claude',
+  custom_suffix: '',
+  background_color: '',
   description: '',
-  template: '',
-  model: 'sonnet', // NEW
-  tools: null, // NEW
+  user_instructions: '',
+  model: 'sonnet',
+  tools: null,
   variables: [],
-  augmentation_slots: '',
 })
 
 // Template being previewed
@@ -933,7 +938,7 @@ const detectedVariables = computed(() => {
   const matches = []
   let match
 
-  while ((match = regex.exec(editingTemplate.value.template)) !== null) {
+  while ((match = regex.exec(editingTemplate.value.user_instructions)) !== null) {
     if (!matches.includes(match[1])) {
       matches.push(match[1])
     }
@@ -995,12 +1000,7 @@ const loadTemplates = async () => {
     // Load ALL templates (active and inactive) - no filter to get both
     const response = await api.templates.list()
     // Map backend fields to frontend fields
-    templates.value = (response.data || [])
-      .filter((t) => !t.is_system_role)
-      .map((t) => ({
-        ...t,
-        template: t.system_instructions, // Map system_instructions to template for frontend
-      }))
+    templates.value = (response.data || []).filter((t) => !t.is_system_role)
   } catch (error) {
     console.error('Failed to load templates:', error)
   } finally {
@@ -1078,11 +1078,10 @@ const openCreateDialog = () => {
     custom_suffix: '',
     background_color: '',
     description: '',
-    template: '',
+    user_instructions: '',
     model: 'sonnet',
     tools: null,
     variables: [],
-    augmentation_slots: '',
   }
   previewContent.value = ''
   editDialog.value = true
@@ -1091,7 +1090,7 @@ const openCreateDialog = () => {
 const editTemplate = (template) => {
   editingTemplate.value = {
     ...template,
-    template: template.system_instructions || template.template, // Ensure template field is set
+    user_instructions: template.user_instructions || '',
     cli_tool: template.cli_tool || 'claude',
     custom_suffix: '',
     background_color: template.background_color || '',
@@ -1107,7 +1106,7 @@ const duplicateTemplate = (template) => {
     ...template,
     id: null,
     name: `${template.name} (Copy)`,
-    template: template.system_instructions || template.template, // Ensure template field is set
+    user_instructions: template.user_instructions || '',
     cli_tool: template.cli_tool || 'claude',
     custom_suffix: '-copy',
     background_color: template.background_color || '',
@@ -1129,11 +1128,10 @@ const closeEditDialog = () => {
     custom_suffix: '',
     background_color: '',
     description: '',
-    template: '',
+    user_instructions: '',
     model: 'sonnet',
     tools: null,
     variables: [],
-    augmentation_slots: '',
   }
 }
 
@@ -1157,13 +1155,13 @@ const saveTemplateAndPreview = async () => {
   try {
     const data = {
       name: generatedName.value || editingTemplate.value.role,
-      category: 'role', // Automatically set to 'role' for all templates
+      category: 'role',
       role: editingTemplate.value.role || null,
       cli_tool: editingTemplate.value.cli_tool,
       custom_suffix: editingTemplate.value.custom_suffix || null,
       background_color: editingTemplate.value.background_color,
       description: editingTemplate.value.description,
-      system_instructions: editingTemplate.value.template,
+      user_instructions: editingTemplate.value.user_instructions,
       model: editingTemplate.value.cli_tool === 'claude' ? editingTemplate.value.model : null,
       tools: editingTemplate.value.tools,
       behavioral_rules: editingTemplate.value.behavioral_rules || [],
@@ -1180,7 +1178,7 @@ const saveTemplateAndPreview = async () => {
         role: data.role,
         cli_tool: data.cli_tool,
         background_color: data.background_color,
-        system_instructions: data.system_instructions,
+        user_instructions: data.user_instructions,
         description: data.description,
         model: data.model,
         tools: data.tools,
@@ -1400,9 +1398,9 @@ onUnmounted(() => {
   off('template:exported', handleTemplateExported)
 })
 
-// Watch for variable changes
+// Watch for variable changes in user_instructions
 watch(
-  () => editingTemplate.value.template,
+  () => editingTemplate.value.user_instructions,
   () => {
     editingTemplate.value.variables = detectedVariables.value
   },
