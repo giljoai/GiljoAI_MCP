@@ -176,7 +176,7 @@ The 4-week CE timeline is achievable with a 3:1 buffer ratio. The developer's wo
 | Task | Agent(s) | Est. Hours | Parallel? |
 |------|----------|-----------|-----------|
 | 0409 Quick Setup Buttons — backend endpoint + frontend dialog (Claude Code path only) | 1–2 agents (backend + frontend parallel) | 4–6 hrs | Yes (BE/FE split) |
-| 9999 One-liner install scripts — curl/bash + irm/iex with pre-flight checks | 1 agent | 8–10 hrs | Yes, with 0409 |
+| ~~9999 One-liner install scripts~~ | -- | -- | DELETED (2026-03-09). Website directs to GitHub. |
 | Binary docs — integrate updated PPTX/PDF files into repo | You (manual, 15 min) | — | — |
 
 **Week 3 output:** Complete onboarding path from download to running agents. ~12–16 agent-hours consumed.
@@ -216,7 +216,7 @@ Even with 50% efficiency loss to orchestration overhead and agent rework, you'd 
 
 If Week 2 slips or 0731 is bigger than expected, protect the ship date with these descopes:
 
-1. **First to cut: 9999** (one-liner install scripts) — ships as v1.0.1 post-launch. Users can still install via `python install.py` and Docker.
+1. ~~**First to cut: 9999**~~ — DELETED (2026-03-09). Website directs users to GitHub.
 2. **Second to cut: Docker** — ships as v1.0.1. The `python install.py` path works today. Docker is convenience, not functionality.
 3. **Never cut: 0409** (Quick Setup Buttons) — this is the first-run experience. Without it, users bounce.
 4. **Never cut: 0731** (legacy cleanup) — dead Ollama refs and commented code in a public repo is a credibility hit.
@@ -280,7 +280,7 @@ The product is closer to launch than the volume of documentation might suggest. 
 
 The developer's working model — solo vibe coder orchestrating parallel AI agents under a disciplined handover protocol — is itself a proof-of-concept for the product being built. The fact that GiljoAI MCP was built using the same multi-agent orchestration pattern it enables is the strongest possible product validation.
 
-With ~160 agent-hours available over 4 weeks and ~38–54 hours of estimated launch work, the 3:1 buffer absorbs the real-world friction of agent rework cycles, context window resets, and orchestration overhead. The descope ladder (cut 9999 first, Docker second, never cut 0409 or 0731) protects the April 5 ship date without sacrificing first-impression quality.
+With ~160 agent-hours available over 4 weeks and ~38–54 hours of estimated launch work, the 3:1 buffer absorbs the real-world friction of agent rework cycles, context window resets, and orchestration overhead. The descope ladder (Docker if needed, never cut 0409 or 0731) protects the ship date without sacrificing first-impression quality. 9999 was deleted 2026-03-09 as obsolete.
 
 The two-edition strategy is architecturally sound, the fork approach (private imports public as dependency) avoids merge debt, and the existing SaaS-adjacent infrastructure (40% of what's needed) makes the 25–35 week SaaS timeline achievable rather than aspirational.
 
