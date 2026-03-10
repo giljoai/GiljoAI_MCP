@@ -1482,10 +1482,11 @@ watch(
       line-height: 1.6;
       padding: 16px;
       border-radius: 4px;
-      overflow-x: auto;
+      border: 1px solid var(--v-theme-on-surface-variant);
       max-height: 400px;
       overflow-y: auto;
-      white-space: pre;
+      white-space: pre-wrap;
+      word-break: break-word;
       margin: 0;
     }
   }
