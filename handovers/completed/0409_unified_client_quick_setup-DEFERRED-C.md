@@ -3,9 +3,9 @@
 **Date:** 2026-01-16
 **From Agent:** Documentation Manager
 **To Agent:** Installation Flow Agent + TDD Implementor
-**Priority:** High
-**Estimated Complexity:** 8-12 hours
-**Status:** Not Started
+**Priority:** Low (deferred post-launch)
+**Estimated Complexity:** 2-3 hours (reduced -- underlying components already exist)
+**Status:** DEFERRED (Post-CE-Launch)
 
 ---
 
@@ -634,10 +634,15 @@ The following are explicitly **NOT** part of this handover:
 
 ## Progress Updates
 
-### [Date] - [Agent/Session]
-**Status:** Not Started
+### 2026-03-09 - DEFERRED
+**Status:** Deferred (Post-CE-Launch)
 
-**Next Steps:**
-- Kick off Phase 1 with TDD Implementor
-- Review template conversion logic
-- Begin unit test development
+**Reason:** All underlying capabilities already exist in the current UI:
+- MCP connection prompt generation: `AiToolConfigWizard.vue` (all 3 CLI clients)
+- Slash command install: `SlashCommandSetup.vue` (zip download + timed URL)
+- Agent template export: `ClaudeCodeExport.vue` (manual zip + MCP install commands)
+- Onboarding flow: `StartupQuickStart.vue` (8-step guided checklist)
+
+This handover only adds bundling of those 3 existing steps into a single copy-paste prompt. The current 3-step flow is adequate for the target audience (developers comfortable with CLI tools). The UX improvement does not justify 2-3 hours of work before CE launch.
+
+**Decision:** Revisit post-launch only if user feedback indicates setup friction is a real adoption barrier.
