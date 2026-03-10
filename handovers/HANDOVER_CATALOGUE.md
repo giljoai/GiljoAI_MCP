@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved), 0812 schema cleanup NOT STARTED, 0813 template context separation NOT STARTED |
+| 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved), 0812 schema cleanup NOT STARTED, 0813 template context separation COMPLETE |
 
 ---
 
@@ -30,7 +30,7 @@
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0259 | Notification Health Alert - Add Project Context | Not Started | Medium | Health alerts missing project name + click-to-navigate. ~2-4 hours. |
-| 0813 | Agent Template Context Separation | Not Started | High | Separate role identity from protocols in templates. Fix user_instructions export gap. Write better role definitions. ~8-12 hours. |
+| 0813 | Agent Template Context Separation | **COMPLETE** | High | Separate role identity from protocols in templates. Fix user_instructions export gap. Archived to `completed/`. |
 | 0732b | README Screenshots | Deferred | Low | 30 min. Requires running instance with sample data. |
 | 1014 | Security Event Auditing | Deferred | Medium | Enterprise compliance. No requirement yet. |
 | TODO_vision | Vision Summarizer LLM Upgrade | Deferred | Low | Phase 1 incomplete. Current Sumy works. |
@@ -463,7 +463,7 @@ completed/reference/
 **0800-0807** (Enhancement & Triage): 0800a/b, 0801a/b, 0802a/b, 0803a, 0804a, 0805a, 0806a, 0807a (all complete)
 **0808-0811** (Tier 2 Triage): 0808a, 0809a, 0810a, 0811a (all research complete, fixes in `f665c861`)
 **0812** (Schema Cleanup): 0812 Remove unused task.job_id FK (NOT STARTED)
-**0813** (Enhancement & Feature Series): 0813 Template Context Separation (NOT STARTED)
+**0813** (Enhancement & Feature Series): 0813 Template Context Separation (COMPLETE)
 **0814+** (Enhancement & Feature Series): Available for new feature/enhancement work
 **1000-1014** (Greptile Security): 1000-1014
 
