@@ -838,7 +838,6 @@ const openCreateDialog = () => {
     user_instructions: '',
     model: 'sonnet',
     tools: null,
-    variables: [],
   }
   previewContent.value = ''
   editDialog.value = true
@@ -898,7 +897,6 @@ const closeEditDialog = () => {
     user_instructions: '',
     model: 'sonnet',
     tools: null,
-    variables: [],
   }
 }
 
@@ -1103,14 +1101,6 @@ onUnmounted(() => {
   // Handover 0335: Cleanup WebSocket subscription
   off('template:exported', handleTemplateExported)
 })
-
-// Watch for variable changes in user_instructions
-watch(
-  () => editingTemplate.value.user_instructions,
-  () => {
-    editingTemplate.value.variables = detectedVariables.value
-  },
-)
 
 // Handover 0335: Watch for export events from parent (UserSettings.vue)
 // This handles the case where export happens on a different tab and this component
