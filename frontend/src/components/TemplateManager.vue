@@ -207,39 +207,43 @@
         </template>
 
         <template v-slot:item.actions="{ item }">
-          <v-btn
-            icon="mdi-pencil"
-            size="small"
-            variant="text"
-            title="Edit"
-            aria-label="Edit template"
-            @click="editTemplate(item)"
-          />
-          <v-btn
-            icon="mdi-content-copy"
-            size="small"
-            variant="text"
-            title="Duplicate"
-            aria-label="Duplicate template"
-            @click="duplicateTemplate(item)"
-          />
-          <v-btn
-            icon="mdi-refresh"
-            size="small"
-            variant="text"
-            title="Reset to Default"
-            aria-label="Reset template to system default"
-            @click="confirmReset(item)"
-          />
-          <v-btn
-            icon="mdi-delete"
-            size="small"
-            variant="text"
-            color="error"
-            title="Delete"
-            aria-label="Delete template"
-            @click="confirmDelete(item)"
-          />
+          <div class="d-flex align-center justify-center">
+            <v-menu>
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  icon="mdi-dots-vertical"
+                  size="small"
+                  variant="text"
+                  v-bind="props"
+                  aria-label="Template actions"
+                ></v-btn>
+              </template>
+
+              <v-list density="compact" min-width="180">
+                <v-list-item
+                  prepend-icon="mdi-pencil"
+                  title="Edit"
+                  @click="editTemplate(item)"
+                ></v-list-item>
+                <v-list-item
+                  prepend-icon="mdi-content-copy"
+                  title="Duplicate"
+                  @click="duplicateTemplate(item)"
+                ></v-list-item>
+                <v-list-item
+                  prepend-icon="mdi-refresh"
+                  title="Reset to Default"
+                  @click="confirmReset(item)"
+                ></v-list-item>
+                <v-divider class="my-1" />
+                <v-list-item
+                  prepend-icon="mdi-delete"
+                  title="Delete"
+                  @click="confirmDelete(item)"
+                ></v-list-item>
+              </v-list>
+            </v-menu>
+          </div>
         </template>
       </v-data-table>
     </v-card-text>
@@ -661,7 +665,7 @@ const headers = [
   { title: 'Active', key: 'is_active', align: 'center' },
   { title: 'Export Status', key: 'export_status', align: 'center', sortable: false },
   { title: 'Updated', key: 'updated_at', align: 'start' },
-  { title: 'Actions', key: 'actions', align: 'center', sortable: false },
+  { title: 'Actions', key: 'actions', sortable: false, width: '4%', align: 'center' },
 ]
 
 // Categories
