@@ -29,6 +29,7 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
+| 0259 | Notification Health Alert - Add Project Context | Not Started | Medium | Health alerts missing project name + click-to-navigate. ~2-4 hours. |
 | 0732b | README Screenshots | Deferred | Low | 30 min. Requires running instance with sample data. |
 | 1014 | Security Event Auditing | Deferred | Medium | Enterprise compliance. No requirement yet. |
 | TODO_vision | Vision Summarizer LLM Upgrade | Deferred | Low | Phase 1 incomplete. Current Sumy works. |
@@ -477,7 +478,7 @@ completed/reference/
 - **0398-0399**: Gaps in 0301-0400 range
 - **0413, 0418, 0435-0439**: Gaps in 0401-0500 range
 - **0441-0449, 0454-0459, 0465-0469, 0471-0479, 0493-0499**: Additional 0401-0500 gaps
-- **0259, 0277, 0290**: Gaps in 0201-0300 range
+- **0277, 0290**: Gaps in 0201-0300 range
 - **0021, 0033, 0039, 0055-0059, 0068, 0097-0099**: Gaps in 0001-0100 range (0054 filled)
 - **0133-0134**: Gaps in 0101-0200 range
 
