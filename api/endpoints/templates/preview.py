@@ -19,43 +19,11 @@ from src.giljo_mcp.services.template_service import TemplateService
 from src.giljo_mcp.template_renderer import hex_to_claude_color
 
 from .dependencies import get_template_service
-from .models import TemplateDiffResponse, TemplatePreviewRequest, TemplatePreviewResponse
+from .models import TemplatePreviewRequest, TemplatePreviewResponse
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-@router.get("/{template_id}/diff", response_model=TemplateDiffResponse)
-async def get_template_diff(
-    template_id: str,
-    current_user: User = Depends(get_current_active_user),
-    session: AsyncSession = Depends(get_db_session),
-    template_service: TemplateService = Depends(get_template_service),
-) -> TemplateDiffResponse:
-    """
-    Get diff between tenant template and system template.
-
-    Migrated to TemplateService - Handover 1011 Phase 2.
-    """
-    logger.info(f"User {current_user.username} requesting diff for template {template_id}")
-
-    template = await template_service.get_template_by_id(session, template_id, current_user.tenant_key)
-
-    if not template:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
-
-    return TemplateDiffResponse(
-        template_id=str(template.id),
-        template_name=template.name,
-        tenant_version=template.version or "1.0.0",
-        system_version=None,
-        has_system_template=False,
-        is_customized=False,
-        diff_html=None,
-        diff_unified=None,
-        changes_summary={},
-    )
 
 
 @router.post("/{template_id}/preview/", response_model=TemplatePreviewResponse)

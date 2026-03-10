@@ -403,7 +403,6 @@ export const api = {
     },
     preview: (id, data = {}) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
     reset: (id) => apiClient.post(`/api/v1/templates/${id}/reset/`),
-    diff: (id) => apiClient.get(`/api/v1/templates/${id}/diff/`),
     activeCount: () => apiClient.get('/api/v1/templates/stats/active-count'),
   },
 
