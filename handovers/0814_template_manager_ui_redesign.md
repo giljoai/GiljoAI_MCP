@@ -1,6 +1,6 @@
 # 0814 — Template Manager UI Redesign
 
-**Status:** Not Started
+**Status:** Complete
 **Priority:** High
 **Edition Scope:** CE
 **Estimated Effort:** 8-12 hours
@@ -230,3 +230,27 @@ After 0813 separated template content into three contexts (role identity, protoc
 - Additional staging mode radio buttons (Codex/Gemini subagent modes)
 
 See `handovers/agent_template.md` Section 8 for the full multi-CLI roadmap and design options.
+
+---
+
+## Implementation Summary (2026-03-10)
+
+### What Was Built
+- **Phase 1 (backend)**: Already committed — `create_template()` injects canonical bootstrap, `reset_system_instructions()` uses canonical source, `update_template()` blocks `system_instructions` with 403
+- **Phase 2+3 (frontend)**: Replaced "System Prompt" textarea with "Role & Expertise" editor bound to `user_instructions`, added protocol notice v-alert, fixed all save/load/edit/duplicate data flow
+- **Phase 4 (export)**: Unified filesystem export to use `render_claude_agent()` as single renderer, deleted 2 dead `generate_yaml_frontmatter()` functions (claude_export.py + downloads.py)
+- **Phase 5 (tests)**: 20 tests covering bootstrap injection, user_instructions flow, 403 blocking, reset canonical, render consistency
+
+### Key Files Modified
+- `frontend/src/components/TemplateManager.vue` — dialog redesign, field bindings, save payloads
+- `api/endpoints/claude_export.py` — unified to render_claude_agent(), dead code removed (-141 lines)
+- `api/endpoints/downloads.py` — dead generate_yaml_frontmatter() removed (-56 lines)
+- `tests/unit/test_0814_template_manager_ui.py` — 20 backend tests
+
+### Commits
+- `341dee82` Phase 1 backend (prior agent)
+- `1eac861e` Phase 5 tests (20 passing)
+- `835c629f` Phase 2+3+4 frontend + export unification
+
+### Net Effect
+-191 lines (39 added, 230 removed). All 4 bugs fixed. Single renderer for all export paths.
