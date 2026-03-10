@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import AgentTemplate, User
 from src.giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
+from src.giljo_mcp.template_renderer import render_claude_agent
 
 
 logger = logging.getLogger(__name__)
@@ -70,74 +71,6 @@ class ClaudeExportResult(BaseModel):
     files: list[dict[str, str]] = Field(..., description="List of exported files with name and path")
     message: str = Field(..., description="User-readable result message")
     backup: Optional[dict[str, Any]] = Field(None, description="Backup information (Handover 0075)")
-
-
-# Helper Functions
-def generate_yaml_frontmatter(
-    name: str,
-    role: str,
-    preferred_tool: str,
-    description: Optional[str] = None,
-) -> str:
-    """
-    Generate YAML frontmatter for Claude Code agent template.
-
-    Format:
-    ---
-    name: orchestrator
-    description: Orchestrator - role agent
-    tools: ["mcp__giljo-mcp__*"]
-    model: sonnet
-    ---
-
-    Args:
-        name: Agent name (e.g., "orchestrator")
-        role: Agent role (e.g., "orchestrator")
-        preferred_tool: Preferred AI tool (e.g., "claude")
-        description: Optional custom description
-
-    Returns:
-        YAML frontmatter string with --- delimiters
-
-    Example:
-        >>> frontmatter = generate_yaml_frontmatter("orchestrator", "orchestrator", "claude")
-        >>> print(frontmatter)
-        ---
-        name: orchestrator
-        description: Orchestrator - role agent
-        tools: ["mcp__giljo-mcp__*"]
-        model: sonnet
-        ---
-    """
-    # Use custom description or generate default
-    if description is None:
-        description = f"{role.capitalize()} - role agent"
-
-    # Escape description if it contains special YAML characters
-    if any(char in description for char in ['"', "'", ":", "\n"]):
-        # Quote and escape the description
-        description = description.replace('"', '\\"')
-        description = f'"{description}"'
-
-    # Map preferred_tool to Claude Code model
-    model_map = {
-        "claude": "sonnet",
-        "codex": "sonnet",  # Fallback to sonnet
-        "gemini": "sonnet",  # Fallback to sonnet
-    }
-    model = model_map.get(preferred_tool.lower(), "sonnet")
-
-    # Build YAML frontmatter
-    yaml_lines = [
-        "---",
-        f"name: {name}",
-        f"description: {description}",
-        'tools: ["mcp__giljo-mcp__*"]',
-        f"model: {model}",
-        "---",
-    ]
-
-    return "\n".join(yaml_lines) + "\n"
 
 
 def create_backup(file_path: Path) -> Optional[Path]:
@@ -292,41 +225,8 @@ async def export_template_to_claude_code(
     if file_path.exists():
         create_backup(file_path)
 
-    # Generate YAML frontmatter
-    frontmatter = generate_yaml_frontmatter(
-        name=template.name,
-        role=template.role or template.name,
-        preferred_tool=template.tool,  # Use 'tool' field
-        description=template.description,
-    )
-
-    # Build complete file content
-    content_parts = [frontmatter]
-
-    # Add system_instructions (slim bootstrap, Handover 0813)
-    content_parts.append("\n")
-    content_parts.append(template.system_instructions.strip())
-    content_parts.append("\n")
-
-    # Handover 0813: Add user_instructions (role identity prose)
-    user_instructions = (template.user_instructions or "").strip()
-    if user_instructions:
-        content_parts.append("\n")
-        content_parts.append(user_instructions)
-        content_parts.append("\n")
-
-    # Add behavioral rules if present
-    if template.behavioral_rules and len(template.behavioral_rules) > 0:
-        content_parts.append("\n## Behavioral Rules\n")
-        content_parts.extend(f"- {rule}\n" for rule in template.behavioral_rules)
-
-    # Add success criteria if present
-    if template.success_criteria and len(template.success_criteria) > 0:
-        content_parts.append("\n## Success Criteria\n")
-        content_parts.extend(f"- {criterion}\n" for criterion in template.success_criteria)
-
-    # Write file
-    full_content = "".join(content_parts)
+    # Handover 0814: Use render_claude_agent() as single renderer (consistency with ZIP/token paths)
+    full_content = render_claude_agent(template)
     file_path.write_text(full_content, encoding="utf-8")
 
     # Update last_exported_at timestamp (Handover 0335)
@@ -468,41 +368,8 @@ async def export_templates_to_claude_code(
             if file_path.exists():
                 create_backup(file_path)
 
-            # Generate YAML frontmatter
-            frontmatter = generate_yaml_frontmatter(
-                name=template.name,
-                role=template.role or template.name,
-                preferred_tool=template.tool,
-                description=template.description,
-            )
-
-            # Build complete file content
-            content_parts = [frontmatter]
-
-            # Add template content
-            content_parts.append("\n")
-            content_parts.append(template.system_instructions.strip())
-            content_parts.append("\n")
-
-            # Handover 0813: Add user_instructions (role identity prose)
-            user_instructions = (template.user_instructions or "").strip()
-            if user_instructions:
-                content_parts.append("\n")
-                content_parts.append(user_instructions)
-                content_parts.append("\n")
-
-            # Add behavioral rules if present
-            if template.behavioral_rules and len(template.behavioral_rules) > 0:
-                content_parts.append("\n## Behavioral Rules\n")
-                content_parts.extend(f"- {rule}\n" for rule in template.behavioral_rules)
-
-            # Add success criteria if present
-            if template.success_criteria and len(template.success_criteria) > 0:
-                content_parts.append("\n## Success Criteria\n")
-                content_parts.extend(f"- {criterion}\n" for criterion in template.success_criteria)
-
-            # Write file
-            full_content = "".join(content_parts)
+            # Handover 0814: Use render_claude_agent() as single renderer
+            full_content = render_claude_agent(template)
             file_path.write_text(full_content, encoding="utf-8")
 
             # Update last_exported_at timestamp (Handover 0335)
