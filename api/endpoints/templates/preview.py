@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services.template_service import TemplateService
+from src.giljo_mcp.template_renderer import hex_to_claude_color
 
 from .dependencies import get_template_service
 from .models import TemplateDiffResponse, TemplatePreviewRequest, TemplatePreviewResponse
@@ -109,11 +110,19 @@ async def preview_template(
             f"name: {name}",
             f"description: {description}",
             f"model: {model}",
-            "---",
-            "",
-            "## System Instructions",
-            system_rendered,
         ]
+        # Include color when template has background_color mapped to Claude Code
+        claude_color = hex_to_claude_color(getattr(template, "background_color", None))
+        if claude_color:
+            lines.append(f"color: {claude_color}")
+        lines.append("---")
+        lines.extend(
+            [
+                "",
+                "## System Instructions",
+                system_rendered,
+            ]
+        )
         if user_rendered:
             lines.extend(
                 [
