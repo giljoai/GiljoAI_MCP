@@ -927,22 +927,18 @@ class TemplateService:
         template: AgentTemplate,
     ) -> None:
         """
-        Reset system instructions to canonical default.
+        Reset system instructions to canonical MCP bootstrap (Handover 0814).
+
+        Uses _get_mcp_bootstrap_section() as the single source of truth,
+        replacing the stale hardcoded fallback.
 
         Args:
             session: Database session
             template: AgentTemplate ORM object to reset
-
-        Example:
-            >>> await service.reset_system_instructions(session, template)
         """
-        # ORIGINAL QUERY: history.py line 264-270 (reset_system_instructions endpoint)
-        template.system_instructions = (
-            "# System Instructions\n\n"
-            "Use report_progress() to send updates.\n"
-            "Use complete_job() when the task is finished.\n"
-            "Use receive_messages() to check for orchestrator messages.\n"
-        )
+        from src.giljo_mcp.template_seeder import _get_mcp_bootstrap_section
+
+        template.system_instructions = _get_mcp_bootstrap_section()
 
     # ============================================================================
     # Template Preview/Diff Methods (Phase 2 - Handover 1011)
