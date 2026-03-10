@@ -845,6 +845,9 @@ class WebSocketManager:
             "issue_description": health_status.issue_description,
             "minutes_since_update": health_status.minutes_since_update,
             "recommended_action": health_status.recommended_action,
+            "execution_id": health_status.execution_id,
+            "project_id": health_status.project_id,
+            "project_name": health_status.project_name,
         }
 
         event = EventFactory.tenant_envelope(
