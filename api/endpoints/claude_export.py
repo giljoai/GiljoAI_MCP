@@ -250,6 +250,8 @@ async def export_template_to_claude_code(
     Programmatic function for use by orchestrator during agent spawning.
     Exports one specific template to .claude/agents/<role>.md file.
 
+    Handover 0813: Now includes user_instructions (role identity prose) in export.
+
     Args:
         template_id: Template ID to export
         tenant_key: Tenant key for multi-tenant isolation
@@ -262,16 +264,6 @@ async def export_template_to_claude_code(
     Raises:
         ValueError: If template not found or path invalid
         PermissionError: If tenant doesn't own template
-
-    Example:
-        >>> file_path = await export_template_to_claude_code(
-        ...     template_id="tpl-123",
-        ...     tenant_key="tenant-abc",
-        ...     db=session,
-        ...     export_path=Path.cwd() / ".claude" / "agents"
-        ... )
-        >>> print(file_path)
-        F:/project/.claude/agents/implementer.md
     """
     # Validate export path exists
     if not export_path.exists():
@@ -311,10 +303,17 @@ async def export_template_to_claude_code(
     # Build complete file content
     content_parts = [frontmatter]
 
-    # Add template content
+    # Add system_instructions (slim bootstrap, Handover 0813)
     content_parts.append("\n")
     content_parts.append(template.system_instructions.strip())
     content_parts.append("\n")
+
+    # Handover 0813: Add user_instructions (role identity prose)
+    user_instructions = (template.user_instructions or "").strip()
+    if user_instructions:
+        content_parts.append("\n")
+        content_parts.append(user_instructions)
+        content_parts.append("\n")
 
     # Add behavioral rules if present
     if template.behavioral_rules and len(template.behavioral_rules) > 0:

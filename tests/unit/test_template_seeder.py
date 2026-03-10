@@ -160,7 +160,11 @@ class TestTemplateSeederDualField:
             )
 
     async def test_required_mcp_content_in_system(self, db_session: AsyncSession):
-        """Verify key MCP content present in system_instructions."""
+        """Verify key MCP bootstrap content present in system_instructions.
+
+        Handover 0813: system_instructions is now a slim bootstrap (~10 lines)
+        that directs agents to fetch full protocols via get_agent_mission().
+        """
         tenant_key = "test_tenant_mcp_tools"
 
         # Seed templates
@@ -170,23 +174,24 @@ class TestTemplateSeederDualField:
         result = await db_session.execute(select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key))
         templates = result.scalars().all()
 
-        # After Handover 0431 slimming, system_instructions contain the slim MCP section
-        # with tool call format guidance, plus check-in, messaging, and context request sections.
-        # Individual tool names are in full_protocol (returned by get_agent_mission), not in templates.
         for template in templates:
             system_inst = template.system_instructions
 
-            # MCP Tool Usage section should be present
-            assert "MCP Tool Usage" in system_inst, (
-                f"{template.role} missing MCP Tool Usage section"
+            # Handover 0813: Bootstrap should reference GiljoAI MCP Agent
+            assert "GiljoAI MCP Agent" in system_inst, (
+                f"{template.role} missing GiljoAI MCP Agent header"
             )
             # Should reference mcp__giljo-mcp__ prefix
             assert "mcp__giljo-mcp__" in system_inst, (
                 f"{template.role} should reference mcp__giljo-mcp__ tool prefix"
             )
-            # Should have messaging section
-            assert "MESSAGING" in system_inst or "send_message" in system_inst, (
-                f"{template.role} should have messaging content"
+            # Should reference get_agent_mission for full protocol delivery
+            assert "get_agent_mission" in system_inst, (
+                f"{template.role} should reference get_agent_mission in bootstrap"
+            )
+            # Should reference full_protocol
+            assert "full_protocol" in system_inst, (
+                f"{template.role} should reference full_protocol in bootstrap"
             )
 
     async def test_system_instructions_not_in_user(self, db_session: AsyncSession):

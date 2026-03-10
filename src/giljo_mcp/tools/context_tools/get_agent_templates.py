@@ -127,12 +127,15 @@ async def get_agent_templates(
                 }
 
             else:  # "full"
-                # Full: complete template data including system_instructions (the actual prompt)
+                # Full: complete template data including both instruction fields (Handover 0813)
                 template_dict = {
                     "name": template.name,
                     "role": template.role or "Specialized agent",
                     "description": template.description,
-                    "system_instructions": template.system_instructions,  # The actual agent prompt text
+                    "system_instructions": template.system_instructions,
+                    "user_instructions": template.user_instructions,  # Handover 0813: role identity prose
+                    "behavioral_rules": template.behavioral_rules,  # Handover 0813
+                    "success_criteria": template.success_criteria,  # Handover 0813
                     "capabilities": template.meta_data.get("capabilities", []) if template.meta_data else [],
                     "expertise": template.meta_data.get("expertise", []) if template.meta_data else [],
                     "typical_tasks": template.meta_data.get("typical_tasks", []) if template.meta_data else [],
