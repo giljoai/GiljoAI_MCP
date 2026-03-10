@@ -164,7 +164,7 @@ class AgentHealthMonitor:
 
         query = (
             select(AgentExecution)
-            .options(joinedload(AgentExecution.job))
+            .options(joinedload(AgentExecution.job).joinedload(AgentJob.project))
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
             .join(
                 latest_instance_subq,
@@ -209,6 +209,8 @@ class AgentHealthMonitor:
                 ),
                 issue_description=f"Job never acknowledged after {self.config.waiting_timeout_minutes} minutes",
                 recommended_action="Check if agent received job, manual intervention may be required",
+                project_id=str(execution.job.project.id) if execution.job.project else "",
+                project_name=execution.job.project.name if execution.job.project else "",
             )
             for execution in executions
         ]
@@ -241,7 +243,7 @@ class AgentHealthMonitor:
 
         query = (
             select(AgentExecution)
-            .options(joinedload(AgentExecution.job))
+            .options(joinedload(AgentExecution.job).joinedload(AgentJob.project))
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
             .join(
                 latest_instance_subq,
@@ -283,6 +285,7 @@ class AgentHealthMonitor:
                 else:
                     health_state = "warning"
 
+                project = execution.job.project if execution.job else None
                 stalled.append(
                     AgentHealthStatus(
                         execution_id=execution.id,  # Primary key - guaranteed unique
@@ -295,6 +298,8 @@ class AgentHealthMonitor:
                         minutes_since_update=minutes_stalled,
                         issue_description=f"No progress update for {minutes_stalled:.1f} minutes",
                         recommended_action="Check agent logs, may need manual restart",
+                        project_id=str(project.id) if project else "",
+                        project_name=project.name if project else "",
                     )
                 )
 
@@ -326,7 +331,7 @@ class AgentHealthMonitor:
 
         query = (
             select(AgentExecution)
-            .options(joinedload(AgentExecution.job))
+            .options(joinedload(AgentExecution.job).joinedload(AgentJob.project))
             .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
             .join(
                 latest_instance_subq,
@@ -364,6 +369,7 @@ class AgentHealthMonitor:
             if last_activity < threshold:
                 minutes_silent = (datetime.now(timezone.utc) - last_activity).total_seconds() / 60
 
+                project = execution.job.project if execution.job else None
                 failures.append(
                     AgentHealthStatus(
                         execution_id=execution.id,  # Primary key - guaranteed unique
@@ -376,6 +382,8 @@ class AgentHealthMonitor:
                         minutes_since_update=minutes_silent,
                         issue_description=f"Complete silence for {minutes_silent:.1f} minutes (timeout: {timeout_minutes}m)",
                         recommended_action="Auto-fail job or manual intervention required",
+                        project_id=str(project.id) if project else "",
+                        project_name=project.name if project else "",
                     )
                 )
 

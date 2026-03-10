@@ -51,8 +51,12 @@
       >
         <template v-for="(notification, index) in notifications" :key="notification.id">
           <v-list-item
-            :class="{ 'notification-unread': !notification.read }"
-            class="notification-item"
+            :class="[
+              'notification-item',
+              { 'notification-unread': !notification.read },
+              { 'notification-navigable': !!notification.metadata?.project_id },
+            ]"
+            :aria-label="getNotificationAriaLabel(notification)"
             @click="handleNotificationClick(notification)"
           >
             <!-- Icon -->
@@ -74,6 +78,24 @@
             >
               {{ notification.message }}
             </v-list-item-subtitle>
+
+            <!-- Handover 0259: Project context link -->
+            <div
+              v-if="notification.metadata?.project_name"
+              class="mt-1"
+            >
+              <v-chip
+                size="x-small"
+                variant="tonal"
+                color="primary"
+                prepend-icon="mdi-folder-outline"
+                class="notification-project-chip"
+                :aria-label="`View project ${notification.metadata.project_name}`"
+                @click.stop="navigateToProject(notification)"
+              >
+                {{ notification.metadata.project_name }}
+              </v-chip>
+            </div>
 
             <!-- Timestamp and Unread Indicator -->
             <template v-slot:append>
@@ -107,10 +129,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { formatDistanceToNow } from 'date-fns'
 import { useNotificationStore } from '@/stores/notifications'
 import { useWebSocketStore } from '@/stores/websocket'
 
+const router = useRouter()
 const notificationStore = useNotificationStore()
 const wsStore = useWebSocketStore()
 
@@ -178,12 +202,39 @@ const formatTimestamp = (timestamp) => {
   }
 }
 
+// Handover 0259: Build descriptive ARIA label for notification items
+const getNotificationAriaLabel = (notification) => {
+  const projectName = notification.metadata?.project_name
+  const base = `${notification.title}: ${notification.message}`
+  if (projectName) {
+    return `${base}. Click to view project ${projectName}`
+  }
+  return base
+}
+
 // Toggle message expand/collapse
 const toggleExpand = (notification) => {
   notification._expanded = !notification._expanded
 }
 
-// Handle notification click (mark as read)
+// Handover 0259: Navigate to the project associated with a notification
+const navigateToProject = async (notification) => {
+  const projectId = notification.metadata?.project_id
+  if (!projectId) return
+
+  if (!notification.read) {
+    try {
+      await notificationStore.markAsRead(notification.id)
+    } catch (error) {
+      console.error('[NotificationDropdown] Error marking notification as read:', error)
+    }
+  }
+
+  menuOpen.value = false
+  router.push({ name: 'ProjectLaunch', params: { projectId } })
+}
+
+// Handle notification click (mark as read and navigate if project context exists)
 const handleNotificationClick = async (notification) => {
   if (!notification.read) {
     try {
@@ -193,8 +244,14 @@ const handleNotificationClick = async (notification) => {
     }
   }
 
-  // Optionally handle navigation or action based on notification type
-  // Optionally handle navigation based on notification.action_url
+  // Handover 0259: Navigate to project if notification has project context
+  if (notification.metadata?.project_id) {
+    menuOpen.value = false
+    router.push({
+      name: 'ProjectLaunch',
+      params: { projectId: notification.metadata.project_id },
+    })
+  }
 }
 
 // Mark all notifications as read
@@ -318,6 +375,19 @@ onUnmounted(() => {
 .notification-unread {
   background-color: rgba(var(--v-theme-primary), 0.05);
   border-left: 3px solid rgb(var(--v-theme-primary));
+}
+
+/* Handover 0259: Visual affordance for navigable notifications */
+.notification-navigable {
+  cursor: pointer;
+}
+
+.notification-navigable:hover {
+  background-color: rgba(var(--v-theme-primary), 0.12);
+}
+
+.notification-project-chip {
+  cursor: pointer;
 }
 
 .notification-empty {

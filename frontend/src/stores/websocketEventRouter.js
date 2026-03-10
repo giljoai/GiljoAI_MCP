@@ -140,19 +140,31 @@ export const EVENT_MAP = {
       const agentsStore = useAgentStore()
       agentsStore.handleHealthAlert?.(payload)
 
-      const { health_state, agent_display_name, issue_description, job_id } = payload
+      const {
+        health_state,
+        agent_display_name,
+        issue_description,
+        job_id,
+        project_name,
+        project_id,
+        execution_id,
+      } = payload
 
       if (health_state === 'critical' || health_state === 'timeout') {
-        // Route to notification bell instead of toast (Handover 0424)
+        // Handover 0259: Include project context in health alert notifications
+        const prefix = project_name ? `[${project_name}] ` : ''
         const notificationStore = useNotificationStore()
         notificationStore.addNotification({
           type: 'agent_health',
           title: 'Agent Health Alert',
-          message: `${agent_display_name} - ${issue_description}`,
+          message: `${prefix}${agent_display_name} - ${issue_description}`,
           metadata: {
             job_id,
             agent_display_name,
             health_state,
+            project_id,
+            project_name,
+            execution_id,
           },
         })
       }
@@ -161,18 +173,22 @@ export const EVENT_MAP = {
   // Handover 0491: Replaced agent:auto_failed with agent:silent
   'agent:silent': {
     handler: async (payload) => {
-      const { agent_display_name, reason, job_id } = payload
+      const { agent_display_name, reason, job_id, project_name, project_id, execution_id } = payload
 
-      // Route to notification bell (Handover 0424 pattern)
+      // Handover 0259: Include project context in silent agent notifications
+      const prefix = project_name ? `[${project_name}] ` : ''
       const notificationStore = useNotificationStore()
       notificationStore.addNotification({
         type: 'agent_health',
         title: 'Agent Silent',
-        message: `${agent_display_name} - ${reason || 'Agent stopped communicating'}`,
+        message: `${prefix}${agent_display_name} - ${reason || 'Agent stopped communicating'}`,
         metadata: {
           job_id,
           agent_display_name,
           reason,
+          project_id,
+          project_name,
+          execution_id,
         },
       })
     },
