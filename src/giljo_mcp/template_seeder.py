@@ -39,12 +39,13 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
     """
     Refresh system_instructions for existing templates without overwriting user customizations.
 
-    This function updates ONLY the system_instructions field (MCP coordination protocol)
+    This function updates ONLY the system_instructions field (MCP bootstrap)
     for all templates belonging to a tenant. User customizations in user_instructions
     are preserved.
 
-    Use this to apply MCP protocol fixes to existing installations without requiring
-    template deletion and re-seeding.
+    Handover 0813: system_instructions is now a slim bootstrap (~10 lines) that directs
+    agents to fetch their full protocols via get_agent_mission(). Protocol content was
+    moved to full_protocol delivered server-side by protocol_builder.py.
 
     Args:
         session: AsyncSession - Database session for operations
@@ -60,13 +61,8 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
         raise ValueError("tenant_key must be non-empty string")
 
     try:
-        # Get the updated MCP coordination sections
-        mcp_section = _get_mcp_coordination_section()
-        check_in_section = _get_check_in_protocol_section()
-        context_request_section = _get_context_request_section()
-        agent_messaging_section = _get_agent_messaging_protocol_section()
-        orchestrator_messaging_section = _get_orchestrator_messaging_protocol_section()
-        agent_guidelines_section = _get_agent_guidelines_section()
+        # Handover 0813: Use slim bootstrap for all templates
+        bootstrap = _get_mcp_bootstrap_section()
 
         # Query existing templates for tenant
         stmt = select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
@@ -79,20 +75,8 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
 
         updated_count = 0
         for template in templates:
-            # Build new system_instructions based on role
-            if template.role == "orchestrator":
-                # Orchestrator doesn't need context_request (it doesn't ask itself for context)
-                new_system_instructions = f"{mcp_section}\n\n{check_in_section}\n\n{orchestrator_messaging_section}"
-            else:
-                # Regular agents get guidelines + context request protocol (Handover 0432)
-                new_system_instructions = (
-                    f"{agent_guidelines_section}\n\n{mcp_section}\n\n{context_request_section}\n\n"
-                    f"{check_in_section}\n\n{agent_messaging_section}"
-                )
-
-            # Update only system_instructions (preserves user_instructions)
-            template.system_instructions = new_system_instructions
-
+            # Handover 0813: All roles get the same slim bootstrap
+            template.system_instructions = bootstrap
             updated_count += 1
             logger.debug(f"Updated system_instructions for template '{template.name}' (tenant: {tenant_key})")
 
@@ -113,15 +97,9 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
     and skips seeding if any exist. This prevents duplicate seeding during
     repeated installation runs or database migrations.
 
-    Templates are sourced from UnifiedTemplateManager._legacy_templates and
-    include comprehensive metadata (behavioral rules, success criteria, variables).
-
-    Version 3.1.0: Enhanced with MCP coordination instructions for Phase 7
-    (Handover 0045 - Multi-Tool Agent Orchestration System)
-
-    Version 3.1.1: Dual-field template system (Handover 0106)
-    - system_instructions: Protected MCP coordination (non-editable)
-    - user_instructions: Role-specific guidance (editable by users)
+    Handover 0813: system_instructions is now a slim bootstrap (~10 lines).
+    Protocol content is delivered server-side via full_protocol in get_agent_mission().
+    user_instructions contains rich role-specific identity prose.
 
     Args:
         session: AsyncSession - Database session for operations
@@ -133,12 +111,6 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
     Raises:
         ValueError: If tenant_key is None or empty
         Exception: If database operations fail (propagates SQLAlchemy exceptions)
-
-    Example:
-        >>> async with db_manager.get_session_async() as session:
-        ...     count = await seed_tenant_templates(session, "default_tenant")
-        ...     print(f"Seeded {count} templates")
-        Seeded 6 templates
     """
     # Input validation
     if not tenant_key:
@@ -160,21 +132,8 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
         logger.debug(f"Loading legacy templates for tenant '{tenant_key}'")
         UnifiedTemplateManager()
 
-        # Get MCP coordination section to append to all templates
-        mcp_section = _get_mcp_coordination_section()
-
-        # Get Check-In Protocol section (Handover 0107)
-        check_in_section = _get_check_in_protocol_section()
-
-        # Get Context Request section (Handover 0109)
-        context_request_section = _get_context_request_section()
-
-        # Get Messaging Protocol sections (Handover 0118)
-        agent_messaging_section = _get_agent_messaging_protocol_section()
-        orchestrator_messaging_section = _get_orchestrator_messaging_protocol_section()
-
-        # Get Agent Guidelines section (Handover 0432) - for non-orchestrator agents
-        agent_guidelines_section = _get_agent_guidelines_section()
+        # Handover 0813: Slim bootstrap for all templates
+        bootstrap = _get_mcp_bootstrap_section()
 
         # Use new comprehensive templates (Handover 0103)
         default_templates = _get_default_templates_v103()
@@ -192,15 +151,8 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
                 )
                 continue
 
-            # Handover 0106: Dual-field system (system_instructions + user_instructions)
-            # Handover 0118: Add messaging protocol to system instructions
-            # Build system_instructions: MCP + Context Request + Check-In + Messaging Protocol
-            if template_def["role"] == "orchestrator":
-                # Orchestrator gets enhanced messaging protocol (no context_request - orchestrator doesn't ask itself)
-                system_instructions = f"{mcp_section}\n\n{check_in_section}\n\n{orchestrator_messaging_section}"
-            else:
-                # Regular agents get guidelines + standard messaging protocol (Handover 0432)
-                system_instructions = f"{agent_guidelines_section}\n\n{mcp_section}\n\n{context_request_section}\n\n{check_in_section}\n\n{agent_messaging_section}"
+            # Handover 0813: All roles get the same slim bootstrap as system_instructions
+            system_instructions = bootstrap
 
             # Get role-specific user instructions
             user_instructions = template_def["user_instructions"]
@@ -221,9 +173,9 @@ async def seed_tenant_templates(session: AsyncSession, tenant_key: str) -> int:
                 cli_tool=template_def["cli_tool"],
                 background_color=template_def["background_color"],
                 description=template_def["description"],
-                # Handover 0106: Dual-field system
-                system_instructions=system_instructions,  # Protected MCP coordination
-                user_instructions=user_instructions,  # Editable role-specific guidance
+                # Handover 0813: Slim bootstrap + rich role prose
+                system_instructions=system_instructions,
+                user_instructions=user_instructions,
                 model=template_def.get("model", "sonnet"),
                 tools=template_def.get("tools"),
                 variables=[],  # No variables in new format
@@ -730,6 +682,34 @@ mcp__giljo-mcp__get_agent_mission(job_id="...")
 
 **Note**: `tenant_key` auto-injected by server. Tool signatures in `full_protocol`.
 """
+
+
+def _get_mcp_bootstrap_section() -> str:
+    """
+    Generate the slim MCP bootstrap section for agent templates (Handover 0813).
+
+    This replaces the previous protocol-heavy system_instructions with a minimal
+    bootstrap that directs agents to fetch their full protocols via get_agent_mission().
+
+    The full protocol content (5-phase lifecycle, messaging, check-ins, etc.) is
+    delivered server-side via full_protocol in the get_agent_mission() response.
+
+    Returns:
+        str - Slim MCP bootstrap section (~10 lines) in markdown format
+    """
+    return """## GiljoAI MCP Agent
+
+You are part of a GiljoAI MCP orchestration system. MCP tools are available as native
+tool calls prefixed `mcp__giljo-mcp__*` in your tool list.
+
+### STARTUP (MANDATORY)
+1. Call `mcp__giljo-mcp__health_check()` to verify MCP connectivity
+2. Call `mcp__giljo-mcp__get_agent_mission(job_id="<your_job_id>")` to receive:
+   - Your full operating protocols (`full_protocol`)
+   - Your work order and team context (`mission`)
+3. Follow `full_protocol` for all lifecycle behavior
+
+Do not begin work until you have received and read your mission and protocols."""
 
 
 def _get_check_in_protocol_section() -> str:

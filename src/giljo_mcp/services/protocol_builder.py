@@ -360,6 +360,20 @@ Do NOT write 360 memory on normal completion - orchestrator handles that.
 - Use `to_agents=['all']` for broadcast only
 - Your `from_agent` is always your agent_id: `{executor_id}`
 
+**Message Prefixes:**
+- **BLOCKER:** - Urgent, needs immediate help (triggers blocked status)
+- **PROGRESS:** - Milestone update to orchestrator
+- **COMPLETE:** - Work finished notification
+- **READY:** - Available for new work
+- **REQUEST_CONTEXT:** - Need broader project context from orchestrator
+
+**Requesting Broader Context:**
+If your mission references undefined entities, has unclear dependencies, or ambiguous scope:
+1. Send: `send_message(to_agents=["<orchestrator-uuid>"], content="REQUEST_CONTEXT: <specific need>", from_agent="{executor_id}", project_id="...", message_type="direct")`
+2. Be specific (e.g., "REQUEST_CONTEXT: What database schema is used for user auth?")
+3. Wait for response via `receive_messages()`
+4. Do NOT guess at major ambiguities - ask first
+
 **When to Check Messages:**
 - Phase 1 (STARTUP): Before starting work
 - Phase 2 (EXECUTION): After each TodoWrite task

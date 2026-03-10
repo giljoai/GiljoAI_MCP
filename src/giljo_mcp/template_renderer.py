@@ -82,11 +82,14 @@ def hex_to_claude_color(hex_code: str | None) -> str | None:
 def render_claude_agent(template: AgentTemplate) -> str:
     """Render a single AgentTemplate to Claude Code-compatible Markdown.
 
+    Handover 0813: Now includes user_instructions (role identity prose) in the body.
+    Structure: frontmatter + system_instructions (slim bootstrap) + user_instructions
+    (role prose) + behavioral_rules + success_criteria.
+
     Rules per 0102a:
     - Frontmatter includes name, description, model (omit tools to inherit all)
     - Description fallback: "Subagent for <role>"
     - Model default: 'sonnet' if blank; allow 'inherit' if explicitly set
-    - Body: system_instructions; optionally append sections for rules/criteria
     """
     description = template.description or (f"Subagent for {template.role}" if template.role else "Subagent")
     # Respect explicit 'inherit'; otherwise default to sonnet when blank
@@ -116,10 +119,16 @@ def render_claude_agent(template: AgentTemplate) -> str:
     yaml_header = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False).strip()
 
     parts: list[str] = []
-    # Main system prompt/body
-    body = (template.system_instructions or "").strip()
-    if body:
-        parts.append(body)
+
+    # Slim bootstrap (system_instructions -- now ~5-10 lines, Handover 0813)
+    bootstrap = (template.system_instructions or "").strip()
+    if bootstrap:
+        parts.append(bootstrap)
+
+    # Role identity prose (user_instructions -- Handover 0813: now included!)
+    role_prose = (template.user_instructions or "").strip()
+    if role_prose:
+        parts.append(f"\n{role_prose}")
 
     # Behavioral Rules section
     rules = template.behavioral_rules or []
