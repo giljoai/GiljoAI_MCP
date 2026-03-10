@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-09 (0732 CE Release Packaging marked COMPLETE)
+**Last Updated:** 2026-03-09 (0732 COMPLETE, 0409 DEFERRED post-launch)
 
 ---
 
@@ -14,7 +14,7 @@
 | 0101-0200 | Refactoring & Architecture | Mostly Complete |
 | 0201-0300 | GUI Redesign & Context v2 | Mostly Complete |
 | 0301-0400 | Context Management & Services | 0371 COMPLETE, 0365 SUPERSEDED, 0382 COMPLETE |
-| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0498 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED. Active: 0409 only |
+| 0401-0500 | Agent Monitoring & Org Hierarchy | 0424-0498 ALL COMPLETE, 0440a-d ALL COMPLETE, 0486 CANCELLED, 0409 DEFERRED. No active handovers. |
 | 0501-0600 | Remediation Series | Complete |
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
@@ -29,7 +29,7 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0409 | Unified Client Quick Setup | Ready | Medium | Future enhancement |
+| 0409 | Unified Client Quick Setup | **DEFERRED** | Low | Post-launch. All underlying UI components exist (MCP wizard, slash commands, agent export). Revisit if user feedback indicates setup friction. |
 | 0771 | Edition Isolation Architecture & Documentation | Ready | Critical | 10 deliverables: Edition Isolation Guide (new), doc updates (8), SaaS directory scaffold (1). Pre-requisite for all SaaS work. |
 
 ### Recently Closed (February 2026 - from Active)
@@ -451,7 +451,7 @@ completed/reference/
 **0101-0200** (Architecture): 0101-0132, 0135-0139
 **0201-0300** (GUI & Context): 0225-0258, 0260-0276, 0278-0299
 **0301-0400** (Services): 0300-0316, 0318-0365, 0371-0384, 0387-0397
-**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-d (complete), 0460-0464 (complete), 0470 (complete), 0480-0498 (all complete/retired/cancelled). Active: 0409 only
+**0401-0500** (Agent Monitoring): 0400-0434 (complete), 0440a-d (complete), 0460-0464 (complete), 0470 (complete), 0480-0498 (all complete/retired/cancelled). 0409 DEFERRED. No active handovers in range
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
