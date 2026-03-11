@@ -14,6 +14,7 @@ import pytest
 def _gen_protocol(
     execution_mode: str = "multi_terminal",
     git_integration_enabled: bool = False,
+    job_type: str = "agent",
 ) -> str:
     """Helper to call _generate_agent_protocol with test defaults."""
     from src.giljo_mcp.services.protocol_builder import _generate_agent_protocol
@@ -25,6 +26,7 @@ def _gen_protocol(
         agent_id="test-agent-id",
         execution_mode=execution_mode,
         git_integration_enabled=git_integration_enabled,
+        job_type=job_type,
     )
 
 
@@ -192,3 +194,29 @@ class TestProtocolRegression:
         protocol = _gen_protocol(execution_mode=execution_mode, git_integration_enabled=git_enabled)
         assert "Phase 5: ERROR HANDLING" in protocol
         assert "report_error" in protocol
+
+
+# ============================================================================
+# ORCHESTRATOR TODOWRITE SCOPING TESTS
+# ============================================================================
+
+
+class TestOrchestratorTodoWriteScoping:
+    """Phase 1 Step 4 TodoWrite scope varies by job_type."""
+
+    def test_orchestrator_todowrite_scoped_to_coordination(self):
+        """When job_type=orchestrator, TodoWrite is scoped to coordination tasks."""
+        protocol = _gen_protocol(job_type="orchestrator")
+        assert "Orchestration ONLY" in protocol
+        assert "NEVER include implementation" in protocol
+
+    def test_agent_todowrite_unchanged(self):
+        """Default job_type=agent produces original agent-scoped TodoWrite text."""
+        protocol = _gen_protocol(job_type="agent")
+        assert "Break mission into 3-7" in protocol
+
+    def test_job_type_default_backward_compat(self):
+        """Omitting job_type produces same output as job_type='agent'."""
+        protocol_default = _gen_protocol()
+        protocol_agent = _gen_protocol(job_type="agent")
+        assert protocol_default == protocol_agent
