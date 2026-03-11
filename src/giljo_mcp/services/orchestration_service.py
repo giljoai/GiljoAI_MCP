@@ -1406,6 +1406,43 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                 # Update execution progress fields
                 execution.last_progress_at = datetime.now(timezone.utc)
 
+                # Blocked->working transition: if an agent reports progress while
+                # blocked, it has self-recovered and should resume "working" status.
+                # Mirrors the silent->working auto-recovery in auto_clear_silent().
+                if execution.status == "blocked":
+                    old_status = execution.status
+                    execution.status = "working"
+                    execution.block_reason = None
+
+                    self._logger.info(
+                        "Agent resumed from blocked: agent_id=%s, job_id=%s",
+                        execution.agent_id,
+                        job_id,
+                    )
+
+                    # Broadcast status change for dashboard update
+                    if self._websocket_manager:
+                        try:
+                            from api.events.schemas import EventFactory
+
+                            event = EventFactory.agent_status_changed(
+                                job_id=str(job_id),
+                                tenant_key=tenant_key,
+                                old_status=old_status,
+                                new_status="working",
+                                agent_display_name=execution.agent_display_name or "unknown",
+                                project_id=str(job.project_id) if job else None,
+                            )
+                            await self._websocket_manager.broadcast_event_to_tenant(
+                                tenant_key=tenant_key,
+                                event=event,
+                            )
+                        except Exception:
+                            self._logger.exception(
+                                "Failed to broadcast blocked->working for agent %s",
+                                execution.agent_id,
+                            )
+
                 # Extract progress percentage and current task from progress dict
                 if "percent" in progress:
                     execution.progress = min(100, max(0, int(progress["percent"])))

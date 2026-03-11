@@ -344,9 +344,9 @@ If you call `complete_job()` without meeting these requirements:
    - `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 
 **To resume from BLOCKED**:
-1. After receiving guidance, call `report_progress()` to resume:
+1. After receiving guidance, call `report_progress()` with your updated TODO list:
    - `mcp__giljo-mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_items=[...])`
-   - This transitions status back to "working"
+   - This automatically transitions your status from "blocked" back to "working"
 2. Continue execution with Phase 2
 
 **Use BLOCKED for**: Unclear requirements, missing context, waiting for decisions, unrecoverable errors (all errors use blocked status)
