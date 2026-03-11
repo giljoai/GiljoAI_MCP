@@ -277,6 +277,7 @@
                   v-model="editingTemplate.cli_tool"
                   inline
                   density="compact"
+                  class="justify-center"
                   aria-label="Select CLI tool"
                   @update:model-value="onCliToolChange"
                 >
@@ -285,26 +286,12 @@
                     :key="tool.value"
                     :value="tool.value"
                     :label="tool.title"
-                  >
-                    <template v-slot:label>
-                      <div class="d-flex align-center">
-                        <v-avatar
-                          v-if="tool.logo"
-                          size="20"
-                          class="mr-2"
-                          :class="{ 'codex-icon': tool.value === 'codex' }"
-                        >
-                          <v-img :src="tool.logo" :alt="tool.title" />
-                        </v-avatar>
-                        <span>{{ tool.title }}</span>
-                      </div>
-                    </template>
-                  </v-radio>
+                  />
                 </v-radio-group>
               </v-col>
 
-              <!-- Role Selector -->
-              <v-col cols="12" md="6">
+              <!-- Role / Suffix / Model — single row -->
+              <v-col cols="4">
                 <v-select
                   v-model="editingTemplate.role"
                   :items="roleOptions"
@@ -325,14 +312,11 @@
                 </v-select>
               </v-col>
 
-              <!-- Custom Suffix with Live Name Preview -->
-              <v-col cols="12" md="6">
+              <v-col cols="5">
                 <v-text-field
                   v-model="editingTemplate.custom_suffix"
                   label="Custom Suffix (optional)"
                   density="compact"
-                  hint="Letters, numbers, and hyphens only"
-                  persistent-hint
                   aria-label="Custom agent name suffix"
                 >
                   <template v-slot:append-inner>
@@ -340,41 +324,16 @@
                       <template v-slot:activator="{ props }">
                         <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
                       </template>
-                      <span
-                        >Add a suffix to customize the agent name (e.g.,
-                        'implementer-fastapi')</span
-                      >
+                      <span>Add a suffix to customize the agent name (e.g., 'implementer-fastapi')</span>
                     </v-tooltip>
                   </template>
                 </v-text-field>
-                <div v-if="generatedName" class="text-caption text-primary mt-1">
+                <div v-if="generatedName" class="text-caption text-primary mt-n2">
                   Agent Name: <strong>{{ generatedName }}</strong>
                 </div>
               </v-col>
 
-              <!-- Description (Conditional - Claude only) -->
-              <v-col v-if="showDescription" cols="12">
-                <v-text-field
-                  v-model="editingTemplate.description"
-                  label="Description"
-                  density="compact"
-                  hint="Short description of agent responsibilities (required for Claude)"
-                  persistent-hint
-                  aria-label="Agent description"
-                >
-                  <template v-slot:append-inner>
-                    <v-tooltip location="top">
-                      <template v-slot:activator="{ props }">
-                        <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
-                      </template>
-                      <span>Required for Claude - Brief description of what this agent does</span>
-                    </v-tooltip>
-                  </template>
-                </v-text-field>
-              </v-col>
-
-              <!-- Model (Conditional - Claude dropdown, others read-only) -->
-              <v-col cols="12" md="6">
+              <v-col cols="3">
                 <v-select
                   v-if="modelOptions.length > 0"
                   v-model="editingTemplate.model"
@@ -403,13 +362,30 @@
                   <template v-slot:append-inner>
                     <v-tooltip location="top">
                       <template v-slot:activator="{ props }">
-                        <v-icon v-bind="props" size="small" color="info"
-                          >mdi-information-outline</v-icon
-                        >
+                        <v-icon v-bind="props" size="small" color="info">mdi-information-outline</v-icon>
                       </template>
-                      <span
-                        >Model determined by {{ editingTemplate.cli_tool }} CLI configuration</span
-                      >
+                      <span>Model determined by {{ editingTemplate.cli_tool }} CLI configuration</span>
+                    </v-tooltip>
+                  </template>
+                </v-text-field>
+              </v-col>
+
+              <!-- Description (Conditional - Claude only) -->
+              <v-col v-if="showDescription" cols="12">
+                <v-text-field
+                  v-model="editingTemplate.description"
+                  label="Description"
+                  density="compact"
+                  hint="Short description of agent responsibilities (required for Claude)"
+                  persistent-hint
+                  aria-label="Agent description"
+                >
+                  <template v-slot:append-inner>
+                    <v-tooltip location="top">
+                      <template v-slot:activator="{ props }">
+                        <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
+                      </template>
+                      <span>Required for Claude - Brief description of what this agent does</span>
                     </v-tooltip>
                   </template>
                 </v-text-field>
@@ -444,33 +420,35 @@
                 />
               </v-col>
 
-              <!-- Protocol Notice (Handover 0814) -->
-              <v-col cols="12">
-                <v-alert type="info" variant="tonal" density="compact">
-                  GiljoAI automatically injects orchestration protocols at runtime. These handle
-                  MCP connectivity, lifecycle management, and team coordination.
-                </v-alert>
-              </v-col>
-
-              <!-- Preview Window (Always visible when content exists) -->
+              <!-- Preview (collapsible, Handover 0814) -->
               <v-col v-if="previewContent" cols="12">
-                <div class="d-flex align-center mb-2">
-                  <v-icon class="mr-2" color="primary">mdi-eye</v-icon>
-                  <span class="text-subtitle-2">Preview</span>
-                </div>
-                <div class="preview-container">
-                  <v-btn
-                    size="small"
-                    prepend-icon="mdi-content-copy"
-                    variant="outlined"
-                    class="mb-2"
-                    aria-label="Copy preview to clipboard"
-                    @click="copyPreview"
-                  >
-                    Copy to Clipboard
-                  </v-btn>
-                  <pre class="preview-content">{{ previewContent }}</pre>
-                </div>
+                <v-expansion-panels variant="accordion">
+                  <v-expansion-panel>
+                    <v-expansion-panel-title>
+                      <div class="d-flex align-center">
+                        <v-icon start size="small" color="primary">mdi-eye</v-icon>
+                        <span class="font-weight-medium">Preview</span>
+                        <span class="text-caption text-medium-emphasis ml-2">(includes orchestration protocols)</span>
+                      </div>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                      <div class="d-flex justify-end mb-2">
+                        <v-btn
+                          size="small"
+                          prepend-icon="mdi-content-copy"
+                          variant="tonal"
+                          aria-label="Copy preview to clipboard"
+                          @click="copyPreview"
+                        >
+                          Copy to Clipboard
+                        </v-btn>
+                      </div>
+                      <v-card variant="outlined" class="preview-card">
+                        <pre class="preview-content">{{ previewContent }}</pre>
+                      </v-card>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
               </v-col>
             </v-row>
           </v-container>
@@ -692,10 +670,10 @@ const statusOptions = [
 
 // CLI tool options for create/edit modal (Handover 0103)
 const cliToolOptions = [
-  { title: 'Claude Code', value: 'claude', logo: '/claude_pix.svg' },
-  { title: 'Codex CLI', value: 'codex', logo: '/icons/codex_mark.svg' },
-  { title: 'Gemini CLI', value: 'gemini', logo: '/gemini-icon.svg' },
-  { title: 'Generic', value: 'generic', logo: null },
+  { title: 'Claude Code', value: 'claude' },
+  { title: 'Codex CLI', value: 'codex' },
+  { title: 'Gemini CLI', value: 'gemini' },
+  { title: 'Generic', value: 'generic' },
 ]
 
 // Computed
@@ -1158,28 +1136,26 @@ watch(
     }
   }
 
-  // Handover 0103: Preview content styling
-  .preview-container {
-    background: var(--v-theme-background);
-    border-radius: 4px;
+}
 
-    .preview-content {
-      background: var(--v-theme-surface);
-      color: var(--v-theme-on-surface);
-      font-family: 'Roboto Mono', monospace;
-      font-size: 13px;
-      line-height: 1.6;
-      padding: 16px;
-      border-radius: 4px;
-      border: 1px solid var(--v-theme-on-surface-variant);
-      max-height: 400px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-      margin: 0;
-    }
+// Handover 0814: Preview styling (harmonized with AgentDetailsModal)
+// Outside .template-manager — v-dialog teleports to <body>, so nested selectors don't reach it
+:deep(.preview-card) {
+  max-height: 500px;
+  overflow-y: auto;
+  background-color: rgb(var(--v-theme-surface-variant));
+
+  pre.preview-content {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 16px;
+    margin: 0;
+    white-space: pre-wrap !important;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    color: rgb(var(--v-theme-on-surface-variant));
   }
-
 }
 
 // Custom toggle colors: green when ON, faded blue when OFF
@@ -1204,6 +1180,18 @@ watch(
   }
 }
 
+// Handover 0814: CLI tool radio — centered, selected label turns yellow (matches ProjectTabs execution mode radios)
+:deep(.v-radio-group) {
+  .v-selection-control-group {
+    justify-content: center;
+  }
+
+  .v-selection-control--dirty .v-label {
+    color: rgb(var(--v-theme-primary));
+    font-weight: 500;
+  }
+}
+
 // Inactive template row styling
 :deep(.inactive-template) {
   opacity: 0.5;
@@ -1213,10 +1201,4 @@ watch(
   }
 }
 
-// Codex icon theme-aware coloring
-.codex-icon {
-  :deep(img) {
-    filter: brightness(0) invert(1); // White in dark mode
-  }
-}
 </style>
