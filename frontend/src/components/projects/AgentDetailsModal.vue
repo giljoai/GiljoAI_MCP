@@ -136,39 +136,14 @@
             </div>
           </div>
 
-          <!-- Instructions Expansion Panels -->
+          <!-- Instructions Expansion Panels (Handover 0814: harmonized with TemplateManager) -->
           <v-expansion-panels variant="accordion" class="mb-3">
-            <!-- System Instructions -->
-            <v-expansion-panel v-if="templateData.system_instructions">
-              <v-expansion-panel-title>
-                <div class="d-flex align-center">
-                  <v-icon start size="small">mdi-cog</v-icon>
-                  <span class="font-weight-medium">System Instructions</span>
-                </div>
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <div class="d-flex justify-end mb-2">
-                  <v-btn
-                    size="small"
-                    variant="tonal"
-                    prepend-icon="mdi-content-copy"
-                    @click="copyToClipboard(templateData.system_instructions)"
-                  >
-                    Copy
-                  </v-btn>
-                </div>
-                <v-card variant="outlined" class="template-content-card">
-                  <pre class="template-content">{{ templateData.system_instructions }}</pre>
-                </v-card>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-
-            <!-- User Instructions -->
+            <!-- Role & Expertise (user-editable content — shown first, most relevant to users) -->
             <v-expansion-panel v-if="templateData.user_instructions">
               <v-expansion-panel-title>
                 <div class="d-flex align-center">
-                  <v-icon start size="small">mdi-account</v-icon>
-                  <span class="font-weight-medium">User Instructions</span>
+                  <v-icon start size="small">mdi-account-star</v-icon>
+                  <span class="font-weight-medium">Role & Expertise</span>
                 </div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
@@ -188,12 +163,13 @@
               </v-expansion-panel-text>
             </v-expansion-panel>
 
-            <!-- Template Content (for backward compatibility) -->
+            <!-- Orchestration Protocols (auto-managed by GiljoAI) -->
             <v-expansion-panel v-if="templateData.system_instructions">
               <v-expansion-panel-title>
                 <div class="d-flex align-center">
-                  <v-icon start size="small">mdi-file-document</v-icon>
-                  <span class="font-weight-medium">Template Content</span>
+                  <v-icon start size="small">mdi-cog</v-icon>
+                  <span class="font-weight-medium">Orchestration Protocols</span>
+                  <span class="text-caption text-medium-emphasis ml-2">(auto-managed)</span>
                 </div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
