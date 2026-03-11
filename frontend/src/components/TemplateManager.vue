@@ -427,22 +427,11 @@
                     <v-expansion-panel-title>
                       <div class="d-flex align-center">
                         <v-icon start size="small" color="primary">mdi-eye</v-icon>
-                        <span class="font-weight-medium">Preview</span>
+                        <span class="font-weight-medium">Template Preview</span>
                         <span class="text-caption text-medium-emphasis ml-2">(includes orchestration protocols)</span>
                       </div>
                     </v-expansion-panel-title>
                     <v-expansion-panel-text>
-                      <div class="d-flex justify-end mb-2">
-                        <v-btn
-                          size="small"
-                          prepend-icon="mdi-content-copy"
-                          variant="tonal"
-                          aria-label="Copy preview to clipboard"
-                          @click="copyPreview"
-                        >
-                          Copy to Clipboard
-                        </v-btn>
-                      </div>
                       <v-card variant="outlined" class="preview-card">
                         <pre class="preview-content">{{ previewContent }}</pre>
                       </v-card>
