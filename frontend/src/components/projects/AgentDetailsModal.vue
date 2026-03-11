@@ -39,190 +39,26 @@
           </v-alert>
         </div>
 
-        <!-- Template Content (Regular Agents) -->
-        <div v-else-if="!isOrchestrator && templateData">
-          <!-- Template Overview Card -->
-          <v-card variant="outlined" class="mb-4">
-            <v-list density="compact">
-              <!-- Name (with Role suffix if different) - Handover 0358: giljo yellow -->
-              <v-list-item>
-                <template #prepend>
-                  <v-icon color="primary">mdi-account-badge</v-icon>
-                </template>
-                <v-list-item-title class="font-weight-bold">Name</v-list-item-title>
-                <v-list-item-subtitle>
-                  {{ templateData.name }}
-                  <span v-if="templateData.role && templateData.role !== templateData.name" class="text-medium-emphasis">
-                    ({{ templateData.role }})
-                  </span>
-                </v-list-item-subtitle>
-              </v-list-item>
-
-              <v-divider></v-divider>
-
-              <!-- CLI Tool (Handover 0358: use actual tool icons) -->
-              <v-list-item v-if="templateData.cli_tool">
-                <template #prepend>
-                  <img
-                    v-if="getCliToolIcon(templateData.cli_tool)"
-                    :src="getCliToolIcon(templateData.cli_tool)"
-                    alt="CLI Tool"
-                    class="cli-tool-icon"
-                  />
-                  <v-icon v-else color="secondary">mdi-console</v-icon>
-                </template>
-                <v-list-item-title class="font-weight-bold">CLI Tool</v-list-item-title>
-                <v-list-item-subtitle>{{ templateData.cli_tool }}</v-list-item-subtitle>
-              </v-list-item>
-
-              <v-divider v-if="templateData.cli_tool"></v-divider>
-
-              <!-- Model (Handover 0358: use giljo face icon) -->
-              <v-list-item v-if="templateData.model">
-                <template #prepend>
-                  <img
-                    :src="giljoFaceIcon"
-                    alt="Model"
-                    class="giljo-face-icon"
-                  />
-                </template>
-                <v-list-item-title class="font-weight-bold">Model</v-list-item-title>
-                <v-list-item-subtitle>{{ templateData.model }}</v-list-item-subtitle>
-              </v-list-item>
-
-              <v-divider v-if="templateData.model"></v-divider>
-
-              <!-- Description - Handover 0358: giljo yellow -->
-              <v-list-item v-if="templateData.description">
-                <template #prepend>
-                  <v-icon color="primary">mdi-text</v-icon>
-                </template>
-                <v-list-item-title class="font-weight-bold">Description</v-list-item-title>
-                <v-list-item-subtitle class="text-wrap">
-                  {{ templateData.description }}
-                </v-list-item-subtitle>
-              </v-list-item>
-
-              <v-divider v-if="templateData.description"></v-divider>
-
-              <!-- Custom Suffix -->
-              <v-list-item v-if="templateData.custom_suffix">
-                <template #prepend>
-                  <v-icon color="warning">mdi-tag</v-icon>
-                </template>
-                <v-list-item-title class="font-weight-bold">Custom Suffix</v-list-item-title>
-                <v-list-item-subtitle>{{ templateData.custom_suffix }}</v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
+        <!-- Template Preview (Regular Agents) — Handover 0814: simplified to match TemplateManager preview -->
+        <div v-else-if="!isOrchestrator && previewContent">
+          <v-card variant="outlined" class="template-content-card">
+            <pre class="template-content">{{ previewContent }}</pre>
           </v-card>
-
-          <!-- Tools Section -->
-          <div v-if="templateData.tools?.length > 0" class="mb-4">
-            <div class="text-subtitle-2 mb-2">
-              <v-icon start size="small">mdi-wrench</v-icon>
-              MCP Tools ({{ templateData.tools.length }})
-            </div>
-            <div class="d-flex flex-wrap gap-1">
-              <v-chip
-                v-for="tool in templateData.tools"
-                :key="tool"
-                size="small"
-                color="secondary"
-                variant="tonal"
-                label
-              >
-                {{ tool }}
-              </v-chip>
-            </div>
-          </div>
-
-          <!-- Instructions Expansion Panels (Handover 0814: harmonized with TemplateManager) -->
-          <v-expansion-panels variant="accordion" class="mb-3">
-            <!-- Role & Expertise (user-editable content — shown first, most relevant to users) -->
-            <v-expansion-panel v-if="templateData.user_instructions">
-              <v-expansion-panel-title>
-                <div class="d-flex align-center">
-                  <v-icon start size="small">mdi-account-star</v-icon>
-                  <span class="font-weight-medium">Role & Expertise</span>
-                </div>
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <div class="d-flex justify-end mb-2">
-                  <v-btn
-                    size="small"
-                    variant="tonal"
-                    prepend-icon="mdi-content-copy"
-                    @click="copyToClipboard(templateData.user_instructions)"
-                  >
-                    Copy
-                  </v-btn>
-                </div>
-                <v-card variant="outlined" class="template-content-card">
-                  <pre class="template-content">{{ templateData.user_instructions }}</pre>
-                </v-card>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-
-            <!-- Orchestration Protocols (auto-managed by GiljoAI) -->
-            <v-expansion-panel v-if="templateData.system_instructions">
-              <v-expansion-panel-title>
-                <div class="d-flex align-center">
-                  <v-icon start size="small">mdi-cog</v-icon>
-                  <span class="font-weight-medium">Orchestration Protocols</span>
-                  <span class="text-caption text-medium-emphasis ml-2">(auto-managed)</span>
-                </div>
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <div class="d-flex justify-end mb-2">
-                  <v-btn
-                    size="small"
-                    variant="tonal"
-                    prepend-icon="mdi-content-copy"
-                    @click="copyToClipboard(templateData.system_instructions)"
-                  >
-                    Copy
-                  </v-btn>
-                </div>
-                <v-card variant="outlined" class="template-content-card">
-                  <pre class="template-content">{{ templateData.system_instructions }}</pre>
-                </v-card>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-          </v-expansion-panels>
         </div>
 
         <!-- Orchestrator Prompt Content -->
         <div v-else-if="isOrchestrator && orchestratorPrompt">
-          <div class="mb-3">
-            <div class="d-flex align-center justify-space-between mb-2">
-              <div class="text-subtitle-2">Orchestrator System Prompt</div>
-              <v-btn
-                size="small"
-                variant="tonal"
-                prepend-icon="mdi-content-copy"
-                @click="copyToClipboard(orchestratorPrompt)"
-              >
-                Copy
-              </v-btn>
-            </div>
-            <v-card variant="outlined" class="template-content-card">
-              <pre class="template-content">{{ orchestratorPrompt }}</pre>
-            </v-card>
-          </div>
+          <v-card variant="outlined" class="template-content-card">
+            <pre class="template-content">{{ orchestratorPrompt }}</pre>
+          </v-card>
         </div>
 
-        <!-- No Template Data (after attempting fetch) - Handover 0358 -->
-        <div v-else-if="!isOrchestrator && !templateData && !loading">
+        <!-- No Template Data (after attempting fetch) -->
+        <div v-else-if="!isOrchestrator && !previewContent && !loading">
           <v-alert type="info" variant="tonal" density="compact">
             No template information available for this agent.
           </v-alert>
         </div>
-
-        <!-- Copy Success Feedback -->
-        <v-snackbar v-model="copySuccess" :timeout="2000" color="success" location="top">
-          <v-icon start>mdi-check-circle</v-icon>
-          Copied to clipboard!
-        </v-snackbar>
       </v-card-text>
 
       <!-- No Agent Data -->
@@ -246,10 +82,7 @@
 <script setup>
 import { ref, computed, watch, getCurrentInstance } from 'vue'
 import api from '@/services/api'
-import { useClipboard } from '@/composables/useClipboard'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
-
-const { copy: clipboardCopy } = useClipboard()
 
 const props = defineProps({
   modelValue: {
@@ -268,17 +101,11 @@ const emit = defineEmits(['update:modelValue'])
 const instance = getCurrentInstance()
 const apiClient = instance?.appContext.config.globalProperties.$api || api
 
-// Giljo face icon (dark theme only)
-const giljoFaceIcon = computed(() => {
-  return '/giljo_YW_Face.svg'
-})
-
 // State
 const loading = ref(false)
 const error = ref(null)
-const templateData = ref(null)
+const previewContent = ref(null)
 const orchestratorPrompt = ref(null)
-const copySuccess = ref(false)
 
 // Computed
 const isOpen = computed({
@@ -295,29 +122,15 @@ const handleClose = () => {
   emit('update:modelValue', false)
 }
 
-/**
- * Get agent avatar color - matches BRANDING_GUIDE.md (Handover 0358)
- */
 const getAgentDisplayNameColor = (displayName) => {
   return getAgentColorConfig(displayName).hex
 }
 
 /**
- * Get CLI tool icon path (Handover 0358)
+ * Fetch template and generate preview content (Handover 0814)
+ * Resolves template by template_id or name matching, then calls preview API
  */
-const getCliToolIcon = (cliTool) => {
-  const icons = {
-    claude: '/Claude_AI_symbol.svg',
-    'claude-code': '/Claude_AI_symbol.svg',
-    codex: '/codex_logo.svg',
-    gemini: '/gemini-icon.svg',
-    openai: '/openai-logo.svg',
-  }
-  return icons[cliTool?.toLowerCase()] || null // null = use mdi-console for generic
-}
-
 const fetchTemplateData = async () => {
-  // Handover 0358: Support fetching by template_id OR agent_display_name/agent_name
   const hasTemplateId = !!props.agent?.template_id
   const displayName = props.agent?.agent_display_name
   const agentName = props.agent?.agent_name
@@ -329,19 +142,18 @@ const fetchTemplateData = async () => {
 
   loading.value = true
   error.value = null
-  templateData.value = null
+  previewContent.value = null
 
   try {
+    let templateId = null
+
     if (hasTemplateId) {
-      // Fetch by template_id directly
-      const response = await apiClient.templates.get(props.agent.template_id)
-      templateData.value = response.data
+      templateId = props.agent.template_id
     } else {
       // Fetch all active templates and find matching one by name
       const response = await apiClient.templates.list({ is_active: true })
       const templates = Array.isArray(response.data) ? response.data : (response.data?.templates || [])
 
-      // Find matching template by name (case-insensitive)
       const searchTerms = [displayName, agentName].filter(Boolean).map(s => s.toLowerCase())
       const match = templates.find(t => {
         const templateName = (t.name || '').toLowerCase()
@@ -355,8 +167,13 @@ const fetchTemplateData = async () => {
       })
 
       if (match) {
-        templateData.value = match
+        templateId = match.id
       }
+    }
+
+    if (templateId) {
+      const previewResponse = await apiClient.templates.preview(templateId, {})
+      previewContent.value = previewResponse.data.preview
     }
   } catch (err) {
     console.error('[AgentDetailsModal] Failed to fetch template:', err)
@@ -383,20 +200,13 @@ const fetchOrchestratorPrompt = async () => {
   }
 }
 
-const copyToClipboard = async (text) => {
-  const success = await clipboardCopy(text)
-  if (success) {
-    copySuccess.value = true
-  }
-}
-
 // Watchers
 watch(
   () => props.modelValue,
   (newValue) => {
     if (newValue && props.agent) {
       // Reset state
-      templateData.value = null
+      previewContent.value = null
       orchestratorPrompt.value = null
       error.value = null
 
@@ -404,7 +214,6 @@ watch(
       if (isOrchestrator.value) {
         fetchOrchestratorPrompt()
       } else {
-        // Handover 0358: Fetch template by template_id OR agent_display_name/agent_name
         fetchTemplateData()
       }
     }
@@ -433,18 +242,5 @@ watch(
 
 .gap-2 {
   gap: 8px;
-}
-
-/* Handover 0358: Icon styling for CLI tools and giljo face */
-.cli-tool-icon {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-}
-
-.giljo-face-icon {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
 }
 </style>
