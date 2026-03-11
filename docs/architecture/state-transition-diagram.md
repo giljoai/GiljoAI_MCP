@@ -24,7 +24,7 @@ stateDiagram-v2
     review --> working: Revisions Needed
     review --> failed: Review Rejected
     
-    blocked --> working: Input Provided
+    blocked --> working: report_progress()
     blocked --> cancelled: User Cancels
     blocked --> failed: Cannot Unblock
     
