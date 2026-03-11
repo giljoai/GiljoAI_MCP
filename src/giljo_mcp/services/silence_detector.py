@@ -18,9 +18,10 @@ from typing import Optional
 from sqlalchemy import or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.settings import Settings
 
 
@@ -127,12 +128,16 @@ class SilenceDetector:
         # system-wide background health monitor (like a database cleanup job), not
         # a tenant-facing operation. It runs on a server timer with no user/tenant
         # context. Cross-tenant scope is BY DESIGN.
-        stmt = select(AgentExecution).where(
-            AgentExecution.status == "working",
-            or_(
-                AgentExecution.last_progress_at < cutoff,
-                AgentExecution.last_progress_at.is_(None),
-            ),
+        stmt = (
+            select(AgentExecution)
+            .options(selectinload(AgentExecution.job).selectinload(AgentJob.project))
+            .where(
+                AgentExecution.status == "working",
+                or_(
+                    AgentExecution.last_progress_at < cutoff,
+                    AgentExecution.last_progress_at.is_(None),
+                ),
+            )
         )
 
         result = await session.execute(stmt)
@@ -143,6 +148,10 @@ class SilenceDetector:
             old_status = agent.status
             agent.status = "silent"
 
+            # Extract project context from eagerly-loaded relationships
+            project_id = str(agent.job.project_id) if agent.job else None
+            project_name = agent.job.project.name if agent.job and agent.job.project else None
+
             logger.info(
                 "Agent marked silent: agent_id=%s, job_id=%s, display_name=%s, last_progress_at=%s",
                 agent.agent_id,
@@ -151,13 +160,31 @@ class SilenceDetector:
                 agent.last_progress_at,
             )
 
-            # Emit WebSocket event
+            # Emit WebSocket events
             try:
                 await _broadcast_status_change(
                     ws_manager=self.ws,
                     agent=agent,
                     old_status=old_status,
                     new_status="silent",
+                    project_id=project_id,
+                )
+
+                # Emit dedicated agent:silent event for notification bell
+                from api.events.schemas import EventFactory
+
+                silent_event = EventFactory.agent_silent(
+                    job_id=str(agent.job_id),
+                    tenant_key=agent.tenant_key,
+                    agent_display_name=agent.agent_display_name or "unknown",
+                    reason="Agent stopped communicating",
+                    project_id=project_id,
+                    project_name=project_name,
+                    execution_id=str(agent.agent_id),
+                )
+                await self.ws.broadcast_event_to_tenant(
+                    tenant_key=agent.tenant_key,
+                    event=silent_event,
                 )
             except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
                 logger.exception(
@@ -327,6 +354,7 @@ async def _broadcast_status_change(
     agent: AgentExecution,
     old_status: str,
     new_status: str,
+    project_id: str | None = None,
 ) -> None:
     """Broadcast an agent status change event via WebSocket.
 
@@ -338,6 +366,7 @@ async def _broadcast_status_change(
         agent: The agent execution object
         old_status: Previous status
         new_status: New status
+        project_id: Optional project UUID string for frontend filtering
     """
     from api.events.schemas import EventFactory
 
@@ -347,6 +376,7 @@ async def _broadcast_status_change(
         old_status=old_status,
         new_status=new_status,
         agent_display_name=agent.agent_display_name or "unknown",
+        project_id=project_id,
     )
 
     await ws_manager.broadcast_event_to_tenant(

@@ -280,6 +280,57 @@ class AgentStatusChangedEvent(BaseModel):
     }
 
 
+class AgentSilentData(BaseModel):
+    """
+    Data payload for agent:silent event.
+
+    Emitted when the silence detector marks an agent as silent.
+    Used by the frontend notification bell to alert users about
+    unresponsive agents.
+    """
+
+    job_id: str = Field(..., description="Agent job UUID as string")
+    tenant_key: str = Field(..., min_length=1, description="Tenant identifier")
+    agent_display_name: str = Field(..., min_length=1, description="Human-readable display name for UI")
+    reason: str = Field(..., min_length=1, description="Reason for silence detection")
+    project_id: str | None = Field(None, description="Project UUID if applicable")
+    project_name: str | None = Field(None, description="Project name for display")
+    execution_id: str | None = Field(None, description="Agent execution UUID")
+
+
+class AgentSilentEvent(BaseModel):
+    """
+    Complete event structure for agent:silent.
+
+    Broadcast to all tenant clients when an agent is detected as silent.
+    Frontend notification bell handler listens for this event type.
+    """
+
+    type: Literal["agent:silent"] = "agent:silent"
+    timestamp: str = Field(..., description="ISO 8601 timestamp")
+    schema_version: str = Field(default="1.0", description="Event schema version")
+    data: AgentSilentData
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "type": "agent:silent",
+                "timestamp": "2025-11-02T10:32:00Z",
+                "schema_version": "1.0",
+                "data": {
+                    "job_id": "660e8400-e29b-41d4-a716-446655440000",
+                    "tenant_key": "tenant_123",
+                    "agent_display_name": "implementor",
+                    "reason": "Agent stopped communicating",
+                    "project_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "project_name": "My Project",
+                    "execution_id": "770e8400-e29b-41d4-a716-446655440000",
+                },
+            }
+        }
+    }
+
+
 # ============================================================================
 # Message Events
 # ============================================================================
@@ -394,6 +445,7 @@ WebSocketEvent = (
     ProjectMissionUpdatedEvent
     | AgentCreatedEvent
     | AgentStatusChangedEvent
+    | AgentSilentEvent
     | MessageSentEvent
     | MessageReceivedEvent
     | MessageAcknowledgedEvent
@@ -597,6 +649,63 @@ class EventFactory:
         return event.model_dump(mode="json")
 
     @staticmethod
+    def agent_silent(
+        job_id: str | UUID,
+        tenant_key: str,
+        agent_display_name: str,
+        reason: str,
+        project_id: str | UUID | None = None,
+        project_name: str | None = None,
+        execution_id: str | None = None,
+    ) -> dict:
+        """
+        Create agent:silent event.
+
+        Emitted by the silence detector when an agent stops communicating.
+        Used by the frontend notification bell to alert users.
+
+        Args:
+            job_id: Agent job UUID (str or UUID object)
+            tenant_key: Tenant identifier
+            agent_display_name: Human-readable display name for UI
+            reason: Reason the agent was marked silent
+            project_id: Optional project UUID
+            project_name: Optional project name for display
+            execution_id: Optional agent execution UUID
+
+        Returns:
+            Event dict ready for JSON serialization
+
+        Example:
+            >>> event = EventFactory.agent_silent(
+            ...     job_id="660e8400-e29b-41d4-a716-446655440000",
+            ...     tenant_key="tenant_123",
+            ...     agent_display_name="implementor",
+            ...     reason="Agent stopped communicating",
+            ...     project_id="550e8400-e29b-41d4-a716-446655440000",
+            ...     project_name="My Project",
+            ... )
+            >>> await ws.send_json(event)
+        """
+        # Convert UUIDs to strings if needed
+        job_id_str = str(job_id) if isinstance(job_id, UUID) else job_id
+        project_id_str = str(project_id) if project_id and isinstance(project_id, UUID) else project_id
+
+        event = AgentSilentEvent(
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            data=AgentSilentData(
+                job_id=job_id_str,
+                tenant_key=tenant_key,
+                agent_display_name=agent_display_name,
+                reason=reason,
+                project_id=project_id_str,
+                project_name=project_name,
+                execution_id=execution_id,
+            ),
+        )
+        return event.model_dump(mode="json")
+
+    @staticmethod
     def message_sent(
         message_id: str,
         project_id: str | UUID,
@@ -721,6 +830,8 @@ class EventFactory:
 __all__ = [
     "AgentCreatedData",
     "AgentCreatedEvent",
+    "AgentSilentData",
+    "AgentSilentEvent",
     "AgentStatusChangedData",
     "AgentStatusChangedEvent",
     # Factory
