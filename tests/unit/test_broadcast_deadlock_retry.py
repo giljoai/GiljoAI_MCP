@@ -1,11 +1,15 @@
 """
-Unit tests for broadcast deadlock prevention and retry (Bug Fix Feb 2026).
+Unit tests for deadlock prevention and retry across send and receive paths.
 
 Tests cover:
 1. Recipients are sorted before message creation (deterministic lock ordering)
-2. Deadlock retry with exponential backoff on counter updates
-3. RetryExhaustedError raised after max retries
-4. Non-deadlock OperationalErrors propagate immediately
+2. Send-path: deadlock retry with exponential backoff on counter updates
+3. Send-path: RetryExhaustedError raised after max retries
+4. Send-path: non-deadlock OperationalErrors propagate immediately
+5. Receive-path: deadlock retry on bulk acknowledge counters
+6. Receive-path: RetryExhaustedError raised after max retries
+7. Receive-path: uses batched counter update (single UPDATE, not N)
+8. Shared utility: with_deadlock_retry behavior
 """
 
 from datetime import datetime, timezone
@@ -19,6 +23,10 @@ from src.giljo_mcp.exceptions import RetryExhaustedError
 from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.services.message_service import MessageService
+from src.giljo_mcp.utils.db_retry import with_deadlock_retry
+
+# Patch target for asyncio.sleep inside the shared retry utility
+_SLEEP_PATCH_TARGET = "src.giljo_mcp.utils.db_retry.asyncio.sleep"
 
 
 def _make_execution(agent_id: str, display_name: str, status: str = "working") -> Mock:
@@ -31,6 +39,7 @@ def _make_execution(agent_id: str, display_name: str, status: str = "working") -
     exe.started_at = datetime.now(timezone.utc)
     exe.messages_sent_count = 0
     exe.messages_waiting_count = 0
+    exe.job_id = str(uuid4())
     return exe
 
 
@@ -64,19 +73,13 @@ class TestBroadcastRecipientSorting:
         mock_project.id = project_id
         mock_project.tenant_key = tenant_key
 
-        # Create agents with IDs that sort in reverse alphabetical order
         agent_c = _make_execution("cccc-cccc", "agent-c")
         agent_a = _make_execution("aaaa-aaaa", "agent-a")
         agent_b = _make_execution("bbbb-bbbb", "agent-b")
 
-        # Return them in non-sorted order from DB
         mock_scalars_fanout = Mock()
         mock_scalars_fanout.all.return_value = [agent_c, agent_a, agent_b]
 
-        mock_result_fanout = Mock()
-        mock_result_fanout.scalars.return_value = mock_scalars_fanout
-
-        # Track messages added to session
         added_messages = []
         original_add = session.add
 
@@ -87,7 +90,6 @@ class TestBroadcastRecipientSorting:
 
         session.add = track_add
 
-        # Mock: project query, then fan-out query, then sender query, then counter queries
         call_count = {"n": 0}
 
         async def mock_execute(*args, **kwargs):
@@ -95,13 +97,10 @@ class TestBroadcastRecipientSorting:
             result = Mock()
 
             if call_count["n"] == 1:
-                # Project lookup
                 result.scalar_one_or_none = Mock(return_value=mock_project)
             elif call_count["n"] == 2:
-                # Fan-out expansion query
                 result.scalars = Mock(return_value=mock_scalars_fanout)
             else:
-                # Sender resolution + counter queries
                 result.scalar_one_or_none = Mock(return_value=agent_a)
                 result.rowcount = 1
             return result
@@ -118,7 +117,6 @@ class TestBroadcastRecipientSorting:
             tenant_key=tenant_key,
         )
 
-        # Verify messages were created in sorted recipient order
         assert len(added_messages) == 3
         recipient_ids = [msg.to_agents[0] for msg in added_messages]
         assert recipient_ids == sorted(recipient_ids), (
@@ -126,8 +124,8 @@ class TestBroadcastRecipientSorting:
         )
 
 
-class TestDeadlockRetry:
-    """Verify deadlock retry behavior on counter updates."""
+class TestSendPathDeadlockRetry:
+    """Verify deadlock retry behavior on send-path counter updates."""
 
     @pytest.mark.asyncio
     async def test_deadlock_retried_with_backoff(self, mock_db_manager, mock_tenant_manager):
@@ -152,16 +150,13 @@ class TestDeadlockRetry:
             if call_count["n"] == 1:
                 result.scalar_one_or_none = Mock(return_value=mock_project)
             elif call_count["n"] == 2:
-                # Fan-out: return single agent (direct message, not broadcast)
                 result.scalar_one_or_none = Mock(return_value=agent_a)
                 scalars = Mock()
                 scalars.all = Mock(return_value=[agent_a])
                 result.scalars = Mock(return_value=scalars)
             elif call_count["n"] == 3:
-                # Sender resolution in counter block — first attempt: deadlock
                 raise deadlock_err
             elif call_count["n"] == 4:
-                # Sender resolution in counter block — retry succeeds
                 result.scalar_one_or_none = Mock(return_value=agent_a)
             else:
                 result.rowcount = 1
@@ -171,7 +166,7 @@ class TestDeadlockRetry:
 
         service = MessageService(db_manager, mock_tenant_manager)
 
-        with patch("src.giljo_mcp.services.message_service.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock) as mock_sleep:
             await service.send_message(
                 to_agents=[agent_a.agent_id],
                 content="Test direct",
@@ -180,9 +175,7 @@ class TestDeadlockRetry:
                 tenant_key=tenant_key,
             )
 
-            # Verify retry happened with a sleep call
             assert mock_sleep.call_count >= 1
-            # Verify rollback was called on deadlock
             session.rollback.assert_awaited()
 
     @pytest.mark.asyncio
@@ -212,7 +205,6 @@ class TestDeadlockRetry:
             elif call_count["n"] == 2:
                 result.scalar_one_or_none = Mock(return_value=agent_a)
             else:
-                # All counter attempts deadlock
                 raise deadlock_err
             return result
 
@@ -220,7 +212,7 @@ class TestDeadlockRetry:
 
         service = MessageService(db_manager, mock_tenant_manager)
 
-        with patch("src.giljo_mcp.services.message_service.asyncio.sleep", new_callable=AsyncMock):
+        with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock):
             with pytest.raises(RetryExhaustedError, match="Deadlock retry exhausted"):
                 await service.send_message(
                     to_agents=[agent_a.agent_id],
@@ -264,7 +256,7 @@ class TestDeadlockRetry:
 
         service = MessageService(db_manager, mock_tenant_manager)
 
-        with patch("src.giljo_mcp.services.message_service.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock) as mock_sleep:
             with pytest.raises(OperationalError):
                 await service.send_message(
                     to_agents=[agent_a.agent_id],
@@ -274,5 +266,281 @@ class TestDeadlockRetry:
                     tenant_key=tenant_key,
                 )
 
-            # No sleep = no retry attempted
             mock_sleep.assert_not_awaited()
+
+
+class TestWithDeadlockRetryUtility:
+    """Verify the shared with_deadlock_retry utility directly."""
+
+    @pytest.mark.asyncio
+    async def test_success_on_first_attempt(self):
+        """Operation succeeds immediately without retry."""
+        session = AsyncMock()
+        result = await with_deadlock_retry(
+            session,
+            AsyncMock(return_value="ok"),
+            operation_name="test_op",
+        )
+        assert result == "ok"
+        session.rollback.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_retry_on_deadlock_then_success(self):
+        """Operation retries on deadlock and succeeds on second attempt."""
+        session = AsyncMock()
+        deadlock_err = _make_deadlock_error()
+
+        call_count = 0
+
+        async def flaky_operation():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise deadlock_err
+            return "recovered"
+
+        with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock) as mock_sleep:
+            result = await with_deadlock_retry(
+                session,
+                flaky_operation,
+                operation_name="test_op",
+            )
+
+        assert result == "recovered"
+        assert call_count == 2
+        session.rollback.assert_awaited_once()
+        mock_sleep.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_exhaustion_raises_retry_exhausted_error(self):
+        """After max_retries deadlocks, RetryExhaustedError is raised."""
+        session = AsyncMock()
+        deadlock_err = _make_deadlock_error()
+
+        with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock):
+            with pytest.raises(RetryExhaustedError, match="Deadlock retry exhausted"):
+                await with_deadlock_retry(
+                    session,
+                    AsyncMock(side_effect=deadlock_err),
+                    operation_name="test_op",
+                    max_retries=2,
+                )
+
+    @pytest.mark.asyncio
+    async def test_non_deadlock_error_propagates_immediately(self):
+        """Non-deadlock OperationalError propagates without retry."""
+        session = AsyncMock()
+        non_deadlock_err = _make_non_deadlock_error()
+
+        with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock) as mock_sleep:
+            with pytest.raises(OperationalError):
+                await with_deadlock_retry(
+                    session,
+                    AsyncMock(side_effect=non_deadlock_err),
+                    operation_name="test_op",
+                )
+
+            mock_sleep.assert_not_awaited()
+            session.rollback.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_context_included_in_retry_exhausted_error(self):
+        """Context dict is included in RetryExhaustedError."""
+        session = AsyncMock()
+        deadlock_err = _make_deadlock_error()
+
+        with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock):
+            with pytest.raises(RetryExhaustedError) as exc_info:
+                await with_deadlock_retry(
+                    session,
+                    AsyncMock(side_effect=deadlock_err),
+                    operation_name="test_op",
+                    context={"project_id": "abc-123"},
+                    max_retries=1,
+                )
+
+            assert exc_info.value.context["project_id"] == "abc-123"
+            assert exc_info.value.context["operation"] == "test_op"
+
+    @pytest.mark.asyncio
+    async def test_exponential_backoff_timing(self):
+        """Each retry uses exponentially increasing delay."""
+        session = AsyncMock()
+        deadlock_err = _make_deadlock_error()
+        call_count = 0
+
+        async def fail_twice_then_succeed():
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:
+                raise deadlock_err
+            return "ok"
+
+        with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock) as mock_sleep:
+            await with_deadlock_retry(
+                session,
+                fail_twice_then_succeed,
+                operation_name="test_op",
+                max_retries=3,
+                base_delay=0.1,
+                jitter_max=0.0,  # Zero jitter for deterministic test
+            )
+
+        assert mock_sleep.call_count == 2
+        # First delay: 0.1 * 2^0 = 0.1
+        first_delay = mock_sleep.call_args_list[0][0][0]
+        assert 0.09 <= first_delay <= 0.11
+        # Second delay: 0.1 * 2^1 = 0.2
+        second_delay = mock_sleep.call_args_list[1][0][0]
+        assert 0.19 <= second_delay <= 0.21
+
+
+class TestReceivePathDeadlockRetry:
+    """Verify deadlock retry and batching on receive-path counter updates."""
+
+    @pytest.mark.asyncio
+    async def test_receive_uses_bulk_acknowledge_counters(self, mock_db_manager, mock_tenant_manager):
+        """receive_messages should use bulk_acknowledge_counters, not per-message loop."""
+        db_manager, session = mock_db_manager
+        tenant_key = "test-tenant"
+        agent_id = str(uuid4())
+        job_id = str(uuid4())
+        project_id = str(uuid4())
+
+        execution = _make_execution(agent_id, "test-agent")
+        execution.job_id = job_id
+
+        mock_job = Mock(spec=AgentJob)
+        mock_job.job_id = job_id
+        mock_job.project_id = project_id
+        mock_job.tenant_key = tenant_key
+
+        # Create 3 pending messages
+        messages = []
+        for i in range(3):
+            msg = Mock(spec=Message)
+            msg.id = uuid4()
+            msg.to_agents = [agent_id]
+            msg.status = "pending"
+            msg.content = f"msg-{i}"
+            msg.message_type = "task"
+            msg.priority = "normal"
+            msg.meta_data = {"_from_agent": "other-agent"}
+            msg.created_at = datetime.now(timezone.utc)
+            msg.acknowledged_at = None
+            msg.acknowledged_by = []
+            messages.append(msg)
+
+        call_count = {"n": 0}
+
+        async def mock_execute(*args, **kwargs):
+            call_count["n"] += 1
+            result = Mock()
+
+            if call_count["n"] == 1:
+                # AgentExecution lookup
+                result.scalar_one_or_none = Mock(return_value=execution)
+            elif call_count["n"] == 2:
+                # AgentJob lookup
+                result.scalar_one_or_none = Mock(return_value=mock_job)
+            elif call_count["n"] == 3:
+                # Messages query
+                scalars = Mock()
+                scalars.all = Mock(return_value=messages)
+                result.scalars = Mock(return_value=scalars)
+            else:
+                # Counter updates + stats
+                result.rowcount = 1
+                result.scalar_one_or_none = Mock(return_value=execution)
+            return result
+
+        session.execute = AsyncMock(side_effect=mock_execute)
+
+        service = MessageService(db_manager, mock_tenant_manager)
+
+        with patch.object(service._repo, "bulk_acknowledge_counters", new_callable=AsyncMock) as mock_bulk:
+            await service.receive_messages(
+                agent_id=agent_id,
+                tenant_key=tenant_key,
+            )
+
+            # Verify bulk method was called with count=3 (not 3 individual calls)
+            mock_bulk.assert_awaited_once_with(
+                session=session,
+                agent_id=agent_id,
+                tenant_key=tenant_key,
+                count=3,
+            )
+
+    @pytest.mark.asyncio
+    async def test_receive_deadlock_retries_on_counter_update(self, mock_db_manager, mock_tenant_manager):
+        """receive_messages should retry counter updates on deadlock."""
+        db_manager, session = mock_db_manager
+        tenant_key = "test-tenant"
+        agent_id = str(uuid4())
+        job_id = str(uuid4())
+        project_id = str(uuid4())
+
+        execution = _make_execution(agent_id, "test-agent")
+        execution.job_id = job_id
+
+        mock_job = Mock(spec=AgentJob)
+        mock_job.job_id = job_id
+        mock_job.project_id = project_id
+        mock_job.tenant_key = tenant_key
+
+        msg = Mock(spec=Message)
+        msg.id = uuid4()
+        msg.to_agents = [agent_id]
+        msg.status = "pending"
+        msg.content = "test"
+        msg.message_type = "task"
+        msg.priority = "normal"
+        msg.meta_data = {"_from_agent": "other-agent"}
+        msg.created_at = datetime.now(timezone.utc)
+        msg.acknowledged_at = None
+        msg.acknowledged_by = []
+
+        call_count = {"n": 0}
+
+        async def mock_execute(*args, **kwargs):
+            call_count["n"] += 1
+            result = Mock()
+
+            if call_count["n"] == 1:
+                result.scalar_one_or_none = Mock(return_value=execution)
+            elif call_count["n"] == 2:
+                result.scalar_one_or_none = Mock(return_value=mock_job)
+            elif call_count["n"] == 3:
+                scalars = Mock()
+                scalars.all = Mock(return_value=[msg])
+                result.scalars = Mock(return_value=scalars)
+            else:
+                result.rowcount = 1
+                result.scalar_one_or_none = Mock(return_value=execution)
+            return result
+
+        session.execute = AsyncMock(side_effect=mock_execute)
+
+        deadlock_err = _make_deadlock_error()
+        bulk_call_count = 0
+
+        async def flaky_bulk(*args, **kwargs):
+            nonlocal bulk_call_count
+            bulk_call_count += 1
+            if bulk_call_count == 1:
+                raise deadlock_err
+
+        service = MessageService(db_manager, mock_tenant_manager)
+
+        with (
+            patch.object(service._repo, "bulk_acknowledge_counters", side_effect=flaky_bulk),
+            patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock),
+        ):
+            await service.receive_messages(
+                agent_id=agent_id,
+                tenant_key=tenant_key,
+            )
+
+        assert bulk_call_count == 2
+        session.rollback.assert_awaited()

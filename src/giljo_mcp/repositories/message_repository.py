@@ -157,6 +157,47 @@ class MessageRepository:
         else:
             self._logger.debug(f"Decremented waiting_count and incremented read_count for agent {agent_id}")
 
+    async def bulk_acknowledge_counters(
+        self,
+        session: AsyncSession,
+        agent_id: str,
+        tenant_key: str,
+        count: int,
+    ) -> None:
+        """
+        Atomically decrement waiting_count and increment read_count by N.
+
+        Batched version of decrement_waiting_increment_read for acknowledging
+        multiple messages in a single UPDATE statement, reducing lock duration
+        and deadlock window.
+
+        Args:
+            session: Active database session
+            agent_id: Agent execution ID (executor UUID)
+            tenant_key: Tenant key for multi-tenant isolation
+            count: Number of messages being acknowledged
+        """
+        if count <= 0:
+            return
+
+        stmt = (
+            update(AgentExecution)
+            .where(
+                AgentExecution.agent_id == agent_id,
+                AgentExecution.tenant_key == tenant_key,
+            )
+            .values(
+                messages_waiting_count=func.greatest(0, AgentExecution.messages_waiting_count - count),
+                messages_read_count=AgentExecution.messages_read_count + count,
+            )
+        )
+        result = await session.execute(stmt)
+
+        if result.rowcount == 0:
+            self._logger.warning(f"No agent found for agent_id={agent_id}, tenant_key={tenant_key}")
+        else:
+            self._logger.debug(f"Bulk acknowledged {count} messages for agent {agent_id}")
+
     async def get_counter_stats(
         self,
         session: AsyncSession,
