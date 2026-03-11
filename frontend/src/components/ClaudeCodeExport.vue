@@ -105,11 +105,6 @@
         </v-card>
       </div>
 
-      <!-- Copy Feedback -->
-      <v-snackbar v-model="showCopyFeedback" timeout="3000" color="success">
-        <v-icon class="mr-2">mdi-check-circle</v-icon>
-        {{ copyFeedbackMessage }}
-      </v-snackbar>
     </v-card-text>
   </v-card>
 </template>
@@ -117,12 +112,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/services/api'
+import { useToast } from '@/composables/useToast'
 
 // State
+const { showToast } = useToast()
 const activeTemplates = ref([])
 const loading = ref(false)
-const showCopyFeedback = ref(false)
-const copyFeedbackMessage = ref('')
 const downloadingProduct = ref(false)
 const loadingProduct = ref(false)
 const loadingPersonal = ref(false)
@@ -207,15 +202,13 @@ async function copyProductCommand() {
     const success = fallbackCopyToClipboard(instructions)
 
     if (success) {
-      showCopyFeedback.value = true
-      copyFeedbackMessage.value = 'Product agent install instructions copied to clipboard'
+      showToast({ message: 'Product agent install instructions copied to clipboard', type: 'success' })
     } else {
       throw new Error('Clipboard copy failed')
     }
   } catch (error) {
     console.error('[CLAUDE EXPORT] Failed to copy product command:', error)
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = `Copy failed: ${error.message}`
+    showToast({ message: `Copy failed: ${error.message}`, type: 'error' })
   } finally {
     loadingProduct.value = false
   }
@@ -229,15 +222,13 @@ async function copyPersonalCommand() {
     const success = fallbackCopyToClipboard(instructions)
 
     if (success) {
-      showCopyFeedback.value = true
-      copyFeedbackMessage.value = 'Personal agent install instructions copied to clipboard'
+      showToast({ message: 'Personal agent install instructions copied to clipboard', type: 'success' })
     } else {
       throw new Error('Clipboard copy failed')
     }
   } catch (error) {
     console.error('[CLAUDE EXPORT] Failed to copy personal command:', error)
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = `Copy failed: ${error.message}`
+    showToast({ message: `Copy failed: ${error.message}`, type: 'error' })
   } finally {
     loadingPersonal.value = false
   }
@@ -272,12 +263,10 @@ async function downloadProductAgents() {
     const blob = await response.blob()
     triggerFileDownload(blob, 'agent-templates.zip')
 
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Downloaded product agent templates'
+    showToast({ message: 'Downloaded product agent templates', type: 'success' })
   } catch (error) {
     console.error('[CLAUDE EXPORT] Failed to download product agents:', error)
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = `Download failed: ${error.message}`
+    showToast({ message: `Download failed: ${error.message}`, type: 'error' })
   } finally {
     downloadingProduct.value = false
   }

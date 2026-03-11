@@ -71,15 +71,7 @@
     </v-card-actions>
   </v-card>
 
-  <!-- Notification Snackbar -->
-  <v-snackbar
-    v-model="snackbar.show"
-    :color="snackbar.color"
-    :timeout="3000"
-    data-test="snackbar"
-  >
-    {{ snackbar.message }}
-  </v-snackbar>
+
 </template>
 
 <script setup>
@@ -96,20 +88,17 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useOrgStore } from '@/stores/orgStore'
 import { useUserStore } from '@/stores/user'
+import { useToast } from '@/composables/useToast'
 import UserManager from '@/components/UserManager.vue'
 
 // Stores
 const orgStore = useOrgStore()
 const userStore = useUserStore()
+const { showToast } = useToast()
 
 // Local state
 const orgForm = ref({ name: '' })
 const saving = ref(false)
-const snackbar = ref({
-  show: false,
-  message: '',
-  color: 'success',
-})
 
 // Computed from stores
 const loading = computed(() => orgStore.loading)
@@ -123,8 +112,8 @@ const isFormDirty = computed(() => {
 })
 
 // Show notification helper
-function showNotification(message, color = 'success') {
-  snackbar.value = { show: true, message, color }
+function showNotification(message, type = 'success') {
+  showToast({ message, type })
 }
 
 // Load organization on component mount

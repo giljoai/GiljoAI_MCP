@@ -74,16 +74,6 @@
       </v-btn>
     </v-card-text>
 
-    <!-- Copy success snackbar -->
-    <v-snackbar v-model="showCopySuccess" :timeout="2000" location="top" color="success">
-      <div role="status">Copied to clipboard!</div>
-    </v-snackbar>
-
-    <!-- Copy error snackbar -->
-    <v-snackbar v-model="showCopyError" :timeout="4000" location="top" color="error">
-      <div role="alert">{{ copyErrorMessage }}</div>
-    </v-snackbar>
-
     <!-- Close confirmation dialog -->
     <v-dialog v-model="showCloseConfirmation" max-width="500">
       <v-card v-draggable>
@@ -105,6 +95,7 @@
 import { ref, computed } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 
 const props = defineProps({
@@ -126,11 +117,9 @@ const isMobile = computed(() => mobile.value || window.innerWidth < 600)
 
 // Composables
 const { copy } = useClipboard()
+const { showToast } = useToast()
 
 // Reactive state
-const showCopySuccess = ref(false)
-const showCopyError = ref(false)
-const copyErrorMessage = ref('')
 const showCloseConfirmation = ref(false)
 
 // Computed properties
@@ -159,9 +148,7 @@ const handleCopyPrompt = async (tool) => {
     const success = await copy(promptText)
 
     if (success) {
-      showCopySuccess.value = true
-      showCopyError.value = false
-      copyErrorMessage.value = ''
+      showToast({ message: 'Copied to clipboard!', type: 'success' })
     } else {
       throw new Error('Clipboard copy failed')
     }
@@ -184,14 +171,10 @@ const handleCopyPrompt = async (tool) => {
     try {
       const fallbackText = err.response?.data?.prompt || promptText || 'Error fetching prompt'
       await fallbackCopy(fallbackText)
-      showCopySuccess.value = true
-      showCopyError.value = false
+      showToast({ message: 'Copied to clipboard!', type: 'success' })
     } catch (fallbackErr) {
       console.error('[OrchestratorCard] Fallback copy also failed:', fallbackErr)
-      // Show error to user
-      copyErrorMessage.value = errorMsg
-      showCopyError.value = true
-      showCopySuccess.value = false
+      showToast({ message: errorMsg, type: 'error' })
     }
   }
 }

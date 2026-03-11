@@ -316,18 +316,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Snackbar for notifications -->
-    <v-snackbar
-      v-model="snackbar.show"
-      :color="snackbar.color"
-      :timeout="5000"
-      location="top"
-    >
-      {{ snackbar.message }}
-      <template v-slot:actions>
-        <v-btn variant="text" @click="snackbar.show = false">Close</v-btn>
-      </template>
-    </v-snackbar>
   </v-container>
 </template>
 
@@ -336,17 +324,12 @@ import { ref, computed, onMounted } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
 import { useUserStore } from '@/stores/user'
+import { useToast } from '@/composables/useToast'
 
 // Store
 const userStore = useUserStore()
 const currentUser = computed(() => userStore.currentUser)
-
-// Snackbar state
-const snackbar = ref({
-  show: false,
-  message: '',
-  color: 'error',
-})
+const { showToast } = useToast()
 
 // State
 const users = ref([])
@@ -545,17 +528,9 @@ async function saveUser() {
     const errorMessage = err.response?.data?.detail || err.message || 'Failed to save user'
     // Show user-friendly message
     if (errorMessage.toLowerCase().includes('already exists')) {
-      snackbar.value = {
-        show: true,
-        message: 'Username or email already exists. Please use different values.',
-        color: 'warning',
-      }
+      showToast({ message: 'Username or email already exists. Please use different values.', type: 'warning' })
     } else {
-      snackbar.value = {
-        show: true,
-        message: errorMessage,
-        color: 'error',
-      }
+      showToast({ message: errorMessage, type: 'error' })
     }
   } finally {
     saving.value = false
