@@ -200,9 +200,12 @@ class TestDetectSilentAgentsEmitsAgentSilent:
         mock_agent.job = mock_job
 
         # Mock the session and query result
+        # scalars() returns a sync object with .all(), not an async one
         session = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.scalars.return_value.all.return_value = [mock_agent]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [mock_agent]
+        mock_result = Mock()
+        mock_result.scalars.return_value = scalars_result
         session.execute = AsyncMock(return_value=mock_result)
         session.flush = AsyncMock()
 
@@ -251,8 +254,10 @@ class TestDetectSilentAgentsEmitsAgentSilent:
         mock_agent.job = None  # No job loaded
 
         session = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.scalars.return_value.all.return_value = [mock_agent]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [mock_agent]
+        mock_result = Mock()
+        mock_result.scalars.return_value = scalars_result
         session.execute = AsyncMock(return_value=mock_result)
         session.flush = AsyncMock()
 
