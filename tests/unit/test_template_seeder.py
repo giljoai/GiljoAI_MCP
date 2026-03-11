@@ -397,20 +397,18 @@ class TestDefaultTemplatesV103:
             assert template["user_instructions"], f"{template['role']} has empty user_instructions"
             assert len(template["user_instructions"]) > 100, f"{template['role']} user_instructions too short"
 
-    def test_behavioral_rules_not_empty(self):
-        """Verify behavioral_rules is not empty for all roles."""
+    def test_behavioral_rules_empty_for_defaults(self):
+        """Verify behavioral_rules is empty list for all default roles (content in user_instructions prose)."""
         templates = _get_default_templates_v103()
 
         for template in templates:
-            assert template["behavioral_rules"], f"{template['role']} has empty behavioral_rules"
             assert isinstance(template["behavioral_rules"], list), f"{template['role']} behavioral_rules not a list"
-            assert len(template["behavioral_rules"]) >= 3, f"{template['role']} needs more behavioral rules"
+            assert template["behavioral_rules"] == [], f"{template['role']} should have empty behavioral_rules"
 
-    def test_success_criteria_not_empty(self):
-        """Verify success_criteria is not empty for all roles."""
+    def test_success_criteria_empty_for_defaults(self):
+        """Verify success_criteria is empty list for all default roles (content in user_instructions prose)."""
         templates = _get_default_templates_v103()
 
         for template in templates:
-            assert template["success_criteria"], f"{template['role']} has empty success_criteria"
             assert isinstance(template["success_criteria"], list), f"{template['role']} success_criteria not a list"
-            assert len(template["success_criteria"]) >= 3, f"{template['role']} needs more success criteria"
+            assert template["success_criteria"] == [], f"{template['role']} should have empty success_criteria"
