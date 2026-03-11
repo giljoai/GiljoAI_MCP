@@ -74,14 +74,6 @@
       </v-card>
     </v-card-text>
 
-    <!-- Copy Feedback Snackbar -->
-    <v-snackbar v-model="showCopyFeedback" timeout="3000" color="success" location="bottom right">
-      <v-icon class="mr-2">mdi-check-circle</v-icon>
-      {{ copyFeedbackMessage }}
-      <template v-slot:actions>
-        <v-btn variant="text" icon="mdi-close" @click="showCopyFeedback = false" />
-      </template>
-    </v-snackbar>
   </v-card>
 </template>
 
@@ -89,15 +81,15 @@
 import { ref } from 'vue'
 import api from '@/services/api'
 import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
 
 const { copy: clipboardCopy } = useClipboard()
+const { showToast } = useToast()
 
 // State
 const copied = ref(false)
 const downloading = ref(false)
 const generatingInstructions = ref(false)
-const showCopyFeedback = ref(false)
-const copyFeedbackMessage = ref('')
 
 
 /**
@@ -136,8 +128,7 @@ async function copySlashCommandSetup() {
     await copyToClipboard(installPrompt)
 
     copied.value = true
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Installation command copied to clipboard!'
+    showToast({ message: 'Installation command copied to clipboard!', type: 'success' })
 
     // Reset copied state after 2 seconds
     setTimeout(() => {
@@ -157,8 +148,7 @@ async function copySlashCommandSetup() {
       errorMessage += 'Please try again or use the Download button below.'
     }
 
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = errorMessage
+    showToast({ message: errorMessage, type: 'error' })
   } finally {
     generatingInstructions.value = false
   }
@@ -197,12 +187,10 @@ async function downloadSlashCommands() {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
 
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = 'Slash commands downloaded successfully!'
+    showToast({ message: 'Slash commands downloaded successfully!', type: 'success' })
   } catch (error) {
     console.error('[SLASH COMMAND SETUP] Failed to download slash commands:', error)
-    showCopyFeedback.value = true
-    copyFeedbackMessage.value = `Download failed: ${error.message}`
+    showToast({ message: `Download failed: ${error.message}`, type: 'error' })
   } finally {
     downloading.value = false
   }

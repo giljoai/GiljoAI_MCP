@@ -314,16 +314,6 @@
       @close="showHandoverModal = false"
     />
 
-    <!-- Local Snackbar for immediate feedback -->
-    <v-snackbar
-      v-model="localSnackbar.show"
-      :color="localSnackbar.color"
-      :timeout="localSnackbar.timeout"
-      location="top center"
-    >
-      <v-icon v-if="localSnackbar.icon" class="mr-2">{{ localSnackbar.icon }}</v-icon>
-      {{ localSnackbar.message }}
-    </v-snackbar>
   </div>
 </template>
 
@@ -479,41 +469,6 @@ const jobModalInitialTab = ref('mission')
 const messageAuditInitialTab = ref('sent')
 const selectedJobId = ref(null)
 const selectedAgent = computed(() => agentJobsStore.getJob(selectedJobId.value))
-
-/**
- * Local snackbar state for immediate feedback (fixes first-click race condition)
- * Pattern from ClaudeCodeExport.vue - local v-snackbar works on first click
- */
-const localSnackbar = ref({
-  show: false,
-  message: '',
-  color: 'success',
-  icon: 'mdi-check-circle',
-  timeout: 3000
-})
-
-/**
- * Show local toast for immediate feedback
- * Bypasses global toast system's race condition on first click
- */
-function showLocalToast(options) {
-  const typeConfig = {
-    success: { color: 'success', icon: 'mdi-check-circle' },
-    error: { color: 'error', icon: 'mdi-alert-circle' },
-    warning: { color: 'warning', icon: 'mdi-alert' },
-    info: { color: 'info', icon: 'mdi-information' }
-  }
-
-  const config = typeConfig[options.type] || typeConfig.success
-
-  localSnackbar.value = {
-    show: true,
-    message: options.message || '',
-    color: options.color || config.color,
-    icon: options.icon || config.icon,
-    timeout: options.duration || options.timeout || 3000
-  }
-}
 
 const projectId = computed(() => props.project?.project_id || props.project?.id)
 const loadingJobs = ref(false)
@@ -684,14 +639,14 @@ async function handlePlay(agent) {
           const response = await api.prompts.implementation(projectId)
           const prompt = response.data.prompt
           await copyToClipboard(prompt)
-          showLocalToast({
+          showToast({
             message: `Implementation prompt copied! ${response.data.agent_count + 1} jobs ready (1 orchestrator, ${response.data.agent_count} agents)`,
             type: 'success',
             duration: 5000
           })
         } catch (error) {
           const errorMsg = error.response?.data?.detail || 'Failed to generate implementation prompt'
-          showLocalToast({
+          showToast({
             message: errorMsg,
             type: 'error',
             duration: 6000
@@ -712,14 +667,14 @@ async function handlePlay(agent) {
         const response = await api.prompts.implementation(projectId)
         const prompt = response.data.prompt
         await copyToClipboard(prompt)
-        showLocalToast({
+        showToast({
           message: `Orchestrator prompt copied! ${response.data.agent_count} agents ready for launch.`,
           type: 'success',
           duration: 5000
         })
       } catch (error) {
         const errorMsg = error.response?.data?.detail || 'Failed to generate orchestrator prompt'
-        showLocalToast({
+        showToast({
           message: errorMsg,
           type: 'error',
           duration: 6000
@@ -738,11 +693,11 @@ async function handlePlay(agent) {
     }
 
     await copyToClipboard(promptText)
-    showLocalToast({ message: 'Launch prompt copied to clipboard', type: 'success', duration: 3000 })
+    showToast({ message: 'Launch prompt copied to clipboard', type: 'success', duration: 3000 })
   } catch (error) {
     console.error('[JobsTab] Failed to prepare launch prompt:', error)
     const msg = error.response?.data?.detail || error.message || 'Failed to prepare launch prompt'
-    showLocalToast({ message: msg, type: 'error', duration: 5000 })
+    showToast({ message: msg, type: 'error', duration: 5000 })
   }
 }
 
@@ -817,7 +772,7 @@ async function handleHandOver(agent) {
   } catch (error) {
     console.error('[JobsTab] Hand over failed:', error)
     const msg = error.response?.data?.detail || error.message || 'Hand over failed'
-    showLocalToast({
+    showToast({
       message: msg,
       type: 'error',
       duration: 5000,
@@ -836,7 +791,7 @@ async function handleStopProject(_agent) {
     if (response.data.prompt) {
       await clipboardCopy(response.data.prompt)
 
-      showLocalToast({
+      showToast({
         message: `Termination prompt copied! Paste into orchestrator terminal. (${response.data.agent_count} agents)`,
         type: 'warning',
         duration: 8000,
@@ -847,7 +802,7 @@ async function handleStopProject(_agent) {
   } catch (error) {
     console.error('[JobsTab] Stop project failed:', error)
     const msg = error.response?.data?.detail || error.message || 'Failed to generate termination prompt'
-    showLocalToast({
+    showToast({
       message: msg,
       type: 'error',
       duration: 5000,

@@ -35,15 +35,6 @@
       />
     </div>
 
-    <!-- Toast Notifications -->
-    <v-snackbar v-model="showToast" :timeout="3000" :color="toastColor">
-      <v-icon start :color="toastColor">{{ toastIcon }}</v-icon>
-      {{ toastMessage }}
-      <template v-slot:actions>
-        <v-btn variant="text" @click="showToast = false"> Close </v-btn>
-      </template>
-    </v-snackbar>
-
     <!-- Edit Project Dialog -->
     <v-dialog v-model="showEditDialog" max-width="800" persistent>
       <v-card v-draggable>
@@ -110,6 +101,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useToast } from '@/composables/useToast'
 import { api } from '@/services/api'
 import ProjectTabs from '@/components/projects/ProjectTabs.vue'
 
@@ -120,10 +112,7 @@ const orchestrator = ref(null)
 const loading = ref(true)
 const error = ref(null)
 
-const showToast = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-const toastIcon = ref('mdi-check-circle')
+const { showToast } = useToast()
 
 // Edit dialog state
 const showEditDialog = ref(false)
@@ -234,11 +223,9 @@ function cancelEdit() {
   }
 }
 
-function showNotification(message, color = 'success', icon = 'mdi-check-circle') {
-  toastMessage.value = message
-  toastColor.value = color
-  toastIcon.value = icon
-  showToast.value = true
+function showNotification(message, color = 'success') {
+  const colorToType = { success: 'success', error: 'error', info: 'info', warning: 'warning' }
+  showToast({ message, type: colorToType[color] || 'info' })
 }
 
 onMounted(() => {

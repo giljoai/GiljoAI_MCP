@@ -144,24 +144,6 @@
       </v-window>
     </div>
 
-    <!-- Error Snackbar -->
-    <v-snackbar v-model="errorVisible" color="error" :timeout="5000" location="top">
-      <v-icon start>mdi-alert-circle</v-icon>
-      {{ errorMessage }}
-      <template #actions>
-        <v-btn variant="text" @click="errorVisible = false"> Close </v-btn>
-      </template>
-    </v-snackbar>
-
-    <!-- Success Toast -->
-    <v-snackbar v-model="toastVisible" :color="toastColor" :timeout="toastDuration" location="top">
-      <v-icon start>mdi-check-circle</v-icon>
-      {{ toastMessage }}
-      <template #actions>
-        <v-btn variant="text" @click="toastVisible = false"> Close </v-btn>
-      </template>
-    </v-snackbar>
-
     <!-- Project Closeout Modal (Handover 0361) -->
     <CloseoutModal
       :show="showCloseoutModal"
@@ -236,7 +218,7 @@ const { store: agentJobsStore, sortedJobs, loadJobs } = useAgentJobs()
 const { gitEnabled, serenaEnabled } = useIntegrationStatus()
 
 // Toast notifications (Handover 0428)
-const { showToast: showToastNotification } = useToast()
+const { showToast } = useToast()
 
 const projectId = computed(() => props.project?.project_id || props.project?.id || null)
 
@@ -292,8 +274,6 @@ watch(activeTab, (newTab) => {
 /**
  * Local state
  */
-const errorVisible = ref(false)
-const errorMessage = ref(null)
 const loadingStageProject = ref(false)
 const executionMode = ref(props.project?.execution_mode || 'multi_terminal')
 
@@ -306,12 +286,6 @@ const projectWithUpdatedMode = computed(() => ({
   ...props.project,
   execution_mode: executionMode.value,
 }))
-
-// Toast state
-const toastVisible = ref(false)
-const toastMessage = ref('')
-const toastColor = ref('success')
-const toastDuration = ref(3000)
 
 // Closeout modal state (Handover 0361)
 const showCloseoutModal = ref(false)
@@ -355,8 +329,7 @@ const showCloseoutButton = computed(() => {
 })
 
 function showError(message) {
-  errorMessage.value = message || 'Unexpected error'
-  errorVisible.value = true
+  showToast({ message: message || 'Unexpected error', type: 'error' })
 }
 
 async function loadProjectData(pid, { fetchProject = false } = {}) {
@@ -486,7 +459,7 @@ async function handleExecutionModeChange(newValue) {
     // Update local executionMode ref for handleStageProject
     executionMode.value = newMode
 
-    showToastNotification({
+    showToast({
       message: newValue
         ? 'Claude Code CLI mode enabled'
         : 'Multi-Terminal mode enabled',
@@ -497,7 +470,7 @@ async function handleExecutionModeChange(newValue) {
     // Revert on failure
     usingClaudeCodeSubagents.value = !newValue
     console.error('Failed to update execution mode:', error)
-    showToastNotification({
+    showToast({
       message: 'Failed to save execution mode',
       type: 'error',
       timeout: 3000
@@ -537,11 +510,7 @@ async function handleStageProject() {
     const copied = await copyPromptToClipboard(prompt)
 
     if (copied) {
-      // Show success toast
-      toastMessage.value = 'Orchestrator prompt copied - paste into ANY terminal (fresh or existing)'
-      toastColor.value = 'success'
-      toastDuration.value = 4000
-      toastVisible.value = true
+      showToast({ message: 'Orchestrator prompt copied - paste into ANY terminal (fresh or existing)', type: 'success' })
     } else {
       alert(`Please manually copy this prompt:\n\n${prompt}`)
     }
@@ -552,11 +521,7 @@ async function handleStageProject() {
     const errorMsg = error.response?.data?.detail || error.message || 'Failed to stage project'
 
     if (errorMsg.toLowerCase().includes('orchestrator already exists')) {
-      // Show informative message about existing orchestrator
-      toastMessage.value = 'An orchestrator is already active for this project. The existing orchestrator will be reused.'
-      toastColor.value = 'info'
-      toastDuration.value = 4000
-      toastVisible.value = true
+      showToast({ message: 'An orchestrator is already active for this project. The existing orchestrator will be reused.', type: 'info' })
     } else {
       // Show error for other failures
       showError(errorMsg)
@@ -643,10 +608,7 @@ function handleCloseoutComplete(closeoutData) {
       ? { project_id: closeoutData, sequence_number: 0 }
       : closeoutData || {}
 
-  toastMessage.value = `Project closed out successfully (Memory entry #${normalized.sequence_number ?? 0})`
-  toastColor.value = 'success'
-  toastDuration.value = 5000
-  toastVisible.value = true
+  showToast({ message: `Project closed out successfully (Memory entry #${normalized.sequence_number ?? 0})`, type: 'success' })
 
   showCloseoutModal.value = false
 

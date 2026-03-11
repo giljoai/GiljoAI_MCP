@@ -1085,9 +1085,10 @@ const isProjectStaged = (project) => {
   return project.staging_status === 'staged'
 }
 
-// Launch button visibility - only show when exactly 1 active project exists
+// Launch button visibility - only show when exactly 1 active project exists and it is not staged
 const hasActiveProject = computed(() => {
-  return activeProductProjects.value.filter((p) => p.status === 'active').length === 1
+  const activeProjects = activeProductProjects.value.filter((p) => p.status === 'active')
+  return activeProjects.length === 1 && !isProjectStaged(activeProjects[0])
 })
 
 // Get the single active project

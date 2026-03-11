@@ -167,28 +167,24 @@
       </v-card>
     </v-dialog>
 
-    <!-- Copy success snackbar -->
-    <v-snackbar v-model="showCopied" :timeout="1500" color="success" location="top">
-      <v-icon start size="small">mdi-check</v-icon>
-      Copied to clipboard
-    </v-snackbar>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
 
 const { copy: clipboardCopy } = useClipboard()
+const { showToast } = useToast()
 
 const showDialog = ref(false)
-const showCopied = ref(false)
 const selectedTool = ref('claude')
 
 async function copyText(text) {
   const success = await clipboardCopy(text)
   if (success) {
-    showCopied.value = true
+    showToast({ message: 'Copied to clipboard', type: 'success' })
   }
 }
 </script>
