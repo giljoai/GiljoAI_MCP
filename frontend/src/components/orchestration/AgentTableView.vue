@@ -98,24 +98,14 @@
     </template>
   </v-data-table>
 
-  <!-- Handover 0230: Snackbar for copy feedback -->
-  <v-snackbar
-    v-model="snackbar.show"
-    :color="snackbar.color"
-    :timeout="3000"
-    location="bottom right"
-  >
-    {{ snackbar.message }}
-    <template #actions>
-      <v-btn variant="text" @click="snackbar.show = false">Close</v-btn>
-    </template>
-  </v-snackbar>
+
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
 import { useAgentData } from '@/composables/useAgentData'
 import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
 import { useStalenessMonitor } from '@/composables/useStalenessMonitor'
 import api from '@/services/api'
 import StatusChip from '@/components/StatusBoard/StatusChip.vue'
@@ -164,8 +154,8 @@ const {
 
 // Handover 0230: Clipboard functionality
 const { copy } = useClipboard()
+const { showToast } = useToast()
 const copyingJobId = ref(null)
-const snackbar = ref({ show: false, message: '', color: 'success' })
 
 // Handover 0234: Staleness monitoring (notifications now go to notification bell)
 useStalenessMonitor(computed(() => props.agents))
@@ -208,10 +198,10 @@ function handleViewMessages(job) {
  */
 function handleHandOver(event) {
   if (event.success) {
-    showSnackbar(event.message || 'Session refreshed! Continuation prompt copied to clipboard.', 'success')
+    showToast({ message: event.message || 'Session refreshed! Continuation prompt copied to clipboard.', type: 'success' })
   } else {
     console.error('[AgentTableView] Session refresh failed:', event.error)
-    showSnackbar(event.error || 'Failed to refresh session', 'error')
+    showToast({ message: event.error || 'Failed to refresh session', type: 'error' })
   }
 }
 
@@ -233,23 +223,16 @@ async function handleCopyPrompt(agent) {
     const success = await copy(prompt)
 
     if (success) {
-      showSnackbar('Prompt copied to clipboard!', 'success')
+      showToast({ message: 'Prompt copied to clipboard!', type: 'success' })
     } else {
       throw new Error('Clipboard copy failed')
     }
   } catch (error) {
     console.error('[AgentTableView] Copy prompt failed:', error)
-    showSnackbar('Failed to copy prompt', 'error')
+    showToast({ message: 'Failed to copy prompt', type: 'error' })
   } finally {
     copyingJobId.value = null
   }
-}
-
-/**
- * Handover 0230: Show snackbar notification
- */
-function showSnackbar(message, color = 'success') {
-  snackbar.value = { show: true, message, color }
 }
 
 /**
