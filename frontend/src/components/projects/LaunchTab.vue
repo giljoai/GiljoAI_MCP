@@ -165,20 +165,13 @@
       @mission-updated="handleMissionUpdated"
     />
 
-    <!-- Toast Notification -->
-    <v-snackbar v-model="showToast" :timeout="3000" color="success" location="top">
-      <v-icon start>mdi-check-circle</v-icon>
-      {{ toastMessage }}
-      <template #actions>
-        <v-btn variant="text" @click="showToast = false"> Close </v-btn>
-      </template>
-    </v-snackbar>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from '@/composables/useToast'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { useAgentJobsStore } from '@/stores/agentJobsStore'
 import { useProjectStateStore } from '@/stores/projectStateStore'
@@ -289,8 +282,7 @@ const agentJobsStore = useAgentJobsStore()
 /**
  * Component State
  */
-const showToast = ref(false)
-const toastMessage = ref('')
+const { showToast } = useToast()
 const showDetailsModal = ref(false)
 const selectedAgent = ref(null)
 const showMissionEditModal = ref(false)
@@ -320,8 +312,7 @@ function handleAgentInfo(agent) {
 function handleAgentEdit(agent) {
   if (agent.agent_display_name === 'orchestrator') {
     // Orchestrators don't have editable missions
-    toastMessage.value = 'Orchestrator configuration cannot be edited here'
-    showToast.value = true
+    showToast({ message: 'Orchestrator configuration cannot be edited here', type: 'info' })
     return
   }
 
@@ -335,9 +326,7 @@ function handleAgentEdit(agent) {
 function handleMissionUpdated({ jobId, mission }) {
   agentJobsStore.upsertJob?.({ job_id: jobId, mission })
 
-  // Show success message
-  toastMessage.value = 'Agent mission updated successfully'
-  showToast.value = true
+  showToast({ message: 'Agent mission updated successfully', type: 'success' })
 }
 
 /**
@@ -345,8 +334,7 @@ function handleMissionUpdated({ jobId, mission }) {
  */
 watch(missionText, (next, previous) => {
   if (next && !previous) {
-    toastMessage.value = 'Mission generated'
-    showToast.value = true
+    showToast({ message: 'Mission generated', type: 'success' })
   }
 })
 </script>
