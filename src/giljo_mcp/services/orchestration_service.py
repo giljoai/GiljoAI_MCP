@@ -1170,6 +1170,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                 agent_id=str(execution.agent_id),
                 execution_mode=project_exec_mode,
                 git_integration_enabled=git_enabled,
+                job_type=job.job_type,
             )
 
             # Handover 0731c: Typed return (MissionResponse)

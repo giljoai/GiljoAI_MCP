@@ -142,3 +142,16 @@ class TestAgentProtocolFormat:
                     break
 
         assert todowrite_section_found, "Protocol should have a section explaining TodoWrite sync with report_progress"
+
+
+class TestCH2ProgressTracking:
+    """Verify CH2 startup sequence includes progress tracking step."""
+
+    def test_ch2_includes_progress_tracking_step(self):
+        """CH2 startup contains Step 1b with report_progress and orchestration scope."""
+        from src.giljo_mcp.services.protocol_builder import _build_ch2_startup
+
+        ch2 = _build_ch2_startup(orchestrator_id="orch-123", project_id="proj-456")
+        assert "STEP 1b" in ch2, "CH2 should contain Step 1b for progress tracking"
+        assert "report_progress" in ch2, "Step 1b should reference report_progress"
+        assert "Orchestration tasks ONLY" in ch2, "Step 1b should scope to orchestration tasks"
