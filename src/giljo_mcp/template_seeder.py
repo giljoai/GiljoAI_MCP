@@ -39,9 +39,10 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
     """
     Refresh system_instructions for existing templates without overwriting user customizations.
 
-    This function updates ONLY the system_instructions field (MCP bootstrap)
-    for all templates belonging to a tenant. User customizations in user_instructions
-    are preserved.
+    This function updates the system_instructions field (MCP bootstrap) for all templates
+    belonging to a tenant. For default templates (matched by name), it also clears
+    behavioral_rules and success_criteria (that content now lives solely in
+    user_instructions prose). Custom templates keep their rules/criteria intact.
 
     Handover 0813: system_instructions is now a slim bootstrap (~10 lines) that directs
     agents to fetch their full protocols via get_agent_mission(). Protocol content was
@@ -64,6 +65,9 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
         # Handover 0813: Use slim bootstrap for all templates
         bootstrap = _get_mcp_bootstrap_section()
 
+        # Default template names whose behavioral_rules/success_criteria should be cleared
+        default_names = {t["name"] for t in _get_default_templates_v103()}
+
         # Query existing templates for tenant
         stmt = select(AgentTemplate).where(AgentTemplate.tenant_key == tenant_key)
         result = await session.execute(stmt)
@@ -75,10 +79,16 @@ async def refresh_tenant_template_instructions(session: AsyncSession, tenant_key
 
         updated_count = 0
         for template in templates:
-            # Handover 0813: All roles get the same slim bootstrap
+            # All templates get the same slim bootstrap
             template.system_instructions = bootstrap
+
+            # Clear duplicated JSON columns for default templates only (by name)
+            if template.name in default_names:
+                template.behavioral_rules = []
+                template.success_criteria = []
+
             updated_count += 1
-            logger.debug(f"Updated system_instructions for template '{template.name}' (tenant: {tenant_key})")
+            logger.debug(f"Updated template '{template.name}' (tenant: {tenant_key})")
 
         await session.commit()
         logger.info(f"Refreshed {updated_count} templates for tenant '{tenant_key}'")
@@ -288,16 +298,8 @@ Detailed closeout protocol in `full_protocol`.
 """,
             "model": "sonnet",
             "tools": None,
-            "behavioral_rules": [
-                "Always validate requirements before task delegation",
-                "Prefer incremental delivery",
-                "Document major decisions",
-            ],
-            "success_criteria": [
-                "All milestones achieved",
-                "Seamless agent coordination",
-                "Complete handover docs",
-            ],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "is_active": True,
             "is_default": True,
             "version": "1.0.0",
@@ -332,18 +334,8 @@ Success criteria:
 """,
             "model": "sonnet",
             "tools": None,
-            "behavioral_rules": [
-                "Follow project coding standards",
-                "Ensure cross-platform compatibility",
-                "Never hardcode paths",
-                "Use pathlib for file operations",
-            ],
-            "success_criteria": [
-                "Passes all linting checks",
-                "Matches specification",
-                "No breaking changes",
-                "Proper error handling",
-            ],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "is_active": True,
             "is_default": True,
             "version": "1.0.0",
@@ -378,13 +370,8 @@ Success criteria:
 """,
             "model": "sonnet",
             "tools": None,
-            "behavioral_rules": [
-                "Test behavior not implementation",
-                "Use descriptive test names",
-                "Mock external dependencies",
-                "Keep tests deterministic",
-            ],
-            "success_criteria": ["All tests pass", "Coverage >= 80%", "No flaky tests", "Clear failure messages"],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "is_active": True,
             "is_default": True,
             "version": "1.0.0",
@@ -419,18 +406,8 @@ Success criteria:
 """,
             "model": "sonnet",
             "tools": None,
-            "behavioral_rules": [
-                "Clarify vague requirements",
-                "Identify dependencies early",
-                "Consider cross-platform implications",
-                "Plan for testability",
-            ],
-            "success_criteria": [
-                "No ambiguities remain",
-                "Tasks < 1 day",
-                "Dependencies documented",
-                "Edge cases identified",
-            ],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "is_active": True,
             "is_default": True,
             "version": "1.0.0",
@@ -465,13 +442,8 @@ Success criteria:
 """,
             "model": "sonnet",
             "tools": None,
-            "behavioral_rules": [
-                "Be constructive not critical",
-                "Focus on significant issues",
-                "Explain the why",
-                "Approve when good enough",
-            ],
-            "success_criteria": ["No critical bugs", "Follows standards", "Tests comprehensive", "Review within 24h"],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "is_active": True,
             "is_default": True,
             "version": "1.0.0",
@@ -506,18 +478,8 @@ Success criteria:
 """,
             "model": "sonnet",
             "tools": None,
-            "behavioral_rules": [
-                "Write for future developers",
-                "Use clear concise language",
-                "Include code examples",
-                "Update docs with feature work",
-            ],
-            "success_criteria": [
-                "Features have user docs",
-                "API changes documented",
-                "Handover docs current",
-                "No stale information",
-            ],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "is_active": True,
             "is_default": True,
             "version": "1.0.0",
@@ -702,9 +664,12 @@ def _get_mcp_bootstrap_section() -> str:
 You are part of a GiljoAI MCP orchestration system. MCP tools are available as native
 tool calls prefixed `mcp__giljo-mcp__*` in your tool list.
 
+Your job credentials (`job_id`, `tenant_key`) are provided in your spawn prompt —
+either pasted by the user or injected by the orchestrator. Use them exactly as given.
+
 ### STARTUP (MANDATORY)
 1. Call `mcp__giljo-mcp__health_check()` to verify MCP connectivity
-2. Call `mcp__giljo-mcp__get_agent_mission(job_id="<your_job_id>")` to receive:
+2. Call `mcp__giljo-mcp__get_agent_mission(job_id="<your_job_id>", tenant_key="<your_tenant_key>")` to receive:
    - Your full operating protocols (`full_protocol`)
    - Your work order and team context (`mission`)
 3. Follow `full_protocol` for all lifecycle behavior
