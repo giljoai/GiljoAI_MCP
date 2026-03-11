@@ -2153,7 +2153,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                                 for item in sorted(job.todo_items or [], key=lambda x: x.sequence)
                             ],
                             "result": execution.result,  # Handover 0497e
-                            # Note: updated_at field removed - not present in models
+                            "template_id": job.template_id,  # Handover 0814: for AgentDetailsModal lookup
                         }
                     )
 
