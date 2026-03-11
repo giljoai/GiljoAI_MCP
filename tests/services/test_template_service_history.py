@@ -161,8 +161,7 @@ async def test_reset_system_instructions(db_session, template_service, sample_te
 
     await template_service.reset_system_instructions(db_session, sample_template)
 
-    # Canonical default includes report_progress, complete_job, receive_messages
-    # (acknowledge_job removed in 0750c3 refactor)
-    assert "report_progress()" in sample_template.system_instructions
-    assert "complete_job()" in sample_template.system_instructions
-    assert "receive_messages()" in sample_template.system_instructions
+    # Canonical default is slim bootstrap directing agents to get_agent_mission()
+    assert "GiljoAI MCP Agent" in sample_template.system_instructions
+    assert "get_agent_mission" in sample_template.system_instructions
+    assert "health_check" in sample_template.system_instructions
