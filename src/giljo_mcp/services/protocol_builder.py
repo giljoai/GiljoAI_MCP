@@ -168,6 +168,7 @@ def _generate_agent_protocol(
     agent_id: str | None = None,
     execution_mode: str = "multi_terminal",
     git_integration_enabled: bool = False,
+    job_type: str = "agent",
 ) -> str:
     """
     Generate the 5-phase agent lifecycle protocol (Handover 0334, 0355, 0358b, 0359, 0378, 0392).
@@ -229,6 +230,23 @@ After completing your work, tell the user:
 tell me and I'll use /gil_add to save it to your dashboard."
 """
 
+    # Conditional Phase 1 Step 4: scope TodoWrite to job_type
+    if job_type == "orchestrator":
+        phase1_step4 = (
+            "4. **MANDATORY: Create TodoWrite task list** (BEFORE coordination):\n"
+            "   - Orchestration ONLY: spawning, monitoring, coordinating, unblocking, closing out\n"
+            "   - NEVER include implementation, testing, or documentation tasks — those belong to your agents\n"
+            '   - Count and announce: "X steps to complete: [list items]"\n'
+            "   - NEVER skip this step - planning prevents poor execution"
+        )
+    else:
+        phase1_step4 = (
+            "4. **MANDATORY: Create TodoWrite task list** (BEFORE implementation):\n"
+            "   - Break mission into 3-7 specific, actionable tasks\n"
+            '   - Count and announce: "X steps to complete: [list items]"\n'
+            "   - NEVER skip this step - planning prevents poor execution"
+        )
+
     return f"""## Agent Lifecycle Protocol (5 Phases)
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
@@ -249,10 +267,7 @@ tell me and I'll use /gil_add to save it to your dashboard."
 2. Call `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` - Check for instructions
 3. Review any messages and incorporate feedback BEFORE starting work
 
-4. **MANDATORY: Create TodoWrite task list** (BEFORE implementation):
-   - Break mission into 3-7 specific, actionable tasks
-   - Count and announce: "X steps to complete: [list items]"
-   - NEVER skip this step - planning prevents poor execution
+{phase1_step4}
 
 ### Phase 2: EXECUTION
 Execute your assigned tasks (TodoWrite created in Phase 1):
@@ -600,6 +615,20 @@ Adapt commands for agent missions to match the detected OS:
 Call: health_check()
 Expected: {{"status": "healthy", "database": "connected"}}
 If failed: Abort and notify user
+
+── STEP 1b: Initialize Progress Tracking ───────────────────────────────────
+Create a TodoWrite task list for your staging work, then sync with dashboard:
+
+Call: report_progress(
+          job_id='{orchestrator_id}',
+          todo_items=[{{"content": "<step description>", "status": "pending"}}]
+      )
+Note: tenant_key auto-injected by server from API key session
+
+Scope: Orchestration tasks ONLY — verifying, fetching context, discovering
+       agents, planning, spawning. NEVER include implementation tasks.
+
+Update TodoWrite AND call report_progress() as each staging step completes.
 
 ── STEP 2: Fetch Context ───────────────────────────────────────────────────
 Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
