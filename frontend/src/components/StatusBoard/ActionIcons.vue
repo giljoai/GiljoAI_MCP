@@ -88,11 +88,6 @@
       <span>{{ handoverPending ? 'Retirement prompt copied - paste in old terminal' : getActionTooltip('handOver') }}</span>
     </v-tooltip>
 
-    <!-- Copy Success Snackbar -->
-    <v-snackbar v-model="showCopySuccess" color="success" timeout="2000">
-      Prompt copied to clipboard!
-    </v-snackbar>
-
     <!-- Handover Instructions Snackbar (persistent until play is clicked) -->
     <v-snackbar
       v-model="showHandoverSnackbar"
@@ -120,6 +115,7 @@ import { ref, computed } from 'vue'
 import { getAvailableActions, getActionConfig } from '@/utils/actionConfig'
 import api from '@/services/api'
 import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
 
 const props = defineProps({
   job: {
@@ -141,14 +137,13 @@ const props = defineProps({
 const emit = defineEmits(['launch', 'copy-prompt', 'view-messages', 'hand-over'])
 
 const { copy: clipboardCopy } = useClipboard()
+const { showToast } = useToast()
 
 const loadingStates = ref({
   launch: false,
   copyPrompt: false,
   handOver: false,
 })
-
-const showCopySuccess = ref(false)
 
 // Two-stage handover state
 const handoverPending = ref(false)
@@ -175,7 +170,7 @@ const handleLaunch = async () => {
     loadingStates.value.launch = true
     try {
       await clipboardCopy(storedContinuationPrompt.value)
-      showCopySuccess.value = true
+      showToast({ message: 'Prompt copied to clipboard!', type: 'success' })
 
       // Reset handover state
       handoverPending.value = false
@@ -207,7 +202,7 @@ const handleCopyPrompt = async () => {
   loadingStates.value.copyPrompt = true
   try {
     emit('copy-prompt', props.job)
-    showCopySuccess.value = true
+    showToast({ message: 'Prompt copied to clipboard!', type: 'success' })
   } finally {
     loadingStates.value.copyPrompt = false
   }

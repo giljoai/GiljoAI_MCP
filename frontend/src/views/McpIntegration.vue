@@ -371,18 +371,6 @@ Questions? Let me know!
       </v-card-text>
     </v-card>
 
-    <!-- Snackbar for notifications -->
-    <v-snackbar
-      v-model="snackbar.show"
-      :color="snackbar.color"
-      :timeout="3000"
-      location="bottom right"
-    >
-      {{ snackbar.message }}
-      <template v-slot:actions>
-        <v-btn variant="text" icon="mdi-close" @click="snackbar.show = false" />
-      </template>
-    </v-snackbar>
   </v-container>
 </template>
 
@@ -391,8 +379,10 @@ import { ref, computed } from 'vue'
 import { format } from 'date-fns'
 import { getApiBaseURL, getDefaultTenantKey } from '@/config/api'
 import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
 
 const { copy: clipboardCopy } = useClipboard()
+const { showToast } = useToast()
 
 // State
 const downloading = ref({
@@ -402,11 +392,6 @@ const downloading = ref({
 const downloadSuccess = ref(false)
 const generatingLinks = ref(false)
 const shareLinks = ref(null)
-const snackbar = ref({
-  show: false,
-  message: '',
-  color: 'success',
-})
 
 // Computed Properties
 const manualConfigJson = computed(() => {
@@ -560,12 +545,8 @@ function formatExpiryDate(dateString) {
   }
 }
 
-function showSnackbar(message, color = 'success') {
-  snackbar.value = {
-    show: true,
-    message,
-    color,
-  }
+function showSnackbar(message, type = 'success') {
+  showToast({ message, type })
 }
 </script>
 

@@ -127,10 +127,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Snackbar for notifications -->
-    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
-      {{ snackbar.message }}
-    </v-snackbar>
   </v-container>
 </template>
 
@@ -145,22 +141,19 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOrgStore } from '@/stores/orgStore'
+import { useToast } from '@/composables/useToast'
 import MemberList from '@/components/org/MemberList.vue'
 import InviteMemberDialog from '@/components/org/InviteMemberDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
 const orgStore = useOrgStore()
+const { showToast } = useToast()
 
 const orgForm = ref({ name: '' })
 const saving = ref(false)
 const showInviteDialog = ref(false)
 const showDeleteDialog = ref(false)
-const snackbar = ref({
-  show: false,
-  message: '',
-  color: 'success',
-})
 
 // Computed from store
 const loading = computed(() => orgStore.loading)
@@ -171,12 +164,8 @@ const isAdmin = computed(() => orgStore.isAdmin)
 const canManageMembers = computed(() => orgStore.canManageMembers)
 
 // Show notification
-function showNotification(message, color = 'success') {
-  snackbar.value = {
-    show: true,
-    message,
-    color,
-  }
+function showNotification(message, type = 'success') {
+  showToast({ message, type })
 }
 
 // Load org on mount
