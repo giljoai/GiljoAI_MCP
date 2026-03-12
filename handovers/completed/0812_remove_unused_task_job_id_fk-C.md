@@ -5,7 +5,7 @@
 **To Agent:** Next Session
 **Priority:** Low
 **Estimated Complexity:** 1-2 hours
-**Status:** Not Started
+**Status:** Completed
 **Edition Scope:** CE
 
 ## Task Summary
@@ -143,3 +143,26 @@ Remove Item 1 (Task-Agent Execution Integration) and move to resolved table.
 - No frontend impact -- field never displayed
 - No MCP tool impact -- field never exposed
 - Clean FK with no backrefs -- no ORM cascade issues
+
+## Progress Updates
+
+### 2026-03-12 - Claude Opus 4.6 Session
+**Status:** Completed
+
+**Work Done:**
+- Removed `job_id` column, FK, 2 indexes, and comments from Task model (`tasks.py`)
+- Removed `job_id` from `TaskResponse` schema (`task.py`)
+- Removed `job_id` from `task_to_response()` endpoint helper (`tasks.py`)
+- Created idempotent Alembic migration `c4d5e6f70812` with full downgrade path
+- Updated `techdebt_march_2026.md` to reflect completion
+- 133 task tests passing, zero regressions
+- Migration reversibility verified (downgrade + re-upgrade)
+- All pre-commit hooks passed (ruff, bandit, gitleaks, CE/SaaS boundary)
+- Commit: `95b9ec99`
+
+**Files Modified:**
+- `src/giljo_mcp/models/tasks.py` (column, indexes, docstring)
+- `api/schemas/task.py` (TaskResponse field)
+- `api/endpoints/tasks.py` (task_to_response helper)
+- `migrations/versions/c4d5e6f70812_0812_drop_tasks_job_id.py` (new)
+- `handovers/techdebt_march_2026.md` (resolved table)
