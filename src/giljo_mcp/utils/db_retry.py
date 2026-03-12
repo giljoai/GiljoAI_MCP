@@ -89,6 +89,11 @@ async def with_deadlock_retry(
         RetryExhaustedError: After ``max_retries`` consecutive deadlocks.
         OperationalError: For non-deadlock database errors (propagated immediately).
     """
+    if max_retries < 1:
+        raise ValueError(f"max_retries must be >= 1, got {max_retries}")
+    if base_delay < 0:
+        raise ValueError(f"base_delay must be >= 0, got {base_delay}")
+
     last_error: OperationalError | None = None
 
     for attempt in range(max_retries):
@@ -110,10 +115,11 @@ async def with_deadlock_retry(
             )
             await asyncio.sleep(backoff)
 
-    logger.exception(
+    logger.error(
         "[DEADLOCK] %s failed after %d retries",
         operation_name,
         max_retries,
+        exc_info=last_error,
     )
     raise RetryExhaustedError(
         message=f"Deadlock retry exhausted after {max_retries} attempts",
