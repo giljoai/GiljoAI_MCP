@@ -834,13 +834,15 @@ __all__ = [
     "AgentSilentEvent",
     "AgentStatusChangedData",
     "AgentStatusChangedEvent",
-    # Factory
     "EventFactory",
-    # Metadata
     "EventMetadata",
+    "MessageAcknowledgedData",
+    "MessageAcknowledgedEvent",
+    "MessageReceivedData",
+    "MessageReceivedEvent",
+    "MessageSentData",
+    "MessageSentEvent",
     "ProjectMissionUpdatedData",
-    # Event Models
     "ProjectMissionUpdatedEvent",
-    # Type Unions
     "WebSocketEvent",
 ]

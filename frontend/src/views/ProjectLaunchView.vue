@@ -177,7 +177,7 @@ function handleEditMission(missionData) {
 }
 
 function handleEditAgentMission(_agentData) {
-  showNotification('Agent mission editing coming soon', 'info', 'mdi-information')
+  showNotification('Agent mission editing coming soon', 'info')
 }
 
 async function saveProject() {
@@ -203,13 +203,12 @@ async function saveProject() {
     showEditDialog.value = false
 
     // Show success message
-    showNotification('Project updated successfully', 'success', 'mdi-check-circle')
+    showNotification('Project updated successfully', 'success')
   } catch (err) {
     console.error('Failed to update project:', err)
     showNotification(
       err.response?.data?.detail || 'Failed to update project',
       'error',
-      'mdi-alert-circle',
     )
   }
 }
