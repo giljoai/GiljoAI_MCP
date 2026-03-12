@@ -25,6 +25,7 @@ from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.utils.db_retry import with_deadlock_retry
 
+
 # Patch target for asyncio.sleep inside the shared retry utility
 _SLEEP_PATCH_TARGET = "src.giljo_mcp.utils.db_retry.asyncio.sleep"
 
@@ -179,10 +180,16 @@ class TestSendPathDeadlockRetry:
             session.rollback.assert_awaited()
 
     @pytest.mark.asyncio
-    async def test_deadlock_exhaustion_raises_retry_exhausted(
+    async def test_send_counter_exhaustion_returns_success(
         self, mock_db_manager, mock_tenant_manager
     ):
-        """After max retries, RetryExhaustedError should be raised."""
+        """Send succeeds even when counter update exhausts all retries.
+
+        The message is already committed before counter updates. If the counter
+        update deadlocks exhaustively, RetryExhaustedError is caught and logged.
+        The caller should NOT receive an error (counter skew is recoverable,
+        duplicate messages are not).
+        """
         db_manager, session = mock_db_manager
         tenant_key = "test-tenant"
         project_id = str(uuid4())
@@ -213,14 +220,16 @@ class TestSendPathDeadlockRetry:
         service = MessageService(db_manager, mock_tenant_manager)
 
         with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock):
-            with pytest.raises(RetryExhaustedError, match="Deadlock retry exhausted"):
-                await service.send_message(
-                    to_agents=[agent_a.agent_id],
-                    content="Test direct",
-                    project_id=project_id,
-                    from_agent="orchestrator",
-                    tenant_key=tenant_key,
-                )
+            # Should NOT raise -- RetryExhaustedError is caught on send path
+            result = await service.send_message(
+                to_agents=[agent_a.agent_id],
+                content="Test direct",
+                project_id=project_id,
+                from_agent="orchestrator",
+                tenant_key=tenant_key,
+            )
+            # send_message returns the sender execution on success
+            assert result is not None
 
     @pytest.mark.asyncio
     async def test_non_deadlock_operational_error_not_retried(
@@ -317,14 +326,16 @@ class TestWithDeadlockRetryUtility:
         session = AsyncMock()
         deadlock_err = _make_deadlock_error()
 
-        with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock):
-            with pytest.raises(RetryExhaustedError, match="Deadlock retry exhausted"):
-                await with_deadlock_retry(
-                    session,
-                    AsyncMock(side_effect=deadlock_err),
-                    operation_name="test_op",
-                    max_retries=2,
-                )
+        with (
+            patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock),
+            pytest.raises(RetryExhaustedError, match="Deadlock retry exhausted"),
+        ):
+            await with_deadlock_retry(
+                session,
+                AsyncMock(side_effect=deadlock_err),
+                operation_name="test_op",
+                max_retries=2,
+            )
 
     @pytest.mark.asyncio
     async def test_non_deadlock_error_propagates_immediately(self):
@@ -544,3 +555,121 @@ class TestReceivePathDeadlockRetry:
 
         assert bulk_call_count == 2
         session.rollback.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_receive_counter_exhaustion_returns_messages(
+        self, mock_db_manager, mock_tenant_manager
+    ):
+        """Receive returns messages even when counter update exhausts all retries.
+
+        Messages are already acknowledged (committed) before counter updates.
+        If bulk_acknowledge_counters deadlocks exhaustively, the caller should
+        still receive the messages (counter skew is recoverable, message loss is not).
+        """
+        db_manager, session = mock_db_manager
+        tenant_key = "test-tenant"
+        agent_id = str(uuid4())
+        job_id = str(uuid4())
+        project_id = str(uuid4())
+
+        execution = _make_execution(agent_id, "test-agent")
+        execution.job_id = job_id
+
+        mock_job = Mock(spec=AgentJob)
+        mock_job.job_id = job_id
+        mock_job.project_id = project_id
+        mock_job.tenant_key = tenant_key
+
+        msg = Mock(spec=Message)
+        msg.id = uuid4()
+        msg.to_agents = [agent_id]
+        msg.status = "pending"
+        msg.content = "important message"
+        msg.message_type = "task"
+        msg.priority = "normal"
+        msg.meta_data = {"_from_agent": "other-agent"}
+        msg.created_at = datetime.now(timezone.utc)
+        msg.acknowledged_at = None
+        msg.acknowledged_by = []
+
+        call_count = {"n": 0}
+
+        async def mock_execute(*args, **kwargs):
+            call_count["n"] += 1
+            result = Mock()
+
+            if call_count["n"] == 1:
+                result.scalar_one_or_none = Mock(return_value=execution)
+            elif call_count["n"] == 2:
+                result.scalar_one_or_none = Mock(return_value=mock_job)
+            elif call_count["n"] == 3:
+                scalars = Mock()
+                scalars.all = Mock(return_value=[msg])
+                result.scalars = Mock(return_value=scalars)
+            else:
+                result.rowcount = 1
+                result.scalar_one_or_none = Mock(return_value=execution)
+            return result
+
+        session.execute = AsyncMock(side_effect=mock_execute)
+
+        deadlock_err = _make_deadlock_error()
+
+        service = MessageService(db_manager, mock_tenant_manager)
+
+        with (
+            patch.object(
+                service._repo,
+                "bulk_acknowledge_counters",
+                side_effect=deadlock_err,
+            ),
+            patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock),
+        ):
+            # Should NOT raise -- RetryExhaustedError is caught on receive path
+            result = await service.receive_messages(
+                agent_id=agent_id,
+                tenant_key=tenant_key,
+            )
+
+            # Messages should be returned despite counter exhaustion
+            assert result is not None
+
+
+class TestWithDeadlockRetryParameterValidation:
+    """Verify parameter validation in with_deadlock_retry."""
+
+    @pytest.mark.asyncio
+    async def test_max_retries_zero_raises_value_error(self):
+        """max_retries=0 should raise ValueError."""
+        session = AsyncMock()
+        with pytest.raises(ValueError, match="max_retries must be >= 1"):
+            await with_deadlock_retry(
+                session,
+                AsyncMock(return_value="ok"),
+                operation_name="test_op",
+                max_retries=0,
+            )
+
+    @pytest.mark.asyncio
+    async def test_max_retries_negative_raises_value_error(self):
+        """Negative max_retries should raise ValueError."""
+        session = AsyncMock()
+        with pytest.raises(ValueError, match="max_retries must be >= 1"):
+            await with_deadlock_retry(
+                session,
+                AsyncMock(return_value="ok"),
+                operation_name="test_op",
+                max_retries=-1,
+            )
+
+    @pytest.mark.asyncio
+    async def test_negative_base_delay_raises_value_error(self):
+        """Negative base_delay should raise ValueError."""
+        session = AsyncMock()
+        with pytest.raises(ValueError, match="base_delay must be >= 0"):
+            await with_deadlock_retry(
+                session,
+                AsyncMock(return_value="ok"),
+                operation_name="test_op",
+                base_delay=-0.1,
+            )
