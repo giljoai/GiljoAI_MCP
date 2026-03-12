@@ -1409,39 +1409,17 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                 # Blocked->working transition: if an agent reports progress while
                 # blocked, it has self-recovered and should resume "working" status.
                 # Mirrors the silent->working auto-recovery in auto_clear_silent().
+                blocked_to_working = False
                 if execution.status == "blocked":
-                    old_status = execution.status
                     execution.status = "working"
                     execution.block_reason = None
+                    blocked_to_working = True
 
                     self._logger.info(
                         "Agent resumed from blocked: agent_id=%s, job_id=%s",
                         execution.agent_id,
                         job_id,
                     )
-
-                    # Broadcast status change for dashboard update
-                    if self._websocket_manager:
-                        try:
-                            from api.events.schemas import EventFactory
-
-                            event = EventFactory.agent_status_changed(
-                                job_id=str(job_id),
-                                tenant_key=tenant_key,
-                                old_status=old_status,
-                                new_status="working",
-                                agent_display_name=execution.agent_display_name or "unknown",
-                                project_id=str(job.project_id) if job else None,
-                            )
-                            await self._websocket_manager.broadcast_event_to_tenant(
-                                tenant_key=tenant_key,
-                                event=event,
-                            )
-                        except Exception:
-                            self._logger.exception(
-                                "Failed to broadcast blocked->working for agent %s",
-                                execution.agent_id,
-                            )
 
                 # Extract progress percentage and current task from progress dict
                 if "percent" in progress:
@@ -1520,6 +1498,26 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     message=f"Job {job_id} not found after commit",
                     context={"job_id": job_id, "method": "report_progress"},
                 )
+
+            # Broadcast blocked->working AFTER commit succeeds (not before)
+            if blocked_to_working and self._websocket_manager:
+                try:
+                    await self._websocket_manager.broadcast_to_tenant(
+                        tenant_key=tenant_key,
+                        event_type="agent:status_changed",
+                        data={
+                            "job_id": str(job_id),
+                            "agent_display_name": execution.agent_display_name or "unknown",
+                            "old_status": "blocked",
+                            "new_status": "working",
+                            "project_id": str(job.project_id),
+                        },
+                    )
+                except Exception:
+                    self._logger.exception(
+                        "Failed to broadcast blocked->working for agent %s",
+                        execution.agent_id,
+                    )
 
             await self._fetch_and_broadcast_progress(tenant_key, job_id, job, execution, progress)
 

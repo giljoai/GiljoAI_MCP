@@ -492,7 +492,7 @@ async function refreshJobs() {
     showToast({
       message: 'Failed to load agent jobs',
       type: 'error',
-      duration: 5000,
+      timeout: 5000,
     })
   } finally {
     loadingJobs.value = false
@@ -642,14 +642,14 @@ async function handlePlay(agent) {
           showToast({
             message: `Implementation prompt copied! ${response.data.agent_count + 1} jobs ready (1 orchestrator, ${response.data.agent_count} agents)`,
             type: 'success',
-            duration: 5000
+            timeout: 5000
           })
         } catch (error) {
           const errorMsg = error.response?.data?.detail || 'Failed to generate implementation prompt'
           showToast({
             message: errorMsg,
             type: 'error',
-            duration: 6000
+            timeout: 6000
           })
         }
         return
@@ -670,14 +670,14 @@ async function handlePlay(agent) {
         showToast({
           message: `Orchestrator prompt copied! ${response.data.agent_count} agents ready for launch.`,
           type: 'success',
-          duration: 5000
+          timeout: 5000
         })
       } catch (error) {
         const errorMsg = error.response?.data?.detail || 'Failed to generate orchestrator prompt'
         showToast({
           message: errorMsg,
           type: 'error',
-          duration: 6000
+          timeout: 6000
         })
       }
       return
@@ -693,11 +693,11 @@ async function handlePlay(agent) {
     }
 
     await copyToClipboard(promptText)
-    showToast({ message: 'Launch prompt copied to clipboard', type: 'success', duration: 3000 })
+    showToast({ message: 'Launch prompt copied to clipboard', type: 'success', timeout: 3000 })
   } catch (error) {
     console.error('[JobsTab] Failed to prepare launch prompt:', error)
     const msg = error.response?.data?.detail || error.message || 'Failed to prepare launch prompt'
-    showToast({ message: msg, type: 'error', duration: 5000 })
+    showToast({ message: msg, type: 'error', timeout: 5000 })
   }
 }
 
@@ -775,7 +775,7 @@ async function handleHandOver(agent) {
     showToast({
       message: msg,
       type: 'error',
-      duration: 5000,
+      timeout: 5000,
     })
   }
 }
@@ -794,7 +794,7 @@ async function handleStopProject(_agent) {
       showToast({
         message: `Termination prompt copied! Paste into orchestrator terminal. (${response.data.agent_count} agents)`,
         type: 'warning',
-        duration: 8000,
+        timeout: 8000,
       })
     } else {
       throw new Error('No prompt returned')
@@ -805,7 +805,7 @@ async function handleStopProject(_agent) {
     showToast({
       message: msg,
       type: 'error',
-      duration: 5000,
+      timeout: 5000,
     })
   }
 }
@@ -816,7 +816,7 @@ async function handleStopProject(_agent) {
  */
 async function sendMessage() {
   if (!messageText.value.trim()) {
-    showToast({ message: 'Message cannot be empty', type: 'warning', duration: 3000 })
+    showToast({ message: 'Message cannot be empty', type: 'warning', timeout: 3000 })
     return
   }
 
@@ -851,7 +851,7 @@ async function sendMessage() {
     showToast({
       message: 'Message sent successfully',
       type: 'success',
-      duration: 3000
+      timeout: 3000
     })
 
     messageText.value = ''
@@ -862,7 +862,7 @@ async function sendMessage() {
     showToast({
       message: `Failed to send message: ${msg}`,
       type: 'error',
-      duration: 5000
+      timeout: 5000
     })
   } finally {
     sending.value = false
@@ -879,7 +879,7 @@ async function handleContinue() {
   showToast({
     message: 'Project continues with new orchestrator',
     type: 'info',
-    duration: 3000
+    timeout: 3000
   })
 }
 
@@ -892,7 +892,7 @@ async function handleCloseout(data) {
   showToast({
     message: 'Project closed out successfully',
     type: 'success',
-    duration: 3000
+    timeout: 3000
   })
   // Emit event to parent component to handle navigation
   emit('closeout-project', data)

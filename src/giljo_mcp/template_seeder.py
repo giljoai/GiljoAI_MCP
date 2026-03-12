@@ -489,129 +489,56 @@ Success criteria:
 
 def _get_template_metadata() -> dict[str, dict[str, Any]]:
     """
-    Get comprehensive metadata for each agent role template.
+    Get metadata for each agent role template.
 
-    This metadata is based on the handover specification (lines 402-450)
-    and defines behavioral rules, success criteria, and required variables
-    for each agent role.
-
-    Version 3.1.0: Enhanced with MCP coordination instructions for Phase 7
-    (Handover 0045 - Multi-Tool Agent Orchestration System)
+    Returns a dict mapping role names to metadata dictionaries containing
+    category and variables. Behavioral rules and success criteria are now
+    embedded directly in the user_instructions text of v103 templates, so
+    the structured fields are kept empty for consistency.
 
     Returns:
         Dict mapping role names to metadata dictionaries
 
     Note:
-        This is a private function used internally by seed_tenant_templates.
-        Metadata is kept separate from template content for maintainability.
+        This is a private function used by devpanel and layer-separation tests.
+        Previously contained populated behavioral_rules/success_criteria,
+        cleared in 0815 to match v103 template design.
     """
     return {
         "orchestrator": {
             "category": "role",
-            "behavioral_rules": [
-                "Read vision document completely (all parts)",
-                "Delegate instead of implementing (3-tool rule)",
-                "Challenge scope drift proactively",
-                "Create 3 documentation artifacts at project close",
-                "Coordinate multiple agents effectively",
-                "Monitor agent progress and respond to blockers",
-            ],
-            "success_criteria": [
-                "All project objectives met",
-                "Clean handoff documentation created",
-                "Zero scope creep maintained",
-                "Effective team coordination achieved",
-            ],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "variables": ["project_name", "product_name", "project_mission"],
         },
         "analyzer": {
             "category": "role",
-            "behavioral_rules": [
-                "Analyze thoroughly before recommending",
-                "Document all findings clearly",
-                "Use Serena MCP for code exploration",
-                "Focus on architecture and patterns",
-                "Report analysis findings incrementally (don't wait until end)",
-                "Report file analysis progress incrementally",
-            ],
-            "success_criteria": [
-                "Complete requirements documented",
-                "Architecture aligned with vision",
-                "All risks and dependencies identified",
-                "Clear specifications for implementer",
-            ],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "variables": ["project_name", "custom_mission"],
         },
         "implementer": {
             "category": "role",
-            "behavioral_rules": [
-                "Write clean, maintainable code",
-                "Follow project specifications exactly",
-                "Use Serena MCP symbolic operations for edits",
-                "Test changes incrementally",
-                "Report file modifications after each implementation step",
-                "Include token usage in progress reports (track context carefully)",
-            ],
-            "success_criteria": [
-                "All specified features implemented correctly",
-                "Code follows project standards",
-                "Tests passing",
-                "No unauthorized scope changes",
-            ],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "variables": ["project_name", "custom_mission"],
         },
         "tester": {
             "category": "role",
-            "behavioral_rules": [
-                "Test thoroughly and systematically",
-                "Document all defects clearly",
-                "Create comprehensive test coverage",
-                "Validate against requirements",
-                "Report test results in completion summary (pass/fail counts, coverage)",
-                "Include test file paths in progress reports",
-            ],
-            "success_criteria": [
-                "All features have test coverage",
-                "Tests validate requirements correctly",
-                "Coverage meets project standards",
-                "Test documentation complete",
-            ],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "variables": ["project_name", "custom_mission"],
         },
         "reviewer": {
             "category": "role",
-            "behavioral_rules": [
-                "Review objectively and constructively",
-                "Provide actionable feedback",
-                "Check security best practices",
-                "Validate architectural compliance",
-                "Document all findings with severity levels",
-                "Mark completion only after all review comments addressed",
-            ],
-            "success_criteria": [
-                "Code meets quality standards",
-                "Security best practices followed",
-                "No critical issues remaining",
-                "All feedback is actionable",
-            ],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "variables": ["project_name", "custom_mission"],
         },
         "documenter": {
             "category": "role",
-            "behavioral_rules": [
-                "Document clearly and comprehensively",
-                "Create usage examples and guides",
-                "Update all relevant artifacts",
-                "Focus on implemented features only",
-                "Report documentation files created/updated in progress",
-                "Include documentation coverage in completion summary",
-            ],
-            "success_criteria": [
-                "Documentation complete and accurate",
-                "Usage examples provided",
-                "All artifacts updated",
-                "Documentation follows project style",
-            ],
+            "behavioral_rules": [],
+            "success_criteria": [],
             "variables": ["project_name", "custom_mission"],
         },
     }
