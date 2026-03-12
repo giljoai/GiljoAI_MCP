@@ -86,7 +86,7 @@ For git archaeology purposes, these items were in TECHNICAL_DEBT_v2.md and confi
 | MCP Slash Commands | Resolved with different pattern (MCP tools returning instructions instead of `.claude/commands/` files). |
 | Serena Advanced Settings | Intentionally removed per Handover 0277. Simple boolean toggle retained. |
 | Orchestrator Self-Counting | Agent discovery returns templates not instances. Design change resolved the issue. |
-| Task-Agent Execution Integration | Dead schema -- `task.job_id` FK always NULL, never read/written. Tasks are isolated tech debt lists that convert to projects, not jobs. Cleanup handover 0812 created. |
+| Task-Agent Execution Integration | Dead schema removed (Handover 0812). Column, FK, and indexes dropped. |
 
 ---
 
