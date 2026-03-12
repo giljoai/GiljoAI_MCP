@@ -32,6 +32,7 @@ from src.giljo_mcp.exceptions import (
     BaseGiljoError,
     MessageDeliveryError,
     ResourceNotFoundError,
+    RetryExhaustedError,
     ValidationError,
 )
 from src.giljo_mcp.models import Message, Project
@@ -455,7 +456,9 @@ class MessageService:
                 operation_name="send_counter_update",
                 context={"project_id": project_id},
             )
-        except (ValueError, KeyError) as counter_error:
+        except (RetryExhaustedError, ValueError, KeyError) as counter_error:
+            # Counter update is a non-critical side effect; message is already committed.
+            # Log and continue -- counter skew is recoverable, duplicate messages are not.
             self._logger.warning("Failed to update message counters: %s", counter_error)
 
         return sender_execution
@@ -1004,13 +1007,18 @@ class MessageService:
                         )
                         await session.commit()
 
-                    await with_deadlock_retry(
-                        session,
-                        _acknowledge_counters,
-                        operation_name="receive_counter_update",
-                        context={"agent_id": agent_id},
-                    )
-                    self._logger.info(f"[COUNTER] Bulk acknowledged {len(messages)} messages for {agent_id}")
+                    try:
+                        await with_deadlock_retry(
+                            session,
+                            _acknowledge_counters,
+                            operation_name="receive_counter_update",
+                            context={"agent_id": agent_id},
+                        )
+                        self._logger.info(f"[COUNTER] Bulk acknowledged {len(messages)} messages for {agent_id}")
+                    except RetryExhaustedError as counter_error:
+                        # Counter update is non-critical; messages are already acknowledged.
+                        # Log and continue -- counter skew is recoverable, message loss is not.
+                        self._logger.warning("Failed to update receive counters for %s: %s", agent_id, counter_error)
 
                     # Emit WebSocket event for UI update (Handover 0326)
                     # Use broadcast_message_acknowledged for real-time counter updates

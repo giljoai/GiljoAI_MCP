@@ -78,7 +78,7 @@ async def test_report_progress_transitions_blocked_to_working(mock_db_manager, m
     """When execution status is 'blocked', report_progress sets it to 'working' and clears block_reason."""
     db_manager, session = mock_db_manager
     mock_ws = Mock()
-    mock_ws.broadcast_event_to_tenant = AsyncMock()
+    mock_ws.broadcast_to_tenant = AsyncMock()
 
     execution = _make_mock_execution(status="blocked", block_reason="Waiting for user input")
     job = _make_mock_job()
@@ -102,10 +102,10 @@ async def test_report_progress_transitions_blocked_to_working(mock_db_manager, m
 async def test_report_progress_broadcasts_status_change_on_blocked_to_working(
     mock_db_manager, mock_tenant_manager
 ):
-    """When transitioning blocked->working, broadcast agent:status_changed event."""
+    """When transitioning blocked->working, broadcast agent:status_changed event after commit."""
     db_manager, session = mock_db_manager
     mock_ws = Mock()
-    mock_ws.broadcast_event_to_tenant = AsyncMock()
+    mock_ws.broadcast_to_tenant = AsyncMock()
 
     execution = _make_mock_execution(status="blocked", block_reason="Need clarification")
     job = _make_mock_job()
@@ -120,15 +120,15 @@ async def test_report_progress_broadcasts_status_change_on_blocked_to_working(
             progress={"percent": 25, "message": "Resumed work"},
         )
 
-    # Verify WebSocket broadcast was called
-    mock_ws.broadcast_event_to_tenant.assert_called_once()
-    call_kwargs = mock_ws.broadcast_event_to_tenant.call_args
+    # Verify broadcast_to_tenant convenience API was called (not broadcast_event_to_tenant)
+    mock_ws.broadcast_to_tenant.assert_called_once()
+    call_kwargs = mock_ws.broadcast_to_tenant.call_args
     assert call_kwargs.kwargs["tenant_key"] == "test-tenant"
-    event = call_kwargs.kwargs["event"]
-    assert event["type"] == "agent:status_changed"
-    assert event["data"]["old_status"] == "blocked"
-    assert event["data"]["new_status"] == "working"
-    assert event["data"]["agent_display_name"] == "Test Agent"
+    assert call_kwargs.kwargs["event_type"] == "agent:status_changed"
+    data = call_kwargs.kwargs["data"]
+    assert data["old_status"] == "blocked"
+    assert data["new_status"] == "working"
+    assert data["agent_display_name"] == "Test Agent"
 
 
 @pytest.mark.asyncio
@@ -136,7 +136,7 @@ async def test_report_progress_does_not_change_working_status(mock_db_manager, m
     """When execution is already 'working', report_progress does not change status."""
     db_manager, session = mock_db_manager
     mock_ws = Mock()
-    mock_ws.broadcast_event_to_tenant = AsyncMock()
+    mock_ws.broadcast_to_tenant = AsyncMock()
 
     execution = _make_mock_execution(status="working")
     job = _make_mock_job()
@@ -154,7 +154,7 @@ async def test_report_progress_does_not_change_working_status(mock_db_manager, m
     assert result.status == "success"
     assert execution.status == "working"
     # No WebSocket broadcast for status change (status did not change)
-    mock_ws.broadcast_event_to_tenant.assert_not_called()
+    mock_ws.broadcast_to_tenant.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -162,7 +162,7 @@ async def test_report_progress_does_not_change_waiting_status(mock_db_manager, m
     """When execution is 'waiting', report_progress does not change status."""
     db_manager, session = mock_db_manager
     mock_ws = Mock()
-    mock_ws.broadcast_event_to_tenant = AsyncMock()
+    mock_ws.broadcast_to_tenant = AsyncMock()
 
     execution = _make_mock_execution(status="waiting")
     job = _make_mock_job()
@@ -179,7 +179,7 @@ async def test_report_progress_does_not_change_waiting_status(mock_db_manager, m
 
     assert result.status == "success"
     assert execution.status == "waiting"
-    mock_ws.broadcast_event_to_tenant.assert_not_called()
+    mock_ws.broadcast_to_tenant.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -187,7 +187,7 @@ async def test_report_progress_does_not_change_silent_status(mock_db_manager, mo
     """When execution is 'silent', report_progress does not change status (auto_clear_silent handles that)."""
     db_manager, session = mock_db_manager
     mock_ws = Mock()
-    mock_ws.broadcast_event_to_tenant = AsyncMock()
+    mock_ws.broadcast_to_tenant = AsyncMock()
 
     execution = _make_mock_execution(status="silent")
     job = _make_mock_job()
@@ -204,4 +204,4 @@ async def test_report_progress_does_not_change_silent_status(mock_db_manager, mo
 
     assert result.status == "success"
     assert execution.status == "silent"
-    mock_ws.broadcast_event_to_tenant.assert_not_called()
+    mock_ws.broadcast_to_tenant.assert_not_called()
