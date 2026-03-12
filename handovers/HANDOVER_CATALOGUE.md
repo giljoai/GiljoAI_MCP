@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-09 (0250/0732/0771 archived, 0409/0284 DEFERRED, 9999 DELETED, reference docs moved)
+**Last Updated:** 2026-03-12 (0259 COMPLETE, 0814 COMPLETE + archived, 0815 COMPLETE)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved), 0812 schema cleanup NOT STARTED, 0813 template context separation COMPLETE, 0814 template manager UI redesign NOT STARTED |
+| 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved), 0812 schema cleanup NOT STARTED, 0813 template context separation COMPLETE, 0814 template manager UI redesign COMPLETE, 0815 code review remediation COMPLETE |
 
 ---
 
@@ -29,12 +29,21 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0259 | Notification Health Alert - Add Project Context | Not Started | Medium | Health alerts missing project name + click-to-navigate. ~2-4 hours. |
+| 0259 | Notification Health Alert - Add Project Context | **COMPLETE** | Medium | Health alerts now include project name + click-to-navigate. Commit `e149f09d`. |
 | 0813 | Agent Template Context Separation | **COMPLETE** | High | Separate role identity from protocols in templates. Fix user_instructions export gap. Archived to `completed/`. |
-| 0814 | Template Manager UI Redesign | Not Started | High | Fix 403-on-save bug, add user_instructions editor, inject bootstrap on create, unify export renderers. ~8-12 hours. Continues in `0813-template-context-separation` branch. |
+| 0814 | Template Manager UI Redesign | **COMPLETE** | High | All 4 bugs fixed, dialog redesign, export unification. 12+ commits across 5 phases. See implementation summary in handover file. Archived to `completed/`. |
+| 0815 | Code Review Remediation (March 2026 Commits) | **COMPLETE** | HIGH | 2 HIGH, 6 MEDIUM, 5 LOW findings fixed. 621 tests passing. |
 | 0732b | README Screenshots | Deferred | Low | 30 min. Requires running instance with sample data. |
 | 1014 | Security Event Auditing | Deferred | Medium | Enterprise compliance. No requirement yet. |
 | TODO_vision | Vision Summarizer LLM Upgrade | Deferred | Low | Phase 1 incomplete. Current Sumy works. |
+
+### Recently Closed (March 2026 - from Active)
+
+| ID | Title | Closed | How |
+|----|-------|--------|-----|
+| 0259 | Notification Health Alert - Add Project Context | 2026-03-12 | COMPLETE (`e149f09d`) — project name + click-to-navigate in health alerts |
+| 0814 | Template Manager UI Redesign | 2026-03-12 | COMPLETE (12+ commits) — 4 bugs fixed, dialog redesign, export unification, 20 tests |
+| 0815 | Code Review Remediation (March 2026 Commits) | 2026-03-12 | COMPLETE — 2 HIGH, 6 MEDIUM, 5 LOW findings fixed across 14 files, 621 tests |
 
 ### Recently Closed (February 2026 - from Active)
 
@@ -134,6 +143,9 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0815 | Code Review Remediation (March 2026 Commits) | **COMPLETE** (2026-03-12, 2 HIGH + 6 MEDIUM + 5 LOW findings fixed, 14 files, 621 tests) |
+| 0814 | Template Manager UI Redesign | **COMPLETE** (2026-03-12, 12+ commits, 4 bugs fixed, dialog redesign, export unification, 20 tests) |
+| 0259 | Notification Health Alert - Add Project Context | **COMPLETE** (2026-03-12, `e149f09d`, project name + click-to-navigate in health alerts) |
 | 0765a-s | Perfect Score Sprint (19 sessions) | **COMPLETE** (2026-03-08, 67 commits, ~12K+ lines dead code removed, 1390 tests pass / 0 skipped) |
 | 0083 | Harmonize Slash Commands to /gil_* | **COMPLETED** (2026-03-07, adopted organically via 0388/0461/0700d — no code changes needed) |
 | 0800-0807 | Feb Report Tier 1 Triage (14/21 items resolved) | **COMPLETE** (2026-03-05, research+implementation across 11 handovers) |
@@ -465,7 +477,9 @@ completed/reference/
 **0808-0811** (Tier 2 Triage): 0808a, 0809a, 0810a, 0811a (all research complete, fixes in `f665c861`)
 **0812** (Schema Cleanup): 0812 Remove unused task.job_id FK (NOT STARTED)
 **0813** (Enhancement & Feature Series): 0813 Template Context Separation (COMPLETE)
-**0814+** (Enhancement & Feature Series): Available for new feature/enhancement work
+**0814** (Enhancement & Feature Series): 0814 Template Manager UI Redesign (COMPLETE)
+**0815** (Enhancement & Feature Series): 0815 Code Review Remediation March 2026 (COMPLETE)
+**0816+** (Enhancement & Feature Series): Available for new feature/enhancement work
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers

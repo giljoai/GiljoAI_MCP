@@ -751,18 +751,18 @@ const handleToggleActive = async (template, newValue) => {
     // Show toast notification
     if (newValue) {
       // Activation succeeded - warn about re-export
-      showToast({ message: 'Agent activated - re-export required', color: 'warning' })
+      showToast({ message: 'Agent activated - re-export required', type: 'warning' })
       // Mark export as stale (for Option C badge)
       localStorage.setItem('agent_export_stale', 'true')
     } else {
       // Deactivation succeeded
-      showToast({ message: 'Agent deactivated', color: 'info' })
+      showToast({ message: 'Agent deactivated', type: 'info' })
       localStorage.setItem('agent_export_stale', 'true')
     }
   } catch (error) {
     // Validation failed (8-agent limit)
     const errorMsg = error.response?.data?.detail || 'Failed to update agent'
-    showToast({ message: errorMsg, color: 'error' })
+    showToast({ message: errorMsg, type: 'error' })
 
     // Revert toggle (template state not changed on error)
     // No need to revert as we only update on success
@@ -923,7 +923,7 @@ const copyPreview = async () => {
   await copyToClipboardSafe(
     previewContent.value,
     () => {
-      showToast({ message: 'Preview copied to clipboard', color: 'success' })
+      showToast({ message: 'Preview copied to clipboard', type: 'success' })
     },
     (error) => {
       console.error('Failed to copy preview:', error)
