@@ -2,49 +2,7 @@
 
 **Purpose**: Actionable technical debt and implementation gaps for CE launch readiness.
 **Replaces**: TECHNICAL_DEBT_v2.md (deleted - 2720 lines of mostly obsolete content)
-**Last Audit**: 2026-03-09 (cross-referenced git history + codebase exploration)
-
----
-
-## Partially Complete Items
-
-These have some implementation but gaps remain.
-
----
-
-### 1. MCP Agent Coordination Tools
-
-**Priority**: MEDIUM
-**Effort**: 2-4 hours to verify completeness
-
-**What's done**:
-- `src/giljo_mcp/tools/agent_coordination.py` exists with `spawn_agent()` and `get_team_agents()`
-
-**What needs verification**:
-- Original plan called for 7 tools wrapping REST API endpoints. Only 2 confirmed.
-- No handover (0060) was ever created, so there's no completion record.
-- Need to verify: can external agents (Claude Code, Codex) fully coordinate through MCP tools? Or are there gaps in the tool surface?
-
-**Action**: Quick audit of which coordination operations are exposed as MCP tools vs only available via REST API.
-
----
-
-### 2. Agent Behavior Customization
-
-**Priority**: LOW-MEDIUM
-**Effort**: 6-8 hours
-
-**What's done**:
-- `AgentTemplate.behavioral_rules` (JSON column) exists in DB
-- `template_manager.get_behavioral_rules()` method exists
-- TemplateManager.vue has UI for editing behavioral_rules at template level
-
-**What's missing**:
-- No per-agent `behavior_philosophy` field (only template-level rules exist)
-- No runtime injection of behavioral rules into agent missions
-- No agent edit form for individual behavior customization
-
-**The gap**: You can define rules at the template level but they don't flow through to mission prompts at runtime. And individual agents can't override template defaults.
+**Last Audit**: 2026-03-12 (cross-referenced git history + codebase exploration)
 
 ---
 
@@ -87,7 +45,9 @@ For git archaeology purposes, these items were in TECHNICAL_DEBT_v2.md and confi
 | Serena Advanced Settings | Intentionally removed per Handover 0277. Simple boolean toggle retained. |
 | Orchestrator Self-Counting | Agent discovery returns templates not instances. Design change resolved the issue. |
 | Task-Agent Execution Integration | Dead schema removed (Handover 0812). Column, FK, and indexes dropped. |
+| Agent Behavior Customization | Resolved by design. The "Role & Expertise" field (`user_instructions`) in Template Manager is the behavioral customization mechanism -- it flows through to agent missions at runtime via `_resolve_spawn_template()`. The separate `behavioral_rules` JSON column was a planned structured alternative that was never wired up and is now dead weight (all defaults empty, no UI editor, no runtime injection). `get_behavioral_rules()` method referenced in old docs was removed during template adapter migration. |
+| MCP Agent Coordination Tools | Resolved. Full audit (2026-03-12) found 21 MCP tools registered via `tool_map` in `mcp_http.py`, covering the complete agent coordination lifecycle: spawn, mission, progress, messaging, completion, error reporting, workflow status, context, and memory. The original Handover 0060 (7 REST-wrapping tools) was completed Oct 2025 then superseded -- its code was deleted in 0420b (Jan 2026), replaced by the `ToolAccessor` -> service class architecture. The `agent_coordination.py` file with `spawn_agent()` and `get_team_agents()` is vestigial dead code (not in tool_map, not imported by production code). No operational gaps exist. |
 
 ---
 
-**Next review**: When Items 1-2 are revisited for priority.
+**Next review**: All actionable tech debt resolved. Only Post-CE roadmap items remain (non-blocking).
