@@ -4,7 +4,6 @@
  * Tests the System Settings view functionality including:
  * - Network configuration (external host, API port, CORS)
  * - Database settings (readonly display)
- * - Integrations (Claude Code, Codex CLI, Gemini CLI, Serena MCP)
  * - Security configuration (cookie domain whitelist)
  * - System settings (orchestrator prompt override)
  * - Admin-only access
@@ -148,15 +147,11 @@ describe('SystemSettings.vue', () => {
     const defaultStubs = {
       DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
       NetworkSettingsTab: { template: '<div>Network Tab</div>' },
-      AdminIntegrationsTab: { template: '<div>Integrations Tab</div>' },
       SecuritySettingsTab: { template: '<div>Security Tab</div>' },
-      SystemPromptTab: { template: '<div>System Tab</div>' },
-      ClaudeConfigModal: { template: '<div>Claude Modal</div>' },
-      CodexConfigModal: { template: '<div>Codex Modal</div>' },
-      GeminiConfigModal: { template: '<div>Gemini Modal</div>' }
+      SystemPromptTab: { template: '<div>System Tab</div>' }
     }
 
-    it('renders all 5 tabs (Network, Database, Integrations, Security, System)', () => {
+    it('renders all tabs (Identity, Network, Database, Security, Prompts)', () => {
       wrapper = mount(SystemSettings, {
         global: {
           plugins: [vuetify, router, pinia],
@@ -166,11 +161,11 @@ describe('SystemSettings.vue', () => {
 
       // Check for tab text content instead of .v-tab class
       const text = wrapper.text()
+      expect(text).toContain('Identity')
       expect(text).toContain('Network')
       expect(text).toContain('Database')
-      expect(text).toContain('Integrations')
       expect(text).toContain('Security')
-      expect(text).toContain('System')
+      expect(text).toContain('Prompts')
     })
 
     it('renders Network tab', () => {
@@ -193,17 +188,6 @@ describe('SystemSettings.vue', () => {
       })
 
       expect(wrapper.text()).toContain('Database')
-    })
-
-    it('renders Integrations tab', () => {
-      wrapper = mount(SystemSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: defaultStubs
-        }
-      })
-
-      expect(wrapper.text()).toContain('Integrations')
     })
 
     it('renders Security tab', () => {
@@ -317,12 +301,9 @@ describe('SystemSettings.vue', () => {
               template: '<div data-test="network-settings-tab">Network Tab</div>',
               props: ['config', 'corsOrigins', 'loading']
             },
-            AdminIntegrationsTab: { template: '<div>Integrations Tab</div>' },
+
             SecuritySettingsTab: { template: '<div>Security Tab</div>' },
             SystemPromptTab: { template: '<div>System Tab</div>' },
-            ClaudeConfigModal: { template: '<div>Claude Modal</div>' },
-            CodexConfigModal: { template: '<div>Codex Modal</div>' },
-            GeminiConfigModal: { template: '<div>Gemini Modal</div>' }
           }
         }
       })
@@ -362,12 +343,9 @@ describe('SystemSettings.vue', () => {
             DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
             UserManager: { template: '<div>User Manager Mock</div>' },
             NetworkSettingsTab: { template: '<div>Network Tab</div>' },
-            AdminIntegrationsTab: { template: '<div>Integrations Tab</div>' },
+
             SecuritySettingsTab: { template: '<div>Security Tab</div>' },
             SystemPromptTab: { template: '<div>System Tab</div>' },
-            ClaudeConfigModal: { template: '<div>Claude Modal</div>' },
-            CodexConfigModal: { template: '<div>Codex Modal</div>' },
-            GeminiConfigModal: { template: '<div>Gemini Modal</div>' }
           }
         }
       })
@@ -455,12 +433,9 @@ describe('SystemSettings.vue', () => {
             DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
             UserManager: { template: '<div>User Manager Mock</div>' },
             NetworkSettingsTab: { template: '<div data-test="network-stub">Network</div>' },
-            AdminIntegrationsTab: { template: '<div data-test="integrations-stub">Integrations</div>' },
+
             SecuritySettingsTab: { template: '<div data-test="security-stub">Security</div>' },
             SystemPromptTab: { template: '<div data-test="system-stub">System</div>' },
-            ClaudeConfigModal: { template: '<div>Claude Modal</div>' },
-            CodexConfigModal: { template: '<div>Codex Modal</div>' },
-            GeminiConfigModal: { template: '<div>Gemini Modal</div>' }
           }
         }
       })
@@ -515,29 +490,6 @@ describe('SystemSettings.vue', () => {
       }
     })
   })
-
-  describe('Integrations Tab', () => {
-    it('displays integrations content', async () => {
-      wrapper = mount(SystemSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
-            UserManager: { template: '<div>User Manager Mock</div>' }
-          }
-        }
-      })
-
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'integrations'
-        await wrapper.vm.$nextTick()
-      }
-
-      // Just verify the integrations tab exists and has content
-      expect(wrapper.text()).toContain('Integrations')
-    })
-  })
-
 
   describe('Network Settings Management', () => {
     it('loads network settings on mount', async () => {
@@ -600,12 +552,9 @@ describe('SystemSettings.vue', () => {
             DatabaseConnection: { template: '<div>Database Connection Mock</div>' },
             UserManager: { template: '<div>User Manager Mock</div>' },
             NetworkSettingsTab: { template: '<div>Network Tab</div>' },
-            AdminIntegrationsTab: { template: '<div>Integrations Tab</div>' },
+
             SecuritySettingsTab: { template: '<div>Security Tab</div>' },
             SystemPromptTab: { template: '<div>System Tab</div>' },
-            ClaudeConfigModal: { template: '<div>Claude Modal</div>' },
-            CodexConfigModal: { template: '<div>Codex Modal</div>' },
-            GeminiConfigModal: { template: '<div>Gemini Modal</div>' }
           }
         }
       })
