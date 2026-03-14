@@ -363,7 +363,6 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTheme } from 'vuetify'
 import ToolConfigSnippet from '@/components/ToolConfigSnippet.vue'
 import GiljoFaceIcon from '@/components/icons/GiljoFaceIcon.vue'
 
@@ -373,7 +372,6 @@ const props = defineProps({
 })
 
 const router = useRouter()
-const theme = useTheme()
 
 const showDetails = ref(false)
 const detailsStep = ref(null)

@@ -333,20 +333,12 @@ const showDetailsDialog = ref(false)
 const editingProduct = ref(null)
 const deletingProduct = ref(null)
 const selectedProduct = ref(null)
-const saving = ref(false)
 const deleting = ref(false)
 const visionFiles = ref([])
 const existingVisionDocuments = ref([])
 const detailsVisionDocuments = ref([])
-// Handover 0508: Vision upload error handling and progress tracking
-const uploadingVision = ref(false)
-const uploadProgress = ref(0)
-const isChunking = ref(false)
-const visionUploadError = ref(null)
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
-const deleteConfirmationCheck = ref(false)
-const dialogTab = ref('basic') // Handover 0042: Tab for product dialog (basic, tech, arch, features)
 const autoSave = ref(null) // Handover 0051: Auto-save composable instance
 
 // Handover 0050: Activation warning dialog state
@@ -640,10 +632,7 @@ function validateVisionFile(file) {
   return null // Valid
 }
 
-// Handover 0508: Validate all vision files
 function validateVisionFiles() {
-  visionUploadError.value = null
-
   if (!visionFiles.value || visionFiles.value.length === 0) {
     return true // No files to validate
   }
@@ -651,7 +640,6 @@ function validateVisionFiles() {
   for (const file of visionFiles.value) {
     const error = validateVisionFile(file)
     if (error) {
-      visionUploadError.value = error
       showToast({
         message: error,
         type: 'error',
@@ -735,7 +723,6 @@ async function loadExistingVisionDocuments(productId) {
 
 async function confirmDelete(product) {
   deletingProduct.value = product
-  deleteConfirmationCheck.value = false
   showDeleteDialog.value = true
 
   // Fetch cascade impact
@@ -768,7 +755,6 @@ async function saveProduct(payload) {
     }
   }
 
-  saving.value = true
   try {
     // Step 1: Create/Update product
     let product
@@ -791,9 +777,6 @@ async function saveProduct(payload) {
     // Step 2: Upload vision files (if any) - Handover 0508: Enhanced error handling
     if (visionFiles.value && visionFiles.value.length > 0) {
       const productId = product?.id || editingProduct.value.id
-      uploadingVision.value = true
-      uploadProgress.value = 0
-      visionUploadError.value = null
 
       let successCount = 0
       let totalChunks = 0
@@ -802,18 +785,6 @@ async function saveProduct(payload) {
         const file = visionFiles.value[i]
 
         try {
-          // Handover 0347: Show chunking indicator for large files (>75KB ≈ >25K tokens)
-          if (file.size > 75 * 1024) {
-            isChunking.value = true
-          }
-
-          // Simulate upload progress
-          const progressInterval = setInterval(() => {
-            if (uploadProgress.value < 90) {
-              uploadProgress.value += 10
-            }
-          }, 200)
-
           const formData = new FormData()
           formData.append('product_id', productId)
           formData.append('document_name', file.name.replace(/\.[^/.]+$/, ''))
@@ -822,9 +793,6 @@ async function saveProduct(payload) {
           formData.append('auto_chunk', 'true')
 
           const response = await api.visionDocuments.upload(formData)
-
-          clearInterval(progressInterval)
-          uploadProgress.value = 100
 
           successCount++
           const chunkCount = response.data?.chunk_count || 0
@@ -866,8 +834,6 @@ async function saveProduct(payload) {
             errorMessage = `${file.name}: Network error. Check connection and try again.`
           }
 
-          visionUploadError.value = errorMessage
-
           showToast({
             message: errorMessage,
             type: 'error',
@@ -875,12 +841,8 @@ async function saveProduct(payload) {
           })
 
           // Continue uploading other files
-        } finally {
-          isChunking.value = false
         }
       }
-
-      uploadingVision.value = false
 
       // Handover 0347: Show summary toast with chunk count if multiple files uploaded
       if (successCount > 1) {
@@ -919,11 +881,6 @@ async function saveProduct(payload) {
       duration: 5000,
     })
     // Handover 0051: Do NOT close dialog on error - keep form data visible
-  } finally {
-    saving.value = false
-    uploadingVision.value = false
-    uploadProgress.value = 0
-    isChunking.value = false
   }
 }
 
@@ -969,7 +926,6 @@ function cancelDelete() {
   showDeleteDialog.value = false
   deletingProduct.value = null
   cascadeImpact.value = null
-  deleteConfirmationCheck.value = false
 }
 
 function closeDialog() {
@@ -990,7 +946,6 @@ function closeDialog() {
   editingProduct.value = null
   visionFiles.value = []
   existingVisionDocuments.value = []
-  dialogTab.value = 'basic' // Handover 0042: Reset tab
   productForm.value = {
     name: '',
     description: '',
