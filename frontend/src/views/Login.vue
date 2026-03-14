@@ -152,14 +152,12 @@ import { ref, onMounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import ForgotPasswordPin from '@/components/ForgotPasswordPin.vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useTheme } from 'vuetify'
 import { useUserStore } from '@/stores/user'
 import api from '@/services/api'
 
 // Composables
 const router = useRouter()
 const route = useRoute()
-const theme = useTheme()
 const userStore = useUserStore()
 
 // State

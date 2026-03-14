@@ -30,8 +30,6 @@
         :project="project"
         :orchestrator="orchestrator"
         @edit-description="handleEditDescription"
-        @edit-mission="handleEditMission"
-        @edit-agent-mission="handleEditAgentMission"
       />
     </div>
 
@@ -161,23 +159,6 @@ function handleEditDescription() {
     mission: project.value.mission || '',
   }
   showEditDialog.value = true
-}
-
-function handleEditMission(missionData) {
-  if (!project.value) return
-
-  projectData.value = {
-    name: project.value.name,
-    description: project.value.description || '',
-    // Use the latest orchestrator mission text if provided from LaunchTab
-    mission: missionData || project.value.mission || '',
-  }
-
-  showEditDialog.value = true
-}
-
-function handleEditAgentMission(_agentData) {
-  showNotification('Agent mission editing coming soon', 'info')
 }
 
 async function saveProject() {
