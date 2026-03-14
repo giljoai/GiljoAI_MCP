@@ -442,15 +442,10 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                     "auto_login_localhost": True,  # IP-based auto-login for 127.0.0.1
                     "firewall_configured": self.settings.get("configure_firewall", False),
                     # Core features
-                    "vision_chunking": True,
                     "multi_tenant": True,
                     "websocket": True,
-                    "auto_handoff": True,
-                    "dynamic_discovery": True,
                     # Security features (optional)
                     "ssl_enabled": self.settings.get("features", {}).get("ssl", False),
-                    "api_keys_enabled": self.settings.get("features", {}).get("api_keys", False),
-                    "multi_user": self.settings.get("features", {}).get("multi_user", False),
                 },
                 "paths": {
                     "install_dir": install_dir,
