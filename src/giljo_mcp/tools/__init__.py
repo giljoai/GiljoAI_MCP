@@ -26,7 +26,7 @@ Projects: list_projects, etc.
   - Note: Project creation uses REST API (POST /api/v1/projects/), not MCP tools
 
 Context: fetch_product_context, fetch_vision_document, fetch_tech_stack, etc.
-  - Implemented in: api/endpoints/mcp_http.py via ContextService
+  - Implemented in: api/endpoints/mcp_http.py
   - Database: Product, VisionDocument, ContextConfiguration tables
 
 =============================================================================
