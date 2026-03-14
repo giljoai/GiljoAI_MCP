@@ -237,7 +237,7 @@
             <div class="py-2">
               <div class="d-flex align-center">
                 <v-chip
-                  v-if="item.taxonomy_alias && item.series_number"
+                  v-if="item.project_type_id || item.series_number"
                   :color="item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
                   size="x-small"
                   variant="flat"
