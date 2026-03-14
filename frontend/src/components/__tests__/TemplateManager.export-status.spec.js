@@ -26,13 +26,6 @@ vi.mock('@/services/api', () => ({
   },
 }))
 
-// Mock TemplateArchive component
-vi.mock('../TemplateArchive.vue', () => ({
-  default: {
-    name: 'TemplateArchive',
-    template: '<div>TemplateArchive Mock</div>',
-  },
-}))
 
 const vuetify = createVuetify({
   components,
