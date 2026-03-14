@@ -115,12 +115,8 @@ const globalStubs = {
   GitIntegrationCard: true,
   NetworkSettingsTab: true,
   DatabaseConnection: true,
-  AdminIntegrationsTab: true,
   SecuritySettingsTab: true,
   SystemPromptTab: true,
-  ClaudeConfigModal: true,
-  CodexConfigModal: true,
-  GeminiConfigModal: true,
 }
 
 describe('Global Tab Styles', () => {
