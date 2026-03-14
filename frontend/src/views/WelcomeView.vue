@@ -92,12 +92,10 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useTheme } from 'vuetify'
 import { useUserStore } from '@/stores/user'
 import { useProductStore } from '@/stores/products'
 import GilMascot from '@/components/GilMascot.vue'
 
-const theme = useTheme()
 const userStore = useUserStore()
 const productStore = useProductStore()
 
