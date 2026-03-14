@@ -7,7 +7,7 @@
         <h2 class="project-name d-flex align-center">
           <!-- Series Chip (Handover 0440c) -->
           <v-chip
-            v-if="project?.taxonomy_alias && project?.series_number"
+            v-if="project?.project_type_id || project?.series_number"
             :color="project?.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
             size="small"
             variant="flat"
