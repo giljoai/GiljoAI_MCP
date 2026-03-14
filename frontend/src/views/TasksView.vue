@@ -522,7 +522,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/stores/tasks'
 import { useProductStore } from '@/stores/products'
-import { useAgentStore } from '@/stores/agents'
 import { useUserStore } from '@/stores/user'
 import { format, isAfter } from 'date-fns'
 import api from '@/services/api'
@@ -531,7 +530,6 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 // Stores
 const taskStore = useTaskStore()
 const productStore = useProductStore()
-const agentStore = useAgentStore()
 const userStore = useUserStore()
 
 // State
@@ -858,7 +856,7 @@ onMounted(() => {
 // Lifecycle
 onMounted(async () => {
   try {
-    await Promise.all([fetchTasks(), agentStore.fetchAgents()])
+    await fetchTasks()
   } catch (error) {
     console.error('Failed to initialize TasksView:', error)
   }
