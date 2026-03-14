@@ -218,9 +218,6 @@ const props = defineProps({
 
 const emit = defineEmits([
   'edit-description',
-  'edit-mission',
-  'edit-agent-mission',
-  'launch-orchestrator', // Handover 0506: Re-launch orchestrator when complete/null
 ])
 
 /**
