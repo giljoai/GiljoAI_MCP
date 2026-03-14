@@ -196,11 +196,8 @@ class TenantConfig:
 class FeatureFlags:
     """Feature flags for enabling/disabling functionality."""
 
-    vision_chunking: bool = True
     multi_tenant: bool = True
     enable_websockets: bool = True
-    auto_handoff: bool = True
-    dynamic_discovery: bool = True
 
 
 class ConfigFileWatcher(FileSystemEventHandler):
@@ -475,11 +472,8 @@ class ConfigManager:
             # Feature flags
             if "features" in data:
                 feat = data["features"]
-                self.features.vision_chunking = feat.get("vision_chunking", self.features.vision_chunking)
                 self.features.multi_tenant = feat.get("multi_tenant", self.features.multi_tenant)
                 self.features.enable_websockets = feat.get("websocket_updates", self.features.enable_websockets)
-                self.features.auto_handoff = feat.get("auto_handoff", self.features.auto_handoff)
-                self.features.dynamic_discovery = feat.get("dynamic_discovery", self.features.dynamic_discovery)
 
         except Exception as e:  # Broad catch: wraps in ConfigValidationError
             logger.exception("Error loading config file")
@@ -544,9 +538,6 @@ class ConfigManager:
             self.logging.level = log_level
 
         # Feature flags from environment
-        if val := os.getenv("ENABLE_VISION_CHUNKING"):
-            self.features.vision_chunking = val.lower() in ("true", "1", "yes")
-
         if val := os.getenv("ENABLE_MULTI_TENANT"):
             self.features.multi_tenant = val.lower() in ("true", "1", "yes")
 
@@ -708,11 +699,8 @@ class ConfigManager:
                 "isolation_strict": self.tenant.tenant_isolation_level == "strict",
             },
             "features": {
-                "vision_chunking": self.features.vision_chunking,
                 "multi_tenant": self.features.multi_tenant,
                 "websocket_updates": self.features.enable_websockets,
-                "auto_handoff": self.features.auto_handoff,
-                "dynamic_discovery": self.features.dynamic_discovery,
             },
         }
 
