@@ -210,13 +210,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTheme } from 'vuetify'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import api from '@/services/api'
 
 // Composables
 const router = useRouter()
-const theme = useTheme()
 
 // State
 const currentPassword = ref('')

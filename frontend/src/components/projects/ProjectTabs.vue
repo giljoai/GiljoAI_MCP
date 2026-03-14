@@ -121,15 +121,9 @@
             :project="project"
             :orchestrator="orchestrator"
             :is-staging="loadingStageProject"
-            :readonly="readonly"
             :git-enabled="gitEnabled"
             :serena-enabled="serenaEnabled"
-            @stage-project="handleStageProject"
-            @launch-jobs="handleLaunchJobs"
-            @cancel-staging="handleCancelStaging"
             @edit-description="emit('edit-description')"
-            @edit-mission="emit('edit-mission', $event)"
-            @edit-agent-mission="emit('edit-agent-mission', $event)"
           />
         </v-window-item>
 
@@ -137,7 +131,6 @@
         <v-window-item value="jobs">
           <JobsTab
             :project="projectWithUpdatedMode"
-            :readonly="readonly"
             @closeout-project="handleCloseoutProject"
           />
         </v-window-item>
@@ -187,10 +180,6 @@ const props = defineProps({
     type: Object,
     default: null,
   },
-  readonly: {
-    type: Boolean,
-    default: false,
-  },
 })
 
 /**
@@ -198,8 +187,6 @@ const props = defineProps({
  */
 const emit = defineEmits([
   'edit-description',
-  'edit-mission',
-  'edit-agent-mission',
 ])
 
 /**
@@ -554,28 +541,6 @@ async function handleLaunchJobs() {
   } catch (error) {
     console.error('Launch jobs failed:', error)
     const msg = error.response?.data?.detail || error.message || 'Failed to launch jobs'
-    showError(msg)
-  }
-}
-
-/**
- * Handle cancel staging
- */
-async function handleCancelStaging() {
-  try {
-    if (!projectId.value) return
-
-    await api.projects.cancelStaging(projectId.value)
-
-    projectStateStore.setMission(projectId.value, '')
-    projectStateStore.setStagingComplete(projectId.value, false)
-    projectStateStore.setIsStaging(projectId.value, false)
-    projectStateStore.setLaunched(projectId.value, false)
-    projectMessagesStore.setMessages(projectId.value, [])
-    agentJobsStore.$reset?.()
-  } catch (error) {
-    console.error('Cancel staging failed:', error)
-    const msg = error.response?.data?.detail || error.message || 'Failed to cancel staging'
     showError(msg)
   }
 }
