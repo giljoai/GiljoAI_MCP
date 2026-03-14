@@ -71,14 +71,11 @@ try:
     from .auth_utils import authenticate_websocket
     from .endpoints import (
         agent_jobs,
-        agent_management,
-        agent_templates,
         ai_tools,
         auth,
         auth_pin_recovery,
         claude_export,
         configuration,
-        context,
         database_setup,
         downloads,
         git,
@@ -387,8 +384,6 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(projects.router)
     # Handover 0440a: Project type taxonomy module (prefix and tags defined in module __init__.py)
     app.include_router(project_types.router)
-    app.include_router(agent_management.router, tags=["Agent Management"])
-    app.include_router(agent_templates.router, prefix="/api/v1/agents/templates", tags=["agent-templates"])
     app.include_router(claude_export.router, prefix="/api", tags=["claude-export"])
     app.include_router(downloads.router, tags=["downloads"])
     app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])
@@ -398,7 +393,6 @@ def _register_routers(app: FastAPI) -> None:
     # Handover 0107: Job operations (cancel, force-fail, health) at /api/jobs prefix
     app.include_router(agent_jobs.jobs_router)  # Separate prefix for job operations
     app.include_router(prompts.router, prefix="/api/v1/prompts", tags=["prompts"])  # Handover 0109
-    app.include_router(context.router, prefix="/api/v1/context", tags=["context"])
     app.include_router(configuration.router, prefix="/api/v1/config", tags=["configuration"])
     app.include_router(system_prompts.router, prefix="/api/v1/system", tags=["system"])
     app.include_router(statistics.router, prefix="/api/v1/stats", tags=["statistics"])
@@ -685,15 +679,10 @@ def create_app() -> FastAPI:
                 "description": "Project management operations - create, update, and monitor AI development projects",
             },
             {
-                "name": "Agent Management",
-                "description": "Agent management operations - vision chunking, job coordination, and context search (Handover 0017)",
-            },
-            {
                 "name": "messages",
                 "description": "Inter-agent messaging - send, acknowledge, and complete messages between agents",
             },
             {"name": "tasks", "description": "Task management - track and manage development tasks and technical debt"},
-            {"name": "context", "description": "Context operations - access vision documents and project context"},
             {"name": "configuration", "description": "Configuration management - system and tenant-specific settings"},
             {
                 "name": "statistics",
