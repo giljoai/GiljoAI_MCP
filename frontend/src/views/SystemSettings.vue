@@ -26,10 +26,6 @@
         <v-icon start>mdi-database</v-icon>
         Database
       </v-btn>
-      <v-btn value="integrations" min-width="140">
-        <v-icon start>mdi-api</v-icon>
-        Integrations
-      </v-btn>
       <v-btn value="security" min-width="120">
         <v-icon start>mdi-shield-lock</v-icon>
         Security
@@ -82,11 +78,6 @@
         </DatabaseConnection>
       </v-window-item>
 
-      <!-- Integrations -->
-      <v-window-item value="integrations">
-        <AdminIntegrationsTab />
-      </v-window-item>
-
       <!-- Security Settings -->
       <v-window-item value="security">
         <SecuritySettingsTab
@@ -107,10 +98,6 @@
     </v-window>
     </div>
 
-    <!-- Configuration Modals -->
-    <ClaudeConfigModal v-model="showClaudeConfigModal" />
-    <CodexConfigModal v-model="showCodexConfigModal" />
-    <GeminiConfigModal v-model="showGeminiConfigModal" />
   </v-container>
 </template>
 
@@ -123,12 +110,8 @@ import api from '@/services/api'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
 import IdentityTab from '@/components/settings/tabs/IdentityTab.vue'
 import NetworkSettingsTab from '@/components/settings/tabs/NetworkSettingsTab.vue'
-import AdminIntegrationsTab from '@/components/settings/tabs/AdminIntegrationsTab.vue'
 import SecuritySettingsTab from '@/components/settings/tabs/SecuritySettingsTab.vue'
 import SystemPromptTab from '@/components/settings/tabs/SystemPromptTab.vue'
-import ClaudeConfigModal from '@/components/settings/modals/ClaudeConfigModal.vue'
-import CodexConfigModal from '@/components/settings/modals/CodexConfigModal.vue'
-import GeminiConfigModal from '@/components/settings/modals/GeminiConfigModal.vue'
 
 // State
 const activeTab = ref('identity')
@@ -147,11 +130,6 @@ const networkSettings = ref({
 })
 const corsOrigins = ref([])
 const sslEnabled = ref(false)
-
-// Configuration modal state
-const showClaudeConfigModal = ref(false)
-const showCodexConfigModal = ref(false)
-const showGeminiConfigModal = ref(false)
 
 // Cookie Domain Whitelist state
 const cookieDomains = ref([])
