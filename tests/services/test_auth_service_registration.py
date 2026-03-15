@@ -9,7 +9,7 @@ Handover 0731c: Updated for typed service returns (AuthResult, UserInfo).
 """
 
 import pytest
-from passlib.hash import bcrypt
+import bcrypt
 from sqlalchemy import select
 
 from src.giljo_mcp.exceptions import ValidationError
@@ -48,7 +48,7 @@ class TestRegisterUser:
         result_db = await db_session.execute(stmt)
         new_user = result_db.scalar_one()
         assert new_user.password_hash != "NewPassword123!"
-        assert bcrypt.verify("NewPassword123!", new_user.password_hash)
+        assert bcrypt.checkpw("NewPassword123!".encode("utf-8"), new_user.password_hash.encode("utf-8"))
 
     @pytest.mark.asyncio
     async def test_register_user_duplicate_username(self, auth_service, auth_user_with_password):

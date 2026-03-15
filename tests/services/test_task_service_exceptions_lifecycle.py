@@ -12,7 +12,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from passlib.hash import bcrypt
+import bcrypt
 
 from src.giljo_mcp.exceptions import (
     AuthorizationError,
@@ -126,7 +126,7 @@ async def test_delete_task_raises_authorization_error_insufficient_permissions(
         id=str(uuid4()),
         username=f"otheruser_{uuid4().hex[:6]}",
         email=f"other_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hash("OtherPassword123"),
+        password_hash=bcrypt.hashpw("OtherPassword123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         full_name="Other User",
         role="developer",
         tenant_key=test_tenant_key,
@@ -259,7 +259,7 @@ async def test_convert_to_project_raises_authorization_error_insufficient_permis
         id=str(uuid4()),
         username=f"otheruser_{uuid4().hex[:6]}",
         email=f"other_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hash("OtherPassword123"),
+        password_hash=bcrypt.hashpw("OtherPassword123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         full_name="Other User",
         role="developer",
         tenant_key=test_tenant_key,

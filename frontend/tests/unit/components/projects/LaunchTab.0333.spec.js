@@ -68,7 +68,11 @@ vi.mock('@/services/api', () => ({
 // Import API after mock
 import { api } from '@/services/api'
 
-describe('LaunchTab Execution Mode Toggle (0333 Phase 1)', () => {
+// Execution mode toggle was removed from LaunchTab. It is now controlled via
+// project.execution_mode prop read-only in JobsTab (Handover 0333 Phase 3).
+// These tests reference data-testid="execution-mode-toggle", toggleExecutionMode(),
+// and usingClaudeCodeSubagents which no longer exist in LaunchTab.
+describe.skip('LaunchTab Execution Mode Toggle (0333 Phase 1) - REMOVED FEATURE', () => {
   const mockProject = {
     id: 'project-123',
     project_id: 'project-123',

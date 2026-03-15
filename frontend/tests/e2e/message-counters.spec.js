@@ -26,7 +26,7 @@ import {
   getAgentCard,
   createTestProject,
   spawnTestAgents
-} from './helpers.ts'
+} from './helpers'
 
 test.describe('Message Counter Functionality', () => {
   const API_BASE_URL = 'http://localhost:7272'
@@ -174,7 +174,7 @@ test.describe('Message Counter Functionality', () => {
     console.log('[Test 1] Waiting for WebSocket message update event...')
     await page.waitForFunction(
       () => {
-        const event = (window as any).__lastWebSocketEvent
+        const event = window.__lastWebSocketEvent
         return event && event.type === 'message:sent'
       },
       { timeout: 10000 }

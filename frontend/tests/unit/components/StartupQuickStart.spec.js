@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import StartupQuickStart from '../settings/StartupQuickStart.vue'
+import StartupQuickStart from '@/components/settings/StartupQuickStart.vue'
 
 const pushMock = vi.fn()
 

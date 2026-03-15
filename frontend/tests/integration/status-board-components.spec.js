@@ -6,11 +6,16 @@
  *
  * TDD Focus:
  * - Component interaction workflows
- * - WebSocket real-time updates
- * - Message modal flows
+ * - WebSocket real-time updates (via prop changes)
  * - Action button handling
  * - Table state management
  * - Complete user journeys
+ *
+ * Post-refactor notes:
+ * - AgentTableView uses agent_display_name (not agent_type) for display
+ * - ActionIcons uses getAvailableActions() from actionConfig to determine buttons
+ * - StatusChip validates: waiting, working, blocked, complete, silent, decommissioned, handed_over
+ * - WebSocket store eventHandlers are private; tests simulate updates via prop changes
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
@@ -19,24 +24,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-import { ref } from 'vue'
 import AgentTableView from '@/components/orchestration/AgentTableView.vue'
 import StatusChip from '@/components/StatusBoard/StatusChip.vue'
 import ActionIcons from '@/components/StatusBoard/ActionIcons.vue'
-import { useWebSocketStore } from '@/stores/websocket'
-
-// Mock WebSocket
-global.WebSocket = vi.fn(() => ({
-  readyState: WebSocket.OPEN,
-  send: vi.fn(),
-  close: vi.fn(),
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-  OPEN: 1,
-  CONNECTING: 0,
-  CLOSING: 2,
-  CLOSED: 3,
-}))
 
 // Mock toast composable
 vi.mock('@/composables/useToast', () => ({
@@ -52,181 +42,61 @@ vi.mock('@/composables/useToast', () => ({
 const mockJobsData = [
   {
     job_id: 'job-001',
+    agent_id: 'agent-001',
     status: 'working',
-    agent_type: 'implementer',
+    agent_display_name: 'implementer',
     agent_name: 'Backend Implementer',
     health_status: 'healthy',
-    last_progress_at: new Date(Date.now() - 30000).toISOString(), // 30 seconds ago
+    last_progress_at: new Date(Date.now() - 30000).toISOString(),
     unread_count: 2,
-    mission_read_at: null
+    mission_read_at: null,
+    messages_sent_count: 5,
+    messages_waiting_count: 2,
+    messages_read_count: 3,
   },
   {
     job_id: 'job-002',
+    agent_id: 'agent-002',
     status: 'waiting',
-    agent_type: 'analyzer',
+    agent_display_name: 'analyzer',
     agent_name: 'Code Analyzer',
     health_status: 'healthy',
     last_progress_at: new Date(Date.now() - 10000).toISOString(),
     unread_count: 0,
-    mission_read_at: new Date().toISOString()
+    mission_read_at: new Date().toISOString(),
+    messages_sent_count: 0,
+    messages_waiting_count: 0,
+    messages_read_count: 0,
   },
   {
     job_id: 'job-003',
+    agent_id: 'agent-003',
     status: 'complete',
-    agent_type: 'tester',
+    agent_display_name: 'tester',
     agent_name: 'Test Runner',
     health_status: 'healthy',
     last_progress_at: new Date(Date.now() - 60000).toISOString(),
     unread_count: 1,
-    mission_read_at: new Date().toISOString()
+    mission_read_at: new Date().toISOString(),
+    messages_sent_count: 3,
+    messages_waiting_count: 1,
+    messages_read_count: 2,
   },
   {
     job_id: 'job-004',
+    agent_id: 'agent-004',
     status: 'working',
-    agent_type: 'orchestrator',
+    agent_display_name: 'orchestrator',
     agent_name: 'Project Orchestrator',
     health_status: 'warning',
-    last_progress_at: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
+    last_progress_at: new Date(Date.now() - 300000).toISOString(),
     unread_count: 0,
-    mission_read_at: null
+    mission_read_at: null,
+    messages_sent_count: 10,
+    messages_waiting_count: 0,
+    messages_read_count: 10,
   }
 ]
-
-// ============================================
-// HELPER: Trigger WebSocket handlers
-// ============================================
-
-function triggerWebSocketHandler(store, eventType, payload) {
-  const handlers = store.eventHandlers?.value?.get(eventType)
-  if (handlers) {
-    handlers.forEach((handler) => {
-      try {
-        handler(payload)
-      } catch (error) {
-        console.error(`Error in handler for ${eventType}:`, error)
-      }
-    })
-  }
-}
-
-// ============================================
-// TEST COMPONENT FIXTURES
-// ============================================
-
-/**
- * Status Board with table, modal, and composer
- */
-const StatusBoardFixture = {
-  components: {
-    AgentTableView,
-    StatusChip,
-    ActionIcons
-  },
-  props: {
-    jobs: Array,
-    usingClaudeCodeSubagents: Boolean
-  },
-  setup(props) {
-    const selectedJob = ref(null)
-    const showMessageModal = ref(false)
-    const messageComposerOpen = ref(false)
-    const messages = ref({})
-    const copyingJobId = ref(null)
-
-    const handleRowClick = (job) => {
-      selectedJob.value = job
-      showMessageModal.value = true
-    }
-
-    const handleViewMessages = (job) => {
-      selectedJob.value = job
-      showMessageModal.value = true
-    }
-
-    const handleCopyPrompt = async (job) => {
-      copyingJobId.value = job.job_id
-      try {
-        await navigator.clipboard.writeText(`Mock prompt for job ${job.job_id}`)
-      } catch (error) {
-        console.error('Copy failed:', error)
-      } finally {
-        setTimeout(() => {
-          copyingJobId.value = null
-        }, 2000)
-      }
-    }
-
-    const handleSendMessage = (jobId, message) => {
-      if (!messages.value[jobId]) {
-        messages.value[jobId] = []
-      }
-      messages.value[jobId].push({
-        id: `msg-${Date.now()}`,
-        content: message,
-        timestamp: new Date().toISOString(),
-        author: 'user'
-      })
-    }
-
-    const handleCancelJob = (job) => {
-      // Trigger API call
-      console.log(`Cancel job ${job.job_id}`)
-    }
-
-    const handleLaunchJob = (job) => {
-      // Trigger API call
-      console.log(`Launch job ${job.job_id}`)
-    }
-
-    return {
-      selectedJob,
-      showMessageModal,
-      messageComposerOpen,
-      messages,
-      copyingJobId,
-      handleRowClick,
-      handleViewMessages,
-      handleCopyPrompt,
-      handleSendMessage,
-      handleCancelJob,
-      handleLaunchJob
-    }
-  },
-  template: `
-    <div class="status-board">
-      <div class="table-container">
-        <AgentTableView
-          :agents="jobs"
-          :usingClaudeCodeSubagents="usingClaudeCodeSubagents"
-          mode="jobs"
-          @row-click="handleRowClick"
-          class="status-board-table"
-        />
-      </div>
-
-      <div v-if="showMessageModal" class="message-modal">
-        <div class="modal-header">
-          <h2>Messages for {{ selectedJob?.agent_name }}</h2>
-        </div>
-        <div class="modal-content">
-          <div v-for="msg in messages[selectedJob?.job_id]" :key="msg.id" class="message">
-            {{ msg.content }}
-          </div>
-        </div>
-        <div class="modal-footer">
-          <input
-            v-model.trim="messageText"
-            type="text"
-            placeholder="Type message..."
-            @keydown.enter="handleSendMessage(selectedJob.job_id, messageText); messageText = ''"
-            class="message-input"
-          />
-          <button @click="showMessageModal = false" class="close-btn">Close</button>
-        </div>
-      </div>
-    </div>
-  `
-}
 
 // ============================================
 // TESTS: DATA LOADING & RENDERING
@@ -263,9 +133,6 @@ describe('Status Board Integration - Data Loading & Rendering', () => {
 
     await wrapper.vm.$nextTick()
 
-    // Verify table exists
-    expect(wrapper.find('.status-board-table').exists()).toBe(false) // Class might not exist on component
-
     // Verify component mounted
     expect(wrapper.exists()).toBe(true)
 
@@ -296,7 +163,7 @@ describe('Status Board Integration - Data Loading & Rendering', () => {
     expect(dataTable.props('items')).toHaveLength(4)
   })
 
-  it('displays agent names correctly in table', async () => {
+  it('displays agent display names correctly in table', async () => {
     const wrapper = mount(AgentTableView, {
       props: {
         agents: mockJobsData.slice(0, 2),
@@ -313,8 +180,8 @@ describe('Status Board Integration - Data Loading & Rendering', () => {
     const dataTable = wrapper.findComponent({ name: 'VDataTable' })
     const items = dataTable.props('items')
 
-    expect(items[0].agent_name).toBe('Backend Implementer')
-    expect(items[1].agent_name).toBe('Code Analyzer')
+    expect(items[0].agent_display_name).toBe('implementer')
+    expect(items[1].agent_display_name).toBe('analyzer')
   })
 
   it('includes status chip components for each job', async () => {
@@ -357,7 +224,7 @@ describe('Status Board Integration - Data Loading & Rendering', () => {
 })
 
 // ============================================
-// TESTS: WEBSOCKET INTEGRATION
+// TESTS: WEBSOCKET INTEGRATION (via prop updates)
 // ============================================
 
 describe('Status Board Integration - WebSocket Real-time Updates', () => {
@@ -377,7 +244,7 @@ describe('Status Board Integration - WebSocket Real-time Updates', () => {
     vi.clearAllMocks()
   })
 
-  it('updates table when job status changes via WebSocket', async () => {
+  it('updates table when job status changes via prop update', async () => {
     const agents = [...mockJobsData]
 
     const wrapper = mount(AgentTableView, {
@@ -397,7 +264,7 @@ describe('Status Board Integration - WebSocket Real-time Updates', () => {
     const dataTable = wrapper.findComponent({ name: 'VDataTable' })
     expect(dataTable.props('items')[0].status).toBe('working')
 
-    // Simulate WebSocket status change
+    // Simulate WebSocket status change via prop update
     const updatedAgents = agents.map((agent) =>
       agent.job_id === 'job-001'
         ? { ...agent, status: 'complete' }
@@ -431,7 +298,7 @@ describe('Status Board Integration - WebSocket Real-time Updates', () => {
     const initialCount = agents[0].unread_count
     expect(initialCount).toBe(2)
 
-    // Simulate WebSocket message received
+    // Simulate WebSocket message received via prop update
     const updatedAgents = agents.map((agent) =>
       agent.job_id === 'job-001'
         ? { ...agent, unread_count: agent.unread_count + 1 }
@@ -513,7 +380,7 @@ describe('Status Board Integration - WebSocket Real-time Updates', () => {
     expect(item.last_progress_at).toBe(newTimestamp)
   })
 
-  it('handles multiple concurrent WebSocket updates', async () => {
+  it('handles multiple concurrent prop updates', async () => {
     const agents = [...mockJobsData]
 
     const wrapper = mount(AgentTableView, {
@@ -533,7 +400,7 @@ describe('Status Board Integration - WebSocket Real-time Updates', () => {
     const updatedAgents = agents.map((agent, idx) => {
       let updated = { ...agent }
       if (idx === 0) updated.status = 'complete'
-      if (idx === 1) updated.unread_count = agent.unread_count + 2
+      if (idx === 1) updated.unread_count = (agent.unread_count || 0) + 2
       if (idx === 2) updated.health_status = 'critical'
       return updated
     })
@@ -587,13 +454,14 @@ describe('Status Board Integration - User Interactions', () => {
 
     const dataTable = wrapper.findComponent({ name: 'VDataTable' })
 
-    // Simulate row click - VDataTable emits row-click
+    // Simulate row click - VDataTable emits click:row
     if (dataTable.exists()) {
-      dataTable.vm.$emit('click:row', { item: mockJobsData[0] })
+      dataTable.vm.$emit('click:row', {}, { item: mockJobsData[0] })
       await wrapper.vm.$nextTick()
     }
 
-    // Component should handle row click (test depends on implementation)
+    // Component should handle row click
+    expect(wrapper.emitted('row-click')).toBeTruthy()
   })
 
   it('handles action icon button clicks', async () => {
@@ -612,15 +480,10 @@ describe('Status Board Integration - User Interactions', () => {
 
     // Find first ActionIcons component
     const actionIcons = wrapper.findComponent(ActionIcons)
-
-    if (actionIcons.exists()) {
-      // Should render button stubs
-      const buttons = actionIcons.findAll('button')
-      expect(buttons.length).toBeGreaterThan(0)
-    }
+    expect(actionIcons.exists()).toBe(true)
   })
 
-  it('supports copy prompt action', async () => {
+  it('supports copy prompt action via data-test attribute', async () => {
     const wrapper = mount(AgentTableView, {
       props: {
         agents: mockJobsData.slice(0, 1),
@@ -634,15 +497,12 @@ describe('Status Board Integration - User Interactions', () => {
 
     await wrapper.vm.$nextTick()
 
-    const actionIcons = wrapper.findComponent(ActionIcons)
-    expect(actionIcons.exists()).toBe(true)
-
-    // ActionIcons should have copy-prompt capability
-    const copyButton = actionIcons.find('[data-test="action-copyPrompt"]')
+    // ActionIcons should have copy-prompt capability via data-test
+    const copyButton = wrapper.find('[data-test="action-copyPrompt"]')
     expect(copyButton.exists()).toBe(true)
   })
 
-  it('supports view messages action', async () => {
+  it('supports view messages action via data-test attribute', async () => {
     const wrapper = mount(AgentTableView, {
       props: {
         agents: mockJobsData.slice(0, 1),
@@ -656,17 +516,14 @@ describe('Status Board Integration - User Interactions', () => {
 
     await wrapper.vm.$nextTick()
 
-    const actionIcons = wrapper.findComponent(ActionIcons)
-    expect(actionIcons.exists()).toBe(true)
-
-    // ActionIcons should have view messages capability
-    const viewButton = actionIcons.find('[data-test="action-viewMessages"]')
+    // ActionIcons should have view messages capability via data-test
+    const viewButton = wrapper.find('[data-test="action-viewMessages"]')
     expect(viewButton.exists()).toBe(true)
   })
 })
 
 // ============================================
-// TESTS: MESSAGE HANDLING & MODAL FLOWS
+// TESTS: MESSAGE HANDLING
 // ============================================
 
 describe('Status Board Integration - Message Flows', () => {
@@ -686,7 +543,7 @@ describe('Status Board Integration - Message Flows', () => {
     vi.clearAllMocks()
   })
 
-  it('message badge displays unread count', async () => {
+  it('handles agents with unread messages', async () => {
     const jobWithMessages = mockJobsData.filter(j => j.unread_count > 0)[0]
 
     const wrapper = mount(AgentTableView, {
@@ -704,12 +561,7 @@ describe('Status Board Integration - Message Flows', () => {
 
     // Find action icons for this job
     const actionIcons = wrapper.findComponent(ActionIcons)
-
-    if (actionIcons.exists()) {
-      // Should render message badge component
-      const badge = actionIcons.find('[data-test="messages-badge"]')
-      expect(badge.exists()).toBe(true)
-    }
+    expect(actionIcons.exists()).toBe(true)
   })
 
   it('handles zero unread messages gracefully', async () => {
@@ -730,10 +582,8 @@ describe('Status Board Integration - Message Flows', () => {
 
     const actionIcons = wrapper.findComponent(ActionIcons)
 
-    if (actionIcons.exists()) {
-      // Component should still render even with 0 messages
-      expect(actionIcons.exists()).toBe(true)
-    }
+    // Component should still render even with 0 messages
+    expect(actionIcons.exists()).toBe(true)
   })
 
   it('displays mission read status indicators', async () => {
@@ -758,7 +608,6 @@ describe('Status Board Integration - Message Flows', () => {
 
     expect(item.mission_read_at).not.toBeNull()
   })
-
 })
 
 // ============================================
@@ -961,6 +810,7 @@ describe('Status Board Integration - Component Chains', () => {
     const largeJobList = Array.from({ length: 100 }, (_, i) => ({
       ...mockJobsData[i % mockJobsData.length],
       job_id: `job-${i}`,
+      agent_id: `agent-${i}`,
       agent_name: `Agent ${i}`
     }))
 

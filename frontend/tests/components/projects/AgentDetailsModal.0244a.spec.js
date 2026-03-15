@@ -3,14 +3,15 @@
  *
  * Handover 0244a: Agent Info Icon Template Display Tests
  *
- * Test Coverage:
- * 1. Template data fetching and display for non-orchestrator agents
- * 2. Template fields display (Role, CLI Tool, Description, Model, Tools, Instructions)
- * 3. Orchestrator prompt display (existing functionality)
- * 4. Graceful handling of missing template_id
- * 5. Loading and error states
- * 6. Expansion panels for instructions
- * 7. Copy to clipboard functionality
+ * Post-refactor (Handover 0814):
+ * The component was simplified to show a rendered template preview (previewContent)
+ * instead of individual template fields. Key changes:
+ * - Uses agent_display_name (not agent_type) for orchestrator detection
+ * - Fetches template via apiClient.templates.preview(templateId, {}) for rendered output
+ * - Falls back to name-matching against active templates if no template_id
+ * - No expansion panels, no individual field display (role, cli_tool, model, etc.)
+ * - No copy buttons in the simplified view
+ * - Orchestrator uses apiClient.system.getOrchestratorPrompt()
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
@@ -21,16 +22,18 @@ import * as directives from 'vuetify/directives'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 
 // Mock API service
-const mockTemplateGet = vi.fn()
+const mockTemplatePreview = vi.fn()
+const mockTemplateList = vi.fn()
 const mockOrchestratorPrompt = vi.fn()
 
 vi.mock('@/services/api', () => ({
   default: {
     templates: {
-      get: (...args) => mockTemplateGet(...args)
+      preview: (...args) => mockTemplatePreview(...args),
+      list: (...args) => mockTemplateList(...args),
     },
     system: {
-      getOrchestratorPrompt: (...args) => mockOrchestratorPrompt(...args)
+      getOrchestratorPrompt: (...args) => mockOrchestratorPrompt(...args),
     }
   }
 }))
@@ -46,7 +49,8 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
     })
 
     // Reset mocks
-    mockTemplateGet.mockReset()
+    mockTemplatePreview.mockReset()
+    mockTemplateList.mockReset()
     mockOrchestratorPrompt.mockReset()
   })
 
@@ -57,27 +61,17 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
   })
 
   describe('1. Template Data Fetching and Display', () => {
-    it('fetches and displays template data for non-orchestrator agents', async () => {
-      const mockTemplate = {
-        id: 'template-123',
-        name: 'Test Implementer',
-        role: 'implementer',
-        cli_tool: 'claude',
-        description: 'Test agent for implementing features',
-        model: 'claude-sonnet-4',
-        tools: ['file_read', 'file_write', 'bash'],
-        system_instructions: 'System instructions for the agent',
-        user_instructions: 'User instructions for the agent'
-      }
+    it('fetches and displays template preview for non-orchestrator agents', async () => {
+      const previewText = 'You are the implementer agent. Your role is to implement features...'
 
-      mockTemplateGet.mockResolvedValue({ data: mockTemplate })
+      mockTemplatePreview.mockResolvedValue({ data: { preview: previewText } })
 
       wrapper = mount(AgentDetailsModal, {
         props: {
           modelValue: true,
           agent: {
             id: 'agent-456',
-            agent_type: 'implementer',
+            agent_display_name: 'implementer',
             agent_name: 'Test Implementer',
             template_id: 'template-123'
           }
@@ -91,150 +85,21 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
       await flushPromises()
 
       // Verify API was called with correct template_id
-      expect(mockTemplateGet).toHaveBeenCalledWith('template-123')
+      expect(mockTemplatePreview).toHaveBeenCalledWith('template-123', {})
 
-      // Verify role is displayed
-      expect(wrapper.text()).toContain('Role')
+      // Verify preview content is displayed
       expect(wrapper.text()).toContain('implementer')
-
-      // Verify CLI tool is displayed
-      expect(wrapper.text()).toContain('CLI Tool')
-      expect(wrapper.text()).toContain('claude')
-
-      // Verify model is displayed
-      expect(wrapper.text()).toContain('Model')
-      expect(wrapper.text()).toContain('claude-sonnet-4')
-
-      // Verify description is displayed
-      expect(wrapper.text()).toContain('Description')
-      expect(wrapper.text()).toContain('Test agent for implementing features')
     })
 
-    it('displays tools as chips', async () => {
-      const mockTemplate = {
-        id: 'template-123',
-        role: 'tester',
-        tools: ['pytest', 'coverage', 'lint']
-      }
-
-      mockTemplateGet.mockResolvedValue({ data: mockTemplate })
-
-      wrapper = mount(AgentDetailsModal, {
-        props: {
-          modelValue: true,
-          agent: {
-            id: 'agent-456',
-            agent_type: 'tester',
-            template_id: 'template-123'
-          }
-        },
-        global: {
-          plugins: [vuetify]
-        }
-      })
-
-      await flushPromises()
-
-      // Verify tools section header
-      expect(wrapper.text()).toContain('MCP Tools (3)')
-
-      // Verify each tool is displayed
-      expect(wrapper.text()).toContain('pytest')
-      expect(wrapper.text()).toContain('coverage')
-      expect(wrapper.text()).toContain('lint')
+    it.skip('displays tools as chips (removed in Handover 0814 - simplified to preview)', () => {
+      // Template preview is now rendered text, not individual fields
     })
   })
 
-  describe('2. Expansion Panels for Instructions', () => {
-    it('displays system instructions in expansion panel', async () => {
-      const mockTemplate = {
-        id: 'template-123',
-        role: 'architect',
-        system_instructions: 'You are a system architect. Design scalable solutions.'
-      }
-
-      mockTemplateGet.mockResolvedValue({ data: mockTemplate })
-
-      wrapper = mount(AgentDetailsModal, {
-        props: {
-          modelValue: true,
-          agent: {
-            id: 'agent-456',
-            agent_type: 'architect',
-            template_id: 'template-123'
-          }
-        },
-        global: {
-          plugins: [vuetify]
-        }
-      })
-
-      await flushPromises()
-
-      // Verify system instructions panel exists
-      expect(wrapper.text()).toContain('System Instructions')
-      expect(wrapper.text()).toContain('You are a system architect')
-    })
-
-    it('displays user instructions in expansion panel', async () => {
-      const mockTemplate = {
-        id: 'template-123',
-        role: 'reviewer',
-        user_instructions: 'Review code for quality and best practices.'
-      }
-
-      mockTemplateGet.mockResolvedValue({ data: mockTemplate })
-
-      wrapper = mount(AgentDetailsModal, {
-        props: {
-          modelValue: true,
-          agent: {
-            id: 'agent-456',
-            agent_type: 'reviewer',
-            template_id: 'template-123'
-          }
-        },
-        global: {
-          plugins: [vuetify]
-        }
-      })
-
-      await flushPromises()
-
-      // Verify user instructions panel exists
-      expect(wrapper.text()).toContain('User Instructions')
-      expect(wrapper.text()).toContain('Review code for quality')
-    })
-
-    it('displays template content for backward compatibility', async () => {
-      const mockTemplate = {
-        id: 'template-123',
-        role: 'documenter',
-        system_instructions: 'Legacy template content format'
-      }
-
-      mockTemplateGet.mockResolvedValue({ data: mockTemplate })
-
-      wrapper = mount(AgentDetailsModal, {
-        props: {
-          modelValue: true,
-          agent: {
-            id: 'agent-456',
-            agent_type: 'documenter',
-            template_id: 'template-123'
-          }
-        },
-        global: {
-          plugins: [vuetify]
-        }
-      })
-
-      await flushPromises()
-
-      // Verify template content panel exists
-      expect(wrapper.text()).toContain('Template Content')
-      expect(wrapper.text()).toContain('Legacy template content format')
-    })
+  describe.skip('2. Expansion Panels for Instructions (REMOVED in Handover 0814)', () => {
+    it('displays system instructions in expansion panel', async () => {})
+    it('displays user instructions in expansion panel', async () => {})
+    it('displays template content for backward compatibility', async () => {})
   })
 
   describe('3. Orchestrator Functionality (Existing)', () => {
@@ -250,7 +115,7 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
           modelValue: true,
           agent: {
             id: 'orchestrator-123',
-            agent_type: 'orchestrator',
+            agent_display_name: 'orchestrator',
             agent_name: 'Orchestrator'
           }
         },
@@ -271,13 +136,16 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
   })
 
   describe('4. Graceful Handling of Missing template_id', () => {
-    it('displays info message when template_id is null', async () => {
+    it('displays info message when template_id is null and no name match', async () => {
+      // Mock template list returning no matches
+      mockTemplateList.mockResolvedValue({ data: [] })
+
       wrapper = mount(AgentDetailsModal, {
         props: {
           modelValue: true,
           agent: {
             id: 'agent-456',
-            agent_type: 'implementer',
+            agent_display_name: 'implementer',
             agent_name: 'Test Agent',
             template_id: null
           }
@@ -289,20 +157,21 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
 
       await flushPromises()
 
-      // Verify API was NOT called
-      expect(mockTemplateGet).not.toHaveBeenCalled()
-
-      // Verify info message is displayed
+      // Should attempt name matching via templates.list
+      // If no match found, should show no-template info
       expect(wrapper.text()).toContain('No template information available')
     })
 
-    it('displays info message when template_id is undefined', async () => {
+    it('displays info message when template_id is undefined and no name match', async () => {
+      // Mock template list returning no matches
+      mockTemplateList.mockResolvedValue({ data: [] })
+
       wrapper = mount(AgentDetailsModal, {
         props: {
           modelValue: true,
           agent: {
             id: 'agent-456',
-            agent_type: 'implementer',
+            agent_display_name: 'implementer',
             agent_name: 'Test Agent'
             // template_id is undefined
           }
@@ -314,10 +183,7 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
 
       await flushPromises()
 
-      // Verify API was NOT called
-      expect(mockTemplateGet).not.toHaveBeenCalled()
-
-      // Verify info message is displayed
+      // Should show no-template info if no match found
       expect(wrapper.text()).toContain('No template information available')
     })
   })
@@ -325,8 +191,8 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
   describe('5. Loading and Error States', () => {
     it('displays loading state while fetching template data', async () => {
       // Mock a delayed response
-      mockTemplateGet.mockImplementation(() =>
-        new Promise(resolve => setTimeout(() => resolve({ data: {} }), 100))
+      mockTemplatePreview.mockImplementation(() =>
+        new Promise(resolve => setTimeout(() => resolve({ data: { preview: 'test' } }), 100))
       )
 
       wrapper = mount(AgentDetailsModal, {
@@ -334,7 +200,7 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
           modelValue: true,
           agent: {
             id: 'agent-456',
-            agent_type: 'implementer',
+            agent_display_name: 'implementer',
             template_id: 'template-123'
           }
         },
@@ -349,7 +215,7 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
     })
 
     it('displays error message when template fetch fails', async () => {
-      mockTemplateGet.mockRejectedValue({
+      mockTemplatePreview.mockRejectedValue({
         response: {
           data: {
             detail: 'Template not found'
@@ -362,7 +228,7 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
           modelValue: true,
           agent: {
             id: 'agent-456',
-            agent_type: 'implementer',
+            agent_display_name: 'implementer',
             template_id: 'template-123'
           }
         },
@@ -379,14 +245,14 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
     })
 
     it('displays generic error when API error has no detail', async () => {
-      mockTemplateGet.mockRejectedValue(new Error('Network error'))
+      mockTemplatePreview.mockRejectedValue(new Error('Network error'))
 
       wrapper = mount(AgentDetailsModal, {
         props: {
           modelValue: true,
           agent: {
             id: 'agent-456',
-            agent_type: 'implementer',
+            agent_display_name: 'implementer',
             template_id: 'template-123'
           }
         },
@@ -412,7 +278,7 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
           modelValue: true,
           agent: {
             id: 'orchestrator-123',
-            agent_type: 'orchestrator',
+            agent_display_name: 'orchestrator',
             agent_name: 'Orchestrator'
           }
         },
@@ -427,14 +293,14 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
     })
 
     it('displays correct title for non-orchestrator agent', async () => {
-      mockTemplateGet.mockResolvedValue({ data: { role: 'implementer' } })
+      mockTemplatePreview.mockResolvedValue({ data: { preview: 'test content' } })
 
       wrapper = mount(AgentDetailsModal, {
         props: {
           modelValue: true,
           agent: {
             id: 'agent-456',
-            agent_type: 'implementer',
+            agent_display_name: 'implementer',
             agent_name: 'Test Implementer',
             template_id: 'template-123'
           }
@@ -450,58 +316,20 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
     })
   })
 
-  describe('7. Copy to Clipboard Functionality', () => {
-    it('provides copy button for system instructions', async () => {
-      const mockTemplate = {
-        id: 'template-123',
-        role: 'implementer',
-        system_instructions: 'Test system instructions'
-      }
-
-      mockTemplateGet.mockResolvedValue({ data: mockTemplate })
-
-      // Mock clipboard API
-      Object.assign(navigator, {
-        clipboard: {
-          writeText: vi.fn().mockResolvedValue(undefined)
-        }
-      })
-
-      wrapper = mount(AgentDetailsModal, {
-        props: {
-          modelValue: true,
-          agent: {
-            id: 'agent-456',
-            agent_type: 'implementer',
-            template_id: 'template-123'
-          }
-        },
-        global: {
-          plugins: [vuetify]
-        }
-      })
-
-      await flushPromises()
-
-      // Find copy buttons (should be present in expansion panel)
-      const copyButtons = wrapper.findAll('button').filter(btn =>
-        btn.text().includes('Copy')
-      )
-
-      expect(copyButtons.length).toBeGreaterThan(0)
-    })
+  describe.skip('7. Copy to Clipboard Functionality (REMOVED in Handover 0814 simplified view)', () => {
+    it('provides copy button for system instructions', async () => {})
   })
 
   describe('8. Agent Type Color Coding', () => {
-    it('displays agent type chip with correct color', async () => {
-      mockTemplateGet.mockResolvedValue({ data: { role: 'tester' } })
+    it('displays agent display name chip', async () => {
+      mockTemplatePreview.mockResolvedValue({ data: { preview: 'test content' } })
 
       wrapper = mount(AgentDetailsModal, {
         props: {
           modelValue: true,
           agent: {
             id: 'agent-456',
-            agent_type: 'tester',
+            agent_display_name: 'tester',
             agent_name: 'Test Tester',
             template_id: 'template-123'
           }
@@ -513,7 +341,7 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
 
       await flushPromises()
 
-      // Verify agent type chip is displayed
+      // Verify agent display name chip is displayed
       expect(wrapper.text()).toContain('tester')
     })
   })
