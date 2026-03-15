@@ -160,7 +160,6 @@
         <v-window-item value="jobs">
           <JobsTab
             :project="projectWithUpdatedMode"
-            @closeout-project="handleCloseoutProject"
           />
         </v-window-item>
       </v-window>
@@ -597,18 +596,6 @@ async function handleLaunchJobs() {
     console.error('Launch jobs failed:', error)
     const msg = error.response?.data?.detail || error.message || 'Failed to launch jobs'
     showError(msg)
-  }
-}
-
-/**
- * Handle closeout project
- */
-async function handleCloseoutProject(_closeoutData) {
-  try {
-    // Navigate to projects list after closeout
-    router.push('/projects')
-  } catch (error) {
-    console.error('Closeout project failed:', error)
   }
 }
 
