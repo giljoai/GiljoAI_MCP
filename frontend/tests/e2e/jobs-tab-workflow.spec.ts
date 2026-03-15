@@ -30,7 +30,7 @@ test.describe('Implement Tab Workflow (Job Implementation)', () => {
     }
 
     // Navigate to Implement tab
-    await page.click('[data-testid="implement-tab"]')
+    await page.click('[data-testid="jobs-tab"]')
     await page.waitForLoadState('networkidle')
 
     // Step 1: Verify agent table displays
@@ -99,7 +99,7 @@ test.describe('Implement Tab Workflow (Job Implementation)', () => {
       await projectCards.first().click()
     }
 
-    await page.click('[data-testid="implement-tab"]')
+    await page.click('[data-testid="jobs-tab"]')
     await page.waitForLoadState('networkidle')
 
     // Check for health indicators
@@ -134,7 +134,7 @@ test.describe('Implement Tab Workflow (Job Implementation)', () => {
       await projectCards.first().click()
     }
 
-    await page.click('[data-testid="implement-tab"]')
+    await page.click('[data-testid="jobs-tab"]')
     await page.waitForLoadState('networkidle')
 
     // Verify table rows exist
@@ -175,7 +175,7 @@ test.describe('Implement Tab Workflow (Job Implementation)', () => {
       await projectCards.first().click()
     }
 
-    await page.click('[data-testid="implement-tab"]')
+    await page.click('[data-testid="jobs-tab"]')
     await page.waitForLoadState('networkidle')
 
     // Get initial status
@@ -211,7 +211,7 @@ test.describe('Implement Tab Workflow (Job Implementation)', () => {
       await projectCards.first().click()
     }
 
-    await page.click('[data-testid="implement-tab"]')
+    await page.click('[data-testid="jobs-tab"]')
     await page.waitForLoadState('networkidle')
 
     // Test desktop viewport
@@ -248,7 +248,7 @@ test.describe('Implement Tab Workflow (Job Implementation)', () => {
       await projectCards.first().click()
     }
 
-    await page.click('[data-testid="implement-tab"]')
+    await page.click('[data-testid="jobs-tab"]')
     await page.waitForLoadState('networkidle')
 
     // Find message input
@@ -284,7 +284,7 @@ test.describe('Implement Tab Workflow (Job Implementation)', () => {
       await projectCards.first().click()
     }
 
-    await page.click('[data-testid="implement-tab"]')
+    await page.click('[data-testid="jobs-tab"]')
     await page.waitForLoadState('networkidle')
 
     // Find table header
@@ -317,7 +317,7 @@ test.describe('Implement Tab Workflow (Job Implementation)', () => {
 
     // Measure Implement tab initial render time
     const renderStart = Date.now()
-    await page.click('[data-testid="implement-tab"]')
+    await page.click('[data-testid="jobs-tab"]')
     await page.waitForLoadState('networkidle')
     const renderTime = Date.now() - renderStart
 
