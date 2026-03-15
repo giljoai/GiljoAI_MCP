@@ -92,6 +92,10 @@ export const useUserStore = defineStore('user', () => {
 
       // Clear remember me data
       localStorage.removeItem('remembered_username')
+
+      // Clear notifications on logout (tenant isolation defense-in-depth)
+      const { useNotificationStore } = await import('@/stores/notifications')
+      useNotificationStore().clearAll()
     }
   }
 

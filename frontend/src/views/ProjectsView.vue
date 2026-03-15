@@ -717,6 +717,13 @@
       @close="handleCloseoutClose"
       @completed="handleCloseoutComplete"
     />
+
+    <ProjectReviewModal
+      :show="showReviewModal"
+      :project-id="reviewProjectId"
+      :product-id="reviewProductId"
+      @close="showReviewModal = false; reviewProjectId = null; reviewProductId = null"
+    />
   </v-container>
 </template>
 
@@ -726,8 +733,10 @@ import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
 import { useProjectTabsStore } from '@/stores/projectTabs'
+import { useNotificationStore } from '@/stores/notifications'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
+import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import AddTypeModal from '@/components/projects/AddTypeModal.vue'
 import AgentTipsDialog from '@/components/common/AgentTipsDialog.vue'
@@ -741,6 +750,7 @@ const router = useRouter()
 const projectStore = useProjectStore()
 const productStore = useProductStore()
 const tabsStore = useProjectTabsStore()
+const notificationStore = useNotificationStore()
 
 // Reactive state
 const searchQuery = ref('')
@@ -755,6 +765,9 @@ const showMissionDialog = ref(false)
 const showCloseoutModal = ref(false)
 const closeoutProjectId = ref(null)
 const closeoutProjectName = ref('')
+const showReviewModal = ref(false)
+const reviewProjectId = ref(null)
+const reviewProductId = ref(null)
 const formValid = ref(false)
 const editingProject = ref(null)
 const projectToDelete = ref(null)
@@ -1313,11 +1326,19 @@ async function handleStatusAction({ action, projectId }) {
         }
         break
       }
+      case 'review': {
+        const projectToReview = projectStore.projectById(projectId)
+        reviewProjectId.value = projectId
+        reviewProductId.value = projectToReview?.product_id
+        showReviewModal.value = true
+        break
+      }
       case 'reopen':
         await projectStore.restoreCompletedProject(projectId)
         break
       case 'cancel':
         await projectStore.cancelProject(projectId)
+        notificationStore.clearForProject(projectId)
         break
       case 'delete': {
         const projectToDelete = projectStore.projectById(projectId)
@@ -1339,9 +1360,11 @@ async function handleStatusAction({ action, projectId }) {
 
 // Handle CloseoutModal events
 async function handleCloseoutComplete() {
+  const projectIdToClear = closeoutProjectId.value
   showCloseoutModal.value = false
   closeoutProjectId.value = null
   closeoutProjectName.value = ''
+  notificationStore.clearForProject(projectIdToClear)
   await projectStore.fetchProjects()
 }
 
