@@ -1,11 +1,14 @@
 /**
  * Test suite for UserSettings.vue - Handover 0028 Enhancements
  *
- * Tests for API & Integrations tab enhancements:
- * - API Key Management consolidated under this tab
- * - Serena integration toggle control
- * - AI Tool Configuration instructions (Claude Code, Codex, Gemini)
- * - Proper organization into logical sections
+ * Post-refactor: The UserSettings component was restructured significantly:
+ * - Tab system uses v-btn-toggle with values: startup, notifications, agents, context, api-keys, integrations
+ * - The old 'api' tab with sub-tabs (api-keys, mcp-config, integrations) was split into
+ *   separate top-level tabs: 'api-keys' and 'integrations'
+ * - No apiSubTab state exists
+ * - No showManualConfigDialog or openManualConfig methods
+ * - Serena toggle is delegated to SerenaIntegrationCard sub-component
+ * - Default tab is 'startup' (not 'general')
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -25,19 +28,65 @@ vi.mock('@/components/ApiKeyManager.vue', () => ({
   default: { template: '<div data-test="api-key-manager-mock">API Key Manager</div>' }
 }))
 
-vi.mock('@/components/McpConfigComponent.vue', () => ({
-  default: { template: '<div data-test="mcp-config-mock">MCP Config</div>' }
+vi.mock('@/components/ClaudeCodeExport.vue', () => ({
+  default: { template: '<div data-test="claude-code-export-mock">Claude Code Export</div>' }
 }))
 
-vi.mock('@/components/AiToolConfigWizard.vue', () => ({
-  default: { template: '<div data-test="ai-tool-wizard-mock">AI Tool Wizard</div>' }
+vi.mock('@/components/SlashCommandSetup.vue', () => ({
+  default: { template: '<div data-test="slash-command-setup-mock">Slash Command Setup</div>' }
+}))
+
+vi.mock('@/components/GitAdvancedSettingsDialog.vue', () => ({
+  default: { template: '<div data-test="git-advanced-mock">Git Advanced</div>' }
+}))
+
+vi.mock('@/components/settings/ContextPriorityConfig.vue', () => ({
+  default: { template: '<div data-test="context-priority-mock">Context Priority Config</div>' }
+}))
+
+vi.mock('@/components/settings/StartupQuickStart.vue', () => ({
+  default: { template: '<div data-test="startup-quickstart-mock">Startup Quick Start</div>' }
+}))
+
+vi.mock('@/components/settings/ProductIntroTour.vue', () => ({
+  default: { template: '<div data-test="product-intro-tour-mock"></div>' }
+}))
+
+vi.mock('@/components/settings/integrations/McpIntegrationCard.vue', () => ({
+  default: { template: '<div data-test="mcp-integration-mock">MCP Integration</div>' }
+}))
+
+vi.mock('@/components/settings/integrations/SerenaIntegrationCard.vue', () => ({
+  default: { template: '<div data-test="serena-integration-mock" class="serena-toggle">Serena Integration</div>', props: ['enabled', 'loading'] }
+}))
+
+vi.mock('@/components/settings/integrations/GitIntegrationCard.vue', () => ({
+  default: { template: '<div data-test="git-integration-mock">Git Integration</div>', props: ['enabled', 'config', 'loading'] }
+}))
+
+vi.mock('@/composables/useWebSocket', () => ({
+  useWebSocketV2: () => ({
+    on: vi.fn(),
+    off: vi.fn(),
+  }),
+}))
+
+vi.mock('@/stores/settings', () => ({
+  useSettingsStore: () => ({
+    loadSettings: vi.fn().mockResolvedValue(undefined),
+    updateSettings: vi.fn().mockResolvedValue(undefined),
+    settings: { notifications: {} },
+  }),
 }))
 
 // Mock services
 vi.mock('@/services/setupService', () => ({
   default: {
     getSerenaStatus: vi.fn().mockResolvedValue({ enabled: false }),
-    toggleSerena: vi.fn().mockResolvedValue({ success: true, enabled: true })
+    toggleSerena: vi.fn().mockResolvedValue({ success: true, enabled: true }),
+    getGitSettings: vi.fn().mockResolvedValue({ enabled: false, use_in_prompts: false, include_commit_history: true, max_commits: 50, branch_strategy: 'main' }),
+    toggleGit: vi.fn().mockResolvedValue({ enabled: false }),
+    updateGitSettings: vi.fn().mockResolvedValue({ settings: {} }),
   }
 }))
 
@@ -74,287 +123,83 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
     vi.clearAllMocks()
   })
 
-  describe('API and Integrations Tab Presence', () => {
-    it('renders API and Integrations tab', () => {
+  describe('Tab Presence', () => {
+    it('renders API Keys tab', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      const tabs = wrapper.findAll('.v-tab')
-      const apiTab = tabs.find(tab => tab.text().includes('API and Integrations'))
-      expect(apiTab).toBeDefined()
+      const html = wrapper.html()
+      expect(html).toContain('API Keys')
     })
 
-    it('API and Integrations tab has correct icon', () => {
+    it('renders Integrations tab', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      // Check if API tab contains the API icon
-      const tabs = wrapper.findAll('.v-tab')
-      const apiTab = tabs.find(tab => tab.text().includes('API'))
-      expect(apiTab).toBeDefined()
+      const html = wrapper.html()
+      expect(html).toContain('Integrations')
     })
   })
 
-  describe('API Tab Sub-Navigation', () => {
-    it('displays API Keys sub-tab', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      // Switch to API tab
-      wrapper.vm.activeTab = 'api'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.text()).toContain('API Keys')
-    })
-
-    it('displays MCP Configuration sub-tab', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.text()).toContain('MCP Configuration')
-    })
-
-    it('displays Integrations sub-tab', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.text()).toContain('Integrations')
-    })
+  describe.skip('API Tab Sub-Navigation (REMOVED - tabs are now top-level)', () => {
+    it('displays API Keys sub-tab', async () => {})
+    it('displays MCP Configuration sub-tab', async () => {})
+    it('displays Integrations sub-tab', async () => {})
   })
 
-  describe('API Keys Sub-Tab Content', () => {
-    it('renders ApiKeyManager component in API Keys sub-tab', async () => {
+  describe('API Keys Tab Content', () => {
+    it('renders ApiKeyManager component in API Keys tab', async () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'api-keys'
+      wrapper.vm.activeTab = 'api-keys'
       await wrapper.vm.$nextTick()
 
       const apiKeyManager = wrapper.find('[data-test="api-key-manager-mock"]')
       expect(apiKeyManager.exists()).toBe(true)
     })
 
-    it('displays API Keys section header', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'api-keys'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.text()).toContain('Personal API Keys')
-    })
-
-    it('displays API Keys description text', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'api-keys'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.text()).toContain('Generate and manage API keys for external integrations')
-    })
+    it.skip('displays API Keys section header (delegated to ApiKeyManager sub-component)', () => {})
+    it.skip('displays API Keys description text (delegated to ApiKeyManager sub-component)', () => {})
   })
 
-  describe('MCP Configuration Sub-Tab Content', () => {
-    it('renders AI Tool Configuration Wizard', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'mcp-config'
-      await wrapper.vm.$nextTick()
-
-      const wizard = wrapper.find('[data-test="ai-tool-wizard-mock"]')
-      expect(wizard.exists()).toBe(true)
-    })
-
-    it('displays AI Tool Self-Configuration header', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'mcp-config'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.text()).toContain('AI Tool Self-Configuration')
-    })
-
-    it('displays wizard description', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'mcp-config'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.text()).toContain('Use the wizard to generate a tool-specific prompt')
-    })
-
-    it('displays manual configuration option', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'mcp-config'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.text()).toContain('Manual AI Tool Configuration')
-    })
-
-    it('has button to open manual configuration dialog', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'mcp-config'
-      await wrapper.vm.$nextTick()
-
-      const manualConfigBtn = wrapper.find('[aria-label="Open manual AI tool configuration dialog"]')
-      expect(manualConfigBtn.exists()).toBe(true)
-    })
-
-    it('opens manual configuration dialog when button clicked', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'mcp-config'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.showManualConfigDialog).toBe(false)
-
-      wrapper.vm.openManualConfig()
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.showManualConfigDialog).toBe(true)
-    })
+  describe.skip('MCP Configuration Sub-Tab Content (REMOVED - no longer a sub-tab)', () => {
+    it('renders AI Tool Configuration Wizard', async () => {})
+    it('displays AI Tool Self-Configuration header', async () => {})
+    it('displays wizard description', async () => {})
+    it('displays manual configuration option', async () => {})
+    it('has button to open manual configuration dialog', async () => {})
+    it('opens manual configuration dialog when button clicked', async () => {})
   })
 
-  describe('Integrations Sub-Tab - Serena Toggle', () => {
-    it('displays Serena MCP integration section', async () => {
+  describe('Integrations Tab - Serena Toggle', () => {
+    it('displays Serena integration section in Integrations tab', async () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'integrations'
+      wrapper.vm.activeTab = 'integrations'
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.text()).toContain('Serena MCP')
+      const serenaCard = wrapper.find('[data-test="serena-integration-mock"]')
+      expect(serenaCard.exists()).toBe(true)
     })
 
-    it('renders Serena toggle switch', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'integrations'
-      await wrapper.vm.$nextTick()
-
-      // Check for toggle switch (serena-toggle class)
-      const serenaToggle = wrapper.find('.serena-toggle')
-      expect(serenaToggle.exists()).toBe(true)
-    })
-
-    it('displays Serena logo/avatar', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'integrations'
-      await wrapper.vm.$nextTick()
-
-      const serenaImg = wrapper.find('img[alt="Serena MCP"]')
-      expect(serenaImg.exists()).toBe(true)
-      expect(serenaImg.attributes('src')).toBe('/Serena.png')
-    })
-
-    it('displays Serena description text', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'integrations'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.text()).toContain('Enabling adds Serena tool instructions to agent prompts')
-    })
-
-    it('displays informational alert about Serena', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'integrations'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.text()).toContain('Serena MCP must be installed separately')
-    })
+    it.skip('renders Serena toggle switch (delegated to SerenaIntegrationCard)', () => {})
+    it.skip('displays Serena logo/avatar (delegated to SerenaIntegrationCard)', () => {})
+    it.skip('displays Serena description text (delegated to SerenaIntegrationCard)', () => {})
+    it.skip('displays informational alert about Serena (delegated to SerenaIntegrationCard)', () => {})
 
     it('loads Serena status on component mount', async () => {
       const setupService = await import('@/services/setupService')
@@ -370,7 +215,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
       expect(setupService.default.getSerenaStatus).toHaveBeenCalled()
     })
 
-    it('calls toggleSerena when switch is toggled', async () => {
+    it('calls toggleSerena when invoked', async () => {
       const setupService = await import('@/services/setupService')
 
       wrapper = mount(UserSettings, {
@@ -379,8 +224,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
         }
       })
 
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'integrations'
+      wrapper.vm.activeTab = 'integrations'
       await wrapper.vm.$nextTick()
 
       // Toggle Serena
@@ -396,8 +240,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
         }
       })
 
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'integrations'
+      wrapper.vm.activeTab = 'integrations'
       await wrapper.vm.$nextTick()
 
       expect(wrapper.vm.serenaEnabled).toBe(false)
@@ -415,8 +258,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
         }
       })
 
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'integrations'
+      wrapper.vm.activeTab = 'integrations'
       await wrapper.vm.$nextTick()
 
       expect(wrapper.vm.toggling).toBe(false)
@@ -430,67 +272,55 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
   })
 
   describe('Tab Navigation State', () => {
-    it('defaults to general tab on load', () => {
+    it('defaults to startup tab on load', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      expect(wrapper.vm.activeTab).toBe('general')
+      expect(wrapper.vm.activeTab).toBe('startup')
     })
 
-    it('can switch to API and Integrations tab', async () => {
+    it('can switch to integrations tab', async () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      wrapper.vm.activeTab = 'api'
+      wrapper.vm.activeTab = 'integrations'
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.vm.activeTab).toBe('api')
+      expect(wrapper.vm.activeTab).toBe('integrations')
     })
 
-    it('defaults to api-keys sub-tab when API tab is active', async () => {
+    it.skip('defaults to api-keys sub-tab when API tab is active (no sub-tabs anymore)', () => {})
+
+    it('can switch between tabs', async () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      wrapper.vm.activeTab = 'api'
+      wrapper.vm.activeTab = 'api-keys'
       await wrapper.vm.$nextTick()
+      expect(wrapper.vm.activeTab).toBe('api-keys')
 
-      expect(wrapper.vm.apiSubTab).toBe('api-keys')
-    })
-
-    it('can switch between API sub-tabs', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia]
-        }
-      })
-
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'api-keys'
+      wrapper.vm.activeTab = 'integrations'
       await wrapper.vm.$nextTick()
-      expect(wrapper.vm.apiSubTab).toBe('api-keys')
+      expect(wrapper.vm.activeTab).toBe('integrations')
 
-      wrapper.vm.apiSubTab = 'mcp-config'
+      wrapper.vm.activeTab = 'notifications'
       await wrapper.vm.$nextTick()
-      expect(wrapper.vm.apiSubTab).toBe('mcp-config')
-
-      wrapper.vm.apiSubTab = 'integrations'
-      await wrapper.vm.$nextTick()
-      expect(wrapper.vm.apiSubTab).toBe('integrations')
+      expect(wrapper.vm.activeTab).toBe('notifications')
     })
   })
 
   describe('Query Parameter Support', () => {
-    it('opens API tab if tab=api in query string', async () => {
-      router.push('/settings?tab=api')
+    it('opens integrations tab if tab=integrations in query string', async () => {
+      router.push('/settings?tab=integrations')
       await router.isReady()
 
       wrapper = mount(UserSettings, {
@@ -501,7 +331,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
 
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.vm.activeTab).toBe('api')
+      expect(wrapper.vm.activeTab).toBe('integrations')
     })
   })
 
@@ -532,8 +362,7 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
         }
       })
 
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'integrations'
+      wrapper.vm.activeTab = 'integrations'
       await wrapper.vm.$nextTick()
 
       wrapper.vm.serenaEnabled = false
@@ -545,31 +374,30 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
   })
 
   describe('Accessibility', () => {
-    it('API and Integrations tab has proper icon and text', () => {
+    it('API Keys tab has proper icon and text', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      const tabs = wrapper.findAll('.v-tab')
-      const apiTab = tabs.find(tab => tab.text().includes('API'))
-      expect(apiTab).toBeDefined()
+      const html = wrapper.html()
+      expect(html).toContain('API Keys')
+      expect(html).toContain('mdi-key-variant')
     })
 
-    it('Serena toggle has proper accessibility attributes', async () => {
+    it('Integrations tab has proper icon and text', () => {
       wrapper = mount(UserSettings, {
         global: {
           plugins: [vuetify, router, pinia]
         }
       })
 
-      wrapper.vm.activeTab = 'api'
-      wrapper.vm.apiSubTab = 'integrations'
-      await wrapper.vm.$nextTick()
-
-      const serenaToggle = wrapper.find('.serena-toggle')
-      expect(serenaToggle.exists()).toBe(true)
+      const html = wrapper.html()
+      expect(html).toContain('Integrations')
+      expect(html).toContain('mdi-puzzle')
     })
+
+    it.skip('Serena toggle has proper accessibility attributes (delegated to SerenaIntegrationCard)', () => {})
   })
 })

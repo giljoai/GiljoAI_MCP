@@ -13,7 +13,7 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-import TemplateManager from '../TemplateManager.vue'
+import TemplateManager from '@/components/TemplateManager.vue'
 import api from '@/services/api'
 
 // Mock API

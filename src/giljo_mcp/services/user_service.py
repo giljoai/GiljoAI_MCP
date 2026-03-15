@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from passlib.hash import bcrypt
+import bcrypt
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -259,7 +259,7 @@ class UserService:
                 raise ValidationError(message=f"Email '{email}' already exists", context={"email": email})
 
         # Hash password (default to "GiljoMCP" per Handover 0023)
-        password_hash = bcrypt.hash(password or "GiljoMCP")
+        password_hash = bcrypt.hashpw((password or "GiljoMCP").encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         # Create user
         user = User(
@@ -355,9 +355,7 @@ class UserService:
 
         # Handle password update separately (needs hashing)
         if updates.get("password"):
-            from passlib.hash import bcrypt
-
-            user.password_hash = bcrypt.hash(updates["password"])
+            user.password_hash = bcrypt.hashpw(updates["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
             self._logger.info(f"Password updated for user {user_id}")
 
         await session.commit()
@@ -545,11 +543,11 @@ class UserService:
             if not old_password:
                 raise ValidationError(message="Current password is required", context={"user_id": user_id})
 
-            if not bcrypt.verify(old_password, user.password_hash):
+            if not bcrypt.checkpw(old_password.encode("utf-8"), user.password_hash.encode("utf-8")):
                 raise AuthenticationError(message="Current password is incorrect", context={"user_id": user_id})
 
         # Hash and update password
-        user.password_hash = bcrypt.hash(new_password)
+        user.password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         user.must_change_password = False  # Clear flag after successful change
 
         await session.commit()
@@ -591,7 +589,7 @@ class UserService:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
         # Reset password to default 'GiljoMCP'
-        user.password_hash = bcrypt.hash("GiljoMCP")
+        user.password_hash = bcrypt.hashpw(b"GiljoMCP", bcrypt.gensalt()).decode("utf-8")
 
         # Set must_change_password flag
         user.must_change_password = True
@@ -721,7 +719,7 @@ class UserService:
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        verified = bcrypt.verify(password, user.password_hash)
+        verified = bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8"))
 
         return verified
 

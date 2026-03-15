@@ -10,8 +10,10 @@ describe('GitIntegrationCard.vue', () => {
   let wrapper
 
   const defaultConfig = {
-    commit_limit: 20,
-    default_branch: 'main'
+    use_in_prompts: false,
+    include_commit_history: true,
+    max_commits: 50,
+    branch_strategy: 'main',
   }
 
   beforeEach(() => {
@@ -52,7 +54,6 @@ describe('GitIntegrationCard.vue', () => {
     it('renders as a v-card', () => {
       wrapper = mountComponent()
       const html = wrapper.html()
-      // In test environment, v-card renders as div with variant attribute
       expect(html).toContain('variant="outlined"')
     })
 
@@ -70,7 +71,6 @@ describe('GitIntegrationCard.vue', () => {
 
     it('displays git icon (mdi-github)', () => {
       wrapper = mountComponent()
-      // In test environment, v-icon renders as span with icon name as content
       const text = wrapper.text()
       expect(text).toContain('mdi-github')
     })
@@ -84,7 +84,6 @@ describe('GitIntegrationCard.vue', () => {
     it('displays tooltip component', () => {
       wrapper = mountComponent()
       const html = wrapper.html()
-      // Tooltip component is present
       expect(html).toContain('v-tooltip')
     })
 
@@ -103,23 +102,8 @@ describe('GitIntegrationCard.vue', () => {
       expect(html).toContain('v-switch')
     })
 
-    it('toggle reflects enabled prop when false', () => {
-      wrapper = mountComponent({ enabled: false })
-      // Alert should not show when disabled
-      const text = wrapper.text()
-      expect(text).not.toContain('Requirement')
-    })
-
-    it('toggle reflects enabled prop when true', () => {
-      wrapper = mountComponent({ enabled: true })
-      // Alert should show when enabled
-      const text = wrapper.text()
-      expect(text).toContain('Requirement')
-    })
-
     it('toggle emits update:enabled event', async () => {
       wrapper = mountComponent({ enabled: false })
-      // Simulate toggle by emitting the event directly to the component
       await wrapper.vm.$emit('update:enabled', true)
 
       const emitted = wrapper.emitted('update:enabled')
@@ -135,12 +119,46 @@ describe('GitIntegrationCard.vue', () => {
     it('toggle shows loading state when loading prop is true', () => {
       wrapper = mountComponent({ loading: true })
       const html = wrapper.html()
-      // In test environment, loading prop is rendered as loading="true"
       expect(html).toContain('loading="true"')
     })
   })
 
-  describe('Configuration Fields (when enabled)', () => {
+  describe('Advanced Button', () => {
+    it('has Advanced button', () => {
+      wrapper = mountComponent()
+      const text = wrapper.text()
+      expect(text).toContain('Advanced')
+    })
+
+    it('Advanced button emits openAdvanced event when clicked', async () => {
+      wrapper = mountComponent()
+      const buttons = wrapper.findAll('button')
+      const advancedBtn = buttons.find((btn) => btn.text().includes('Advanced'))
+      expect(advancedBtn).toBeTruthy()
+
+      if (advancedBtn) {
+        await advancedBtn.trigger('click')
+        const emitted = wrapper.emitted('openAdvanced')
+        expect(emitted).toBeTruthy()
+      }
+    })
+
+    it('Advanced button is disabled when loading', () => {
+      wrapper = mountComponent({ loading: true })
+      const buttons = wrapper.findAll('button')
+      const advancedBtn = buttons.find((btn) => btn.text().includes('Advanced'))
+
+      if (advancedBtn) {
+        expect(advancedBtn.attributes('disabled')).toBeDefined()
+      }
+    })
+  })
+
+  // SKIPPED: Component was massively simplified. No longer has expansion panels,
+  // localConfig, handleSave, "Advanced Settings" text inline, commit_limit/default_branch
+  // text fields, or save button. Advanced settings are now handled by a separate modal
+  // opened via the 'openAdvanced' emit.
+  describe.skip('Configuration Fields (when enabled)', () => {
     it('shows advanced settings when enabled', async () => {
       wrapper = mountComponent({ enabled: true })
       await wrapper.vm.$nextTick()
@@ -153,7 +171,6 @@ describe('GitIntegrationCard.vue', () => {
       wrapper = mountComponent({ enabled: true })
       await wrapper.vm.$nextTick()
 
-      // The expansion panel should exist and contain Commit Limit text
       const html = wrapper.html()
       expect(html).toContain('Commit Limit')
     })
@@ -170,20 +187,16 @@ describe('GitIntegrationCard.vue', () => {
       wrapper = mountComponent({ enabled: true })
       await wrapper.vm.$nextTick()
 
-      // Alert displays requirement text
       const text = wrapper.text()
       expect(text).toContain('Requirement')
-      // The alert mentions using local git credentials
       expect(text).toContain('local git credentials')
     })
 
     it('hides configuration fields when disabled', () => {
       wrapper = mountComponent({ enabled: false })
 
-      // Should not show the info alert with "Requirement:" prefix
       const text = wrapper.text()
       expect(text).not.toContain('local git credentials')
-      // Expansion panels should not be present
       const html = wrapper.html()
       expect(html).not.toContain('v-expansion-panels')
     })
@@ -209,7 +222,9 @@ describe('GitIntegrationCard.vue', () => {
     })
   })
 
-  describe('Save Button', () => {
+  // SKIPPED: Component no longer has a Save button or handleSave method.
+  // Configuration saving is now handled by the parent via the Advanced modal.
+  describe.skip('Save Button', () => {
     it('has save button when enabled', async () => {
       wrapper = mountComponent({ enabled: true })
       await wrapper.vm.$nextTick()
@@ -221,7 +236,6 @@ describe('GitIntegrationCard.vue', () => {
     it('save button exists regardless of enabled state', () => {
       wrapper = mountComponent({ enabled: false })
 
-      // Save button is always visible in the tonal card
       const text = wrapper.text()
       expect(text).toContain('Save')
     })
@@ -233,7 +247,6 @@ describe('GitIntegrationCard.vue', () => {
       })
       await wrapper.vm.$nextTick()
 
-      // Call handleSave directly
       wrapper.vm.handleSave()
 
       const emitted = wrapper.emitted('save')
@@ -248,7 +261,6 @@ describe('GitIntegrationCard.vue', () => {
     it('save button is disabled when loading (via handleSave)', () => {
       wrapper = mountComponent({ enabled: true, loading: true })
 
-      // When loading, handleSave should not emit
       wrapper.vm.handleSave()
       const emitted = wrapper.emitted('save')
       expect(emitted).toBeFalsy()
@@ -258,29 +270,30 @@ describe('GitIntegrationCard.vue', () => {
       wrapper = mountComponent({ enabled: true, loading: true })
 
       const html = wrapper.html()
-      // The save button has loading prop set
       expect(html).toContain('loading="true"')
     })
   })
 
   describe('Fallback Info (when disabled)', () => {
-    it('shows fallback info when disabled', () => {
+    it('shows info about enabling git integration', () => {
       wrapper = mountComponent({ enabled: false })
 
       const text = wrapper.text()
+      // Component shows description about including git commit history
       expect(text).toContain('Enable to automatically include git commit history')
     })
 
-    it('mentions manual summaries as alternative', () => {
+    it('mentions product memory', () => {
       wrapper = mountComponent({ enabled: false })
 
-      // The description should be visible explaining what the feature does
       const text = wrapper.text()
-      expect(text).toContain('Commits are stored in product memory')
+      expect(text).toContain('product memory')
     })
   })
 
-  describe('Config Watching', () => {
+  // SKIPPED: Component no longer has localConfig reactive state or config watching.
+  // The component is now a thin toggle + button, config is managed externally.
+  describe.skip('Config Watching', () => {
     it('updates local config when config prop changes', async () => {
       wrapper = mountComponent({
         enabled: true,
@@ -304,7 +317,6 @@ describe('GitIntegrationCard.vue', () => {
     it('tooltip contains information about cumulative product knowledge', () => {
       wrapper = mountComponent()
 
-      // The tooltip and its content should be in the text
       const text = wrapper.text()
       expect(text).toContain('Cumulative product knowledge tracking')
     })
@@ -313,19 +325,16 @@ describe('GitIntegrationCard.vue', () => {
   describe('Edge Cases', () => {
     it('handles empty config prop gracefully', () => {
       wrapper = mountComponent({ enabled: true, config: {} })
-
-      expect(wrapper.vm.localConfig.commit_limit).toBeDefined()
-      expect(wrapper.vm.localConfig.default_branch).toBeDefined()
+      expect(wrapper.exists()).toBe(true)
     })
 
     it('handles null config values', async () => {
       wrapper = mountComponent({
         enabled: true,
-        config: { commit_limit: null, default_branch: null }
+        config: { use_in_prompts: null, include_commit_history: null }
       })
       await wrapper.vm.$nextTick()
 
-      // Should use defaults or handle nulls gracefully
       expect(wrapper.exists()).toBe(true)
     })
 
@@ -334,7 +343,7 @@ describe('GitIntegrationCard.vue', () => {
         props: {
           enabled: false,
           loading: false
-          // config not provided
+          // config not provided - uses default
         },
         global: {
           plugins: [vuetify],
@@ -347,7 +356,6 @@ describe('GitIntegrationCard.vue', () => {
     it('handles rapid toggle changes', async () => {
       wrapper = mountComponent({ enabled: false })
 
-      // Rapid toggles via direct emit on wrapper
       await wrapper.vm.$emit('update:enabled', true)
       await wrapper.vm.$emit('update:enabled', false)
       await wrapper.vm.$emit('update:enabled', true)
@@ -356,26 +364,11 @@ describe('GitIntegrationCard.vue', () => {
       const emitted = wrapper.emitted('update:enabled')
       expect(emitted.length).toBe(3)
     })
-
-    it('preserves local config changes on multiple saves', async () => {
-      wrapper = mountComponent({
-        enabled: true,
-        config: { commit_limit: 20, default_branch: 'main' }
-      })
-      await wrapper.vm.$nextTick()
-
-      // Modify local config
-      wrapper.vm.localConfig.commit_limit = 30
-
-      // Call handleSave directly
-      wrapper.vm.handleSave()
-
-      const emitted = wrapper.emitted('save')
-      expect(emitted[0][0].commit_limit).toBe(30)
-    })
   })
 
-  describe('Expansion Panel Behavior', () => {
+  // SKIPPED: Component no longer has expansion panels.
+  // Advanced settings are in a separate modal opened via 'openAdvanced' emit.
+  describe.skip('Expansion Panel Behavior', () => {
     it('expansion panel exists when enabled', () => {
       wrapper = mountComponent({ enabled: true })
 
@@ -399,7 +392,9 @@ describe('GitIntegrationCard.vue', () => {
     })
   })
 
-  describe('Input Validation', () => {
+  // SKIPPED: Component no longer has inline text fields for commit_limit/default_branch.
+  // These inputs are now in the Advanced settings modal.
+  describe.skip('Input Validation', () => {
     it('text fields exist when enabled', async () => {
       wrapper = mountComponent({ enabled: true })
       await wrapper.vm.$nextTick()
@@ -439,7 +434,6 @@ describe('GitIntegrationCard.vue', () => {
       wrapper = mountComponent()
 
       const html = wrapper.html()
-      // In test environment, v-card renders as div with variant attribute
       expect(html).toContain('variant="outlined"')
     })
 
@@ -451,10 +445,9 @@ describe('GitIntegrationCard.vue', () => {
     })
 
     it('buttons are accessible', () => {
-      wrapper = mountComponent({ enabled: true })
+      wrapper = mountComponent()
 
       const html = wrapper.html()
-      // In test environment, v-btn renders as button element
       expect(html).toContain('<button')
     })
 
@@ -501,11 +494,7 @@ describe('GitIntegrationCard.vue', () => {
         },
       })
 
-      // Component should exist and enabled should be falsy
       expect(wrapper.exists()).toBe(true)
-      // Alert should not show when disabled
-      const text = wrapper.text()
-      expect(text).not.toContain('Requirement')
     })
 
     it('loading prop defaults to false', () => {
@@ -519,12 +508,13 @@ describe('GitIntegrationCard.vue', () => {
         },
       })
 
-      // Component should exist
       expect(wrapper.exists()).toBe(true)
     })
   })
 
-  describe('Event Emissions', () => {
+  // SKIPPED: Component no longer emits 'save' event or has handleSave method.
+  // It now emits 'update:enabled' and 'openAdvanced'.
+  describe.skip('Event Emissions', () => {
     it('emits save with current enabled state', async () => {
       wrapper = mountComponent({
         enabled: true,
@@ -532,7 +522,6 @@ describe('GitIntegrationCard.vue', () => {
       })
       await wrapper.vm.$nextTick()
 
-      // Call handleSave directly
       wrapper.vm.handleSave()
 
       const emitted = wrapper.emitted('save')
@@ -543,7 +532,6 @@ describe('GitIntegrationCard.vue', () => {
       wrapper = mountComponent({ enabled: true, loading: true })
       await wrapper.vm.$nextTick()
 
-      // Call handleSave - it should not emit when loading
       wrapper.vm.handleSave()
 
       const emitted = wrapper.emitted('save')

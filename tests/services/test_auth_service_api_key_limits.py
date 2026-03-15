@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from passlib.hash import bcrypt
+import bcrypt
 
 from src.giljo_mcp.exceptions import BaseGiljoError
 from src.giljo_mcp.models.auth import APIKey, User
@@ -66,7 +66,7 @@ async def test_user(db_session, test_org):
         username=f"testuser_{unique_id}",
         email=f"test_{unique_id}@example.com",
         full_name="Test User",
-        password_hash=bcrypt.hash(password),
+        password_hash=bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         role="developer",
         tenant_key=test_org.tenant_key,
         org_id=test_org.id,
@@ -88,7 +88,7 @@ async def _create_api_key_in_db(db_session, user, *, is_active: bool = True, exp
         tenant_key=user.tenant_key,
         user_id=user.id,
         name=f"Test API Key {unique_id}",
-        key_hash=bcrypt.hash(raw_key),
+        key_hash=bcrypt.hashpw(raw_key.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         key_prefix="gk_test_key_",
         permissions=["*"],
         is_active=is_active,

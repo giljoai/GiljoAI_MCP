@@ -12,8 +12,8 @@ All endpoints include rate limiting, timing-safe comparisons, and audit logging.
 import logging
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
-from passlib.hash import bcrypt
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -110,7 +110,7 @@ async def verify_pin_and_reset_password(
         )
 
     # Verify PIN with bcrypt (timing-safe comparison)
-    if not bcrypt.verify(request_data.recovery_pin, user.recovery_pin_hash):
+    if not bcrypt.checkpw(request_data.recovery_pin.encode("utf-8"), user.recovery_pin_hash.encode("utf-8")):
         # Increment failed attempts
         user.failed_pin_attempts += 1
 
@@ -141,7 +141,7 @@ async def verify_pin_and_reset_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid username or PIN")
 
     # PIN verified successfully - reset password
-    user.password_hash = bcrypt.hash(request_data.new_password)
+    user.password_hash = bcrypt.hashpw(request_data.new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     user.failed_pin_attempts = 0
     user.pin_lockout_until = None
 
@@ -214,7 +214,7 @@ async def complete_first_login(
         HTTPException: 400 if validation fails
     """
     # Validate current password
-    if not bcrypt.verify(request_data.current_password, current_user.password_hash):
+    if not bcrypt.checkpw(request_data.current_password.encode("utf-8"), current_user.password_hash.encode("utf-8")):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
 
     # Validate new password != current password
@@ -232,10 +232,14 @@ async def complete_first_login(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PINs do not match")
 
     # Update password
-    current_user.password_hash = bcrypt.hash(request_data.new_password)
+    current_user.password_hash = bcrypt.hashpw(request_data.new_password.encode("utf-8"), bcrypt.gensalt()).decode(
+        "utf-8"
+    )
 
     # Set recovery PIN
-    current_user.recovery_pin_hash = bcrypt.hash(request_data.recovery_pin)
+    current_user.recovery_pin_hash = bcrypt.hashpw(request_data.recovery_pin.encode("utf-8"), bcrypt.gensalt()).decode(
+        "utf-8"
+    )
 
     # Clear first login flags
     current_user.must_change_password = False
@@ -274,7 +278,7 @@ async def set_recovery_pin(
     Clears any PIN lockout status.
     """
     # Verify current password
-    if not bcrypt.verify(request_data.current_password, current_user.password_hash):
+    if not bcrypt.checkpw(request_data.current_password.encode("utf-8"), current_user.password_hash.encode("utf-8")):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect",
@@ -288,7 +292,9 @@ async def set_recovery_pin(
         )
 
     # Update PIN and clear lockout
-    current_user.recovery_pin_hash = bcrypt.hash(request_data.recovery_pin)
+    current_user.recovery_pin_hash = bcrypt.hashpw(request_data.recovery_pin.encode("utf-8"), bcrypt.gensalt()).decode(
+        "utf-8"
+    )
     current_user.failed_pin_attempts = 0
     current_user.pin_lockout_until = None
 

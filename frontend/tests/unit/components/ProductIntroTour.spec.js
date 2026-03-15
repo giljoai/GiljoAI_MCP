@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ProductIntroTour from '../settings/ProductIntroTour.vue'
+import ProductIntroTour from '@/components/settings/ProductIntroTour.vue'
 
 const pushMock = vi.fn()
 
