@@ -133,10 +133,11 @@ async def simple_handover(
     project_taxonomy = ""
     if project and project.product and getattr(project.product, "product_memory", None):
         git_config = project.product.product_memory.get("git_integration", {})
-        # Require BOTH: git integration enabled AND git_history enabled in context priority
-        priorities = (getattr(current_user, "field_priority_config", None) or {}).get("priorities", {})
-        git_history_priority = priorities.get("git_history", 4)
-        git_enabled = git_config.get("enabled", False) and git_history_priority in (1, 2, 3)
+        # Require BOTH: git integration enabled AND git_history toggle enabled
+        toggles = (getattr(current_user, "field_priority_config", None) or {}).get("priorities", {})
+        git_toggle = toggles.get("git_history", {})
+        git_history_enabled = git_toggle.get("toggle", False) if isinstance(git_toggle, dict) else bool(git_toggle)
+        git_enabled = git_config.get("enabled", False) and git_history_enabled
         project_taxonomy = project.taxonomy_alias
 
     await db.commit()
