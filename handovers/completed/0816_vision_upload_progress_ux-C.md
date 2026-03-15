@@ -5,7 +5,7 @@
 **To Agent:** ux-designer or tdd-implementor
 **Priority:** Medium
 **Estimated Complexity:** 1-2 hours
-**Status:** Not Started
+**Status:** Completed
 **Edition Scope:** CE
 
 ## Task Summary
@@ -154,3 +154,23 @@ ProductsView emits upload-state events, ProductForm listens. More complex, less 
 ## Rollback Plan
 
 Revert the 2 frontend files. No backend or database impact.
+
+## Implementation Summary
+
+### 2026-03-14 - Completed
+
+**Commits:**
+- `2c8c921e` fix: Wire up vision upload progress bar and error alert in ProductForm
+- `73c3fa35` test: Add vision upload progress tests and fix watcher ReferenceError
+
+**What was done:**
+- ProductsView: Added 3 refs (uploadingVision, uploadProgress, visionUploadError), passed as props to ProductForm, driven during saveProduct() upload loop, reset in closeDialog()
+- ProductForm: Removed 3 dead local refs, accepted as props, updated defineEmits (removed upload-vision, added clear-upload-error), changed v-model to :model-value on progress bar, error dismiss emits to parent
+- Removed empty uploadVisionDocument() stub and its @upload-vision event binding
+- Fixed watcher ReferenceError that wrote to props as if they were local refs
+- 12 new unit tests covering progress bar rendering, error alert, dismiss emit, prop defaults
+- Updated v-alert test stub to support Boolean dismissible prop and click:close emit
+- Fixed stale test referencing removed upload-vision emit
+
+**Files modified:** ProductsView.vue, ProductForm.vue, ProductForm.spec.js
+**Build:** Passes. **Tests:** 91 passing (12 new + 1 pre-existing fix), 9 pre-existing failures unchanged.
