@@ -1085,6 +1085,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     old_status = execution.status
                     execution.status = "working"
                     execution.started_at = now
+                    execution.last_progress_at = now
                     status_changed = True
 
                     await session.commit()
