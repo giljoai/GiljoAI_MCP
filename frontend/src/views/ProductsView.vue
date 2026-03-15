@@ -263,10 +263,13 @@
       :is-edit="!!editingProduct"
       :existing-vision-documents="existingVisionDocuments"
       :auto-save-state="autoSave"
+      :uploading-vision="uploadingVision"
+      :upload-progress="uploadProgress"
+      :vision-upload-error="visionUploadError"
       @save="saveProduct"
       @cancel="closeDialog"
-      @upload-vision="uploadVisionDocument"
       @remove-vision="removeVisionDocument"
+      @clear-upload-error="visionUploadError = null"
     />
 
     <!-- Product Details Dialog -->
@@ -336,6 +339,9 @@ const selectedProduct = ref(null)
 const deleting = ref(false)
 const visionFiles = ref([])
 const existingVisionDocuments = ref([])
+const uploadingVision = ref(false)
+const uploadProgress = ref(0)
+const visionUploadError = ref(null)
 const detailsVisionDocuments = ref([])
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
@@ -579,13 +585,6 @@ function formatDate(dateString) {
   })
 }
 
-// Handover 0320: Handler for ProductForm upload-vision event
-// Note: Vision files are now managed internally by ProductForm and passed via save event
-// This handler is kept for potential future use (e.g., immediate upload)
-function uploadVisionDocument() {
-  // Currently not used - ProductForm passes files via save event
-}
-
 // Handover 0320: Handler for ProductForm remove-vision event (delete existing document)
 async function removeVisionDocument(doc) {
   try {
@@ -781,6 +780,11 @@ async function saveProduct(payload) {
       let successCount = 0
       let totalChunks = 0
 
+      // Handover 0816: Drive upload progress UI
+      uploadingVision.value = true
+      uploadProgress.value = 0
+      visionUploadError.value = null
+
       for (let i = 0; i < visionFiles.value.length; i++) {
         const file = visionFiles.value[i]
 
@@ -795,6 +799,7 @@ async function saveProduct(payload) {
           const response = await api.visionDocuments.upload(formData)
 
           successCount++
+          uploadProgress.value = ((i + 1) / visionFiles.value.length) * 100
           const chunkCount = response.data?.chunk_count || 0
           totalChunks += chunkCount
 
@@ -834,6 +839,9 @@ async function saveProduct(payload) {
             errorMessage = `${file.name}: Network error. Check connection and try again.`
           }
 
+          visionUploadError.value = errorMessage
+          uploadProgress.value = ((i + 1) / visionFiles.value.length) * 100
+
           showToast({
             message: errorMessage,
             type: 'error',
@@ -843,6 +851,8 @@ async function saveProduct(payload) {
           // Continue uploading other files
         }
       }
+
+      uploadingVision.value = false
 
       // Handover 0347: Show summary toast with chunk count if multiple files uploaded
       if (successCount > 1) {
@@ -946,6 +956,9 @@ function closeDialog() {
   editingProduct.value = null
   visionFiles.value = []
   existingVisionDocuments.value = []
+  uploadingVision.value = false
+  uploadProgress.value = 0
+  visionUploadError.value = null
   productForm.value = {
     name: '',
     description: '',

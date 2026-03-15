@@ -203,7 +203,7 @@
                 density="compact"
                 dismissible
                 class="mb-4"
-                @click:close="visionUploadError = null"
+                @click:close="emit('clear-upload-error')"
               >
                 {{ visionUploadError }}
               </v-alert>
@@ -221,7 +221,7 @@
                   <span>Uploading vision documents...</span>
                 </div>
                 <v-progress-linear
-                  v-model="uploadProgress"
+                  :model-value="uploadProgress"
                   color="primary"
                   height="6"
                   class="mt-2"
@@ -770,9 +770,21 @@ const props = defineProps({
     type: Object,
     default: () => ({ status: 'saved', enabled: true }),
   },
+  uploadingVision: {
+    type: Boolean,
+    default: false,
+  },
+  uploadProgress: {
+    type: Number,
+    default: 0,
+  },
+  visionUploadError: {
+    type: String,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'upload-vision', 'remove-vision'])
+const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'remove-vision', 'clear-upload-error'])
 
 // Field priority composable
 const { getPriorityForField, getPriorityLabel, getPriorityColor } = useFieldPriority()
@@ -789,9 +801,6 @@ const formValid = ref(false)
 const formRef = ref(null)
 const dialogTab = ref('basic')
 const visionFiles = ref([])
-const uploadingVision = ref(false)
-const uploadProgress = ref(0)
-const visionUploadError = ref(null)
 const pathCopied = ref(false)
 
 // Product form data
