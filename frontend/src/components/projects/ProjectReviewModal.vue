@@ -73,24 +73,30 @@
           <!-- Section 4: Agent Details (expandable, lazy-loaded messages) -->
           <div v-if="agents.length" class="mb-6">
             <h3 class="text-h6 mb-2">Agent Details</h3>
-            <v-expansion-panels variant="accordion">
+            <v-expansion-panels v-model="expandedAgentPanels" variant="accordion">
               <v-expansion-panel
-                v-for="agent in agents"
+                v-for="(agent, idx) in agents"
                 :key="agent.id"
-                @group:selected="loadAgentMessages(agent)"
+                :value="idx"
               >
                 <v-expansion-panel-title>
-                  {{ agent.agent_display_name }} - {{ agent.status }}
+                  <div class="d-flex align-center w-100">
+                    <span class="font-weight-medium">{{ agent.agent_display_name }}</span>
+                    <v-spacer />
+                    <v-chip :color="agentStatusColor(agent.status)" size="x-small" variant="flat" class="mr-2">{{ agent.status }}</v-chip>
+                  </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-progress-linear v-if="agentMessages[agent.id]?.loading" indeterminate />
                   <div v-else-if="agentMessages[agent.id]?.messages?.length">
                     <div v-for="msg in agentMessages[agent.id].messages" :key="msg.id" class="mb-2 pa-2 rounded" style="background: rgba(0,0,0,0.03);">
-                      <div class="d-flex justify-space-between">
-                        <span class="text-caption font-weight-bold">{{ msg.from }}</span>
+                      <div class="d-flex justify-space-between align-center">
+                        <div class="d-flex align-center">
+                          <span class="text-caption font-weight-bold">{{ msg.from }}</span>
+                          <v-chip v-if="msg.direction" size="x-small" :color="msg.direction === 'outbound' ? 'primary' : 'default'" class="ml-2">{{ msg.direction }}</v-chip>
+                        </div>
                         <span class="text-caption text-medium-emphasis">{{ formatDate(msg.created_at) }}</span>
                       </div>
-                      <v-chip v-if="msg.direction" size="x-small" :color="msg.direction === 'outbound' ? 'primary' : 'default'" class="mr-1">{{ msg.direction }}</v-chip>
                       <p class="text-body-2 mt-1">{{ truncate(msg.content, 300) }}</p>
                     </div>
                   </div>
@@ -104,12 +110,53 @@
           <div v-if="memoryEntries.length" class="mb-6">
             <h3 class="text-h6 mb-2">360 Memory ({{ memoryEntries.length }} entries)</h3>
             <v-expansion-panels variant="accordion">
-              <v-expansion-panel v-for="(entry, i) in memoryEntries" :key="i">
+              <v-expansion-panel v-for="(entry, i) in memoryEntries" :key="i" :value="i">
                 <v-expansion-panel-title>
-                  #{{ entry.sequence ?? i + 1 }} - {{ entry.summary || 'Memory Entry' }}
+                  <div class="d-flex align-center w-100">
+                    <v-icon icon="mdi-book-open-page-variant" class="mr-2" size="small" />
+                    <span class="font-weight-medium">
+                      #{{ entry.sequence ?? i + 1 }} - {{ entry.summary || 'Memory Entry' }}
+                    </span>
+                    <v-spacer />
+                    <span v-if="entry.timestamp" class="text-caption text-medium-emphasis">{{ formatDate(entry.timestamp) }}</span>
+                  </div>
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <pre class="text-body-2" style="white-space: pre-wrap;">{{ entry.summary || JSON.stringify(entry, null, 2) }}</pre>
+                  <div v-if="entry.summary" class="mb-3">
+                    <h4 class="text-subtitle-2 font-weight-bold mb-1">Summary</h4>
+                    <div class="text-body-2">{{ entry.summary }}</div>
+                  </div>
+                  <div v-if="entry.key_outcomes && entry.key_outcomes.length" class="mb-3">
+                    <h4 class="text-subtitle-2 font-weight-bold mb-1">Key Outcomes</h4>
+                    <v-list density="compact">
+                      <v-list-item v-for="(outcome, oi) in entry.key_outcomes" :key="oi" class="px-0">
+                        <template #prepend>
+                          <v-icon icon="mdi-check-circle" color="success" size="small" class="mr-2" />
+                        </template>
+                        <v-list-item-title class="text-body-2">{{ outcome }}</v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </div>
+                  <div v-if="entry.decisions_made && entry.decisions_made.length" class="mb-3">
+                    <h4 class="text-subtitle-2 font-weight-bold mb-1">Decisions Made</h4>
+                    <v-list density="compact">
+                      <v-list-item v-for="(decision, di) in entry.decisions_made" :key="di" class="px-0">
+                        <template #prepend>
+                          <v-icon icon="mdi-lightbulb" color="warning" size="small" class="mr-2" />
+                        </template>
+                        <v-list-item-title class="text-body-2">{{ decision }}</v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </div>
+                  <div v-if="!entry.summary && !entry.key_outcomes?.length && !entry.decisions_made?.length">
+                    <p class="text-caption text-medium-emphasis">No detailed content available.</p>
+                  </div>
+                  <div v-if="entry.entry_type" class="mt-3 pt-2" style="border-top: 1px solid rgba(0,0,0,0.12);">
+                    <span class="text-caption text-medium-emphasis">
+                      <strong>Type:</strong> {{ entry.entry_type }}
+                      <template v-if="entry.source"> | <strong>Source:</strong> {{ entry.source }}</template>
+                    </span>
+                  </div>
                 </v-expansion-panel-text>
               </v-expansion-panel>
             </v-expansion-panels>
@@ -151,12 +198,23 @@ const projectData = ref(null)
 const agents = ref([])
 const memoryEntries = ref([])
 const agentMessages = reactive({})
+const expandedAgentPanels = ref([])
 
 watch(() => props.show, (open) => {
   if (open && props.projectId) {
     loadReviewData()
   } else {
     resetState()
+  }
+})
+
+// Lazy-load agent messages when expansion panel opens
+watch(expandedAgentPanels, (expanded) => {
+  if (expanded == null) return
+  const indices = Array.isArray(expanded) ? expanded : [expanded]
+  for (const idx of indices) {
+    const agent = agents.value[idx]
+    if (agent) loadAgentMessages(agent)
   }
 })
 
@@ -207,6 +265,7 @@ function resetState() {
   agents.value = []
   memoryEntries.value = []
   Object.keys(agentMessages).forEach((k) => delete agentMessages[k])
+  expandedAgentPanels.value = []
   error.value = null
 }
 
