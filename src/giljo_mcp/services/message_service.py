@@ -398,8 +398,9 @@ class MessageService:
         """Update message counters (sent/waiting) with deadlock retry.
 
         Handover 0387f: Update message counters instead of JSONB persistence.
-        Wrapped in deadlock retry: concurrent broadcasts can deadlock when
-        updating overlapping AgentExecution counter rows (PG SQLSTATE 40P01).
+        Handover 0821: Replaced N+1 per-row UPDATEs with a single batch UPDATE
+        using CASE expressions. One SQL statement = PostgreSQL handles all lock
+        acquisition internally = no cross-statement deadlock.
 
         Returns:
             The sender's AgentExecution record, or None if not found.
@@ -412,7 +413,7 @@ class MessageService:
 
         async def _counter_update():
             nonlocal sender_execution
-            # Step 1: Increment sender's sent_count by 1 (regardless of recipient count)
+            # Step 1: Look up sender execution
             # Handover 0429: Get latest instance when matching by agent_id
             sender_result = await session.execute(
                 select(AgentExecution)
@@ -429,23 +430,26 @@ class MessageService:
             )
             sender_execution = sender_result.scalar_one_or_none()
 
-            if sender_execution:
-                await self._repo.increment_sent_count(
-                    session=session,
-                    agent_id=sender_execution.agent_id,
-                    tenant_key=project.tenant_key,
-                )
+            # Step 2: Build batch counter dicts
+            sent_increments: dict[str, int] = {}
+            waiting_increments: dict[str, int] = {}
 
-            # Step 2: Increment each recipient's waiting_count by 1
-            # (recipients already sorted for consistent lock ordering)
+            if sender_execution:
+                sent_increments[sender_execution.agent_id] = 1
+
             for msg in messages:
                 recipient_id = msg.to_agents[0] if msg.to_agents else None
                 if recipient_id:
-                    await self._repo.increment_waiting_count(
-                        session=session,
-                        agent_id=recipient_id,
-                        tenant_key=project.tenant_key,
-                    )
+                    waiting_increments[recipient_id] = waiting_increments.get(recipient_id, 0) + 1
+
+            # Step 3: Single batch UPDATE (Handover 0821 - deadlock fix)
+            if sent_increments or waiting_increments:
+                await self._repo.batch_update_counters(
+                    session=session,
+                    tenant_key=project.tenant_key,
+                    sent_increments=sent_increments,
+                    waiting_increments=waiting_increments,
+                )
 
             await session.commit()
             self._logger.info(f"[COUNTER] Updated counters: sender +1 sent, {len(messages)} recipients +1 waiting each")
