@@ -296,14 +296,14 @@ orchestrator   1.2.1    coordination, mission_planning  YES         initialized
 
 ---
 
-### Task 5: Context Prioritization & Mission Creation
+### Task 5: Context Configuration & Mission Creation
 
-**Purpose**: Build unified project mission with user's priority settings
+**Purpose**: Build unified project mission with user's toggle/depth settings
 
 **Actions**:
-1. Fetch user's context priority configuration
+1. Fetch user's context toggle configuration
 2. Call `fetch_product_context()` for product info
-   - Include based on priority setting
+   - Include based on toggle setting (on/off)
    - Expected: product name, description, features
 3. Call `fetch_vision_document()` for relevant docs
    - Depth level from user configuration

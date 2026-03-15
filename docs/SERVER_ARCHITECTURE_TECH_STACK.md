@@ -719,9 +719,9 @@ GiljoAI's context management system uses a 2-dimensional model to give users fin
 ┌─────────────────────────────────────────────────┐
 │           User Configuration (My Settings)       │
 ├─────────────────────────────────────────────────┤
-│  Priority Config (WHAT)  │  Depth Config (HOW)  │
-│  - Field-level control   │  - Token management  │
-│  - 1/2/3/4 levels        │  - 8 depth controls  │
+│  Toggle Config (WHAT)    │  Depth Config (HOW)  │
+│  - Field-level on/off    │  - Token management  │
+│  - Per-category toggles  │  - 8 depth controls  │
 └────────────┬────────────────────────┬────────────┘
              │                        │
              ▼                        ▼
@@ -749,9 +749,9 @@ GiljoAI's context management system uses a 2-dimensional model to give users fin
 ```
 
 ### Data Flow
-1. User configures priority (1-4) and depth (per source) in My Settings
+1. User configures toggles (on/off) and depth (per source) in My Settings
 2. Orchestrator spawned with thin prompt (~600 tokens)
-3. Orchestrator calls MCP tools based on priority/depth config
+3. Orchestrator calls MCP tools based on toggle/depth config
 4. Tools fetch data from database (filtered by tenant_key)
 5. Tools return structured data within token limits (24K max per call)
 6. Orchestrator receives context and proceeds with mission
@@ -821,8 +821,8 @@ Project Launch Request
              │
              ▼
 ┌─────────────────────────────────────────────┐
-│  TASK 5: Context Prioritization & Mission   │
-│  - Apply user's context priority settings   │
+│  TASK 5: Context Configuration & Mission     │
+│  - Apply user's context toggle settings     │
 │  - Fetch product context via tools          │
 │  - Fetch relevant vision documents          │
 │  - Fetch git history for context            │
@@ -857,7 +857,7 @@ Project Launch Request
 **Key Features**:
 - **Dynamic Agent Discovery**: No embedded templates (fetched via MCP tools)
 - **Version Compatibility**: Validates agent versions match project requirements
-- **Context Prioritization**: Applies user's configured priority/depth settings
+- **Context Configuration**: Applies user's configured toggle/depth settings
 - **Environment Validation**: Comprehensive health checks before execution
 - **Graceful Failure**: Clear error messages at each stage
 
