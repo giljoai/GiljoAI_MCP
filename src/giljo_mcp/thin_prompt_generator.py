@@ -593,7 +593,7 @@ class ThinClientPromptGenerator:
         )
 
         # Handover 0276: Regenerate orchestrator instructions with current settings
-        # This enables "Stage Project refresh" - when user changes field priorities
+        # This enables "Stage Project refresh" - when user changes field toggles
         # and clicks "Stage Project" again, they get updated instructions immediately
         regenerated_mission = await self._regenerate_mission(
             product=product, project=project, field_toggles=field_toggles or {}, user_id=user_id

@@ -199,7 +199,7 @@ const contextTab = page.locator('[data-testid="context-settings-tab"]')
 await contextTab.click()
 
 // Verify tab content is visible
-const contextCard = page.locator('[data-testid="context-priority-config"]')
+const contextCard = page.locator('[data-testid="context-field-config"]')
 await expect(contextCard).toBeVisible()
 
 // Test other tabs
@@ -212,18 +212,18 @@ await integTab.click()
 
 ---
 
-## ContextPriorityConfig.vue
+## ContextFieldConfig.vue
 
 ### Selectors (Dynamic)
 ```
-priority-product-core       // Product Core priority selector
-priority-vision-documents   // Vision Docs priority selector
-priority-tech-stack         // Tech Stack priority selector
-priority-architecture       // Architecture priority selector
-priority-testing            // Testing priority selector
-priority-360-memory         // 360 Memory priority selector
-priority-git-history        // Git History priority selector
-priority-agent-templates    // Agent Templates priority selector
+toggle-product-core         // Product Core toggle switch (on/off)
+toggle-vision-documents     // Vision Docs toggle switch (on/off)
+toggle-tech-stack           // Tech Stack toggle switch (on/off)
+toggle-architecture         // Architecture toggle switch (on/off)
+toggle-testing              // Testing toggle switch (on/off)
+toggle-360-memory           // 360 Memory toggle switch (on/off)
+toggle-git-history          // Git History toggle switch (on/off)
+toggle-agent-templates      // Agent Templates toggle switch (on/off)
 
 depth-vision-documents      // Vision Docs depth selector
 depth-tech-stack            // Tech Stack depth selector
@@ -236,15 +236,15 @@ depth-agent-templates       // Agent Templates depth selector
 
 ### Usage Example (Vue Test Utils)
 ```javascript
-describe('ContextPriorityConfig', () => {
-  it('updates priority configuration', async () => {
-    const wrapper = mount(ContextPriorityConfig, {
+describe('ContextFieldConfig', () => {
+  it('toggles context fields and configures depth', async () => {
+    const wrapper = mount(ContextFieldConfig, {
       props: { gitIntegrationEnabled: true }
     })
 
-    // Find priority selector
-    const prioritySelect = wrapper.find('[data-testid="priority-vision-documents"]')
-    expect(prioritySelect.exists()).toBe(true)
+    // Find toggle switch
+    const toggle = wrapper.find('[data-testid="toggle-vision-documents"]')
+    expect(toggle.exists()).toBe(true)
 
     // Check depth selector
     const depthSelect = wrapper.find('[data-testid="depth-vision-documents"]')
@@ -255,14 +255,13 @@ describe('ContextPriorityConfig', () => {
 
 ### Usage Example (Playwright)
 ```javascript
-// Match all priority selectors with prefix
-const prioritySelectors = await page.locator('[data-testid^="priority-"]').all()
-expect(prioritySelectors.length).toBeGreaterThan(0)
+// Match all toggle switches with prefix
+const toggleSwitches = await page.locator('[data-testid^="toggle-"]').all()
+expect(toggleSwitches.length).toBeGreaterThan(0)
 
-// Interact with specific selector
-const visionPriority = page.locator('[data-testid="priority-vision-documents"]')
-await visionPriority.click()
-await visionPriority.selectOption('critical')
+// Toggle a specific context field
+const visionToggle = page.locator('[data-testid="toggle-vision-documents"]')
+await visionToggle.click()
 
 // Match all depth selectors
 const depthSelectors = await page.locator('[data-testid^="depth-"]').all()
@@ -439,10 +438,10 @@ await expect(card).toBeVisible({ timeout: 5000 })
 ### 2. Handle Dynamic Selectors
 ```javascript
 // Bad - assumes specific element exists
-await page.click('[data-testid="priority-vision-documents"]')
+await page.click('[data-testid="toggle-vision-documents"]')
 
 // Good - handle missing element
-const selector = page.locator('[data-testid="priority-vision-documents"]')
+const selector = page.locator('[data-testid="toggle-vision-documents"]')
 if (await selector.isVisible()) {
   await selector.click()
 }
@@ -470,9 +469,9 @@ class SettingsPage {
     await this.page.click('[data-testid="context-settings-tab"]')
   }
 
-  async setPriority(field, value) {
-    const selector = `[data-testid="priority-${field}"]`
-    await this.page.locator(selector).selectOption(value)
+  async toggleField(field) {
+    const selector = `[data-testid="toggle-${field}"]`
+    await this.page.locator(selector).click()
   }
 
   async setDepth(field, value) {
@@ -484,7 +483,8 @@ class SettingsPage {
 // Usage
 const settings = new SettingsPage(page)
 await settings.navigateToContext()
-await settings.setPriority('vision-documents', 'critical')
+await settings.toggleField('vision-documents')
+await settings.setDepth('vision-documents', 'heavy')
 ```
 
 ---
