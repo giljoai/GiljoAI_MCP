@@ -99,8 +99,24 @@
         </v-btn>
       </div>
 
-      <!-- Close Out Project Button Row (Handover 0361, 0425 - Jobs tab only when all complete) -->
-      <div v-if="activeTab === 'jobs' && showCloseoutButton" class="action-buttons-row">
+      <!-- Project Status Area (Jobs tab only) - Handover 0819a -->
+      <!-- State A: Project is done -> status banner -->
+      <div v-if="activeTab === 'jobs' && projectDoneStatus" class="action-buttons-row">
+        <v-chip
+          :color="projectDoneStatus === 'completed' ? 'success' : projectDoneStatus === 'terminated' ? 'warning' : 'grey'"
+          variant="flat"
+          size="large"
+          :prepend-icon="projectDoneStatus === 'cancelled' ? 'mdi-cancel' : 'mdi-check-circle'"
+          data-testid="project-done-banner"
+        >
+          {{ projectDoneStatus === 'completed' ? 'Project Completed and Closed'
+             : projectDoneStatus === 'terminated' ? 'Project Terminated'
+             : 'Project Cancelled' }}
+        </v-chip>
+      </div>
+
+      <!-- State B: All agents terminal, project NOT done -> closeout button -->
+      <div v-else-if="activeTab === 'jobs' && showCloseoutButton" class="action-buttons-row">
         <v-btn
           class="closeout-btn"
           color="yellow-darken-2"
@@ -111,6 +127,19 @@
         >
           Close Out Project
         </v-btn>
+      </div>
+
+      <!-- State C: Continue-working guidance -->
+      <div v-else-if="activeTab === 'jobs' && showContinueGuidance" class="action-buttons-row">
+        <v-chip
+          color="info"
+          variant="tonal"
+          size="large"
+          prepend-icon="mdi-information"
+          data-testid="continue-guidance"
+        >
+          Continue working within the agent's terminal session, or use the handover prompt generator next to the orchestrator.
+        </v-chip>
       </div>
 
       <!-- Tab Content -->
@@ -145,6 +174,7 @@
       :product-id="project.product_id"
       @close="showCloseoutModal = false"
       @closeout="handleCloseoutComplete"
+      @continue="handleContinueWorking"
     />
   </div>
 </template>
@@ -157,6 +187,7 @@ import { useWebSocketStore } from '@/stores/websocket'
 import { useAgentJobs } from '@/composables/useAgentJobs'
 import { useProjectMessages } from '@/composables/useProjectMessages'
 import { useProjectStateStore } from '@/stores/projectStateStore'
+import { useNotificationStore } from '@/stores/notifications'
 import { useIntegrationStatus } from '@/composables/useIntegrationStatus'
 import { useToast } from '@/composables/useToast'
 import { useClipboard } from '@/composables/useClipboard'
@@ -194,6 +225,7 @@ const emit = defineEmits([
  */
 const tabsStore = useProjectTabsStore()
 const wsStore = useWebSocketStore()
+const notificationStore = useNotificationStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -277,6 +309,15 @@ const projectWithUpdatedMode = computed(() => ({
 // Closeout modal state (Handover 0361)
 const showCloseoutModal = ref(false)
 
+// Continue-working guidance state (Handover 0819a)
+const showContinueGuidance = ref(false)
+
+const projectDoneStatus = computed(() => {
+  const status = props.project?.status
+  if (['completed', 'terminated', 'cancelled'].includes(status)) return status
+  return null
+})
+
 /**
  * Computed: Project state (map-based store)
  */
@@ -303,6 +344,9 @@ const hasActiveOrchestrator = computed(() => {
  * Handover 0425: Accept both 'complete' and 'completed' status values
  */
 const showCloseoutButton = computed(() => {
+  // Don't show closeout button if project is already in a terminal state (Handover 0819a)
+  if (['completed', 'terminated', 'cancelled'].includes(props.project?.status)) return false
+
   const jobs = sortedJobs.value || []
   if (!jobs.length) return false
 
@@ -400,6 +444,16 @@ onMounted(() => {
       loadProjectData(projectId.value, { fetchProject: true })
     }
   })
+})
+
+// Auto-dismiss continue-working guidance when orchestrator starts working (Handover 0819a)
+watch(() => sortedJobs.value, (jobs) => {
+  if (showContinueGuidance.value && jobs?.length) {
+    const orchestrator = jobs.find((j) => j.agent_display_name === 'orchestrator')
+    if (orchestrator && orchestrator.status === 'working') {
+      showContinueGuidance.value = false
+    }
+  }
 })
 
 // Handover 0440c: Update browser tab title when project loads
@@ -565,20 +619,25 @@ function openCloseoutModal() {
 }
 
 /**
- * Handle project closeout completion (Handover 0361)
+ * Handle project closeout completion (Handover 0819a)
+ * Stays on page and refreshes data so status banner appears
  */
-function handleCloseoutComplete(closeoutData) {
-  const normalized =
-    typeof closeoutData === 'string'
-      ? { project_id: closeoutData, sequence_number: 0 }
-      : closeoutData || {}
-
-  showToast({ message: `Project closed out successfully (Memory entry #${normalized.sequence_number ?? 0})`, type: 'success' })
-
+async function handleCloseoutComplete() {
   showCloseoutModal.value = false
+  notificationStore.clearForProject(projectId.value)
+  showToast({ message: 'Project closed out successfully', type: 'success' })
+  await loadProjectData(projectId.value, { fetchProject: true })
+}
 
-  // Navigate to projects list after closeout
-  router.push('/projects')
+/**
+ * Handle continue working from CloseoutModal (Handover 0819a)
+ * Shows guidance text, refreshes agent statuses
+ */
+async function handleContinueWorking() {
+  showCloseoutModal.value = false
+  showContinueGuidance.value = true
+  showToast({ message: 'Project resumed - agents ready for work', type: 'success' })
+  await loadProjectData(projectId.value, { fetchProject: true })
 }
 </script>
 
