@@ -1095,11 +1095,11 @@ function handleBeforeUnload(event) {
 
 onMounted(async () => {
   await loadProducts()
-  // Load field priority configuration for badge display (Handover 0049)
+  // Load field toggle configuration (Handover 0049, 0820)
   try {
-    await settingsStore.fetchFieldPriorityConfig()
+    await settingsStore.fetchFieldToggleConfig()
   } catch {
-    // Field priority config not available
+    // Field toggle config not available
   }
   // Handover 0051: Add beforeunload listener
   window.addEventListener('beforeunload', handleBeforeUnload)
