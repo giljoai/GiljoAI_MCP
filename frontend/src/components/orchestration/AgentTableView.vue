@@ -60,20 +60,20 @@
     </template>
 
     <!-- Messages Sent Column (Handover 0240b) -->
-    <template #item.messages_sent="{ item }">
-      <span class="text-body-2">{{ item.messages_sent || 0 }}</span>
+    <template #item.messages_sent_count="{ item }">
+      <span class="text-body-2">{{ item.messages_sent_count || 0 }}</span>
     </template>
 
     <!-- Messages Waiting Column (Handover 0240b) -->
-    <template #item.messages_waiting="{ item }">
-      <span class="text-body-2" :class="{ 'text-warning': item.messages_waiting > 0 }">
-        {{ item.messages_waiting || 0 }}
+    <template #item.messages_waiting_count="{ item }">
+      <span class="text-body-2" :class="{ 'text-warning': item.messages_waiting_count > 0 }">
+        {{ item.messages_waiting_count || 0 }}
       </span>
     </template>
 
     <!-- Messages Read Column (Handover 0240b) -->
-    <template #item.messages_read="{ item }">
-      <span class="text-body-2">{{ item.messages_read || 0 }}</span>
+    <template #item.messages_read_count="{ item }">
+      <span class="text-body-2">{{ item.messages_read_count || 0 }}</span>
     </template>
 
     <!-- Actions Column (Handover 0235: ActionIcons Integration) -->
@@ -167,9 +167,9 @@ const headers = [
   { title: 'Job ID', key: 'job_id', sortable: false },
   { title: 'Agent Status', key: 'status', sortable: true },
   { title: 'Steps', key: 'steps', sortable: false, align: 'center' },
-  { title: 'Messages Sent', key: 'messages_sent', sortable: true, align: 'center' },
-  { title: 'Messages Waiting', key: 'messages_waiting', sortable: true, align: 'center' },
-  { title: 'Messages Read', key: 'messages_read', sortable: true, align: 'center' },
+  { title: 'Messages Sent', key: 'messages_sent_count', sortable: true, align: 'center' },
+  { title: 'Messages Waiting', key: 'messages_waiting_count', sortable: true, align: 'center' },
+  { title: 'Messages Read', key: 'messages_read_count', sortable: true, align: 'center' },
   { title: '', key: 'actions', sortable: false },
 ]
 

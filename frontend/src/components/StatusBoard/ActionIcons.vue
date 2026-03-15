@@ -37,27 +37,10 @@
       <span>{{ getActionTooltip('copyPrompt') }}</span>
     </v-tooltip>
 
-    <!-- View Messages Action with Badge -->
+    <!-- View Messages Action -->
     <v-tooltip v-if="availableActions.includes('viewMessages')" location="top">
       <template #activator="{ props }">
-        <v-badge
-          v-if="job.unread_count > 0"
-          :content="job.unread_count"
-          color="error"
-          data-test="messages-badge"
-        >
-          <v-btn
-            v-bind="props"
-            icon="mdi-message-text"
-            :color="getActionColor('viewMessages')"
-            size="small"
-            variant="text"
-            data-test="action-viewMessages"
-            @click="handleViewMessages"
-          />
-        </v-badge>
         <v-btn
-          v-else
           v-bind="props"
           icon="mdi-message-text"
           :color="getActionColor('viewMessages')"
@@ -125,7 +108,6 @@ const props = defineProps({
       job_id: '',
       status: 'waiting',
       agent_display_name: 'implementer',
-      unread_count: 0,
     }),
   },
   claudeCodeCliMode: {
@@ -328,20 +310,6 @@ const dismissHandover = () => {
 .action-icons .v-btn:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
-}
-
-/* ============================================================
-   4.5 BADGE STYLING
-   ============================================================ */
-
-.action-icons .v-badge {
-  margin: 0;
-  transition: all 0.2s ease;
-}
-
-.action-icons .v-badge:hover .v-btn {
-  opacity: 1;
-  transform: scale(1.1);
 }
 
 /* ============================================================
