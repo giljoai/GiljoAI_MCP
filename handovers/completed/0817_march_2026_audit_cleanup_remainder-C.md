@@ -5,7 +5,7 @@
 **To Agent:** Next Session
 **Priority:** Low
 **Estimated Complexity:** 30 minutes
-**Status:** Not Started
+**Status:** Complete
 **Edition Scope:** CE
 
 ## Task Summary
@@ -90,3 +90,19 @@ frontend/src/components/__tests__/TemplateManager.export-status.spec.js
 - All 3 E2E files reference `jobs-tab` instead of `implement-tab`
 - All 28 test files moved from `frontend/src/` to `frontend/tests/`
 - All tests still pass after relocation
+
+## Implementation Summary
+
+### 2026-03-14 - Completed
+
+**Item 1** -- `6b87f67a`
+- Replaced 18 occurrences of `implement-tab` with `jobs-tab` across 3 E2E files
+- Renamed `implement-tab-workflow.spec.ts` to `jobs-tab-workflow.spec.ts`
+
+**Item 2** -- `da5fc6d6`
+- 26 files relocated via `git mv` to conventional test directories
+- 2 files (`websocket.spec.js`, `agentJobsStore.spec.js`) removed -- proper tests already existed at destination with different content
+- Created `frontend/tests/unit/services/` and `frontend/tests/unit/accessibility/`
+- Cleaned up 6 empty `__tests__/` directories from `frontend/src/`
+- Verified: zero import resolution errors (the `@/` alias works regardless of test file location)
+- Pre-existing test failures unchanged (not caused by relocation)
