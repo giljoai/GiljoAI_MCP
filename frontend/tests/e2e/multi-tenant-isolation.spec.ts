@@ -96,13 +96,13 @@ test.describe('Multi-Tenant Isolation (Security)', () => {
 
       if (await projectsA.count() > 0) {
         await projectsA.first().click()
-        await pageA.click('[data-testid="implement-tab"]')
+        await pageA.click('[data-testid="jobs-tab"]')
         await pageA.waitForLoadState('networkidle')
       }
 
       if (await projectsB.count() > 0) {
         await projectsB.first().click()
-        await pageB.click('[data-testid="implement-tab"]')
+        await pageB.click('[data-testid="jobs-tab"]')
         await pageB.waitForLoadState('networkidle')
       }
 
