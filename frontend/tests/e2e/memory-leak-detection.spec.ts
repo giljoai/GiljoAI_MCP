@@ -44,7 +44,7 @@ test.describe('Memory Leak Detection', () => {
       }
 
       // Navigate to Implement tab
-      const implementTab = page.locator('[data-testid="implement-tab"]')
+      const implementTab = page.locator('[data-testid="jobs-tab"]')
       if (await implementTab.isVisible()) {
         await implementTab.click()
         await page.waitForLoadState('networkidle')
@@ -103,7 +103,7 @@ test.describe('Memory Leak Detection', () => {
     })
 
     // Navigate to Implement tab (has WebSocket listeners)
-    await page.click('[data-testid="implement-tab"]')
+    await page.click('[data-testid="jobs-tab"]')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1000)
 
@@ -119,7 +119,7 @@ test.describe('Memory Leak Detection', () => {
       }
 
       // Navigate back to Implement tab
-      const implementTab = page.locator('[data-testid="implement-tab"]')
+      const implementTab = page.locator('[data-testid="jobs-tab"]')
       if (await implementTab.isVisible()) {
         await implementTab.click()
         await page.waitForLoadState('networkidle')
@@ -164,7 +164,7 @@ test.describe('Memory Leak Detection', () => {
 
     // Rapidly switch between tabs
     for (let i = 0; i < 20; i++) {
-      const tabName = i % 2 === 0 ? 'launch-tab' : 'implement-tab'
+      const tabName = i % 2 === 0 ? 'launch-tab' : 'jobs-tab'
       const tab = page.locator(`[data-testid="${tabName}"]`)
       if (await tab.isVisible()) {
         await tab.click()
@@ -199,7 +199,7 @@ test.describe('Memory Leak Detection', () => {
       await projectCards.first().click()
     }
 
-    await page.click('[data-testid="implement-tab"]')
+    await page.click('[data-testid="jobs-tab"]')
     await page.waitForLoadState('networkidle')
 
     // Get interval count after navigation
@@ -239,7 +239,7 @@ test.describe('Memory Leak Detection', () => {
     }
 
     await projectCards.first().click()
-    await page.click('[data-testid="implement-tab"]')
+    await page.click('[data-testid="jobs-tab"]')
     await page.waitForLoadState('networkidle')
 
     // Simulate WebSocket reconnection by navigating away/back
@@ -251,7 +251,7 @@ test.describe('Memory Leak Detection', () => {
       const projCards = page.locator('[data-testid="project-card"]')
       if (await projCards.count() > 0) {
         await projCards.first().click()
-        const implTab = page.locator('[data-testid="implement-tab"]')
+        const implTab = page.locator('[data-testid="jobs-tab"]')
         if (await implTab.isVisible()) {
           await implTab.click()
         }
@@ -343,7 +343,7 @@ test.describe('Memory Leak Detection', () => {
           await page.waitForTimeout(300)
         }
 
-        const implementTab = page.locator('[data-testid="implement-tab"]')
+        const implementTab = page.locator('[data-testid="jobs-tab"]')
         if (await implementTab.isVisible()) {
           await implementTab.click()
           await page.waitForTimeout(300)
