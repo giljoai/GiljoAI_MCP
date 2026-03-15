@@ -30,6 +30,7 @@
         :project="project"
         :orchestrator="orchestrator"
         @edit-description="handleEditDescription"
+        @project-updated="fetchProjectDetails"
       />
     </div>
 
