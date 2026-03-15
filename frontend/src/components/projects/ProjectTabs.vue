@@ -129,6 +129,16 @@
         </v-btn>
       </div>
 
+      <!-- State B2: All agents terminal, waiting for 360 memory (Handover 0820) -->
+      <div v-else-if="activeTab === 'jobs' && showMemoryPending" class="action-buttons-row">
+        <v-chip color="info" variant="tonal" size="large" data-testid="memory-pending-chip">
+          <template #prepend>
+            <v-progress-circular indeterminate size="16" width="2" />
+          </template>
+          Saving project memory...
+        </v-chip>
+      </div>
+
       <!-- State C: Continue-working guidance -->
       <div v-else-if="activeTab === 'jobs' && showContinueGuidance" class="action-buttons-row">
         <v-chip
@@ -309,6 +319,9 @@ const projectWithUpdatedMode = computed(() => ({
 // Closeout modal state (Handover 0361)
 const showCloseoutModal = ref(false)
 
+// 360 memory gate: prevent closeout button before memory is written (Handover 0820)
+const memoryWritten = ref(false)
+
 // Continue-working guidance state (Handover 0819a)
 const showContinueGuidance = ref(false)
 
@@ -339,24 +352,35 @@ const hasActiveOrchestrator = computed(() => {
 })
 
 /**
- * Computed: Show closeout button when all agents complete and orchestrator is done
- * Handover 0361: Moved from JobsTab.vue to header for persistent visibility
- * Handover 0425: Accept both 'complete' and 'completed' status values
+ * Computed: All agent jobs (including orchestrator) have reached terminal status
+ * Handover 0361, 0425, 0820: Extracted from showCloseoutButton for reuse
  */
-const showCloseoutButton = computed(() => {
-  // Don't show closeout button if project is already in a terminal state (Handover 0819a)
+const allJobsTerminal = computed(() => {
   if (['completed', 'terminated', 'cancelled'].includes(props.project?.status)) return false
-
   const jobs = sortedJobs.value || []
   if (!jobs.length) return false
-
-  // Accept complete, completed, and decommissioned as terminal states (Handover 0498)
   const isTerminal = (status) => status === 'complete' || status === 'completed' || status === 'decommissioned'
   const allTerminal = jobs.every((job) => isTerminal(job.status))
   if (!allTerminal) return false
-
   const orchestrator = jobs.find((job) => job.agent_display_name === 'orchestrator')
   return Boolean(orchestrator && isTerminal(orchestrator.status))
+})
+
+/**
+ * Computed: Show closeout button only after 360 memory has been written
+ * Handover 0820: Gate on memoryWritten to prevent "No 360 memory entries found"
+ */
+const showCloseoutButton = computed(() => {
+  if (!allJobsTerminal.value) return false
+  // No product association means no 360 memory can be written - skip gate
+  if (!props.project?.product_id) return true
+  return memoryWritten.value
+})
+
+const showMemoryPending = computed(() => {
+  if (!allJobsTerminal.value) return false
+  if (!props.project?.product_id) return false
+  return !memoryWritten.value
 })
 
 function showError(message) {
@@ -429,6 +453,8 @@ watch(
     if (oldPid && oldPid !== pid) {
       tabsStore.isLaunched = false
       projectStateStore.setLaunched(pid, false)
+      clearTimeout(memoryCheckTimeout)
+      memoryWritten.value = false
     }
 
     wsStore.subscribeToProject(pid)
@@ -438,12 +464,26 @@ watch(
 )
 
 let unsubscribeConnectionListener = null
+let unsubscribeMemory = null
+let memoryCheckTimeout = null
 onMounted(() => {
   unsubscribeConnectionListener = wsStore.onConnectionChange((connectionEvent) => {
     if (connectionEvent?.state === 'connected' && connectionEvent?.isReconnect) {
       loadProjectData(projectId.value, { fetchProject: true })
     }
   })
+
+  // Handover 0820: Listen for 360 memory writes to ungate closeout button
+  try {
+    unsubscribeMemory = wsStore.on('product:memory:updated', (payload) => {
+      const entryProjectId = payload?.entry?.project_id
+      if (entryProjectId === projectId.value) {
+        memoryWritten.value = true
+      }
+    })
+  } catch {
+    console.warn('[ProjectTabs] Failed to subscribe to memory events')
+  }
 })
 
 // Auto-dismiss continue-working guidance when orchestrator starts working (Handover 0819a)
@@ -455,6 +495,40 @@ watch(() => sortedJobs.value, (jobs) => {
     }
   }
 })
+
+// Handover 0820: Check API for existing 360 memory when all jobs become terminal (handles page refresh)
+watch(allJobsTerminal, async (terminal) => {
+  clearTimeout(memoryCheckTimeout)
+  if (!terminal || memoryWritten.value) return
+  const productId = props.project?.product_id
+  if (!productId) return
+  try {
+    const res = await api.products.getMemoryEntries(productId, {
+      project_id: projectId.value,
+      limit: 1,
+    })
+    if (res.data?.entries?.length > 0) {
+      memoryWritten.value = true
+      return
+    }
+  } catch {
+    memoryWritten.value = true
+    return
+  }
+  // Memory not yet written - retry once after 60s, then fail open
+  memoryCheckTimeout = setTimeout(async () => {
+    if (memoryWritten.value) return
+    try {
+      await api.products.getMemoryEntries(productId, {
+        project_id: projectId.value,
+        limit: 1,
+      })
+      memoryWritten.value = true  // fail open regardless of result
+    } catch {
+      memoryWritten.value = true
+    }
+  }, 60_000)
+}, { immediate: true })
 
 // Handover 0440c: Update browser tab title when project loads
 watch(
@@ -473,6 +547,8 @@ onBeforeUnmount(() => {
     wsStore.unsubscribe('project', projectId.value)
   }
   unsubscribeConnectionListener?.()
+  unsubscribeMemory?.()
+  clearTimeout(memoryCheckTimeout)
   // Handover 0440c: Reset browser tab title
   document.title = 'GiljoAI MCP'
 })
