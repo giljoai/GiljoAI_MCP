@@ -7,6 +7,7 @@ Tests cover:
 3. Send-path: RetryExhaustedError raised after max retries
 4. Send-path: non-deadlock OperationalErrors propagate immediately
 5. Shared utility: with_deadlock_retry behavior
+6. Batch counter update (Handover 0821): single-statement CASE-based UPDATE
 """
 
 from datetime import datetime, timezone
@@ -19,6 +20,7 @@ from sqlalchemy.exc import OperationalError
 from src.giljo_mcp.exceptions import RetryExhaustedError
 from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.repositories.message_repository import MessageRepository
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.utils.db_retry import with_deadlock_retry
 
@@ -441,3 +443,164 @@ class TestWithDeadlockRetryParameterValidation:
                 operation_name="test_op",
                 base_delay=-0.1,
             )
+
+
+class TestBatchUpdateCounters:
+    """Verify MessageRepository.batch_update_counters (Handover 0821)."""
+
+    @pytest.mark.asyncio
+    async def test_batch_update_single_sent_single_waiting(self):
+        """Batch update with one sent and one waiting increment issues one execute."""
+        session = AsyncMock()
+        result_mock = Mock()
+        result_mock.rowcount = 2
+        session.execute = AsyncMock(return_value=result_mock)
+
+        repo = MessageRepository()
+        rows = await repo.batch_update_counters(
+            session=session,
+            tenant_key="test-tenant",
+            sent_increments={"agent-1": 1},
+            waiting_increments={"agent-2": 1},
+        )
+
+        assert rows == 2
+        session.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_batch_update_empty_dicts_skips_execute(self):
+        """No execute call when both dicts are empty."""
+        session = AsyncMock()
+        repo = MessageRepository()
+        rows = await repo.batch_update_counters(
+            session=session,
+            tenant_key="test-tenant",
+        )
+
+        assert rows == 0
+        session.execute.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_batch_update_overlapping_agent_ids(self):
+        """An agent appearing in both sent and waiting gets both updates in one statement."""
+        session = AsyncMock()
+        result_mock = Mock()
+        result_mock.rowcount = 1
+        session.execute = AsyncMock(return_value=result_mock)
+
+        repo = MessageRepository()
+        rows = await repo.batch_update_counters(
+            session=session,
+            tenant_key="test-tenant",
+            sent_increments={"agent-1": 1},
+            waiting_increments={"agent-1": 3},
+        )
+
+        assert rows == 1
+        session.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_batch_update_multiple_recipients(self):
+        """Multiple waiting increments should all be in one statement."""
+        session = AsyncMock()
+        result_mock = Mock()
+        result_mock.rowcount = 5
+        session.execute = AsyncMock(return_value=result_mock)
+
+        repo = MessageRepository()
+        rows = await repo.batch_update_counters(
+            session=session,
+            tenant_key="test-tenant",
+            sent_increments={"sender": 1},
+            waiting_increments={"r1": 1, "r2": 1, "r3": 1, "r4": 1},
+        )
+
+        assert rows == 5
+        # Critical: only ONE execute call, not N+1
+        session.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_batch_update_waiting_only(self):
+        """Only waiting increments (no sender) should still issue one statement."""
+        session = AsyncMock()
+        result_mock = Mock()
+        result_mock.rowcount = 2
+        session.execute = AsyncMock(return_value=result_mock)
+
+        repo = MessageRepository()
+        rows = await repo.batch_update_counters(
+            session=session,
+            tenant_key="test-tenant",
+            waiting_increments={"r1": 1, "r2": 1},
+        )
+
+        assert rows == 2
+        session.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_batch_update_sent_only(self):
+        """Only sent increments should still issue one statement."""
+        session = AsyncMock()
+        result_mock = Mock()
+        result_mock.rowcount = 1
+        session.execute = AsyncMock(return_value=result_mock)
+
+        repo = MessageRepository()
+        rows = await repo.batch_update_counters(
+            session=session,
+            tenant_key="test-tenant",
+            sent_increments={"agent-1": 1},
+        )
+
+        assert rows == 1
+        session.execute.assert_awaited_once()
+
+
+class TestSendPathBatchIntegration:
+    """Verify _handle_send_message_side_effects uses batch_update_counters."""
+
+    @pytest.mark.asyncio
+    async def test_side_effects_calls_batch_update(self, mock_db_manager, mock_tenant_manager):
+        """Side effects handler should call batch_update_counters instead of N+1 UPDATEs."""
+        db_manager, session = mock_db_manager
+        tenant_key = "test-tenant"
+        project_id = str(uuid4())
+
+        mock_project = Mock(spec=Project)
+        mock_project.id = project_id
+        mock_project.tenant_key = tenant_key
+
+        sender = _make_execution("sender-id", "orchestrator")
+
+        call_count = {"n": 0}
+
+        async def mock_execute(*args, **kwargs):
+            call_count["n"] += 1
+            result = Mock()
+            if call_count["n"] == 1:
+                result.scalar_one_or_none = Mock(return_value=sender)
+            else:
+                result.rowcount = 3
+            return result
+
+        session.execute = AsyncMock(side_effect=mock_execute)
+
+        service = MessageService(db_manager, mock_tenant_manager)
+
+        msg1 = Mock(spec=Message)
+        msg1.to_agents = ["recipient-1"]
+        msg2 = Mock(spec=Message)
+        msg2.to_agents = ["recipient-2"]
+
+        with patch.object(
+            service._repo, "batch_update_counters", new_callable=AsyncMock, return_value=3
+        ) as mock_batch:
+            await service._handle_send_message_side_effects(
+                session, [msg1, msg2], mock_project, "orchestrator", project_id
+            )
+
+            mock_batch.assert_awaited_once()
+            call_args = mock_batch.call_args
+            assert call_args.kwargs["tenant_key"] == tenant_key
+            assert call_args.kwargs["sent_increments"] == {"sender-id": 1}
+            assert call_args.kwargs["waiting_increments"] == {"recipient-1": 1, "recipient-2": 1}

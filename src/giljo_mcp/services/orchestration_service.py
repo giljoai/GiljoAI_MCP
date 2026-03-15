@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.config_manager import get_config
@@ -1816,23 +1816,16 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                                 status="pending",
                             )
                             session.add(auto_message)
-                            # Atomic SQL UPDATE prevents stale-read race when concurrent
-                            # transactions modify the counter (e.g. receive_messages decrement)
-                            await session.execute(
-                                update(AgentExecution)
-                                .where(
-                                    AgentExecution.agent_id == orch_exec.agent_id,
-                                    AgentExecution.tenant_key == tenant_key,
-                                )
-                                .values(messages_waiting_count=AgentExecution.messages_waiting_count + 1)
-                            )
-                            await session.execute(
-                                update(AgentExecution)
-                                .where(
-                                    AgentExecution.agent_id == execution.agent_id,
-                                    AgentExecution.tenant_key == tenant_key,
-                                )
-                                .values(messages_sent_count=AgentExecution.messages_sent_count + 1)
+                            # Handover 0821: Single batch UPDATE for completion report counters
+                            # prevents cross-statement deadlock with concurrent broadcasts
+                            from src.giljo_mcp.repositories.message_repository import MessageRepository
+
+                            _msg_repo = MessageRepository()
+                            await _msg_repo.batch_update_counters(
+                                session=session,
+                                tenant_key=tenant_key,
+                                sent_increments={execution.agent_id: 1},
+                                waiting_increments={orch_exec.agent_id: 1},
                             )
 
                     await session.commit()
