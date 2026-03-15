@@ -91,15 +91,6 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
       expect(wrapper.text()).toContain('implementer')
     })
 
-    it.skip('displays tools as chips (removed in Handover 0814 - simplified to preview)', () => {
-      // Template preview is now rendered text, not individual fields
-    })
-  })
-
-  describe.skip('2. Expansion Panels for Instructions (REMOVED in Handover 0814)', () => {
-    it('displays system instructions in expansion panel', async () => {})
-    it('displays user instructions in expansion panel', async () => {})
-    it('displays template content for backward compatibility', async () => {})
   })
 
   describe('3. Orchestrator Functionality (Existing)', () => {
@@ -314,10 +305,6 @@ describe('AgentDetailsModal - Handover 0244a Template Display', () => {
 
       expect(wrapper.text()).toContain('Agent Details: Test Implementer')
     })
-  })
-
-  describe.skip('7. Copy to Clipboard Functionality (REMOVED in Handover 0814 simplified view)', () => {
-    it('provides copy button for system instructions', async () => {})
   })
 
   describe('8. Agent Type Color Coding', () => {

@@ -6,8 +6,6 @@ import ActiveProductDisplay from '@/components/ActiveProductDisplay.vue'
 import { useProductStore } from '@/stores/products'
 import api from '@/services/api'
 
-vi.mock('@/services/api')
-
 describe('ActiveProductDisplay Component (Handover 0049)', () => {
   let router
 
@@ -40,7 +38,7 @@ describe('ActiveProductDisplay Component (Handover 0049)', () => {
     })
 
     it('calls fetchActiveProduct on mount', async () => {
-      api.products.list.mockResolvedValue({ data: [] })
+      api.products.getActive.mockResolvedValue({ data: { has_active_product: false, product: null } })
 
       mount(ActiveProductDisplay, {
         global: {
@@ -51,8 +49,8 @@ describe('ActiveProductDisplay Component (Handover 0049)', () => {
 
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Verify API was called with is_active filter
-      expect(api.products.list).toHaveBeenCalledWith({ is_active: true })
+      // Verify the store's fetchActiveProduct calls the dedicated active-product endpoint
+      expect(api.products.getActive).toHaveBeenCalled()
     })
   })
 
@@ -149,7 +147,7 @@ describe('ActiveProductDisplay Component (Handover 0049)', () => {
 
   describe('API Error Handling', () => {
     it('handles API errors gracefully', async () => {
-      api.products.list.mockRejectedValue(new Error('Network error'))
+      api.products.getActive.mockRejectedValue(new Error('Network error'))
 
       const wrapper = mount(ActiveProductDisplay, {
         global: {
@@ -166,7 +164,7 @@ describe('ActiveProductDisplay Component (Handover 0049)', () => {
     it('logs errors to console', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      api.products.list.mockRejectedValue(new Error('Test error'))
+      api.products.getActive.mockRejectedValue(new Error('Test error'))
 
       mount(ActiveProductDisplay, {
         global: {
@@ -220,8 +218,8 @@ describe('ActiveProductDisplay Component (Handover 0049)', () => {
 
   describe('Loading State', () => {
     it('has loading ref initialized as true', () => {
-      api.products.list.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ data: [] }), 200))
+      api.products.getActive.mockImplementation(
+        () => new Promise(resolve => setTimeout(() => resolve({ data: { has_active_product: false, product: null } }), 200))
       )
 
       const wrapper = mount(ActiveProductDisplay, {
@@ -236,7 +234,7 @@ describe('ActiveProductDisplay Component (Handover 0049)', () => {
     })
 
     it('transitions from loading state', async () => {
-      api.products.list.mockResolvedValue({ data: [] })
+      api.products.getActive.mockResolvedValue({ data: { has_active_product: false, product: null } })
 
       const wrapper = mount(ActiveProductDisplay, {
         global: {

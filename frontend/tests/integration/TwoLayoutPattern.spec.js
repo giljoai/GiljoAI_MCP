@@ -126,6 +126,27 @@ describe('Two-Layout Authentication Pattern - Integration Tests', () => {
       ]
     })
 
+    // Add navigation guard that mimics real router behavior
+    router.beforeEach(async (to) => {
+      // Auth-layout routes are always allowed
+      if (to.meta.layout === 'auth') {
+        return true
+      }
+
+      // App routes require authentication
+      if (to.meta.requiresAuth) {
+        try {
+          await api.auth.me()
+          return true
+        } catch {
+          // Not authenticated, redirect to login
+          return { path: '/login', query: { redirect: to.fullPath } }
+        }
+      }
+
+      return true
+    })
+
     // Default mock responses
     setupService.checkStatus.mockResolvedValue({
       database_initialized: true,

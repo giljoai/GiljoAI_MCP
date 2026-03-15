@@ -62,8 +62,8 @@ describe('api.js - Prompts Service', () => {
     it('all prompts methods are functions', () => {
       const methods = Object.keys(api.prompts)
 
-      // Should have 5 methods now (including implementation)
-      expect(methods.length).toBe(5)
+      // Should have 6 methods (staging, execution, agentPrompt, implementation, termination, orchestrator)
+      expect(methods.length).toBe(6)
 
       // All should be functions
       methods.forEach((method) => {

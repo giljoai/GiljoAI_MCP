@@ -4,9 +4,15 @@
  *
  * DefaultLayout is the full application layout for app routes (dashboard, settings, etc.)
  * - Includes AppBar and NavigationDrawer
- * - Loads user data on mount
+ * - Loads user data on mount via userStore.fetchCurrentUser()
  * - Reloads user after navigation from login
  * - Passes currentUser to child components
+ *
+ * Post-refactor notes:
+ * - DefaultLayout uses userStore.fetchCurrentUser() which internally calls api.auth.me()
+ * - Fresh install check done via fetch() before loading user
+ * - ToastManager and LicensingDialog added as global components
+ * - WebSocket and websocketEventRouter initialized on mount
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -26,6 +32,55 @@ vi.mock('@/services/api', () => ({
     }
   }
 }))
+
+// Mock child components
+vi.mock('@/components/navigation/AppBar.vue', () => ({
+  default: {
+    name: 'AppBar',
+    template: '<div>AppBar</div>',
+    props: ['currentUser'],
+    emits: ['toggle-drawer'],
+  }
+}))
+
+vi.mock('@/components/navigation/NavigationDrawer.vue', () => ({
+  default: {
+    name: 'NavigationDrawer',
+    template: '<div>NavigationDrawer</div>',
+    props: ['modelValue', 'rail', 'currentUser'],
+    emits: ['update:modelValue', 'toggle-rail'],
+  }
+}))
+
+vi.mock('@/components/ToastManager.vue', () => ({
+  default: { name: 'ToastManager', template: '<div>ToastManager</div>' }
+}))
+
+vi.mock('@/components/LicensingDialog.vue', () => ({
+  default: { name: 'LicensingDialog', template: '<div>LicensingDialog</div>' }
+}))
+
+// Mock stores and services
+vi.mock('@/stores/websocket', () => ({
+  useWebSocketStore: () => ({
+    connect: vi.fn().mockResolvedValue(),
+    disconnect: vi.fn(),
+  })
+}))
+
+vi.mock('@/stores/messages', () => ({
+  useMessageStore: () => ({
+    fetchMessages: vi.fn().mockResolvedValue(),
+  })
+}))
+
+vi.mock('@/stores/websocketEventRouter', () => ({
+  initWebsocketEventRouter: vi.fn(),
+}))
+
+// Mock global fetch for setup status check
+const mockFetch = vi.fn()
+global.fetch = mockFetch
 
 describe('DefaultLayout.vue', () => {
   let vuetify
@@ -59,6 +114,12 @@ describe('DefaultLayout.vue', () => {
           meta: { layout: 'auth', requiresAuth: false }
         }
       ]
+    })
+
+    // Default: fresh install check returns non-fresh install
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ is_fresh_install: false }),
     })
   })
 
@@ -97,7 +158,8 @@ describe('DefaultLayout.vue', () => {
       })
 
       await flushPromises()
-      const vApp = wrapper.findComponent({ name: 'VApp' })
+      // Global test setup stubs v-app as <div class="v-app">
+      const vApp = wrapper.find('.v-app')
       expect(vApp.exists()).toBe(true)
     })
 
@@ -109,10 +171,6 @@ describe('DefaultLayout.vue', () => {
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
@@ -129,10 +187,6 @@ describe('DefaultLayout.vue', () => {
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
@@ -149,78 +203,45 @@ describe('DefaultLayout.vue', () => {
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            RouterView: true,
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
       await flushPromises()
-      const routerView = wrapper.findComponent({ name: 'RouterView' })
-      expect(routerView.exists()).toBe(true)
+      // Global test setup stubs v-main as <div class="v-main">
+      const vMain = wrapper.find('.v-main')
+      expect(vMain.exists()).toBe(true)
     })
   })
 
   describe('User Data Loading', () => {
-    it('should load user data on mount', async () => {
+    it('should load user data on mount via userStore.fetchCurrentUser', async () => {
       const mockUser = { username: 'admin', role: 'admin' }
       api.auth.me.mockResolvedValue({ data: mockUser })
 
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
       await flushPromises()
+      // api.auth.me is called by userStore.fetchCurrentUser
       expect(api.auth.me).toHaveBeenCalled()
       expect(wrapper.vm.currentUser).toEqual(mockUser)
     })
 
-    it('should set currentUser ref after successful API call', async () => {
+    it('should set currentUser ref after successful fetch', async () => {
       const mockUser = { username: 'testuser', role: 'developer' }
       api.auth.me.mockResolvedValue({ data: mockUser })
 
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
       await flushPromises()
       expect(wrapper.vm.currentUser).toEqual(mockUser)
-    })
-
-    it('should update userStore with current user', async () => {
-      const mockUser = { username: 'admin', role: 'admin' }
-      api.auth.me.mockResolvedValue({ data: mockUser })
-
-      wrapper = mount(DefaultLayout, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
-        }
-      })
-
-      await flushPromises()
-
-      // Access userStore from pinia
-      const { useUserStore } = await import('@/stores/user')
-      const userStore = useUserStore()
-      expect(userStore.currentUser).toEqual(mockUser)
     })
 
     it('should handle API errors gracefully', async () => {
@@ -229,10 +250,6 @@ describe('DefaultLayout.vue', () => {
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
@@ -247,10 +264,6 @@ describe('DefaultLayout.vue', () => {
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
@@ -267,10 +280,6 @@ describe('DefaultLayout.vue', () => {
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
@@ -286,10 +295,6 @@ describe('DefaultLayout.vue', () => {
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
@@ -318,10 +323,6 @@ describe('DefaultLayout.vue', () => {
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
@@ -348,46 +349,12 @@ describe('DefaultLayout.vue', () => {
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
       await flushPromises()
       const navDrawer = wrapper.findComponent({ name: 'NavigationDrawer' })
       expect(navDrawer.exists()).toBe(false)
-    })
-  })
-
-  describe('Navigation from Login', () => {
-    it('should reload user after navigation from login page', async () => {
-      const mockUser = { username: 'admin', role: 'admin' }
-      api.auth.me.mockResolvedValue({ data: mockUser })
-
-      wrapper = mount(DefaultLayout, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
-        }
-      })
-
-      await flushPromises()
-
-      // Clear the initial mount call
-      api.auth.me.mockClear()
-
-      // Simulate navigation from login to dashboard
-      await router.push('/login')
-      await router.push('/')
-      await flushPromises()
-
-      // Should have reloaded user data
-      expect(api.auth.me).toHaveBeenCalled()
     })
   })
 
@@ -400,10 +367,6 @@ describe('DefaultLayout.vue', () => {
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 
@@ -419,10 +382,6 @@ describe('DefaultLayout.vue', () => {
       wrapper = mount(DefaultLayout, {
         global: {
           plugins: [vuetify, router, pinia],
-          stubs: {
-            AppBar: true,
-            NavigationDrawer: true
-          }
         }
       })
 

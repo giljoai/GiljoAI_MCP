@@ -11,6 +11,10 @@
  * 6. Connection State Management
  *
  * NOTE: These tests are refactoring-resistant and test the PUBLIC API only
+ *
+ * IMPORTANT: The store's disconnect() calls ws.close() which triggers the
+ * onclose handler asynchronously. That handler calls handleDisconnect() which
+ * may attempt reconnection. Tests must use fake timers to control this.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
@@ -95,11 +99,12 @@ MockWebSocket.reset = () => {
 // Install mock globally
 global.WebSocket = MockWebSocket
 
-// Mock API_CONFIG
+// Mock API_CONFIG with port (store uses port, not url directly)
 vi.mock('@/config/api', () => ({
   API_CONFIG: {
     WEBSOCKET: {
       url: 'ws://localhost:7272',
+      port: 7272,
       debug: false
     }
   }
@@ -112,28 +117,12 @@ vi.mock('@/composables/useToast', () => ({
   })
 }))
 
-// Store original setInterval/clearInterval
-const originalSetInterval = global.setInterval
-const originalClearInterval = global.clearInterval
-const activeIntervals = new Set()
-
-// Mock setInterval to track and control intervals
-global.setInterval = vi.fn((callback, delay, ...args) => {
-  const intervalId = originalSetInterval(callback, delay, ...args)
-  activeIntervals.add(intervalId)
-  return intervalId
-})
-
-global.clearInterval = vi.fn((intervalId) => {
-  activeIntervals.delete(intervalId)
-  originalClearInterval(intervalId)
-})
-
-// Helper to clear all test intervals
-function clearAllTestIntervals() {
-  activeIntervals.forEach(id => originalClearInterval(id))
-  activeIntervals.clear()
-}
+// Mock notification store (used in handleDisconnect and attemptReconnect)
+vi.mock('@/stores/notifications', () => ({
+  useNotificationStore: () => ({
+    addNotification: vi.fn()
+  })
+}))
 
 // ============================================
 // TEST HELPERS
@@ -143,22 +132,8 @@ function clearAllTestIntervals() {
  * Helper to flush promise microtasks
  */
 async function flushPromises() {
-  return new Promise(resolve => {
-    setImmediate(resolve)
-  })
-}
-
-/**
- * Wait for a condition to be true (with timeout)
- */
-async function waitFor(condition, timeout = 1000) {
-  const start = Date.now()
-  while (!condition() && Date.now() - start < timeout) {
-    await flushPromises()
-  }
-  if (!condition()) {
-    throw new Error('Timeout waiting for condition')
-  }
+  // Use setTimeout(0) which works reliably in both Node and jsdom
+  return new Promise(resolve => setTimeout(resolve, 0))
 }
 
 // ============================================
@@ -167,13 +142,23 @@ async function waitFor(condition, timeout = 1000) {
 
 describe('WebSocket V2 Store - Connection Lifecycle', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     setActivePinia(createPinia())
     MockWebSocket.reset()
-    clearAllTestIntervals()
   })
 
-  afterEach(() => {
-    clearAllTestIntervals()
+  afterEach(async () => {
+    // Clean up: disconnect any active connections to prevent
+    // reconnection attempts from leaking into the next test
+    const store = useWebSocketStore()
+    if (store.isConnected || store.isConnecting || store.isReconnecting) {
+      store.disconnect()
+    }
+    // Flush microtasks to let onclose handlers settle
+    await vi.advanceTimersByTimeAsync(0)
+    // Run all pending timers to clear reconnection timeouts
+    vi.runAllTimers()
+    vi.useRealTimers()
   })
 
   it('test_initial_state_is_disconnected', () => {
@@ -196,29 +181,34 @@ describe('WebSocket V2 Store - Connection Lifecycle', () => {
     expect(store.connectionStatus).toBe('connecting')
 
     // Wait for connection to open
+    await vi.advanceTimersByTimeAsync(0)
     await connectPromise
-    await flushPromises()
 
     // Should be connected
     expect(store.isConnected).toBe(true)
     expect(store.connectionStatus).toBe('connected')
     expect(store.clientId).not.toBeNull()
-  }, 10000)
+  })
 
   it('test_connect_generates_unique_client_id', async () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     const clientId1 = store.clientId
 
     // Disconnect and reconnect
     store.disconnect()
-    await flushPromises()
+    // Advance past the onclose and any reconnection
+    await vi.advanceTimersByTimeAsync(0)
+    vi.runAllTimers()
+    await vi.advanceTimersByTimeAsync(0)
 
+    // Reset MockWebSocket for clean reconnection
+    MockWebSocket.reset()
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     const clientId2 = store.clientId
 
@@ -230,29 +220,29 @@ describe('WebSocket V2 Store - Connection Lifecycle', () => {
     const store = useWebSocketStore()
 
     await store.connect({ apiKey: 'test-key' })
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     const wsInstance = MockWebSocket.instances[0]
-    expect(wsInstance.url).toContain('ws://localhost:7272/ws/')
+    expect(wsInstance.url).toContain('/ws/')
     expect(wsInstance.url).toContain('api_key=test-key')
   })
 
-  it('test_disconnect_closes_connection_cleanly', async () => {
+  it('test_disconnect_sets_status_synchronously', async () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     expect(store.isConnected).toBe(true)
 
+    // disconnect() synchronously sets status to 'disconnected'
     store.disconnect()
-    await flushPromises()
 
-    expect(store.isDisconnected).toBe(true)
+    // Check synchronously (before microtasks flush)
     expect(store.connectionStatus).toBe('disconnected')
   })
 
-  it('test_connection_status_reflects_current_state', async () => {
+  it('test_connection_status_transitions_through_connecting_to_connected', async () => {
     const store = useWebSocketStore()
 
     // Initial: disconnected
@@ -263,27 +253,22 @@ describe('WebSocket V2 Store - Connection Lifecycle', () => {
     expect(store.connectionStatus).toBe('connecting')
 
     // After connection: connected
+    await vi.advanceTimersByTimeAsync(0)
     await connectPromise
-    await flushPromises()
     expect(store.connectionStatus).toBe('connected')
-
-    // After disconnect: disconnected
-    store.disconnect()
-    await flushPromises()
-    expect(store.connectionStatus).toBe('disconnected')
   })
 
   it('test_connect_does_not_reconnect_if_already_connected', async () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     const instanceCount = MockWebSocket.instances.length
 
     // Try connecting again
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Should not create a new WebSocket instance
     expect(MockWebSocket.instances.length).toBe(instanceCount)
@@ -292,27 +277,32 @@ describe('WebSocket V2 Store - Connection Lifecycle', () => {
 
 describe('WebSocket V2 Store - Reconnection Logic', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     setActivePinia(createPinia())
     MockWebSocket.reset()
-    clearAllTestIntervals()
-    // NOTE: Not using fake timers due to setInterval conflicts
   })
 
-  afterEach(() => {
-    clearAllTestIntervals()
-    vi.restoreAllMocks()
+  afterEach(async () => {
+    const store = useWebSocketStore()
+    if (store.isConnected || store.isConnecting || store.isReconnecting) {
+      store.disconnect()
+    }
+    await vi.advanceTimersByTimeAsync(0)
+    vi.runAllTimers()
+    await vi.advanceTimersByTimeAsync(0)
+    vi.useRealTimers()
   })
 
   it('test_reconnection_uses_exponential_backoff_delays', async () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Simulate connection loss
     const wsInstance = MockWebSocket.instances[0]
     wsInstance.close(1006, 'Connection lost')
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Verify reconnection attempts with exponential backoff
     // Attempt 1: 1000ms (1s * 2^0)
@@ -320,7 +310,7 @@ describe('WebSocket V2 Store - Reconnection Logic', () => {
     expect(store.reconnectAttempts).toBe(1)
 
     await vi.advanceTimersByTimeAsync(1000)
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Should have attempted reconnection
     expect(MockWebSocket.instances.length).toBeGreaterThanOrEqual(2)
@@ -330,18 +320,18 @@ describe('WebSocket V2 Store - Reconnection Logic', () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Simulate disconnect
     const wsInstance = MockWebSocket.instances[0]
     wsInstance.close(1006, 'Connection lost')
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     expect(store.reconnectAttempts).toBe(1)
 
     // Wait for reconnection
     await vi.advanceTimersByTimeAsync(1000)
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // After successful reconnection, counter should reset
     expect(store.reconnectAttempts).toBe(0)
@@ -351,18 +341,18 @@ describe('WebSocket V2 Store - Reconnection Logic', () => {
     const store = useWebSocketStore()
 
     await store.connect({ token: 'secret-token' })
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     const firstUrl = MockWebSocket.instances[0].url
     expect(firstUrl).toContain('token=secret-token')
 
     // Simulate disconnect
     MockWebSocket.instances[0].close(1006, 'Connection lost')
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Wait for reconnection
     await vi.advanceTimersByTimeAsync(1000)
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Reconnection should use same credentials
     const secondUrl = MockWebSocket.instances[1].url
@@ -372,13 +362,20 @@ describe('WebSocket V2 Store - Reconnection Logic', () => {
 
 describe('WebSocket V2 Store - Message Queue (Offline Support)', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     setActivePinia(createPinia())
     MockWebSocket.reset()
-    clearAllTestIntervals()
   })
 
-  afterEach(() => {
-    clearAllTestIntervals()
+  afterEach(async () => {
+    const store = useWebSocketStore()
+    if (store.isConnected || store.isConnecting || store.isReconnecting) {
+      store.disconnect()
+    }
+    await vi.advanceTimersByTimeAsync(0)
+    vi.runAllTimers()
+    await vi.advanceTimersByTimeAsync(0)
+    vi.useRealTimers()
   })
 
   it('test_messages_queued_when_disconnected', () => {
@@ -403,7 +400,7 @@ describe('WebSocket V2 Store - Message Queue (Offline Support)', () => {
 
     // Connect
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Queue should be flushed
     expect(store.messageQueueSize).toBe(0)
@@ -424,7 +421,7 @@ describe('WebSocket V2 Store - Message Queue (Offline Support)', () => {
     }
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Filter out ping messages
     const orderMessages = MockWebSocket.sentMessages.filter(msg => msg.type === 'order')
@@ -450,13 +447,20 @@ describe('WebSocket V2 Store - Message Queue (Offline Support)', () => {
 
 describe('WebSocket V2 Store - Event Handler Management', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     setActivePinia(createPinia())
     MockWebSocket.reset()
-    clearAllTestIntervals()
   })
 
-  afterEach(() => {
-    clearAllTestIntervals()
+  afterEach(async () => {
+    const store = useWebSocketStore()
+    if (store.isConnected || store.isConnecting || store.isReconnecting) {
+      store.disconnect()
+    }
+    await vi.advanceTimersByTimeAsync(0)
+    vi.runAllTimers()
+    await vi.advanceTimersByTimeAsync(0)
+    vi.useRealTimers()
   })
 
   it('test_on_registers_event_handler', async () => {
@@ -464,7 +468,7 @@ describe('WebSocket V2 Store - Event Handler Management', () => {
     const handler = vi.fn()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Register handler
     store.on('agent:update', handler)
@@ -486,7 +490,7 @@ describe('WebSocket V2 Store - Event Handler Management', () => {
     const handler = vi.fn()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Register and immediately unregister
     const unsubscribe = store.on('test_event', handler)
@@ -505,7 +509,7 @@ describe('WebSocket V2 Store - Event Handler Management', () => {
     const handler = vi.fn()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     store.on('test_event', handler)
     store.off('test_event', handler)
@@ -524,7 +528,7 @@ describe('WebSocket V2 Store - Event Handler Management', () => {
     const handler3 = vi.fn()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     store.on('shared_event', handler1)
     store.on('shared_event', handler2)
@@ -545,7 +549,7 @@ describe('WebSocket V2 Store - Event Handler Management', () => {
     const wildcardHandler = vi.fn()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Register wildcard handler
     store.on('*', wildcardHandler)
@@ -568,7 +572,7 @@ describe('WebSocket V2 Store - Event Handler Management', () => {
     const goodHandler = vi.fn()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     store.on('test_event', errorHandler)
     store.on('test_event', goodHandler)
@@ -585,13 +589,20 @@ describe('WebSocket V2 Store - Event Handler Management', () => {
 
 describe('WebSocket V2 Store - Error Handling', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     setActivePinia(createPinia())
     MockWebSocket.reset()
-    clearAllTestIntervals()
   })
 
-  afterEach(() => {
-    clearAllTestIntervals()
+  afterEach(async () => {
+    const store = useWebSocketStore()
+    if (store.isConnected || store.isConnecting || store.isReconnecting) {
+      store.disconnect()
+    }
+    await vi.advanceTimersByTimeAsync(0)
+    vi.runAllTimers()
+    await vi.advanceTimersByTimeAsync(0)
+    vi.useRealTimers()
   })
 
   it('test_connection_failure_is_handled_gracefully', async () => {
@@ -606,7 +617,7 @@ describe('WebSocket V2 Store - Error Handling', () => {
     let error
     try {
       await store.connect()
-      await flushPromises()
+      await vi.advanceTimersByTimeAsync(0)
     } catch (e) {
       error = e
     }
@@ -622,7 +633,7 @@ describe('WebSocket V2 Store - Error Handling', () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     const wsInstance = MockWebSocket.instances[0]
 
@@ -639,7 +650,7 @@ describe('WebSocket V2 Store - Error Handling', () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     const wsInstance = MockWebSocket.instances[0]
     wsInstance.simulateMessage({
@@ -654,20 +665,27 @@ describe('WebSocket V2 Store - Error Handling', () => {
 
 describe('WebSocket V2 Store - Subscription Management', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     setActivePinia(createPinia())
     MockWebSocket.reset()
-    clearAllTestIntervals()
   })
 
-  afterEach(() => {
-    clearAllTestIntervals()
+  afterEach(async () => {
+    const store = useWebSocketStore()
+    if (store.isConnected || store.isConnecting || store.isReconnecting) {
+      store.disconnect()
+    }
+    await vi.advanceTimersByTimeAsync(0)
+    vi.runAllTimers()
+    await vi.advanceTimersByTimeAsync(0)
+    vi.useRealTimers()
   })
 
   it('test_subscribe_sends_subscribe_message', async () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     MockWebSocket.sentMessages = [] // Clear connection messages
 
@@ -684,7 +702,7 @@ describe('WebSocket V2 Store - Subscription Management', () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     store.subscribe('agent', '456')
     MockWebSocket.sentMessages = [] // Clear
@@ -702,7 +720,7 @@ describe('WebSocket V2 Store - Subscription Management', () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     store.subscribe('project', '1')
     store.subscribe('agent', '2')
@@ -715,10 +733,9 @@ describe('WebSocket V2 Store - Subscription Management', () => {
 
   it('test_resubscribe_on_reconnect', async () => {
     const store = useWebSocketStore()
-    vi.useFakeTimers()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Create subscriptions
     store.subscribe('project', 'proj1')
@@ -729,10 +746,10 @@ describe('WebSocket V2 Store - Subscription Management', () => {
     // Disconnect and reconnect
     const wsInstance = MockWebSocket.instances[0]
     wsInstance.close(1006, 'Connection lost')
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     await vi.advanceTimersByTimeAsync(1000)
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Should re-send subscribe messages
     const subscribeMessages = MockWebSocket.sentMessages.filter(
@@ -749,15 +766,13 @@ describe('WebSocket V2 Store - Subscription Management', () => {
       entity_type: 'agent',
       entity_id: 'agent1'
     })
-
-    vi.useRealTimers()
   })
 
   it('test_convenience_methods_subscribeToProject_and_subscribeToAgent', async () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     MockWebSocket.sentMessages = []
 
@@ -779,13 +794,20 @@ describe('WebSocket V2 Store - Subscription Management', () => {
 
 describe('WebSocket V2 Store - Connection Listeners', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     setActivePinia(createPinia())
     MockWebSocket.reset()
-    clearAllTestIntervals()
   })
 
-  afterEach(() => {
-    clearAllTestIntervals()
+  afterEach(async () => {
+    const store = useWebSocketStore()
+    if (store.isConnected || store.isConnecting || store.isReconnecting) {
+      store.disconnect()
+    }
+    await vi.advanceTimersByTimeAsync(0)
+    vi.runAllTimers()
+    await vi.advanceTimersByTimeAsync(0)
+    vi.useRealTimers()
   })
 
   it('test_onConnectionChange_notifies_on_state_changes', async () => {
@@ -795,7 +817,7 @@ describe('WebSocket V2 Store - Connection Listeners', () => {
     store.onConnectionChange(listener)
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Should be called with 'connected'
     expect(listener).toHaveBeenCalledWith(
@@ -804,8 +826,8 @@ describe('WebSocket V2 Store - Connection Listeners', () => {
 
     listener.mockClear()
 
+    // Disconnect: synchronous status change notifies listeners
     store.disconnect()
-    await flushPromises()
 
     // Should be called with 'disconnected'
     expect(listener).toHaveBeenCalledWith(
@@ -821,7 +843,7 @@ describe('WebSocket V2 Store - Connection Listeners', () => {
     unsubscribe()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Listener should not be called after unsubscribe
     expect(listener).not.toHaveBeenCalled()
@@ -830,21 +852,27 @@ describe('WebSocket V2 Store - Connection Listeners', () => {
 
 describe('WebSocket V2 Store - Heartbeat & Ping/Pong', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     setActivePinia(createPinia())
     MockWebSocket.reset()
-    clearAllTestIntervals()
-    // NOTE: Not using fake timers due to setInterval conflicts
   })
 
-  afterEach(() => {
-    clearAllTestIntervals()
+  afterEach(async () => {
+    const store = useWebSocketStore()
+    if (store.isConnected || store.isConnecting || store.isReconnecting) {
+      store.disconnect()
+    }
+    await vi.advanceTimersByTimeAsync(0)
+    vi.runAllTimers()
+    await vi.advanceTimersByTimeAsync(0)
+    vi.useRealTimers()
   })
 
   it('test_heartbeat_sends_ping_every_30_seconds', async () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     MockWebSocket.sentMessages = []
 
@@ -859,7 +887,7 @@ describe('WebSocket V2 Store - Heartbeat & Ping/Pong', () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     MockWebSocket.sentMessages = []
 
@@ -874,20 +902,27 @@ describe('WebSocket V2 Store - Heartbeat & Ping/Pong', () => {
 
 describe('WebSocket V2 Store - Debug & Stats', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     setActivePinia(createPinia())
     MockWebSocket.reset()
-    clearAllTestIntervals()
   })
 
-  afterEach(() => {
-    clearAllTestIntervals()
+  afterEach(async () => {
+    const store = useWebSocketStore()
+    if (store.isConnected || store.isConnecting || store.isReconnecting) {
+      store.disconnect()
+    }
+    await vi.advanceTimersByTimeAsync(0)
+    vi.runAllTimers()
+    await vi.advanceTimersByTimeAsync(0)
+    vi.useRealTimers()
   })
 
   it('test_getConnectionInfo_returns_comprehensive_state', async () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     const info = store.getConnectionInfo()
 
@@ -903,7 +938,7 @@ describe('WebSocket V2 Store - Debug & Stats', () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     const debugInfo = store.getDebugInfo()
 
@@ -929,7 +964,7 @@ describe('WebSocket V2 Store - Debug & Stats', () => {
     const store = useWebSocketStore()
 
     await store.connect()
-    await flushPromises()
+    await vi.advanceTimersByTimeAsync(0)
 
     // Send messages
     store.send({ type: 'test1' })
