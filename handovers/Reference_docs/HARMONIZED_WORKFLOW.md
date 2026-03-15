@@ -112,7 +112,7 @@ Terminal Process:
         - Reads Product.description (user input)
         - Reads Project.description (user input)
         - Reads vision documents (chunked)
-        - Reads all context based on priority settings
+        - Reads all context based on toggle/depth settings
      c. Create mission based on context
      d. update_project_mission() - PERSIST to database
         - Saves to Project.mission field
@@ -286,12 +286,10 @@ Agents wait for dependencies
 - **After**: 450-550 token thin client prompts
 - **Method**: Mission fetched via MCP tools, not embedded
 
-### 2. Context Prioritization
-User configurable in: My Settings → Context → Priority Configuration
-- Priority 1: CRITICAL (always included)
-- Priority 2: IMPORTANT (usually included)
-- Priority 3: NICE_TO_HAVE (if space allows)
-- Priority 4: EXCLUDED (never included)
+### 2. Context Configuration
+User configurable in: My Settings → Context Configuration
+- Enabled (toggle: true): Category included with configured depth
+- Disabled (toggle: false): Category excluded entirely
 
 ### 3. Agent Template Management
 - **Max Active**: 8 agent types at once
