@@ -3,8 +3,16 @@
 **Date:** 2026-03-15
 **Priority:** High
 **Estimated Complexity:** 2-3 hours
-**Status:** In Progress
+**Status:** Completed
 **Edition Scope:** CE
+
+## Completion Summary
+
+**Completed:** 2026-03-15
+**Commit:** `8f72151c` -- All fixes in single commit.
+**Result:** 60s timeout fallback, computed extraction, WS try/catch, chip cleanup, mock fixes in 3 test files, rewritten ProjectTabs.spec.js (31 tests), rewritten 0287.spec.js (6 tests), new memoryGate.spec.js (10 tests). 56 tests passing.
+
+---
 
 ## Task Summary
 
