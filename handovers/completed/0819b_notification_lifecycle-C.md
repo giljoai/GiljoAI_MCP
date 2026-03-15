@@ -5,7 +5,7 @@
 **To Agent:** Next Session (tdd-implementor)
 **Priority:** Medium
 **Estimated Complexity:** 1-2 hours
-**Status:** Not Started
+**Status:** Completed (2026-03-15)
 **Edition Scope:** CE
 
 ## Task Summary
@@ -245,3 +245,21 @@ Write tests in `frontend/tests/stores/notifications.clearing.test.js`:
 ## Rollback Plan
 
 Revert changes to `notifications.js`, `ProjectTabs.vue`, `ProjectsView.vue`, `user.js`. No backend or database changes.
+
+## Implementation Summary
+
+### What Was Built
+- `clearForProject(projectId)` filters notifications by `metadata.project_id`
+- `clearAll()` empties the store (used on logout for tenant isolation)
+- `removeNotification(id)` bonus single-removal action
+- All three terminal paths wired: CloseoutModal, ManualCloseoutModal, Cancel
+- Logout reset via dynamic import in user.js `finally` block
+
+### Files Modified
+- `frontend/src/stores/notifications.js` (3 new actions + exports)
+- `frontend/src/components/projects/ProjectTabs.vue` (import, instantiation, clearForProject call)
+- `frontend/src/views/ProjectsView.vue` (import, instantiation, cancel + closeout clearing)
+- `frontend/src/stores/user.js` (clearAll on logout)
+
+### Tests
+41/41 passing in `frontend/tests/stores/notifications.spec.js`.
