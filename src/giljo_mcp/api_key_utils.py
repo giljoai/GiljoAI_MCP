@@ -30,7 +30,7 @@ Usage Example:
 
 import secrets
 
-from passlib.hash import bcrypt
+import bcrypt
 
 
 def generate_api_key() -> str:
@@ -79,7 +79,7 @@ def hash_api_key(api_key: str) -> str:
         >>> key_hash.startswith("$2b$")  # Bcrypt format
         True
     """
-    return bcrypt.hash(api_key)
+    return bcrypt.hashpw(api_key.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_api_key(api_key: str, key_hash: str) -> bool:
@@ -103,7 +103,7 @@ def verify_api_key(api_key: str, key_hash: str) -> bool:
         >>> verify_api_key("gk_wrong", key_hash)
         False
     """
-    return bcrypt.verify(api_key, key_hash)
+    return bcrypt.checkpw(api_key.encode("utf-8"), key_hash.encode("utf-8"))
 
 
 def get_key_prefix(api_key: str, length: int = 12) -> str:

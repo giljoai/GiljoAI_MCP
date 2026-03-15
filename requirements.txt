@@ -17,8 +17,7 @@ psycopg2-binary>=2.9.0      # PostgreSQL driver (sync)
 asyncpg>=0.29.0             # PostgreSQL driver (async)
 
 # Authentication & Security
-passlib[bcrypt]>=1.7.4            # Password hashing
-bcrypt>=3.2.0,<4.0.0              # bcrypt backend (pinned: passlib 1.7.4 incompatible with 4.x+)
+bcrypt>=4.0.0                      # Password hashing (direct bcrypt, no passlib wrapper)
 cryptography>=42.0.0              # Fernet encryption for auth tokens (auth_manager.py)
 python-multipart>=0.0.6           # Form data and file upload support
 PyJWT>=2.8.0                      # JWT token handling (using PyJWT instead of python-jose)

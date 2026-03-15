@@ -9,6 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.js'],
     include: ['tests/**/*.spec.js', 'tests/**/*.spec.ts', 'tests/**/*.spec.vue', 'src/**/*.spec.js', 'src/**/*.spec.ts', 'src/**/*.spec.vue'],
+    exclude: ['tests/e2e/**', '**/node_modules/**'],
     deps: {
       inline: ['vuetify']
     },

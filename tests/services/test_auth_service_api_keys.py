@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from passlib.hash import bcrypt
+import bcrypt
 from sqlalchemy import select
 
 from src.giljo_mcp.exceptions import ResourceNotFoundError
@@ -39,7 +39,7 @@ async def auth_api_key(db_session, auth_user_with_password):
         tenant_key=user.tenant_key,
         user_id=user.id,
         name=f"Test API Key {unique_id}",
-        key_hash=bcrypt.hash(raw_key),
+        key_hash=bcrypt.hashpw(raw_key.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         key_prefix="gk_test_key_",
         permissions=["*"],
         is_active=True,

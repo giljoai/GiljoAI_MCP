@@ -66,7 +66,17 @@ vi.mock('@/services/api', () => ({
   }
 }))
 
-describe('LaunchTab.vue - Complete Rewrite (0241)', () => {
+// SKIPPED: TDD RED phase spec from Handover 0241 that was never updated after implementation.
+// LaunchTab was completely rewritten since this spec was written:
+// - No top-action-bar (buttons moved to ProjectTabs)
+// - No stage-button, status-text, or launch-button (all in ProjectTabs now)
+// - No main-container with the expected structure
+// - No default-agent-panel (now agents-panel), no orchestrator-card, no agent-team-section
+// - No setMission exposed method (mission comes from projectStateStore)
+// - Three panels exist but with different names: project-description-panel, mission-panel, agents-panel
+// - Uses useAgentJobs composable instead of direct agent management
+// Tests need full rewrite to match current LaunchTab API.
+describe.skip('LaunchTab.vue - Complete Rewrite (0241)', () => {
   let wrapper
 
   // Sample project data

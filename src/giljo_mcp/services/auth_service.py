@@ -28,7 +28,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from passlib.hash import bcrypt
+import bcrypt
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -149,7 +149,7 @@ class AuthService:
         user = result.scalar_one_or_none()
 
         # Verify user exists and password matches
-        if not user or not bcrypt.verify(password, user.password_hash):
+        if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash.encode("utf-8")):
             self._logger.warning(
                 f"Authentication failed for username: {username}",
                 extra={"username": username, "reason": "invalid_credentials"},
@@ -549,7 +549,7 @@ class AuthService:
                 )
 
         # Hash password
-        password_hash = bcrypt.hash(password)
+        password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         # Generate per-user tenant key
         tenant_key = TenantManager.generate_tenant_key(username)
@@ -770,7 +770,7 @@ class AuthService:
             )
 
         # Hash password
-        password_hash = bcrypt.hash(password)
+        password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         # Generate secure tenant key
         tenant_key = TenantManager.generate_tenant_key(username)

@@ -19,7 +19,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import JobsTab from './JobsTab.vue'
+import JobsTab from '@/components/projects/JobsTab.vue'
 
 // Mock WebSocket service
 const mockWebSocket = {

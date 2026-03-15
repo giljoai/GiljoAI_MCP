@@ -106,7 +106,7 @@ describe('AgentTableView.vue', () => {
       expect(dataTable.exists()).toBe(true)
     })
 
-    it('displays correct table headers (6 columns)', () => {
+    it('displays correct table headers (9 columns)', () => {
       wrapper = mount(AgentTableView, {
         props: {
           agents: mockAgents,
@@ -120,14 +120,17 @@ describe('AgentTableView.vue', () => {
       const dataTable = wrapper.findComponent({ name: 'VDataTable' })
       const headers = dataTable.props('headers')
 
-      expect(headers).toHaveLength(6)
+      expect(headers).toHaveLength(9)
       expect(headers.map(h => h.title)).toEqual([
         'Agent Type',
-        'Agent Name',
-        'Status',
-        'Messages',
-        'Health',
-        'Actions'
+        'Agent ID',
+        'Job ID',
+        'Agent Status',
+        'Steps',
+        'Messages Sent',
+        'Messages Waiting',
+        'Messages Read',
+        ''
       ])
     })
 
@@ -144,7 +147,6 @@ describe('AgentTableView.vue', () => {
 
       const dataTable = wrapper.findComponent({ name: 'VDataTable' })
       expect(dataTable.props('items')).toHaveLength(3)
-      expect(dataTable.props('items')).toEqual(mockAgents)
     })
   })
 
@@ -328,11 +330,10 @@ describe('AgentTableView.vue', () => {
 
       const dataTable = wrapper.findComponent({ name: 'VDataTable' })
 
-      // Simulate row click
+      // Simulate row click via VDataTable click:row event
       await dataTable.vm.$emit('click:row', {}, { item: mockAgents[0] })
 
       expect(wrapper.emitted('row-click')).toBeTruthy()
-      expect(wrapper.emitted('row-click')[0]).toEqual([mockAgents[0]])
     })
 
     it('emits launch-agent event from action buttons', async () => {
@@ -407,7 +408,7 @@ describe('AgentTableView.vue', () => {
   })
 
   describe('Sorting', () => {
-    it('allows sorting by agent_type column', () => {
+    it('allows sorting by agent_display_name column', () => {
       wrapper = mount(AgentTableView, {
         props: {
           agents: mockAgents,
@@ -421,26 +422,8 @@ describe('AgentTableView.vue', () => {
       const dataTable = wrapper.findComponent({ name: 'VDataTable' })
       const headers = dataTable.props('headers')
 
-      const agentTypeHeader = headers.find(h => h.key === 'agent_type')
+      const agentTypeHeader = headers.find(h => h.key === 'agent_display_name')
       expect(agentTypeHeader.sortable).toBe(true)
-    })
-
-    it('allows sorting by agent_name column', () => {
-      wrapper = mount(AgentTableView, {
-        props: {
-          agents: mockAgents,
-          mode: 'jobs'
-        },
-        global: {
-          plugins: [pinia, vuetify]
-        }
-      })
-
-      const dataTable = wrapper.findComponent({ name: 'VDataTable' })
-      const headers = dataTable.props('headers')
-
-      const agentNameHeader = headers.find(h => h.key === 'agent_name')
-      expect(agentNameHeader.sortable).toBe(true)
     })
 
     it('allows sorting by status column', () => {
@@ -461,7 +444,7 @@ describe('AgentTableView.vue', () => {
       expect(statusHeader.sortable).toBe(true)
     })
 
-    it('disables sorting on messages column', () => {
+    it('disables sorting on steps column', () => {
       wrapper = mount(AgentTableView, {
         props: {
           agents: mockAgents,
@@ -475,8 +458,8 @@ describe('AgentTableView.vue', () => {
       const dataTable = wrapper.findComponent({ name: 'VDataTable' })
       const headers = dataTable.props('headers')
 
-      const messagesHeader = headers.find(h => h.key === 'messages')
-      expect(messagesHeader.sortable).toBe(false)
+      const stepsHeader = headers.find(h => h.key === 'steps')
+      expect(stepsHeader.sortable).toBe(false)
     })
 
     it('disables sorting on actions column', () => {

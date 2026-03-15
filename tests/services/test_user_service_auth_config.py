@@ -12,7 +12,7 @@ provided by tests/services/conftest.py.
 from uuid import uuid4
 
 import pytest
-from passlib.hash import bcrypt
+import bcrypt
 
 from src.giljo_mcp.exceptions import (
     AuthenticationError,
@@ -40,7 +40,7 @@ async def test_change_password_success(user_service, test_user, db_session):
 
     # Verify new password works
     await db_session.refresh(test_user)
-    assert bcrypt.verify(new_password, test_user.password_hash)
+    assert bcrypt.checkpw(new_password.encode("utf-8"), test_user.password_hash.encode("utf-8"))
 
 
 @pytest.mark.asyncio
@@ -70,7 +70,7 @@ async def test_change_password_admin_bypass(user_service, test_user, db_session)
     assert result is None
 
     await db_session.refresh(test_user)
-    assert bcrypt.verify(new_password, test_user.password_hash)
+    assert bcrypt.checkpw(new_password.encode("utf-8"), test_user.password_hash.encode("utf-8"))
 
 
 # ============================================================================
@@ -87,7 +87,7 @@ async def test_reset_password_sets_default(user_service, test_user, db_session):
     assert result is None
 
     await db_session.refresh(test_user)
-    assert bcrypt.verify("GiljoMCP", test_user.password_hash)
+    assert bcrypt.checkpw("GiljoMCP".encode("utf-8"), test_user.password_hash.encode("utf-8"))
     assert test_user.must_change_password is True
 
 
@@ -181,7 +181,7 @@ async def test_get_field_priority_config_defaults(user_service, test_user):
     config = await user_service.get_field_priority_config(test_user.id)
 
     assert isinstance(config, dict)
-    assert config["version"] in ["2.0", "2.1"]  # Version may vary
+    assert config["version"] in ["2.0", "2.1", "3.0"]  # Version may vary
     assert "priorities" in config
 
 
@@ -194,8 +194,8 @@ async def test_get_field_priority_config_defaults(user_service, test_user):
 async def test_update_field_priority_config_success(user_service, test_user, db_session):
     """Test successful field priority config update"""
     new_config = {
-        "version": "2.0",
-        "priorities": {"product_core": 1, "vision_documents": 1, "agent_templates": 2, "project_description": 3},
+        "version": "3.0",
+        "priorities": {"product_core": True, "vision_documents": True, "agent_templates": False, "project_description": True},
     }
 
     result = await user_service.update_field_priority_config(user_id=test_user.id, config=new_config)
