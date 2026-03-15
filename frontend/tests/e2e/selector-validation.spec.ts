@@ -256,32 +256,6 @@ test.describe('Data-TestID Selector Validation', () => {
   // ContextPriorityConfig.vue Tests
   // ========================================
 
-  test('ContextPriorityConfig - priority-* dynamic selectors exist', async ({ page }) => {
-    await navigateToSettings(page)
-
-    // Click on context tab if not already visible
-    const contextTab = page.locator('[data-testid="context-settings-tab"]')
-    await contextTab.click()
-    await page.waitForLoadState('networkidle')
-
-    // Check for dynamic priority selectors (priority-product-core, priority-vision-docs, etc)
-    const prioritySelectors = page.locator('[data-testid^="priority-"]')
-    const count = await prioritySelectors.count()
-
-    console.log(`[INFO] Found ${count} priority-* selectors`)
-
-    if (count > 0) {
-      console.log('[PASS] ContextPriorityConfig priority-* selectors found')
-      expect(count).toBeGreaterThan(0)
-
-      // Verify first one is visible
-      const firstSelector = prioritySelectors.first()
-      await expect(firstSelector).toBeVisible()
-    } else {
-      console.log('[FAIL] ContextPriorityConfig priority-* selectors NOT found')
-    }
-  })
-
   test('ContextPriorityConfig - depth-* dynamic selectors exist', async ({ page }) => {
     await navigateToSettings(page)
 
@@ -451,29 +425,25 @@ test.describe('Selector Integration Tests', () => {
   })
 
   /**
-   * Test that ContextPriorityConfig selectors are rendered in context tab
+   * Test that ContextPriorityConfig depth selectors are rendered in context tab
    */
-  test('ContextPriorityConfig selectors appear in context tab', async ({ page }) => {
+  test('ContextPriorityConfig depth selectors appear in context tab', async ({ page }) => {
     await navigateToSettings(page)
 
     const contextTab = page.locator('[data-testid="context-settings-tab"]')
     await contextTab.click()
     await page.waitForLoadState('networkidle')
 
-    const prioritySelectors = page.locator('[data-testid^="priority-"]')
     const depthSelectors = page.locator('[data-testid^="depth-"]')
-
-    const priorityCount = await prioritySelectors.count()
     const depthCount = await depthSelectors.count()
 
-    console.log(`[INFO] Priority selectors: ${priorityCount}, Depth selectors: ${depthCount}`)
+    console.log(`[INFO] Depth selectors: ${depthCount}`)
 
-    if (priorityCount > 0 && depthCount > 0) {
-      console.log('[PASS] ContextPriorityConfig selectors visible in context tab')
-      expect(priorityCount).toBeGreaterThan(0)
+    if (depthCount > 0) {
+      console.log('[PASS] ContextPriorityConfig depth selectors visible in context tab')
       expect(depthCount).toBeGreaterThan(0)
     } else {
-      console.log('[WARN] Some ContextPriorityConfig selectors missing')
+      console.log('[WARN] ContextPriorityConfig depth selectors missing')
     }
   })
 })

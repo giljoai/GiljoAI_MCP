@@ -34,8 +34,8 @@ class TestGetOrchestratorInstructions:
     """Tests for get_orchestrator_instructions() method."""
 
     @pytest.mark.asyncio
-    async def test_returns_framing_based_context(self, db_session: AsyncSession, test_product, test_project):
-        """Test returns identity, project_description_inline, context_fetch_instructions, agent_templates."""
+    async def test_returns_toggle_based_context(self, db_session: AsyncSession, test_product, test_project):
+        """Test returns identity, project_description_inline, context_fetch_instructions (list), agent_templates."""
         # Ensure test_product uses same tenant_key as test_project
         test_product.tenant_key = test_project.tenant_key
         await db_session.commit()
@@ -94,7 +94,7 @@ class TestGetOrchestratorInstructions:
         assert "mission" in result["project_description_inline"]
 
         assert "context_fetch_instructions" in result
-        assert isinstance(result["context_fetch_instructions"], dict)
+        assert isinstance(result["context_fetch_instructions"], list)
 
         assert "agent_templates" in result
         assert isinstance(result["agent_templates"], list)

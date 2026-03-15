@@ -10,7 +10,7 @@ This document provides ready-to-use test examples for each validated selector.
 2. [CloseoutModal Component Tests](#closeoutmodal-component-tests)
 3. [MessageItem Component Tests](#messageitem-component-tests)
 4. [UserSettings Component Tests](#usersettings-component-tests)
-5. [ContextPriorityConfig Component Tests](#contextpriorityconfig-component-tests)
+5. [ContextFieldConfig Component Tests](#contextfieldconfig-component-tests)
 6. [GitIntegrationCard Component Tests](#gitintegrationcard-component-tests)
 7. [TemplateManager Component Tests](#templatemanager-component-tests)
 8. [ProjectsView Component Tests](#projectsview-component-tests)
@@ -384,7 +384,7 @@ describe('UserSettings - Tab Navigation', () => {
     wrapper = mount(UserSettings, {
       global: {
         stubs: {
-          'ContextPriorityConfig': true,
+          'ContextFieldConfig': true,
           'TemplateManager': true,
           'ApiKeyManager': true,
           'SlashCommandSetup': true,
@@ -451,41 +451,41 @@ describe('UserSettings - Tab Navigation', () => {
 
 ---
 
-## ContextPriorityConfig Component Tests
+## ContextFieldConfig Component Tests
 
-### Unit Test: Dynamic Priority Selectors
+### Unit Test: Toggle and Depth Selectors
 
 ```javascript
-// File: tests/components/settings/ContextPriorityConfig.test.js
+// File: tests/components/settings/ContextFieldConfig.test.js
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
+import ContextFieldConfig from '@/components/settings/ContextFieldConfig.vue'
 
-describe('ContextPriorityConfig - Dynamic Selectors', () => {
+describe('ContextFieldConfig - Toggle and Depth Selectors', () => {
   let wrapper
 
   beforeEach(() => {
-    wrapper = mount(ContextPriorityConfig, {
+    wrapper = mount(ContextFieldConfig, {
       props: {
         gitIntegrationEnabled: true
       }
     })
   })
 
-  it('renders priority selectors for all contexts', () => {
-    const prioritySelectors = [
-      'priority-product-core',
-      'priority-vision-documents',
-      'priority-tech-stack',
-      'priority-architecture',
-      'priority-testing',
-      'priority-360-memory',
-      'priority-git-history',
-      'priority-agent-templates'
+  it('renders toggle switches for all contexts', () => {
+    const toggleSelectors = [
+      'toggle-product-core',
+      'toggle-vision-documents',
+      'toggle-tech-stack',
+      'toggle-architecture',
+      'toggle-testing',
+      'toggle-360-memory',
+      'toggle-git-history',
+      'toggle-agent-templates'
     ]
 
-    prioritySelectors.forEach(selector => {
+    toggleSelectors.forEach(selector => {
       const element = wrapper.find(`[data-testid="${selector}"]`)
       expect(element.exists()).toBe(true)
     })
@@ -508,40 +508,37 @@ describe('ContextPriorityConfig - Dynamic Selectors', () => {
     })
   })
 
-  it('priority selectors are v-select components', () => {
-    const select = wrapper.find('[data-testid="priority-vision-documents"]')
-    expect(select.classes()).toContain('v-select')
+  it('toggle selectors are v-switch components', () => {
+    const toggle = wrapper.find('[data-testid="toggle-vision-documents"]')
+    expect(toggle.classes()).toContain('v-switch')
   })
 
-  it('can update priority value', async () => {
-    const selector = wrapper.find('[data-testid="priority-vision-documents"]')
-    await selector.find('select').setValue('critical')
+  it('can toggle a context field on and off', async () => {
+    const toggle = wrapper.find('[data-testid="toggle-vision-documents"]')
+    await toggle.find('input').trigger('click')
 
-    expect(wrapper.vm.config.vision_documents.priority).toBe('critical')
+    expect(wrapper.vm.config.vision_documents.enabled).toBe(false)
   })
 
-  it('disables selectors when context is disabled', async () => {
-    // First, disable the context
+  it('disables depth selector when context is toggled off', async () => {
     await wrapper.vm.toggleContext('vision_documents')
 
-    const selector = wrapper.find('[data-testid="priority-vision-documents"]')
-    expect(selector.attributes('disabled')).toBeDefined()
+    const depthSelector = wrapper.find('[data-testid="depth-vision-documents"]')
+    expect(depthSelector.attributes('disabled')).toBeDefined()
   })
 
-  it('enables selectors when context is enabled', async () => {
-    // Ensure context is enabled
+  it('enables depth selector when context is toggled on', async () => {
     wrapper.vm.config.vision_documents.enabled = true
     await wrapper.vm.$nextTick()
 
-    const selector = wrapper.find('[data-testid="priority-vision-documents"]')
-    expect(selector.attributes('disabled')).toBeUndefined()
+    const depthSelector = wrapper.find('[data-testid="depth-vision-documents"]')
+    expect(depthSelector.attributes('disabled')).toBeUndefined()
   })
 
   it('depth selector options vary by context', () => {
     const visionDepth = wrapper.find('[data-testid="depth-vision-documents"]')
     const techStackDepth = wrapper.find('[data-testid="depth-tech-stack"]')
 
-    // Both should have options but they might differ
     expect(visionDepth.exists()).toBe(true)
     expect(techStackDepth.exists()).toBe(true)
   })
@@ -806,9 +803,9 @@ describe('Integration - Project Workflow', () => {
 
     expect(wrapper.vm.activeTab).toBe('context')
 
-    // Step 2: Configure priorities
-    const prioritySelector = wrapper.find('[data-testid="priority-vision-documents"]')
-    await prioritySelector.find('select').setValue('critical')
+    // Step 2: Toggle context fields on/off
+    const toggleSwitch = wrapper.find('[data-testid="toggle-vision-documents"]')
+    await toggleSwitch.find('input').trigger('click')
 
     // Step 3: Configure depth
     const depthSelector = wrapper.find('[data-testid="depth-vision-documents"]')
@@ -882,10 +879,10 @@ test.describe('Complete GiljoAI Workflow', () => {
     await page.click('[data-testid="context-settings-tab"]')
     await page.waitForTimeout(300)
 
-    // Set priority for vision documents
-    const prioritySelect = page.locator('[data-testid="priority-vision-documents"]')
-    await expect(prioritySelect).toBeVisible()
-    await prioritySelect.selectOption('critical')
+    // Toggle vision documents context on
+    const toggleSwitch = page.locator('[data-testid="toggle-vision-documents"]')
+    await expect(toggleSwitch).toBeVisible()
+    await toggleSwitch.click()
 
     // Set depth for vision documents
     const depthSelect = page.locator('[data-testid="depth-vision-documents"]')

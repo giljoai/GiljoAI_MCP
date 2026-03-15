@@ -241,42 +241,7 @@ test.describe('Data-TestID Selector Validation', () => {
   })
 
   // ============================================================================
-  // SELECTOR 11: ContextPriorityConfig.vue - Dynamic priority-* selectors
-  // ============================================================================
-  test('ContextPriorityConfig: Dynamic priority-* selectors exist', async ({ page }) => {
-    // Click context tab
-    await page.click('[data-testid="context-settings-tab"]')
-    await page.waitForTimeout(500)
-
-    // Look for priority selectors
-    const prioritySelectors = [
-      'priority-product-core',
-      'priority-vision-documents',
-      'priority-tech-stack',
-      'priority-architecture',
-      'priority-testing',
-      'priority-360-memory',
-      'priority-git-history',
-      'priority-agent-templates',
-    ]
-
-    for (const testid of prioritySelectors) {
-      const selector = `[data-testid="${testid}"]`
-      try {
-        const element = await page.$(selector)
-        if (element) {
-          console.log(`✓ PASS: ${testid} selector found`)
-        } else {
-          console.log(`⚠ SKIP: ${testid} selector not found`)
-        }
-      } catch (error) {
-        console.log(`⚠ SKIP: ${testid} selector - ${error.message}`)
-      }
-    }
-  })
-
-  // ============================================================================
-  // SELECTOR 12: ContextPriorityConfig.vue - Dynamic depth-* selectors
+  // SELECTOR 11: ContextPriorityConfig.vue - Dynamic depth-* selectors
   // ============================================================================
   test('ContextPriorityConfig: Dynamic depth-* selectors exist', async ({ page }) => {
     const depthSelectors = [
