@@ -11,7 +11,7 @@ provided by tests/services/conftest.py.
 from uuid import uuid4
 
 import pytest
-from passlib.hash import bcrypt
+import bcrypt
 
 from src.giljo_mcp.exceptions import (
     AuthorizationError,
@@ -52,7 +52,7 @@ async def test_list_users_tenant_isolation(user_service, db_session, test_tenant
         id=str(uuid4()),
         username=f"otheruser_{uuid4().hex[:6]}",
         email=f"other_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hash("OtherPassword123"),
+        password_hash=bcrypt.hashpw("OtherPassword123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         tenant_key=other_tenant,
         role="developer",
         is_active=True,
@@ -79,7 +79,7 @@ async def test_list_users_includes_inactive(user_service, db_session, test_tenan
         id=str(uuid4()),
         username=f"inactive_{uuid4().hex[:6]}",
         email=f"inactive_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hash("Password123"),
+        password_hash=bcrypt.hashpw("Password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         tenant_key=test_tenant_key,
         role="developer",
         is_active=False,
@@ -133,7 +133,7 @@ async def test_get_user_tenant_isolation(user_service, db_session):
         id=str(uuid4()),
         username=f"otheruser_{uuid4().hex[:6]}",
         email=f"other_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hash("Password123"),
+        password_hash=bcrypt.hashpw("Password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         tenant_key=other_tenant,
         role="developer",
         is_active=True,

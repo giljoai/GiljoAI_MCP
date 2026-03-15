@@ -13,7 +13,7 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import pytest_asyncio
-from passlib.hash import bcrypt
+import bcrypt
 
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models import AgentTemplate, Message
@@ -48,7 +48,7 @@ async def test_user(db_session, test_tenant_key):
         id=str(uuid4()),
         username=f"testuser_{uuid4().hex[:6]}",
         email=f"test_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hash("TestPassword123"),
+        password_hash=bcrypt.hashpw("TestPassword123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         full_name="Test User",
         role="developer",
         tenant_key=test_tenant_key,
@@ -68,7 +68,7 @@ async def admin_user(db_session, test_tenant_key):
         id=str(uuid4()),
         username=f"admin_{uuid4().hex[:6]}",
         email=f"admin_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hash("AdminPassword123"),
+        password_hash=bcrypt.hashpw("AdminPassword123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         full_name="Admin User",
         role="admin",
         tenant_key=test_tenant_key,
@@ -111,7 +111,7 @@ async def other_tenant_user(db_session, other_tenant_key):
         id=str(uuid4()),
         username=f"otheruser_{uuid4().hex[:6]}",
         email=f"other_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hash("OtherPassword123"),
+        password_hash=bcrypt.hashpw("OtherPassword123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         full_name="Other Tenant User",
         role="developer",
         tenant_key=other_tenant_key,
@@ -1174,7 +1174,7 @@ async def auth_user_with_password(db_session, auth_test_org):
         username=f"testuser_{unique_id}",
         email=f"test_{unique_id}@example.com",
         full_name="Test User",
-        password_hash=bcrypt.hash(password),
+        password_hash=bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         role="developer",
         tenant_key=auth_test_org.tenant_key,  # Use org's tenant_key
         org_id=auth_test_org.id,  # 0424j: User.org_id NOT NULL
