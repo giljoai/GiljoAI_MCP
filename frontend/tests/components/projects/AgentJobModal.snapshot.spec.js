@@ -80,7 +80,10 @@ describe('AgentJobModal snapshot pattern (Handover 0818 Phase 3)', () => {
       ],
     })
 
-    wrapper = mountModal({ show: true, agent: originalAgent })
+    wrapper = mountModal({ show: false, agent: originalAgent })
+
+    // Open the modal (triggers snapshot)
+    await wrapper.setProps({ show: true })
     await flushPromises()
 
     // Verify initial snapshot todo items
@@ -105,10 +108,13 @@ describe('AgentJobModal snapshot pattern (Handover 0818 Phase 3)', () => {
 
   it('active tab persists when agent prop changes while open', async () => {
     wrapper = mountModal({
-      show: true,
+      show: false,
       agent: createMockAgent(),
       initialTab: 'plan',
     })
+
+    // Open the modal
+    await wrapper.setProps({ show: true })
     await flushPromises()
 
     // Should start on plan tab
@@ -128,7 +134,10 @@ describe('AgentJobModal snapshot pattern (Handover 0818 Phase 3)', () => {
       todo_items: [{ content: 'Phase 1 task', status: 'pending' }],
     })
 
-    wrapper = mountModal({ show: true, agent: agent1 })
+    wrapper = mountModal({ show: false, agent: agent1 })
+
+    // Open the modal
+    await wrapper.setProps({ show: true })
     await flushPromises()
 
     // Verify first snapshot

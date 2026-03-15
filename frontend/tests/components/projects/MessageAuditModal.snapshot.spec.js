@@ -98,7 +98,10 @@ describe('MessageAuditModal snapshot pattern (Handover 0818 Phase 3)', () => {
 
   it('expanded messages persist when props.agent reference changes while modal is open', async () => {
     const agent = createMockAgent({ job_id: 'job-persist' })
-    wrapper = mountModal({ show: true, agent })
+    wrapper = mountModal({ show: false, agent })
+
+    // Open the modal (triggers snapshot)
+    await wrapper.setProps({ show: true })
     await flushPromises()
 
     // Expand a message
@@ -115,8 +118,12 @@ describe('MessageAuditModal snapshot pattern (Handover 0818 Phase 3)', () => {
   })
 
   it('closing modal resets expanded state', async () => {
-    wrapper = mountModal({ show: true, agent: createMockAgent() })
+    wrapper = mountModal({ show: false, agent: createMockAgent() })
+
+    // Open the modal first
+    await wrapper.setProps({ show: true })
     await flushPromises()
+    expect(wrapper.vm.agentSnapshot).not.toBeNull()
 
     // Expand a message
     wrapper.vm.toggleMessageExpansion('msg-1')
@@ -132,7 +139,10 @@ describe('MessageAuditModal snapshot pattern (Handover 0818 Phase 3)', () => {
   })
 
   it('reopening modal fetches fresh data', async () => {
-    wrapper = mountModal({ show: true, agent: createMockAgent({ job_id: 'job-fresh' }) })
+    wrapper = mountModal({ show: false, agent: createMockAgent({ job_id: 'job-fresh' }) })
+
+    // Open the modal
+    await wrapper.setProps({ show: true })
     await flushPromises()
 
     // First open should have fetched
@@ -155,7 +165,10 @@ describe('MessageAuditModal snapshot pattern (Handover 0818 Phase 3)', () => {
   })
 
   it('agent watcher does not re-fetch when agent prop changes while open', async () => {
-    wrapper = mountModal({ show: true, agent: createMockAgent({ job_id: 'job-no-refetch' }) })
+    wrapper = mountModal({ show: false, agent: createMockAgent({ job_id: 'job-no-refetch' }) })
+
+    // Open the modal
+    await wrapper.setProps({ show: true })
     await flushPromises()
 
     // Initial fetch on open
