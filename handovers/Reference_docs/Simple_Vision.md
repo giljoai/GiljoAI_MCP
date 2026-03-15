@@ -451,7 +451,7 @@ link click for eother "copy command" or "manual download" as a trigger.  what ar
 
 ## A simplified work flow description and relationships
 
-BTW (our heigharcy is tennant user -> products -> projets and tasks) under Projects you have orhcestrator (team lead, comms lead, architect and project mannager ) -> Subagents (Spawned by orchestrator to do work in a project) , we also have "Project Description" a human written defined scope / instent and "misson" mission is a orchestrator created summary after analyzing all context, product documentation attached to the product what we call (vision), reviewing users context priority configurator in "My settings" context [TAB].  This mission gets then divided into work for the subagetns to deliver on, and if they need more context or information, they go to the orchestrator and it will fetch it.
+BTW (our heigharcy is tennant user -> products -> projets and tasks) under Projects you have orhcestrator (team lead, comms lead, architect and project mannager ) -> Subagents (Spawned by orchestrator to do work in a project) , we also have "Project Description" a human written defined scope / instent and "misson" mission is a orchestrator created summary after analyzing all context, product documentation attached to the product what we call (vision), reviewing users context configuration in "My settings" context [TAB].  This mission gets then divided into work for the subagetns to deliver on, and if they need more context or information, they go to the orchestrator and it will fetch it.
 
 ## The integration interface
 

@@ -6,7 +6,7 @@
         variant="text"
         size="small"
         @click="resetToDefaults"
-        data-testid="reset-context-priority-btn"
+        data-testid="reset-context-config-btn"
         style="width: 140px; margin-right: 16px;"
       >
         Reset

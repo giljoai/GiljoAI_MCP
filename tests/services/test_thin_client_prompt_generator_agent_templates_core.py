@@ -56,9 +56,12 @@ async def test_thin_prompt_contains_core_structure(db_session: AsyncSession):
         tenant_key=tenant_key,
         org_id=org.id,  # 0424j: User.org_id NOT NULL
         field_priority_config={
-            "agent_templates": 2,  # High Priority
-            "tech_stack.languages": 1,
-            "codebase_summary": 2,
+            "priorities": {
+                "agent_templates": {"toggle": True},
+                "tech_stack": {"toggle": True},
+                "product_core": {"toggle": True},
+            },
+            "version": "3.0",
         },
     )
     db_session.add(user)
@@ -126,8 +129,11 @@ async def test_thin_prompt_contains_core_structure(db_session: AsyncSession):
 
     # ACT
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
+    raw_config = user.field_priority_config or {}
+    raw_toggles = raw_config.get("priorities", raw_config)
+    field_toggles = {k: (v.get("toggle", True) if isinstance(v, dict) else bool(v)) for k, v in raw_toggles.items()}
     result = await generator.generate(
-        project_id=project.id, user_id=user.id, field_toggles=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_toggles=field_toggles
     )
     thin_prompt = result["thin_prompt"]
 
@@ -223,13 +229,16 @@ async def test_thin_prompt_is_concise(db_session: AsyncSession):
 
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
 
-    # TEST: Thin prompt should be concise regardless of priority settings
+    # TEST: Thin prompt should be concise regardless of toggle settings
     # (Agent templates NOT embedded inline - fetched via MCP tools)
-    user.field_priority_config = {"agent_templates": 1}  # Priority 1
+    user.field_priority_config = {"priorities": {"agent_templates": {"toggle": True}}, "version": "3.0"}
     await db_session.commit()
 
+    raw_config = user.field_priority_config or {}
+    raw_toggles = raw_config.get("priorities", raw_config)
+    field_toggles_p1 = {k: (v.get("toggle", True) if isinstance(v, dict) else bool(v)) for k, v in raw_toggles.items()}
     result_p1 = await generator.generate(
-        project_id=project.id, user_id=user.id, field_toggles=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_toggles=field_toggles_p1
     )
 
     # Thin prompt should NOT contain inline agent template content

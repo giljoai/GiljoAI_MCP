@@ -1139,7 +1139,7 @@ class UserService:
         if WebSocket manager is available, but operations don't fail if it's not.
 
         Args:
-            event_type: Event type (e.g., "priority_config_updated")
+            event_type: Event type (e.g., "toggle_config_updated")
             data: Event payload data
 
         Side Effects:
