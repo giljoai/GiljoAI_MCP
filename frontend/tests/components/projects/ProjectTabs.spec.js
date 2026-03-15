@@ -1,491 +1,604 @@
 /**
  * ProjectTabs Component Tests
- * Testing button relocation from LaunchTab to tab header level
+ *
+ * Tests action buttons (Stage Project, Implement), tab navigation,
+ * button state management, and LaunchTab integration.
+ *
+ * Follows the same mock/mount pattern as ProjectTabs.closeout.spec.js.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { createVuetify } from 'vuetify'
 import ProjectTabs from '@/components/projects/ProjectTabs.vue'
-import { useProjectTabsStore } from '@/stores/projectTabs'
+import { useProjectStateStore } from '@/stores/projectStateStore'
 
-// Mock Vue Router (Composition API)
-const mockRoute = {
-  query: {},
-  hash: ''
-}
+// -- Router mock --
 
-const mockRouter = {
-  replace: vi.fn()
-}
+const mockRoute = { query: {}, hash: '' }
+const mockRouter = { push: vi.fn(), replace: vi.fn() }
 
 vi.mock('vue-router', () => ({
   useRoute: () => mockRoute,
-  useRouter: () => mockRouter
+  useRouter: () => mockRouter,
 }))
 
-// Mock WebSocket composable
-vi.mock('@/composables/useWebSocket', () => ({
-  useWebSocket: () => ({
-    on: vi.fn(),
-    off: vi.fn(),
-    emit: vi.fn()
-  })
+// -- Composable mocks --
+
+const mockSortedJobs = { value: [] }
+const mockLoadJobs = vi.fn().mockResolvedValue([])
+
+vi.mock('@/composables/useAgentJobs', () => ({
+  useAgentJobs: () => ({
+    store: {},
+    sortedJobs: mockSortedJobs,
+    loadJobs: mockLoadJobs,
+  }),
 }))
 
-// Mock API
+vi.mock('@/composables/useProjectMessages', () => ({
+  useProjectMessages: () => ({
+    store: {},
+    loadMessages: vi.fn().mockResolvedValue([]),
+  }),
+}))
+
+vi.mock('@/composables/useIntegrationStatus', () => ({
+  useIntegrationStatus: () => ({
+    gitEnabled: { value: false },
+    serenaEnabled: { value: false },
+  }),
+}))
+
+const mockShowToast = vi.fn()
+vi.mock('@/composables/useToast', () => ({
+  useToast: () => ({
+    showToast: mockShowToast,
+  }),
+}))
+
+const mockCopy = vi.fn().mockResolvedValue(true)
+vi.mock('@/composables/useClipboard', () => ({
+  useClipboard: () => ({
+    copy: mockCopy,
+  }),
+}))
+
+// -- Store mocks --
+
+vi.mock('@/stores/websocket', () => ({
+  useWebSocketStore: () => ({
+    subscribeToProject: vi.fn(),
+    unsubscribe: vi.fn(),
+    onConnectionChange: vi.fn().mockReturnValue(vi.fn()),
+    on: vi.fn().mockReturnValue(vi.fn()),
+  }),
+}))
+
+vi.mock('@/stores/notifications', () => ({
+  useNotificationStore: () => ({
+    clearForProject: vi.fn(),
+  }),
+}))
+
+// -- API mock --
+
 vi.mock('@/services/api', () => ({
   default: {
+    projects: {
+      get: vi.fn().mockResolvedValue({ data: {} }),
+      update: vi.fn().mockResolvedValue({}),
+    },
     prompts: {
       staging: vi.fn().mockResolvedValue({
         data: {
           prompt: 'Test staging prompt',
-          estimated_prompt_tokens: 100
-        }
-      })
-    }
-  }
+          estimated_prompt_tokens: 100,
+        },
+      }),
+    },
+    orchestrator: {
+      launchProject: vi.fn().mockResolvedValue({}),
+    },
+    products: {
+      getMemoryEntries: vi.fn().mockResolvedValue({ data: { entries: [] } }),
+    },
+  },
 }))
 
-// Mock child components to isolate ProjectTabs testing
-vi.mock('@/components/projects/LaunchTab.vue', () => ({
-  default: {
-    name: 'LaunchTab',
-    template: '<div class="launch-tab-mock">LaunchTab</div>',
-    props: ['project', 'orchestrator', 'isStaging', 'readonly']
-  }
-}))
+// Import the mocked module so we can reference it in tests
+import api from '@/services/api'
 
-vi.mock('@/components/projects/JobsTab.vue', () => ({
-  default: {
-    name: 'JobsTab',
-    template: '<div class="jobs-tab-mock">JobsTab</div>',
-    props: ['project', 'agents', 'messages', 'allAgentsComplete', 'readonly']
-  }
-}))
+// -- Helper --
 
-describe('ProjectTabs - Action Buttons in Header', () => {
-  let wrapper
-  let store
-
-  const mockProject = {
+function createWrapper(projectOverrides = {}, extraProps = {}) {
+  const vuetify = createVuetify()
+  const project = {
     id: 'project-123',
     project_id: 'project-123',
     name: 'Test Project',
     description: 'Test description',
     status: 'active',
-    mission: '',
-    agents: []
+    execution_mode: 'multi_terminal',
+    ...projectOverrides,
   }
 
+  return mount(ProjectTabs, {
+    props: { project, orchestrator: null, ...extraProps },
+    global: {
+      plugins: [vuetify],
+      stubs: {
+        LaunchTab: {
+          name: 'LaunchTab',
+          template: '<div class="launch-tab-stub" />',
+          props: ['project', 'orchestrator', 'isStaging', 'gitEnabled', 'serenaEnabled'],
+          emits: ['edit-description'],
+        },
+        JobsTab: {
+          name: 'JobsTab',
+          template: '<div class="jobs-tab-stub" />',
+          props: ['project'],
+        },
+        CloseoutModal: {
+          name: 'CloseoutModal',
+          template: '<div class="closeout-modal-stub" />',
+          props: ['show', 'projectId', 'projectName', 'productId'],
+          emits: ['close', 'closeout', 'continue'],
+        },
+        // Stubs for Vuetify components not in global setup
+        'v-btn-toggle': {
+          template: '<div class="v-btn-toggle-stub"><slot /></div>',
+          props: ['modelValue'],
+        },
+        'v-radio-group': {
+          template: '<div class="v-radio-group-stub"><slot /></div>',
+          props: ['modelValue', 'inline', 'hideDetails', 'density', 'disabled'],
+          emits: ['update:model-value'],
+        },
+        'v-radio': {
+          template: '<div class="v-radio-stub" v-bind="$attrs"><slot /></div>',
+          props: ['value', 'label'],
+        },
+        'v-tooltip': {
+          template: '<div class="v-tooltip-stub"><slot /><slot name="activator" /></div>',
+        },
+        'v-window': {
+          template: '<div class="v-window-stub"><slot /></div>',
+          props: ['modelValue'],
+        },
+        'v-window-item': {
+          template: '<div class="v-window-item-stub"><slot /></div>',
+          props: ['value'],
+        },
+        'v-progress-circular': {
+          template: '<div class="v-progress-circular-stub" />',
+        },
+      },
+    },
+  })
+}
+
+describe('ProjectTabs - Action Buttons', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    store = useProjectTabsStore()
-
-    // Reset router mocks
     mockRoute.query = {}
     mockRoute.hash = ''
     mockRouter.replace.mockClear()
-
-    wrapper = mount(ProjectTabs, {
-      props: {
-        project: mockProject,
-        orchestrator: null,
-        readonly: false
-      },
-      global: {
-        stubs: {
-          VCard: true,
-          VTabs: true,
-          VTab: true,
-          VWindow: true,
-          VWindowItem: true,
-          VBtn: true,
-          VIcon: true,
-          VBadge: true,
-          VSnackbar: true,
-          LaunchTab: true,
-          JobsTab: true
-        }
-      }
+    mockRouter.push.mockClear()
+    mockShowToast.mockClear()
+    mockCopy.mockClear()
+    mockSortedJobs.value = []
+    // Reset API mocks
+    api.prompts.staging.mockClear()
+    api.prompts.staging.mockResolvedValue({
+      data: { prompt: 'Test staging prompt', estimated_prompt_tokens: 100 },
     })
+    api.orchestrator.launchProject.mockClear()
+    api.orchestrator.launchProject.mockResolvedValue({})
+    api.projects.update.mockClear()
+    api.products.getMemoryEntries.mockClear()
+    api.products.getMemoryEntries.mockResolvedValue({ data: { entries: [] } })
   })
 
   // ==================== LAYOUT TESTS ====================
 
   describe('Button Layout', () => {
-    it('renders action buttons at tab header level', () => {
-      // Buttons should be in the tabs-header container
-      const header = wrapper.find('.tabs-header')
-      expect(header.exists()).toBe(true)
+    it('renders action buttons row on the launch tab', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-      // Should contain action buttons container
-      const actionButtons = header.find('.action-buttons')
-      expect(actionButtons.exists()).toBe(true)
+      const actionRow = wrapper.find('.action-buttons-row')
+      expect(actionRow.exists()).toBe(true)
     })
 
-    it('positions action buttons on the right side of tab headers', () => {
-      const header = wrapper.find('.tabs-header')
-      const actionButtons = header.find('.action-buttons')
+    it('displays Stage Project button', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-      // Check for right alignment class/style
-      expect(actionButtons.classes()).toContain('ml-auto')
-    })
-
-    it('displays Stage Project button', () => {
-      const stageButton = wrapper.find('.stage-button')
+      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
       expect(stageButton.exists()).toBe(true)
-      expect(stageButton.text()).toContain('Stage project')
+      expect(stageButton.text()).toContain('Stage Project')
     })
 
-    it('displays "Waiting:" status text', () => {
-      const statusText = wrapper.find('.status-text')
-      expect(statusText.exists()).toBe(true)
-      expect(statusText.text()).toBe('Waiting:')
-    })
+    it('displays Implement button (launch jobs)', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-    it('displays Launch Jobs button', () => {
-      const launchButton = wrapper.find('.launch-button')
+      const launchButton = wrapper.find('[data-testid="launch-jobs-btn"]')
       expect(launchButton.exists()).toBe(true)
-      expect(launchButton.text()).toContain('Launch jobs')
+      expect(launchButton.text()).toContain('Implement')
     })
 
-    it('maintains horizontal alignment of buttons and tabs', () => {
-      const header = wrapper.find('.tabs-header')
+    it('renders both buttons in the same action-buttons-row', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-      // Header should use flexbox for horizontal alignment
-      const styles = window.getComputedStyle(header.element)
-      expect(styles.display).toBe('flex')
-      expect(styles.alignItems).toBe('center')
+      const actionRow = wrapper.find('.action-buttons-row')
+      const stageBtn = actionRow.find('[data-testid="stage-project-btn"]')
+      const launchBtn = actionRow.find('[data-testid="launch-jobs-btn"]')
+      expect(stageBtn.exists()).toBe(true)
+      expect(launchBtn.exists()).toBe(true)
     })
   })
 
-  // ==================== BUTTON STATE TESTS ====================
+  // ==================== STAGE BUTTON STATE TESTS ====================
 
   describe('Stage Project Button', () => {
-    it('is enabled by default', () => {
-      const stageButton = wrapper.find('.stage-button')
-      expect(stageButton.attributes('disabled')).toBeUndefined()
-    })
+    it('is disabled when no execution mode is selected (default state)', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-    it('shows loading state when staging', async () => {
-      store.isStaging = true
-      await wrapper.vm.$nextTick()
-
-      const stageButton = wrapper.find('.stage-button')
-      expect(stageButton.attributes('loading')).toBe('true')
-    })
-
-    it('emits stage-project event when clicked', async () => {
-      const stageButton = wrapper.find('.stage-button')
-      await stageButton.trigger('click')
-
-      expect(wrapper.emitted('stage-project')).toBeTruthy()
-    })
-
-    it('calls store.stageProject when clicked', async () => {
-      const stageProjectSpy = vi.spyOn(store, 'stageProject').mockResolvedValue({})
-
-      const stageButton = wrapper.find('.stage-button')
-      await stageButton.trigger('click')
-
-      expect(stageProjectSpy).toHaveBeenCalled()
-    })
-
-    // ==================== NEW: FIX FOR ORCHESTRATOR WAITING STATE ====================
-
-    it('remains enabled when orchestrator exists with status="waiting"', async () => {
-      // Orchestrator just created but hasn't started staging yet
-      store.agents = [
-        { job_id: 'orch-1', agent_type: 'orchestrator', status: 'waiting' }
-      ]
-      await wrapper.vm.$nextTick()
-
-      const stageButton = wrapper.find('.stage-button')
-      // Button should be enabled - allow retry if user didn't paste prompt
-      expect(stageButton.attributes('disabled')).toBeUndefined()
-      expect(stageButton.text()).toContain('Stage project')
-    })
-
-    it('disables when orchestrator status is "working"', async () => {
-      // Orchestrator is actively executing staging workflow
-      store.agents = [
-        { job_id: 'orch-1', agent_type: 'orchestrator', status: 'working' }
-      ]
-      await wrapper.vm.$nextTick()
-
-      const stageButton = wrapper.find('.stage-button')
-      // Vuetify returns disabled="" as empty string
+      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
+      // Default: usingClaudeCodeSubagents is null, executionModeSelected is false
       expect(stageButton.attributes('disabled')).toBeDefined()
-      expect(stageButton.text()).toContain('Orchestrator Active')
     })
 
-    it('disables when orchestrator has spawned specialist agents', async () => {
-      // Staging complete: orchestrator spawned implementer, tester, reviewer
-      store.agents = [
-        { job_id: 'orch-1', agent_type: 'orchestrator', status: 'waiting' },
-        { job_id: 'impl-1', agent_type: 'implementer', status: 'waiting' },
-        { job_id: 'test-1', agent_type: 'tester', status: 'waiting' }
-      ]
-      await wrapper.vm.$nextTick()
+    it('is enabled once an execution mode is selected and no active orchestrator', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-      const stageButton = wrapper.find('.stage-button')
-      // Staging is complete - agents spawned
-      expect(stageButton.attributes('disabled')).toBeDefined()
-      expect(stageButton.text()).toContain('Orchestrator Active')
-    })
+      // Directly set the execution mode on the component instance
+      // (radio stubs don't support v-model binding, so we set it programmatically)
+      wrapper.vm.usingClaudeCodeSubagents = false
+      await flushPromises()
 
-    it('shows "Orchestrator Active" text when spawned agents exist', async () => {
-      store.agents = [
-        { job_id: 'orch-1', agent_type: 'orchestrator', status: 'waiting' },
-        { job_id: 'impl-1', agent_type: 'implementer', status: 'waiting' }
-      ]
-      await wrapper.vm.$nextTick()
-
-      const stageButton = wrapper.find('.stage-button')
-      expect(stageButton.text()).toContain('Orchestrator Active')
-    })
-
-    it('allows retry when orchestrator exists but no agents spawned yet', async () => {
-      // User clicked "Stage Project" but forgot to paste prompt
-      // Only orchestrator exists (status='waiting'), no specialist agents yet
-      store.agents = [
-        { job_id: 'orch-1', agent_type: 'orchestrator', status: 'waiting' }
-      ]
-      await wrapper.vm.$nextTick()
-
-      const stageButton = wrapper.find('.stage-button')
-      // Should allow user to click again to retry
+      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
       expect(stageButton.attributes('disabled')).toBeUndefined()
-      expect(stageButton.text()).toContain('Stage project')
+    })
+
+    it('is disabled when staging is already complete (hasActiveOrchestrator)', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      // Mark staging as complete in the project state store
+      const stateStore = useProjectStateStore()
+      stateStore.setStagingComplete('project-123', true)
+
+      // Select execution mode
+      wrapper.vm.usingClaudeCodeSubagents = false
+      await flushPromises()
+
+      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
+      expect(stageButton.attributes('disabled')).toBeDefined()
+    })
+
+    it('calls API staging endpoint when clicked', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      // Select execution mode
+      wrapper.vm.usingClaudeCodeSubagents = false
+      await flushPromises()
+
+      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
+      await stageButton.trigger('click')
+      await flushPromises()
+
+      expect(api.prompts.staging).toHaveBeenCalledWith('project-123', expect.objectContaining({
+        tool: 'claude-code',
+        execution_mode: 'multi_terminal',
+      }))
+    })
+
+    it('copies prompt to clipboard after successful staging', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      // Select execution mode
+      wrapper.vm.usingClaudeCodeSubagents = false
+      await flushPromises()
+
+      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
+      await stageButton.trigger('click')
+      await flushPromises()
+
+      expect(mockCopy).toHaveBeenCalledWith('Test staging prompt')
+    })
+
+    it('shows success toast after prompt is copied', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      // Select execution mode
+      wrapper.vm.usingClaudeCodeSubagents = false
+      await flushPromises()
+
+      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
+      await stageButton.trigger('click')
+      await flushPromises()
+
+      expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({
+        message: expect.stringContaining('Orchestrator prompt copied'),
+        type: 'success',
+      }))
     })
   })
 
-  describe('Launch Jobs Button', () => {
-    it('is disabled when project not ready to launch', () => {
-      store.orchestratorMission = ''
-      store.agents = []
+  // ==================== LAUNCH BUTTON STATE TESTS ====================
 
-      const launchButton = wrapper.find('.launch-button')
-      expect(launchButton.attributes('disabled')).toBe('true')
+  describe('Implement (Launch Jobs) Button', () => {
+    it('is disabled when project is not ready to launch', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      const launchButton = wrapper.find('[data-testid="launch-jobs-btn"]')
+      expect(launchButton.attributes('disabled')).toBeDefined()
     })
 
-    it('is enabled when project ready to launch', async () => {
-      store.orchestratorMission = 'Test mission'
-      store.agents = [{ job_id: 'agent-1', agent_type: 'implementor' }]
-      store.isStaging = false
-      await wrapper.vm.$nextTick()
+    it('is enabled when execution mode selected and staging is complete', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-      const launchButton = wrapper.find('.launch-button')
+      // Mark staging as complete in state store
+      const stateStore = useProjectStateStore()
+      stateStore.setStagingComplete('project-123', true)
+
+      // Select execution mode
+      wrapper.vm.usingClaudeCodeSubagents = false
+      await flushPromises()
+
+      const launchButton = wrapper.find('[data-testid="launch-jobs-btn"]')
       expect(launchButton.attributes('disabled')).toBeUndefined()
     })
 
-    it('emits launch-jobs event when clicked', async () => {
-      store.orchestratorMission = 'Test mission'
-      store.agents = [{ job_id: 'agent-1', agent_type: 'implementor' }]
-      store.isStaging = false
-      await wrapper.vm.$nextTick()
+    it('calls orchestrator.launchProject API when clicked', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-      const launchButton = wrapper.find('.launch-button')
+      // Set up ready-to-launch state
+      const stateStore = useProjectStateStore()
+      stateStore.setStagingComplete('project-123', true)
+
+      wrapper.vm.usingClaudeCodeSubagents = false
+      await flushPromises()
+
+      const launchButton = wrapper.find('[data-testid="launch-jobs-btn"]')
       await launchButton.trigger('click')
+      await flushPromises()
 
-      expect(wrapper.emitted('launch-jobs')).toBeTruthy()
-    })
-
-    it('calls store.launchJobs when clicked', async () => {
-      store.orchestratorMission = 'Test mission'
-      store.agents = [{ job_id: 'agent-1', agent_type: 'implementor' }]
-      store.isStaging = false
-
-      const launchJobsSpy = vi.spyOn(store, 'launchJobs').mockResolvedValue({})
-
-      const launchButton = wrapper.find('.launch-button')
-      await launchButton.trigger('click')
-
-      expect(launchJobsSpy).toHaveBeenCalled()
+      expect(api.orchestrator.launchProject).toHaveBeenCalledWith({
+        project_id: 'project-123',
+      })
     })
 
     it('switches to jobs tab after successful launch', async () => {
-      store.orchestratorMission = 'Test mission'
-      store.agents = [{ job_id: 'agent-1', agent_type: 'implementor' }]
-      store.isStaging = false
+      const wrapper = createWrapper()
+      await flushPromises()
 
-      vi.spyOn(store, 'launchJobs').mockResolvedValue({})
+      // Set up ready-to-launch state
+      const stateStore = useProjectStateStore()
+      stateStore.setStagingComplete('project-123', true)
 
-      const launchButton = wrapper.find('.launch-button')
+      wrapper.vm.usingClaudeCodeSubagents = false
+      await flushPromises()
+
+      const launchButton = wrapper.find('[data-testid="launch-jobs-btn"]')
       await launchButton.trigger('click')
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
+      // Check the internal activeTab ref changed to 'jobs'
       expect(wrapper.vm.activeTab).toBe('jobs')
     })
   })
 
-  // ==================== STYLING TESTS ====================
+  // ==================== BUTTON STYLING TESTS ====================
 
   describe('Button Styling', () => {
-    it('Stage button has yellow-darken-2 color', () => {
-      const stageButton = wrapper.find('.stage-button')
-      expect(stageButton.attributes('color')).toBe('yellow-darken-2')
+    it('Stage button uses stage-button CSS class', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
+      expect(stageButton.classes()).toContain('stage-button')
     })
 
-    it('Stage button has outlined variant', () => {
-      const stageButton = wrapper.find('.stage-button')
+    it('Launch button uses launch-button CSS class', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      const launchButton = wrapper.find('[data-testid="launch-jobs-btn"]')
+      expect(launchButton.classes()).toContain('launch-button')
+    })
+
+    it('Stage button has outlined variant attribute', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
       expect(stageButton.attributes('variant')).toBe('outlined')
-    })
-
-    it('Stage button is rounded', () => {
-      const stageButton = wrapper.find('.stage-button')
-      expect(stageButton.attributes('rounded')).toBe('true')
-    })
-
-    it('Launch button has yellow-darken-2 color when enabled', async () => {
-      store.orchestratorMission = 'Test mission'
-      store.agents = [{ job_id: 'agent-1', agent_type: 'implementor' }]
-      store.isStaging = false
-      await wrapper.vm.$nextTick()
-
-      const launchButton = wrapper.find('.launch-button')
-      expect(launchButton.attributes('color')).toBe('yellow-darken-2')
-    })
-
-    it('Launch button has grey color when disabled', () => {
-      store.orchestratorMission = ''
-      store.agents = []
-
-      const launchButton = wrapper.find('.launch-button')
-      expect(launchButton.attributes('color')).toBe('grey')
-    })
-
-    it('Status text has correct styling', () => {
-      const statusText = wrapper.find('.status-text')
-      expect(statusText.classes()).toContain('status-text')
     })
   })
 
-  // ==================== PROP PASSING TESTS ====================
+  // ==================== TAB NAVIGATION TESTS ====================
+
+  describe('Tab Navigation', () => {
+    it('defaults activeTab to launch', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      expect(wrapper.vm.activeTab).toBe('launch')
+    })
+
+    it('renders launch tab and jobs tab buttons', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      expect(wrapper.find('[data-testid="launch-tab"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="jobs-tab"]').exists()).toBe(true)
+    })
+
+    it('initializes tab from URL query param', async () => {
+      mockRoute.query = { tab: 'jobs' }
+
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      expect(wrapper.vm.activeTab).toBe('jobs')
+    })
+
+    it('hides stage/launch buttons when on jobs tab', async () => {
+      mockRoute.query = { tab: 'jobs' }
+
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      // The stage/launch buttons are v-if="activeTab === 'launch'", so hidden on jobs tab
+      const stageBtn = wrapper.find('[data-testid="stage-project-btn"]')
+      expect(stageBtn.exists()).toBe(false)
+    })
+  })
+
+  // ==================== LAUNCHTAB INTEGRATION TESTS ====================
 
   describe('LaunchTab Integration', () => {
-    it('no longer passes button-related props to LaunchTab', () => {
-      const launchTab = wrapper.findComponent({ name: 'LaunchTab' })
+    it('passes project prop to LaunchTab', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-      // LaunchTab should not receive is-staging prop anymore
-      // (buttons are in ProjectTabs now)
-      expect(launchTab.props()).toBeDefined()
+      const launchTab = wrapper.findComponent({ name: 'LaunchTab' })
+      expect(launchTab.exists()).toBe(true)
+      expect(launchTab.props('project')).toMatchObject({ project_id: 'project-123' })
     })
 
-    it('still passes essential props to LaunchTab', () => {
-      const launchTab = wrapper.findComponent({ name: 'LaunchTab' })
+    it('passes orchestrator prop to LaunchTab', async () => {
+      const wrapper = createWrapper({}, { orchestrator: { id: 'orch-1' } })
+      await flushPromises()
 
-      expect(launchTab.props('project')).toEqual(mockProject)
-      expect(launchTab.props('readonly')).toBe(false)
+      const launchTab = wrapper.findComponent({ name: 'LaunchTab' })
+      expect(launchTab.props('orchestrator')).toEqual({ id: 'orch-1' })
     })
 
-    it('still emits edit events from LaunchTab', async () => {
-      const launchTab = wrapper.findComponent({ name: 'LaunchTab' })
+    it('relays edit-description event from LaunchTab', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
+      const launchTab = wrapper.findComponent({ name: 'LaunchTab' })
       launchTab.vm.$emit('edit-description')
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
       expect(wrapper.emitted('edit-description')).toBeTruthy()
     })
   })
 
-  // ==================== RESPONSIVE TESTS ====================
+  // ==================== EXECUTION MODE TESTS ====================
 
-  describe('Responsive Design', () => {
-    it('buttons remain visible on mobile breakpoint', () => {
-      // Simulate mobile viewport
-      global.innerWidth = 600
+  describe('Execution Mode', () => {
+    it('renders execution mode radio area on launch tab', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-      const actionButtons = wrapper.find('.action-buttons')
-      expect(actionButtons.exists()).toBe(true)
+      expect(wrapper.find('.execution-mode-row').exists()).toBe(true)
     })
 
-    it('maintains proper spacing between elements', () => {
-      const actionButtons = wrapper.find('.action-buttons')
-      expect(actionButtons.classes()).toContain('d-flex')
-      expect(actionButtons.classes()).toContain('gap-2')
-    })
-  })
+    it('persists execution mode change to backend via API', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-  // ==================== ACCESSIBILITY TESTS ====================
+      // Call the handler directly since radio stubs do not support v-model
+      await wrapper.vm.handleExecutionModeChange(false)
+      await flushPromises()
 
-  describe('Accessibility', () => {
-    it('Stage button has proper ARIA attributes', () => {
-      const stageButton = wrapper.find('.stage-button')
-      expect(stageButton.attributes('role')).toBeDefined()
-    })
-
-    it('Launch button indicates disabled state to screen readers', () => {
-      store.orchestratorMission = ''
-      store.agents = []
-
-      const launchButton = wrapper.find('.launch-button')
-      expect(launchButton.attributes('aria-disabled')).toBe('true')
+      expect(api.projects.update).toHaveBeenCalledWith(
+        'project-123',
+        { execution_mode: 'multi_terminal' },
+      )
     })
 
-    it('buttons are keyboard accessible', async () => {
-      const stageButton = wrapper.find('.stage-button')
-      await stageButton.trigger('keydown.enter')
+    it('shows info toast after execution mode change', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-      expect(wrapper.emitted('stage-project')).toBeTruthy()
+      await wrapper.vm.handleExecutionModeChange(true)
+      await flushPromises()
+
+      expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'info',
+        message: expect.stringContaining('Claude Code CLI mode enabled'),
+      }))
     })
   })
 
   // ==================== ERROR HANDLING TESTS ====================
 
   describe('Error Handling', () => {
-    it('displays error when stage fails', async () => {
-      const error = new Error('Staging failed')
-      vi.spyOn(store, 'stageProject').mockRejectedValue(error)
+    it('shows error toast when staging fails', async () => {
+      api.prompts.staging.mockRejectedValueOnce(new Error('Staging failed'))
 
-      const stageButton = wrapper.find('.stage-button')
+      const wrapper = createWrapper()
+      await flushPromises()
+
+      // Select execution mode
+      wrapper.vm.usingClaudeCodeSubagents = false
+      await flushPromises()
+
+      const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
       await stageButton.trigger('click')
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
-      // Should show error message
-      expect(wrapper.vm.errorVisible).toBe(true)
+      expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'error',
+      }))
     })
 
-    it('displays error when launch fails', async () => {
-      store.orchestratorMission = 'Test mission'
-      store.agents = [{ job_id: 'agent-1', agent_type: 'implementor' }]
+    it('shows error toast when launch fails', async () => {
+      api.orchestrator.launchProject.mockRejectedValueOnce(new Error('Launch failed'))
 
-      const error = new Error('Launch failed')
-      vi.spyOn(store, 'launchJobs').mockRejectedValue(error)
+      const wrapper = createWrapper()
+      await flushPromises()
 
-      const launchButton = wrapper.find('.launch-button')
+      // Set up ready-to-launch state
+      const stateStore = useProjectStateStore()
+      stateStore.setStagingComplete('project-123', true)
+
+      wrapper.vm.usingClaudeCodeSubagents = false
+      await flushPromises()
+
+      const launchButton = wrapper.find('[data-testid="launch-jobs-btn"]')
       await launchButton.trigger('click')
-      await wrapper.vm.$nextTick()
+      await flushPromises()
 
-      expect(wrapper.vm.errorVisible).toBe(true)
+      expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'error',
+      }))
     })
   })
 
-  // ==================== HANDOVER 0251 PHASE 2: BUTTON RENAMING TESTS ====================
+  // ==================== PROJECT HEADER TESTS ====================
 
-  describe('Copy Orchestrator Prompt Button (Handover 0253)', () => {
-    it('should display "Stage project" with copy icon', () => {
-      // BEHAVIOR: Button text should remain "Stage project" but have copy icon (Handover 0253)
-      const stageButton = wrapper.find('.stage-button')
-      expect(stageButton.text()).toContain('Stage project')
+  describe('Project Header', () => {
+    it('displays project name', async () => {
+      const wrapper = createWrapper({ name: 'My Test Project' })
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('My Test Project')
     })
 
-    it('should have mdi-content-copy prepend icon', () => {
-      // BEHAVIOR: Button should have prepend-icon="mdi-content-copy"
-      // Expected to FAIL initially (RED phase)
-      const stageButton = wrapper.find('.stage-button')
-      expect(stageButton.attributes('prepend-icon')).toBe('mdi-content-copy')
-    })
+    it('displays project ID', async () => {
+      const wrapper = createWrapper()
+      await flushPromises()
 
-    it('should show universal toast message when prompt copied', async () => {
-      // BEHAVIOR: Toast message should say "Orchestrator prompt copied - paste into ANY terminal"
-      // Expected to FAIL initially (RED phase)
-      const stageButton = wrapper.find('.stage-button')
-      await stageButton.trigger('click')
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.toastMessage).toBe('Orchestrator prompt copied - paste into ANY terminal (fresh or existing)')
+      expect(wrapper.text()).toContain('project-123')
     })
   })
 })
