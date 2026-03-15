@@ -1514,7 +1514,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                             "project_id": str(job.project_id),
                         },
                     )
-                except Exception:
+                except Exception:  # Broad catch: WebSocket resilience, non-critical broadcast
                     self._logger.exception(
                         "Failed to broadcast blocked->working for agent %s",
                         execution.agent_id,

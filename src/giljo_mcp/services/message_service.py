@@ -461,7 +461,7 @@ class MessageService:
                 operation_name="send_counter_update",
                 context={"project_id": project_id},
             )
-        except (RetryExhaustedError, ValueError, KeyError) as counter_error:
+        except RetryExhaustedError as counter_error:
             # Counter update is a non-critical side effect; message is already committed.
             # Log and continue -- counter skew is recoverable, duplicate messages are not.
             self._logger.warning("Failed to update message counters: %s", counter_error)
