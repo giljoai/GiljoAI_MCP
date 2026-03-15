@@ -1081,12 +1081,9 @@ watch(
   () => props.modelValue,
   (newVal) => {
     if (newVal) {
-      // Dialog opening
+      // Dialog opening — reset local state only (upload progress is owned by parent)
       dialogTab.value = 'basic'
       visionFiles.value = []
-      visionUploadError.value = null
-      uploadProgress.value = 0
-      uploadingVision.value = false
       saving.value = false
       pathCopied.value = false
       loadProductData()

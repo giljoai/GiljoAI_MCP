@@ -106,8 +106,9 @@ describe('ProductForm Component', () => {
             emits: ['update:modelValue']
           },
           'v-alert': {
-            template: '<div class="v-alert" :class="type"><slot /></div>',
-            props: ['type', 'variant', 'density', 'dismissible']
+            template: '<div class="v-alert" :class="type"><slot /><button v-if="dismissible" class="v-alert-close" @click="$emit(\'click:close\')">x</button></div>',
+            props: { type: String, variant: String, density: String, dismissible: { type: Boolean, default: false } },
+            emits: ['click:close']
           },
           'v-list': { template: '<div class="v-list"><slot /></div>' },
           'v-list-item': { template: '<div class="v-list-item"><slot /></div>' },
@@ -378,15 +379,16 @@ describe('ProductForm Component', () => {
       expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
     })
 
-    it('emits upload-vision event when files selected', async () => {
+    it('tracks vision files locally for inclusion in save payload', async () => {
       const wrapper = createWrapper()
 
       // Navigate to vision tab
       wrapper.vm.dialogTab = 'vision'
       await flushPromises()
 
-      // Component should have vision upload capability
+      // Vision files are managed locally and passed via the save event payload
       expect(wrapper.vm.visionFiles).toBeDefined()
+      expect(Array.isArray(wrapper.vm.visionFiles)).toBe(true)
     })
 
     it('emits remove-vision event when document deleted', async () => {
@@ -758,6 +760,21 @@ describe('ProductForm Component', () => {
       })
       expect(wrapper.props('autoSaveState')).toEqual({ status: 'saved', enabled: true })
     })
+
+    it('accepts uploadingVision prop', () => {
+      const wrapper = createWrapper({ uploadingVision: true })
+      expect(wrapper.props('uploadingVision')).toBe(true)
+    })
+
+    it('accepts uploadProgress prop', () => {
+      const wrapper = createWrapper({ uploadProgress: 66 })
+      expect(wrapper.props('uploadProgress')).toBe(66)
+    })
+
+    it('accepts visionUploadError prop', () => {
+      const wrapper = createWrapper({ visionUploadError: 'Something broke' })
+      expect(wrapper.props('visionUploadError')).toBe('Something broke')
+    })
   })
 
   describe('Testing Strategies Dropdown', () => {
@@ -872,33 +889,124 @@ describe('ProductForm Component', () => {
     })
   })
 
-  describe('Vision Upload State', () => {
-    it('has visionFiles ref', () => {
-      const wrapper = createWrapper()
+  describe('Vision Upload Progress UI (Handover 0816)', () => {
+    it('hides progress indicator when uploadingVision is false', async () => {
+      const wrapper = createWrapper({ uploadingVision: false })
+      wrapper.vm.dialogTab = 'vision'
+      await flushPromises()
 
+      const alerts = wrapper.findAll('.v-alert.info')
+      expect(alerts.length).toBe(0)
+    })
+
+    it('shows progress indicator when uploadingVision is true', async () => {
+      const wrapper = createWrapper({
+        uploadingVision: true,
+        uploadProgress: 50
+      })
+      wrapper.vm.dialogTab = 'vision'
+      await flushPromises()
+
+      const infoAlert = wrapper.find('.v-alert.info')
+      expect(infoAlert.exists()).toBe(true)
+      expect(infoAlert.text()).toContain('Uploading vision documents...')
+    })
+
+    it('renders progress bar inside the progress indicator', async () => {
+      const wrapper = createWrapper({
+        uploadingVision: true,
+        uploadProgress: 75
+      })
+      wrapper.vm.dialogTab = 'vision'
+      await flushPromises()
+
+      const infoAlert = wrapper.find('.v-alert.info')
+      expect(infoAlert.exists()).toBe(true)
+      const progressBar = infoAlert.find('.v-progress-linear')
+      expect(progressBar.exists()).toBe(true)
+    })
+
+    it('renders spinning indicator during upload', async () => {
+      const wrapper = createWrapper({
+        uploadingVision: true,
+        uploadProgress: 25
+      })
+      wrapper.vm.dialogTab = 'vision'
+      await flushPromises()
+
+      const infoAlert = wrapper.find('.v-alert.info')
+      const spinner = infoAlert.find('.v-progress-circular')
+      expect(spinner.exists()).toBe(true)
+    })
+
+    it('hides error alert when visionUploadError is null', async () => {
+      const wrapper = createWrapper({ visionUploadError: null })
+      wrapper.vm.dialogTab = 'vision'
+      await flushPromises()
+
+      const errorAlert = wrapper.find('.v-alert.error')
+      expect(errorAlert.exists()).toBe(false)
+    })
+
+    it('shows error alert when visionUploadError is set', async () => {
+      const wrapper = createWrapper({
+        visionUploadError: 'test.pdf: File too large (max 10MB)'
+      })
+      wrapper.vm.dialogTab = 'vision'
+      await flushPromises()
+
+      const errorAlert = wrapper.find('.v-alert.error')
+      expect(errorAlert.exists()).toBe(true)
+      expect(errorAlert.text()).toContain('test.pdf: File too large (max 10MB)')
+    })
+
+    it('error alert has dismiss button', async () => {
+      const wrapper = createWrapper({
+        visionUploadError: 'Upload failed'
+      })
+      wrapper.vm.dialogTab = 'vision'
+      await flushPromises()
+
+      const errorAlert = wrapper.find('.v-alert.error')
+      const closeBtn = errorAlert.find('.v-alert-close')
+      expect(closeBtn.exists()).toBe(true)
+    })
+
+    it('emits clear-upload-error when error alert is dismissed', async () => {
+      const wrapper = createWrapper({
+        visionUploadError: 'Upload failed'
+      })
+      wrapper.vm.dialogTab = 'vision'
+      await flushPromises()
+
+      const errorAlert = wrapper.find('.v-alert.error')
+      const closeBtn = errorAlert.find('.v-alert-close')
+      await closeBtn.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.emitted('clear-upload-error')).toBeTruthy()
+      expect(wrapper.emitted('clear-upload-error').length).toBe(1)
+    })
+
+    it('defaults uploadingVision prop to false', () => {
+      const wrapper = createWrapper()
+      expect(wrapper.props('uploadingVision')).toBe(false)
+    })
+
+    it('defaults uploadProgress prop to 0', () => {
+      const wrapper = createWrapper()
+      expect(wrapper.props('uploadProgress')).toBe(0)
+    })
+
+    it('defaults visionUploadError prop to null', () => {
+      const wrapper = createWrapper()
+      expect(wrapper.props('visionUploadError')).toBeNull()
+    })
+
+    it('has visionFiles local ref for file selection', () => {
+      const wrapper = createWrapper()
       expect(wrapper.vm.visionFiles).toBeDefined()
       expect(Array.isArray(wrapper.vm.visionFiles)).toBe(true)
-    })
-
-    it('has uploadingVision ref', () => {
-      const wrapper = createWrapper()
-
-      expect(wrapper.vm.uploadingVision).toBeDefined()
-      expect(wrapper.vm.uploadingVision).toBe(false)
-    })
-
-    it('has uploadProgress ref', () => {
-      const wrapper = createWrapper()
-
-      expect(wrapper.vm.uploadProgress).toBeDefined()
-      expect(wrapper.vm.uploadProgress).toBe(0)
-    })
-
-    it('has visionUploadError ref', () => {
-      const wrapper = createWrapper()
-
-      expect(wrapper.vm.visionUploadError).toBeDefined()
-      expect(wrapper.vm.visionUploadError).toBeNull()
     })
   })
 
