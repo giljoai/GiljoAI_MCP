@@ -206,7 +206,7 @@ When creating a new handover, you MUST validate the number:
 - Shared logic goes in `composables/` — do not duplicate utility functions across components
 - Use Vuetify theme variables for colors — no `!important` CSS overrides unless compensating for a verified framework bug
 - When removing a parent event listener, also remove the child `$emit` call
-- Interactive elements must have ARIA labels for accessibility
+- **UI accessibility baseline:** Sufficient color contrast (WCAG AA 4.5:1 ratio), color-blind safe palettes (no red/green as sole state differentiator), keyboard navigability for all interactive elements (tab order, enter/space to activate). Screen reader optimization (ARIA roles, live regions) is not required at this stage.
 
 ### Function Size Limits
 - No function or method exceeds 200 lines without explicit justification documented in the handover

@@ -63,6 +63,7 @@ vi.mock('@/stores/websocket', () => ({
     subscribeToProject: vi.fn(),
     unsubscribe: vi.fn(),
     onConnectionChange: vi.fn().mockReturnValue(vi.fn()),
+    on: vi.fn().mockReturnValue(vi.fn()),
   }),
 }))
 
@@ -83,6 +84,9 @@ vi.mock('@/services/api', () => ({
     },
     orchestrator: {
       launchProject: vi.fn().mockResolvedValue({}),
+    },
+    products: {
+      getMemoryEntries: vi.fn().mockResolvedValue({ data: { entries: [] } }),
     },
   },
 }))
