@@ -1,15 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import JobsTab from '@/components/projects/JobsTab.vue'
 
 /**
  * JobsTab Component Tests
- * Focus: Copy button visibility control based on Claude Code CLI toggle
+ * Focus: Copy button visibility control based on execution mode (project.execution_mode)
  *
- * Test Scenario:
- * - When toggle is OFF (manual mode): all agents show copy buttons
- * - When toggle is ON (Claude Code CLI mode): only orchestrator shows copy button
+ * Current behavior (post Handover 0333 Phase 3):
+ * - shouldShowCopyButton reads execution_mode from props.project.execution_mode
+ * - Multi-terminal mode (default): always show launch button (prompt re-copying)
+ * - Claude Code CLI mode: only orchestrator shows launch button
+ * - No longer checks for waiting status (always visible for prompt re-copying)
  */
 
 // Mock composables BEFORE component mount
@@ -23,11 +26,35 @@ vi.mock('@/composables/useToast', () => ({
 
 // Mock API for prompt fetching
 vi.mock('@/services/api', () => ({
-  api: {
+  default: {
     prompts: {
-      agentPrompt: vi.fn()
-    }
+      agentPrompt: vi.fn(),
+      implementation: vi.fn(),
+    },
+    projects: {
+      launchImplementation: vi.fn(),
+    },
   }
+}))
+
+// Mock useAgentJobs composable
+vi.mock('@/composables/useAgentJobs', () => ({
+  useAgentJobs: () => ({
+    sortedJobs: { value: [] },
+    loadJobs: vi.fn(),
+    store: {
+      getJob: vi.fn(),
+    },
+  })
+}))
+
+// Mock WebSocket store
+vi.mock('@/stores/websocket', () => ({
+  useWebSocketStore: () => ({
+    on: vi.fn(() => vi.fn()),
+    off: vi.fn(),
+    isConnected: { value: false },
+  }),
 }))
 
 // Mock navigator.clipboard for clipboard operations
@@ -48,48 +75,16 @@ const mockProject = {
   project_id: 'test-project-1',
   name: 'Test Project',
   description: 'Test Description',
+  execution_mode: 'multi_terminal',
 }
 
-const mockAgents = [
-  {
-    agent_id: 'orch-1',
-    job_id: 'job-orch-1',
-    agent_type: 'orchestrator',
-    status: 'waiting',
-    messages: [],
-  },
-  {
-    agent_id: 'impl-1',
-    job_id: 'job-impl-1',
-    agent_type: 'implementer',
-    status: 'waiting',
-    messages: [],
-  },
-  {
-    agent_id: 'test-1',
-    job_id: 'job-test-1',
-    agent_type: 'tester',
-    status: 'waiting',
-    messages: [],
-  },
-  {
-    agent_id: 'ana-1',
-    job_id: 'job-ana-1',
-    agent_type: 'analyzer',
-    status: 'waiting',
-    messages: [],
-  },
-]
-
-function createWrapper(agents = mockAgents) {
+function createWrapper(projectOverrides = {}) {
   return mount(JobsTab, {
     props: {
-      project: mockProject,
-      agents: agents,
-      messages: [],
-      allAgentsComplete: false,
+      project: { ...mockProject, ...projectOverrides },
     },
     global: {
+      plugins: [createPinia()],
       stubs: {
         'v-btn': true,
         'v-icon': true,
@@ -102,405 +97,232 @@ function createWrapper(agents = mockAgents) {
         'v-card-actions': true,
         'v-text-field': true,
         'v-spacer': true,
+        'v-snackbar': true,
         'LaunchSuccessorDialog': true,
         'AgentDetailsModal': true,
+        'AgentJobModal': true,
+        'MessageAuditModal': true,
         'CloseoutModal': true,
-      },
-      mocks: {
-        showToast: vi.fn(),
+        'HandoverModal': true,
       },
     },
   })
 }
 
-describe('JobsTab - Copy Button Visibility (Claude Code CLI Toggle)', () => {
+describe('JobsTab - Copy Button Visibility (Execution Mode)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
   describe('shouldShowCopyButton function behavior', () => {
-    it('should call the helper function when rendering copy button v-if', async () => {
+    it('should have the shouldShowCopyButton method', async () => {
       const wrapper = createWrapper()
 
       // Verify the component has the shouldShowCopyButton method
       expect(typeof wrapper.vm.shouldShowCopyButton).toBe('function')
     })
 
-    it('should return true for waiting agents when toggle is OFF', () => {
-      const wrapper = createWrapper()
+    it('should return true for any agent when execution_mode is multi_terminal', () => {
+      const wrapper = createWrapper({ execution_mode: 'multi_terminal' })
 
-      const waitingAgent = {
-        agent_type: 'implementer',
-        status: 'waiting',
-      }
-
-      // Toggle is OFF (default)
-      expect(wrapper.vm.usingClaudeCodeSubagents).toBe(false)
-      expect(wrapper.vm.shouldShowCopyButton(waitingAgent)).toBe(true)
-    })
-
-    it('should return false for non-waiting agents when toggle is OFF', () => {
-      const wrapper = createWrapper()
-
-      const workingAgent = {
-        agent_type: 'implementer',
+      const implementerAgent = {
+        agent_display_name: 'implementer',
         status: 'working',
       }
 
-      expect(wrapper.vm.usingClaudeCodeSubagents).toBe(false)
-      expect(wrapper.vm.shouldShowCopyButton(workingAgent)).toBe(false)
+      expect(wrapper.vm.shouldShowCopyButton(implementerAgent)).toBe(true)
     })
 
-    it('should return true for waiting orchestrator when toggle is ON', async () => {
-      const wrapper = createWrapper()
+    it('should return true for orchestrator when execution_mode is claude_code_cli', () => {
+      const wrapper = createWrapper({ execution_mode: 'claude_code_cli' })
 
-      const waitingOrchestrator = {
-        agent_type: 'orchestrator',
-        status: 'waiting',
-      }
-
-      // Toggle to ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-      expect(wrapper.vm.shouldShowCopyButton(waitingOrchestrator)).toBe(true)
-    })
-
-    it('should return false for waiting specialist when toggle is ON', async () => {
-      const wrapper = createWrapper()
-
-      const waitingSpecialist = {
-        agent_type: 'implementer',
-        status: 'waiting',
-      }
-
-      // Toggle to ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-      expect(wrapper.vm.shouldShowCopyButton(waitingSpecialist)).toBe(false)
-    })
-
-    it('should return false for non-waiting orchestrator when toggle is ON', async () => {
-      const wrapper = createWrapper()
-
-      const workingOrchestrator = {
-        agent_type: 'orchestrator',
+      const orchestrator = {
+        agent_display_name: 'orchestrator',
         status: 'working',
       }
 
-      // Toggle to ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-      expect(wrapper.vm.shouldShowCopyButton(workingOrchestrator)).toBe(false)
-    })
-  })
-
-  describe('Toggle OFF (Manual Mode) - Copy Button Visibility', () => {
-    it('should show copy buttons for all waiting agents when toggle is OFF', async () => {
-      const wrapper = createWrapper()
-
-      // Toggle is OFF (default)
-      expect(wrapper.vm.usingClaudeCodeSubagents).toBe(false)
-
-      // All waiting agents should show copy button
-      mockAgents.forEach((agent) => {
-        if (agent.status === 'waiting') {
-          expect(wrapper.vm.shouldShowCopyButton(agent)).toBe(true)
-        }
-      })
-    })
-
-    it('should show copy button for orchestrator when toggle is OFF and status is waiting', () => {
-      const wrapper = createWrapper()
-
-      const orchestrator = mockAgents.find((a) => a.agent_type === 'orchestrator')
       expect(wrapper.vm.shouldShowCopyButton(orchestrator)).toBe(true)
     })
 
-    it('should show copy button for implementer when toggle is OFF and status is waiting', () => {
-      const wrapper = createWrapper()
+    it('should return false for specialist when execution_mode is claude_code_cli', () => {
+      const wrapper = createWrapper({ execution_mode: 'claude_code_cli' })
 
-      const implementer = mockAgents.find((a) => a.agent_type === 'implementer')
-      expect(wrapper.vm.shouldShowCopyButton(implementer)).toBe(true)
-    })
+      const specialist = {
+        agent_display_name: 'implementer',
+        status: 'working',
+      }
 
-    it('should show copy button for tester when toggle is OFF and status is waiting', () => {
-      const wrapper = createWrapper()
-
-      const tester = mockAgents.find((a) => a.agent_type === 'tester')
-      expect(wrapper.vm.shouldShowCopyButton(tester)).toBe(true)
-    })
-
-    it('should show copy button for analyzer when toggle is OFF and status is waiting', () => {
-      const wrapper = createWrapper()
-
-      const analyzer = mockAgents.find((a) => a.agent_type === 'analyzer')
-      expect(wrapper.vm.shouldShowCopyButton(analyzer)).toBe(true)
-    })
-
-    it('should not show copy button for non-waiting agents when toggle is OFF', () => {
-      const wrapper = createWrapper([
-        { agent_type: 'orchestrator', status: 'working', agent_id: '1' },
-        { agent_type: 'implementer', status: 'complete', agent_id: '2' },
-        { agent_type: 'tester', status: 'failed', agent_id: '3' },
-      ])
-
-      const agentsWithDifferentStatuses = wrapper.props('agents')
-      agentsWithDifferentStatuses.forEach((agent) => {
-        expect(wrapper.vm.shouldShowCopyButton(agent)).toBe(false)
-      })
+      expect(wrapper.vm.shouldShowCopyButton(specialist)).toBe(false)
     })
   })
 
-  describe('Toggle ON (Claude Code CLI Mode) - Copy Button Visibility', () => {
-    it('should show copy button only for waiting orchestrator when toggle is ON', async () => {
-      const wrapper = createWrapper()
+  describe('Multi-Terminal Mode - Copy Button Visibility', () => {
+    it('should show copy buttons for all agents when in multi_terminal mode', () => {
+      const wrapper = createWrapper({ execution_mode: 'multi_terminal' })
 
-      // Toggle to ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-      await nextTick()
-
-      // Only orchestrator should show copy button
-      mockAgents.forEach((agent) => {
-        if (agent.agent_type === 'orchestrator' && agent.status === 'waiting') {
-          expect(wrapper.vm.shouldShowCopyButton(agent)).toBe(true)
-        } else {
-          expect(wrapper.vm.shouldShowCopyButton(agent)).toBe(false)
-        }
+      const agentTypes = ['orchestrator', 'implementer', 'tester', 'analyzer']
+      agentTypes.forEach((agentType) => {
+        expect(wrapper.vm.shouldShowCopyButton({
+          agent_display_name: agentType,
+          status: 'working',
+        })).toBe(true)
       })
     })
 
-    it('should hide copy button for implementer when toggle is ON', async () => {
-      const wrapper = createWrapper()
+    it('should show copy button for orchestrator in multi_terminal mode', () => {
+      const wrapper = createWrapper({ execution_mode: 'multi_terminal' })
 
-      // Toggle to ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-
-      const implementer = mockAgents.find((a) => a.agent_type === 'implementer')
-      expect(wrapper.vm.shouldShowCopyButton(implementer)).toBe(false)
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'orchestrator',
+        status: 'waiting',
+      })).toBe(true)
     })
 
-    it('should hide copy button for tester when toggle is ON', async () => {
-      const wrapper = createWrapper()
+    it('should show copy button for implementer in multi_terminal mode', () => {
+      const wrapper = createWrapper({ execution_mode: 'multi_terminal' })
 
-      // Toggle to ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-
-      const tester = mockAgents.find((a) => a.agent_type === 'tester')
-      expect(wrapper.vm.shouldShowCopyButton(tester)).toBe(false)
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'implementer',
+        status: 'waiting',
+      })).toBe(true)
     })
 
-    it('should hide copy button for analyzer when toggle is ON', async () => {
-      const wrapper = createWrapper()
+    it('should show copy button for tester in multi_terminal mode', () => {
+      const wrapper = createWrapper({ execution_mode: 'multi_terminal' })
 
-      // Toggle to ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-
-      const analyzer = mockAgents.find((a) => a.agent_type === 'analyzer')
-      expect(wrapper.vm.shouldShowCopyButton(analyzer)).toBe(false)
-    })
-
-    it('should show copy button for waiting orchestrator when toggle is ON', async () => {
-      const wrapper = createWrapper()
-
-      // Toggle to ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-
-      const orchestrator = mockAgents.find((a) => a.agent_type === 'orchestrator')
-      expect(wrapper.vm.shouldShowCopyButton(orchestrator)).toBe(true)
-    })
-
-    it('should not show copy button for non-waiting orchestrator when toggle is ON', async () => {
-      const wrapper = createWrapper([
-        { agent_type: 'orchestrator', status: 'working', agent_id: '1' },
-      ])
-
-      // Toggle to ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-
-      const workingOrchestrator = wrapper.props('agents')[0]
-      expect(wrapper.vm.shouldShowCopyButton(workingOrchestrator)).toBe(false)
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'tester',
+        status: 'complete',
+      })).toBe(true)
     })
   })
 
-  describe('Toggle State Transitions', () => {
-    it('should toggle between ON and OFF states correctly', async () => {
-      const wrapper = createWrapper()
+  describe('Claude Code CLI Mode - Copy Button Visibility', () => {
+    it('should show copy button only for orchestrator when in claude_code_cli mode', () => {
+      const wrapper = createWrapper({ execution_mode: 'claude_code_cli' })
 
-      // Start OFF
-      expect(wrapper.vm.usingClaudeCodeSubagents).toBe(false)
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'orchestrator',
+        status: 'working',
+      })).toBe(true)
 
-      // Toggle ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-      expect(wrapper.vm.usingClaudeCodeSubagents).toBe(true)
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'implementer',
+        status: 'working',
+      })).toBe(false)
 
-      // Toggle OFF
-      wrapper.vm.usingClaudeCodeSubagents = false
-      expect(wrapper.vm.usingClaudeCodeSubagents).toBe(false)
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'tester',
+        status: 'working',
+      })).toBe(false)
+
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'analyzer',
+        status: 'working',
+      })).toBe(false)
     })
 
-    it('should transition copy button visibility from all to orchestrator only', async () => {
-      const wrapper = createWrapper()
+    it('should hide copy button for implementer when in claude_code_cli mode', () => {
+      const wrapper = createWrapper({ execution_mode: 'claude_code_cli' })
 
-      const orchestrator = mockAgents.find((a) => a.agent_type === 'orchestrator')
-      const implementer = mockAgents.find((a) => a.agent_type === 'implementer')
-
-      // Start OFF - both show copy buttons
-      expect(wrapper.vm.shouldShowCopyButton(orchestrator)).toBe(true)
-      expect(wrapper.vm.shouldShowCopyButton(implementer)).toBe(true)
-
-      // Toggle ON - only orchestrator shows
-      wrapper.vm.usingClaudeCodeSubagents = true
-      expect(wrapper.vm.shouldShowCopyButton(orchestrator)).toBe(true)
-      expect(wrapper.vm.shouldShowCopyButton(implementer)).toBe(false)
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'implementer',
+        status: 'waiting',
+      })).toBe(false)
     })
 
-    it('should transition copy button visibility from orchestrator only back to all', async () => {
-      const wrapper = createWrapper()
+    it('should hide copy button for tester when in claude_code_cli mode', () => {
+      const wrapper = createWrapper({ execution_mode: 'claude_code_cli' })
 
-      const orchestrator = mockAgents.find((a) => a.agent_type === 'orchestrator')
-      const implementer = mockAgents.find((a) => a.agent_type === 'implementer')
-
-      // Start with toggle ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-      expect(wrapper.vm.shouldShowCopyButton(implementer)).toBe(false)
-
-      // Toggle OFF - all show again
-      wrapper.vm.usingClaudeCodeSubagents = false
-      expect(wrapper.vm.shouldShowCopyButton(orchestrator)).toBe(true)
-      expect(wrapper.vm.shouldShowCopyButton(implementer)).toBe(true)
-    })
-  })
-
-  describe('Copy Button Status Conditions', () => {
-    it('should only show copy button when agent status is waiting (toggle OFF)', () => {
-      const wrapper = createWrapper([
-        { agent_type: 'orchestrator', status: 'waiting', agent_id: '1' },
-        { agent_type: 'implementer', status: 'working', agent_id: '2' },
-        { agent_type: 'tester', status: 'complete', agent_id: '3' },
-        { agent_type: 'analyzer', status: 'failed', agent_id: '4' },
-      ])
-
-      const agents = wrapper.props('agents')
-
-      // Only waiting agent should have copy button
-      const waitingAgent = agents.find((a) => a.status === 'waiting')
-      const nonWaitingAgents = agents.filter((a) => a.status !== 'waiting')
-
-      expect(wrapper.vm.shouldShowCopyButton(waitingAgent)).toBe(true)
-      nonWaitingAgents.forEach((agent) => {
-        expect(wrapper.vm.shouldShowCopyButton(agent)).toBe(false)
-      })
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'tester',
+        status: 'waiting',
+      })).toBe(false)
     })
 
-    it('should only show copy button for waiting orchestrator when toggle ON', async () => {
-      const wrapper = createWrapper([
-        { agent_type: 'orchestrator', status: 'waiting', agent_id: '1' },
-        { agent_type: 'orchestrator', status: 'working', agent_id: '2' },
-        { agent_type: 'implementer', status: 'waiting', agent_id: '3' },
-      ])
+    it('should hide copy button for analyzer when in claude_code_cli mode', () => {
+      const wrapper = createWrapper({ execution_mode: 'claude_code_cli' })
 
-      // Toggle ON
-      wrapper.vm.usingClaudeCodeSubagents = true
-
-      const agents = wrapper.props('agents')
-      const waitingOrchestrator = agents.find(
-        (a) => a.agent_type === 'orchestrator' && a.status === 'waiting'
-      )
-      const workingOrchestrator = agents.find(
-        (a) => a.agent_type === 'orchestrator' && a.status === 'working'
-      )
-      const waitingImplementer = agents.find(
-        (a) => a.agent_type === 'implementer' && a.status === 'waiting'
-      )
-
-      // Only waiting orchestrator should have copy button
-      expect(wrapper.vm.shouldShowCopyButton(waitingOrchestrator)).toBe(true)
-      expect(wrapper.vm.shouldShowCopyButton(workingOrchestrator)).toBe(false)
-      expect(wrapper.vm.shouldShowCopyButton(waitingImplementer)).toBe(false)
-    })
-
-    it('should prioritize waiting status over agent type when toggle OFF', () => {
-      const wrapper = createWrapper([
-        { agent_type: 'orchestrator', status: 'waiting', agent_id: '1' },
-        { agent_type: 'orchestrator', status: 'working', agent_id: '2' },
-        { agent_type: 'implementer', status: 'waiting', agent_id: '3' },
-        { agent_type: 'implementer', status: 'working', agent_id: '4' },
-      ])
-
-      const agents = wrapper.props('agents')
-
-      // All waiting agents should show copy button regardless of type
-      agents.forEach((agent) => {
-        if (agent.status === 'waiting') {
-          expect(wrapper.vm.shouldShowCopyButton(agent)).toBe(true)
-        } else {
-          expect(wrapper.vm.shouldShowCopyButton(agent)).toBe(false)
-        }
-      })
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'analyzer',
+        status: 'waiting',
+      })).toBe(false)
     })
   })
 
-  describe('Toggle function', () => {
-    it('should toggle the execution mode state', async () => {
-      const wrapper = createWrapper()
+  describe('Execution Mode from Project Prop', () => {
+    it('should read execution_mode from project prop', () => {
+      const wrapper = createWrapper({ execution_mode: 'claude_code_cli' })
 
-      // Start OFF
-      expect(wrapper.vm.usingClaudeCodeSubagents).toBe(false)
+      // In CLI mode, only orchestrator shows
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'orchestrator',
+        status: 'working',
+      })).toBe(true)
 
-      // Call toggleExecutionMode
-      await wrapper.vm.toggleExecutionMode()
-      expect(wrapper.vm.usingClaudeCodeSubagents).toBe(true)
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'implementer',
+        status: 'working',
+      })).toBe(false)
+    })
 
-      // Call again to toggle OFF
-      await wrapper.vm.toggleExecutionMode()
-      expect(wrapper.vm.usingClaudeCodeSubagents).toBe(false)
+    it('should default to multi_terminal behavior when execution_mode is undefined', () => {
+      const wrapper = createWrapper({ execution_mode: undefined })
+
+      // All agents should show copy button in multi_terminal mode
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'implementer',
+        status: 'working',
+      })).toBe(true)
+    })
+
+    it('should update behavior when project prop changes', async () => {
+      const wrapper = createWrapper({ execution_mode: 'multi_terminal' })
+
+      // Initially multi_terminal - all agents show
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'implementer',
+        status: 'working',
+      })).toBe(true)
+
+      // Change to CLI mode
+      await wrapper.setProps({
+        project: { ...mockProject, execution_mode: 'claude_code_cli' },
+      })
+
+      // Now only orchestrator shows
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'implementer',
+        status: 'working',
+      })).toBe(false)
+
+      expect(wrapper.vm.shouldShowCopyButton({
+        agent_display_name: 'orchestrator',
+        status: 'working',
+      })).toBe(true)
     })
   })
 
-  // ==================== HANDOVER 0251 PHASE 2: ORCHESTRATOR PLAY BUTTON TESTS ====================
-
-  describe('Orchestrator Play Button Behavior (Handover 0253)', () => {
-    it('should show info message instead of copying prompt when clicking orchestrator play button', async () => {
-      // Reset mock before test
-      mockShowToast.mockClear()
-
+  describe('Messages Waiting Counter', () => {
+    it('should have getMessagesWaiting method', () => {
       const wrapper = createWrapper()
-      const orchestrator = mockAgents.find((a) => a.agent_type === 'orchestrator')
-
-      // BEHAVIOR: Clicking play on orchestrator should show info toast, not copy prompt
-      await wrapper.vm.handlePlay(orchestrator)
-      await nextTick()
-
-      expect(mockShowToast).toHaveBeenCalledWith({
-        message: "Use 'Copy Orchestrator Prompt' button in Launch tab for universal prompt",
-        type: 'info',
-        duration: 3000
-      })
+      expect(typeof wrapper.vm.getMessagesWaiting).toBe('function')
     })
 
-    it('should still copy prompts for specialist agents (implementer, tester)', async () => {
-      // Import the mocked api to configure it
-      const { api } = await import('@/services/api')
-
-      // Reset mocks
-      mockShowToast.mockClear()
-      navigator.clipboard.writeText.mockClear()
-
-      // Mock API response BEFORE creating wrapper
-      api.prompts.agentPrompt.mockClear()
-      api.prompts.agentPrompt.mockResolvedValue({
-        data: { prompt: 'Test prompt for implementer' }
-      })
-
+    it('should return messages_waiting_count from agent', () => {
       const wrapper = createWrapper()
-      const implementer = mockAgents.find((a) => a.agent_type === 'implementer')
+      expect(wrapper.vm.getMessagesWaiting({ messages_waiting_count: 5 })).toBe(5)
+    })
 
-      // BEHAVIOR: Specialist agents should still copy prompts normally
-      await wrapper.vm.handlePlay(implementer)
+    it('should return 0 when messages_waiting_count is undefined', () => {
+      const wrapper = createWrapper()
+      expect(wrapper.vm.getMessagesWaiting({})).toBe(0)
+    })
 
-      // Wait for all async operations to complete
-      await flushPromises()
-
-      expect(api.prompts.agentPrompt).toHaveBeenCalledWith(implementer.job_id)
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Test prompt for implementer')
-      expect(mockShowToast).toHaveBeenCalledWith({
-        message: 'Launch prompt copied to clipboard',
-        type: 'success',
-        duration: 3000
-      })
+    it('should return 0 when agent is null', () => {
+      const wrapper = createWrapper()
+      expect(wrapper.vm.getMessagesWaiting(null)).toBe(0)
     })
   })
 })

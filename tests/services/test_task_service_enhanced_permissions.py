@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from passlib.hash import bcrypt
+import bcrypt
 
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.models.projects import Project
@@ -91,7 +91,7 @@ async def test_can_delete_task_denied(task_service, test_task, db_session, test_
         id=str(uuid4()),
         username=f"otherdev_{uuid4().hex[:6]}",
         email=f"otherdev_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hash("Password123"),
+        password_hash=bcrypt.hashpw("Password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         role="developer",
         tenant_key=test_tenant_key,
         is_active=True,

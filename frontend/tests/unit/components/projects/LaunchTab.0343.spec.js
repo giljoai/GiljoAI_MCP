@@ -70,7 +70,16 @@ vi.mock('@/services/api', () => ({
 // Import API after mock
 import { api } from '@/services/api'
 
-describe('LaunchTab Execution Mode Lock (0343)', () => {
+// SKIPPED: Execution Mode Toggle was moved from LaunchTab to ProjectTabs (Handover 0428).
+// LaunchTab no longer contains:
+// - data-testid="execution-mode-toggle" element
+// - toggle-locked CSS class
+// - lock-icon element
+// - toggle-options element
+// - usingClaudeCodeSubagents computed property
+// - Any execution mode switching logic
+// These tests should be relocated to a ProjectTabs test suite if needed.
+describe.skip('LaunchTab Execution Mode Lock (0343)', () => {
   const mockProject = {
     id: 'project-123',
     project_id: 'project-123',

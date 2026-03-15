@@ -4,15 +4,13 @@
  * Test suite for Agent Mission Edit Functionality (Handover 0244b)
  * Integration tests for AgentMissionEditModal in LaunchTab
  *
- * Following strict TDD: Write tests FIRST, watch them FAIL, then implement
- *
- * Requirements:
- * 1. Import and register AgentMissionEditModal component
- * 2. Modal opens on Edit button click for non-orchestrator agents
- * 3. Orchestrator shows info message instead of opening modal
- * 4. Mission updates reflect in local agent data
- * 5. WebSocket listener updates agents when missions change
- * 6. Real-time updates across all clients
+ * Post-refactor notes:
+ * - LaunchTab uses useAgentJobs() composable for agent data (sortedJobs), NOT project.agents prop
+ * - handleAgentEdit checks agent.agent_display_name (not agent_type)
+ * - handleMissionUpdated calls agentJobsStore.upsertJob, not local array mutation
+ * - No WebSocket on/off for agent:mission_updated in LaunchTab (removed)
+ * - Toast calls use { message, type } without timeout
+ * - LaunchTab has gitEnabled and serenaEnabled props
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -29,16 +27,28 @@ const vuetify = createVuetify({
   directives,
 })
 
-// Mock WebSocket composable
-let mockWebSocketOn
-let mockWebSocketOff
-let mockWebSocketEmit
+// Mock useAgentJobs composable
+const mockSortedJobs = { value: [] }
 
-vi.mock('@/composables/useWebSocket', () => ({
-  useWebSocket: () => ({
-    on: mockWebSocketOn,
-    off: mockWebSocketOff,
-    emit: mockWebSocketEmit,
+vi.mock('@/composables/useAgentJobs', () => ({
+  useAgentJobs: () => ({
+    sortedJobs: mockSortedJobs,
+  })
+}))
+
+// Mock agentJobsStore
+const mockUpsertJob = vi.fn()
+
+vi.mock('@/stores/agentJobsStore', () => ({
+  useAgentJobsStore: () => ({
+    upsertJob: mockUpsertJob,
+  })
+}))
+
+// Mock projectStateStore
+vi.mock('@/stores/projectStateStore', () => ({
+  useProjectStateStore: () => ({
+    getProjectState: vi.fn().mockReturnValue({ mission: '' }),
   })
 }))
 
@@ -60,11 +70,17 @@ vi.mock('@/stores/user', () => ({
   })
 }))
 
+// Mock agentColors
+vi.mock('@/config/agentColors', () => ({
+  getAgentColor: () => ({ hex: '#888888', name: 'grey' }),
+}))
+
 describe('LaunchTab - Agent Mission Edit Integration (0244b)', () => {
   let wrapper
 
   const mockProject = {
     id: 'project-123',
+    project_id: 'project-123',
     name: 'Test Project',
     mission: 'Test project mission',
     description: 'Test project description',
@@ -72,7 +88,7 @@ describe('LaunchTab - Agent Mission Edit Integration (0244b)', () => {
 
   const mockOrchestrator = {
     id: 'orch-123',
-    agent_type: 'orchestrator',
+    agent_display_name: 'orchestrator',
     agent_name: 'Orchestrator',
     mission: 'Orchestrate the project',
     status: 'active',
@@ -80,18 +96,16 @@ describe('LaunchTab - Agent Mission Edit Integration (0244b)', () => {
 
   const mockAgent = {
     id: 'agent-456',
-    agent_type: 'implementor',
+    agent_display_name: 'implementer',
     agent_name: 'Implementor Agent',
     mission: 'Original implementation mission',
     status: 'pending',
   }
 
   beforeEach(() => {
-    // Reset mocks before each test
-    mockWebSocketOn = vi.fn()
-    mockWebSocketOff = vi.fn()
-    mockWebSocketEmit = vi.fn()
     mockShowToast = vi.fn()
+    mockUpsertJob.mockReset()
+    mockSortedJobs.value = []
   })
 
   describe('Component Integration', () => {
@@ -174,22 +188,20 @@ describe('LaunchTab - Agent Mission Edit Integration (0244b)', () => {
       expect(wrapper.vm.showMissionEditModal).toBe(false)
 
       // Toast notification should be shown
-      expect(mockShowToast).toHaveBeenCalledWith({
-        message: 'Orchestrator configuration cannot be edited here',
-        type: 'info',
-        timeout: 3000,
-      })
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Orchestrator configuration cannot be edited here',
+          type: 'info',
+        })
+      )
     })
   })
 
   describe('handleMissionUpdated Function', () => {
-    it('should update local agent data when mission is updated', async () => {
+    it('should call agentJobsStore.upsertJob when mission is updated', async () => {
       wrapper = mount(LaunchTab, {
         props: {
-          project: {
-            ...mockProject,
-            agents: [mockAgent],
-          },
+          project: mockProject,
           orchestrator: mockOrchestrator,
           isStaging: false,
         },
@@ -200,10 +212,6 @@ describe('LaunchTab - Agent Mission Edit Integration (0244b)', () => {
 
       await nextTick()
 
-      // Verify agent is loaded
-      expect(wrapper.vm.agents).toHaveLength(1)
-      expect(wrapper.vm.agents[0].mission).toBe('Original implementation mission')
-
       // Call handleMissionUpdated with new mission
       const updatedMission = 'Updated mission text'
       wrapper.vm.handleMissionUpdated({
@@ -212,15 +220,16 @@ describe('LaunchTab - Agent Mission Edit Integration (0244b)', () => {
       })
       await nextTick()
 
-      // Verify agent mission was updated
-      expect(wrapper.vm.agents[0].mission).toBe(updatedMission)
+      // Verify agentJobsStore.upsertJob was called
+      expect(mockUpsertJob).toHaveBeenCalledWith({ job_id: 'agent-456', mission: updatedMission })
 
       // Verify success toast was shown
-      expect(mockShowToast).toHaveBeenCalledWith({
-        message: 'Agent mission updated successfully',
-        type: 'success',
-        timeout: 3000,
-      })
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Agent mission updated successfully',
+          type: 'success',
+        })
+      )
     })
 
     it('should handle mission update for non-existent agent gracefully', async () => {
@@ -235,192 +244,29 @@ describe('LaunchTab - Agent Mission Edit Integration (0244b)', () => {
         },
       })
 
-      // Call with non-existent job ID
+      // Call with non-existent job ID - should not crash
       wrapper.vm.handleMissionUpdated({
         jobId: 'non-existent-id',
         mission: 'Some mission',
       })
       await nextTick()
 
-      // Should not crash and still show toast
-      expect(mockShowToast).toHaveBeenCalledWith({
-        message: 'Agent mission updated successfully',
-        type: 'success',
-        timeout: 3000,
-      })
+      // Should still show toast
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Agent mission updated successfully',
+          type: 'success',
+        })
+      )
     })
   })
 
-  describe('WebSocket Integration', () => {
-    it('should register agent:mission_updated WebSocket listener on mount', async () => {
-      wrapper = mount(LaunchTab, {
-        props: {
-          project: mockProject,
-          orchestrator: mockOrchestrator,
-          isStaging: false,
-        },
-        global: {
-          plugins: [vuetify],
-        },
-      })
-
-      await nextTick()
-
-      // Verify WebSocket listener was registered
-      expect(mockWebSocketOn).toHaveBeenCalled()
-      const calls = mockWebSocketOn.mock.calls
-      const missionUpdateCall = calls.find(call => call[0] === 'agent:mission_updated')
-      expect(missionUpdateCall).toBeDefined()
-      expect(typeof missionUpdateCall[1]).toBe('function')
-    })
-
-    it('should unregister agent:mission_updated WebSocket listener on unmount', async () => {
-      wrapper = mount(LaunchTab, {
-        props: {
-          project: mockProject,
-          orchestrator: mockOrchestrator,
-          isStaging: false,
-        },
-        global: {
-          plugins: [vuetify],
-        },
-      })
-
-      await nextTick()
-
-      // Unmount component
-      wrapper.unmount()
-
-      // Verify WebSocket listener was unregistered
-      expect(mockWebSocketOff).toHaveBeenCalled()
-      const calls = mockWebSocketOff.mock.calls
-      const missionUpdateCall = calls.find(call => call[0] === 'agent:mission_updated')
-      expect(missionUpdateCall).toBeDefined()
-    })
-
-    it('should update agent mission when WebSocket event is received', async () => {
-      wrapper = mount(LaunchTab, {
-        props: {
-          project: {
-            ...mockProject,
-            agents: [mockAgent],
-          },
-          orchestrator: mockOrchestrator,
-          isStaging: false,
-        },
-        global: {
-          plugins: [vuetify],
-        },
-      })
-
-      await nextTick()
-
-      // Get the WebSocket handler
-      const calls = mockWebSocketOn.mock.calls
-      const missionUpdateCall = calls.find(call => call[0] === 'agent:mission_updated')
-      const handler = missionUpdateCall[1]
-
-      // Simulate WebSocket event
-      const websocketData = {
-        job_id: 'agent-456',
-        agent_name: 'Implementor Agent',
-        mission: 'WebSocket updated mission',
-        project_id: 'project-123',
-      }
-
-      handler(websocketData)
-      await nextTick()
-
-      // Verify agent mission was updated
-      expect(wrapper.vm.agents[0].mission).toBe('WebSocket updated mission')
-
-      // Verify toast notification was shown (modal is closed)
-      expect(mockShowToast).toHaveBeenCalledWith({
-        message: 'Mission updated for Implementor Agent',
-        type: 'info',
-        timeout: 3000,
-      })
-    })
-
-    it('should not show toast when modal is open (own edit)', async () => {
-      wrapper = mount(LaunchTab, {
-        props: {
-          project: {
-            ...mockProject,
-            agents: [mockAgent],
-          },
-          orchestrator: mockOrchestrator,
-          isStaging: false,
-        },
-        global: {
-          plugins: [vuetify],
-        },
-      })
-
-      await nextTick()
-
-      // Open modal
-      wrapper.vm.showMissionEditModal = true
-      await nextTick()
-
-      // Get the WebSocket handler
-      const calls = mockWebSocketOn.mock.calls
-      const missionUpdateCall = calls.find(call => call[0] === 'agent:mission_updated')
-      const handler = missionUpdateCall[1]
-
-      // Clear previous toast calls
-      mockShowToast.mockClear()
-
-      // Simulate WebSocket event
-      const websocketData = {
-        job_id: 'agent-456',
-        agent_name: 'Implementor Agent',
-        mission: 'WebSocket updated mission',
-        project_id: 'project-123',
-      }
-
-      handler(websocketData)
-      await nextTick()
-
-      // Verify agent mission was updated
-      expect(wrapper.vm.agents[0].mission).toBe('WebSocket updated mission')
-
-      // Verify toast notification was NOT shown (modal is open = own edit)
-      expect(mockShowToast).not.toHaveBeenCalled()
-    })
-
-    it('should handle WebSocket event for non-existent agent gracefully', async () => {
-      wrapper = mount(LaunchTab, {
-        props: {
-          project: mockProject,
-          orchestrator: mockOrchestrator,
-          isStaging: false,
-        },
-        global: {
-          plugins: [vuetify],
-        },
-      })
-
-      await nextTick()
-
-      // Get the WebSocket handler
-      const calls = mockWebSocketOn.mock.calls
-      const missionUpdateCall = calls.find(call => call[0] === 'agent:mission_updated')
-      const handler = missionUpdateCall[1]
-
-      // Simulate WebSocket event for non-existent agent
-      const websocketData = {
-        job_id: 'non-existent-id',
-        agent_name: 'Ghost Agent',
-        mission: 'Some mission',
-        project_id: 'project-123',
-      }
-
-      // Should not crash
-      expect(() => {
-        handler(websocketData)
-      }).not.toThrow()
-    })
+  describe.skip('WebSocket Integration (REMOVED - LaunchTab no longer listens for agent:mission_updated)', () => {
+    it('should register agent:mission_updated WebSocket listener on mount', async () => {})
+    it('should unregister agent:mission_updated WebSocket listener on unmount', async () => {})
+    it('should update agent mission when WebSocket event is received', async () => {})
+    it('should not show toast when modal is open (own edit)', async () => {})
+    it('should handle WebSocket event for non-existent agent gracefully', async () => {})
   })
 
   describe('Template Integration', () => {
@@ -473,10 +319,7 @@ describe('LaunchTab - Agent Mission Edit Integration (0244b)', () => {
     it('should handle mission-updated event from modal', async () => {
       wrapper = mount(LaunchTab, {
         props: {
-          project: {
-            ...mockProject,
-            agents: [mockAgent],
-          },
+          project: mockProject,
           orchestrator: mockOrchestrator,
           isStaging: false,
         },
@@ -499,8 +342,8 @@ describe('LaunchTab - Agent Mission Edit Integration (0244b)', () => {
       })
       await nextTick()
 
-      // Verify mission was updated
-      expect(wrapper.vm.agents[0].mission).toBe('Updated via modal')
+      // Verify upsertJob was called
+      expect(mockUpsertJob).toHaveBeenCalledWith({ job_id: 'agent-456', mission: 'Updated via modal' })
     })
   })
 })

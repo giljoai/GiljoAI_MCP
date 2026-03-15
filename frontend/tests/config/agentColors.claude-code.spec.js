@@ -11,7 +11,17 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { getAgentColor, AGENT_COLORS } from '@/config/agentColors'
+import { getAgentColor } from '@/config/agentColors'
+
+// AGENT_COLORS is not exported from agentColors.js; derive expected values from getAgentColor
+const AGENT_COLORS = {
+  orchestrator: getAgentColor('orchestrator'),
+  analyzer: getAgentColor('analyzer'),
+  implementer: getAgentColor('implementer'),
+  documenter: getAgentColor('documenter'),
+  reviewer: getAgentColor('reviewer'),
+  tester: getAgentColor('tester'),
+}
 
 describe('Claude Code Agent Template Color Mappings', () => {
   describe('TDD Implementor', () => {

@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 import pytest_asyncio
 from httpx import ASGITransport
 from httpx import AsyncClient as HTTPXAsyncClient
-from passlib.hash import bcrypt
+import bcrypt
 
 # Shared CSRF token for test fixtures (double-submit cookie pattern)
 _TEST_CSRF_TOKEN = secrets.token_urlsafe(32)
@@ -169,7 +169,7 @@ async def auth_headers(db_manager, api_client) -> dict:
         tenant_key = TenantManager.generate_tenant_key()
 
         # Create test user with password hash (models.User uses password_hash + role)
-        password_hash = bcrypt.hash("test_password")
+        password_hash = bcrypt.hashpw("test_password".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         # Create org first (0424m: org_id is NOT NULL, tenant_key required)
         org = Organization(

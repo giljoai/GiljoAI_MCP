@@ -79,7 +79,7 @@ async def test_get_agent_mission_emits_ack_and_status_changed(
     job_id = str(uuid4())
     agent_id = str(uuid4())
 
-    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work", created_at=datetime.now(timezone.utc))
+    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work", created_at=datetime.now(timezone.utc), job_type="orchestrator")
     execution = SimpleNamespace(
         agent_id=agent_id,
         job_id=job_id,
@@ -125,7 +125,7 @@ async def test_get_agent_mission_is_idempotent_and_does_not_re_emit(
     job_id = str(uuid4())
     agent_id = str(uuid4())
 
-    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work", created_at=datetime.now(timezone.utc))
+    job = SimpleNamespace(job_id=job_id, tenant_key=tenant_key, project_id=project_id, mission="Do work", created_at=datetime.now(timezone.utc), job_type="orchestrator")
     execution = SimpleNamespace(
         agent_id=agent_id,
         job_id=job_id,
@@ -178,7 +178,7 @@ async def test_complete_job_emits_status_changed_with_duration_seconds(
         progress=0,
     )
     job = SimpleNamespace(
-        job_id=job_id, tenant_key=tenant_key, project_id=str(uuid4()), status="active", completed_at=None
+        job_id=job_id, tenant_key=tenant_key, project_id=str(uuid4()), status="active", completed_at=None, job_type="orchestrator"
     )
 
     # complete_job makes 6 execute calls:
@@ -240,6 +240,7 @@ async def test_report_progress_fallback_emits_message_new_event(
         tenant_key=tenant_key,
         project_id=str(uuid4()),
         job_metadata={},  # Required for websocket broadcast
+        job_type="orchestrator",
     )
 
     # report_progress uses 2 session contexts with 3 total execute calls:

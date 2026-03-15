@@ -1,22 +1,80 @@
 import { config } from '@vue/test-utils'
 import { vi } from 'vitest'
+import { ref } from 'vue'
 import { createVuetify } from 'vuetify'
 import { createPinia } from 'pinia'
 
-// Define global Vuetify component mocks
+// Define global Vuetify component mocks (PascalCase for vi.mock)
 const VuetifyMock = {
+  VApp: { template: '<div class="v-app"><slot /></div>' },
+  VMain: { template: '<div class="v-main"><slot /></div>' },
+  VAppBar: { template: '<div class="v-app-bar"><slot /></div>' },
   VContainer: { template: '<div><slot /></div>' },
   VRow: { template: '<div><slot /></div>' },
   VCol: { template: '<div><slot /></div>' },
-  VStepper: { template: '<div><slot /></div>' },
-  VStepperHeader: { template: '<div><slot /></div>' },
-  VStepperItem: { template: '<div><slot /></div>' },
-  VStepperContent: { template: '<div><slot /></div>' },
   VCard: { template: '<div><slot /></div>' },
   VCardTitle: { template: '<div><slot /></div>' },
   VCardText: { template: '<div><slot /></div>' },
   VCardActions: { template: '<div><slot /></div>' },
-  VBtn: { template: '<button v-bind=\"$attrs\"><slot /></button>' }
+  VBtn: { template: '<button v-bind="$attrs"><slot /></button>' },
+  VIcon: { template: '<span class="v-icon"><slot /></span>' },
+  VImg: { template: '<div class="v-img"><slot /></div>' },
+  VAvatar: { template: '<div class="v-avatar"><slot /></div>' },
+  VTooltip: { template: '<div class="v-tooltip"><slot /></div>' },
+  VDialog: { template: '<div class="v-dialog"><slot /></div>' },
+  VMenu: { template: '<div class="v-menu"><slot /></div>' },
+  VList: { template: '<div class="v-list"><slot /></div>' },
+  VListItem: { template: '<div class="v-list-item"><slot /></div>' },
+  VListItemTitle: { template: '<div class="v-list-item-title"><slot /></div>' },
+  VExpansionPanels: { template: '<div class="v-expansion-panels"><slot /></div>' },
+  VExpansionPanel: { template: '<div class="v-expansion-panel"><slot /></div>' },
+  VExpansionPanelTitle: { template: '<div class="v-expansion-panel-title"><slot /></div>' },
+  VExpansionPanelText: { template: '<div class="v-expansion-panel-text"><slot /></div>' },
+  VTextField: { template: '<input class="v-text-field" v-bind="$attrs" />' },
+  VTextarea: { template: '<textarea class="v-textarea" v-bind="$attrs"></textarea>' },
+  VSelect: { template: '<div class="v-select" v-bind="$attrs"><slot /></div>' },
+  VAutocomplete: { template: '<div class="v-autocomplete" v-bind="$attrs"><slot /></div>' },
+  VCombobox: { template: '<div class="v-combobox" v-bind="$attrs"><slot /></div>' },
+  VCheckbox: { template: '<input type="checkbox" class="v-checkbox" v-bind="$attrs" />' },
+  VSwitch: { template: '<input type="checkbox" class="v-switch" v-bind="$attrs" />' },
+  VRadio: { template: '<input type="radio" class="v-radio" v-bind="$attrs" />' },
+  VRadioGroup: { template: '<div class="v-radio-group"><slot /></div>' },
+  VSlider: { template: '<div class="v-slider" v-bind="$attrs"><slot /></div>' },
+  VRangeSlider: { template: '<div class="v-range-slider" v-bind="$attrs"><slot /></div>' },
+  VFileInput: { template: '<input type="file" class="v-file-input" v-bind="$attrs" />' },
+  VColorPicker: { template: '<div class="v-color-picker" v-bind="$attrs"><slot /></div>' },
+  VForm: { template: '<form class="v-form"><slot /></form>' },
+  VTabs: { template: '<div class="v-tabs"><slot /></div>' },
+  VTab: { template: '<div class="v-tab"><slot /></div>' },
+  VTabItem: { template: '<div class="v-tab-item"><slot /></div>' },
+  VWindow: { template: '<div class="v-window"><slot /></div>' },
+  VWindowItem: { template: '<div class="v-window-item"><slot /></div>' },
+  VNavigationDrawer: { template: '<div class="v-navigation-drawer"><slot /></div>' },
+  VToolbar: { template: '<div class="v-toolbar"><slot /></div>' },
+  VToolbarTitle: { template: '<div class="v-toolbar-title"><slot /></div>' },
+  VToolbarItems: { template: '<div class="v-toolbar-items"><slot /></div>' },
+  VDataTable: { template: '<div class="v-data-table"><slot /></div>' },
+  VDataTableServer: { template: '<div class="v-data-table-server"><slot /></div>' },
+  VStepper: { template: '<div class="v-stepper"><slot /></div>' },
+  VStepperHeader: { template: '<div class="v-stepper-header"><slot /></div>' },
+  VStepperItem: { template: '<div class="v-stepper-item"><slot /></div>' },
+  VStepperContent: { template: '<div class="v-stepper-content"><slot /></div>' },
+  VStepperStep: { template: '<div class="v-stepper-step"><slot /></div>' },
+  VStepperWindowItem: { template: '<div class="v-stepper-window-item"><slot /></div>' },
+  VDivider: { template: '<hr class="v-divider" />' },
+  VSpacer: { template: '<div class="v-spacer"></div>' },
+  VProgressLinear: { template: '<div class="v-progress-linear"><slot /></div>' },
+  VProgressCircular: { template: '<div class="v-progress-circular">Progress</div>' },
+  VSnackbar: { template: '<div class="v-snackbar"><slot /></div>' },
+  VAlert: { template: '<div class="v-alert"><slot /></div>' },
+  VBadge: { template: '<span class="v-badge"><slot /></span>' },
+  VChip: { template: '<span class="v-chip"><slot /></span>' },
+  VChipGroup: { template: '<div class="v-chip-group"><slot /></div>' },
+  VOverlay: { template: '<div class="v-overlay"><slot /></div>' },
+  VBanner: { template: '<div class="v-banner"><slot /></div>' },
+  VBreadcrumbs: { template: '<div class="v-breadcrumbs"><slot /></div>' },
+  VBreadcrumbsItem: { template: '<div class="v-breadcrumbs-item"><slot /></div>' },
+  VPagination: { template: '<div class="v-pagination"><slot /></div>' },
 }
 
 // Global CSS and component mocking
@@ -59,10 +117,77 @@ vi.mock('vuetify', () => ({
   })
 }))
 
-// Globally stub Vuetify components
+// Globally stub Vuetify components (kebab-case for template resolution)
 config.global.stubs = {
-  ...config.global.stubs,
-  ...VuetifyMock
+  'v-app': { template: '<div class="v-app"><slot /></div>' },
+  'v-main': { template: '<div class="v-main"><slot /></div>' },
+  'v-app-bar': { template: '<div class="v-app-bar"><slot /></div>' },
+  'v-container': { template: '<div><slot /></div>' },
+  'v-row': { template: '<div><slot /></div>' },
+  'v-col': { template: '<div><slot /></div>' },
+  'v-card': { template: '<div><slot /></div>' },
+  'v-card-title': { template: '<div><slot /></div>' },
+  'v-card-text': { template: '<div><slot /></div>' },
+  'v-card-actions': { template: '<div><slot /></div>' },
+  'v-btn': { template: '<button class="v-btn" v-bind="$attrs"><slot /></button>' },
+  'v-icon': { template: '<span class="v-icon"><slot /></span>' },
+  'v-img': { template: '<div class="v-img"><slot /></div>' },
+  'v-avatar': { template: '<div class="v-avatar"><slot /></div>' },
+  'v-tooltip': { template: '<div class="v-tooltip"><slot /></div>' },
+  'v-dialog': { template: '<div class="v-dialog"><slot /></div>' },
+  'v-menu': { template: '<div class="v-menu"><slot /></div>' },
+  'v-list': { template: '<div class="v-list"><slot /></div>' },
+  'v-list-item': { template: '<div class="v-list-item"><slot /></div>' },
+  'v-list-item-title': { template: '<div class="v-list-item-title"><slot /></div>' },
+  'v-expansion-panels': { template: '<div class="v-expansion-panels"><slot /></div>' },
+  'v-expansion-panel': { template: '<div class="v-expansion-panel"><slot /></div>' },
+  'v-expansion-panel-title': { template: '<div class="v-expansion-panel-title"><slot /></div>' },
+  'v-expansion-panel-text': { template: '<div class="v-expansion-panel-text"><slot /></div>' },
+  'v-text-field': { template: '<input class="v-text-field" v-bind="$attrs" />' },
+  'v-textarea': { template: '<textarea class="v-textarea" v-bind="$attrs"></textarea>' },
+  'v-select': { template: '<div class="v-select" v-bind="$attrs"><slot /></div>' },
+  'v-autocomplete': { template: '<div class="v-autocomplete" v-bind="$attrs"><slot /></div>' },
+  'v-combobox': { template: '<div class="v-combobox" v-bind="$attrs"><slot /></div>' },
+  'v-checkbox': { template: '<input type="checkbox" class="v-checkbox" v-bind="$attrs" />' },
+  'v-switch': { template: '<input type="checkbox" class="v-switch" v-bind="$attrs" />' },
+  'v-radio': { template: '<input type="radio" class="v-radio" v-bind="$attrs" />' },
+  'v-radio-group': { template: '<div class="v-radio-group"><slot /></div>' },
+  'v-slider': { template: '<div class="v-slider" v-bind="$attrs"><slot /></div>' },
+  'v-range-slider': { template: '<div class="v-range-slider" v-bind="$attrs"><slot /></div>' },
+  'v-file-input': { template: '<input type="file" class="v-file-input" v-bind="$attrs" />' },
+  'v-color-picker': { template: '<div class="v-color-picker" v-bind="$attrs"><slot /></div>' },
+  'v-form': { template: '<form class="v-form"><slot /></form>' },
+  'v-tabs': { template: '<div class="v-tabs"><slot /></div>' },
+  'v-tab': { template: '<div class="v-tab"><slot /></div>' },
+  'v-tab-item': { template: '<div class="v-tab-item"><slot /></div>' },
+  'v-window': { template: '<div class="v-window"><slot /></div>' },
+  'v-window-item': { template: '<div class="v-window-item"><slot /></div>' },
+  'v-navigation-drawer': { template: '<div class="v-navigation-drawer"><slot /></div>' },
+  'v-toolbar': { template: '<div class="v-toolbar"><slot /></div>' },
+  'v-toolbar-title': { template: '<div class="v-toolbar-title"><slot /></div>' },
+  'v-toolbar-items': { template: '<div class="v-toolbar-items"><slot /></div>' },
+  'v-data-table': { template: '<div class="v-data-table"><slot /></div>' },
+  'v-data-table-server': { template: '<div class="v-data-table-server"><slot /></div>' },
+  'v-stepper': { template: '<div class="v-stepper"><slot /></div>' },
+  'v-stepper-header': { template: '<div class="v-stepper-header"><slot /></div>' },
+  'v-stepper-item': { template: '<div class="v-stepper-item"><slot /></div>' },
+  'v-stepper-content': { template: '<div class="v-stepper-content"><slot /></div>' },
+  'v-stepper-step': { template: '<div class="v-stepper-step"><slot /></div>' },
+  'v-stepper-window-item': { template: '<div class="v-stepper-window-item"><slot /></div>' },
+  'v-divider': { template: '<hr class="v-divider" />' },
+  'v-spacer': { template: '<div class="v-spacer"></div>' },
+  'v-progress-linear': { template: '<div class="v-progress-linear"><slot /></div>' },
+  'v-progress-circular': { template: '<div class="v-progress-circular">Progress</div>' },
+  'v-snackbar': { template: '<div class="v-snackbar"><slot /></div>' },
+  'v-alert': { template: '<div class="v-alert"><slot /></div>' },
+  'v-badge': { template: '<span class="v-badge"><slot /></span>' },
+  'v-chip': { template: '<span class="v-chip"><slot /></span>' },
+  'v-chip-group': { template: '<div class="v-chip-group"><slot /></div>' },
+  'v-overlay': { template: '<div class="v-overlay"><slot /></div>' },
+  'v-banner': { template: '<div class="v-banner"><slot /></div>' },
+  'v-breadcrumbs': { template: '<div class="v-breadcrumbs"><slot /></div>' },
+  'v-breadcrumbs-item': { template: '<div class="v-breadcrumbs-item"><slot /></div>' },
+  'v-pagination': { template: '<div class="v-pagination"><slot /></div>' },
 }
 
 // Create a minimal Vuetify mock plugin
@@ -73,38 +198,6 @@ const pinia = createPinia()
 
 // Global mocks and stubs
 config.global.plugins = [vuetify, pinia]
-
-config.global.stubs = {
-  'v-container': { template: '<div><slot /></div>' },
-  'v-row': { template: '<div><slot /></div>' },
-  'v-col': { template: '<div><slot /></div>' },
-  'v-card': { template: '<div><slot /></div>' },
-  'v-card-title': { template: '<div><slot /></div>' },
-  'v-card-text': { template: '<div><slot /></div>' },
-  'v-card-actions': { template: '<div><slot /></div>' },
-  'v-stepper': { template: '<div><slot /></div>' },
-  'v-progress-circular': { template: '<div>Progress</div>' },
-  'v-progress-linear': { template: '<div><slot /></div>' },
-  'v-overlay': { template: '<div><slot /></div>' },
-  'v-img': { template: '<div><slot /></div>' },
-  'v-btn': { template: '<button class="v-btn" v-bind="$attrs"><slot /></button>' },
-  'v-icon': { template: '<span class="v-icon"><slot /></span>' },
-  'v-avatar': { template: '<div class="v-avatar"><slot /></div>' },
-  'v-chip': { template: '<span><slot /></span>' },
-  'v-badge': { template: '<span><slot /></span>' },
-  'v-alert': { template: '<div><slot /></div>' },
-  'v-divider': { template: '<hr />' },
-  'v-dialog': { template: '<div><slot /></div>' },
-  'v-list': { template: '<div><slot /></div>' },
-  'v-list-item': { template: '<div><slot /></div>' },
-  'v-list-item-title': { template: '<div><slot /></div>' },
-  'v-checkbox': { template: '<input type="checkbox" />' },
-  'v-textarea': { template: '<textarea><slot /></textarea>' },
-  'v-spacer': { template: '<div></div>' },
-  'v-snackbar': { template: '<div><slot /></div>' },
-  'v-stepper-window-item': { template: '<div><slot /></div>' },
-  'v-switch': { template: '<input type="checkbox" />' }
-}
 
 // Provide mock implementations for browser APIs
 Object.defineProperty(window, 'localStorage', {
@@ -131,28 +224,198 @@ window.matchMedia = vi.fn().mockImplementation(query => ({
 // Mock document.execCommand for clipboard operations
 document.execCommand = vi.fn(() => true)
 
-// Mock API service
-vi.mock('@/services/api', () => ({
-  api: {
+// Mock API service with comprehensive namespace coverage
+// NOTE: The full API object must be inside the vi.mock factory because vi.mock is hoisted.
+// Both named export `api` and default export must point to the same object
+// because stores use both: `import api from` (default) and `import { api } from` (named).
+vi.mock('@/services/api', () => {
+  const apiObj = {
+    get: vi.fn(() => Promise.resolve({ data: {} })),
+    post: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    put: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    delete: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    auth: {
+      login: vi.fn(() => Promise.resolve({ data: { user: {}, token: 'mock-token' } })),
+      logout: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      me: vi.fn(() => Promise.resolve({ data: { id: 1, username: 'testuser', role: 'admin' } })),
+      register: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      createFirstAdmin: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      listUsers: vi.fn(() => Promise.resolve({ data: [] })),
+      updateUser: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      checkFirstLogin: vi.fn(() => Promise.resolve({ data: { is_first_login: false } })),
+      completeFirstLogin: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      verifyPinAndResetPassword: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      setRecoveryPin: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      resetUserPassword: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
     prompts: {
       staging: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock staging prompt' } })),
       execution: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock orchestrator prompt' } })),
       agentPrompt: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock agent prompt' } })),
-      // Handover 0344: CLI mode implementation prompt
-      implementation: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock implementation prompt', agent_count: 3 } }))
+      implementation: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock implementation prompt', agent_count: 3 } })),
+      termination: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock termination prompt' } })),
+      orchestrator: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock orchestrator prompt' } })),
     },
-    get: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock prompt text' } })),
-    post: vi.fn(() => Promise.resolve({ data: { success: true } })),
-    put: vi.fn(() => Promise.resolve({ data: { success: true } })),
-    delete: vi.fn(() => Promise.resolve({ data: { success: true } }))
-  },
-  default: {
-    get: vi.fn(() => Promise.resolve({ data: { prompt: 'Mock prompt text' } })),
-    post: vi.fn(() => Promise.resolve({ data: { success: true } })),
-    put: vi.fn(() => Promise.resolve({ data: { success: true } })),
-    delete: vi.fn(() => Promise.resolve({ data: { success: true } }))
+    templates: {
+      list: vi.fn(() => Promise.resolve({ data: [] })),
+      get: vi.fn(() => Promise.resolve({ data: {} })),
+      create: vi.fn(() => Promise.resolve({ data: {} })),
+      update: vi.fn(() => Promise.resolve({ data: {} })),
+      delete: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      history: vi.fn(() => Promise.resolve({ data: [] })),
+      restore: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      preview: vi.fn(() => Promise.resolve({ data: {} })),
+      reset: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      activeCount: vi.fn(() => Promise.resolve({ data: { count: 0 } })),
+    },
+    projects: {
+      list: vi.fn(() => Promise.resolve({ data: [] })),
+      get: vi.fn(() => Promise.resolve({ data: {} })),
+      getOrchestrator: vi.fn(() => Promise.resolve({ data: {} })),
+      getActive: vi.fn(() => Promise.resolve({ data: [] })),
+      create: vi.fn(() => Promise.resolve({ data: {} })),
+      update: vi.fn(() => Promise.resolve({ data: {} })),
+      delete: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      fetchDeleted: vi.fn(() => Promise.resolve({ data: [] })),
+      getNextSeries: vi.fn(() => Promise.resolve({ data: {} })),
+      getAvailableSeries: vi.fn(() => Promise.resolve({ data: [] })),
+      checkSeries: vi.fn(() => Promise.resolve({ data: {} })),
+      usedSubseries: vi.fn(() => Promise.resolve({ data: [] })),
+      activate: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      deactivate: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      complete: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      cancel: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      restore: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      purgeDeleted: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      purgeAllDeleted: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      restoreCompleted: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      cancelStaging: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      completeWithData: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      archive: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      launchImplementation: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    products: {
+      list: vi.fn(() => Promise.resolve({ data: [] })),
+      get: vi.fn(() => Promise.resolve({ data: {} })),
+      getActive: vi.fn(() => Promise.resolve({ data: [] })),
+      create: vi.fn(() => Promise.resolve({ data: {} })),
+      update: vi.fn(() => Promise.resolve({ data: {} })),
+      delete: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      getCascadeImpact: vi.fn(() => Promise.resolve({ data: {} })),
+      activate: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      deactivate: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      getDeletedProducts: vi.fn(() => Promise.resolve({ data: [] })),
+      restoreProduct: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      getMemoryEntries: vi.fn(() => Promise.resolve({ data: [] })),
+    },
+    projectTypes: {
+      list: vi.fn(() => Promise.resolve({ data: [] })),
+      create: vi.fn(() => Promise.resolve({ data: {} })),
+      update: vi.fn(() => Promise.resolve({ data: {} })),
+      delete: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    tasks: {
+      list: vi.fn(() => Promise.resolve({ data: [] })),
+      get: vi.fn(() => Promise.resolve({ data: {} })),
+      create: vi.fn(() => Promise.resolve({ data: {} })),
+      update: vi.fn(() => Promise.resolve({ data: {} })),
+      delete: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      changeStatus: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      summary: vi.fn(() => Promise.resolve({ data: {} })),
+      convertToProject: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    agentJobs: {
+      list: vi.fn(() => Promise.resolve({ data: [] })),
+      get: vi.fn(() => Promise.resolve({ data: {} })),
+      spawn: vi.fn(() => Promise.resolve({ data: {} })),
+      status: vi.fn(() => Promise.resolve({ data: {} })),
+      updateMission: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      simpleHandover: vi.fn(() => Promise.resolve({ data: {} })),
+      messages: vi.fn(() => Promise.resolve({ data: [] })),
+    },
+    users: {
+      update: vi.fn(() => Promise.resolve({ data: {} })),
+      getFieldToggleConfig: vi.fn(() => Promise.resolve({ data: {} })),
+      updateFieldToggleConfig: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      resetFieldToggleConfig: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    messages: {
+      list: vi.fn(() => Promise.resolve({ data: [] })),
+      get: vi.fn(() => Promise.resolve({ data: {} })),
+      send: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      complete: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      broadcast: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      sendUnified: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    settings: {
+      get: vi.fn(() => Promise.resolve({ data: {} })),
+      update: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      getDatabase: vi.fn(() => Promise.resolve({ data: {} })),
+      getCookieDomains: vi.fn(() => Promise.resolve({ data: [] })),
+      addCookieDomain: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      removeCookieDomain: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    setup: {
+      status: vi.fn(() => Promise.resolve({ data: { is_fresh_install: false, is_configured: true } })),
+    },
+    apiKeys: {
+      list: vi.fn(() => Promise.resolve({ data: [] })),
+      create: vi.fn(() => Promise.resolve({ data: {} })),
+      delete: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    orchestrator: {
+      launchProject: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    organizations: {
+      list: vi.fn(() => Promise.resolve({ data: [] })),
+      get: vi.fn(() => Promise.resolve({ data: {} })),
+      create: vi.fn(() => Promise.resolve({ data: {} })),
+      update: vi.fn(() => Promise.resolve({ data: {} })),
+      delete: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      listMembers: vi.fn(() => Promise.resolve({ data: [] })),
+      inviteMember: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      changeMemberRole: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      removeMember: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      transferOwnership: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    visionDocuments: {
+      listByProduct: vi.fn(() => Promise.resolve({ data: [] })),
+      upload: vi.fn(() => Promise.resolve({ data: {} })),
+      delete: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    serena: {
+      getStatus: vi.fn(() => Promise.resolve({ data: {} })),
+      toggle: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      getConfig: vi.fn(() => Promise.resolve({ data: {} })),
+      updateConfig: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    git: {
+      getSettings: vi.fn(() => Promise.resolve({ data: {} })),
+      toggle: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      updateSettings: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    downloads: {
+      generateSlashCommandsInstructions: vi.fn(() => Promise.resolve({ data: {} })),
+    },
+    system: {
+      getOrchestratorPrompt: vi.fn(() => Promise.resolve({ data: {} })),
+      updateOrchestratorPrompt: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      resetOrchestratorPrompt: vi.fn(() => Promise.resolve({ data: { success: true } })),
+    },
+    stats: {
+      getSystem: vi.fn(() => Promise.resolve({ data: {} })),
+      getCallCounts: vi.fn(() => Promise.resolve({ data: {} })),
+    },
   }
-}))
+  return {
+    api: apiObj,
+    default: apiObj,
+    setTenantKey: vi.fn(),
+    updateApiBaseURL: vi.fn(),
+    parseErrorResponse: vi.fn(() => ({ message: 'Mock error', isStructured: false })),
+    getErrorMessage: vi.fn(() => 'Mock error message'),
+  }
+})
 
 // Mock WebSocket service
 vi.mock('@/services/websocket', () => ({
@@ -171,15 +434,71 @@ vi.mock('@/composables/useToast', () => ({
   })
 }))
 
-// Mock useWebSocketV2 composable
+// Mock useWebSocketV2 composable with full reactive API
 vi.mock('@/composables/useWebSocket', () => ({
   useWebSocketV2: () => ({
+    isConnected: ref(true),
+    isConnecting: ref(false),
+    isReconnecting: ref(false),
+    isDisconnected: ref(false),
+    connectionStatus: ref('connected'),
+    connectionError: ref(null),
+    reconnectAttempts: ref(0),
+    clientId: ref('mock-client-id'),
+    messageQueueSize: ref(0),
+    subscriptions: ref([]),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    onConnectionChange: vi.fn(),
+    send: vi.fn(),
     on: vi.fn(),
     off: vi.fn(),
     emit: vi.fn(),
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
+    subscribeToProject: vi.fn(),
+    subscribeToAgent: vi.fn(),
+    getConnectionInfo: vi.fn(() => ({})),
+    getDebugInfo: vi.fn(() => ({})),
+  }),
+  useWebSocket: () => ({
+    isConnected: ref(true),
+    isConnecting: ref(false),
+    isReconnecting: ref(false),
+    isDisconnected: ref(false),
+    connectionStatus: ref('connected'),
+    connectionError: ref(null),
+    reconnectAttempts: ref(0),
+    clientId: ref('mock-client-id'),
+    messageQueueSize: ref(0),
+    subscriptions: ref([]),
     connect: vi.fn(),
-    disconnect: vi.fn()
-  })
+    disconnect: vi.fn(),
+    onConnectionChange: vi.fn(),
+    send: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    emit: vi.fn(),
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
+    subscribeToProject: vi.fn(),
+    subscribeToAgent: vi.fn(),
+    getConnectionInfo: vi.fn(() => ({})),
+    getDebugInfo: vi.fn(() => ({})),
+  }),
+}))
+
+// Mock useFieldPriority composable (used by ProductForm.vue)
+vi.mock('@/composables/useFieldPriority', () => ({
+  useFieldPriority: () => ({
+    fieldConfig: ref({}),
+    getFieldPriority: vi.fn(() => 'normal'),
+    isFieldHidden: vi.fn(() => false),
+    isFieldRequired: vi.fn(() => false),
+    isFieldOptional: vi.fn(() => true),
+    loading: ref(false),
+    error: ref(null),
+  }),
 }))
 
 // Do NOT mock useUserStore globally - tests need the real store

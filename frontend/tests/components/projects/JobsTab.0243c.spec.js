@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import JobsTab from './JobsTab.vue'
+import JobsTab from '@/components/projects/JobsTab.vue'
 import { useUserStore } from '@/stores/user'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 

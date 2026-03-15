@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
-import StatusBadge from '../StatusBadge.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 
 describe('StatusBadge.vue', () => {
   let vuetify
@@ -167,11 +167,6 @@ describe('StatusBadge.vue', () => {
       const activeActions = wrapper.vm.availableActions
 
       expect(activeActions.some((a) => a.value === 'deactivate')).toBe(true)
-      expect(activeActions.some((a) => a.value === 'activate')).toBe(false)
-    })
-      const activeActions = wrapper.vm.availableActions
-
-      expect(activeActions.some((a) => a.value === 'pause')).toBe(true)
       expect(activeActions.some((a) => a.value === 'activate')).toBe(false)
     })
 

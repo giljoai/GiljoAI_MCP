@@ -39,8 +39,7 @@ dependencies = [
     "asyncpg>=0.29.0",
 
     # Authentication & Security
-    "passlib[bcrypt]>=1.7.4",
-    "bcrypt>=3.2.0,<4.0.0",
+    "bcrypt>=4.0.0",
     "python-multipart>=0.0.6",
     "PyJWT>=2.8.0",
 
@@ -76,7 +75,6 @@ dev = [
     "pytest-timeout>=2.2.0",
     "pre-commit>=3.4.0",
     "types-PyYAML",
-    "types-passlib",
     "fastmcp>=0.1.0",  # MCP server framework (test-only dependency)
 ]
 
@@ -209,7 +207,6 @@ exclude = [
 module = [
     "fastmcp.*",
     "uvicorn.*",
-    "passlib.*",
     "jose.*",
     "alembic.*",
     "asyncpg.*",

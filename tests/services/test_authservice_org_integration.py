@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
-from passlib.hash import bcrypt
+import bcrypt
 from sqlalchemy import select
 from src.giljo_mcp.exceptions import AuthorizationError
 from src.giljo_mcp.models import Task  # noqa: F401 - For FK cleanup
@@ -70,7 +70,7 @@ async def test_admin_user(db_session, test_org):
         username="testadmin",
         email="admin@example.com",
         full_name="Test Admin",
-        password_hash=bcrypt.hash(password),
+        password_hash=bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         role="admin",
         tenant_key="test_tenant_001",
         org_id=test_org.id,  # Direct FK to organization
@@ -103,7 +103,7 @@ async def test_member_user(db_session, test_org):
         username="testmember",
         email="member@example.com",
         full_name="Test Member",
-        password_hash=bcrypt.hash(password),
+        password_hash=bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         role="developer",
         tenant_key="test_tenant_002",
         org_id=test_org.id,
