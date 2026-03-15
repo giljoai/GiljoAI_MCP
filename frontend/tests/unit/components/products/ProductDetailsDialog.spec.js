@@ -165,8 +165,8 @@ describe('ProductDetailsDialog Component', () => {
     it('lists vision documents with chunk counts', () => {
       const wrapper = createWrapper({
         visionDocuments: [
-          { id: 'doc-1', filename: 'architecture.md', chunk_count: 5, file_size: 1024 },
-          { id: 'doc-2', filename: 'requirements.md', chunk_count: 3, file_size: 512 },
+          { id: 'doc-1', filename: 'architecture.md', chunk_count: 5, chunked: true, file_size: 1024 },
+          { id: 'doc-2', filename: 'requirements.md', chunk_count: 3, chunked: true, file_size: 512 },
         ],
       })
 
@@ -242,7 +242,7 @@ describe('ProductDetailsDialog Component', () => {
       })
 
       // Total: 1024 + 2048 = 3072 bytes = 3.0 KB
-      expect(wrapper.text()).toContain('Total file sizes:')
+      expect(wrapper.text()).toContain('Total size:')
       expect(wrapper.text()).toMatch(/3\.0\s*KB/)
     })
 
@@ -252,7 +252,7 @@ describe('ProductDetailsDialog Component', () => {
       })
 
       expect(wrapper.text()).not.toContain('Total chunks:')
-      expect(wrapper.text()).not.toContain('Total file sizes:')
+      expect(wrapper.text()).not.toContain('Total size:')
     })
 
     it('shows document count in aggregate stats', () => {
@@ -263,7 +263,7 @@ describe('ProductDetailsDialog Component', () => {
         ],
       })
 
-      expect(wrapper.text()).toContain('2 document(s)')
+      expect(wrapper.text()).toContain('Documents: 2')
     })
   })
 
@@ -507,8 +507,8 @@ describe('ProductDetailsDialog Component', () => {
         ],
       })
 
-      // Should default to 0 chunks
-      expect(wrapper.text()).toContain('0 chunks')
+      // Should default to 0 chunks in aggregate stats
+      expect(wrapper.text()).toContain('Total chunks: 0')
     })
 
     it('handles documents with missing file_size', () => {

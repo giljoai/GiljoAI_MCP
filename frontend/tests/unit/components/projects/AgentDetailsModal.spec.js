@@ -20,9 +20,6 @@ import * as directives from 'vuetify/directives'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import api from '@/services/api'
 
-// Mock the API module
-vi.mock('@/services/api')
-
 // Mock the agentColors config
 vi.mock('@/config/agentColors', () => ({
   getAgentColor: () => ({ hex: '#4a90d9' }),
@@ -514,21 +511,4 @@ describe('AgentDetailsModal Component', () => {
     })
   })
 
-  // SKIPPED: Component no longer displays template description, variables,
-  // model info, or tools lists. It now shows a unified preview from
-  // templates.preview() API. These features were removed in Handover 0814.
-  describe.skip('Template Metadata Display (removed in 0814)', () => {
-    it('displays template description', async () => {})
-    it('displays template variables list', async () => {})
-    it('displays template model information', async () => {})
-    it('displays template tools list', async () => {})
-  })
-
-  // SKIPPED: Component does not have a Copy to Clipboard feature.
-  // The template content is displayed in a read-only pre element.
-  describe.skip('Copy to Clipboard Feature', () => {
-    it('includes copy to clipboard button', async () => {})
-    it('copies template content to clipboard when copy button clicked', async () => {})
-    it('shows feedback message after successful copy', async () => {})
-  })
 })

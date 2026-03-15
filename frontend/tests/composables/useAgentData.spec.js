@@ -113,10 +113,6 @@ describe('useAgentData', () => {
       expect(sortedAgents.value[2].agent_name).toBe('Zebra Agent')
     })
 
-    it.skip('handles cancelled status correctly - cancelled not in AGENT_STATUS_PRIORITY', () => {
-      // cancelled is not defined in the current AGENT_STATUS_PRIORITY constant
-    })
-
     it('handles decommissioned status correctly (lowest priority)', () => {
       agents.value.push({
         id: 'agent-7',

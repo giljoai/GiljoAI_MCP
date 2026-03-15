@@ -12,10 +12,10 @@ describe('statusConfig.js', () => {
     it('returns correct config for each status', () => {
       expect(getStatusConfig('waiting').icon).toBe('mdi-clock-outline');
       expect(getStatusConfig('working').icon).toBe('mdi-cog');
-      expect(getStatusConfig('blocked').icon).toBe('mdi-alert-octagon');
+      expect(getStatusConfig('blocked').icon).toBe('mdi-account-question');
       expect(getStatusConfig('complete').icon).toBe('mdi-check-circle');
-      expect(getStatusConfig('failed').icon).toBe('mdi-alert-circle');
-      expect(getStatusConfig('cancelled').icon).toBe('mdi-cancel');
+      expect(getStatusConfig('silent').icon).toBe('mdi-clock-alert');
+      expect(getStatusConfig('handed_over').icon).toBe('mdi-hand-wave');
       expect(getStatusConfig('decommissioned').icon).toBe('mdi-archive');
     });
 
@@ -41,10 +41,11 @@ describe('statusConfig.js', () => {
 
     it('returns false for terminal states', () => {
       const elevenMinutesAgo = new Date(Date.now() - 11 * 60 * 1000).toISOString();
+      // Terminal states: complete, silent, decommissioned, handed_over
       expect(isJobStale(elevenMinutesAgo, 'complete')).toBe(false);
-      expect(isJobStale(elevenMinutesAgo, 'failed')).toBe(false);
-      expect(isJobStale(elevenMinutesAgo, 'cancelled')).toBe(false);
+      expect(isJobStale(elevenMinutesAgo, 'silent')).toBe(false);
       expect(isJobStale(elevenMinutesAgo, 'decommissioned')).toBe(false);
+      expect(isJobStale(elevenMinutesAgo, 'handed_over')).toBe(false);
     });
 
     it('returns false for null lastProgressAt', () => {

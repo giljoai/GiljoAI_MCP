@@ -101,10 +101,10 @@ describe('SerenaIntegrationCard.vue', () => {
       expect(text).toContain('Enable Serena MCP')
     })
 
-    it('displays "Advanced" button text', () => {
+    it('displays GitHub Repository link', () => {
       wrapper = mountComponent()
       const text = wrapper.text()
-      expect(text).toContain('Advanced')
+      expect(text).toContain('GitHub Repository')
     })
   })
 
@@ -119,10 +119,9 @@ describe('SerenaIntegrationCard.vue', () => {
       expect(wrapper.props('enabled')).toBe(true)
     })
 
-    it('accepts config prop as Object', () => {
-      const customConfig = { ...defaultConfig, max_range_lines: 200 }
-      wrapper = mountComponent({ config: customConfig })
-      expect(wrapper.props('config').max_range_lines).toBe(200)
+    it('accepts enabled prop with default value false', () => {
+      wrapper = mountComponent()
+      expect(wrapper.props('enabled')).toBe(false)
     })
 
     it('accepts loading prop as Boolean', () => {
@@ -130,10 +129,9 @@ describe('SerenaIntegrationCard.vue', () => {
       expect(wrapper.props('loading')).toBe(true)
     })
 
-    it('uses default config when not provided', () => {
+    it('uses default enabled value when not provided', () => {
       wrapper = mount(SerenaIntegrationCard, {
         props: {
-          enabled: false,
           loading: false,
         },
         global: {
@@ -143,8 +141,7 @@ describe('SerenaIntegrationCard.vue', () => {
           },
         },
       })
-      expect(wrapper.props('config')).toBeDefined()
-      expect(wrapper.props('config').use_in_prompts).toBe(true)
+      expect(wrapper.props('enabled')).toBe(false)
     })
   })
 
@@ -155,10 +152,10 @@ describe('SerenaIntegrationCard.vue', () => {
       expect(emits).toContain('update:enabled')
     })
 
-    it('defines openAdvanced event', () => {
+    it('does not define openAdvanced event (removed in Handover 0277)', () => {
       wrapper = mountComponent()
       const emits = wrapper.vm.$options.emits || []
-      expect(emits).toContain('openAdvanced')
+      expect(emits).not.toContain('openAdvanced')
     })
   })
 
@@ -171,12 +168,12 @@ describe('SerenaIntegrationCard.vue', () => {
       expect(wrapper.props('enabled')).toBe(true)
     })
 
-    it('config prop is reactive', async () => {
-      wrapper = mountComponent()
-      expect(wrapper.props('config').max_range_lines).toBe(180)
+    it('enabled prop is reactive', async () => {
+      wrapper = mountComponent({ enabled: false })
+      expect(wrapper.props('enabled')).toBe(false)
 
-      await wrapper.setProps({ config: { ...defaultConfig, max_range_lines: 200 } })
-      expect(wrapper.props('config').max_range_lines).toBe(200)
+      await wrapper.setProps({ enabled: true })
+      expect(wrapper.props('enabled')).toBe(true)
     })
 
     it('loading prop is reactive', async () => {
