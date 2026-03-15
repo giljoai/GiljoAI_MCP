@@ -218,6 +218,7 @@ const props = defineProps({
  */
 const emit = defineEmits([
   'edit-description',
+  'project-updated',
 ])
 
 /**
@@ -626,7 +627,7 @@ async function handleCloseoutComplete() {
   showCloseoutModal.value = false
   notificationStore.clearForProject(projectId.value)
   showToast({ message: 'Project closed out successfully', type: 'success' })
-  await loadProjectData(projectId.value, { fetchProject: true })
+  emit('project-updated')
 }
 
 /**
@@ -637,7 +638,7 @@ async function handleContinueWorking() {
   showCloseoutModal.value = false
   showContinueGuidance.value = true
   showToast({ message: 'Project resumed - agents ready for work', type: 'success' })
-  await loadProjectData(projectId.value, { fetchProject: true })
+  emit('project-updated')
 }
 </script>
 

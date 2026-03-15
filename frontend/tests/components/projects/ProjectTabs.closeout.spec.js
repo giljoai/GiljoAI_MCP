@@ -205,19 +205,9 @@ describe('ProjectTabs - Closeout UI State (Handover 0819a)', () => {
 
   describe('Continue working guidance', () => {
     it('shows guidance after continue event from CloseoutModal', async () => {
-      mockSortedJobs.value = [
-        { agent_display_name: 'orchestrator', status: 'complete' },
-        { agent_display_name: 'implementor', status: 'complete' },
-      ]
-
-      // After continue-working, loadProjectData refreshes agents to 'waiting'
-      mockLoadJobs.mockImplementationOnce(() => {
-        mockSortedJobs.value = [
-          { agent_display_name: 'orchestrator', status: 'waiting' },
-          { agent_display_name: 'implementor', status: 'waiting' },
-        ]
-        return Promise.resolve([])
-      })
+      // No terminal agents - guidance shows regardless of job state
+      // because showContinueGuidance ref takes State C branch
+      mockSortedJobs.value = []
 
       const wrapper = createWrapper({ status: 'active' })
       await flushPromises()
@@ -232,9 +222,9 @@ describe('ProjectTabs - Closeout UI State (Handover 0819a)', () => {
     })
   })
 
-  // ==================== STAY ON PAGE TEST ====================
+  // ==================== STAY ON PAGE + EMIT TEST ====================
 
-  describe('Closeout stays on page', () => {
+  describe('Closeout stays on page and emits project-updated', () => {
     it('does not navigate away after closeout event', async () => {
       mockSortedJobs.value = [
         { agent_display_name: 'orchestrator', status: 'complete' },
@@ -250,6 +240,19 @@ describe('ProjectTabs - Closeout UI State (Handover 0819a)', () => {
       await flushPromises()
 
       expect(mockRouter.push).not.toHaveBeenCalled()
+    })
+
+    it('emits project-updated so parent can refetch', async () => {
+      mockSortedJobs.value = []
+
+      const wrapper = createWrapper({ status: 'active' })
+      await flushPromises()
+
+      const modal = wrapper.findComponent({ name: 'CloseoutModal' })
+      modal.vm.$emit('closeout')
+      await flushPromises()
+
+      expect(wrapper.emitted('project-updated')).toBeTruthy()
     })
   })
 })
