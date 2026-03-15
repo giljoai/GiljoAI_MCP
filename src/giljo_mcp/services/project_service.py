@@ -2004,8 +2004,8 @@ class ProjectService:
             if project.status != "active":
                 await self.activate_project(project_id, websocket_manager=websocket_manager)
 
-            # Fetch user field_priority_config and depth_config if user_id provided
-            field_priorities = {}
+            # Fetch user field toggle config and depth_config if user_id provided
+            field_toggles = {}
             depth_config = None
 
             if user_id:
@@ -2018,9 +2018,9 @@ class ProjectService:
                 user = user_result.scalar_one_or_none()
 
                 if user:
-                    # Extract field_priorities from v2.0 structure
+                    # Extract field_toggles from config structure
                     if user.field_priority_config:
-                        field_priorities = user.field_priority_config.get("priorities", {})
+                        field_toggles = user.field_priority_config.get("priorities", {})
 
                     # Get depth_config
                     if user.depth_config:
@@ -2090,7 +2090,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 job_type="orchestrator",
                 status="active",
                 job_metadata={
-                    "field_priorities": field_priorities,
+                    "field_toggles": field_toggles,
                     "depth_config": depth_config,
                     "user_id": user_id,
                     "created_via": "project_service_launch",
