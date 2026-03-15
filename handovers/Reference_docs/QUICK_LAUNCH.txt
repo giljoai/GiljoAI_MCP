@@ -1356,8 +1356,8 @@ Watch for these patterns:
    - Each handover tested independently
    - Success: 3,500 → 450 tokens achieved
 
-✅ **0248 Series** (Context Priority System):
-   - Clear goal: Fix broken priority framing
+✅ **0248 Series** (Context Toggle System):
+   - Clear goal: Fix broken context configuration
    - 4 handovers (0248a-d)
    - Each handover focused on one subsystem
    - Success: 92% test coverage, production ready

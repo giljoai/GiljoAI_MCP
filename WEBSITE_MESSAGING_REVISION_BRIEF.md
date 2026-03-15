@@ -313,7 +313,7 @@ This is the single highest-impact visual change available: add product screensho
 
 **PLACEMENT 2: Inside the elevated 360 Memory section (new section per messaging brief)**
 - **Screenshot:** Context Priority Configuration (`context_manager.png`)
-- **Why here:** This screenshot visually proves the "you control what context agents receive" claim. The tiered priority toggles (CRITICAL / IMPORTANT / REFERENCE) and depth controls (Vision Documents, 360 Memory at "3 projects", Git History at "25 commits") are immediately readable and impressive.
+- **Why here:** This screenshot visually proves the "you control what context agents receive" claim. The context toggles and depth controls (Vision Documents, 360 Memory at "3 projects", Git History at "25 commits") are immediately readable and impressive.
 - **Implementation:** Place to the right of the 360 Memory text block in a two-column layout. Text left, screenshot right — mirrors the hero section's text-left / terminal-right pattern.
 - **Layout pattern:** `.hero-grid` style (1fr 1fr) reused. Screenshot in a container with the existing terminal styling (dark background, subtle border, dot header).
 
