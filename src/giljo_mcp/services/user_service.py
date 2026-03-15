@@ -731,13 +731,13 @@ class UserService:
 
     async def get_field_priority_config(self, user_id: str) -> dict[str, Any]:
         """
-        Get user's field priority configuration or defaults.
+        Get user's field toggle configuration or defaults.
 
         Args:
             user_id: User UUID
 
         Returns:
-            Field priority configuration dictionary
+            Field toggle configuration dictionary
 
         Raises:
             ResourceNotFoundError: User not found
@@ -775,21 +775,21 @@ class UserService:
         if user.field_priority_config:
             return user.field_priority_config
 
-        # Return system defaults (v2.0)
+        # Return system defaults
         from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
 
         return DEFAULT_FIELD_PRIORITY
 
     async def update_field_priority_config(self, user_id: str, config: dict[str, Any]) -> None:
         """
-        Update user's field priority configuration.
+        Update user's field toggle configuration.
 
         Args:
             user_id: User UUID
-            config: New field priority configuration
+            config: New field toggle configuration
 
         Raises:
-            ValidationError: Invalid config structure or priorities
+            ValidationError: Invalid config structure or toggles
             ResourceNotFoundError: User not found
             BaseGiljoError: Database operation failed
         """
@@ -811,7 +811,7 @@ class UserService:
         """Implementation that uses provided session (void return)
 
         Raises:
-            ValidationError: Invalid config structure or priorities
+            ValidationError: Invalid config structure or toggles
             ResourceNotFoundError: User not found
         """
         # Validate config structure
@@ -821,12 +821,18 @@ class UserService:
                 context={"config_keys": list(config.keys())},
             )
 
-        # Validate priorities (1-4 range)
-        for category, priority in config["priorities"].items():
-            if not isinstance(priority, int) or priority < 1 or priority > 4:
+        # Validate toggles (must be dicts with boolean toggle key, or booleans directly)
+        for category, value in config["priorities"].items():
+            if isinstance(value, dict):
+                if "toggle" not in value or not isinstance(value["toggle"], bool):
+                    raise ValidationError(
+                        message=f"Invalid toggle config for category '{category}'. Must have boolean 'toggle' key",
+                        context={"category": category, "value": value},
+                    )
+            elif not isinstance(value, bool):
                 raise ValidationError(
-                    message=f"Invalid priority {priority} for category '{category}'. Must be 1-4",
-                    context={"category": category, "priority": priority},
+                    message=f"Invalid value for category '{category}'. Must be bool or dict with 'toggle'",
+                    context={"category": category, "value": value},
                 )
 
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
@@ -840,12 +846,12 @@ class UserService:
         user.field_priority_config = config
         await session.commit()
 
-        self._logger.info(f"Updated field priority config for user {user.username}")
+        self._logger.info(f"Updated field toggle config for user {user.username}")
 
         # Emit WebSocket event if manager available
         await self._emit_websocket_event(
-            event_type="priority_config_updated",
-            data={"user_id": user_id, "priorities": config["priorities"], "version": config["version"]},
+            event_type="toggle_config_updated",
+            data={"user_id": user_id, "toggles": config["priorities"], "version": config["version"]},
         )
 
     async def reset_field_priority_config(self, user_id: str) -> None:

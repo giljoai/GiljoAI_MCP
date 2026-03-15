@@ -127,7 +127,7 @@ async def test_thin_prompt_contains_core_structure(db_session: AsyncSession):
     # ACT
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
     result = await generator.generate(
-        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_toggles=user.field_priority_config
     )
     thin_prompt = result["thin_prompt"]
 
@@ -229,7 +229,7 @@ async def test_thin_prompt_is_concise(db_session: AsyncSession):
     await db_session.commit()
 
     result_p1 = await generator.generate(
-        project_id=project.id, user_id=user.id, field_priorities=user.field_priority_config
+        project_id=project.id, user_id=user.id, field_toggles=user.field_priority_config
     )
 
     # Thin prompt should NOT contain inline agent template content

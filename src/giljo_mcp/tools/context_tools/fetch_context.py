@@ -100,7 +100,7 @@ async def fetch_context(
                           self_identity
         depth_config: Override depth settings per category
                      Example: {"vision_documents": "light", "agent_templates": "minimal"}
-        apply_user_config: Apply user's saved priority/depth settings (default: True)
+        apply_user_config: Apply user's saved toggle/depth settings (default: True)
         format: Response format - "structured" (nested by category) or "flat" (merged)
         agent_name: Agent template name (required for 'self_identity' category)
         db_manager: Database manager instance
