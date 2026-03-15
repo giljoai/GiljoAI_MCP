@@ -1,7 +1,7 @@
 <template>
   <v-card>
     <v-card-title class="d-flex justify-space-between align-center">
-      <span>Context Priority Configuration</span>
+      <span>Context Configuration</span>
       <v-btn
         variant="text"
         size="small"
@@ -36,11 +36,11 @@
         </div>
       </v-alert>
 
-      <!-- Section: Priority Configuration -->
+      <!-- Section: Toggle Configuration -->
       <div class="mb-4">
-        <div class="text-subtitle-2 font-weight-medium mb-2">Priority Configuration (What to Fetch)</div>
+        <div class="text-subtitle-2 font-weight-medium mb-2">Toggle Configuration (What to Fetch)</div>
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-          Toggle fields on/off to include/exclude from context. Set priority for included fields.
+          Toggle fields on/off to include or exclude from context.
         </v-alert>
 
         <!-- Locked Project Description -->
@@ -53,22 +53,17 @@
               </template>
             </v-tooltip>
           </div>
-          <v-tooltip text="Project Priority is always critical" location="bottom">
-            <template #activator="{ props }">
-              <v-chip v-bind="props" size="small" color="error" variant="flat" style="width: 140px; text-align: center; display: flex; align-items: center; justify-content: center;">
-                <span style="font-size: 0.75rem; font-weight: 600; line-height: 1; position: relative; top: 1px;">CRITICAL</span>
-              </v-chip>
-            </template>
-          </v-tooltip>
+          <v-chip size="small" color="primary" variant="flat" style="width: 140px; text-align: center; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 0.75rem; font-weight: 600; line-height: 1; position: relative; top: 1px;">ALWAYS ON</span>
+          </v-chip>
         </div>
 
-        <!-- Priority-only Context Rows -->
+        <!-- Toggle-only Context Rows -->
         <div
-          v-for="context in priorityOnlyContexts"
+          v-for="context in toggleOnlyContexts"
           :key="context.key"
           class="context-row d-flex justify-space-between align-center py-2"
         >
-          <!-- Context Name and Toggle -->
           <div class="d-flex align-center flex-grow-1">
             <span class="text-body-2 context-label">{{ context.label }}</span>
             <v-switch
@@ -80,46 +75,6 @@
               class="ml-2"
             />
           </div>
-
-          <!-- Priority Pill Dropdown -->
-          <v-menu
-            v-model="priorityMenuOpen[context.key]"
-            :close-on-content-click="true"
-            location="bottom"
-            offset="4"
-            :disabled="!config[context.key]?.enabled"
-          >
-            <template v-slot:activator="{ props: menuProps }">
-              <v-chip
-                v-bind="menuProps"
-                :color="config[context.key]?.enabled ? getPriorityConfig(config[context.key]?.priority).color : 'grey'"
-                variant="flat"
-                size="small"
-                class="priority-chip"
-                :class="{ 'priority-chip-disabled': !config[context.key]?.enabled }"
-                :aria-label="`${context.label} priority: ${getPriorityConfig(config[context.key]?.priority).title}. Click to change.`"
-                :data-testid="`priority-${context.key.replace('_', '-')}`"
-                role="button"
-                tabindex="0"
-              >
-                <span class="pill-text">{{ getPriorityConfig(config[context.key]?.priority).title }}</span>
-                <v-icon size="x-small" class="ml-1">mdi-chevron-down</v-icon>
-              </v-chip>
-            </template>
-
-            <v-list density="compact" class="priority-menu-list">
-              <v-list-item
-                v-for="option in priorityOptions"
-                :key="option.value"
-                :value="option.value"
-                @click="updatePriority(context.key, option.value)"
-                :class="{ 'v-list-item--active': config[context.key]?.priority === option.value }"
-              >
-                <v-list-item-title class="font-weight-medium">{{ option.title }}</v-list-item-title>
-                <v-list-item-subtitle class="text-caption">{{ option.subtitle }}</v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
-          </v-menu>
         </div>
       </div>
 
@@ -205,46 +160,6 @@
               </v-list-item>
             </v-list>
           </v-menu>
-
-          <!-- Priority Pill Dropdown -->
-          <v-menu
-            v-model="priorityMenuOpen[context.key]"
-            :close-on-content-click="true"
-            location="bottom"
-            offset="4"
-            :disabled="!config[context.key]?.enabled || isContextDisabled(context.key)"
-          >
-            <template v-slot:activator="{ props: menuProps }">
-              <v-chip
-                v-bind="menuProps"
-                :color="(config[context.key]?.enabled && !isContextDisabled(context.key)) ? getPriorityConfig(config[context.key]?.priority).color : 'grey'"
-                variant="flat"
-                size="small"
-                class="priority-chip"
-                :class="{ 'priority-chip-disabled': !config[context.key]?.enabled || isContextDisabled(context.key) }"
-                :aria-label="`${context.label} priority: ${getPriorityConfig(config[context.key]?.priority).title}. Click to change.`"
-                :data-testid="`priority-${context.key.replace('_', '-')}`"
-                role="button"
-                tabindex="0"
-              >
-                <span class="pill-text">{{ getPriorityConfig(config[context.key]?.priority).title }}</span>
-                <v-icon size="x-small" class="ml-1">mdi-chevron-down</v-icon>
-              </v-chip>
-            </template>
-
-            <v-list density="compact" class="priority-menu-list">
-              <v-list-item
-                v-for="option in priorityOptions"
-                :key="option.value"
-                :value="option.value"
-                @click="updatePriority(context.key, option.value)"
-                :class="{ 'v-list-item--active': config[context.key]?.priority === option.value }"
-              >
-                <v-list-item-title class="font-weight-medium">{{ option.title }}</v-list-item-title>
-                <v-list-item-subtitle class="text-caption">{{ option.subtitle }}</v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
-          </v-menu>
         </div>
       </div>
     </v-card-text>
@@ -257,11 +172,8 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import setupService from '@/services/setupService'
 
-// Router for navigation
 const router = useRouter()
 
-// Accept git integration status as prop from parent (UserSettings.vue)
-// Parent handles WebSocket listener to ensure it's always active
 const props = defineProps({
   gitIntegrationEnabled: {
     type: Boolean,
@@ -270,13 +182,11 @@ const props = defineProps({
 })
 
 // Context definitions
-// Priority-only fields (no depth controls)
 const contexts = [
   { key: 'product_description', label: 'Product Description' },
   { key: 'tech_stack', label: 'Tech Stack' },
   { key: 'architecture', label: 'Architecture' },
   { key: 'testing', label: 'Testing' },
-  // Depth-controlled fields
   {
     key: 'vision_documents',
     label: 'Vision Documents',
@@ -303,7 +213,6 @@ const contexts = [
 ]
 
 // Map UI categories to backend categories for API requests
-// FIX: 1:1 mapping for all fields (was incorrectly grouping fields)
 const UI_TO_BACKEND_CATEGORY_MAP: Record<string, string> = {
   product_description: 'product_core',
   tech_stack: 'tech_stack',
@@ -316,7 +225,6 @@ const UI_TO_BACKEND_CATEGORY_MAP: Record<string, string> = {
 }
 
 // Reverse mapping: backend keys to frontend keys
-// FIX: 1:1 mapping for all fields (was incorrectly grouping fields)
 const BACKEND_TO_UI_CATEGORY_MAP: Record<string, string[]> = {
   product_core: ['product_description'],
   tech_stack: ['tech_stack'],
@@ -328,38 +236,8 @@ const BACKEND_TO_UI_CATEGORY_MAP: Record<string, string[]> = {
   git_history: ['git_history'],
 }
 
-const priorityOptions = [
-  {
-    value: 1,
-    title: 'CRITICAL',
-    subtitle: 'Orchestrator MUST call this MCP tool',
-    color: 'error',
-    icon: 'mdi-alert-circle'
-  },
-  {
-    value: 2,
-    title: 'IMPORTANT',
-    subtitle: 'Orchestrator SHOULD call if budget allows',
-    color: 'warning',
-    icon: 'mdi-star'
-  },
-  {
-    value: 3,
-    title: 'REFERENCE',
-    subtitle: 'Orchestrator MAY call if project scope requires',
-    color: 'info',
-    icon: 'mdi-information'
-  }
-]
-
-// Menu state (one per context key)
-const priorityMenuOpen = ref<Record<string, boolean>>({})
+// Menu state
 const depthMenuOpen = ref<Record<string, boolean>>({})
-
-// Get priority config by value
-function getPriorityConfig(value: number) {
-  return priorityOptions.find(p => p.value === value) || priorityOptions[2]
-}
 
 // Get depth label for display
 function getDepthLabel(key: string): string {
@@ -380,31 +258,29 @@ function getDepthLabel(key: string): string {
 // State
 interface ContextConfig {
   enabled: boolean
-  priority: number
   depth?: string
   count?: number
 }
 
 const config = ref<Record<string, ContextConfig>>({
-  product_description: { enabled: true, priority: 1 },
-  tech_stack: { enabled: true, priority: 2 },
-  architecture: { enabled: true, priority: 2 },
-  testing: { enabled: true, priority: 2 },
-  vision_documents: { enabled: true, priority: 2, depth: 'light' },  // Handover 0352: default to 'light' (3-option system)
-  memory_360: { enabled: true, priority: 2, count: 3 },
-  git_history: { enabled: false, priority: 4, count: 25 },
-  agent_templates: { enabled: true, priority: 2, depth: 'type_only' },  // Handover 0347d: default to 'type_only' for token efficiency
+  product_description: { enabled: true },
+  tech_stack: { enabled: true },
+  architecture: { enabled: true },
+  testing: { enabled: true },
+  vision_documents: { enabled: true, depth: 'light' },
+  memory_360: { enabled: true, count: 3 },
+  git_history: { enabled: false, count: 25 },
+  agent_templates: { enabled: true, depth: 'type_only' },
 })
 
 const loading = ref(false)
 const saving = ref(false)
 const fetchingVisionStats = ref(false)
 const visionStats = ref(null)
-const configLoaded = ref(false)  // Track if config has been loaded from server
+const configLoaded = ref(false)
 
 // Computed properties to split contexts into two groups
-const priorityOnlyContexts = computed(() => {
-  // Exclude vision_documents - it belongs in depthControlledContexts only
+const toggleOnlyContexts = computed(() => {
   return contexts.filter(c => !c.options && c.key !== 'vision_documents')
 })
 
@@ -414,37 +290,20 @@ const depthControlledContexts = computed(() => {
 
 // Methods
 function toggleContext(key: string) {
-  const newEnabled = !config.value[key].enabled
-  config.value[key].enabled = newEnabled
-
-  // If enabling from EXCLUDED, set to Reference (priority 3)
-  if (newEnabled && config.value[key].priority === 4) {
-    config.value[key].priority = 3  // Reference (NICE_TO_HAVE)
-  }
-  // If disabling, set to EXCLUDED (priority 4)
-  else if (!newEnabled) {
-    config.value[key].priority = 4
-  }
-
-  saveConfig() // Auto-save
-}
-
-function updatePriority(key: string, value: number) {
-  config.value[key].priority = value
-  saveConfig() // Auto-save
+  config.value[key].enabled = !config.value[key].enabled
+  saveConfig()
 }
 
 function updateDepth(key: string, value: string | number) {
   const contextDef = contexts.find((c) => c.key === key)
   if (!contextDef) return
 
-  // Determine if this is a count-based or depth-based context
   if (key === 'memory_360' || key === 'git_history') {
     config.value[key].count = value as number
   } else if (key === 'vision_documents' || key === 'agent_templates') {
     config.value[key].depth = value as string
   }
-  saveConfig() // Auto-save
+  saveConfig()
 }
 
 function getDepthValue(key: string): string | number | undefined {
@@ -460,8 +319,6 @@ function getDepthValue(key: string): string | number | undefined {
 }
 
 function formatOptions(context: { key: string; options?: (string | number)[] }) {
-  // Handover 0352: 3-level vision depth system
-  // Light: 33% summary, Medium: 66% summary, Full: 100% complete (paginated ≤25K/call)
   if (context.key === 'vision_documents') {
     return [
       {
@@ -482,9 +339,6 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
     ]
   }
 
-  // Handover 0347d: Agent templates depth toggle (2-level system)
-  // Type Only: ~50 tokens/agent (~250 for 5 agents) - name, role, description only
-  // Full: ~2500 tokens/agent (~12,500 for 5 agents) - complete agent prompts
   if (context.key === 'agent_templates') {
     return [
       {
@@ -511,32 +365,24 @@ function formatOptions(context: { key: string; options?: (string | number)[] }) 
       }
       return { title: String(opt), value: opt }
     }
-    // String options (other than vision_documents)
-    // Default: capitalize first letter
     return { title: opt.charAt(0).toUpperCase() + opt.slice(1).replace('_', ' '), value: opt }
   })
 }
 
 function isContextDisabled(contextKey: string): boolean {
-  // Only git_history is disabled when Git integration is OFF
   return contextKey === 'git_history' && !props.gitIntegrationEnabled
 }
 
 function navigateToIntegrations() {
-  // Navigate to UserSettings with integrations tab query parameter
   router.push({ name: 'UserSettings', query: { tab: 'integrations' } })
 }
 
 // Handover 0408: Force git_history OFF when git integration is disabled
 watch(() => props.gitIntegrationEnabled, (enabled) => {
-  // Only apply enforcement after config has been loaded from server
-  // This prevents race condition where watcher fires before fetchConfig completes
   if (!configLoaded.value) return
 
   if (!enabled && config.value.git_history?.enabled) {
-    // Force git_history to OFF when git integration is disabled
     config.value.git_history.enabled = false
-    config.value.git_history.priority = 4  // EXCLUDED
     saveConfig()
   }
 }, { immediate: true })
@@ -547,8 +393,7 @@ async function fetchVisionStats() {
     const response = await axios.get('/api/v1/products/active/vision-stats')
     visionStats.value = response.data
   } catch (error) {
-    console.warn('[CONTEXT PRIORITY CONFIG] Failed to fetch vision stats:', error)
-    // Gracefully handle error - use null and formatOptions will show defaults
+    console.warn('[CONTEXT CONFIG] Failed to fetch vision stats:', error)
     visionStats.value = null
   } finally {
     fetchingVisionStats.value = false
@@ -566,35 +411,42 @@ function formatTokenCount(tokens) {
 async function fetchConfig() {
   loading.value = true
   try {
-    // Fetch priorities from field-priority endpoint
-    const prioritiesResponse = await axios.get('/api/v1/users/me/field-priority')
-    const priorities = prioritiesResponse.data?.priorities || {}
+    // Fetch toggle config from field-priority endpoint (v3.0 format)
+    const toggleResponse = await axios.get('/api/v1/users/me/field-priority')
+    const toggles = toggleResponse.data?.priorities || {}
 
-    // Apply backend priorities to frontend keys using reverse mapping
-    Object.entries(priorities).forEach(([backendKey, value]) => {
-      const numericPriority = typeof value === 'number' ? value : Number(value)
-
-      // Get frontend keys for this backend key
+    // Apply backend toggles to frontend keys using reverse mapping
+    Object.entries(toggles).forEach(([backendKey, value]) => {
       const frontendKeys = BACKEND_TO_UI_CATEGORY_MAP[backendKey] || [backendKey]
 
-      // Apply to all matching frontend keys
       frontendKeys.forEach((frontendKey) => {
         if (config.value[frontendKey]) {
+          // v3.0 format: {"toggle": true} or flat boolean
+          let enabled: boolean
+          if (typeof value === 'object' && value !== null && 'toggle' in value) {
+            enabled = (value as { toggle: boolean }).toggle
+          } else if (typeof value === 'boolean') {
+            enabled = value
+          } else if (typeof value === 'number') {
+            // Legacy v2.x compat: priority 4 = disabled, else enabled
+            enabled = (value as number) !== 4
+          } else {
+            enabled = true
+          }
+
           config.value[frontendKey] = {
             ...config.value[frontendKey],
-            enabled: numericPriority !== 4,
-            priority: numericPriority || 3,
+            enabled,
           }
         }
       })
     })
 
-    // Fetch depth config from context/depth endpoint (only 4 fields with depth controls)
+    // Fetch depth config from context/depth endpoint
     try {
       const depthResponse = await axios.get('/api/v1/users/me/context/depth')
       const depthData = depthResponse.data?.depth_config || {}
 
-      // Map backend field names back to frontend structure
       if (depthData.memory_last_n_projects && config.value.memory_360) {
         config.value.memory_360.count = depthData.memory_last_n_projects
       }
@@ -604,27 +456,16 @@ async function fetchConfig() {
       if (depthData.vision_documents && config.value.vision_documents) {
         config.value.vision_documents.depth = depthData.vision_documents
       }
-      // Handover 0347d: Load agent_templates depth (backend uses "agent_templates" key)
       if (depthData.agent_templates && config.value.agent_templates) {
         config.value.agent_templates.depth = depthData.agent_templates
       }
-
-      } catch (depthError) {
-      // Depth endpoint is optional - continue with defaults if it fails
-      console.warn('[CONTEXT PRIORITY CONFIG] Depth config not available, using defaults:', depthError)
+    } catch (depthError) {
+      console.warn('[CONTEXT CONFIG] Depth config not available, using defaults:', depthError)
     }
 
-    // NOTE: We do NOT enforce git_history OFF here based on props.gitIntegrationEnabled
-    // because the parent component loads git settings asynchronously and the prop
-    // may still be false (default) at this point. Trust the server's saved state.
-    // The watcher will enforce when the prop actually changes from true to false.
-
-    // Mark config as loaded - this allows the watcher to enforce git integration rules
     configLoaded.value = true
   } catch (error) {
-    console.error('[CONTEXT PRIORITY CONFIG] Failed to fetch config:', error)
-    // Keep default values on error
-    // Still mark as loaded to allow watcher to work
+    console.error('[CONTEXT CONFIG] Failed to fetch config:', error)
     configLoaded.value = true
   } finally {
     loading.value = false
@@ -634,99 +475,82 @@ async function fetchConfig() {
 async function saveConfig() {
   saving.value = true
   try {
-    // Save priorities to field-priority endpoint
+    // Save toggles to field-priority endpoint (v3.0 format)
     await axios.put('/api/v1/users/me/field-priority', {
-      version: '2.0',
+      version: '3.0',
       priorities: convertToBackendFormat(config.value),
     })
 
-    // Save depth config to context/depth endpoint (only 4 fields with depth controls)
+    // Save depth config to context/depth endpoint
     try {
       await axios.put('/api/v1/users/me/context/depth', {
         depth_config: {
           memory_last_n_projects: config.value.memory_360?.count || 3,
           git_commits: config.value.git_history?.count || 25,
-          vision_documents: config.value.vision_documents?.depth || 'light',  // Handover 0352
-          agent_templates: config.value.agent_templates?.depth || 'type_only',  // Handover 0347d
+          vision_documents: config.value.vision_documents?.depth || 'light',
+          agent_templates: config.value.agent_templates?.depth || 'type_only',
         }
       })
     } catch (depthError) {
-      // Log depth save error but don't fail the overall save
-      console.warn('[CONTEXT PRIORITY CONFIG] Warning: Depth config save failed:', depthError)
+      console.warn('[CONTEXT CONFIG] Warning: Depth config save failed:', depthError)
     }
   } catch (error) {
-    console.error('[CONTEXT PRIORITY CONFIG] Failed to save config:', error)
+    console.error('[CONTEXT CONFIG] Failed to save config:', error)
   } finally {
     saving.value = false
   }
 }
 
 function resetToDefaults() {
-  // Reset all context settings to sensible defaults
-  // Project Description is locked at CRITICAL (priority 1) - handled in convertToBackendFormat
   config.value = {
-    product_description: { enabled: true, priority: 2 },      // IMPORTANT
-    tech_stack: { enabled: true, priority: 2 },               // IMPORTANT
-    architecture: { enabled: true, priority: 2 },             // IMPORTANT
-    testing: { enabled: true, priority: 3 },                  // REFERENCE
-    vision_documents: { enabled: true, priority: 3, depth: 'light' },  // REFERENCE, light
-    memory_360: { enabled: true, priority: 3, count: 3 },     // REFERENCE, 3 projects
-    git_history: { enabled: true, priority: 3, count: 25 },   // REFERENCE, 25 commits
-    agent_templates: { enabled: true, priority: 3, depth: 'type_only' },  // REFERENCE, type_only
+    product_description: { enabled: true },
+    tech_stack: { enabled: true },
+    architecture: { enabled: true },
+    testing: { enabled: true },
+    vision_documents: { enabled: true, depth: 'light' },
+    memory_360: { enabled: true, count: 3 },
+    git_history: { enabled: true, count: 25 },
+    agent_templates: { enabled: true, depth: 'type_only' },
   }
 
-  // Enforce git_history OFF if git integration is disabled
   if (!props.gitIntegrationEnabled) {
     config.value.git_history.enabled = false
-    config.value.git_history.priority = 4  // EXCLUDED
   }
 
-  // Persist to backend
   saveConfig()
 }
 
-function convertToBackendFormat(localConfig: Record<string, ContextConfig>): Record<string, number> {
-  const backendPriorities: Record<string, number> = {}
+function convertToBackendFormat(localConfig: Record<string, ContextConfig>): Record<string, { toggle: boolean }> {
+  const backendToggles: Record<string, { toggle: boolean }> = {}
 
-  // Map UI categories to backend categories and aggregate priorities
   Object.entries(localConfig).forEach(([uiKey, value]) => {
     const backendKey = UI_TO_BACKEND_CATEGORY_MAP[uiKey] || uiKey
-    const priority = value.enabled ? value.priority : 4
-
-    // If multiple UI fields map to same backend category, take highest priority (lowest number)
-    if (!backendPriorities[backendKey] || priority < backendPriorities[backendKey]) {
-      backendPriorities[backendKey] = priority
-    }
+    backendToggles[backendKey] = { toggle: value.enabled }
   })
 
-  // CRITICAL: Always include project_description with priority 1 (locked field, always CRITICAL)
-  backendPriorities.project_description = 1
+  // Project description is always enabled
+  backendToggles.project_description = { toggle: true }
 
-  return backendPriorities
+  return backendToggles
 }
 
 // Lifecycle
 onMounted(async () => {
-  // Fetch context config on mount
-  // Git integration status is passed from parent via props (UserSettings.vue)
   fetchConfig()
-  // Fetch vision stats for dynamic token counts
   await fetchVisionStats()
 })
 
 // Expose for testing
 defineExpose({
   contexts,
-  priorityOnlyContexts,
+  toggleOnlyContexts,
   depthControlledContexts,
-  priorityOptions,
   config,
   loading,
   saving,
   fetchingVisionStats,
   visionStats,
   toggleContext,
-  updatePriority,
   updateDepth,
   saveConfig,
   resetToDefaults,
@@ -734,9 +558,7 @@ defineExpose({
   navigateToIntegrations,
   fetchVisionStats,
   formatTokenCount,
-  getPriorityConfig,
   getDepthLabel,
-  priorityMenuOpen,
   depthMenuOpen,
 })
 </script>
@@ -779,38 +601,10 @@ defineExpose({
   min-width: 140px;
 }
 
-/* Pill text styling - matches locked CRITICAL pill */
 .pill-text {
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1;
-}
-
-/* Priority Pill Chip Styles */
-.priority-chip {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
-  width: 140px;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.priority-chip:not(.priority-chip-disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.priority-chip:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
-.priority-chip-disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* Depth Pill Chip Styles */
@@ -838,29 +632,6 @@ defineExpose({
 .depth-chip-disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* Priority Menu List Styles */
-.priority-menu-list {
-  min-width: 280px;
-}
-
-.priority-menu-list .v-list-item {
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.priority-menu-list .v-list-item:hover {
-  background-color: rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.priority-menu-list .v-list-item:focus-visible {
-  outline: 2px solid rgba(var(--v-theme-primary), 0.5);
-  outline-offset: -2px;
-}
-
-.priority-menu-list .v-list-item--active {
-  background-color: rgba(var(--v-theme-primary), 0.12);
 }
 
 /* Depth Menu List Styles */
@@ -897,7 +668,6 @@ defineExpose({
     margin-bottom: 8px;
   }
 
-  .priority-chip,
   .depth-chip {
     width: 120px;
   }
