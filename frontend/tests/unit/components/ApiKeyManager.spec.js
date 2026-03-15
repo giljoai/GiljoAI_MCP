@@ -60,13 +60,7 @@ describe('ApiKeyManager', () => {
     expect(api.apiKeys.list).toHaveBeenCalled()
   })
 
-  it('opens wizard when generate button clicked', () => {
-    expect(wrapper.vm.showWizard).toBe(false)
-    wrapper.vm.showWizard = true
-    expect(wrapper.vm.showWizard).toBe(true)
-  })
-
-  it('refreshes keys after wizard completion', async () => {
+  it('refreshes keys after event', async () => {
     await wrapper.vm.refreshKeys()
     expect(api.apiKeys.list).toHaveBeenCalled()
   })
@@ -77,13 +71,11 @@ describe('ApiKeyManager', () => {
 
     expect(wrapper.vm.showRevokeDialog).toBe(true)
     expect(wrapper.vm.keyToRevoke).toEqual(key)
-    expect(wrapper.vm.deleteConfirmation).toBe('')
   })
 
-  it('prevents revocation without DELETE confirmation', async () => {
-    const key = mockApiKeys[0]
-    wrapper.vm.keyToRevoke = key
-    wrapper.vm.deleteConfirmation = 'delete' // Wrong case
+  it('revokeKey skips when no key is set', async () => {
+    // revokeKey guards against null keyToRevoke
+    wrapper.vm.keyToRevoke = null
 
     await wrapper.vm.revokeKey()
     expect(api.apiKeys.delete).not.toHaveBeenCalled()

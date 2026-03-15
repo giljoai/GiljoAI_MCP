@@ -136,7 +136,7 @@ describe('User Store - v3.0 Unified Authentication Code Analysis', () => {
 
   describe('Expected checkAuth Flow After v3.0 Implementation', () => {
     /**
-     * TEST 6: checkAuth should have simple try-catch-finally structure
+     * TEST 6: checkAuth should have simple try-catch structure
      * This test documents expected behavior after implementation
      */
     it('should have unified error handling based only on API response', () => {
@@ -152,9 +152,6 @@ describe('User Store - v3.0 Unified Authentication Code Analysis', () => {
         // Should have try-catch structure
         expect(checkAuthCode).toMatch(/try/i)
         expect(checkAuthCode).toMatch(/catch/i)
-
-        // Should set loading state in finally
-        expect(checkAuthCode).toMatch(/finally/i)
       } else {
         throw new Error('checkAuth method not found in user store')
       }

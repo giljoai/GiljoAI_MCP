@@ -91,11 +91,13 @@ describe('UserManager', () => {
 
     it('displays user table with correct headers', () => {
       const headers = wrapper.vm.headers
-      expect(headers).toHaveLength(5)
+      expect(headers).toHaveLength(7)
       expect(headers.map((h) => h.key)).toEqual([
         'username',
+        'email',
         'role',
         'is_active',
+        'created_at',
         'last_login',
         'actions',
       ])
@@ -215,6 +217,7 @@ describe('UserManager', () => {
       wrapper.vm.userForm = {
         id: null,
         username: 'testuser',
+        email: 'test@example.com',
         password: 'password123',
         role: 'developer',
         is_active: true,
@@ -225,6 +228,7 @@ describe('UserManager', () => {
 
       expect(api.auth.register).toHaveBeenCalledWith({
         username: 'testuser',
+        email: 'test@example.com',
         password: 'password123',
         role: 'developer',
       })
@@ -264,6 +268,7 @@ describe('UserManager', () => {
       wrapper.vm.userForm = {
         id: 2,
         username: 'developer',
+        email: 'dev@example.com',
         role: 'admin',
         is_active: true,
       }
@@ -272,6 +277,8 @@ describe('UserManager', () => {
       await wrapper.vm.saveUser()
 
       expect(api.auth.updateUser).toHaveBeenCalledWith(2, {
+        username: 'developer',
+        email: 'dev@example.com',
         role: 'admin',
         is_active: true,
       })

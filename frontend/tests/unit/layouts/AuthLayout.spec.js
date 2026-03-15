@@ -63,8 +63,9 @@ describe('AuthLayout.vue', () => {
         }
       })
 
-      const vApp = wrapper.findComponent({ name: 'VApp' })
-      expect(vApp.exists()).toBe(true)
+      // AuthLayout renders with class 'v-app'
+      const html = wrapper.html()
+      expect(html).toContain('v-app')
     })
 
     it('should render v-main', () => {
@@ -74,8 +75,8 @@ describe('AuthLayout.vue', () => {
         }
       })
 
-      const vMain = wrapper.findComponent({ name: 'VMain' })
-      expect(vMain.exists()).toBe(true)
+      // Vuetify v-main renders as a main element with class 'v-main'
+      expect(wrapper.find('.v-main').exists()).toBe(true)
     })
 
     it('should render router-view', () => {

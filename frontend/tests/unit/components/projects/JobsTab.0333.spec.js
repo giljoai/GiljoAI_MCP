@@ -247,9 +247,10 @@ describe('JobsTab shouldShowCopyButton behavior (0333 Phase 3)', () => {
       expect(result).toBe(true)
     })
 
-    it('should return false for non-waiting agents in Multi-Terminal mode', async () => {
+    it('should return true for non-waiting agents in Multi-Terminal mode (prompt re-copying)', async () => {
       const job = createMockJob({
         agent_type: 'implementer',
+        agent_display_name: 'implementer',
         status: 'working',
       })
 
@@ -283,7 +284,7 @@ describe('JobsTab shouldShowCopyButton behavior (0333 Phase 3)', () => {
       })
 
       const result = wrapper.vm.shouldShowCopyButton(job)
-      expect(result).toBe(false)
+      expect(result).toBe(true)
     })
   })
 
@@ -291,6 +292,7 @@ describe('JobsTab shouldShowCopyButton behavior (0333 Phase 3)', () => {
     it('should return true for waiting orchestrator in CLI mode', async () => {
       const job = createMockJob({
         agent_type: 'orchestrator',
+        agent_display_name: 'orchestrator',
         status: 'waiting',
       })
 

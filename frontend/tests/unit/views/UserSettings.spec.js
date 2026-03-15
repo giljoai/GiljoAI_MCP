@@ -2,48 +2,86 @@
  * Test suite for UserSettings.vue component
  *
  * Tests the User Settings view functionality including:
- * - Setup settings (placeholder for future settings)
- * - Appearance settings (theme, mascot, display options)
- * - Notification settings (alerts, position, duration)
+ * - Startup settings (quick start, intro tour)
+ * - Notification settings (position, duration, silence threshold)
  * - Agents tab (TemplateManager component)
  * - Context tab (ContextPriorityConfig component)
  * - API Keys tab (ApiKeyManager component)
- * - Integrations tab (MCP tools, Serena, Git integration)
+ * - Integrations tab (MCP, Serena, Git, Claude Code Export)
+ *
+ * Post-refactor notes:
+ * - Tab names: Startup, Notifications, Agents, Context, API Keys, Integrations (6 tabs)
+ * - "Setup" renamed to "Startup", "Appearance" tab removed
+ * - Uses v-btn-toggle for tab navigation (not v-tabs)
+ * - data-test="startup-settings" (not "general-settings")
+ * - data-test="notification-settings", "notification-position-select"
+ * - data-test="reset-notification-btn", "save-notification-btn"
+ * - Uses useWebSocketV2 composable and setupService
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { createRouter, createMemoryHistory } from 'vue-router'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createPinia, setActivePinia } from 'pinia'
 import UserSettings from '@/views/UserSettings.vue'
 
+// Mock dependencies
+vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    currentRoute: { value: { query: {} } },
+    push: vi.fn(),
+    replace: vi.fn(),
+  }),
+}))
+
+vi.mock('@/services/api', () => ({
+  default: {
+    products: {
+      getGitIntegration: vi.fn().mockResolvedValue({ data: { enabled: false } }),
+      updateGitIntegration: vi.fn().mockResolvedValue({ data: { enabled: false } }),
+    },
+  },
+}))
+
+vi.mock('@/services/setupService', () => ({
+  default: {
+    getSerenaStatus: vi.fn().mockResolvedValue({ enabled: false }),
+    toggleSerena: vi.fn().mockResolvedValue({ success: true, enabled: false }),
+  },
+}))
+
+vi.mock('@/composables/useWebSocket', () => ({
+  useWebSocketV2: () => ({
+    on: vi.fn(),
+    off: vi.fn(),
+  }),
+}))
+
 describe('UserSettings.vue', () => {
   let vuetify
-  let router
   let pinia
   let wrapper
 
-  beforeEach(() => {
-    // Setup Vuetify
-    vuetify = createVuetify({
-      components,
-      directives
-    })
+  // Stubs for child components
+  const childStubs = {
+    TemplateManager: { template: '<div>Template Manager Mock</div>' },
+    ApiKeyManager: { template: '<div>API Key Manager Mock</div>' },
+    ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
+    ClaudeCodeExport: true,
+    SlashCommandSetup: true,
+    McpIntegrationCard: true,
+    SerenaIntegrationCard: true,
+    GitIntegrationCard: true,
+    GitAdvancedSettingsDialog: true,
+    StartupQuickStart: true,
+    ProductIntroTour: true,
+  }
 
-    // Setup Pinia
+  beforeEach(() => {
+    vuetify = createVuetify({ components, directives })
     pinia = createPinia()
     setActivePinia(pinia)
-
-    // Setup Router
-    router = createRouter({
-      history: createMemoryHistory(),
-      routes: [
-        { path: '/', name: 'Dashboard', component: { template: '<div>Dashboard</div>' } },
-        { path: '/settings', name: 'UserSettings', component: UserSettings }
-      ]
-    })
   })
 
   afterEach(() => {
@@ -57,10 +95,8 @@ describe('UserSettings.vue', () => {
     it('renders the component', () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
@@ -70,10 +106,8 @@ describe('UserSettings.vue', () => {
     it('displays page title "My Settings"', () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
@@ -83,10 +117,8 @@ describe('UserSettings.vue', () => {
     it('displays page subtitle', () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
@@ -95,22 +127,16 @@ describe('UserSettings.vue', () => {
   })
 
   describe('Tab Navigation', () => {
-    it('renders all 7 tabs', () => {
+    it('renders all 6 tabs', () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
-      // Check that all 7 tab names are present in the rendered output
       const text = wrapper.text()
-      expect(text).toContain('Setup')
-      expect(text).toContain('Appearance')
+      expect(text).toContain('Startup')
       expect(text).toContain('Notifications')
       expect(text).toContain('Agents')
       expect(text).toContain('Context')
@@ -118,299 +144,65 @@ describe('UserSettings.vue', () => {
       expect(text).toContain('Integrations')
     })
 
-    it('renders Setup tab', () => {
+    it('defaults to Startup tab', () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
-      // Check via text content
-      const text = wrapper.text()
-      expect(text).toContain('Setup')
-    })
-
-    it('renders Appearance tab', () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      // Check via text content
-      const text = wrapper.text()
-      expect(text).toContain('Appearance')
-    })
-
-    it('renders Notifications tab', () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      // Check via text content
-      const text = wrapper.text()
-      expect(text).toContain('Notifications')
-    })
-
-    it('renders Agents tab', () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      // Check via text content
-      const text = wrapper.text()
-      expect(text).toContain('Agents')
-    })
-
-    it('renders Context tab', () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      // Check via text content
-      const text = wrapper.text()
-      expect(text).toContain('Context')
-    })
-
-    it('renders API Keys tab', () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      // Check via text content
-      const text = wrapper.text()
-      expect(text).toContain('API Keys')
-    })
-
-    it('renders Integrations tab', () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      // Check via text content
-      const text = wrapper.text()
-      expect(text).toContain('Integrations')
+      expect(wrapper.vm.activeTab).toBe('startup')
     })
 
     it('does NOT render Database tab', () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
-      // Check via text content
-      const text = wrapper.text()
-      expect(text).not.toContain('Database')
+      expect(wrapper.text()).not.toContain('Database')
     })
 
     it('does NOT render Network tab', () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
-      // Check via text content
-      const text = wrapper.text()
-      expect(text).not.toContain('Network')
+      expect(wrapper.text()).not.toContain('Network')
+    })
+
+    it('does NOT render Appearance tab', () => {
+      wrapper = mount(UserSettings, {
+        global: {
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
+        }
+      })
+
+      expect(wrapper.text()).not.toContain('Appearance')
     })
   })
 
-  describe('Integrations Tab Content', () => {
-    it('shows Serena MCP integration with enable/disable toggle', async () => {
+  describe('Startup Settings Tab', () => {
+    it('renders startup settings panel', async () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' },
-            SerenaAdvancedSettingsDialog: { template: '<div>Serena Dialog Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'integrations'
-        await wrapper.vm.$nextTick()
-      }
+      wrapper.vm.activeTab = 'startup'
+      await wrapper.vm.$nextTick()
 
-      const text = wrapper.text()
-      expect(text).toContain('Serena MCP')
-      expect(text).toContain('Enable Serena MCP')
-    })
-
-    it('shows Git + 360 Memory integration with configuration', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' },
-            SerenaAdvancedSettingsDialog: { template: '<div>Serena Dialog Mock</div>' }
-          }
-        }
-      })
-
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'integrations'
-        await wrapper.vm.$nextTick()
-      }
-
-      const text = wrapper.text()
-      expect(text).toContain('Git + 360 Memory')
-      expect(text).toContain('Enable Git Integration')
-    })
-  })
-
-  describe('Setup Settings Tab', () => {
-    it('renders setup settings panel', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      // Switch to general tab (should be default)
-      const setupContent = wrapper.find('[data-test="general-settings"]')
-      expect(setupContent.exists()).toBe(true)
-    })
-
-    it('displays setup info alert', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      const text = wrapper.text()
-      expect(text).toContain('reserved for future setup settings')
-    })
-
-    it('includes reset and save buttons', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      const resetBtn = wrapper.find('[data-test="reset-general-btn"]')
-      const saveBtn = wrapper.find('[data-test="save-general-btn"]')
-      expect(resetBtn.exists()).toBe(true)
-      expect(saveBtn.exists()).toBe(true)
-    })
-  })
-
-  describe('Appearance Settings Tab', () => {
-    it('renders appearance settings when tab is selected', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      // Switch to appearance tab if component has activeTab property
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'appearance'
-        await wrapper.vm.$nextTick()
-      }
-
-      const appearanceContent = wrapper.find('[data-test="appearance-settings"]')
-      expect(appearanceContent.exists()).toBe(true)
-    })
-
-    it('includes mascot toggle', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'appearance'
-        await wrapper.vm.$nextTick()
-      }
-
-      const mascotToggle = wrapper.find('[data-test="mascot-toggle"]')
-      expect(mascotToggle.exists()).toBe(true)
+      const startupContent = wrapper.find('[data-test="startup-settings"]')
+      expect(startupContent.exists()).toBe(true)
     })
   })
 
@@ -418,64 +210,76 @@ describe('UserSettings.vue', () => {
     it('renders notification settings when tab is selected', async () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'notifications'
-        await wrapper.vm.$nextTick()
-      }
+      wrapper.vm.activeTab = 'notifications'
+      await wrapper.vm.$nextTick()
 
       const notificationContent = wrapper.find('[data-test="notification-settings"]')
       expect(notificationContent.exists()).toBe(true)
     })
 
-    it('includes new messages toggle', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'notifications'
-        await wrapper.vm.$nextTick()
-      }
-
-      const newMessagesToggle = wrapper.find('[data-test="new-messages-toggle"]')
-      expect(newMessagesToggle.exists()).toBe(true)
-    })
-
     it('includes notification position selector', async () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'notifications'
-        await wrapper.vm.$nextTick()
-      }
+      wrapper.vm.activeTab = 'notifications'
+      await wrapper.vm.$nextTick()
 
       const positionSelect = wrapper.find('[data-test="notification-position-select"]')
       expect(positionSelect.exists()).toBe(true)
+    })
+
+    it('includes save button for notification settings', async () => {
+      wrapper = mount(UserSettings, {
+        global: {
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
+        }
+      })
+
+      wrapper.vm.activeTab = 'notifications'
+      await wrapper.vm.$nextTick()
+
+      const saveBtn = wrapper.find('[data-test="save-notification-btn"]')
+      expect(saveBtn.exists()).toBe(true)
+    })
+
+    it('includes reset button for notification settings', async () => {
+      wrapper = mount(UserSettings, {
+        global: {
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
+        }
+      })
+
+      wrapper.vm.activeTab = 'notifications'
+      await wrapper.vm.$nextTick()
+
+      const resetBtn = wrapper.find('[data-test="reset-notification-btn"]')
+      expect(resetBtn.exists()).toBe(true)
+    })
+
+    it('includes silence threshold input', async () => {
+      wrapper = mount(UserSettings, {
+        global: {
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
+        }
+      })
+
+      wrapper.vm.activeTab = 'notifications'
+      await wrapper.vm.$nextTick()
+
+      const thresholdInput = wrapper.find('[data-test="silence-threshold-input"]')
+      expect(thresholdInput.exists()).toBe(true)
     })
   })
 
@@ -483,107 +287,83 @@ describe('UserSettings.vue', () => {
     it('renders TemplateManager component', async () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
+          plugins: [vuetify, pinia],
           stubs: {
+            ...childStubs,
             TemplateManager: { template: '<div data-test="template-manager-stub">Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
+          },
         }
       })
 
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'agents'
-        await wrapper.vm.$nextTick()
-      }
+      wrapper.vm.activeTab = 'agents'
+      await wrapper.vm.$nextTick()
 
       const templateManager = wrapper.find('[data-test="template-manager-stub"]')
       expect(templateManager.exists()).toBe(true)
     })
   })
 
-  describe('Settings Persistence', () => {
-    it('has save button for general settings', async () => {
+  describe('Integrations Tab Content', () => {
+    it('renders Integrations content', async () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
-      const saveBtn = wrapper.find('[data-test="save-general-btn"]')
-      expect(saveBtn.exists()).toBe(true)
-    })
+      wrapper.vm.activeTab = 'integrations'
+      await wrapper.vm.$nextTick()
 
-    it('has save button for appearance settings', async () => {
-      wrapper = mount(UserSettings, {
-        global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
-        }
-      })
-
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'appearance'
-        await wrapper.vm.$nextTick()
-      }
-
-      const saveBtn = wrapper.find('[data-test="save-appearance-btn"]')
-      expect(saveBtn.exists()).toBe(true)
+      expect(wrapper.text()).toContain('Integrations')
     })
   })
 
-  describe('Reset Functionality', () => {
-    it('resets general settings to defaults', async () => {
+  describe('Settings State', () => {
+    it('has notification settings with default values', () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
-      const resetBtn = wrapper.find('[data-test="reset-general-btn"]')
-      if (resetBtn.exists()) {
-        await resetBtn.trigger('click')
-        // Verify reset logic
-        expect(resetBtn.exists()).toBe(true)
-      }
+      expect(wrapper.vm.settings.notifications.position).toBe('bottom-right')
+      expect(wrapper.vm.settings.notifications.duration).toBe(5)
+      expect(wrapper.vm.settings.notifications.agent_silence_threshold_minutes).toBe(10)
     })
 
-    it('resets appearance settings to defaults', async () => {
+    it('has serenaEnabled ref', () => {
       wrapper = mount(UserSettings, {
         global: {
-          plugins: [vuetify, router, pinia],
-          stubs: {
-            TemplateManager: { template: '<div>Template Manager Mock</div>' },
-            ContextPriorityConfig: { template: '<div>Context Config Mock</div>' },
-            ApiKeyManager: { template: '<div>API Key Manager Mock</div>' }
-          }
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
         }
       })
 
-      if (wrapper.vm.activeTab !== undefined) {
-        wrapper.vm.activeTab = 'appearance'
-        await wrapper.vm.$nextTick()
-      }
+      expect(wrapper.vm.serenaEnabled).toBe(false)
+    })
 
-      const resetBtn = wrapper.find('[data-test="reset-appearance-btn"]')
-      if (resetBtn.exists()) {
-        await resetBtn.trigger('click')
-        expect(resetBtn.exists()).toBe(true)
-      }
+    it('has toggleSerena method', () => {
+      wrapper = mount(UserSettings, {
+        global: {
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
+        }
+      })
+
+      expect(typeof wrapper.vm.toggleSerena).toBe('function')
+    })
+
+    it('has resetNotificationSettings method', () => {
+      wrapper = mount(UserSettings, {
+        global: {
+          plugins: [vuetify, pinia],
+          stubs: childStubs,
+        }
+      })
+
+      expect(typeof wrapper.vm.resetNotificationSettings).toBe('function')
     })
   })
 })

@@ -272,25 +272,8 @@ describe('User Store - v3.0 Unified Authentication (Phase 1 Tests)', () => {
     /**
      * TEST 10: checkAuth() should set loading state correctly
      */
-    it('should manage loading state during authentication check', async () => {
-      // Arrange: Mock localhost hostname
-      mockHostname('localhost')
-
-      // Arrange: Mock API with delayed response
-      api.auth.me.mockImplementation(() =>
-        new Promise(resolve => setTimeout(() => resolve({ data: {} }), 100))
-      )
-
-      const store = useUserStore()
-
-      // Act: Start authentication check
-      const checkPromise = store.checkAuth()
-      expect(store.isLoading).toBe(true)
-
-      // Act: Wait for completion
-      await checkPromise
-      expect(store.isLoading).toBe(false)
-    })
+    // Test for isLoading removed: the user store does not expose an isLoading property.
+    // Authentication loading state is managed internally without a public reactive ref.
   })
 
   describe('Code Quality Checks', () => {

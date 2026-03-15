@@ -57,6 +57,14 @@ vi.mock('vue-router', () => ({
   useRouter: () => mockRouter,
 }))
 
+// Mock WebSocket composable
+vi.mock('@/composables/useWebSocket', () => ({
+  useWebSocketV2: () => ({
+    on: vi.fn(),
+    off: vi.fn(),
+  }),
+}))
+
 // Setup vuetify
 const vuetify = createVuetify({
   components,
@@ -105,6 +113,9 @@ describe('UserSettings.vue', () => {
           SlashCommandSetup: true,
           SerenaAdvancedSettingsDialog: true,
           ContextPriorityConfig: true,
+          StartupQuickStart: true,
+          ProductIntroTour: true,
+          GitAdvancedSettingsDialog: true,
           McpIntegrationCard: {
             name: 'McpIntegrationCard',
             template: '<div class="mcp-integration-card-stub"></div>',
@@ -192,52 +203,9 @@ describe('UserSettings.vue', () => {
       expect(wrapper.vm.serenaEnabled).toBe(false)
     })
 
-    it('should handle SerenaIntegrationCard openAdvanced event via openSerenaAdvanced', async () => {
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-
-      // Call the openSerenaAdvanced handler directly
-      await wrapper.vm.openSerenaAdvanced()
-      await wrapper.vm.$nextTick()
-
-      // The showSerenaAdvanced dialog should be opened
-      expect(wrapper.vm.showSerenaAdvanced).toBe(true)
-    })
-
-    it('should handle GitIntegrationCard update:enabled event via onGitToggle', async () => {
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // Call the onGitToggle handler directly
-      wrapper.vm.onGitToggle(true)
-      await wrapper.vm.$nextTick()
-
-      // The gitIntegration.enabled state should change
-      expect(wrapper.vm.gitIntegration.enabled).toBe(true)
-    })
-
-    it('should handle GitIntegrationCard save event via handleGitSave', async () => {
-      wrapper = mountComponent()
-      await wrapper.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // Set up productInfo to simulate an active product
-      const settingsStore = useSettingsStore()
-      settingsStore.productInfo = { id: 'test-product-id', name: 'Test Product' }
-
-      // Call the handleGitSave handler directly with payload
-      const savePayload = {
-        enabled: true,
-        commit_limit: 30,
-        default_branch: 'develop'
-      }
-      await wrapper.vm.handleGitSave(savePayload)
-      await wrapper.vm.$nextTick()
-
-      // The API should have been called
-      expect(api.products.updateGitIntegration).toHaveBeenCalled()
-    })
+    // Tests for openSerenaAdvanced, onGitToggle, and handleGitSave removed:
+    // These functions were removed in the Handover 0277 integration card refactor.
+    // SerenaIntegrationCard and GitIntegrationCard now manage their own state internally.
 
     it('should keep SlashCommandSetup and ClaudeCodeExport inline', async () => {
       wrapper = mountComponent()
