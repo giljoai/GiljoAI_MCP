@@ -120,12 +120,11 @@ Before spawning any agents, the orchestrator executes a **7-task staging workflo
    ├─ Validate agent capabilities match project needs
    └─ NO EMBEDDED TEMPLATES (fetch dynamically)
 
-5. CONTEXT PRIORITIZATION & MISSION
-   ├─ Apply user's context priority settings (3-tier: CRITICAL/IMPORTANT/REFERENCE)
-   ├─ Call fetch_context(category=...) once per category based on priority tier
-   ├─ CRITICAL fields: MUST fetch (product_core, project)
-   ├─ IMPORTANT fields: SHOULD fetch if budget allows (tech_stack, vision_documents)
-   ├─ REFERENCE fields: MAY fetch if project requires (memory_360, git_history)
+5. CONTEXT TOGGLE & MISSION
+   ├─ Apply user's context toggle settings (on/off per category)
+   ├─ Call fetch_context(category=...) once per enabled category
+   ├─ Enabled fields: fetch via MCP tool (product_core, project, tech_stack, etc.)
+   ├─ Disabled fields: skip entirely
    ├─ Generate unified orchestrator mission
    └─ Condense into <10K tokens (See: docs/api/context_tools.md)
 

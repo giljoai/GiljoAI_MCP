@@ -126,7 +126,7 @@ event_data = EventFactory.project_mission_updated(
     mission="Build feature X",
     token_estimate=5000,
     user_config_applied=True,
-    field_priorities={"product_vision": 10}
+    field_toggles={"product_vision": True}
 )
 
 # Or use your custom event

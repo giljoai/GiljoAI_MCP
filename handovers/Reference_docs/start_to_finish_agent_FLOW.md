@@ -266,7 +266,7 @@ Terminal Process:
          ├─► Reads Product.description (user input)
          ├─► Reads Project.description (user input)
          ├─► Reads vision documents (chunked)
-         ├─► Reads context based on user's priority settings
+         ├─► Reads context based on user's toggle/depth settings
          └─► Returns full context and instructions
 
      TASK 3: Create Mission Plan
@@ -765,12 +765,10 @@ The following refers to an **old table-based orchestrator command polling system
 - **After**: 450-550 token thin client prompts
 - **Method**: Mission fetched via MCP tools, not embedded
 
-### 2. Context Prioritization
-User configurable in: My Settings → Context → Priority Configuration
-- Priority 1: CRITICAL (always included)
-- Priority 2: IMPORTANT (usually included)
-- Priority 3: NICE_TO_HAVE (if space allows)
-- Priority 4: EXCLUDED (never included)
+### 2. Context Configuration
+User configurable in: My Settings → Context Configuration
+- Enabled (toggle: true): Category included with configured depth
+- Disabled (toggle: false): Category excluded entirely
 
 ### 3. Agent Template Management
 - **Max Active**: 8 agent types at once
@@ -2005,14 +2003,14 @@ from giljo_mcp.mission_planner import MissionPlanner
 
 planner = MissionPlanner(db_manager)
 metadata = orchestrator.job_metadata or {}
-field_priorities = metadata.get("field_priorities", {})
+field_toggles = metadata.get("field_toggles", {})
 user_id = metadata.get("user_id")
 
-# Generate condensed mission with field priorities applied
-condensed_mission = await planner._build_context_with_priorities(
+# Generate condensed mission with field toggles applied
+condensed_mission = await planner._build_fetch_instructions(
     product=product,
     project=project,
-    field_priorities=field_priorities,
+    field_toggles=field_toggles,
     user_id=user_id,
     include_serena=include_serena  # From config.yaml
 )
