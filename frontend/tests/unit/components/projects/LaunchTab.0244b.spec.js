@@ -261,14 +261,6 @@ describe('LaunchTab - Agent Mission Edit Integration (0244b)', () => {
     })
   })
 
-  describe.skip('WebSocket Integration (REMOVED - LaunchTab no longer listens for agent:mission_updated)', () => {
-    it('should register agent:mission_updated WebSocket listener on mount', async () => {})
-    it('should unregister agent:mission_updated WebSocket listener on unmount', async () => {})
-    it('should update agent mission when WebSocket event is received', async () => {})
-    it('should not show toast when modal is open (own edit)', async () => {})
-    it('should handle WebSocket event for non-existent agent gracefully', async () => {})
-  })
-
   describe('Template Integration', () => {
     it('should render AgentMissionEditModal in template', async () => {
       wrapper = mount(LaunchTab, {

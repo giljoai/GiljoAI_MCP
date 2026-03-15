@@ -3,8 +3,6 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useProductStore } from '@/stores/products'
 import api from '@/services/api'
 
-vi.mock('@/services/api')
-
 // Mock project store (required by product store)
 vi.mock('@/stores/projects', () => ({
   useProjectStore: () => ({
@@ -37,9 +35,6 @@ describe('Product Store - Active Product (Handover 0049)', () => {
       expect(store.activeProduct).toBeNull()
     })
 
-    it.skip('initializes with activeProductLoading as false (no separate loading state exists)', () => {
-      // fetchActiveProduct does not use a loading flag
-    })
   })
 
   describe('fetchActiveProduct()', () => {
@@ -93,14 +88,6 @@ describe('Product Store - Active Product (Handover 0049)', () => {
       // Note: fetchActiveProduct does NOT set store.error on failure (only console.error)
     })
 
-    it.skip('sets loading state during fetch (fetchActiveProduct has no loading state)', () => {
-      // fetchActiveProduct does not toggle any loading ref
-    })
-
-    it.skip('clears error on successful fetch (fetchActiveProduct does not manage error state)', () => {
-      // fetchActiveProduct does not clear store.error
-    })
-
     it('stores first product from response', async () => {
       const mockProduct = { id: 1, name: 'First Active', is_active: true }
 
@@ -152,9 +139,8 @@ describe('Product Store - Active Product (Handover 0049)', () => {
         data: { id: 2, name: 'Product 2' }
       })
 
-      api.products.metrics.mockResolvedValue({
-        data: { totalTasks: 0, completedTasks: 0, activeAgents: 0, totalProjects: 0 }
-      })
+      // api.products.metrics is optional (store uses optional chaining)
+      // No need to mock it - the store handles undefined gracefully
 
       const store = useProductStore()
 
@@ -188,16 +174,6 @@ describe('Product Store - Active Product (Handover 0049)', () => {
       // activeProduct should remain unchanged
       expect(store.activeProduct).toEqual(activeProductBefore)
     })
-  })
-
-  describe.skip('Error State Management (fetchActiveProduct does not manage error state)', () => {
-    it('preserves error message from failed fetch', async () => {})
-    it('clears error when fetch succeeds after failure', async () => {})
-  })
-
-  describe.skip('Loading State (fetchActiveProduct has no loading state)', () => {
-    it('properly toggles loading state on success', async () => {})
-    it('properly toggles loading state on error', async () => {})
   })
 
   describe('Active Product Data Structure', () => {

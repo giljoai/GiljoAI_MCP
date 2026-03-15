@@ -13,6 +13,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { ref } from 'vue'
+
+// Unmock the composable so we test real integration with the store
+vi.unmock('@/composables/useWebSocket')
+
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useWebSocketStore } from '@/stores/websocket'
 

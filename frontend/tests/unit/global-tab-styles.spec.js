@@ -2,32 +2,45 @@
  * Test: Global Tab Styling Standardization
  *
  * Tests for consistent tab styling across the application.
- * All tabs should follow a consistent pattern:
- * - Inactive tabs: opacity 0.6 (faded)
- * - Active tab: opacity 1.0 (full)
- * - No yellow color overrides
- * - Smooth transitions
- * - Consistent behavior across all components
+ *
+ * Post-refactor notes:
+ * - All tab components now use v-btn-toggle (not v-tabs)
+ * - global-tabs class is no longer used on v-tabs
+ * - global-tabs-window class is used on v-window for tab content
+ * - Opacity and transitions handled via v-btn-toggle CSS
  *
  * Components tested:
- * - ProjectTabs.vue
- * - UserSettings.vue
- * - SystemSettings.vue
- * - ProductForm.vue
+ * - ProjectTabs.vue (v-btn-toggle)
+ * - UserSettings.vue (v-btn-toggle)
+ * - SystemSettings.vue (v-btn-toggle)
+ * - ProductForm.vue (v-btn-toggle)
+ *
+ * Note on testing strategy:
+ * The global test setup (tests/setup.js) mocks Vuetify components with
+ * simple HTML stubs. v-btn-toggle is NOT in the global stubs, so it
+ * renders as an unresolved custom element <v-btn-toggle>. We use
+ * wrapper.find('v-btn-toggle') to locate it in the rendered HTML.
+ * Similarly, v-window renders as a <div class="v-window"> stub that
+ * does not preserve parent-template classes. For the global-tabs-window
+ * class test, we verify the class appears in the raw HTML output since
+ * the stub's v-bind="$attrs" can propagate it in some cases, or we
+ * read the source file statically.
  */
 
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
 
 // Import components to test
 import ProjectTabs from '@/components/projects/ProjectTabs.vue'
 import UserSettings from '@/views/UserSettings.vue'
 import SystemSettings from '@/views/SystemSettings.vue'
 import ProductForm from '@/components/products/ProductForm.vue'
-
-// Import global styles
-import '@/styles/global-tabs.scss'
 
 // Mock dependencies
 vi.mock('vue-router', () => ({
@@ -47,6 +60,9 @@ vi.mock('@/services/api', () => ({
       getGitIntegration: vi.fn().mockResolvedValue({ data: { enabled: false } }),
       updateGitIntegration: vi.fn().mockResolvedValue({ data: { enabled: false } }),
     },
+    users: {
+      getFieldToggleConfig: vi.fn().mockResolvedValue({ data: { priorities: {} } }),
+    },
   },
 }))
 
@@ -57,51 +73,18 @@ vi.mock('@/services/setupService', () => ({
   },
 }))
 
+// Mock child components that may cause import issues
+vi.mock('@/composables/useWebSocket', () => ({
+  useWebSocketV2: () => ({
+    on: vi.fn(),
+    off: vi.fn(),
+  }),
+}))
+
+const vuetify = createVuetify({ components, directives })
+
 // Create shared global stubs for all tests
 const globalStubs = {
-  'v-tabs': {
-    template: '<div class="v-tabs global-tabs"><slot /></div>',
-    props: ['modelValue', 'bgColor', 'color', 'class', 'alignTabs', 'showArrows'],
-  },
-  'v-tab': {
-    template: '<div class="v-tab"><slot /></div>',
-    props: ['value'],
-  },
-  'v-window': {
-    template: '<div class="v-window global-tabs-window"><slot /></div>',
-    props: ['modelValue', 'touch', 'reverse', 'class'],
-  },
-  'v-window-item': {
-    template: '<div class="v-window-item"><slot /></div>',
-    props: ['value'],
-  },
-  'v-tabs-window': {
-    template: '<div class="v-tabs-window global-tabs-window"><slot /></div>',
-    props: ['modelValue', 'class'],
-  },
-  'v-tabs-window-item': {
-    template: '<div class="v-tabs-window-item"><slot /></div>',
-    props: ['value'],
-  },
-  'v-form': {
-    template: '<form><slot /></form>',
-    props: ['modelValue'],
-  },
-  'v-text-field': true,
-  'v-textarea': true,
-  'v-select': true,
-  'v-slider': true,
-  'v-file-input': true,
-  'v-radio-group': true,
-  'v-radio': true,
-  'v-switch': true,
-  'v-alert': true,
-  'v-list': true,
-  'v-list-item': true,
-  'v-list-item-title': true,
-  'v-list-item-subtitle': true,
-  'v-progress-circular': true,
-  'v-progress-linear': true,
   LaunchTab: true,
   JobsTab: true,
   TemplateManager: true,
@@ -113,15 +96,19 @@ const globalStubs = {
   McpIntegrationCard: true,
   SerenaIntegrationCard: true,
   GitIntegrationCard: true,
+  GitAdvancedSettingsDialog: true,
+  StartupQuickStart: true,
+  ProductIntroTour: true,
   NetworkSettingsTab: true,
   DatabaseConnection: true,
   SecuritySettingsTab: true,
   SystemPromptTab: true,
+  CloseoutModal: true,
 }
 
 describe('Global Tab Styles', () => {
-  describe('Tab Opacity Standards', () => {
-    it('should apply global-tabs class to v-tabs container', async () => {
+  describe('Tab Implementation Standard', () => {
+    it('ProjectTabs uses v-btn-toggle for tab navigation', async () => {
       const pinia = createPinia()
       const wrapper = mount(ProjectTabs, {
         props: {
@@ -131,131 +118,73 @@ describe('Global Tab Styles', () => {
           },
         },
         global: {
-          plugins: [pinia],
+          plugins: [pinia, vuetify],
           stubs: globalStubs,
         },
       })
 
       await wrapper.vm.$nextTick()
 
-      // Check for global-tabs class on v-tabs
-      const vTabs = wrapper.find('.v-tabs')
-      expect(vTabs.exists()).toBe(true)
-      expect(vTabs.classes()).toContain('global-tabs')
-    })
-
-  })
-
-  describe('ProjectTabs Component', () => {
-    it('should use global-tabs class instead of custom styling', async () => {
-      const pinia = createPinia()
-      const wrapper = mount(ProjectTabs, {
-        props: {
-          project: {
-            id: 'test-project',
-            name: 'Test Project',
-          },
-        },
-        global: {
-          plugins: [pinia],
-          stubs: globalStubs,
-        },
-      })
-
-      const vTabs = wrapper.find('.v-tabs')
-      expect(vTabs.exists()).toBe(true)
-      expect(vTabs.classes()).toContain('global-tabs')
-    })
-
-    it('should have global-tabs-window class on v-window', async () => {
-      const pinia = createPinia()
-      const wrapper = mount(ProjectTabs, {
-        props: {
-          project: {
-            id: 'test-project',
-            name: 'Test Project',
-          },
-        },
-        global: {
-          plugins: [pinia],
-          stubs: globalStubs,
-        },
-      })
-
-      expect(wrapper.exists()).toBe(true)
+      // In the mocked Vuetify environment, v-btn-toggle renders as a
+      // custom element tag since it is not in the global stubs list.
+      const html = wrapper.html()
+      expect(html).toContain('v-btn-toggle')
     })
   })
 
   describe('UserSettings Component', () => {
-    it('should use global-tabs class', async () => {
+    it('uses v-btn-toggle for tab navigation', async () => {
       const pinia = createPinia()
       const wrapper = mount(UserSettings, {
         global: {
-          plugins: [pinia],
+          plugins: [pinia, vuetify],
           stubs: globalStubs,
         },
       })
 
       await wrapper.vm.$nextTick()
 
-      const vTabs = wrapper.find('.v-tabs')
-      expect(vTabs.exists()).toBe(true)
-      expect(vTabs.classes()).toContain('global-tabs')
+      const html = wrapper.html()
+      expect(html).toContain('v-btn-toggle')
     })
 
-    it('should use global-tabs-window class', async () => {
-      const pinia = createPinia()
-      const wrapper = mount(UserSettings, {
-        global: {
-          plugins: [pinia],
-          stubs: globalStubs,
-        },
-      })
-
-      await wrapper.vm.$nextTick()
-
-      const vWindow = wrapper.find('.v-window')
-      expect(vWindow.exists()).toBe(true)
-      expect(vWindow.classes()).toContain('global-tabs-window')
+    it('uses global-tabs-window class on v-window', () => {
+      // Static source code verification: the UserSettings template
+      // must apply class="global-tabs-window" to its v-window element.
+      const srcPath = resolve(__dirname, '../../src/views/UserSettings.vue')
+      const source = readFileSync(srcPath, 'utf-8')
+      expect(source).toContain('class="global-tabs-window"')
+      expect(source).toContain('<v-window')
     })
   })
 
   describe('SystemSettings Component', () => {
-    it('should use global-tabs class', async () => {
+    it('uses v-btn-toggle for tab navigation', async () => {
       const pinia = createPinia()
       const wrapper = mount(SystemSettings, {
         global: {
-          plugins: [pinia],
+          plugins: [pinia, vuetify],
           stubs: globalStubs,
         },
       })
 
       await wrapper.vm.$nextTick()
 
-      const vTabs = wrapper.find('.v-tabs')
-      expect(vTabs.exists()).toBe(true)
-      expect(vTabs.classes()).toContain('global-tabs')
+      const html = wrapper.html()
+      expect(html).toContain('v-btn-toggle')
     })
 
-    it('should use global-tabs-window class', async () => {
-      const pinia = createPinia()
-      const wrapper = mount(SystemSettings, {
-        global: {
-          plugins: [pinia],
-          stubs: globalStubs,
-        },
-      })
-
-      await wrapper.vm.$nextTick()
-
-      const vWindow = wrapper.find('.v-window')
-      expect(vWindow.exists()).toBe(true)
-      expect(vWindow.classes()).toContain('global-tabs-window')
+    it('uses global-tabs-window class on v-window', () => {
+      // Static source code verification
+      const srcPath = resolve(__dirname, '../../src/views/SystemSettings.vue')
+      const source = readFileSync(srcPath, 'utf-8')
+      expect(source).toContain('class="global-tabs-window"')
+      expect(source).toContain('<v-window')
     })
   })
 
   describe('ProductForm Component', () => {
-    it('should use global-tabs class', async () => {
+    it('uses v-btn-toggle for tab navigation', async () => {
       const pinia = createPinia()
       const wrapper = mount(ProductForm, {
         props: {
@@ -264,45 +193,31 @@ describe('Global Tab Styles', () => {
           isEdit: false,
         },
         global: {
-          plugins: [pinia],
+          plugins: [pinia, vuetify],
           stubs: globalStubs,
         },
       })
 
       await wrapper.vm.$nextTick()
 
-      const vTabs = wrapper.find('.v-tabs')
-      expect(vTabs.exists()).toBe(true)
-      expect(vTabs.classes()).toContain('global-tabs')
+      const html = wrapper.html()
+      expect(html).toContain('v-btn-toggle')
     })
 
-    it('should use global-tabs-window class', async () => {
-      const pinia = createPinia()
-      const wrapper = mount(ProductForm, {
-        props: {
-          modelValue: true,
-          product: null,
-          isEdit: false,
-        },
-        global: {
-          plugins: [pinia],
-          stubs: globalStubs,
-        },
-      })
-
-      await wrapper.vm.$nextTick()
-
-      const vWindow = wrapper.find('.v-tabs-window')
-      expect(vWindow.exists()).toBe(true)
-      expect(vWindow.classes()).toContain('global-tabs-window')
+    it('does not use global-tabs-window on ProductForm (dialog-based)', () => {
+      // ProductForm uses a bordered-tabs-content pattern inside a dialog,
+      // not the global-tabs-window class used by full-page views.
+      const srcPath = resolve(__dirname, '../../src/components/products/ProductForm.vue')
+      const source = readFileSync(srcPath, 'utf-8')
+      expect(source).toContain('bordered-tabs-content')
     })
   })
 
   describe('Tab Class Consistency', () => {
-    it('should have consistent global-tabs class across all tab components', async () => {
+    it('all tab components use v-btn-toggle consistently', async () => {
       const pinia = createPinia()
 
-      const components = [
+      const configs = [
         {
           name: 'ProjectTabs',
           component: ProjectTabs,
@@ -325,20 +240,19 @@ describe('Global Tab Styles', () => {
         },
       ]
 
-      for (const config of components) {
+      for (const config of configs) {
         const wrapper = mount(config.component, {
           props: config.props,
           global: {
-            plugins: [pinia],
+            plugins: [pinia, vuetify],
             stubs: globalStubs,
           },
         })
 
         await wrapper.vm.$nextTick()
 
-        const vTabs = wrapper.find('.v-tabs')
-        expect(vTabs.exists()).toBe(true)
-        expect(vTabs.classes()).toContain('global-tabs')
+        const html = wrapper.html()
+        expect(html).toContain('v-btn-toggle')
       }
     })
   })

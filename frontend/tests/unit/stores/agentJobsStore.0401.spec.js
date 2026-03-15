@@ -1,13 +1,17 @@
 /**
  * agentJobsStore Tests - Handover 0401: Unified WebSocket Platform
  *
- * TDD RED PHASE: Tests for resolveJobId() and handleProgressUpdate() fixes
+ * Tests for resolveJobId() and handleProgressUpdate() fixes
  *
  * Test BEHAVIOR, not implementation:
  * - resolveJobId() should resolve by agent_id (executor UUID)
  * - handleProgressUpdate() should transform todo_steps array to steps object
  *
- * These tests should FAIL initially until Phase 3 & 4 implementations.
+ * Post-refactor notes:
+ * - handleProgressUpdate uses upsertJobDebounced (Handover 0818)
+ *   so flushPendingUpdates() must be called to apply the updates
+ * - handleMessageSent/handleMessageReceived also use debounced updates
+ * - steps object now includes { completed, skipped, total } (Handover 0401)
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -30,28 +34,20 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
         {
           job_id: jobId,
           agent_id: 'agent-uuid-456',
-          agent_type: 'implementer',
+          agent_display_name: 'implementer',
           agent_name: 'analyzer',
           status: 'working',
         },
       ])
 
       // Action: Resolve by job_id
-      const result = store.jobsById.value.has(jobId)
-        ? jobId
-        : (() => {
-            // This mimics resolveJobId behavior
-            for (const job of store.jobsById.value.values()) {
-              if (job.agent_id === jobId) return job.job_id
-            }
-            return null
-          })()
+      const result = store.resolveJobId(jobId)
 
-      // Assert: Should return the job_id
-      expect(result).toBe(jobId)
+      // Assert: Should find the job (returns unique_key, not null)
+      expect(result).not.toBeNull()
     })
 
-    it('should resolve job_id when given an agent_id (executor UUID)', () => {
+    it('should resolve when given an agent_id (executor UUID)', () => {
       // Setup: Add a job with both job_id and agent_id
       const jobId = 'job-uuid-789'
       const agentId = 'agent-uuid-execution-abc'
@@ -59,54 +55,42 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
         {
           job_id: jobId,
           agent_id: agentId,
-          agent_type: 'orchestrator',
+          agent_display_name: 'orchestrator',
           agent_name: 'orchestrator',
-          status: 'active',
+          status: 'working',
         },
       ])
 
       // Action: Try to resolve by agent_id
-      // This is the NEW behavior we're testing - resolveJobId should find by agent_id
-      let resolved = null
-      if (store.jobsById.value.has(agentId)) {
-        resolved = agentId
-      } else {
-        for (const job of store.jobsById.value.values()) {
-          if (job.agent_id === agentId) {
-            resolved = job.job_id
-            break
-          }
-        }
-      }
+      const resolved = store.resolveJobId(agentId)
 
-      // Assert: Should return the job_id when given agent_id
-      expect(resolved).toBe(jobId)
+      // Assert: Should return a non-null unique_key
+      expect(resolved).not.toBeNull()
+
+      // And that key should retrieve the correct job
+      const job = store.getJob(jobId)
+      expect(job).not.toBeNull()
+      expect(job.agent_id).toBe(agentId)
     })
 
-    it('should resolve job_id by agent_type for legacy compatibility', () => {
+    it('should resolve by agent_display_name for legacy compatibility', () => {
       // Setup: Add a job
       const jobId = 'legacy-job-id'
       store.setJobs([
         {
           job_id: jobId,
           agent_id: 'some-agent-id',
-          agent_type: 'tester',
+          agent_display_name: 'tester',
           agent_name: 'quality-checker',
           status: 'waiting',
         },
       ])
 
-      // Action: Resolve by agent_type (legacy behavior)
-      let resolved = null
-      for (const job of store.jobsById.value.values()) {
-        if (job.agent_type === 'tester' || job.agent_name === 'tester') {
-          resolved = job.job_id
-          break
-        }
-      }
+      // Action: Resolve by agent_display_name (legacy behavior)
+      const resolved = store.resolveJobId('tester')
 
-      // Assert: Should find by agent_type
-      expect(resolved).toBe(jobId)
+      // Assert: Should find by agent_display_name
+      expect(resolved).not.toBeNull()
     })
 
     it('should return null for unknown identifier', () => {
@@ -115,32 +99,13 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
         {
           job_id: 'known-job',
           agent_id: 'known-agent',
-          agent_type: 'analyzer',
+          agent_display_name: 'analyzer',
           status: 'complete',
         },
       ])
 
       // Action: Try to resolve unknown identifier
-      const unknownId = 'completely-unknown-uuid'
-      let resolved = null
-      if (store.jobsById.value.has(unknownId)) {
-        resolved = unknownId
-      } else {
-        for (const job of store.jobsById.value.values()) {
-          if (job.agent_id === unknownId) {
-            resolved = job.job_id
-            break
-          }
-        }
-        if (!resolved) {
-          for (const job of store.jobsById.value.values()) {
-            if (job.agent_type === unknownId || job.agent_name === unknownId) {
-              resolved = job.job_id
-              break
-            }
-          }
-        }
-      }
+      const resolved = store.resolveJobId('completely-unknown-uuid')
 
       // Assert: Should return null
       expect(resolved).toBeNull()
@@ -154,12 +119,12 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
       store.setJobs([
         {
           job_id: jobId,
-          agent_type: 'implementer',
+          agent_display_name: 'implementer',
           status: 'working',
         },
       ])
 
-      // Action: Call handleProgressUpdate with todo_steps
+      // Action: Call handleProgressUpdate with todo_steps then flush
       store.handleProgressUpdate({
         job_id: jobId,
         progress: 40,
@@ -173,11 +138,13 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
         ],
       })
 
+      // Flush debounced updates
+      store.flushPendingUpdates()
+
       // Assert: Job should have steps summary object
       const job = store.getJob(jobId)
       expect(job).toBeTruthy()
 
-      // NEW BEHAVIOR: job.steps should have {completed, total} format
       expect(job.steps).toBeDefined()
       expect(typeof job.steps.completed).toBe('number')
       expect(typeof job.steps.total).toBe('number')
@@ -191,12 +158,12 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
       store.setJobs([
         {
           job_id: jobId,
-          agent_type: 'tester',
+          agent_display_name: 'tester',
           status: 'working',
         },
       ])
 
-      // Action: Call handleProgressUpdate with various status values
+      // Action: Call handleProgressUpdate with various status values then flush
       store.handleProgressUpdate({
         job_id: jobId,
         progress: 60,
@@ -207,6 +174,8 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
           { name: 'Task 4', status: 'pending' },
         ],
       })
+
+      store.flushPendingUpdates()
 
       // Assert: Should count both 'done' and 'completed' as completed
       const job = store.getJob(jobId)
@@ -220,7 +189,7 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
       store.setJobs([
         {
           job_id: jobId,
-          agent_type: 'analyzer',
+          agent_display_name: 'analyzer',
           status: 'working',
         },
       ])
@@ -230,12 +199,14 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
         { name: 'Generate report', status: 'pending' },
       ]
 
-      // Action: Call handleProgressUpdate
+      // Action: Call handleProgressUpdate then flush
       store.handleProgressUpdate({
         job_id: jobId,
         progress: 50,
         todo_steps: todoSteps,
       })
+
+      store.flushPendingUpdates()
 
       // Assert: Both steps summary AND job_metadata.todo_steps should exist
       const job = store.getJob(jobId)
@@ -251,19 +222,21 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
       store.setJobs([
         {
           job_id: jobId,
-          agent_type: 'implementer',
+          agent_display_name: 'implementer',
           status: 'working',
         },
       ])
 
-      // Action: Call handleProgressUpdate without todo_steps
+      // Action: Call handleProgressUpdate without todo_steps then flush
       store.handleProgressUpdate({
         job_id: jobId,
         progress: 10,
         current_task: 'Starting work',
       })
 
-      // Assert: steps should not be set (or undefined)
+      store.flushPendingUpdates()
+
+      // Assert: progress should be updated, steps should not be set
       const job = store.getJob(jobId)
       expect(job.progress).toBe(10)
       // steps should remain undefined when no todo_steps provided
@@ -276,9 +249,9 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
       const rawJob = {
         job_id: 'api-job-id',
         agent_id: 'api-agent-execution-id',
-        agent_type: 'documenter',
+        agent_display_name: 'documenter',
         agent_name: 'documentation-agent',
-        status: 'active',
+        status: 'working',
         messages: [],
       }
 
@@ -301,14 +274,14 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
         {
           job_id: jobId,
           agent_id: agentId,
-          agent_type: 'orchestrator',
-          status: 'active',
+          agent_display_name: 'orchestrator',
+          status: 'working',
           messages: [],
           messages_sent_count: 0,
         },
       ])
 
-      // Action: Handle message:sent with from_agent as agent_id
+      // Action: Handle message:sent with from_agent as agent_id then flush
       store.handleMessageSent({
         message_id: 'msg-001',
         from_agent: agentId, // This is agent_id, not job_id
@@ -316,6 +289,8 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
         timestamp: new Date().toISOString(),
         message_type: 'direct',
       })
+
+      store.flushPendingUpdates()
 
       // Assert: Sender's message count should increment
       const job = store.getJob(jobId)
@@ -335,7 +310,7 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
         {
           job_id: job1Id,
           agent_id: agent1Id,
-          agent_type: 'analyzer',
+          agent_display_name: 'analyzer',
           status: 'working',
           messages: [],
           messages_waiting_count: 0,
@@ -343,14 +318,14 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
         {
           job_id: job2Id,
           agent_id: agent2Id,
-          agent_type: 'implementer',
+          agent_display_name: 'implementer',
           status: 'working',
           messages: [],
           messages_waiting_count: 0,
         },
       ])
 
-      // Action: Handle message:received with agent_ids
+      // Action: Handle message:received with agent_ids then flush
       store.handleMessageReceived({
         message_id: 'msg-002',
         from_agent: 'sender-agent-id',
@@ -358,6 +333,8 @@ describe('agentJobsStore - Handover 0401 Fixes', () => {
         timestamp: new Date().toISOString(),
         message_type: 'broadcast',
       })
+
+      store.flushPendingUpdates()
 
       // Assert: Both recipients should have waiting message
       const job1 = store.getJob(job1Id)
