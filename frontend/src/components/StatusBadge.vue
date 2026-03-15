@@ -214,6 +214,14 @@ const actionDefinitions = {
     destructive: false,
     requiresConfirm: false,
   },
+  review: {
+    value: 'review',
+    label: 'Review',
+    icon: 'mdi-eye',
+    newStatus: null,
+    destructive: false,
+    requiresConfirm: false,
+  },
   delete: {
     value: 'delete',
     label: 'Delete',
@@ -228,8 +236,9 @@ const actionDefinitions = {
 const actionsByStatus = {
   inactive: ['activate', 'complete', 'cancel'],
   active: ['deactivate', 'complete', 'cancel'],
-  completed: ['reopen'],
+  completed: ['review'],
   cancelled: ['reopen'],
+  terminated: ['review'],
 }
 
 // Computed
