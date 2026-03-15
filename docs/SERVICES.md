@@ -21,7 +21,7 @@ GiljoAI MCP uses a service layer architecture to separate business logic from AP
 - Authentication: `change_password`, `reset_password`, `verify_password`
 - Validation: `check_username_exists`, `check_email_exists`
 - Role Management: `change_role`
-- Configuration: `get_field_priority_config`, `update_field_priority_config`, `reset_field_priority_config`, `get_depth_config`, `update_depth_config`
+- Configuration: `get_field_toggle_config`, `update_field_toggle_config`, `reset_field_toggle_config`, `get_depth_config`, `update_depth_config`
 
 **Key Features**:
 - Soft delete pattern (is_active flag)

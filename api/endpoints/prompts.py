@@ -175,6 +175,10 @@ async def generate_orchestrator_prompt_thin(
         # Extract toggle config from user's field_priority_config JSONB column
         user_field_config = current_user.field_priority_config or {}
         field_toggles = user_field_config.get("priorities", {})
+        # Flatten nested toggle dicts to plain booleans (v3.0 stores {"toggle": bool})
+        field_toggles = {
+            k: (v.get("toggle", True) if isinstance(v, dict) else bool(v)) for k, v in field_toggles.items()
+        }
 
         # Generate thin prompt with user field toggles
         result = await generator.generate(
@@ -380,6 +384,10 @@ async def generate_staging_prompt(
         # Extract toggle config from user's field_priority_config JSONB column
         user_field_config = current_user.field_priority_config or {}
         field_toggles = user_field_config.get("priorities", {})
+        # Flatten nested toggle dicts to plain booleans (v3.0 stores {"toggle": bool})
+        field_toggles = {
+            k: (v.get("toggle", True) if isinstance(v, dict) else bool(v)) for k, v in field_toggles.items()
+        }
 
         # Generate thin prompt with user field toggles
         result = await generator.generate(
