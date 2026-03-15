@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-14 (all active handovers COMPLETE or DEFERRED, 0816 COMPLETE)
+**Last Updated:** 2026-03-15 (0819a-c COMPLETE, all active handovers COMPLETE or DEFERRED)
 
 ---
 
@@ -19,19 +19,11 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0817 ALL COMPLETE. 0818 WebSocket modal state. **0819a-c ACTIVE (Project Closeout Lifecycle)**. |
+| 0800+ | Enhancement & Feature Series | 0800-0817 ALL COMPLETE. 0818 WebSocket modal state. 0819a-c Project Closeout Lifecycle COMPLETE. |
 
 ---
 
 ## Active Handovers (In Root Folder)
-
-### Active (In Root Folder)
-
-| ID | Title | Status | Priority | Notes |
-|----|-------|--------|----------|-------|
-| 0819a | Project Closeout UI State Management | Not Started | High | CloseoutModal -> stay on page, status banner, continue-working guidance |
-| 0819b | Notification Lifecycle Management | Not Started | Medium | Clear project notifications on terminal state, logout reset |
-| 0819c | Project Review Modal (Replace Reopen) | Not Started | Medium | Read-only review for completed/terminated projects, remove Reopen |
 
 ### Deferred (Still in Root Folder)
 
@@ -52,6 +44,9 @@
 | 0816 | Vision Upload Progress UX Fix | 2026-03-14 | COMPLETE (`2c8c921e`, `73c3fa35`) — progress bar wired up, tests added, watcher ReferenceError fixed |
 | 0817 | March 2026 Audit Cleanup Remainder | 2026-03-14 | COMPLETE — E2E selectors fixed, 28 test files relocated from src/ to tests/ |
 | 0732b | README Screenshots | 2026-03-14 | COMPLETE — screenshots captured manually by user |
+| 0819a | Project Closeout UI State Management | 2026-03-15 | COMPLETE — tri-state UI (done banner/closeout button/continue guidance), stays on page, 9 tests |
+| 0819b | Notification Lifecycle Management | 2026-03-15 | COMPLETE — clearForProject + clearAll actions, 3 terminal paths wired, logout reset, 41 tests |
+| 0819c | Project Review Modal (Replace Reopen) | 2026-03-15 | COMPLETE — read-only review modal for completed/terminated, cancelled keeps Reopen, 19 tests |
 
 ### Recently Closed (February 2026 - from Active)
 
@@ -159,6 +154,9 @@
 | 0816 | Vision Upload Progress UX Fix | **COMPLETE** (2026-03-14, `2c8c921e` + `73c3fa35`, progress bar wired up + tests + watcher fix) |
 | 0817 | March 2026 Audit Cleanup Remainder | **COMPLETE** (2026-03-14, E2E selectors fixed + 28 test files relocated, commits `6b87f67a` + `da5fc6d6`) |
 | 0732b | README Screenshots | **COMPLETE** (2026-03-14, screenshots captured manually by user) |
+| 0819a | Project Closeout UI State Management | **COMPLETE** (2026-03-15, tri-state UI, stays on page, 9 tests) |
+| 0819b | Notification Lifecycle Management | **COMPLETE** (2026-03-15, clearForProject + clearAll, 3 terminal paths, logout reset, 41 tests) |
+| 0819c | Project Review Modal (Replace Reopen) | **COMPLETE** (2026-03-15, read-only modal, cancelled keeps Reopen, 19 tests) |
 | 0765a-s | Perfect Score Sprint (19 sessions) | **COMPLETE** (2026-03-08, 67 commits, ~12K+ lines dead code removed, 1390 tests pass / 0 skipped) |
 | 0083 | Harmonize Slash Commands to /gil_* | **COMPLETED** (2026-03-07, adopted organically via 0388/0461/0700d — no code changes needed) |
 | 0800-0807 | Feb Report Tier 1 Triage (14/21 items resolved) | **COMPLETE** (2026-03-05, research+implementation across 11 handovers) |
@@ -495,7 +493,7 @@ completed/reference/
 **0816** (Enhancement & Feature Series): 0816 Vision Upload Progress UX Fix (COMPLETE)
 **0817** (Enhancement & Feature Series): 0817 March 2026 Audit Cleanup Remainder (COMPLETE)
 **0818** (Enhancement & Feature Series): 0818 WebSocket Modal State Preservation (IN PROGRESS)
-**0819a-c** (Enhancement & Feature Series): 0819a Closeout UI State, 0819b Notification Lifecycle, 0819c Project Review Modal (NOT STARTED)
+**0819a-c** (Enhancement & Feature Series): 0819a Closeout UI State (COMPLETE), 0819b Notification Lifecycle (COMPLETE), 0819c Project Review Modal (COMPLETE)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
