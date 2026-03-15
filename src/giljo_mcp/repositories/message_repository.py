@@ -18,7 +18,7 @@ Design Principles:
 import logging
 from typing import Optional
 
-from sqlalchemy import update
+from sqlalchemy import case, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models.agent_identity import AgentExecution
@@ -113,6 +113,83 @@ class MessageRepository:
             self._logger.warning(f"No agent found for agent_id={agent_id}, tenant_key={tenant_key}")
         else:
             self._logger.debug(f"Incremented waiting_count for agent {agent_id} by {increment}")
+
+    async def batch_update_counters(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        sent_increments: dict[str, int] | None = None,
+        waiting_increments: dict[str, int] | None = None,
+    ) -> int:
+        """
+        Batch-update sent and waiting counters in a single SQL statement.
+
+        Uses a single UPDATE with CASE expressions to touch all affected rows
+        atomically. PostgreSQL acquires row locks within one statement, which
+        eliminates the cross-statement circular-wait deadlock that occurs with
+        N+1 individual UPDATEs.
+
+        Args:
+            session: Active database session
+            tenant_key: Tenant key for multi-tenant isolation
+            sent_increments: {agent_id: increment} for messages_sent_count
+            waiting_increments: {agent_id: increment} for messages_waiting_count
+
+        Returns:
+            Number of rows affected
+
+        Example:
+            >>> await repo.batch_update_counters(
+            ...     session=session,
+            ...     tenant_key="tenant-abc",
+            ...     sent_increments={"agent-1": 1},
+            ...     waiting_increments={"agent-2": 1, "agent-3": 1},
+            ... )
+        """
+        sent_increments = sent_increments or {}
+        waiting_increments = waiting_increments or {}
+
+        all_agent_ids = set(sent_increments.keys()) | set(waiting_increments.keys())
+        if not all_agent_ids:
+            return 0
+
+        values: dict = {}
+
+        if sent_increments:
+            values["messages_sent_count"] = case(
+                *[
+                    (AgentExecution.agent_id == agent_id, AgentExecution.messages_sent_count + inc)
+                    for agent_id, inc in sent_increments.items()
+                ],
+                else_=AgentExecution.messages_sent_count,
+            )
+
+        if waiting_increments:
+            values["messages_waiting_count"] = case(
+                *[
+                    (AgentExecution.agent_id == agent_id, AgentExecution.messages_waiting_count + inc)
+                    for agent_id, inc in waiting_increments.items()
+                ],
+                else_=AgentExecution.messages_waiting_count,
+            )
+
+        stmt = (
+            update(AgentExecution)
+            .where(
+                AgentExecution.agent_id.in_(all_agent_ids),
+                AgentExecution.tenant_key == tenant_key,
+            )
+            .values(**values)
+        )
+        result = await session.execute(stmt)
+
+        self._logger.debug(
+            "Batch counter update: %d rows affected (sent=%s, waiting=%s)",
+            result.rowcount,
+            list(sent_increments.keys()),
+            list(waiting_increments.keys()),
+        )
+        return result.rowcount
 
     async def get_counter_stats(
         self,
