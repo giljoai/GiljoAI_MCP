@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import isEqual from 'lodash-es/isEqual'
+import debounce from 'lodash-es/debounce'
 import { AGENT_STATUS_PRIORITY } from '@/utils/constants'
 
 function ensureArray(value) {
@@ -168,14 +170,107 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     const previous = existingJob || jobsById.value.get(uniqueKey)
     const nextJob = normalizeJob({ ...(previous || {}), ...cleanPatch, job_id: jobId || previous?.job_id })
 
-    // Avoid unnecessary churn if nothing changed.
-    if (previous && JSON.stringify(previous) === JSON.stringify(nextJob)) {
+    // Handover 0818 Phase 1: Use deep equality (lodash isEqual) instead of
+    // JSON.stringify to handle key ordering, undefined, and circular refs.
+    if (previous && isEqual(previous, nextJob)) {
       return
     }
 
     // Use existing key if we found one, otherwise use the computed/normalized key
     const finalKey = existingKey || nextJob.unique_key
     jobsById.value = createNextMapWith(jobsById.value, finalKey, nextJob)
+  }
+
+  // =========================
+  // Handover 0818 Phase 2: Debounced updates for minor WebSocket events
+  // =========================
+
+  // Pending patches keyed by unique_key, merged until flush
+  const pendingUpdates = new Map()
+
+  /**
+   * Flush all queued pending updates by calling upsertJob for each.
+   * Exposed publicly for testability and for immediate handlers to drain
+   * pending state before their own upsert.
+   */
+  function flushPendingUpdates() {
+    if (pendingUpdates.size === 0) return
+    for (const [, patch] of pendingUpdates) {
+      upsertJob(patch)
+    }
+    pendingUpdates.clear()
+  }
+
+  // Debounced version of flush -- batches rapid-fire minor events (~300ms)
+  const debouncedFlush = debounce(flushPendingUpdates, 300)
+
+  /**
+   * Queue a patch for debounced application. Resolves the unique_key,
+   * merges into any existing pending patch for the same key, then
+   * schedules a debounced flush.
+   */
+  function upsertJobDebounced(patch) {
+    const jobId = patch?.job_id || patch?.id || patch?.agent_id
+    const agentId = patch?.agent_id
+
+    // Resolve the unique_key the same way upsertJob does
+    let uniqueKey = null
+
+    if (patch?.execution_id && jobsById.value.has(patch.execution_id)) {
+      uniqueKey = patch.execution_id
+    }
+    if (!uniqueKey && patch?.unique_key && jobsById.value.has(patch.unique_key)) {
+      uniqueKey = patch.unique_key
+    }
+    if (!uniqueKey && agentId) {
+      for (const [key, job] of jobsById.value.entries()) {
+        if (job.agent_id === agentId) {
+          uniqueKey = key
+          break
+        }
+      }
+    }
+    if (!uniqueKey && jobId) {
+      for (const [key, job] of jobsById.value.entries()) {
+        if (job.job_id === jobId) {
+          uniqueKey = key
+          break
+        }
+      }
+    }
+    if (!uniqueKey) {
+      uniqueKey = patch?.execution_id || patch?.unique_key || jobId
+    }
+
+    if (!uniqueKey) return
+
+    // Filter undefined values before merging to prevent overwriting
+    // valid pending data with undefined (mirrors upsertJob's cleanPatch logic)
+    const cleanPatch = Object.fromEntries(
+      Object.entries(patch || {}).filter(([_, v]) => v !== undefined)
+    )
+
+    // Merge with any existing pending patch for this key
+    const existing = pendingUpdates.get(uniqueKey)
+    if (existing) {
+      pendingUpdates.set(uniqueKey, { ...existing, ...cleanPatch })
+    } else {
+      pendingUpdates.set(uniqueKey, { ...cleanPatch })
+    }
+
+    debouncedFlush()
+  }
+
+  /**
+   * Flush any pending debounced updates for a specific job key.
+   * Used by immediate handlers (e.g. handleStatusChanged) to ensure
+   * pending minor updates are applied before the lifecycle transition.
+   */
+  function flushPendingForJob(uniqueKey) {
+    if (!uniqueKey || !pendingUpdates.has(uniqueKey)) return
+    const patch = pendingUpdates.get(uniqueKey)
+    pendingUpdates.delete(uniqueKey)
+    upsertJob(patch)
   }
 
   function removeJob(uniqueKeyOrJobId) {
@@ -217,6 +312,12 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       console.debug('[handleStatusChanged] Ignoring status for unknown job:', payload?.job_id)
       return
     }
+
+    // Handover 0818: Flush any pending debounced updates for this job
+    // before applying the immediate status transition, so counters/progress
+    // are not lost when a lifecycle event overtakes queued minor events.
+    flushPendingForJob(existingKey)
+
     // EventFactory.agent_status_changed() sends new_status, but upsertJob
     // merges into the job object which uses 'status'. Map it so the store updates.
     if (payload?.new_status && !payload?.status) {
@@ -289,7 +390,8 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       updates.todo_items = payload.todo_items
     }
 
-    upsertJob(updates)
+    // Handover 0818: Use debounced path for minor progress events
+    upsertJobDebounced(updates)
   }
 
   function resolveJobId(identifier) {
@@ -337,7 +439,8 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
 
     // Handover 0463: Spread previous to preserve identity fields and prevent ghost entries
     // Use server-provided counter from WebSocket event
-    upsertJob({
+    // Handover 0818: Use debounced path for minor message counter events
+    upsertJobDebounced({
       ...previous,
       messages_sent_count: payload.sender_sent_count ?? (previous.messages_sent_count || 0) + 1,
     })
@@ -350,7 +453,8 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
         const recipientPrevious = jobsById.value.get(recipientId)
         if (recipientPrevious) {
           // Handover 0463: Spread previous to preserve identity fields and prevent ghost entries
-          upsertJob({
+          // Handover 0818: Use debounced path for minor message counter events
+          upsertJobDebounced({
             ...recipientPrevious,
             messages_waiting_count: payload.recipient_waiting_count ?? (recipientPrevious.messages_waiting_count || 0) + 1,
           })
@@ -372,7 +476,8 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
 
       // Handover 0463: Spread previous to preserve identity fields and prevent ghost entries
       // Use server-provided counter from WebSocket event
-      upsertJob({
+      // Handover 0818: Use debounced path for minor message counter events
+      upsertJobDebounced({
         ...previous,
         messages_waiting_count: payload.waiting_count ?? (previous.messages_waiting_count || 0) + 1,
       })
@@ -408,7 +513,8 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
 
     // Handover 0463: Spread previous to preserve identity fields and prevent ghost entries
     // Use server-provided counters from WebSocket event
-    upsertJob({
+    // Handover 0818: Use debounced path for minor message counter events
+    upsertJobDebounced({
       ...previous,
       messages_waiting_count: payload.waiting_count ?? previous.messages_waiting_count ?? 0,
       messages_read_count: payload.read_count ?? previous.messages_read_count ?? 0,
@@ -458,6 +564,9 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     handleMessageSent,
     handleMessageReceived,
     handleMessageAcknowledged,
+
+    // debounce (exposed for testability)
+    flushPendingUpdates,
 
     // lifecycle
     $reset,

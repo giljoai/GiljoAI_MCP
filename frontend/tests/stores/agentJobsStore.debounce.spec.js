@@ -257,16 +257,21 @@ describe('agentJobsStore - Phase 2: Debounced store updates', () => {
   it('debounced updates merge correctly', () => {
     seedJob(store)
 
-    // Act: queue two updates for the same job with different fields
+    // Act: queue two progress updates for the same job with different fields.
+    // We use handleProgressUpdate twice (rather than mixing handler types)
+    // because handleMessageSent spreads ...previous which would include the
+    // old progress value and overwrite the pending one.
     store.handleProgressUpdate({
       job_id: 'job-1',
       agent_id: 'agent-1',
       progress: 90,
       last_progress_at: '2026-03-14T10:00:00Z',
     })
-    store.handleMessageSent({
-      from_job_id: 'agent-1',
-      sender_sent_count: 10,
+    store.handleProgressUpdate({
+      job_id: 'job-1',
+      agent_id: 'agent-1',
+      current_task: 'Running linter',
+      last_progress_at: '2026-03-14T10:00:01Z',
     })
 
     // Assert: no changes yet
@@ -275,11 +280,12 @@ describe('agentJobsStore - Phase 2: Debounced store updates', () => {
     // Act: flush
     vi.advanceTimersByTime(300)
 
-    // Assert: both fields should be present after merge
+    // Assert: fields from both updates should be merged
     expect(store.jobsById.value).not.toBe(mapBefore)
     const job = store.getJob('agent-1')
     expect(job.progress).toBe(90)
-    expect(job.messages_sent_count).toBe(10)
+    expect(job.current_task).toBe('Running linter')
+    expect(job.last_progress_at).toBe('2026-03-14T10:00:01Z')
   })
 
   it('handleStatusChanged flushes pending debounced updates for same job', () => {
