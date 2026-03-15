@@ -68,6 +68,20 @@ export const useNotificationStore = defineStore('notifications', () => {
     })
   }
 
+  function removeNotification(id) {
+    notifications.value = notifications.value.filter((n) => n.id !== id)
+  }
+
+  function clearForProject(projectId) {
+    if (!projectId) return
+    notifications.value = notifications.value.filter(
+      (n) => n.metadata?.project_id !== projectId
+    )
+  }
+
+  function clearAll() {
+    notifications.value = []
+  }
 
   return {
     // State
@@ -83,5 +97,8 @@ export const useNotificationStore = defineStore('notifications', () => {
     addNotification,
     markAsRead,
     markAllAsRead,
+    removeNotification,
+    clearForProject,
+    clearAll,
   }
 })

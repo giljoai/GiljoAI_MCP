@@ -276,6 +276,100 @@ describe('useNotificationStore', () => {
     })
   })
 
+  describe('clearForProject', () => {
+    it('removes notifications matching the project_id', () => {
+      store.addNotification({
+        type: 'agent_health', title: 'Alert 1', message: 'msg',
+        metadata: { project_id: 'AAA' },
+      })
+      store.addNotification({
+        type: 'agent_health', title: 'Alert 2', message: 'msg',
+        metadata: { project_id: 'AAA' },
+      })
+      store.addNotification({
+        type: 'agent_health', title: 'Alert 3', message: 'msg',
+        metadata: { project_id: 'BBB' },
+      })
+
+      store.clearForProject('AAA')
+
+      expect(store.notifications).toHaveLength(1)
+      expect(store.notifications[0].metadata.project_id).toBe('BBB')
+    })
+
+    it('preserves system notifications without project_id', () => {
+      store.addNotification({
+        type: 'connection_lost', title: 'Connection Lost', message: 'msg',
+      })
+      store.addNotification({
+        type: 'agent_health', title: 'Alert', message: 'msg',
+        metadata: { project_id: 'AAA' },
+      })
+
+      store.clearForProject('AAA')
+
+      expect(store.notifications).toHaveLength(1)
+      expect(store.notifications[0].type).toBe('connection_lost')
+    })
+
+    it('is a no-op when called with null', () => {
+      store.addNotification({ type: 'info', title: 'Test', message: 'msg' })
+
+      store.clearForProject(null)
+
+      expect(store.notifications).toHaveLength(1)
+    })
+
+    it('is a no-op when called with undefined', () => {
+      store.addNotification({ type: 'info', title: 'Test', message: 'msg' })
+
+      store.clearForProject(undefined)
+
+      expect(store.notifications).toHaveLength(1)
+    })
+
+    it('updates unreadCount after clearing', () => {
+      store.addNotification({
+        type: 'agent_health', title: 'Alert 1', message: 'msg',
+        metadata: { project_id: 'AAA' },
+      })
+      store.addNotification({
+        type: 'agent_health', title: 'Alert 2', message: 'msg',
+        metadata: { project_id: 'AAA' },
+      })
+
+      expect(store.unreadCount).toBe(2)
+
+      store.clearForProject('AAA')
+
+      expect(store.unreadCount).toBe(0)
+    })
+
+    it('recalculates badgeColor after clearing warning notifications', () => {
+      store.addNotification({
+        type: 'agent_health', title: 'Alert', message: 'msg',
+        metadata: { project_id: 'AAA' },
+      })
+
+      expect(store.badgeColor).toBe('warning')
+
+      store.clearForProject('AAA')
+
+      expect(store.badgeColor).toBe('error') // default when no unread
+    })
+
+    it('does not remove notifications with different project_id', () => {
+      store.addNotification({
+        type: 'agent_health', title: 'Alert', message: 'msg',
+        metadata: { project_id: 'BBB' },
+      })
+
+      store.clearForProject('AAA')
+
+      expect(store.notifications).toHaveLength(1)
+    })
+  })
+
   describe('Getters', () => {
     describe('unreadCount', () => {
       it('returns count of unread notifications', () => {
