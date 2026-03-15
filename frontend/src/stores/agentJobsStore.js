@@ -217,6 +217,11 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
       console.debug('[handleStatusChanged] Ignoring status for unknown job:', payload?.job_id)
       return
     }
+    // EventFactory.agent_status_changed() sends new_status, but upsertJob
+    // merges into the job object which uses 'status'. Map it so the store updates.
+    if (payload?.new_status && !payload?.status) {
+      payload = { ...payload, status: payload.new_status }
+    }
     upsertJob(payload)
   }
 

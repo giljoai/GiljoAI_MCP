@@ -172,8 +172,18 @@ export const EVENT_MAP = {
   },
   // Handover 0491: Replaced agent:auto_failed with agent:silent
   'agent:silent': {
-    handler: async (payload) => {
+    handler: async (payload, { storeRegistry } = {}) => {
       const { agent_display_name, reason, job_id, project_name, project_id, execution_id } = payload
+
+      // Update agent status in store so dashboard reflects silent state in real-time
+      const agentJobsStore = storeRegistry?.agentJobs?.() ?? useAgentJobsStore()
+      agentJobsStore.handleStatusChanged({
+        job_id,
+        status: 'silent',
+        project_id,
+        agent_display_name,
+        execution_id,
+      })
 
       // Handover 0259: Include project context in silent agent notifications
       const prefix = project_name ? `[${project_name}] ` : ''
@@ -453,7 +463,7 @@ export async function routeWebsocketEvent(
 }
 
 let isInitialized = false
-let unregister = []
+const unregister = []
 
 /**
  * Initialize the router once for the entire app.

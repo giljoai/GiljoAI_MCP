@@ -24,7 +24,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select, update
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
@@ -938,9 +939,6 @@ class MessageService:
                 # Query messages using native SQLAlchemy queries
                 # Handover 0387: Simplified query - fan-out at write means no 'all' broadcast matching needed
                 # Each message now has to_agents=[single_agent_id] after fan-out expansion
-                from sqlalchemy import func
-                from sqlalchemy.dialects.postgresql import JSONB
-
                 # Build query conditions (Handover 0387: Simplified - direct agent_id match only)
                 conditions = [
                     Message.tenant_key == tenant_key,
@@ -996,14 +994,35 @@ class MessageService:
                     await session.commit()
                     self._logger.info(f"Auto-acknowledged {len(messages)} messages for agent {agent_id}")
 
-                    # Handover 0387f: Update counters instead of JSONB
-                    # Single batched UPDATE reduces lock duration and deadlock window
+                    # Self-healing counter: count actual remaining pending messages
+                    # instead of blindly decrementing (prevents permanent counter drift)
                     async def _acknowledge_counters():
-                        await self._repo.bulk_acknowledge_counters(
-                            session=session,
-                            agent_id=agent_id,
-                            tenant_key=tenant_key,
-                            count=len(messages),
+                        # Count actual remaining pending messages for this agent
+                        pending_stmt = (
+                            select(func.count())
+                            .select_from(Message)
+                            .where(
+                                Message.tenant_key == tenant_key,
+                                Message.project_id == job.project_id,
+                                Message.status == "pending",
+                                func.cast(Message.to_agents, JSONB).op("@>")(func.cast([agent_id], JSONB)),
+                            )
+                        )
+                        pending_result = await session.execute(pending_stmt)
+                        actual_pending = pending_result.scalar() or 0
+
+                        # SET waiting count to actual pending (self-healing)
+                        # INCREMENT read count by number of messages just acknowledged
+                        await session.execute(
+                            update(AgentExecution)
+                            .where(
+                                AgentExecution.agent_id == agent_id,
+                                AgentExecution.tenant_key == tenant_key,
+                            )
+                            .values(
+                                messages_waiting_count=actual_pending,
+                                messages_read_count=AgentExecution.messages_read_count + len(messages),
+                            )
                         )
                         await session.commit()
 
@@ -1014,11 +1033,13 @@ class MessageService:
                             operation_name="receive_counter_update",
                             context={"agent_id": agent_id},
                         )
-                        self._logger.info(f"[COUNTER] Bulk acknowledged {len(messages)} messages for {agent_id}")
-                    except RetryExhaustedError as counter_error:
+                        self._logger.info(
+                            f"[COUNTER] Self-healing acknowledge: {len(messages)} messages for {agent_id}"
+                        )
+                    except RetryExhaustedError:
                         # Counter update is non-critical; messages are already acknowledged.
-                        # Log and continue -- counter skew is recoverable, message loss is not.
-                        self._logger.warning("Failed to update receive counters for %s: %s", agent_id, counter_error)
+                        # Log at ERROR for visibility -- counter drift until next receive.
+                        self._logger.exception("Failed to update receive counters for %s", agent_id)
 
                     # Emit WebSocket event for UI update (Handover 0326)
                     # Use broadcast_message_acknowledged for real-time counter updates
@@ -1142,8 +1163,7 @@ class MessageService:
                         )
 
                     # Query messages for this agent using native queries
-                    from sqlalchemy import func, or_
-                    from sqlalchemy.dialects.postgresql import JSONB
+                    from sqlalchemy import or_
 
                     query = (
                         select(Message)
