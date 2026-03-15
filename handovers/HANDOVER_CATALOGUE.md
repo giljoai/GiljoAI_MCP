@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-15 (0819a-c COMPLETE, all active handovers COMPLETE or DEFERRED)
+**Last Updated:** 2026-03-15 (0818, 0820b, 0822 CLOSED — all active handovers COMPLETE or DEFERRED)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0817 ALL COMPLETE. 0818 WebSocket modal state. 0819a-c Project Closeout Lifecycle COMPLETE. 0820 Remove Context Priority Framing COMPLETE. 0820b Context Priority Removal Remediation NOT STARTED. 0821 Broadcast Deadlock Batch Counter COMPLETE. 0822 Memory Gate Quality Fixes IN PROGRESS. |
+| 0800+ | Enhancement & Feature Series | 0800-0822 ALL COMPLETE. No active handovers. |
 
 ---
 
@@ -48,9 +48,10 @@
 | 0819b | Notification Lifecycle Management | 2026-03-15 | COMPLETE — clearForProject + clearAll actions, 3 terminal paths wired, logout reset, 41 tests |
 | 0819c | Project Review Modal (Replace Reopen) | 2026-03-15 | COMPLETE — read-only review modal for completed/terminated, cancelled keeps Reopen, 19 tests |
 | 0820 | Remove Context Priority Framing | 2026-03-15 | COMPLETE (`77e34056`) — 4-phase removal across backend, API, frontend, docs |
-| 0820b | Context Priority Removal Remediation | 2026-03-15 | NOT STARTED — 16 audit findings: data compat, toggle normalization, stale tests/docs |
+| 0820b | Context Priority Removal Remediation | 2026-03-15 | COMPLETE (`6f4472e3`) — 16 audit findings across 4 phases, 301 backend + 51 frontend tests |
 | 0821 | Broadcast Deadlock Batch Counter Fix | 2026-03-15 | COMPLETE (`c347d495`) — N+1 UPDATEs replaced with single CASE statement, 7 new tests, 39 total passing |
-| 0822 | Memory Gate Quality Fixes | 2026-03-15 | IN PROGRESS — timeout fallback, test mock fixes, computed extraction, WS try/catch |
+| 0822 | Memory Gate Quality Fixes | 2026-03-15 | COMPLETE (`8f72151c`) — timeout fallback, computed extraction, WS try/catch, 56 tests passing |
+| 0818 | WebSocket Modal State Preservation | 2026-03-15 | COMPLETE (`d0bcbccb`+3) — deep equality, debounced batching, snapshot pattern for modals |
 
 ### Recently Closed (February 2026 - from Active)
 
@@ -161,6 +162,9 @@
 | 0819a | Project Closeout UI State Management | **COMPLETE** (2026-03-15, tri-state UI, stays on page, 9 tests) |
 | 0819b | Notification Lifecycle Management | **COMPLETE** (2026-03-15, clearForProject + clearAll, 3 terminal paths, logout reset, 41 tests) |
 | 0819c | Project Review Modal (Replace Reopen) | **COMPLETE** (2026-03-15, read-only modal, cancelled keeps Reopen, 19 tests) |
+| 0818 | WebSocket Modal State Preservation | **COMPLETE** (2026-03-15, `d0bcbccb`+3 commits, 3 phases: deep equality, debounced batching, snapshot pattern) |
+| 0820b | Context Priority Removal Remediation | **COMPLETE** (2026-03-15, `6f4472e3`, 16 fixes across 4 phases, 301 backend + 51 frontend tests) |
+| 0822 | Memory Gate Quality Fixes | **COMPLETE** (2026-03-15, `8f72151c`, timeout fallback, computed extraction, WS try/catch, 56 tests) |
 | 0765a-s | Perfect Score Sprint (19 sessions) | **COMPLETE** (2026-03-08, 67 commits, ~12K+ lines dead code removed, 1390 tests pass / 0 skipped) |
 | 0083 | Harmonize Slash Commands to /gil_* | **COMPLETED** (2026-03-07, adopted organically via 0388/0461/0700d — no code changes needed) |
 | 0800-0807 | Feb Report Tier 1 Triage (14/21 items resolved) | **COMPLETE** (2026-03-05, research+implementation across 11 handovers) |
@@ -496,11 +500,11 @@ completed/reference/
 **0815** (Enhancement & Feature Series): 0815 Code Review Remediation March 2026 (COMPLETE)
 **0816** (Enhancement & Feature Series): 0816 Vision Upload Progress UX Fix (COMPLETE)
 **0817** (Enhancement & Feature Series): 0817 March 2026 Audit Cleanup Remainder (COMPLETE)
-**0818** (Enhancement & Feature Series): 0818 WebSocket Modal State Preservation (IN PROGRESS)
+**0818** (Enhancement & Feature Series): 0818 WebSocket Modal State Preservation (COMPLETE)
 **0819a-c** (Enhancement & Feature Series): 0819a Closeout UI State (COMPLETE), 0819b Notification Lifecycle (COMPLETE), 0819c Project Review Modal (COMPLETE)
 **0820** (Enhancement & Feature Series): 0820 Remove Context Priority Framing (COMPLETE)
 **0821** (Enhancement & Feature Series): 0821 Broadcast Deadlock Batch Counter Fix (COMPLETE)
-**0822** (Enhancement & Feature Series): 0822 Memory Gate Quality Fixes (IN PROGRESS)
+**0822** (Enhancement & Feature Series): 0822 Memory Gate Quality Fixes (COMPLETE)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
@@ -533,6 +537,15 @@ completed/reference/
 ---
 
 ## History
+
+### March 2026
+- **Closeout Reconciliation (2026-03-15)**: Closed 3 handovers that had implementation commits but docs still showed active/not-started
+  - 0818: All 3 phases committed (`d0bcbccb`, `1ae57033`, `a8fde2d4`, `0082cd0c`) but file said "Not Started"
+  - 0820b: All 16 fixes committed (`6f4472e3`) but file said "Not Started"
+  - 0822: All fixes committed (`8f72151c`) but file said "In Progress"
+  - Archived 0820b_kickoff_prompt.md (companion doc, no longer needed)
+  - Updated catalogue Quick Reference, Recently Closed, Numbering sections
+  - Total: 0 active handovers remaining (2 deferred: 1014, TODO_vision)
 
 ### February 2026
 - **Closeout Reconciliation (2026-02-28)**: Closed out 8 handovers that were implemented but not archived
