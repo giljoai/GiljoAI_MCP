@@ -15,7 +15,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -135,7 +135,10 @@ class SilenceDetector:
                 AgentExecution.status == "working",
                 or_(
                     AgentExecution.last_progress_at < cutoff,
-                    AgentExecution.last_progress_at.is_(None),
+                    and_(
+                        AgentExecution.last_progress_at.is_(None),
+                        AgentExecution.started_at < cutoff,
+                    ),
                 ),
             )
         )
