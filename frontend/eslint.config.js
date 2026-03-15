@@ -21,7 +21,7 @@ export default [
       'src/**/*.ts',
       'src/integrations/**',
       'src/components/messages/**',
-      'src/components/settings/ContextPriorityConfig.vue',
+      'src/components/settings/ContextPriorityConfig.vue', // Uses lang="ts", needs TS parser in ESLint config
       'src/components/ui/**',
       'src/components/__tests__/StatusBadge.spec.js',
     ],

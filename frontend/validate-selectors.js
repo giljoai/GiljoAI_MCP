@@ -114,14 +114,6 @@ const SELECTORS_TO_VALIDATE = [
 
   // ContextPriorityConfig.vue - Dynamic selectors
   {
-    selector: 'priority-* (dynamic)',
-    component: 'ContextPriorityConfig.vue',
-    path: 'src/components/settings/ContextPriorityConfig.vue',
-    type: 'select (priority)',
-    status: 'dynamic',
-    pattern: ':data-testid="`priority-',
-  },
-  {
     selector: 'depth-* (dynamic)',
     component: 'ContextPriorityConfig.vue',
     path: 'src/components/settings/ContextPriorityConfig.vue',

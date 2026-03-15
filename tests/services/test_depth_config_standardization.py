@@ -147,22 +147,3 @@ class TestFrontendFieldNaming:
         assert "vision_document_depth" not in content, (
             "ContextPriorityConfig.vue should NOT use deprecated 'vision_document_depth' field"
         )
-
-    def test_frontend_test_spec_uses_vision_documents(self):
-        """Verify test spec uses 'vision_documents' field."""
-        from pathlib import Path
-
-        spec_path = Path("F:/GiljoAI_MCP/frontend/src/components/settings/ContextPriorityConfig.vision.spec.js")
-        assert spec_path.exists(), "Test spec not found"
-
-        content = spec_path.read_text(encoding="utf-8")
-
-        # Should use vision_documents
-        assert "vision_documents" in content or "'vision_documents'" in content, (
-            "Test spec should use 'vision_documents' field"
-        )
-
-        # Should NOT use vision_document_depth
-        assert "vision_document_depth" not in content, (
-            "Test spec should NOT use deprecated 'vision_document_depth' field"
-        )

@@ -1,10 +1,10 @@
 # Orchestrator Context Flow - Single Source of Truth (SSoT)
 
 **Status**: Production Documentation
-**Version**: 1.0
-**Last Updated**: 2025-11-17
-**Last Verified**: 2025-11-17
-**Handovers**: 0301, 0302, 0303, 0305, 0306, 0311, 0135-0139, 013B
+**Version**: 2.0
+**Last Updated**: 2026-03-15
+**Last Verified**: 2026-03-15
+**Handovers**: 0301, 0302, 0303, 0305, 0306, 0311, 0135-0139, 013B, 0820
 **Related Documents**: [ORCHESTRATOR.md](ORCHESTRATOR.md), [CONTEXT_MANAGEMENT_SYSTEM.md](CONTEXT_MANAGEMENT_SYSTEM.md), [SERVICES.md](SERVICES.md)
 
 ---
@@ -12,6 +12,8 @@
 ## Overview
 
 This document serves as the **Single Source of Truth (SSoT)** for understanding the complete orchestrator context flow in GiljoAI MCP v3.1+. It explains how user-configured context toggle cards translate into orchestrator prompts, how context optimization is achieved (77% reduction from 15K-30K baseline to 3,500 tokens), and how agents receive targeted context based on their specific mission.
+
+> **Note (Handover 0820)**: The original priority-integer system (0-10 scale) has been replaced with a simpler **toggle (on/off) + depth** model. Each context card is either enabled or disabled, and when enabled, the user configures a depth level that controls how much detail is fetched.
 
 **Purpose**: Document the complete end-to-end flow from user setup → orchestrator launch → context building → agent spawning → completion.
 
@@ -25,32 +27,41 @@ Users configure 13 context toggle "cards" (fields) in **User Settings → Contex
 
 ### Toggle States
 
-- **Enabled** (toggle: true): Category is included in context with configured depth
+- **Enabled** (toggle: true): Category is included in context; depth config controls detail level
 - **Disabled** (toggle: false): Category is excluded from context entirely
-- **Priority 1-3 (Minimal)**: Bare minimum context
-- **Priority 0 (Exclude)**: Field completely excluded from context
 
-### The 13 Cards (Default Priorities)
+### Depth Levels
 
-| # | Field Path | Label | Default Priority | Token Budget | Detail Level |
-|---|------------|-------|------------------|--------------|--------------|
-| 1 | `product.name` | **Product Name** | MANDATORY | ~20 tokens | Always included |
-| 2 | `product.vision_summary` | **Vision Document** | MANDATORY | ~500 tokens | Always included (chunked if large) |
-| 3 | `config_data.tech_stack` | **Tech Stack** | 7 (Moderate) | ~150 tokens | Languages, frameworks, databases |
-| 4 | `config_data.architecture` | **Architecture Patterns** | 7 (Moderate) | ~100 tokens | Design patterns, system architecture |
-| 5 | `config_data.api_style` | **API Style** | 6 (Abbreviated) | ~50 tokens | REST, GraphQL, etc. |
-| 6 | `config_data.design_patterns` | **Design Patterns** | 6 (Abbreviated) | ~50 tokens | Singleton, Factory, etc. |
-| 7 | `config_data.features` | **Features** | 7 (Moderate) | ~100 tokens | Product feature list |
-| 8 | `config_data.testing_preferences` | **Testing Preferences** | 6 (Abbreviated) | ~50 tokens | Unit/integration test preferences |
-| 9 | `product_memory.learnings` | **360 Memory** | 7 (Moderate) | ~600 tokens | Historical project learnings |
-| 10 | `git_integration.enabled` | **Git Integration** | TOGGLE | ~250 tokens | Git command instructions |
-| 11 | `agent_templates` | **Agent Templates** | 7 (Moderate) | ~200 tokens | Agent role definitions |
-| 12 | `serena_mcp_enabled` | **Serena MCP Tools** | 6 (Abbreviated) | ~200 tokens | Symbolic code navigation tools |
-| 13 | `codebase_summary` | **Codebase Summary** | 5 (Abbreviated) | ~150 tokens | High-level codebase overview |
+When a toggle is enabled, the user selects a depth that controls how much detail is fetched:
 
-**MANDATORY Fields**: Product name and vision summary are always included regardless of user priority settings (500 tokens baseline).
+| Depth | Label | Description |
+|-------|-------|-------------|
+| `full` | Full | All available detail, versions, rationale |
+| `moderate` | Moderate | Key components and summaries |
+| `abbreviated` | Abbreviated | Names and one-line descriptions only |
+| `minimal` | Minimal | Single-line or count-only output |
 
-**TOGGLE Fields**: Git Integration is on/off (not priority-based). When enabled, injects git command instructions (~250 tokens).
+### The 13 Cards (Default Toggle + Depth)
+
+| # | Field Path | Label | Default State | Default Depth | Token Budget | Detail Level |
+|---|------------|-------|---------------|---------------|--------------|--------------|
+| 1 | `product.name` | **Product Name** | MANDATORY | n/a | ~20 tokens | Always included |
+| 2 | `product.vision_summary` | **Vision Document** | MANDATORY | n/a | ~500 tokens | Always included (chunked if large) |
+| 3 | `config_data.tech_stack` | **Tech Stack** | Enabled | moderate | ~150 tokens | Languages, frameworks, databases |
+| 4 | `config_data.architecture` | **Architecture Patterns** | Enabled | moderate | ~100 tokens | Design patterns, system architecture |
+| 5 | `config_data.api_style` | **API Style** | Enabled | abbreviated | ~50 tokens | REST, GraphQL, etc. |
+| 6 | `config_data.design_patterns` | **Design Patterns** | Enabled | abbreviated | ~50 tokens | Singleton, Factory, etc. |
+| 7 | `config_data.features` | **Features** | Enabled | moderate | ~100 tokens | Product feature list |
+| 8 | `config_data.testing_preferences` | **Testing Preferences** | Enabled | abbreviated | ~50 tokens | Unit/integration test preferences |
+| 9 | `product_memory.learnings` | **360 Memory** | Enabled | moderate | ~600 tokens | Historical project learnings |
+| 10 | `git_integration.enabled` | **Git Integration** | Enabled | n/a | ~250 tokens | Git command instructions |
+| 11 | `agent_templates` | **Agent Templates** | Enabled | moderate | ~200 tokens | Agent role definitions |
+| 12 | `serena_mcp_enabled` | **Serena MCP Tools** | Enabled | abbreviated | ~200 tokens | Symbolic code navigation tools |
+| 13 | `codebase_summary` | **Codebase Summary** | Enabled | abbreviated | ~150 tokens | High-level codebase overview |
+
+**MANDATORY Fields**: Product name and vision summary are always included regardless of user toggle settings (500 tokens baseline).
+
+**TOGGLE-ONLY Fields**: Git Integration is a simple on/off toggle with no depth control. When enabled, injects git command instructions (~250 tokens).
 
 **Total Default Budget**: ~2,500-3,500 tokens (down from 15K-30K baseline = **77% reduction**)
 
@@ -65,10 +76,10 @@ Users configure 13 context toggle "cards" (fields) in **User Settings → Contex
 - **Data**: Product name, vision document (file upload or inline text), config fields (tech stack, architecture, features)
 - **Result**: Product created with `config_data` JSONB fields and `product_memory` initialized
 
-**Step 2**: User configures field priorities
-- **Location**: User Settings → Field Priorities → Drag-and-drop interface
-- **Action**: User drags fields between priority levels (P1/P2/P3) or sets priority 0 to exclude
-- **Storage**: `users.field_priority_config` JSONB column
+**Step 2**: User configures context toggles
+- **Location**: User Settings → Context Configuration
+- **Action**: User enables/disables each context card and selects depth level (full/moderate/abbreviated/minimal)
+- **Storage**: `users.field_toggle_config` JSONB column
 - **Result**: Personalized context preferences saved per user
 
 **Step 3**: User configures integrations
@@ -140,9 +151,9 @@ get_orchestrator_instructions(job_id=123, tenant_key="default")
 1. **Fetch job record**: Query `mcp_agent_jobs` where `id=123`
 2. **Fetch project**: Query `projects` where `id=job.project_id`
 3. **Fetch product**: Query `products` where `id=project.product_id`
-4. **Fetch user settings**: Query `users.field_priority_config` for user who launched
-5. **Call MissionPlanner**: Build context with priorities
-6. **Return full context**: ~3,500 tokens (priority-based extraction)
+4. **Fetch user settings**: Query `users.field_toggle_config` for user who launched
+5. **Call MissionPlanner**: Build context based on toggle + depth config
+6. **Return full context**: ~3,500 tokens (toggle + depth extraction)
 
 **MCP Tool Response**:
 ```json
@@ -193,10 +204,10 @@ context.append(f"## Project\n{project.description}")
 
 ---
 
-##### 3.2: Product Vision Section (Chunking) - Priority-Based
+##### 3.2: Product Vision Section (Chunking) - Always Enabled
 
 **Field**: `product.vision_summary`
-**Priority**: MANDATORY (but chunking strategy varies by document size)
+**State**: MANDATORY (always enabled; chunking strategy varies by document size)
 **Token Budget**: ~500-1,200 tokens
 
 **Extraction Logic**:
@@ -264,42 +275,41 @@ Use vision_chunk_retrieve(chunk_id=2) to fetch additional chunks as needed.
 
 ---
 
-##### 3.3: Tech Stack Section - Priority 7 (Moderate)
+##### 3.3: Tech Stack Section - Toggle + Depth
 
 **Field**: `config_data.tech_stack`
-**Default Priority**: 7 (Moderate)
+**Default State**: Enabled
+**Default Depth**: moderate
 **Token Budget**: ~150 tokens
 
 **Extraction Logic**:
 ```python
-tech_stack_priority = field_toggles.get("config_data.tech_stack", 7)
+tech_stack_toggle = field_toggles.get("config_data.tech_stack", {})
 
-if tech_stack_priority > 0:
+if tech_stack_toggle.get("enabled", True):
+    depth = tech_stack_toggle.get("depth", "moderate")
     tech_stack_context = self._extract_tech_stack(
         product.config_data.get("tech_stack", ""),
-        priority=tech_stack_priority
+        depth=depth
     )
     context.append(tech_stack_context)
     tokens_used += self._count_tokens(tech_stack_context)
 
-def _extract_tech_stack(self, tech_stack: str, priority: int) -> str:
+def _extract_tech_stack(self, tech_stack: str, depth: str) -> str:
     """
-    Priority-based tech stack extraction:
-    - Priority 10 (full): All details, versions, rationale
-    - Priority 7-9 (moderate): Languages, frameworks, databases, key tools
-    - Priority 4-6 (abbreviated): Languages and frameworks only
-    - Priority 1-3 (minimal): Primary language and framework
-    - Priority 0 (exclude): Empty string
+    Toggle + depth tech stack extraction:
+    - depth "full": All details, versions, rationale
+    - depth "moderate": Languages, frameworks, databases, key tools
+    - depth "abbreviated": Languages and frameworks only
+    - depth "minimal": Primary language and framework
     """
-    if priority == 0 or not tech_stack:
+    if not tech_stack:
         return ""
 
-    if priority >= 10:
-        # Full: include everything
+    if depth == "full":
         return f"## Tech Stack\n{tech_stack}"
 
-    elif priority >= 7:
-        # Moderate: extract key components
+    elif depth == "moderate":
         lines = tech_stack.split("\n")
         key_components = [
             line for line in lines
@@ -308,8 +318,7 @@ def _extract_tech_stack(self, tech_stack: str, priority: int) -> str:
         ]
         return f"## Tech Stack\n" + "\n".join(key_components[:10])
 
-    elif priority >= 4:
-        # Abbreviated: languages and frameworks only
+    elif depth == "abbreviated":
         lines = tech_stack.split("\n")
         essential = [
             line for line in lines
@@ -317,13 +326,12 @@ def _extract_tech_stack(self, tech_stack: str, priority: int) -> str:
         ]
         return f"## Tech Stack\n" + "\n".join(essential[:5])
 
-    else:
-        # Minimal: primary language and framework
+    else:  # minimal
         lines = tech_stack.split("\n")
         return f"## Tech Stack\n{lines[0] if lines else ''}"
 ```
 
-**Example Output** (Priority 7 - Moderate):
+**Example Output** (depth: moderate):
 ```markdown
 ## Tech Stack
 
@@ -338,25 +346,26 @@ def _extract_tech_stack(self, tech_stack: str, priority: int) -> str:
 
 ---
 
-##### 3.4: Config Fields Section - Priority 6-7 (Abbreviated/Moderate)
+##### 3.4: Config Fields Section - Toggle + Depth
 
 **Fields**:
-- `config_data.architecture` (Priority 7 - Moderate) → ~100 tokens
-- `config_data.api_style` (Priority 6 - Abbreviated) → ~50 tokens
-- `config_data.design_patterns` (Priority 6 - Abbreviated) → ~50 tokens
-- `config_data.features` (Priority 7 - Moderate) → ~100 tokens
-- `config_data.testing_preferences` (Priority 6 - Abbreviated) → ~50 tokens
+- `config_data.architecture` (default: enabled, depth: moderate) -> ~100 tokens
+- `config_data.api_style` (default: enabled, depth: abbreviated) -> ~50 tokens
+- `config_data.design_patterns` (default: enabled, depth: abbreviated) -> ~50 tokens
+- `config_data.features` (default: enabled, depth: moderate) -> ~100 tokens
+- `config_data.testing_preferences` (default: enabled, depth: abbreviated) -> ~50 tokens
 
 **Extraction Logic** (similar pattern for all config fields):
 ```python
-architecture_priority = field_toggles.get("config_data.architecture", 7)
+arch_toggle = field_toggles.get("config_data.architecture", {})
 
-if architecture_priority > 0:
+if arch_toggle.get("enabled", True):
+    depth = arch_toggle.get("depth", "moderate")
     architecture = product.config_data.get("architecture", "")
     architecture_context = self._extract_config_field(
         field_name="Architecture Patterns",
         field_value=architecture,
-        priority=architecture_priority,
+        depth=depth,
         detail_levels={
             "full": "All architecture details and rationale",
             "moderate": "Key patterns and system design",
@@ -368,7 +377,7 @@ if architecture_priority > 0:
     tokens_used += self._count_tokens(architecture_context)
 ```
 
-**Example Output** (Priority 7 - Moderate):
+**Example Output** (depth: moderate):
 ```markdown
 ## Architecture Patterns
 
@@ -382,63 +391,56 @@ if architecture_priority > 0:
 
 ---
 
-##### 3.5: Agent Templates Section - Priority 7 (Moderate)
+##### 3.5: Agent Templates Section - Toggle + Depth
 
 **Field**: `agent_templates`
-**Default Priority**: 7 (Moderate)
+**Default State**: Enabled
+**Default Depth**: moderate
 **Token Budget**: ~200 tokens
 
 **Extraction Logic**:
 ```python
-templates_priority = field_toggles.get("agent_templates", 7)
+templates_toggle = field_toggles.get("agent_templates", {})
 
-if templates_priority > 0:
+if templates_toggle.get("enabled", True):
+    depth = templates_toggle.get("depth", "moderate")
     templates_context = await self._extract_agent_templates(
         product.id,
-        priority=templates_priority
+        depth=depth
     )
     context.append(templates_context)
     tokens_used += self._count_tokens(templates_context)
 
-async def _extract_agent_templates(self, product_id: str, priority: int) -> str:
+async def _extract_agent_templates(self, product_id: str, depth: str) -> str:
     """
-    Extract agent template summaries.
+    Extract agent template summaries based on depth.
 
-    Priority levels:
-    - Priority 10 (full): All templates with full content
-    - Priority 7-9 (moderate): Template names + role descriptions
-    - Priority 4-6 (abbreviated): Template names only
-    - Priority 1-3 (minimal): Count of available templates
-    - Priority 0 (exclude): Empty string
+    Depth levels:
+    - "full": All templates with full content
+    - "moderate": Template names + role descriptions
+    - "abbreviated": Template names only
+    - "minimal": Count of available templates
     """
-    if priority == 0:
-        return ""
-
-    # Fetch templates from database
     templates = await self.template_cache.get_all_templates(product_id)
 
-    if priority >= 10:
-        # Full: include all template content
+    if depth == "full":
         return self._format_templates_full(templates)
 
-    elif priority >= 7:
-        # Moderate: names + role descriptions
+    elif depth == "moderate":
         lines = ["## Available Agent Templates\n"]
         for template in templates:
             lines.append(f"- **{template.name}**: {template.role_description}")
         return "\n".join(lines)
 
-    elif priority >= 4:
-        # Abbreviated: names only
+    elif depth == "abbreviated":
         template_names = ", ".join([t.name for t in templates])
         return f"## Agent Templates\n{template_names}"
 
-    else:
-        # Minimal: count only
+    else:  # minimal
         return f"## Agent Templates\n{len(templates)} templates available"
 ```
 
-**Example Output** (Priority 7 - Moderate):
+**Example Output** (depth: moderate):
 ```markdown
 ## Available Agent Templates
 
@@ -454,21 +456,23 @@ async def _extract_agent_templates(self, product_id: str, priority: int) -> str:
 
 ---
 
-##### 3.6: 360 Memory Section - Priority 7 (Moderate)
+##### 3.6: 360 Memory Section - Toggle + Depth
 
 **Field**: `product_memory.learnings`
-**Default Priority**: 7 (Moderate)
+**Default State**: Enabled
+**Default Depth**: moderate
 **Token Budget**: ~600 tokens
 **Handovers**: 0135-0139 (backend), 0311 (context integration)
 
 **Extraction Logic** (Handover 0311):
 ```python
-learnings_priority = field_toggles.get("product_memory.learnings", 7)
+learnings_toggle = field_toggles.get("product_memory.learnings", {})
 
-if learnings_priority > 0:
+if learnings_toggle.get("enabled", True):
+    depth = learnings_toggle.get("depth", "moderate")
     learnings_context = await self._extract_product_learnings(
         product,
-        priority=learnings_priority,
+        depth=depth,
         max_entries=10
     )
     if learnings_context:
@@ -476,41 +480,37 @@ if learnings_priority > 0:
         tokens_used += self._count_tokens(learnings_context)
 
 async def _extract_product_learnings(
-    self, product: Product, priority: int, max_entries: int = 10
+    self, product: Product, depth: str, max_entries: int = 10
 ) -> str:
     """
     Extract learnings from product_memory.learnings array.
 
-    Priority-based detail levels:
-    - Priority 10 (full): All learnings with summary + outcomes + decisions
-    - Priority 7-9 (moderate): Last 5 learnings with summary + outcomes
-    - Priority 4-6 (abbreviated): Last 3 learnings with summary only
-    - Priority 1-3 (minimal): Last 1 learning with summary only
-    - Priority 0 (exclude): Empty string
+    Depth-based detail levels:
+    - "full": All learnings with summary + outcomes + decisions
+    - "moderate": Last 5 learnings with summary + outcomes
+    - "abbreviated": Last 3 learnings with summary only
+    - "minimal": Last 1 learning with summary only
     """
-    if priority == 0 or not product.product_memory:
+    if not product.product_memory:
         return ""
 
     learnings = product.product_memory.get("learnings", [])
     if not learnings:
         return ""
 
-    # Sort by sequence (most recent first)
     sorted_learnings = sorted(
         learnings, key=lambda x: x.get("sequence", 0), reverse=True
     )
 
-    # Determine entry count based on priority
-    if priority >= 10:
-        entries = sorted_learnings[:max_entries]  # Up to 10 learnings
-    elif priority >= 7:
-        entries = sorted_learnings[:5]  # Last 5 learnings
-    elif priority >= 4:
-        entries = sorted_learnings[:3]  # Last 3 learnings
-    else:
-        entries = sorted_learnings[:1]  # Last 1 learning
+    # Determine entry count based on depth
+    depth_entry_map = {
+        "full": max_entries,
+        "moderate": 5,
+        "abbreviated": 3,
+        "minimal": 1,
+    }
+    entries = sorted_learnings[:depth_entry_map.get(depth, 5)]
 
-    # Format learnings
     sections = ["## Historical Context (360 Memory)\n"]
     sections.append(
         f"Product has {len(learnings)} previous project(s) in learning history. "
@@ -527,7 +527,7 @@ async def _extract_product_learnings(
         sections.append(f"{summary}\n")
 
         # Add outcomes for moderate/full
-        if priority >= 7:
+        if depth in ("moderate", "full"):
             outcomes = entry.get("key_outcomes", [])
             if outcomes:
                 sections.append("**Key Outcomes:**")
@@ -536,7 +536,7 @@ async def _extract_product_learnings(
                 sections.append("")
 
         # Add decisions for full only
-        if priority >= 10:
+        if depth == "full":
             decisions = entry.get("decisions_made", [])
             if decisions:
                 sections.append("**Decisions Made:**")
@@ -552,7 +552,7 @@ async def _extract_product_learnings(
     return "\n".join(sections)
 ```
 
-**Example Output** (Priority 7 - Moderate, 5 learnings):
+**Example Output** (depth: moderate, 5 learnings):
 ```markdown
 ## Historical Context (360 Memory)
 
@@ -584,7 +584,7 @@ Built admin dashboard for user CRUD operations with role-based access control.
 
 ---
 
-##### 3.7: Git Integration Section - TOGGLE (Not Priority-Based)
+##### 3.7: Git Integration Section - Toggle Only (No Depth)
 
 **Field**: `product_memory.git_integration.enabled`
 **Default**: OFF (user toggles in Settings → Integrations)
@@ -664,44 +664,40 @@ git show --stat HEAD~5..HEAD
 
 ---
 
-##### 3.8: Serena MCP Tools Section - Priority 6 (Abbreviated)
+##### 3.8: Serena MCP Tools Section - Toggle + Depth
 
 **Field**: `serena_mcp_enabled`
-**Default Priority**: 6 (Abbreviated)
+**Default State**: Enabled
+**Default Depth**: abbreviated
 **Token Budget**: ~200 tokens
 
 **Extraction Logic**:
 ```python
-serena_priority = field_toggles.get("serena_mcp_enabled", 6)
+serena_toggle = field_toggles.get("serena_mcp_enabled", {})
 
-if serena_priority > 0 and include_serena:
-    serena_context = self._inject_serena_tools(priority=serena_priority)
+if serena_toggle.get("enabled", True) and include_serena:
+    depth = serena_toggle.get("depth", "abbreviated")
+    serena_context = self._inject_serena_tools(depth=depth)
     context.append(serena_context)
     tokens_used += self._count_tokens(serena_context)
 
-def _inject_serena_tools(self, priority: int) -> str:
+def _inject_serena_tools(self, depth: str) -> str:
     """
     Inject Serena MCP symbolic code navigation tool instructions.
 
-    Priority levels:
-    - Priority 10 (full): All Serena tools with examples
-    - Priority 7-9 (moderate): Core tools with brief descriptions
-    - Priority 4-6 (abbreviated): Tool names and purposes only
-    - Priority 1-3 (minimal): "Serena MCP available" note
-    - Priority 0 (exclude): Empty string
+    Depth levels:
+    - "full": All Serena tools with examples
+    - "moderate": Core tools with brief descriptions
+    - "abbreviated": Tool names and purposes only
+    - "minimal": "Serena MCP available" note
     """
-    if priority == 0:
-        return ""
-
-    if priority >= 10:
-        # Full: all tools with examples
+    if depth == "full":
         return SERENA_TOOLS_FULL_REFERENCE  # ~800 tokens
 
-    elif priority >= 7:
-        # Moderate: core tools with descriptions
+    elif depth == "moderate":
         return """## Serena MCP Tools Available
 
-**Symbolic Code Navigation** (60-90% context prioritization):
+**Symbolic Code Navigation** (60-90% context optimization):
 - find_symbol(name_path, relative_path) - Find classes, functions, methods
 - get_symbols_overview(relative_path) - Get file structure
 - find_referencing_symbols(name_path, relative_path) - Find usages
@@ -713,70 +709,62 @@ def _inject_serena_tools(self, priority: int) -> str:
 **Important**: Use symbolic tools (find_symbol) instead of reading full files to dramatically reduce unnecessary context streaming and keep agents within healthy token budgets.
 """
 
-    elif priority >= 4:
-        # Abbreviated: tool names only
+    elif depth == "abbreviated":
         return """## Serena MCP Tools
 
 Symbolic navigation tools available: find_symbol, get_symbols_overview, find_referencing_symbols,
-replace_symbol_body, search_for_pattern. Use these for 60-90% context prioritization.
+replace_symbol_body, search_for_pattern. Use these for 60-90% context optimization.
 """
 
-    else:
-        # Minimal: brief note
+    else:  # minimal
         return "## Serena MCP Tools\nSymbolic code navigation available for efficient context usage."
 ```
 
-**Example Output** (Priority 6 - Abbreviated):
+**Example Output** (depth: abbreviated):
 ```markdown
 ## Serena MCP Tools
 
 Symbolic navigation tools available: find_symbol, get_symbols_overview, find_referencing_symbols,
-replace_symbol_body, search_for_pattern. Use these for 60-90% context prioritization.
+replace_symbol_body, search_for_pattern. Use these for 60-90% context optimization.
 ```
 
 **Token Count**: ~200 tokens
 
 ---
 
-##### 3.9: Codebase Summary Section - Priority 5 (Abbreviated)
+##### 3.9: Codebase Summary Section - Toggle + Depth
 
 **Field**: `codebase_summary`
-**Default Priority**: 5 (Abbreviated)
+**Default State**: Enabled
+**Default Depth**: abbreviated
 **Token Budget**: ~150 tokens
 
 **Extraction Logic**:
 ```python
-codebase_priority = field_toggles.get("codebase_summary", 5)
+codebase_toggle = field_toggles.get("codebase_summary", {})
 
-if codebase_priority > 0:
+if codebase_toggle.get("enabled", True):
+    depth = codebase_toggle.get("depth", "abbreviated")
     codebase_context = await self._extract_codebase_summary(
         product,
-        priority=codebase_priority
+        depth=depth
     )
     context.append(codebase_context)
     tokens_used += self._count_tokens(codebase_context)
 
-async def _extract_codebase_summary(self, product: Product, priority: int) -> str:
+async def _extract_codebase_summary(self, product: Product, depth: str) -> str:
     """
     Extract codebase summary from product context.
 
-    Priority levels:
-    - Priority 10 (full): Full directory tree + file counts
-    - Priority 7-9 (moderate): Key directories + tech stack
-    - Priority 4-6 (abbreviated): High-level structure only
-    - Priority 1-3 (minimal): Project type + language
-    - Priority 0 (exclude): Empty string
+    Depth levels:
+    - "full": Full directory tree + file counts
+    - "moderate": Key directories + tech stack
+    - "abbreviated": High-level structure only
+    - "minimal": Project type + language
     """
-    if priority == 0:
-        return ""
-
-    # For now, generate static summary based on tech stack
-    # Future: integrate with Serena MCP list_dir() for real codebase structure
-
     tech_stack = product.config_data.get("tech_stack", "")
 
-    if priority >= 10:
-        # Full: detailed structure
+    if depth == "full":
         return f"""## Codebase Structure
 
 **Tech Stack**: {tech_stack}
@@ -791,8 +779,7 @@ async def _extract_codebase_summary(self, product: Product, priority: int) -> st
 **Key Files**: [To be populated via Serena MCP]
 """
 
-    elif priority >= 7:
-        # Moderate: key directories
+    elif depth == "moderate":
         return f"""## Codebase Structure
 
 **Tech Stack**: {tech_stack}
@@ -800,20 +787,18 @@ async def _extract_codebase_summary(self, product: Product, priority: int) -> st
 **Key Directories**: src/, tests/, api/, frontend/
 """
 
-    elif priority >= 4:
-        # Abbreviated: high-level only
+    elif depth == "abbreviated":
         return f"""## Codebase
 
 {tech_stack} - Standard project structure (src/, tests/, api/, frontend/)
 """
 
-    else:
-        # Minimal: project type
+    else:  # minimal
         primary_lang = tech_stack.split(",")[0] if tech_stack else "Unknown"
         return f"## Codebase\n{primary_lang} project"
 ```
 
-**Example Output** (Priority 5 - Abbreviated):
+**Example Output** (depth: abbreviated):
 ```markdown
 ## Codebase
 
@@ -945,7 +930,7 @@ Use get_agent_mission(agent_job_id=456, tenant_key="default") to fetch your miss
 
 ---
 
-### Agent Context Re-Prioritization
+### Agent Context Depth Adjustment
 
 **Agent Action** (in separate Claude Code/Codex/Gemini session):
 ```python
@@ -955,25 +940,25 @@ get_agent_mission(agent_job_id=456, tenant_key="default")
 **MCP Tool Handler** (`src/giljo_mcp/tools/agent.py`):
 1. **Fetch agent job**: Query `mcp_agent_jobs` where `id=456`
 2. **Fetch project + product**: Same as orchestrator
-3. **Fetch user priorities**: Same field_priority_config
-4. **Call MissionPlanner with AGENT-SPECIFIC priorities**: Re-build context with different token allocation
+3. **Fetch user toggle config**: Same `field_toggle_config`
+4. **Call MissionPlanner with AGENT-SPECIFIC depth overrides**: Re-build context with different depth levels
 
 **Agent-Specific Context Differences**:
 
-| Context Source | Orchestrator Priority | Agent Priority | Rationale |
-|----------------|----------------------|----------------|-----------|
+| Context Source | Orchestrator (toggle / depth) | Agent (toggle / depth) | Rationale |
+|----------------|-------------------------------|------------------------|-----------|
 | Vision Document | MANDATORY (500 tokens) | MANDATORY (500 tokens) | Same baseline |
-| Tech Stack | 7 (Moderate, 150 tokens) | **10 (Full, 300 tokens)** | Agents need detailed tech info |
-| Architecture | 7 (Moderate, 100 tokens) | **10 (Full, 200 tokens)** | Agents need design patterns |
-| 360 Memory | 7 (Moderate, 600 tokens) | **4 (Abbreviated, 200 tokens)** | Agents focus on current task, not history |
-| Git Integration | ON (250 tokens) | **ON (250 tokens)** | Same git instructions |
-| Serena MCP | 6 (Abbreviated, 200 tokens) | **10 (Full, 800 tokens)** | Agents need all symbolic tools |
-| Codebase Summary | 5 (Abbreviated, 150 tokens) | **10 (Full, 500 tokens)** | Agents need detailed file structure |
-| Agent Templates | 7 (Moderate, 200 tokens) | **0 (Excluded)** | Agents don't need template info |
+| Tech Stack | enabled / moderate (150 tokens) | **enabled / full (300 tokens)** | Agents need detailed tech info |
+| Architecture | enabled / moderate (100 tokens) | **enabled / full (200 tokens)** | Agents need design patterns |
+| 360 Memory | enabled / moderate (600 tokens) | **enabled / abbreviated (200 tokens)** | Agents focus on current task, not history |
+| Git Integration | enabled (250 tokens) | **enabled (250 tokens)** | Same git instructions |
+| Serena MCP | enabled / abbreviated (200 tokens) | **enabled / full (800 tokens)** | Agents need all symbolic tools |
+| Codebase Summary | enabled / abbreviated (150 tokens) | **enabled / full (500 tokens)** | Agents need detailed file structure |
+| Agent Templates | enabled / moderate (200 tokens) | **disabled (0 tokens)** | Agents don't need template info |
 
-**Agent Context Token Budget**: ~3,200-3,800 tokens (similar to orchestrator, but re-prioritized)
+**Agent Context Token Budget**: ~3,200-3,800 tokens (similar to orchestrator, but with adjusted depth levels)
 
-**Why Re-Prioritization**:
+**Why Depth Adjustment**:
 - **Orchestrators** need high-level context to plan missions (360 Memory for learning from past, agent templates for selection)
 - **Agents** need detailed technical context to execute tasks (full tech stack, full Serena tools, full codebase structure)
 
@@ -996,10 +981,10 @@ get_agent_mission(agent_job_id=456, tenant_key="default")
                                       │
                                       ▼
               ┌───────────────────────────────────────────────┐
-              │  2. User Configures Field Priorities          │
-              │     - Settings → Field Priorities UI          │
-              │     - Drag-drop 13 context cards (P1/P2/P3)   │
-              │     - Stored in users.field_priority_config   │
+              │  2. User Configures Context Toggles            │
+              │     - Settings → Context Configuration UI     │
+              │     - Enable/disable 13 cards + set depth     │
+              │     - Stored in users.field_toggle_config     │
               └───────────────────────────────────────────────┘
                                       │
                                       ▼
@@ -1036,27 +1021,27 @@ get_agent_mission(agent_job_id=456, tenant_key="default")
               │     get_orchestrator_instructions(job_id=123) │
               │                                               │
               │     - Fetch job, project, product records     │
-              │     - Fetch user field_priority_config        │
+              │     - Fetch user field_toggle_config           │
               │     - Call MissionPlanner.build_context()     │
               └───────────────────────────────────────────────┘
                                       │
                                       ▼
               ┌───────────────────────────────────────────────┐
-              │  Step 3: Context Building (Priority-Based)    │
+              │  Step 3: Context Building (Toggle + Depth)    │
               │                                               │
               │  MANDATORY (500 tokens):                      │
               │  - Product name (~20 tokens)                  │
               │  - Vision summary (~480 tokens)               │
               │                                               │
-              │  PRIORITY-BASED (~3,000 tokens):              │
-              │  - Vision chunking (P10: 1,200 tokens)        │
-              │  - Tech stack (P7: 150 tokens)                │
-              │  - Config fields (P6-7: 450 tokens)           │
-              │  - 360 Memory (P7: 600 tokens)                │
-              │  - Git integration (TOGGLE: 250 tokens)       │
-              │  - Agent templates (P7: 200 tokens)           │
-              │  - Serena MCP (P6: 200 tokens)                │
-              │  - Codebase summary (P5: 150 tokens)          │
+              │  TOGGLE + DEPTH (~3,000 tokens):              │
+              │  - Vision chunking (full: 1,200 tokens)       │
+              │  - Tech stack (moderate: 150 tokens)          │
+              │  - Config fields (mixed: 450 tokens)          │
+              │  - 360 Memory (moderate: 600 tokens)          │
+              │  - Git integration (toggle: 250 tokens)       │
+              │  - Agent templates (moderate: 200 tokens)     │
+              │  - Serena MCP (abbreviated: 200 tokens)       │
+              │  - Codebase summary (abbreviated: 150 tokens) │
               │                                               │
               │  TOTAL: ~3,500 tokens (77% reduction)         │
               └───────────────────────────────────────────────┘
@@ -1094,24 +1079,24 @@ get_agent_mission(agent_job_id=456, tenant_key="default")
               │     get_agent_mission(agent_job_id=456)       │
               │                                               │
               │     - Fetch agent job, project, product       │
-              │     - Fetch user field_priority_config        │
-              │     - Call MissionPlanner with RE-PRIORITIZED │
-              │       context (agent needs tech details)      │
+              │     - Fetch user field_toggle_config           │
+              │     - Call MissionPlanner with AGENT-SPECIFIC │
+              │       depth overrides (tech detail needed)    │
               └───────────────────────────────────────────────┘
                                       │
                                       ▼
               ┌───────────────────────────────────────────────┐
-              │  Step 7: Agent Context Re-Prioritization      │
+              │  Step 7: Agent Context Depth Adjustment        │
               │                                               │
-              │  AGENT-SPECIFIC PRIORITIES:                   │
-              │  - Tech stack: P10 (full, 300 tokens)         │
-              │  - Architecture: P10 (full, 200 tokens)       │
-              │  - 360 Memory: P4 (abbreviated, 200 tokens)   │
-              │  - Serena MCP: P10 (full, 800 tokens)         │
-              │  - Codebase: P10 (full, 500 tokens)           │
-              │  - Agent templates: P0 (excluded)             │
+              │  AGENT-SPECIFIC DEPTH OVERRIDES:              │
+              │  - Tech stack: enabled / full (300 tokens)    │
+              │  - Architecture: enabled / full (200 tokens)  │
+              │  - 360 Memory: enabled / abbrev (200 tokens)  │
+              │  - Serena MCP: enabled / full (800 tokens)    │
+              │  - Codebase: enabled / full (500 tokens)      │
+              │  - Agent templates: disabled (0 tokens)       │
               │                                               │
-              │  TOTAL: ~3,200-3,800 tokens (re-prioritized)  │
+              │  TOTAL: ~3,200-3,800 tokens (depth-adjusted)  │
               └───────────────────────────────────────────────┘
                                       │
                                       ▼
@@ -1152,7 +1137,7 @@ get_agent_mission(agent_job_id=456, tenant_key="default")
 
 ### Before Optimization (Baseline)
 
-**Traditional Approach** (no priority-based context):
+**Traditional Approach** (no toggle-based context):
 - Full vision document: 5,000-10,000 tokens
 - Full tech stack: 500 tokens
 - Full config fields: 800 tokens
@@ -1165,29 +1150,29 @@ get_agent_mission(agent_job_id=456, tenant_key="default")
 
 ---
 
-### After Optimization (Priority-Based + Thin Client)
+### After Optimization (Toggle + Depth + Thin Client)
 
-**GiljoAI MCP Approach** (priority-based context extraction):
+**GiljoAI MCP Approach** (toggle + depth context extraction):
 
-| Context Source | Default Priority | Tokens (Moderate) | Tokens (Full) | Tokens (Minimal) |
-|----------------|------------------|-------------------|---------------|------------------|
-| Product Name | MANDATORY | 20 | 20 | 20 |
-| Vision Summary | MANDATORY | 480 | 1,200 | 480 |
-| Tech Stack | 7 (Moderate) | 150 | 300 | 50 |
-| Architecture | 7 (Moderate) | 100 | 200 | 30 |
-| API Style | 6 (Abbreviated) | 50 | 100 | 20 |
-| Design Patterns | 6 (Abbreviated) | 50 | 100 | 20 |
-| Features | 7 (Moderate) | 100 | 200 | 30 |
-| Testing Prefs | 6 (Abbreviated) | 50 | 100 | 20 |
-| 360 Memory | 7 (Moderate) | 600 | 1,200 | 100 |
-| Git Integration | TOGGLE | 250 | 250 | 250 (if enabled) |
-| Agent Templates | 7 (Moderate) | 200 | 500 | 50 |
-| Serena MCP | 6 (Abbreviated) | 200 | 800 | 50 |
-| Codebase Summary | 5 (Abbreviated) | 150 | 500 | 50 |
+| Context Source | Default State | Default Depth | Tokens (Moderate) | Tokens (Full) | Tokens (Minimal) |
+|----------------|---------------|---------------|-------------------|---------------|------------------|
+| Product Name | MANDATORY | n/a | 20 | 20 | 20 |
+| Vision Summary | MANDATORY | n/a | 480 | 1,200 | 480 |
+| Tech Stack | Enabled | moderate | 150 | 300 | 50 |
+| Architecture | Enabled | moderate | 100 | 200 | 30 |
+| API Style | Enabled | abbreviated | 50 | 100 | 20 |
+| Design Patterns | Enabled | abbreviated | 50 | 100 | 20 |
+| Features | Enabled | moderate | 100 | 200 | 30 |
+| Testing Prefs | Enabled | abbreviated | 50 | 100 | 20 |
+| 360 Memory | Enabled | moderate | 600 | 1,200 | 100 |
+| Git Integration | Enabled | n/a | 250 | 250 | 250 (if enabled) |
+| Agent Templates | Enabled | moderate | 200 | 500 | 50 |
+| Serena MCP | Enabled | abbreviated | 200 | 800 | 50 |
+| Codebase Summary | Enabled | abbreviated | 150 | 500 | 50 |
 
-**Total (Default Moderate Priorities)**: **~3,500 tokens**
-**Total (Maximum Full Priorities)**: **~6,500 tokens**
-**Total (Minimum Priorities)**: **~1,500 tokens**
+**Total (Default Depths)**: **~3,500 tokens**
+**Total (All Full Depth)**: **~6,500 tokens**
+**Total (All Minimal Depth)**: **~1,500 tokens**
 
 **Token Reduction**: **77% reduction** from baseline (3,500 vs 15,000 tokens)
 
@@ -1198,16 +1183,16 @@ get_agent_mission(agent_job_id=456, tenant_key="default")
 **Traditional Fat Client** (full prompt in launch command):
 - Launch prompt: 15,000-30,000 tokens
 - Agent carries full context from start
-- No dynamic priority adjustment
+- No dynamic toggle/depth adjustment
 
 **GiljoAI Thin Client** (prompt fetched via MCP tool):
 - Launch prompt: ~100 tokens ("Use get_orchestrator_instructions(job_id=123)")
 - Agent fetches context on demand: 3,500 tokens
-- Context re-prioritized per agent type
-- Total savings: **70-77% context prioritization**
+- Context depth adjusted per agent type
+- Total savings: **70-77% context optimization**
 
 **Additional Benefits**:
-1. **Dynamic Prioritization**: User can change priorities mid-project, agents fetch updated context
+1. **Dynamic Configuration**: User can change toggles and depth mid-project, agents fetch updated context
 2. **Multi-Tenant Isolation**: Context fetched from database with tenant_key filtering
 3. **Audit Trail**: Every context fetch logged for debugging
 4. **Succession Support**: Handover summaries <10K tokens (vs 180K conversation history)
@@ -1262,11 +1247,11 @@ class OrchestrationService:
         project = await self._get_project(job.project_id)
         product = await self._get_product(project.product_id)
 
-        # Fetch user toggle config
+        # Fetch user toggle + depth config
         user = await self._get_user(user_id)
-        field_toggles = user.field_priority_config or DEFAULT_TOGGLES
+        field_toggles = user.field_toggle_config or DEFAULT_TOGGLES
 
-        # Build fetch instructions based on toggles
+        # Build fetch instructions based on toggle + depth config
         instructions = await self.mission_planner._build_fetch_instructions(
             product, project, field_toggles, user_id, include_serena=True
         )
@@ -1321,12 +1306,12 @@ CREATE TABLE products (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Users (field priorities)
+-- Users (context toggle + depth config)
 CREATE TABLE users (
     id UUID PRIMARY KEY,
     username VARCHAR(255),
     email VARCHAR(255),
-    field_priority_config JSONB,  -- User's custom priorities
+    field_toggle_config JSONB,  -- User's toggle + depth preferences
     tenant_key VARCHAR(255),
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -1382,18 +1367,18 @@ CREATE TABLE projects (
   }
 }
 
-// users.field_priority_config
+// users.field_toggle_config
 {
-  "config_data.tech_stack": 7,
-  "config_data.architecture": 7,
-  "config_data.api_style": 6,
-  "config_data.design_patterns": 6,
-  "config_data.features": 7,
-  "config_data.testing_preferences": 6,
-  "product_memory.learnings": 7,
-  "agent_templates": 7,
-  "serena_mcp_enabled": 6,
-  "codebase_summary": 5
+  "config_data.tech_stack": { "enabled": true, "depth": "moderate" },
+  "config_data.architecture": { "enabled": true, "depth": "moderate" },
+  "config_data.api_style": { "enabled": true, "depth": "abbreviated" },
+  "config_data.design_patterns": { "enabled": true, "depth": "abbreviated" },
+  "config_data.features": { "enabled": true, "depth": "moderate" },
+  "config_data.testing_preferences": { "enabled": true, "depth": "abbreviated" },
+  "product_memory.learnings": { "enabled": true, "depth": "moderate" },
+  "agent_templates": { "enabled": true, "depth": "moderate" },
+  "serena_mcp_enabled": { "enabled": true, "depth": "abbreviated" },
+  "codebase_summary": { "enabled": true, "depth": "abbreviated" }
 }
 ```
 
@@ -1410,7 +1395,7 @@ CREATE TABLE projects (
 ### Handover Documents (Implementation Details)
 - **0300 Series**: Context Management System Implementation
   - [0300 Master](../handovers/0300_context_management_system_implementation.md) - Overall plan
-  - [0301](../handovers/0301_fix_priority_mapping_ui_backend.md) - Priority mapping (1-3 → 10/7/4 scale)
+  - [0301](../handovers/0301_fix_priority_mapping_ui_backend.md) - Toggle mapping (legacy, superseded by 0820)
   - [0302](../handovers/0302_implement_tech_stack_context_extraction.md) - Tech stack extraction
   - [0303](../handovers/0303_implement_product_config_fields_extraction.md) - Config fields extraction
   - [0305](../handovers/0305_integrate_vision_document_chunking.md) - Vision chunking
@@ -1426,8 +1411,13 @@ CREATE TABLE projects (
   - Simplified toggle (no GitHub API)
   - Git command instruction injection
 
+- **Context Priority Removal** (Handover 0820):
+  - Replaced integer priority system (0-10 scale) with toggle + depth model
+  - Removed drag-between-levels UI, P1/P2/P3 buckets
+  - Simplified `field_priority_config` to `field_toggle_config` (enabled/disabled + depth)
+
 ### User Guides
-- [User Settings Guide](user_guides/user_settings_guide.md) - Field priority configuration
+- [User Settings Guide](user_guides/user_settings_guide.md) - Context toggle + depth configuration
 - [Orchestrator Succession Guide](user_guides/orchestrator_succession_guide.md) - Context handover workflow
 
 ### Developer Guides
@@ -1441,9 +1431,10 @@ CREATE TABLE projects (
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
 | 1.0 | 2025-11-17 | Initial SSoT document created | Documentation Manager Agent |
+| 2.0 | 2026-03-15 | Replaced priority-integer system with toggle + depth model (Handover 0820) | Deep-clean |
 
 ---
 
-**Last Updated**: 2025-11-17
-**Last Verified**: 2025-11-17
-**Status**: ✅ Production Documentation - Single Source of Truth
+**Last Updated**: 2026-03-15
+**Last Verified**: 2026-03-15
+**Status**: Production Documentation - Single Source of Truth

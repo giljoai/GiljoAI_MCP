@@ -2018,9 +2018,13 @@ class ProjectService:
                 user = user_result.scalar_one_or_none()
 
                 if user:
-                    # Extract field_toggles from config structure
+                    # Extract field_toggles from config structure and flatten to plain booleans
                     if user.field_priority_config:
-                        field_toggles = user.field_priority_config.get("priorities", {})
+                        raw_toggles = user.field_priority_config.get("priorities", {})
+                        field_toggles = {
+                            k: (v.get("toggle", True) if isinstance(v, dict) else bool(v))
+                            for k, v in raw_toggles.items()
+                        }
 
                     # Get depth_config
                     if user.depth_config:
