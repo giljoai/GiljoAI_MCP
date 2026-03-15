@@ -3,10 +3,10 @@
     <v-card v-draggable>
       <!-- Header -->
       <v-card-title class="d-flex align-center">
-        <v-avatar :color="getAgentColor(agent?.agent_name || agent?.agent_display_name)" size="32" class="agent-avatar mr-2">
-          <span class="avatar-text">{{ getAgentAbbr(agent?.agent_name || agent?.agent_display_name) }}</span>
+        <v-avatar :color="getAgentColor(displayAgent?.agent_name || displayAgent?.agent_display_name)" size="32" class="agent-avatar mr-2">
+          <span class="avatar-text">{{ getAgentAbbr(displayAgent?.agent_name || displayAgent?.agent_display_name) }}</span>
         </v-avatar>
-        <span style="text-transform: capitalize">{{ agent?.agent_name || agent?.agent_display_name }}</span>&nbsp;- Assigned Job
+        <span style="text-transform: capitalize">{{ displayAgent?.agent_name || displayAgent?.agent_display_name }}</span>&nbsp;- Assigned Job
         <v-spacer></v-spacer>
         <v-btn icon variant="text" aria-label="Close" @click="handleClose">
           <v-icon>mdi-close</v-icon>
@@ -16,10 +16,10 @@
       <v-divider />
 
       <!-- Agent Info -->
-      <v-card-text v-if="agent" class="pb-0">
+      <v-card-text v-if="displayAgent" class="pb-0">
         <div class="text-caption text-medium-emphasis">
-          <div><strong>Agent ID:</strong> {{ agent.agent_id }}</div>
-          <div><strong>Job ID:</strong> {{ agent.job_id }}</div>
+          <div><strong>Agent ID:</strong> {{ displayAgent.agent_id }}</div>
+          <div><strong>Job ID:</strong> {{ displayAgent.job_id }}</div>
           <div v-if="formattedCreatedAt"><strong>Created:</strong> {{ formattedCreatedAt }}</div>
         </div>
       </v-card-text>
@@ -37,9 +37,9 @@
         <v-window v-model="activeTab">
           <!-- Mission Tab -->
           <v-window-item value="mission">
-            <div v-if="agent" class="mission-section">
+            <div v-if="displayAgent" class="mission-section">
               <v-card variant="outlined" class="pa-3">
-                <pre class="mission-text">{{ agent.mission || 'No mission assigned yet.' }}</pre>
+                <pre class="mission-text">{{ displayAgent.mission || 'No mission assigned yet.' }}</pre>
               </v-card>
             </div>
             <div v-else class="text-center py-4 text-medium-emphasis">
@@ -87,7 +87,7 @@
 </template>
 
 <script setup>
-import { computed, watch, ref } from 'vue'
+import { computed, ref, toRaw, watch } from 'vue'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
 
 // Props
@@ -113,6 +113,9 @@ const emit = defineEmits(['close'])
 // State
 const activeTab = ref(props.initialTab)
 
+// Snapshot: freeze agent data when modal opens to decouple from live WebSocket reactivity
+const agentSnapshot = ref(null)
+
 // Computed
 const isVisible = computed({
   get: () => props.show,
@@ -121,15 +124,18 @@ const isVisible = computed({
   },
 })
 
+// Prefer snapshot data while modal is open; fall back to live prop
+const displayAgent = computed(() => agentSnapshot.value || props.agent)
+
 const todoItems = computed(() =>
-  props.agent?.todo_items && Array.isArray(props.agent.todo_items)
-    ? props.agent.todo_items
+  displayAgent.value?.todo_items && Array.isArray(displayAgent.value.todo_items)
+    ? displayAgent.value.todo_items
     : [],
 )
 
 const formattedCreatedAt = computed(() => {
-  if (!props.agent?.created_at) return null
-  const date = new Date(props.agent.created_at)
+  if (!displayAgent.value?.created_at) return null
+  const date = new Date(displayAgent.value.created_at)
   return date.toLocaleString()
 })
 
@@ -142,6 +148,18 @@ watch(
     activeTab.value = newTab
   },
   { immediate: true },
+)
+
+// Snapshot agent data on open -- disconnect from live WebSocket reactivity
+watch(
+  () => props.show,
+  (visible) => {
+    if (visible) {
+      agentSnapshot.value = props.agent ? { ...toRaw(props.agent) } : null
+    } else {
+      agentSnapshot.value = null
+    }
+  },
 )
 
 // Methods

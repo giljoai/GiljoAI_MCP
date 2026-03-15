@@ -14,7 +14,7 @@
           <div class="d-flex flex-column">
             <span class="text-subtitle-1">Message Audit: {{ agentLabel }}</span>
             <span class="text-caption text-medium-emphasis">
-              {{ agent?.job_id || 'Unknown job' }}
+              {{ displayAgent?.job_id || 'Unknown job' }}
             </span>
             <span
               v-if="steps && typeof steps.completed === 'number' && typeof steps.total === 'number'"
@@ -166,7 +166,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, toRaw, watch } from 'vue'
 import MessageDetailView from '@/components/projects/MessageDetailView.vue'
 import api from '@/services/api'
 
@@ -200,13 +200,17 @@ const selectedMessage = ref(null)
 // Track expanded messages by message ID (for inline expansion)
 const expandedMessages = ref(new Set())
 
+// Snapshot: freeze agent data when modal opens to decouple from live WebSocket reactivity
+const agentSnapshot = ref(null)
+
 // API fetch logic (Handover 0387g Phase 4: fetch from MessageRepository, not JSONB)
 const messages = ref([])
 const loading = ref(false)
 const error = ref(null)
 
 async function fetchMessages() {
-  if (!props.agent?.job_id) {
+  const jobId = agentSnapshot.value?.job_id
+  if (!jobId) {
     messages.value = []
     return
   }
@@ -215,7 +219,7 @@ async function fetchMessages() {
   error.value = null
 
   try {
-    const response = await api.agentJobs.messages(props.agent.job_id)
+    const response = await api.agentJobs.messages(jobId)
     messages.value = response.data?.messages || []
   } catch (e) {
     error.value = e.response?.data?.detail || e.message || 'Failed to load messages'
@@ -256,9 +260,13 @@ const currentMessages = computed(() => {
   return waitingMessages.value
 })
 
+// Prefer snapshot data while modal is open; fall back to live prop
+const displayAgent = computed(() => agentSnapshot.value || props.agent)
+
 const agentLabel = computed(() => {
-  if (!props.agent) return 'Unknown agent'
-  return props.agent.agent_name || props.agent.agent_display_name || 'Agent'
+  const source = displayAgent.value
+  if (!source) return 'Unknown agent'
+  return source.agent_name || source.agent_display_name || 'Agent'
 })
 
 // Fetch messages when modal opens (Handover 0387g Phase 4)
@@ -267,26 +275,16 @@ watch(
   (value) => {
     if (!value) {
       selectedMessage.value = null
-      expandedMessages.value = new Set() // Clear expanded state when closing
+      expandedMessages.value = new Set()
+      agentSnapshot.value = null
       return
     }
-    // When opening, pick the requested initial tab if provided
+    // Snapshot agent data on open -- disconnect from live WebSocket reactivity
+    agentSnapshot.value = props.agent ? { ...toRaw(props.agent) } : null
     activeTab.value = props.initialTab || 'sent'
     selectedMessage.value = null
-    expandedMessages.value = new Set() // Clear expanded state when opening
-    // Fetch messages from API instead of using props.agent.messages
+    expandedMessages.value = new Set()
     fetchMessages()
-  },
-)
-
-watch(
-  () => props.agent,
-  () => {
-    selectedMessage.value = null
-    // Refetch if agent changes while modal is open
-    if (props.show) {
-      fetchMessages()
-    }
   },
 )
 
