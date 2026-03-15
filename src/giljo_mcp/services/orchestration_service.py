@@ -2490,7 +2490,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                         extra={"job_id": job_id, "user_id": user_id},
                     )
                 else:
-                    field_toggles = metadata.get("field_toggles", {})
+                    field_toggles = metadata.get("field_toggles", metadata.get("field_priorities", {}))
                     depth_config = metadata.get("depth_config", {})
                     logger.debug("[USER_CONFIG] No user_id, using frozen job_metadata config", extra={"job_id": job_id})
 

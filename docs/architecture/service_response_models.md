@@ -88,9 +88,9 @@ def get_resource(self, id: str) -> Resource:
 | `check_username_exists(username)` | `{"success": True, "exists": bool}` | `bool` | None | N/A |
 | `check_email_exists(email)` | `{"success": True, "exists": bool}` | `bool` | None | N/A |
 | `verify_password(user_id, password)` | `{"success": True, "verified": bool}` | `bool` | `ResourceNotFoundError` | 404 |
-| `get_field_priority_config(user_id)` | `{"success": True, "config": dict}` | `FieldPriorityConfig` | `ResourceNotFoundError` | 404 |
-| `update_field_priority_config(user_id, config)` | `{"success": True, "message": str}` | `OperationResult` | `ResourceNotFoundError`, `ValidationError` | 404, 400 |
-| `reset_field_priority_config(user_id)` | `{"success": True, "message": str}` | `OperationResult` | `ResourceNotFoundError` | 404 |
+| `get_field_toggle_config(user_id)` | `FieldToggleConfig` | `FieldToggleConfig` | `ResourceNotFoundError` | 404 |
+| `update_field_toggle_config(user_id, config)` | `OperationResult` | `OperationResult` | `ResourceNotFoundError`, `ValidationError` | 404, 400 |
+| `reset_field_toggle_config(user_id)` | `OperationResult` | `OperationResult` | `ResourceNotFoundError` | 404 |
 | `get_depth_config(user_id)` | `{"success": True, "config": dict}` | `DepthConfig` | `ResourceNotFoundError` | 404 |
 | `update_depth_config(user_id, config)` | `{"success": True, "message": str}` | `OperationResult` | `ResourceNotFoundError`, `ValidationError` | 404, 400 |
 | `get_execution_mode(user_id)` | `{"success": True, "execution_mode": str}` | `str` | `ResourceNotFoundError` | 404 |
