@@ -2490,23 +2490,23 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                 # Handover 0346: Fetch FRESH user config if user_id available
                 if user_id:
                     user_config = await _get_user_config(user_id, tenant_key, session)
-                    field_priorities = user_config["field_priorities"]
+                    field_toggles = user_config["field_toggles"]
                     depth_config = user_config["depth_config"]
                     logger.info(
                         "[USER_CONFIG] Fetched fresh user config for OrchestrationService",
                         extra={"job_id": job_id, "user_id": user_id},
                     )
                 else:
-                    field_priorities = metadata.get("field_priorities", {})
+                    field_toggles = metadata.get("field_toggles", {})
                     depth_config = metadata.get("depth_config", {})
                     logger.debug("[USER_CONFIG] No user_id, using frozen job_metadata config", extra={"job_id": job_id})
 
-                # Handover 0350b: Generate framing instructions (replaces inline context)
+                # Handover 0350b: Generate fetch instructions (replaces inline context)
                 # This returns ~500 tokens instead of 4-8K (up to 50K with vision)
                 fetch_instructions = planner._build_fetch_instructions(
                     product=product,
                     project=project,
-                    field_priorities=field_priorities,
+                    field_toggles=field_toggles,
                     depth_config=depth_config,
                 )
 
@@ -2541,7 +2541,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                 except (OSError, KeyError, ValueError, TypeError) as e:
                     logger.warning(f"[INTEGRATIONS] Failed to read config: {e}")
 
-                # Build framing-based response (Handover 0350b + Phase C)
+                # Build toggle-based response (Handover 0350b + Phase C)
                 # Includes: identity, project context, fetch instructions, AND agent templates
                 response = {
                     "identity": {
@@ -2570,9 +2570,9 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                         "report_progress",
                         "complete_job",
                     ],
-                    "field_priorities": field_priorities,
+                    "field_toggles": field_toggles,
                     "thin_client": True,
-                    "architecture": "framing_based",
+                    "architecture": "toggle_based",
                     # Handover 0408: Integration toggles status
                     "integrations": {
                         "serena_mcp_enabled": include_serena,
@@ -2608,12 +2608,10 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                 response["orchestrator_identity"] = get_orchestrator_identity_content()
 
                 logger.info(
-                    "[FRAMING_BASED] Returning framing-based orchestrator instructions",
+                    "Returning toggle-based orchestrator instructions",
                     extra={
                         "job_id": job_id,
-                        "critical_count": len(fetch_instructions.get("critical", [])),
-                        "important_count": len(fetch_instructions.get("important", [])),
-                        "reference_count": len(fetch_instructions.get("reference", [])),
+                        "enabled_categories": len(fetch_instructions),
                     },
                 )
 

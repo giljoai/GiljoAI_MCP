@@ -396,7 +396,7 @@ def _extract_tags(summary: str, key_outcomes: list[str], decisions_made: list[st
 
 
 def _derive_priority(project: Project, summary: str, key_outcomes: list[str]) -> int:
-    """Derive priority (1=CRITICAL, 2=IMPORTANT, 3=REFERENCE)."""
+    """Derive memory entry importance (1=HIGH, 2=MEDIUM, 3=LOW)."""
     summary_text = summary.lower() if summary else ""
     outcome_text = " ".join(key_outcomes or []).lower()
     if any(word in summary_text or word in outcome_text for word in ["incident", "outage", "rollback", "failure"]):

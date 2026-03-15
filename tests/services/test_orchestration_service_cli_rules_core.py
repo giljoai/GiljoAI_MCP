@@ -70,7 +70,7 @@ class TestCLIModeRules:
                 status="active",
                 job_metadata={
                     "execution_mode": "claude_code_cli",
-                    "field_priorities": {},
+                    "field_toggles": {},
                     "depth_config": {},
                 },
             )
@@ -151,7 +151,7 @@ class TestCLIModeRules:
                 status="active",
                 job_metadata={
                     "execution_mode": "multi_terminal",
-                    "field_priorities": {},
+                    "field_toggles": {},
                     "depth_config": {},
                 },
             )

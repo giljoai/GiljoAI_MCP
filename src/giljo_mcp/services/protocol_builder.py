@@ -407,39 +407,38 @@ If your mission references undefined entities, has unclear dependencies, or ambi
 # ============================================================================
 
 # Extract inner structure for backward compatibility with existing code
-# defaults.py uses versioned structure: {"version": "2.1", "priorities": {...}}
-# This code expects flat structure: {"field": {"toggle": True, "priority": X}}
+# defaults.py uses versioned structure: {"version": "3.0", "priorities": {...}}
+# This code expects flat structure: {"field": {"toggle": True}}
 DEFAULT_FIELD_PRIORITIES = _DEFAULT_FIELD_PRIORITY["priorities"]
 DEFAULT_DEPTH_CONFIG = _DEFAULT_DEPTH_CONFIG["depths"]
 
 
-def _normalize_field_priorities(field_priorities: dict[str, Any]) -> dict[str, int]:
+def _normalize_field_toggles(field_config: dict[str, Any]) -> dict[str, bool]:
     """
-    Normalize field_priorities from nested format to integer format.
+    Normalize field config to a flat toggle dict.
 
-    Handover 0357: DEFAULT_FIELD_PRIORITIES uses {"field": {"toggle": True, "priority": X}} format
-    but mission_planner expects {"field": X} (just integers).
+    Supports multiple input formats:
+    - v3.0: {"field": {"toggle": True}}
+    - v2.x legacy: {"field": {"toggle": True, "priority": X}}
+    - Flat bool: {"field": True}
+    - Legacy int: {"field": 1} (treated as enabled if < 4)
 
     Args:
-        field_priorities: Dict with either nested or integer priority values
+        field_config: Dict with field toggle/priority values
 
     Returns:
-        Dict with integer priority values (1-4)
+        Dict mapping field names to boolean toggle values
     """
     normalized = {}
-    for field_key, value in field_priorities.items():
-        if isinstance(value, dict) and "priority" in value:
-            # Extract priority from nested format, respecting toggle
-            if value.get("toggle", True):
-                normalized[field_key] = value["priority"]
-            else:
-                normalized[field_key] = 4  # EXCLUDED if toggle is off
-        elif isinstance(value, int):
-            # Already in integer format
+    for field_key, value in field_config.items():
+        if isinstance(value, dict):
+            normalized[field_key] = value.get("toggle", True)
+        elif isinstance(value, bool):
             normalized[field_key] = value
+        elif isinstance(value, int):
+            normalized[field_key] = value < 4
         else:
-            # Unknown format, default to IMPORTANT
-            normalized[field_key] = 2
+            normalized[field_key] = True
     return normalized
 
 
@@ -449,7 +448,7 @@ async def _get_user_config(
     session: Any,  # AsyncSession type hint would create circular import
 ) -> dict[str, Any]:
     """
-    Fetch user's field_priority_config and depth_config from database.
+    Fetch user's field toggle config and depth_config from database.
 
     Args:
         user_id: User UUID
@@ -457,7 +456,7 @@ async def _get_user_config(
         session: SQLAlchemy AsyncSession
 
     Returns:
-        dict with 'field_priorities' and 'depth_config' keys
+        dict with 'field_toggles' and 'depth_config' keys
 
     Behavior:
         - Returns user's custom config if exists
@@ -479,44 +478,36 @@ async def _get_user_config(
                 "user_not_found_using_defaults",
                 extra={"user_id": user_id, "tenant_key": tenant_key},
             )
-            # Handover 0357: Normalize default priorities to integer format
-            normalized_defaults = _normalize_field_priorities(DEFAULT_FIELD_PRIORITIES.copy())
-            return {"field_priorities": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
+            normalized_defaults = _normalize_field_toggles(DEFAULT_FIELD_PRIORITIES.copy())
+            return {"field_toggles": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
 
         # Get user's custom configs or fall back to defaults
-        # Handover 0346: Handle nested v2.0 format {"version": "2.0", "priorities": {...}}
-        raw_field_priorities = user.field_priority_config
-        if raw_field_priorities is not None:
-            # Extract priorities from v2.0 nested structure if present
-            if isinstance(raw_field_priorities, dict) and "priorities" in raw_field_priorities:
-                field_priorities = raw_field_priorities["priorities"]
+        raw_field_config = user.field_priority_config
+        if raw_field_config is not None:
+            if isinstance(raw_field_config, dict) and "priorities" in raw_field_config:
+                field_config = raw_field_config["priorities"]
             else:
-                field_priorities = raw_field_priorities
+                field_config = raw_field_config
         else:
-            field_priorities = DEFAULT_FIELD_PRIORITIES.copy()
+            field_config = DEFAULT_FIELD_PRIORITIES.copy()
 
-        # Handover 0357: Normalize field_priorities to integer format for mission_planner
-        field_priorities = _normalize_field_priorities(field_priorities)
+        field_toggles = _normalize_field_toggles(field_config)
 
         # Get depth config and normalize keys from UI format to internal format
         raw_depth_config = user.depth_config
         if raw_depth_config is not None:
-            # Key mapping: UI/database keys -> internal code keys
             key_mapping = {
                 "memory_last_n_projects": "memory_360",
                 "git_commits": "git_history",
-                # These keys match, but include for completeness
                 "agent_templates": "agent_templates",
                 "vision_documents": "vision_documents",
             }
 
             depth_config = {}
             for db_key, value in raw_depth_config.items():
-                # Map to internal key if mapping exists, otherwise keep original
                 internal_key = key_mapping.get(db_key, db_key)
                 depth_config[internal_key] = value
 
-            # Handover 0352: Normalize deprecated 'optional' value to 'light'
             if depth_config.get("vision_documents") == "optional":
                 depth_config["vision_documents"] = "light"
                 logger.debug(
@@ -535,13 +526,13 @@ async def _get_user_config(
             extra={
                 "user_id": user_id,
                 "tenant_key": tenant_key,
-                "has_custom_field_priorities": user.field_priority_config is not None,
+                "has_custom_field_config": user.field_priority_config is not None,
                 "has_custom_depth_config": user.depth_config is not None,
                 "depth_config": depth_config,
             },
         )
 
-        return {"field_priorities": field_priorities, "depth_config": depth_config}
+        return {"field_toggles": field_toggles, "depth_config": depth_config}
 
     except (OSError, ValueError, KeyError) as e:
         logger.error(
@@ -553,9 +544,8 @@ async def _get_user_config(
             },
             exc_info=True,
         )
-        # Fall back to defaults on error (Handover 0357: normalize to integer format)
-        normalized_defaults = _normalize_field_priorities(DEFAULT_FIELD_PRIORITIES.copy())
-        return {"field_priorities": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
+        normalized_defaults = _normalize_field_toggles(DEFAULT_FIELD_PRIORITIES.copy())
+        return {"field_toggles": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
 
 
 def _build_ch1_mission() -> str:
@@ -636,7 +626,7 @@ Note: tenant_key auto-injected by server from API key session
 Returns:
   - project_description: User requirements (INPUT for your analysis)
   - mission: Product context with priority fields applied
-  - field_priorities: User's context configuration
+  - field_toggles: User's context toggle configuration
   - agent_discovery_tool: Reference to get_available_agents()
 
 Read this protocol via orchestrator_protocol field.
