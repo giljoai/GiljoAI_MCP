@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.config_manager import get_config
@@ -1816,8 +1816,24 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                                 status="pending",
                             )
                             session.add(auto_message)
-                            orch_exec.messages_waiting_count = (orch_exec.messages_waiting_count or 0) + 1
-                            execution.messages_sent_count = (execution.messages_sent_count or 0) + 1
+                            # Atomic SQL UPDATE prevents stale-read race when concurrent
+                            # transactions modify the counter (e.g. receive_messages decrement)
+                            await session.execute(
+                                update(AgentExecution)
+                                .where(
+                                    AgentExecution.agent_id == orch_exec.agent_id,
+                                    AgentExecution.tenant_key == tenant_key,
+                                )
+                                .values(messages_waiting_count=AgentExecution.messages_waiting_count + 1)
+                            )
+                            await session.execute(
+                                update(AgentExecution)
+                                .where(
+                                    AgentExecution.agent_id == execution.agent_id,
+                                    AgentExecution.tenant_key == tenant_key,
+                                )
+                                .values(messages_sent_count=AgentExecution.messages_sent_count + 1)
+                            )
 
                     await session.commit()
                 else:
