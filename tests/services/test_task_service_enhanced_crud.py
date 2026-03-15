@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from passlib.hash import bcrypt
+import bcrypt
 from sqlalchemy import select
 
 from src.giljo_mcp.exceptions import AuthorizationError, ResourceNotFoundError
@@ -149,7 +149,7 @@ async def test_delete_task_permission_denied(task_service, test_task, db_session
         id=str(uuid4()),
         username=f"otherdev_{uuid4().hex[:6]}",
         email=f"otherdev_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hash("Password123"),
+        password_hash=bcrypt.hashpw("Password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         role="developer",
         tenant_key=test_tenant_key,
         is_active=True,

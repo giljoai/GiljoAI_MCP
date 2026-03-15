@@ -19,91 +19,91 @@ describe('useAgentData', () => {
         id: 'agent-1',
         job_id: 'job-1',
         agent_name: 'Backend Agent',
-        agent_type: 'implementer',
+        agent_display_name: 'implementer',
         status: 'working',
         progress: 50,
-        messages: [
-          { status: 'pending', content: 'Message 1' },
-          { status: 'pending', content: 'Message 2' },
-          { status: 'acknowledged', content: 'Message 3' }
-        ],
+        messages_sent_count: 3,
+        messages_waiting_count: 2,
+        messages_read_count: 1,
         health_status: 'healthy'
       },
       {
         id: 'agent-2',
         job_id: 'job-2',
         agent_name: 'Test Agent',
-        agent_type: 'tester',
+        agent_display_name: 'tester',
         status: 'complete',
         progress: 100,
-        messages: [],
+        messages_sent_count: 0,
+        messages_waiting_count: 0,
+        messages_read_count: 0,
         health_status: 'healthy'
       },
       {
         id: 'agent-3',
         job_id: 'job-3',
         agent_name: 'Orchestrator',
-        agent_type: 'orchestrator',
-        status: 'failed',
+        agent_display_name: 'orchestrator',
+        status: 'working',
         progress: 75,
-        messages: [
-          { status: 'pending', content: 'Error message' }
-        ],
+        messages_sent_count: 1,
+        messages_waiting_count: 0,
+        messages_read_count: 0,
         health_status: 'critical'
       },
       {
         id: 'agent-4',
         job_id: 'job-4',
         agent_name: 'Waiting Agent',
-        agent_type: 'analyzer',
+        agent_display_name: 'analyzer',
         status: 'waiting',
         progress: 0,
-        messages: [],
+        messages_sent_count: 0,
+        messages_waiting_count: 0,
+        messages_read_count: 0,
         health_status: 'healthy'
       },
       {
         id: 'agent-5',
         job_id: 'job-5',
         agent_name: 'Blocked Agent',
-        agent_type: 'reviewer',
+        agent_display_name: 'reviewer',
         status: 'blocked',
         progress: 30,
-        messages: [
-          { status: 'acknowledged', content: 'Read message' }
-        ],
+        messages_sent_count: 0,
+        messages_waiting_count: 0,
+        messages_read_count: 1,
         health_status: 'warning'
       }
     ])
   })
 
   describe('sortedAgents', () => {
-    it('sorts agents by priority correctly (failed → blocked → waiting → working → complete)', () => {
+    it('sorts agents by priority correctly (working > blocked > silent > waiting > complete > decommissioned)', () => {
       const { sortedAgents } = useAgentData(agents)
 
-      expect(sortedAgents.value[0].status).toBe('failed')
-      expect(sortedAgents.value[1].status).toBe('blocked')
-      expect(sortedAgents.value[2].status).toBe('waiting')
-      expect(sortedAgents.value[3].status).toBe('working')
+      // Based on AGENT_STATUS_PRIORITY: working=0, blocked=1, silent=2, waiting=3, complete=4
+      expect(sortedAgents.value[0].status).toBe('working')
+      expect(sortedAgents.value[1].status).toBe('working')
+      expect(sortedAgents.value[2].status).toBe('blocked')
+      expect(sortedAgents.value[3].status).toBe('waiting')
       expect(sortedAgents.value[4].status).toBe('complete')
     })
 
     it('places orchestrator first within same priority level', () => {
-      // Make orchestrator and another agent same status
-      agents.value[2].status = 'working' // Orchestrator
-      agents.value[0].status = 'working' // Backend Agent
-
       const { sortedAgents } = useAgentData(agents)
 
+      // Both agent-1 (implementer) and agent-3 (orchestrator) have status 'working'
       const workingAgents = sortedAgents.value.filter(a => a.status === 'working')
-      expect(workingAgents[0].agent_type).toBe('orchestrator')
-      expect(workingAgents[1].agent_type).toBe('implementer')
+      expect(workingAgents[0].agent_display_name).toBe('orchestrator')
+      expect(workingAgents[1].agent_display_name).toBe('implementer')
     })
 
     it('sorts alphabetically by name as tertiary sort', () => {
       agents.value = ref([
-        { id: '1', agent_name: 'Zebra Agent', agent_type: 'implementer', status: 'working' },
-        { id: '2', agent_name: 'Alpha Agent', agent_type: 'implementer', status: 'working' },
-        { id: '3', agent_name: 'Beta Agent', agent_type: 'implementer', status: 'working' }
+        { id: '1', agent_name: 'Zebra Agent', agent_display_name: 'implementer', status: 'working' },
+        { id: '2', agent_name: 'Alpha Agent', agent_display_name: 'implementer', status: 'working' },
+        { id: '3', agent_name: 'Beta Agent', agent_display_name: 'implementer', status: 'working' }
       ]).value
 
       const { sortedAgents } = useAgentData(agents)
@@ -113,30 +113,19 @@ describe('useAgentData', () => {
       expect(sortedAgents.value[2].agent_name).toBe('Zebra Agent')
     })
 
-    it('handles cancelled status correctly (low priority)', () => {
-      agents.value.push({
-        id: 'agent-6',
-        agent_name: 'Cancelled Agent',
-        agent_type: 'implementer',
-        status: 'cancelled',
-        messages: []
-      })
-
-      const { sortedAgents } = useAgentData(agents)
-
-      // Find cancelled agent (should be near the end, before only decommissioned)
-      const cancelledAgent = sortedAgents.value.find(a => a.status === 'cancelled')
-      expect(cancelledAgent).toBeDefined()
-      expect(cancelledAgent.status).toBe('cancelled')
+    it.skip('handles cancelled status correctly - cancelled not in AGENT_STATUS_PRIORITY', () => {
+      // cancelled is not defined in the current AGENT_STATUS_PRIORITY constant
     })
 
     it('handles decommissioned status correctly (lowest priority)', () => {
       agents.value.push({
         id: 'agent-7',
         agent_name: 'Decommissioned Agent',
-        agent_type: 'implementer',
+        agent_display_name: 'implementer',
         status: 'decommissioned',
-        messages: []
+        messages_sent_count: 0,
+        messages_waiting_count: 0,
+        messages_read_count: 0,
       })
 
       const { sortedAgents } = useAgentData(agents)
@@ -147,48 +136,48 @@ describe('useAgentData', () => {
   })
 
   describe('getMessageCounts', () => {
-    it('calculates message counts correctly', () => {
+    it('calculates message counts correctly using server-provided counters', () => {
       const { getMessageCounts } = useAgentData(agents)
 
-      const job = agents.value[0] // Has 2 pending, 1 acknowledged
+      const job = agents.value[0] // Has sent=3, waiting=2, read=1
       const counts = getMessageCounts(job)
 
-      expect(counts.unread).toBe(2)
-      expect(counts.acknowledged).toBe(1)
-      expect(counts.total).toBe(3)
+      expect(counts.sent).toBe(3)
+      expect(counts.waiting).toBe(2)
+      expect(counts.read).toBe(1)
     })
 
-    it('handles job with no messages', () => {
+    it('handles job with no messages (zero counts)', () => {
       const { getMessageCounts } = useAgentData(agents)
 
-      const job = agents.value[1] // No messages
+      const job = agents.value[1] // All zeroes
       const counts = getMessageCounts(job)
 
-      expect(counts.unread).toBe(0)
-      expect(counts.acknowledged).toBe(0)
-      expect(counts.total).toBe(0)
+      expect(counts.sent).toBe(0)
+      expect(counts.waiting).toBe(0)
+      expect(counts.read).toBe(0)
     })
 
-    it('handles job with only acknowledged messages', () => {
+    it('handles job with only read messages', () => {
       const { getMessageCounts } = useAgentData(agents)
 
-      const job = agents.value[4] // Has 1 acknowledged
+      const job = agents.value[4] // Has read=1
       const counts = getMessageCounts(job)
 
-      expect(counts.unread).toBe(0)
-      expect(counts.acknowledged).toBe(1)
-      expect(counts.total).toBe(1)
+      expect(counts.sent).toBe(0)
+      expect(counts.waiting).toBe(0)
+      expect(counts.read).toBe(1)
     })
 
-    it('handles job with undefined messages', () => {
+    it('handles job with undefined counter fields', () => {
       const { getMessageCounts } = useAgentData(agents)
 
-      const job = { id: 'no-messages' } // No messages property
+      const job = { id: 'no-counters' } // No counter fields
       const counts = getMessageCounts(job)
 
-      expect(counts.unread).toBe(0)
-      expect(counts.acknowledged).toBe(0)
-      expect(counts.total).toBe(0)
+      expect(counts.sent).toBe(0)
+      expect(counts.waiting).toBe(0)
+      expect(counts.read).toBe(0)
     })
   })
 
@@ -213,14 +202,9 @@ describe('useAgentData', () => {
       expect(getStatusColor('complete')).toBe('green')
     })
 
-    it('returns correct color for failed status', () => {
+    it('returns correct color for silent status', () => {
       const { getStatusColor } = useAgentData(agents)
-      expect(getStatusColor('failed')).toBe('red')
-    })
-
-    it('returns correct color for cancelled status', () => {
-      const { getStatusColor } = useAgentData(agents)
-      expect(getStatusColor('cancelled')).toBe('grey-darken-2')
+      expect(getStatusColor('silent')).toBe('amber-darken-2')
     })
 
     it('returns correct color for decommissioned status', () => {
@@ -234,68 +218,76 @@ describe('useAgentData', () => {
     })
   })
 
-  describe('getAgentTypeColor', () => {
-    it('returns correct color for orchestrator', () => {
-      const { getAgentTypeColor } = useAgentData(agents)
-      expect(getAgentTypeColor('orchestrator')).toBe('orange')
+  describe('getAgentDisplayNameColor', () => {
+    it('returns color config object for orchestrator', () => {
+      const { getAgentDisplayNameColor } = useAgentData(agents)
+      const color = getAgentDisplayNameColor('orchestrator')
+      expect(color.hex).toBe('#D4A574')
+      expect(color.name).toBe('ORCHESTRATOR')
     })
 
-    it('returns correct color for analyzer', () => {
-      const { getAgentTypeColor } = useAgentData(agents)
-      expect(getAgentTypeColor('analyzer')).toBe('red')
+    it('returns color config object for analyzer', () => {
+      const { getAgentDisplayNameColor } = useAgentData(agents)
+      const color = getAgentDisplayNameColor('analyzer')
+      expect(color.hex).toBe('#E74C3C')
+      expect(color.name).toBe('ANALYZER')
     })
 
-    it('returns correct color for implementer', () => {
-      const { getAgentTypeColor } = useAgentData(agents)
-      expect(getAgentTypeColor('implementer')).toBe('blue')
+    it('returns color config object for implementer', () => {
+      const { getAgentDisplayNameColor } = useAgentData(agents)
+      const color = getAgentDisplayNameColor('implementer')
+      expect(color.hex).toBe('#3498DB')
+      expect(color.name).toBe('IMPLEMENTER')
     })
 
-    it('returns correct color for tester', () => {
-      const { getAgentTypeColor } = useAgentData(agents)
-      expect(getAgentTypeColor('tester')).toBe('yellow')
+    it('returns color config object for tester', () => {
+      const { getAgentDisplayNameColor } = useAgentData(agents)
+      const color = getAgentDisplayNameColor('tester')
+      expect(color.hex).toBe('#FFC300')
+      expect(color.name).toBe('TESTER')
     })
 
-    it('returns correct color for reviewer', () => {
-      const { getAgentTypeColor } = useAgentData(agents)
-      expect(getAgentTypeColor('reviewer')).toBe('purple')
+    it('returns color config object for reviewer', () => {
+      const { getAgentDisplayNameColor } = useAgentData(agents)
+      const color = getAgentDisplayNameColor('reviewer')
+      expect(color.hex).toBe('#9B59B6')
+      expect(color.name).toBe('REVIEWER')
     })
 
-    it('returns grey for unknown agent type', () => {
-      const { getAgentTypeColor } = useAgentData(agents)
-      expect(getAgentTypeColor('unknown-type')).toBe('grey')
+    it('returns orchestrator color for unknown agent type', () => {
+      const { getAgentDisplayNameColor } = useAgentData(agents)
+      const color = getAgentDisplayNameColor('unknown-type')
+      expect(color.hex).toBe('#D4A574')
     })
   })
 
   describe('getAgentAbbreviation', () => {
-    it('returns correct abbreviation for orchestrator', () => {
+    it('returns two-letter abbreviation from hyphenated name', () => {
       const { getAgentAbbreviation } = useAgentData(agents)
-      expect(getAgentAbbreviation('orchestrator')).toBe('Or')
+      expect(getAgentAbbreviation('backend-implementer')).toBe('BI')
     })
 
-    it('returns correct abbreviation for analyzer', () => {
-      const { getAgentAbbreviation } = useAgentData(agents)
-      expect(getAgentAbbreviation('analyzer')).toBe('An')
-    })
-
-    it('returns correct abbreviation for implementer', () => {
-      const { getAgentAbbreviation } = useAgentData(agents)
-      expect(getAgentAbbreviation('implementer')).toBe('Im')
-    })
-
-    it('returns correct abbreviation for tester', () => {
-      const { getAgentAbbreviation } = useAgentData(agents)
-      expect(getAgentAbbreviation('tester')).toBe('Te')
-    })
-
-    it('returns correct abbreviation for reviewer', () => {
-      const { getAgentAbbreviation } = useAgentData(agents)
-      expect(getAgentAbbreviation('reviewer')).toBe('Re')
-    })
-
-    it('returns first two uppercase letters for unknown agent type', () => {
+    it('returns first two uppercase letters for single word', () => {
       const { getAgentAbbreviation } = useAgentData(agents)
       expect(getAgentAbbreviation('custom')).toBe('CU')
       expect(getAgentAbbreviation('builder')).toBe('BU')
+    })
+
+    it('returns ?? for empty/null display name', () => {
+      const { getAgentAbbreviation } = useAgentData(agents)
+      expect(getAgentAbbreviation('')).toBe('??')
+      expect(getAgentAbbreviation(null)).toBe('??')
+      expect(getAgentAbbreviation(undefined)).toBe('??')
+    })
+
+    it('handles underscore-separated names', () => {
+      const { getAgentAbbreviation } = useAgentData(agents)
+      expect(getAgentAbbreviation('backend_tester')).toBe('BT')
+    })
+
+    it('handles space-separated names', () => {
+      const { getAgentAbbreviation } = useAgentData(agents)
+      expect(getAgentAbbreviation('Backend Tester')).toBe('BT')
     })
   })
 
@@ -373,9 +365,11 @@ describe('useAgentData', () => {
       agents.value.push({
         id: 'agent-6',
         agent_name: 'New Agent',
-        agent_type: 'implementer',
+        agent_display_name: 'implementer',
         status: 'working',
-        messages: []
+        messages_sent_count: 0,
+        messages_waiting_count: 0,
+        messages_read_count: 0,
       })
 
       expect(sortedAgents.value).toHaveLength(6)
@@ -384,15 +378,16 @@ describe('useAgentData', () => {
     it('re-sorts when agent status changes', () => {
       const { sortedAgents } = useAgentData(agents)
 
-      expect(sortedAgents.value[4].status).toBe('complete')
+      // Initially complete is last sorted status
+      expect(sortedAgents.value[sortedAgents.value.length - 1].status).toBe('complete')
 
-      // Change complete agent to failed
-      agents.value[1].status = 'failed'
+      // Change complete agent to working
+      agents.value[1].status = 'working'
 
-      // Should now have multiple failed agents (orchestrator was already failed)
-      const failedAgents = sortedAgents.value.filter(a => a.status === 'failed')
-      expect(failedAgents).toHaveLength(2)
-      expect(failedAgents.some(a => a.agent_name === 'Test Agent')).toBe(true)
+      // Should now have more working agents
+      const workingAgents = sortedAgents.value.filter(a => a.status === 'working')
+      expect(workingAgents).toHaveLength(3)
+      expect(workingAgents.some(a => a.agent_name === 'Test Agent')).toBe(true)
     })
   })
 })

@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from passlib.hash import bcrypt
+import bcrypt
 from sqlalchemy import select
 
 from src.giljo_mcp.exceptions import (
@@ -60,7 +60,7 @@ async def auth_inactive_user(db_session, auth_inactive_org):
         id=str(uuid4()),
         username=f"inactiveuser_{unique_id}",
         email=f"inactive_{unique_id}@example.com",
-        password_hash=bcrypt.hash(password),
+        password_hash=bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         role="developer",
         tenant_key=auth_inactive_org.tenant_key,  # Use org's tenant_key
         org_id=auth_inactive_org.id,  # 0424j: User.org_id NOT NULL
