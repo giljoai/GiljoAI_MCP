@@ -89,7 +89,7 @@
                 <v-expansion-panel-text>
                   <v-progress-linear v-if="agentMessages[agent.id]?.loading" indeterminate />
                   <div v-else-if="agentMessages[agent.id]?.messages?.length">
-                    <div v-for="msg in agentMessages[agent.id].messages" :key="msg.id" class="mb-2 pa-2 rounded" style="background: rgba(0,0,0,0.03);">
+                    <div v-for="msg in agentMessages[agent.id].messages" :key="msg.id" class="mb-2 pa-2 rounded" style="background: rgba(var(--v-theme-on-surface), 0.03);">
                       <div class="d-flex justify-space-between align-center">
                         <div class="d-flex align-center">
                           <span class="text-caption font-weight-bold">{{ msg.from }}</span>
@@ -115,7 +115,7 @@
                   <div class="d-flex align-center w-100">
                     <v-icon icon="mdi-book-open-page-variant" class="mr-2" size="small" />
                     <span class="font-weight-medium">
-                      #{{ entry.sequence ?? i + 1 }} - {{ entry.summary || 'Memory Entry' }}
+                      #{{ entry.sequence ?? i + 1 }} - {{ entry.project_name || 'Memory Entry' }}
                     </span>
                     <v-spacer />
                     <span v-if="entry.timestamp" class="text-caption text-medium-emphasis">{{ formatDate(entry.timestamp) }}</span>
@@ -151,7 +151,7 @@
                   <div v-if="!entry.summary && !entry.key_outcomes?.length && !entry.decisions_made?.length">
                     <p class="text-caption text-medium-emphasis">No detailed content available.</p>
                   </div>
-                  <div v-if="entry.entry_type" class="mt-3 pt-2" style="border-top: 1px solid rgba(0,0,0,0.12);">
+                  <div v-if="entry.entry_type" class="mt-3 pt-2" style="border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);">
                     <span class="text-caption text-medium-emphasis">
                       <strong>Type:</strong> {{ entry.entry_type }}
                       <template v-if="entry.source"> | <strong>Source:</strong> {{ entry.source }}</template>
@@ -168,7 +168,7 @@
 
       <v-card-actions class="pa-4">
         <v-spacer />
-        <v-btn variant="elevated" color="primary" aria-label="Close review modal" @click="$emit('close')" data-testid="review-close-btn">
+        <v-btn variant="elevated" color="primary" aria-label="Close review modal" data-testid="review-close-btn" @click="$emit('close')">
           Close
         </v-btn>
       </v-card-actions>
@@ -301,6 +301,6 @@ function formatDate(ts) {
 
 function truncate(text, maxLen) {
   if (!text) return ''
-  return text.length > maxLen ? text.slice(0, maxLen) + '...' : text
+  return text.length > maxLen ? `${text.slice(0, maxLen)}...` : text
 }
 </script>
