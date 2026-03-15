@@ -12,9 +12,9 @@ import * as directives from 'vuetify/directives'
 vi.mock('@/services/api', () => ({
   default: {
     users: {
-      getFieldPriorityConfig: vi.fn(),
-      updateFieldPriorityConfig: vi.fn(),
-      resetFieldPriorityConfig: vi.fn(),
+      getFieldToggleConfig: vi.fn(),
+      updateFieldToggleConfig: vi.fn(),
+      resetFieldToggleConfig: vi.fn(),
     },
     products: {
       getGitIntegration: vi.fn(() => Promise.resolve({ data: { enabled: false, commit_limit: 20, default_branch: 'main' } })),
@@ -70,7 +70,7 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
     setActivePinia(createPinia())
 
     // Mock API responses
-    api.users.getFieldPriorityConfig.mockResolvedValue({
+    api.users.getFieldToggleConfig.mockResolvedValue({
       data: {
         version: '1.0',
         token_budget: 2000,
@@ -223,17 +223,17 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
       expect(wrapper.vm.unassignedFields.length).toBe(initialUnassignedCount + 1)
     })
 
-    it('should update fieldPriorityHasChanges when removing field', async () => {
+    it('should update fieldToggleHasChanges when removing field', async () => {
       wrapper = mountComponent()
       await wrapper.vm.$nextTick()
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      wrapper.vm.fieldPriorityHasChanges.value = false
+      wrapper.vm.fieldToggleHasChanges.value = false
       const fieldToRemove = wrapper.vm.priority1Fields[0]
 
       wrapper.vm.removeField(fieldToRemove, 'priority_1')
 
-      expect(wrapper.vm.fieldPriorityHasChanges).toBe(true)
+      expect(wrapper.vm.fieldToggleHasChanges).toBe(true)
     })
 
     it('should show unassigned category in UI', async () => {
@@ -247,23 +247,23 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
       expect(title.text()).toContain('Unassigned Fields')
     })
 
-    it('saveFieldPriority should not send unassigned fields to backend', async () => {
+    it('saveFieldToggle should not send unassigned fields to backend', async () => {
       wrapper = mountComponent()
       await wrapper.vm.$nextTick()
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      api.users.updateFieldPriorityConfig.mockResolvedValue({
+      api.users.updateFieldToggleConfig.mockResolvedValue({
         data: { success: true },
       })
 
-      wrapper.vm.fieldPriorityHasChanges = true
-      await wrapper.vm.saveFieldPriority()
+      wrapper.vm.fieldToggleHasChanges = true
+      await wrapper.vm.saveFieldToggle()
 
       // Check that API was called
-      expect(api.users.updateFieldPriorityConfig).toHaveBeenCalled()
+      expect(api.users.updateFieldToggleConfig).toHaveBeenCalled()
 
       // Check the config sent - should only have priority 1-3 fields
-      const sentConfig = api.users.updateFieldPriorityConfig.mock.calls[0][0]
+      const sentConfig = api.users.updateFieldToggleConfig.mock.calls[0][0]
       expect(sentConfig.fields).toBeDefined()
 
       // All keys in fields object should be assigned (value 1, 2, or 3)
@@ -275,7 +275,7 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
 
   describe('Phase 4: Edge Cases', () => {
     it('should show empty state when all fields assigned', async () => {
-      api.users.getFieldPriorityConfig.mockResolvedValue({
+      api.users.getFieldToggleConfig.mockResolvedValue({
         data: {
           version: '1.0',
           token_budget: 2000,
@@ -378,7 +378,7 @@ describe('UserSettings.vue - Context Priority Management (Handover 0052)', () =>
       await wrapper.vm.$nextTick()
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      wrapper.vm.fieldPriorityHasChanges = false
+      wrapper.vm.fieldToggleHasChanges = false
       await wrapper.vm.$nextTick()
 
       const saveBtn = wrapper.find('button:has-text("Save Field Priority")')

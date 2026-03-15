@@ -344,10 +344,10 @@ export const api = {
   // Handover 0506: Fixed paths to use /api/v1/users
   users: {
     update: (userId, updates) => apiClient.patch(`/api/v1/users/${userId}`, updates),
-    // Field priority configuration (Handover 0048)
-    getFieldPriorityConfig: () => apiClient.get('/api/v1/users/me/field-priority'),
-    updateFieldPriorityConfig: (config) => apiClient.put('/api/v1/users/me/field-priority', config),
-    resetFieldPriorityConfig: () => apiClient.post('/api/v1/users/me/field-priority/reset'),
+    // Field toggle configuration (Handover 0048, 0820)
+    getFieldToggleConfig: () => apiClient.get('/api/v1/users/me/field-priority'),
+    updateFieldToggleConfig: (config) => apiClient.put('/api/v1/users/me/field-priority', config),
+    resetFieldToggleConfig: () => apiClient.post('/api/v1/users/me/field-priority/reset'),
   },
 
   // Vision Documents (Multi-Document Support - Handover 0043)
