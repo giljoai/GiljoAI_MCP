@@ -1,7 +1,7 @@
 """
 Mission Planner for GiljoAI Agent Orchestration MCP Server.
 
-Provides framing-based context instructions for orchestrator agents.
+Provides toggle-based context instructions for orchestrator agents.
 The orchestrator calls fetch_context() on-demand using these instructions,
 avoiding inline context bloat (Handover 0350b).
 """
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class MissionPlanner:
     """
-    Build framing instructions that guide orchestrator agents to fetch context on-demand.
+    Build fetch instructions that guide orchestrator agents to fetch context on-demand.
 
     The only active entry point is _build_fetch_instructions(), called by
     OrchestrationService.get_orchestrator_instructions().
@@ -32,64 +32,33 @@ class MissionPlanner:
         """
         self.db_manager = db_manager
 
-    def _get_tier_framing(self, tier: str, base_framing: str) -> str:
-        """
-        Add tier-specific prefix to framing text (Handover 0350b).
-
-        Args:
-            tier: Tier name ('critical', 'important', 'reference')
-            base_framing: Base description of the field
-
-        Returns:
-            Framing text with appropriate prefix (REQUIRED/RECOMMENDED/OPTIONAL)
-        """
-        prefixes = {
-            "critical": "REQUIRED: ",
-            "important": "RECOMMENDED: ",
-            "reference": "OPTIONAL: ",
-        }
-        prefix = prefixes.get(tier, "")
-
-        # Don't duplicate prefix if already present
-        if base_framing.startswith(prefix):
-            return base_framing
-        return prefix + base_framing
-
     def _build_fetch_instructions(
         self,
         product: "Product",
         project: "Project",
-        field_priorities: dict,
+        field_toggles: dict,
         depth_config: dict,
-    ) -> dict:
+    ) -> list[dict]:
         """
-        Build framing instructions for context fetch tools (Handover 0350b).
+        Build fetch instructions for context tools based on user toggles (Handover 0350b).
 
-        Maps user's field priorities to tier-based fetch instructions.
-        Each instruction includes: tool name, params, framing text, token estimate.
-
-        This method is the core of the framing-based architecture that replaces
-        inline context (~4-8K tokens) with fetch pointers (~500 tokens).
+        Each instruction includes: tool name, params, framing text.
+        Toggled-off categories are excluded. Toggled-on categories produce
+        a fetch instruction with depth params where applicable.
 
         Args:
             product: Product model with metadata
             project: Project model with metadata
-            field_priorities: Dict mapping field names to priority (1-4)
-                             1=CRITICAL, 2=IMPORTANT, 3=REFERENCE, 4=EXCLUDED
-            depth_config: Dict mapping field names to depth levels
-                         Controls HOW MUCH detail to fetch for each field
+            field_toggles: Dict mapping field names to toggle state (bool).
+                          True = included, False = excluded.
+            depth_config: Dict mapping field names to depth levels.
+                         Controls HOW MUCH detail to fetch for each field.
 
         Returns:
-            {
-                "critical": [{"field": "product_core", "tool": "fetch_context", ...}],
-                "important": [...],
-                "reference": [...]
-            }
+            List of instruction dicts, each with field, tool, params, framing keys.
         """
-        instructions = {"critical": [], "important": [], "reference": []}
-        tier_map = {1: "critical", 2: "important", 3: "reference"}
+        instructions = []
 
-        # Tool configuration mapping - defines how each field maps to fetch_context
         tool_configs = {
             "product_core": {
                 "tool": "fetch_context",
@@ -138,15 +107,12 @@ class MissionPlanner:
             },
         }
 
-        # Fields that are already inlined in the response (no fetch needed)
         inlined_fields = {"project_description"}
 
-        # Iterate through field priorities and build instructions
-        for field, priority in field_priorities.items():
-            if priority >= 4:  # Excluded
+        for field, enabled in field_toggles.items():
+            if not enabled:
                 continue
 
-            # Skip fields that are already inlined in the response
             if field in inlined_fields:
                 continue
 
@@ -155,9 +121,6 @@ class MissionPlanner:
                 logger.warning(f"No fetch tool config for field: {field}")
                 continue
 
-            tier = tier_map.get(priority, "reference")
-
-            # Build instruction entry
             instruction = {
                 "field": field,
                 "tool": config["tool"],
@@ -166,36 +129,28 @@ class MissionPlanner:
                     "product_id": str(product.id),
                     "tenant_key": product.tenant_key,
                 },
-                "framing": self._get_tier_framing(tier, config["framing"]),
+                "framing": config["framing"],
             }
 
-            # Add pagination support flag if applicable
             if config.get("supports_pagination"):
                 instruction["supports_pagination"] = True
 
-            # Add depth-specific params if applicable
             if config.get("depth_aware"):
                 if field == "vision_documents":
-                    # Vision docs use depth for summary level (light/medium/full)
-                    # Handover 0352: light=33% summary, medium=66% summary, full=paginated chunks
                     vision_depth = depth_config.get("vision_documents", "light")
                     instruction["params"]["depth"] = vision_depth
 
-                    # Update framing based on depth
                     vision_framing = {
                         "light": "33% summarized vision document (single response).",
                         "medium": "66% summarized vision document (single response).",
                         "full": "Complete vision document (paginated, call until has_more=false).",
                     }
-                    base_framing = vision_framing.get(vision_depth, vision_framing["light"])
-                    instruction["framing"] = self._get_tier_framing(tier, base_framing)
+                    instruction["framing"] = vision_framing.get(vision_depth, vision_framing["light"])
 
-                    # Only add pagination params for full depth
                     if vision_depth == "full":
                         instruction["params"]["offset"] = 0
                         instruction["supports_pagination"] = True
                     else:
-                        # Remove pagination flag for light/medium (single response)
                         instruction.pop("supports_pagination", None)
                 elif field == "memory_360":
                     instruction["params"]["limit"] = depth_config.get("memory_360", 5)
@@ -203,15 +158,11 @@ class MissionPlanner:
                     instruction["params"]["limit"] = depth_config.get("git_history", 20)
                 elif field == "agent_templates":
                     agent_depth = depth_config.get("agent_templates", "type_only")
-                    # Handover 0351: Skip fetch for type_only (already inline in response)
-                    # Only include fetch instruction when full templates needed
                     if agent_depth == "type_only":
                         continue  # Already inline - no fetch needed
                     instruction["params"]["depth"] = agent_depth
-                    instruction["framing"] = self._get_tier_framing(
-                        tier, "Full agent templates with complete prompts for spawning."
-                    )
+                    instruction["framing"] = "Full agent templates with complete prompts for spawning."
 
-            instructions[tier].append(instruction)
+            instructions.append(instruction)
 
         return instructions
