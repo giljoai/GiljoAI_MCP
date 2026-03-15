@@ -95,7 +95,7 @@ async def test_thin_prompt_token_estimation(db_session: AsyncSession):
 
     # ACT - Generate thin prompt
     result = await generator.generate(
-        project_id=project.id, user_id=user.id, field_priorities={"agent_templates": 1}
+        project_id=project.id, user_id=user.id, field_toggles={"agent_templates": True}
     )
 
     # ASSERT
@@ -203,7 +203,7 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
     # ACT - Generate thin prompt for Tenant A
     generator_a = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_a_key)
     result_a = await generator_a.generate(
-        project_id=project_a.id, user_id=user_a.id, field_priorities=user_a.field_priority_config
+        project_id=project_a.id, user_id=user_a.id, field_toggles=user_a.field_priority_config
     )
     thin_prompt = result_a["thin_prompt"]
 
@@ -219,7 +219,7 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_thin_prompt_works_without_field_priorities(db_session: AsyncSession):
+async def test_thin_prompt_works_without_field_toggles(db_session: AsyncSession):
     """
     BEHAVIOR: Thin prompt generation works when user has no field_priority_config
 
@@ -288,12 +288,12 @@ async def test_thin_prompt_works_without_field_priorities(db_session: AsyncSessi
     db_session.add(template)
     await db_session.commit()
 
-    # ACT - Generate thin prompt without providing field_priorities
+    # ACT - Generate thin prompt without providing field_toggles
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
     result = await generator.generate(
         project_id=project.id,
         user_id=user.id,
-        field_priorities=None,  # No custom priorities - should use defaults
+        field_toggles=None,  # No custom toggles - should use defaults
     )
     thin_prompt = result["thin_prompt"]
 
@@ -370,7 +370,7 @@ async def test_project_description_not_notes_in_context_string(db_session: Async
 
     # ACT - Generate context (should NOT raise AttributeError on project.notes)
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
-    result = await generator.generate(project_id=project.id, user_id=user.id, field_priorities={})
+    result = await generator.generate(project_id=project.id, user_id=user.id, field_toggles={})
     thin_prompt = result["thin_prompt"]
 
     # ASSERT
