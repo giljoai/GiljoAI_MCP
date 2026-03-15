@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-14 (0817 COMPLETE, 0816 still NOT STARTED)
+**Last Updated:** 2026-03-14 (all active handovers COMPLETE or DEFERRED, 0816 COMPLETE)
 
 ---
 
@@ -19,24 +19,24 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved), 0812 schema cleanup COMPLETE, 0813 template context separation COMPLETE, 0814 template manager UI redesign COMPLETE, 0815 code review remediation COMPLETE, 0816 vision upload UX NOT STARTED, 0817 audit cleanup remainder COMPLETE |
+| 0800+ | Enhancement & Feature Series | 0800-0817 ALL COMPLETE. 0818 WebSocket modal state. **0819a-c ACTIVE (Project Closeout Lifecycle)**. |
 
 ---
 
 ## Active Handovers (In Root Folder)
 
-### Ready for Implementation
+### Active (In Root Folder)
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0259 | Notification Health Alert - Add Project Context | **COMPLETE** | Medium | Health alerts now include project name + click-to-navigate. Commit `e149f09d`. |
-| 0813 | Agent Template Context Separation | **COMPLETE** | High | Separate role identity from protocols in templates. Fix user_instructions export gap. Archived to `completed/`. |
-| 0814 | Template Manager UI Redesign | **COMPLETE** | High | All 4 bugs fixed, dialog redesign, export unification. 12+ commits across 5 phases. See implementation summary in handover file. Archived to `completed/`. |
-| 0812 | Remove Unused task.job_id FK | **COMPLETE** | Low | Dead schema removed. Column, FK, 2 indexes dropped. Commit `95b9ec99`. |
-| 0815 | Code Review Remediation (March 2026 Commits) | **COMPLETE** | HIGH | 2 HIGH, 6 MEDIUM, 5 LOW findings fixed. 621 tests passing. |
-| 0816 | Vision Upload Progress UX Fix | **Not Started** | Medium | ProductForm has progress bar UI but never receives upload state from parent. Props-down fix. |
-| 0817 | March 2026 Audit Cleanup Remainder | **COMPLETE** | Low | E2E selectors fixed (`6b87f67a`), 28 test files relocated (`da5fc6d6`). Archived to `completed/`. |
-| 0732b | README Screenshots | Deferred | Low | 30 min. Requires running instance with sample data. |
+| 0819a | Project Closeout UI State Management | Not Started | High | CloseoutModal -> stay on page, status banner, continue-working guidance |
+| 0819b | Notification Lifecycle Management | Not Started | Medium | Clear project notifications on terminal state, logout reset |
+| 0819c | Project Review Modal (Replace Reopen) | Not Started | Medium | Read-only review for completed/terminated projects, remove Reopen |
+
+### Deferred (Still in Root Folder)
+
+| ID | Title | Status | Priority | Notes |
+|----|-------|--------|----------|-------|
 | 1014 | Security Event Auditing | Deferred | Medium | Enterprise compliance. No requirement yet. |
 | TODO_vision | Vision Summarizer LLM Upgrade | Deferred | Low | Phase 1 incomplete. Current Sumy works. |
 
@@ -45,10 +45,13 @@
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
 | 0259 | Notification Health Alert - Add Project Context | 2026-03-12 | COMPLETE (`e149f09d`) — project name + click-to-navigate in health alerts |
-| 0814 | Template Manager UI Redesign | 2026-03-12 | COMPLETE (12+ commits) — 4 bugs fixed, dialog redesign, export unification, 20 tests |
 | 0812 | Remove Unused task.job_id FK | 2026-03-12 | COMPLETE (`95b9ec99`) — dead column, FK, 2 indexes removed from tasks table |
+| 0813 | Agent Template Context Separation | 2026-03-12 | COMPLETE — role identity separated from protocols, user_instructions export gap fixed |
+| 0814 | Template Manager UI Redesign | 2026-03-12 | COMPLETE (12+ commits) — 4 bugs fixed, dialog redesign, export unification, 20 tests |
 | 0815 | Code Review Remediation (March 2026 Commits) | 2026-03-12 | COMPLETE — 2 HIGH, 6 MEDIUM, 5 LOW findings fixed across 14 files, 621 tests |
+| 0816 | Vision Upload Progress UX Fix | 2026-03-14 | COMPLETE (`2c8c921e`, `73c3fa35`) — progress bar wired up, tests added, watcher ReferenceError fixed |
 | 0817 | March 2026 Audit Cleanup Remainder | 2026-03-14 | COMPLETE — E2E selectors fixed, 28 test files relocated from src/ to tests/ |
+| 0732b | README Screenshots | 2026-03-14 | COMPLETE — screenshots captured manually by user |
 
 ### Recently Closed (February 2026 - from Active)
 
@@ -118,7 +121,7 @@
 | 0284 | Address get_available_agents | **DEFERRED** | Low | Architecture evolved past this. Archived. |
 | ~~0731~~ | ~~Legacy Code Removal~~ | **SUPERSEDED** | - | All items resolved by 0745/0765 sprints (2026-03-08) |
 | 0732 | CE Release Packaging | **COMPLETE** | HIGH | All tasks done: CHANGELOG updated, convention violations fixed, requirements.txt aligned. Screenshots deferred to 0732b. Docker descoped. (Note: 0732 API Fixes is a separate, COMPLETE handover) |
-| 0732b | README Screenshots | Deferred | Low | Requires running instance with sample data. Post-launch or pre-launch polish. |
+| ~~0732b~~ | ~~README Screenshots~~ | **COMPLETE** | - | Screenshots captured manually by user (2026-03-14) |
 | 1014 | Security Auditing | Deferred | Medium | Enterprise compliance |
 | ~~9999~~ | ~~One-Liner Installation System~~ | **DELETED** | - | Obsolete -- website already directs users to GitHub. `python startup.py` is the install path. (2026-03-09) |
 
@@ -148,11 +151,14 @@
 
 | ID | Title | Status |
 |----|-------|--------|
-| 0812 | Remove Unused task.job_id FK | **COMPLETE** (2026-03-12, `95b9ec99`, dead column + FK + 2 indexes removed) |
-| 0815 | Code Review Remediation (March 2026 Commits) | **COMPLETE** (2026-03-12, 2 HIGH + 6 MEDIUM + 5 LOW findings fixed, 14 files, 621 tests) |
-| 0817 | March 2026 Audit Cleanup Remainder | **COMPLETE** (2026-03-14, E2E selectors fixed + 28 test files relocated, commits `6b87f67a` + `da5fc6d6`) |
-| 0814 | Template Manager UI Redesign | **COMPLETE** (2026-03-12, 12+ commits, 4 bugs fixed, dialog redesign, export unification, 20 tests) |
 | 0259 | Notification Health Alert - Add Project Context | **COMPLETE** (2026-03-12, `e149f09d`, project name + click-to-navigate in health alerts) |
+| 0812 | Remove Unused task.job_id FK | **COMPLETE** (2026-03-12, `95b9ec99`, dead column + FK + 2 indexes removed) |
+| 0813 | Agent Template Context Separation | **COMPLETE** (2026-03-12, role identity separated from protocols, user_instructions export gap fixed) |
+| 0814 | Template Manager UI Redesign | **COMPLETE** (2026-03-12, 12+ commits, 4 bugs fixed, dialog redesign, export unification, 20 tests) |
+| 0815 | Code Review Remediation (March 2026 Commits) | **COMPLETE** (2026-03-12, 2 HIGH + 6 MEDIUM + 5 LOW findings fixed, 14 files, 621 tests) |
+| 0816 | Vision Upload Progress UX Fix | **COMPLETE** (2026-03-14, `2c8c921e` + `73c3fa35`, progress bar wired up + tests + watcher fix) |
+| 0817 | March 2026 Audit Cleanup Remainder | **COMPLETE** (2026-03-14, E2E selectors fixed + 28 test files relocated, commits `6b87f67a` + `da5fc6d6`) |
+| 0732b | README Screenshots | **COMPLETE** (2026-03-14, screenshots captured manually by user) |
 | 0765a-s | Perfect Score Sprint (19 sessions) | **COMPLETE** (2026-03-08, 67 commits, ~12K+ lines dead code removed, 1390 tests pass / 0 skipped) |
 | 0083 | Harmonize Slash Commands to /gil_* | **COMPLETED** (2026-03-07, adopted organically via 0388/0461/0700d — no code changes needed) |
 | 0800-0807 | Feb Report Tier 1 Triage (14/21 items resolved) | **COMPLETE** (2026-03-05, research+implementation across 11 handovers) |
@@ -478,7 +484,7 @@ completed/reference/
 **0500-0501** (Display Name + File Exists): Complete
 **0501-0600** (Remediation): 0500-0515
 **0601-0700** (Migration): 0600-0631
-**0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy (SUPERSEDED), 0732 release packaging (COMPLETE), 0732b screenshots (deferred), 0740-0750 (complete), 0760 (proposal), 0765a-s (sprint, COMPLETE), 0766-0768 (triage chains). **Do NOT use for non-quality work.**
+**0700-0769** (Code Quality — RESERVED): 0700-0708 (complete), 0720-0733 (complete), 0731 legacy (SUPERSEDED), 0732 release packaging (COMPLETE), 0732b screenshots (COMPLETE), 0740-0750 (complete), 0760 (proposal), 0765a-s (sprint, COMPLETE), 0766-0768 (triage chains). **Do NOT use for non-quality work.**
 **0770-0799** (Edition Strategy & SaaS Architecture): 0770 (SaaS Edition Proposal, complete), 0771 (Edition Isolation Architecture, COMPLETE)
 **0800-0807** (Enhancement & Triage): 0800a/b, 0801a/b, 0802a/b, 0803a, 0804a, 0805a, 0806a, 0807a (all complete)
 **0808-0811** (Tier 2 Triage): 0808a, 0809a, 0810a, 0811a (all research complete, fixes in `f665c861`)
@@ -486,9 +492,10 @@ completed/reference/
 **0813** (Enhancement & Feature Series): 0813 Template Context Separation (COMPLETE)
 **0814** (Enhancement & Feature Series): 0814 Template Manager UI Redesign (COMPLETE)
 **0815** (Enhancement & Feature Series): 0815 Code Review Remediation March 2026 (COMPLETE)
-**0816** (Enhancement & Feature Series): 0816 Vision Upload Progress UX Fix (NOT STARTED)
+**0816** (Enhancement & Feature Series): 0816 Vision Upload Progress UX Fix (COMPLETE)
 **0817** (Enhancement & Feature Series): 0817 March 2026 Audit Cleanup Remainder (COMPLETE)
-**0818+** (Enhancement & Feature Series): Available for new feature/enhancement work
+**0818** (Enhancement & Feature Series): 0818 WebSocket Modal State Preservation (IN PROGRESS)
+**0819a-c** (Enhancement & Feature Series): 0819a Closeout UI State, 0819b Notification Lifecycle, 0819c Project Review Modal (NOT STARTED)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
