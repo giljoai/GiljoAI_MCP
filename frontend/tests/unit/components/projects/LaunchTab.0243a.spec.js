@@ -236,7 +236,7 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
     it('all three panels are visible and properly structured', () => {
       const projectDescPanel = wrapper.find('.project-description-panel')
       const missionPanel = wrapper.find('.mission-panel')
-      const agentPanel = wrapper.find('.default-agent-panel')
+      const agentPanel = wrapper.find('.agents-panel')
 
       expect(projectDescPanel.exists()).toBe(true)
       expect(missionPanel.exists()).toBe(true)
@@ -265,7 +265,9 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
         content.includes("@import '@/styles/design-tokens.scss'") ||
         content.includes('@import "@/styles/design-tokens.scss"') ||
         content.includes("@use '@/styles/design-tokens'") ||
-        content.includes('@use "@/styles/design-tokens"')
+        content.includes('@use "@/styles/design-tokens"') ||
+        content.includes("@use '@/styles/design-tokens.scss'") ||
+        content.includes('@use "@/styles/design-tokens.scss"')
 
       expect(hasDesignTokenImport).toBe(true)
     })
@@ -383,10 +385,10 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
       })
     })
 
-    it('applies unified container design to action bar area', () => {
-      const actionBar = wrapper.find('.top-action-bar')
-      expect(actionBar.exists()).toBe(true)
-      expect(actionBar.classes()).toContain('top-action-bar')
+    it('applies unified container design to header actions area', () => {
+      const headerActions = wrapper.find('.header-actions')
+      expect(headerActions.exists()).toBe(true)
+      expect(headerActions.classes()).toContain('header-actions')
     })
 
     it('maintains accessibility of all interactive elements', () => {
@@ -416,7 +418,9 @@ describe('LaunchTab.0243a - Design Tokens Extraction', () => {
       const designTokensPath = getDesignTokensPath()
       if (fs.existsSync(designTokensPath)) {
         const content = fs.readFileSync(designTokensPath, 'utf-8')
-        expect(content).toMatch(/\$radius-container:\s*16px/)
+        // $radius-container references $border-radius-rounded which is 16px
+        expect(content).toMatch(/\$radius-container:\s*\$border-radius-rounded/)
+        expect(content).toMatch(/\$border-radius-rounded:\s*16px/)
       }
     })
 

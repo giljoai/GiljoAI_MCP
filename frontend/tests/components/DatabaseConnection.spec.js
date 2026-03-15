@@ -12,6 +12,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import DatabaseConnection from '@/components/DatabaseConnection.vue'
+import api from '@/services/api'
 
 describe('DatabaseConnection Component', () => {
   let vuetify
@@ -127,8 +128,9 @@ describe('DatabaseConnection Component', () => {
         }
       })
 
-      const lockIcons = wrapper.findAll('.mdi-lock')
-      expect(lockIcons.length).toBeGreaterThan(0)
+      // The component uses prepend-inner-icon="mdi-lock" on text fields when readonly
+      const html = wrapper.html()
+      expect(html).toContain('mdi-lock')
     })
 
     it('should show test button when showTestButton prop is true', () => {
@@ -192,12 +194,9 @@ describe('DatabaseConnection Component', () => {
 
   describe('Connection Testing', () => {
     it('should call API when test button is clicked', async () => {
-      global.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ success: true, message: 'Connected successfully' })
-        })
-      )
+      api.settings.testDatabase.mockResolvedValue({
+        data: { success: true, message: 'Connected successfully' }
+      })
 
       wrapper = mount(DatabaseConnection, {
         global: {
@@ -209,19 +208,14 @@ describe('DatabaseConnection Component', () => {
       await testButton.trigger('click')
       await wrapper.vm.$nextTick()
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/config/health/database')
-      )
+      expect(api.settings.testDatabase).toHaveBeenCalled()
     })
 
     it('should show loading state during connection test', async () => {
-      global.fetch = vi.fn(() =>
+      api.settings.testDatabase.mockImplementation(() =>
         new Promise(resolve =>
           setTimeout(() =>
-            resolve({
-              ok: true,
-              json: () => Promise.resolve({ success: true })
-            }),
+            resolve({ data: { success: true } }),
             100
           )
         )
@@ -243,16 +237,9 @@ describe('DatabaseConnection Component', () => {
     })
 
     it('should display success message on successful connection', async () => {
-      const successMessage = 'Connected to PostgreSQL database'
-      global.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            success: true,
-            message: successMessage
-          })
-        })
-      )
+      api.settings.testDatabase.mockResolvedValue({
+        data: { success: true, message: 'Connected to PostgreSQL' }
+      })
 
       wrapper = mount(DatabaseConnection, {
         global: {
@@ -266,22 +253,16 @@ describe('DatabaseConnection Component', () => {
 
       const successAlert = wrapper.find('[data-test="test-result"]')
       expect(successAlert.exists()).toBe(true)
-      expect(successAlert.text()).toContain(successMessage)
+      expect(successAlert.text()).toContain('Connected to PostgreSQL')
       // Vuetify 3 uses different class naming
       expect(successAlert.html()).toContain('success')
     })
 
     it('should display error message on failed connection', async () => {
       const errorMessage = 'Database connection failed'
-      global.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            success: false,
-            error: errorMessage
-          })
-        })
-      )
+      api.settings.testDatabase.mockResolvedValue({
+        data: { success: false, error: errorMessage }
+      })
 
       wrapper = mount(DatabaseConnection, {
         global: {
@@ -301,9 +282,7 @@ describe('DatabaseConnection Component', () => {
     })
 
     it('should handle network errors gracefully', async () => {
-      global.fetch = vi.fn(() =>
-        Promise.reject(new Error('Network error'))
-      )
+      api.settings.testDatabase.mockRejectedValue(new Error('Network error'))
 
       wrapper = mount(DatabaseConnection, {
         global: {
@@ -324,15 +303,9 @@ describe('DatabaseConnection Component', () => {
 
   describe('Events', () => {
     it('should emit "connection-success" event on successful test', async () => {
-      global.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            success: true,
-            message: 'Connected successfully'
-          })
-        })
-      )
+      api.settings.testDatabase.mockResolvedValue({
+        data: { success: true, message: 'Connected successfully' }
+      })
 
       wrapper = mount(DatabaseConnection, {
         global: {
@@ -353,15 +326,9 @@ describe('DatabaseConnection Component', () => {
     })
 
     it('should emit "connection-error" event on failed test', async () => {
-      global.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            success: false,
-            error: 'Connection failed'
-          })
-        })
-      )
+      api.settings.testDatabase.mockResolvedValue({
+        data: { success: false, error: 'Connection failed' }
+      })
 
       wrapper = mount(DatabaseConnection, {
         global: {
@@ -382,12 +349,9 @@ describe('DatabaseConnection Component', () => {
     })
 
     it('should emit "tested" event when test completes (success or failure)', async () => {
-      global.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ success: true })
-        })
-      )
+      api.settings.testDatabase.mockResolvedValue({
+        data: { success: true }
+      })
 
       wrapper = mount(DatabaseConnection, {
         global: {
@@ -443,15 +407,9 @@ describe('DatabaseConnection Component', () => {
     })
 
     it('should announce status changes to screen readers', async () => {
-      global.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            success: true,
-            message: 'Connected successfully'
-          })
-        })
-      )
+      api.settings.testDatabase.mockResolvedValue({
+        data: { success: true, message: 'Connected successfully' }
+      })
 
       wrapper = mount(DatabaseConnection, {
         global: {
@@ -523,17 +481,14 @@ describe('DatabaseConnection Component', () => {
 
   describe('Initial Settings', () => {
     it('should load settings from config on mount when initialSettings not provided', async () => {
-      global.fetch = vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            host: 'localhost',
-            port: 5432,
-            name: 'giljo_mcp',
-            user: 'postgres'
-          })
-        })
-      )
+      api.settings.getDatabase.mockResolvedValue({
+        data: {
+          host: 'localhost',
+          port: 5432,
+          name: 'giljo_mcp',
+          user: 'postgres'
+        }
+      })
 
       wrapper = mount(DatabaseConnection, {
         global: {
@@ -543,9 +498,7 @@ describe('DatabaseConnection Component', () => {
 
       await wrapper.vm.$nextTick()
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/config/database')
-      )
+      expect(api.settings.getDatabase).toHaveBeenCalled()
     })
 
     it('should use initialSettings prop when provided', async () => {

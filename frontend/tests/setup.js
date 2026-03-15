@@ -351,6 +351,7 @@ vi.mock('@/services/api', () => {
       get: vi.fn(() => Promise.resolve({ data: {} })),
       update: vi.fn(() => Promise.resolve({ data: { success: true } })),
       getDatabase: vi.fn(() => Promise.resolve({ data: {} })),
+      testDatabase: vi.fn(() => Promise.resolve({ data: { success: true, message: 'Connected' } })),
       getCookieDomains: vi.fn(() => Promise.resolve({ data: [] })),
       addCookieDomain: vi.fn(() => Promise.resolve({ data: { success: true } })),
       removeCookieDomain: vi.fn(() => Promise.resolve({ data: { success: true } })),
@@ -485,19 +486,6 @@ vi.mock('@/composables/useWebSocket', () => ({
     subscribeToAgent: vi.fn(),
     getConnectionInfo: vi.fn(() => ({})),
     getDebugInfo: vi.fn(() => ({})),
-  }),
-}))
-
-// Mock useFieldPriority composable (used by ProductForm.vue)
-vi.mock('@/composables/useFieldPriority', () => ({
-  useFieldPriority: () => ({
-    fieldConfig: ref({}),
-    getFieldPriority: vi.fn(() => 'normal'),
-    isFieldHidden: vi.fn(() => false),
-    isFieldRequired: vi.fn(() => false),
-    isFieldOptional: vi.fn(() => true),
-    loading: ref(false),
-    error: ref(null),
   }),
 }))
 

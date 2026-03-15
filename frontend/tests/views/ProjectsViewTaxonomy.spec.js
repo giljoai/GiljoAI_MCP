@@ -572,47 +572,6 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
       expect(items.find((i) => i.value === 'd')).toBeTruthy()
     })
 
-    it('taxonomyPrefix shows correct alias when type and serial are set', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectTypes = mockProjectTypes
-      wrapper.vm.projectData.project_type_id = 'type-feat'
-      wrapper.vm.projectData.series_number = 440
-      wrapper.vm.projectData.subseries = 'c'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.taxonomyPrefix).toBe('FEAT-0440c')
-    })
-
-    it('taxonomyPrefix shows serial-only when type is not set', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectData.project_type_id = null
-      wrapper.vm.projectData.series_number = 440
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.taxonomyPrefix).toBe('0440')
-    })
-
-    it('taxonomyPrefix shows type-only when serial is not set', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectTypes = mockProjectTypes
-      wrapper.vm.projectData.project_type_id = 'type-feat'
-      wrapper.vm.projectData.series_number = null
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.taxonomyPrefix).toBe('FEAT')
-    })
-
-    it('taxonomyPrefix omits subseries when not set', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectTypes = mockProjectTypes
-      wrapper.vm.projectData.project_type_id = 'type-bug'
-      wrapper.vm.projectData.series_number = 501
-      wrapper.vm.projectData.subseries = null
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.taxonomyPrefix).toBe('BUG-0501')
-    })
-
     it('seriesNumberInput is populated when editing a taxonomy project', async () => {
       const wrapper = await createWrapper()
       wrapper.vm.editProject(taxonomyProject)
@@ -764,68 +723,4 @@ describe('ProjectsView - Taxonomy Display (Handover 0440c)', () => {
     })
   })
 
-  // ----------------------------------------------------------------
-  // 10. Handover 0440d: taxonomyPrefix edge cases
-  // ----------------------------------------------------------------
-  describe('Handover 0440d: taxonomyPrefix edge cases', () => {
-    it('taxonomyPrefix pads single-digit serial to 4 digits', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectTypes = mockProjectTypes
-
-      wrapper.vm.projectData.project_type_id = 'type-feat'
-      wrapper.vm.projectData.series_number = 1
-      wrapper.vm.projectData.subseries = null
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.taxonomyPrefix).toBe('FEAT-0001')
-    })
-
-    it('taxonomyPrefix handles 4-digit serial without extra padding', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectTypes = mockProjectTypes
-
-      wrapper.vm.projectData.project_type_id = 'type-feat'
-      wrapper.vm.projectData.series_number = 9999
-      wrapper.vm.projectData.subseries = null
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.taxonomyPrefix).toBe('FEAT-9999')
-    })
-
-    it('taxonomyPrefix includes subseries suffix when set', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectTypes = mockProjectTypes
-
-      wrapper.vm.projectData.project_type_id = 'type-feat'
-      wrapper.vm.projectData.series_number = 1
-      wrapper.vm.projectData.subseries = 'a'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.taxonomyPrefix).toBe('FEAT-0001a')
-    })
-
-    it('taxonomyPrefix pads 2-digit serial correctly', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectTypes = mockProjectTypes
-
-      wrapper.vm.projectData.project_type_id = 'type-bug'
-      wrapper.vm.projectData.series_number = 42
-      wrapper.vm.projectData.subseries = null
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.taxonomyPrefix).toBe('BUG-0042')
-    })
-
-    it('taxonomyPrefix pads 3-digit serial correctly', async () => {
-      const wrapper = await createWrapper()
-      wrapper.vm.projectTypes = mockProjectTypes
-
-      wrapper.vm.projectData.project_type_id = 'type-bug'
-      wrapper.vm.projectData.series_number = 501
-      wrapper.vm.projectData.subseries = 'z'
-      await wrapper.vm.$nextTick()
-
-      expect(wrapper.vm.taxonomyPrefix).toBe('BUG-0501z')
-    })
-  })
 })

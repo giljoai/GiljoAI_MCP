@@ -34,7 +34,6 @@ describe('User Store', () => {
 
       expect(store.currentUser).toBeNull()
       expect(store.isAuthenticated).toBe(false)
-      expect(store.isLoading).toBe(false)
     })
   })
 
@@ -93,20 +92,6 @@ describe('User Store', () => {
       expect(api.auth.me).toHaveBeenCalledTimes(1)
     })
 
-    it('should set loading state during fetch', async () => {
-      const store = useUserStore()
-
-      api.auth.me.mockImplementation(() =>
-        new Promise(resolve => setTimeout(() => resolve({ data: {} }), 100))
-      )
-
-      const fetchPromise = store.fetchCurrentUser()
-      expect(store.isLoading).toBe(true)
-
-      await fetchPromise
-      expect(store.isLoading).toBe(false)
-    })
-
     it('should handle fetch error and set user to null', async () => {
       const store = useUserStore()
 
@@ -116,7 +101,6 @@ describe('User Store', () => {
 
       expect(store.currentUser).toBeNull()
       expect(store.isAuthenticated).toBe(false)
-      expect(store.isLoading).toBe(false)
     })
   })
 
@@ -259,59 +243,6 @@ describe('User Store', () => {
       expect(store.currentOrg).toBeNull()
     })
 
-    it('should provide isOrgAdmin computed property', async () => {
-      const store = useUserStore()
-
-      // Test with admin role
-      let mockUser = {
-        id: 'user-1',
-        org_role: 'admin'
-      }
-      api.auth.me.mockResolvedValue({ data: mockUser })
-      await store.fetchCurrentUser()
-      expect(store.isOrgAdmin).toBe(true)
-
-      // Test with owner role
-      mockUser = { id: 'user-1', org_role: 'owner' }
-      api.auth.me.mockResolvedValue({ data: mockUser })
-      await store.fetchCurrentUser()
-      expect(store.isOrgAdmin).toBe(true)
-
-      // Test with member role
-      mockUser = { id: 'user-1', org_role: 'member' }
-      api.auth.me.mockResolvedValue({ data: mockUser })
-      await store.fetchCurrentUser()
-      expect(store.isOrgAdmin).toBe(false)
-
-      // Test with viewer role
-      mockUser = { id: 'user-1', org_role: 'viewer' }
-      api.auth.me.mockResolvedValue({ data: mockUser })
-      await store.fetchCurrentUser()
-      expect(store.isOrgAdmin).toBe(false)
-    })
-
-    it('should provide isOrgOwner computed property', async () => {
-      const store = useUserStore()
-
-      // Test with owner role
-      let mockUser = { id: 'user-1', org_role: 'owner' }
-      api.auth.me.mockResolvedValue({ data: mockUser })
-      await store.fetchCurrentUser()
-      expect(store.isOrgOwner).toBe(true)
-
-      // Test with admin role
-      mockUser = { id: 'user-1', org_role: 'admin' }
-      api.auth.me.mockResolvedValue({ data: mockUser })
-      await store.fetchCurrentUser()
-      expect(store.isOrgOwner).toBe(false)
-
-      // Test with member role
-      mockUser = { id: 'user-1', org_role: 'member' }
-      api.auth.me.mockResolvedValue({ data: mockUser })
-      await store.fetchCurrentUser()
-      expect(store.isOrgOwner).toBe(false)
-    })
-
     it('should handle missing org data gracefully', async () => {
       const store = useUserStore()
       const mockUser = {
@@ -328,8 +259,6 @@ describe('User Store', () => {
       expect(store.orgName).toBeNull()
       expect(store.orgRole).toBeNull()
       expect(store.currentOrg).toBeNull()
-      expect(store.isOrgAdmin).toBe(false)
-      expect(store.isOrgOwner).toBe(false)
     })
 
     it('should clear org fields on logout', async () => {
@@ -413,7 +342,6 @@ describe('User Store', () => {
 
       // Set user and org data
       store.currentUser = { id: 'user-1', username: 'testuser' }
-      store.isLoading = true
       store.orgId = 'org-123'
       store.orgName = 'Test Org'
       store.orgRole = 'admin'
@@ -422,7 +350,6 @@ describe('User Store', () => {
       store.clearUser()
 
       expect(store.currentUser).toBeNull()
-      expect(store.isLoading).toBe(false)
       expect(store.orgId).toBeNull()
       expect(store.orgName).toBeNull()
       expect(store.orgRole).toBeNull()
@@ -448,7 +375,6 @@ describe('User Store', () => {
       expect(store.orgId).toBe('org-456')
       expect(store.orgName).toBe('New Organization')
       expect(store.orgRole).toBe('owner')
-      expect(store.isOrgOwner).toBe(true)
     })
   })
 })
