@@ -165,12 +165,12 @@ const slides = computed(() => [
     panels: [
       { icon: 'mdi-clipboard-check-outline', title: 'Jobs', caption: 'Tracked work units & progress' },
       { icon: 'mdi-memory', title: '360 Memory', caption: 'Cumulative learnings across projects (as context depth)' },
-      { icon: 'mdi-layers-triple', title: 'Context controls', caption: 'Priority + depth settings' },
+      { icon: 'mdi-layers-triple', title: 'Context controls', caption: 'Toggle + depth settings' },
       { icon: 'mdi-robot-outline', title: 'Agent templates', caption: 'Reusable roles + profiles', useGiljoIcon: true },
     ],
     bullets: [
       'Thin prompts: fetch instructions/missions from the server when needed.',
-      'Context priority + depth controls decide what to include.',
+      'Context toggles + depth controls decide what to include.',
       'Agents coordinate via jobs, status updates, and stored outcomes.',
     ],
   },

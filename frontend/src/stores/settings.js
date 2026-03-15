@@ -23,8 +23,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const loading = ref(false)
   const error = ref(null)
 
-  // Field priority configuration (Handover 0048)
-  const fieldPriorityConfig = ref(null)
+  // Field toggle configuration (Handover 0048, 0820)
+  const fieldToggleConfig = ref(null)
 
   // Theme management
   const theme = useTheme()
@@ -152,33 +152,33 @@ export const useSettingsStore = defineStore('settings', () => {
     error.value = null
   }
 
-  // Field Priority Configuration Actions (Handover 0048)
-  async function fetchFieldPriorityConfig() {
+  // Field Toggle Configuration Actions (Handover 0048, 0820)
+  async function fetchFieldToggleConfig() {
     try {
-      const response = await api.users.getFieldPriorityConfig()
-      fieldPriorityConfig.value = response.data
+      const response = await api.users.getFieldToggleConfig()
+      fieldToggleConfig.value = response.data
     } catch (err) {
-      console.error('Failed to fetch field priority config:', err)
+      console.error('Failed to fetch field toggle config:', err)
       throw err
     }
   }
 
-  async function updateFieldPriorityConfig(config) {
+  async function updateFieldToggleConfig(config) {
     try {
-      const response = await api.users.updateFieldPriorityConfig(config)
-      fieldPriorityConfig.value = response.data
+      const response = await api.users.updateFieldToggleConfig(config)
+      fieldToggleConfig.value = response.data
     } catch (err) {
-      console.error('Failed to update field priority config:', err)
+      console.error('Failed to update field toggle config:', err)
       throw err
     }
   }
 
-  async function resetFieldPriorityConfig() {
+  async function resetFieldToggleConfig() {
     try {
-      const response = await api.users.resetFieldPriorityConfig()
-      fieldPriorityConfig.value = response.data
+      const response = await api.users.resetFieldToggleConfig()
+      fieldToggleConfig.value = response.data
     } catch (err) {
-      console.error('Failed to reset field priority config:', err)
+      console.error('Failed to reset field toggle config:', err)
       throw err
     }
   }
@@ -197,7 +197,7 @@ export const useSettingsStore = defineStore('settings', () => {
     settings,
     loading,
     error,
-    fieldPriorityConfig,
+    fieldToggleConfig,
 
     // Getters
     notificationPosition,
@@ -210,8 +210,8 @@ export const useSettingsStore = defineStore('settings', () => {
     updateSettings,
     resetSettings,
     clearError,
-    fetchFieldPriorityConfig,
-    updateFieldPriorityConfig,
-    resetFieldPriorityConfig,
+    fetchFieldToggleConfig,
+    updateFieldToggleConfig,
+    resetFieldToggleConfig,
   }
 })
