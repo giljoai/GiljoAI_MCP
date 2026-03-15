@@ -375,4 +375,3 @@ class AgentJobRepository:
             )
         )
         await session.execute(stmt)
-        await session.commit()
