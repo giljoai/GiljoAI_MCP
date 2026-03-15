@@ -11,23 +11,22 @@
 
 ## Overview
 
-This document serves as the **Single Source of Truth (SSoT)** for understanding the complete orchestrator context flow in GiljoAI MCP v3.1+. It explains how user-configured context priority cards translate into orchestrator prompts, how context prioritization is achieved (77% reduction from 15K-30K baseline to 3,500 tokens), and how agents receive re-prioritized context based on their specific mission.
+This document serves as the **Single Source of Truth (SSoT)** for understanding the complete orchestrator context flow in GiljoAI MCP v3.1+. It explains how user-configured context toggle cards translate into orchestrator prompts, how context optimization is achieved (77% reduction from 15K-30K baseline to 3,500 tokens), and how agents receive targeted context based on their specific mission.
 
 **Purpose**: Document the complete end-to-end flow from user setup → orchestrator launch → context building → agent spawning → completion.
 
-**Key Achievement**: **70-77% context prioritization** through intelligent priority-based context extraction and thin client architecture.
+**Key Achievement**: **70-77% context optimization** through intelligent toggle-based context extraction and thin client architecture.
 
 ---
 
-## The 13 Context Priority Cards
+## The 13 Context Toggle Cards
 
-Users configure 13 context priority "cards" (fields) in **User Settings → Field Priorities** to control what context is included in orchestrator missions and at what detail level.
+Users configure 13 context toggle "cards" (fields) in **User Settings → Context Configuration** to control what context is included in orchestrator missions. Each card has a simple on/off toggle plus optional depth controls.
 
-### Priority Scale (0-10)
+### Toggle States
 
-- **Priority 10 (Full)**: Maximum detail, all available data
-- **Priority 7-9 (Moderate)**: Balanced detail, key information
-- **Priority 4-6 (Abbreviated)**: Essential information only
+- **Enabled** (toggle: true): Category is included in context with configured depth
+- **Disabled** (toggle: false): Category is excluded from context entirely
 - **Priority 1-3 (Minimal)**: Bare minimum context
 - **Priority 0 (Exclude)**: Field completely excluded from context
 
@@ -152,11 +151,11 @@ get_orchestrator_instructions(job_id=123, tenant_key="default")
   "project_id": "uuid",
   "product_id": "uuid",
   "context_budget": 200000,
-  "field_priorities_applied": {
-    "tech_stack": 7,
-    "architecture": 7,
-    "product_memory.learnings": 7,
-    "codebase_summary": 5
+  "field_toggles_applied": {
+    "tech_stack": true,
+    "architecture": true,
+    "product_memory.learnings": true,
+    "codebase_summary": true
   }
 }
 ```
@@ -165,14 +164,14 @@ get_orchestrator_instructions(job_id=123, tenant_key="default")
 
 #### Step 3: Orchestrator Builds Full Context
 
-**Implementation**: `MissionPlanner._build_context_with_priorities()` method
+**Implementation**: `MissionPlanner._build_fetch_instructions()` method
 **File**: `src/giljo_mcp/mission_planner.py` (lines 592-883)
 
-This is where the **13 context priority cards** translate into actual token-optimized context.
+This is where the **13 context toggle cards** translate into actual token-optimized context.
 
 ##### 3.1: MANDATORY Section (500 tokens)
 
-**Always included, regardless of user priorities**:
+**Always included, regardless of user toggle settings**:
 
 ```python
 context = []
@@ -273,7 +272,7 @@ Use vision_chunk_retrieve(chunk_id=2) to fetch additional chunks as needed.
 
 **Extraction Logic**:
 ```python
-tech_stack_priority = field_priorities.get("config_data.tech_stack", 7)
+tech_stack_priority = field_toggles.get("config_data.tech_stack", 7)
 
 if tech_stack_priority > 0:
     tech_stack_context = self._extract_tech_stack(
@@ -350,7 +349,7 @@ def _extract_tech_stack(self, tech_stack: str, priority: int) -> str:
 
 **Extraction Logic** (similar pattern for all config fields):
 ```python
-architecture_priority = field_priorities.get("config_data.architecture", 7)
+architecture_priority = field_toggles.get("config_data.architecture", 7)
 
 if architecture_priority > 0:
     architecture = product.config_data.get("architecture", "")
@@ -391,7 +390,7 @@ if architecture_priority > 0:
 
 **Extraction Logic**:
 ```python
-templates_priority = field_priorities.get("agent_templates", 7)
+templates_priority = field_toggles.get("agent_templates", 7)
 
 if templates_priority > 0:
     templates_context = await self._extract_agent_templates(
@@ -464,7 +463,7 @@ async def _extract_agent_templates(self, product_id: str, priority: int) -> str:
 
 **Extraction Logic** (Handover 0311):
 ```python
-learnings_priority = field_priorities.get("product_memory.learnings", 7)
+learnings_priority = field_toggles.get("product_memory.learnings", 7)
 
 if learnings_priority > 0:
     learnings_context = await self._extract_product_learnings(
@@ -673,7 +672,7 @@ git show --stat HEAD~5..HEAD
 
 **Extraction Logic**:
 ```python
-serena_priority = field_priorities.get("serena_mcp_enabled", 6)
+serena_priority = field_toggles.get("serena_mcp_enabled", 6)
 
 if serena_priority > 0 and include_serena:
     serena_context = self._inject_serena_tools(priority=serena_priority)
@@ -747,7 +746,7 @@ replace_symbol_body, search_for_pattern. Use these for 60-90% context prioritiza
 
 **Extraction Logic**:
 ```python
-codebase_priority = field_priorities.get("codebase_summary", 5)
+codebase_priority = field_toggles.get("codebase_summary", 5)
 
 if codebase_priority > 0:
     codebase_context = await self._extract_codebase_summary(
@@ -1263,21 +1262,21 @@ class OrchestrationService:
         project = await self._get_project(job.project_id)
         product = await self._get_product(project.product_id)
 
-        # Fetch user priorities
+        # Fetch user toggle config
         user = await self._get_user(user_id)
-        field_priorities = user.field_priority_config or DEFAULT_PRIORITIES
+        field_toggles = user.field_priority_config or DEFAULT_TOGGLES
 
-        # Build context with priorities
-        context = await self.mission_planner._build_context_with_priorities(
-            product, project, field_priorities, user_id, include_serena=True
+        # Build fetch instructions based on toggles
+        instructions = await self.mission_planner._build_fetch_instructions(
+            product, project, field_toggles, user_id, include_serena=True
         )
 
         return {
-            "mission_context": context,
+            "fetch_instructions": instructions,
             "project_id": str(project.id),
             "product_id": str(product.id),
             "context_budget": job.context_budget,
-            "field_priorities_applied": field_priorities
+            "field_toggles_applied": field_toggles
         }
 ```
 

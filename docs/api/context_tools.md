@@ -36,14 +36,12 @@ GiljoAI uses an on-demand context fetch architecture with a **single unified `fe
 4. Context assembled without truncation risk
 ```
 
-### 3-Tier Priority System
+### Toggle System
 
-| Tier | Label | Framing | Orchestrator Action |
-|------|-------|---------|---------------------|
-| **Priority 1** | CRITICAL | "REQUIRED" | MUST call `fetch_context()` |
-| **Priority 2** | IMPORTANT | "RECOMMENDED" | SHOULD call if budget allows |
-| **Priority 3** | REFERENCE | "OPTIONAL" | MAY call if project requires |
-| **Priority 4** | OFF | (excluded) | Never call tool |
+| State | Orchestrator Action |
+|-------|---------------------|
+| **Enabled** (toggle: true) | Call `fetch_context()` for this category |
+| **Disabled** (toggle: false) | Skip this category |
 
 ---
 
@@ -58,7 +56,7 @@ async def fetch_context(
     project_id: Optional[str],    # Project UUID (required for 'project' category)
     categories: List[str],        # MUST contain exactly ONE category (enforced in code)
     depth_config: Optional[Dict], # Override depth settings
-    apply_user_config: bool,      # Apply saved priority/depth settings (default: True)
+    apply_user_config: bool,      # Apply saved toggle/depth settings (default: True)
     format: str,                  # "structured" (nested) or "flat" (merged)
     db_manager: Optional[...]     # Database manager instance
 ) -> Dict[str, Any]
@@ -478,8 +476,8 @@ When `get_orchestrator_instructions()` returns framing, it includes priority ind
 # Example orchestrator logic - ONE category per call
 context_data = {}
 
-# CRITICAL: Always fetch (one call per category)
-for field_info in context_fetch_instructions["critical"]:
+# Fetch each enabled category (one call per category)
+for field_info in context_fetch_instructions:
     category = field_info["field"]
     result = await fetch_context(
         product_id=PRODUCT_ID,
@@ -487,28 +485,6 @@ for field_info in context_fetch_instructions["critical"]:
         categories=[category]  # Exactly ONE category
     )
     context_data[category] = result["data"][category]
-
-# IMPORTANT: Fetch if budget allows (one call per category)
-if tokens_remaining > 10000:
-    for field_info in context_fetch_instructions["important"]:
-        category = field_info["field"]
-        result = await fetch_context(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            categories=[category]  # Exactly ONE category
-        )
-        context_data[category] = result["data"][category]
-
-# REFERENCE: Fetch only if specifically needed (one call per category)
-for field_info in context_fetch_instructions["reference"]:
-    category = field_info["field"]
-    if mission_requires(category):
-        result = await fetch_context(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            categories=[category]  # Exactly ONE category
-        )
-        context_data[category] = result["data"][category]
 ```
 
 ---
