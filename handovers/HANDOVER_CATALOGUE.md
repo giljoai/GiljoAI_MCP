@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0817 ALL COMPLETE. 0818 WebSocket modal state. 0819a-c Project Closeout Lifecycle COMPLETE. 0820 Remove Context Priority Framing COMPLETE. 0821 Broadcast Deadlock Batch Counter COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0800-0817 ALL COMPLETE. 0818 WebSocket modal state. 0819a-c Project Closeout Lifecycle COMPLETE. 0820 Remove Context Priority Framing COMPLETE. 0821 Broadcast Deadlock Batch Counter COMPLETE. 0822 Memory Gate Quality Fixes IN PROGRESS. |
 
 ---
 
@@ -49,6 +49,7 @@
 | 0819c | Project Review Modal (Replace Reopen) | 2026-03-15 | COMPLETE — read-only review modal for completed/terminated, cancelled keeps Reopen, 19 tests |
 | 0820 | Remove Context Priority Framing | 2026-03-15 | COMPLETE (`77e34056`) — 4-phase removal across backend, API, frontend, docs |
 | 0821 | Broadcast Deadlock Batch Counter Fix | 2026-03-15 | COMPLETE (`c347d495`) — N+1 UPDATEs replaced with single CASE statement, 7 new tests, 39 total passing |
+| 0822 | Memory Gate Quality Fixes | 2026-03-15 | IN PROGRESS — timeout fallback, test mock fixes, computed extraction, WS try/catch |
 
 ### Recently Closed (February 2026 - from Active)
 
@@ -498,6 +499,7 @@ completed/reference/
 **0819a-c** (Enhancement & Feature Series): 0819a Closeout UI State (COMPLETE), 0819b Notification Lifecycle (COMPLETE), 0819c Project Review Modal (COMPLETE)
 **0820** (Enhancement & Feature Series): 0820 Remove Context Priority Framing (COMPLETE)
 **0821** (Enhancement & Feature Series): 0821 Broadcast Deadlock Batch Counter Fix (COMPLETE)
+**0822** (Enhancement & Feature Series): 0822 Memory Gate Quality Fixes (IN PROGRESS)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
