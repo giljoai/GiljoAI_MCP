@@ -295,17 +295,6 @@
       @close="showMessageAuditModal = false"
     />
 
-    <!-- Closeout Modal (Project completion) -->
-    <CloseoutModal
-      :show="showCloseoutModal"
-      :project-id="projectId"
-      :project-name="project.name"
-      :product-id="project.product_id"
-      @continue="handleContinue"
-      @closeout="handleCloseout"
-      @close="showCloseoutModal = false"
-    />
-
     <!-- Handover Modal (Orchestrator session refresh) -->
     <HandoverModal
       :show="showHandoverModal"
@@ -330,7 +319,6 @@ import { shouldShowLaunchAction } from '@/utils/actionConfig'
 import AgentDetailsModal from '@/components/projects/AgentDetailsModal.vue'
 import AgentJobModal from '@/components/projects/AgentJobModal.vue'
 import MessageAuditModal from '@/components/projects/MessageAuditModal.vue'
-import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
 import HandoverModal from '@/components/projects/HandoverModal.vue'
 
 const { copy: clipboardCopy } = useClipboard()
@@ -368,10 +356,6 @@ const props = defineProps({
   },
 
 })
-
-const emit = defineEmits([
-  'closeout-project',
-])
 
 /**
  * Composables
@@ -462,7 +446,6 @@ const sending = ref(false)
 const showAgentDetailsModal = ref(false)
 const showAgentJobModal = ref(false)
 const showMessageAuditModal = ref(false)
-const showCloseoutModal = ref(false)
 const showHandoverModal = ref(false)
 const handoverData = ref({ retirement_prompt: '', continuation_prompt: '' })
 const jobModalInitialTab = ref('mission')
@@ -867,35 +850,6 @@ async function sendMessage() {
   } finally {
     sending.value = false
   }
-}
-
-/**
- * Handle Continue Working action from closeout modal
- * Refreshes jobs to show new orchestrator
- */
-async function handleContinue() {
-  showCloseoutModal.value = false
-  await refreshJobs()
-  showToast({
-    message: 'Project continues with new orchestrator',
-    type: 'info',
-    timeout: 3000
-  })
-}
-
-/**
- * Handle Close Out action from closeout modal
- * Project is archived, navigate away or show success
- */
-async function handleCloseout(data) {
-  showCloseoutModal.value = false
-  showToast({
-    message: 'Project closed out successfully',
-    type: 'success',
-    timeout: 3000
-  })
-  // Emit event to parent component to handle navigation
-  emit('closeout-project', data)
 }
 
 /**

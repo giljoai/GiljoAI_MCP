@@ -3,7 +3,7 @@
 **Handover ID:** 0732b
 **Priority:** P3 - LOW
 **Estimated Effort:** 30 min
-**Status:** Deferred (post-launch or pre-launch polish)
+**Status:** COMPLETE
 **Edition Scope:** CE
 
 ---
@@ -41,4 +41,4 @@ Screenshots need a running instance with realistic sample data (projects, agents
 ---
 
 **Created**: 2026-03-08
-**Execute When**: Before or shortly after CE public release
+**Completed**: 2026-03-14 — Screenshots captured manually by user.
