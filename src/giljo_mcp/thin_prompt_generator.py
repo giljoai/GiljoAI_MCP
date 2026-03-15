@@ -372,14 +372,14 @@ class ThinClientPromptGenerator:
         project_id: str,
         user_id: str | None = None,
         tool: str = "universal",
-        field_priorities: dict[str, int | None] = None,
+        field_toggles: dict[str, bool | None] = None,
         depth_config: dict[str, Any | None] = None,  # NEW PARAMETER (Handover 0315)
         continuation_mode: bool = False,  # NEW PARAMETER (Handover 0461c)
     ) -> dict[str, Any]:
         """
         Generate a thin orchestrator prompt for a specified project.
 
-        Handover 0088: Uses metadata JSONB column for storing field_priorities,
+        Handover 0088: Uses metadata JSONB column for storing field_toggles,
         user_id, tool, and other thin client data.
 
         Handover 0315: Generates thin prompts (~600 tokens) that reference MCP tools
@@ -391,9 +391,9 @@ class ThinClientPromptGenerator:
 
         Args:
             project_id: Project UUID
-            user_id: Optional user ID for tracking and fetching priorities/depth config
+            user_id: Optional user ID for tracking and fetching toggle/depth config
             tool: AI coding tool (claude-code, codex, gemini, universal)
-            field_priorities: Optional field importance weights (v2.0 categories)
+            field_toggles: Optional field toggle config (True=enabled, False=disabled)
             depth_config: Optional depth configuration (v2.0 depth settings)
             continuation_mode: If True, generate continuation prompt (reads 360 Memory instead of re-staging)
 
@@ -411,8 +411,8 @@ class ThinClientPromptGenerator:
         # Fetch product for context injection
         product = await self._fetch_product(project_id)
 
-        # Handover 0315: Fetch user priorities and depth config if user_id provided
-        if user_id and (not field_priorities or not depth_config):
+        # Handover 0315: Fetch user toggle and depth config if user_id provided
+        if user_id and (not field_toggles or not depth_config):
             from src.giljo_mcp.models.auth import User
 
             user_stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
@@ -421,9 +421,11 @@ class ThinClientPromptGenerator:
 
             if user:
                 # Use user config if not provided
-                if not field_priorities and user.field_priority_config:
-                    # Extract priorities dict from v2.0 structure
-                    field_priorities = user.field_priority_config.get("priorities", {})
+                if not field_toggles and user.field_priority_config:
+                    raw_config = user.field_priority_config.get("priorities", {})
+                    field_toggles = {
+                        k: v.get("toggle", True) if isinstance(v, dict) else bool(v) for k, v in raw_config.items()
+                    }
 
                 if not depth_config and user.depth_config:
                     depth_config = user.depth_config
@@ -471,7 +473,7 @@ class ThinClientPromptGenerator:
             # Update parent AgentJob metadata
             if existing_execution.job:
                 existing_execution.job.job_metadata = {
-                    "field_priorities": field_priorities or {},
+                    "field_toggles": field_toggles or {},
                     "depth_config": depth_config,
                     "user_id": user_id,
                     "tool": tool,
@@ -511,7 +513,7 @@ class ThinClientPromptGenerator:
                 job_type="orchestrator",
                 status="active",
                 job_metadata={
-                    "field_priorities": field_priorities or {},
+                    "field_toggles": field_toggles or {},
                     "depth_config": depth_config,  # Handover 0315
                     "user_id": user_id,
                     "tool": tool,
@@ -577,7 +579,7 @@ class ThinClientPromptGenerator:
                 project=project,
                 product=product,
                 tool=tool,
-                field_priorities=field_priorities or {},
+                field_toggles=field_toggles or {},
                 depth_config=depth_config,
                 user_id=user_id,
             )
@@ -594,7 +596,7 @@ class ThinClientPromptGenerator:
         # This enables "Stage Project refresh" - when user changes field priorities
         # and clicks "Stage Project" again, they get updated instructions immediately
         regenerated_mission = await self._regenerate_mission(
-            product=product, project=project, field_priorities=field_priorities or {}, user_id=user_id
+            product=product, project=project, field_toggles=field_toggles or {}, user_id=user_id
         )
 
         # Estimate tokens
@@ -603,7 +605,7 @@ class ThinClientPromptGenerator:
         if regenerated_mission:
             logger.info(
                 f"[ThinPromptGenerator] Regenerated orchestrator instructions for {orchestrator_id}: "
-                f"~{estimated_mission_tokens} tokens (reflects current field priorities)"
+                f"~{estimated_mission_tokens} tokens (reflects current toggle config)"
             )
         else:
             logger.warning(f"[ThinPromptGenerator] Mission regeneration returned empty for {orchestrator_id}")
@@ -620,21 +622,18 @@ class ThinClientPromptGenerator:
         }
 
     async def _regenerate_mission(
-        self, product: Product, project: Project, field_priorities: dict[str, int], user_id: str | None
+        self, product: Product, project: Project, field_toggles: dict[str, bool], user_id: str | None
     ) -> str:
         """
-        Regenerate orchestrator mission with current field priorities.
+        Regenerate orchestrator mission with current toggle config.
 
         Handover 0276: Enables "Stage Project refresh" - user changes settings,
         clicks "Stage Project", gets updated instructions immediately.
 
-        This is a simplified version of MissionPlanner._build_context_with_priorities
-        that works within the existing transaction (doesn't create new session).
-
         Args:
             product: Product model with vision and config
             project: Project model with description
-            field_priorities: Field importance weights (1-4 scale)
+            field_toggles: Field toggle config (True=enabled, False=disabled)
             user_id: User ID for audit trail
 
         Returns:
@@ -656,29 +655,24 @@ class ThinClientPromptGenerator:
                 mission_parts.append(f"## Mission\n{project.mission}")
 
             # Tech stack (from product config_data)
-            tech_priority = field_priorities.get("tech_stack", 2)
-            if product and product.config_data and tech_priority > 0:
+            if field_toggles.get("tech_stack", True) and product and product.config_data:
                 tech_stack = product.config_data.get("tech_stack", {})
                 if tech_stack:
                     tech_parts = []
-                    # Handle dict format: {"languages": [...], "frameworks": [...]}
                     if isinstance(tech_stack, dict):
                         if tech_stack.get("languages"):
                             tech_parts.append(f"Languages: {', '.join(tech_stack['languages'])}")
                         if tech_stack.get("frameworks"):
                             tech_parts.append(f"Frameworks: {', '.join(tech_stack['frameworks'])}")
-                    # Handle list format: ["Python 3.11+", "PostgreSQL"]
                     elif isinstance(tech_stack, list):
                         tech_parts.append(f"Stack: {', '.join(tech_stack)}")
-                    # Handle string format: "Python 3.11+"
                     elif isinstance(tech_stack, str):
                         tech_parts.append(f"Stack: {tech_stack}")
                     if tech_parts:
                         mission_parts.append(f"## Tech Stack\n{chr(10).join(tech_parts)}")
 
             # Architecture (from product config_data)
-            arch_priority = field_priorities.get("architecture", 2)
-            if product and product.config_data and arch_priority > 0:
+            if field_toggles.get("architecture", True) and product and product.config_data:
                 architecture = product.config_data.get("architecture", {})
                 if architecture and architecture.get("patterns"):
                     mission_parts.append(f"## Architecture\n{', '.join(architecture['patterns'])}")
@@ -790,12 +784,12 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
         project: Any,
         product: Any,
         tool: str,
-        field_priorities: dict[str, int],
+        field_toggles: dict[str, bool],
         depth_config: dict[str, Any],
         user_id: str | None = None,
     ) -> str:
         """
-        Generate thin prompt listing available MCP tools by priority (Handover 0315).
+        Generate thin prompt listing available MCP tools (Handover 0315).
 
         Returns ~600 token prompt (vs ~3500 in fat prompt) that references MCP tools
         for on-demand context fetching.
@@ -807,11 +801,11 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
             project: Project model
             product: Product model
             tool: AI coding tool (claude-code, codex, gemini, universal)
-            field_priorities: User field priority configuration (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)
+            field_toggles: User field toggle config (True=enabled, False=disabled)
             depth_config: User depth configuration (vision_documents, memory_last_n_projects, etc.)
 
         Returns:
-            Thin prompt with MCP tool references grouped by priority
+            Thin prompt with MCP tool references
         """
         # Monolithic Context Architecture (Handover 0280-0281)
         # All context fetched via single MCP tool: get_orchestrator_instructions()
@@ -864,8 +858,8 @@ WORKFLOW:
    → Expected: {{"status": "healthy", "database": "connected"}}
    → If failed: STOP and report error - do NOT proceed
 2. Fetch complete context: mcp__giljo-mcp__get_orchestrator_instructions('{orchestrator_id}')
-   → Returns prioritized context (vision, tech stack, architecture, memory, git history, templates)
-   → User priority configuration automatically applied server-side
+   → Returns configured context (vision, tech stack, architecture, memory, git history, templates)
+   → User toggle/depth configuration automatically applied server-side
    → Depth configuration (chunking, commit count, etc.) pre-configured
    → Note: tenant_key auto-injected by server from your API key session
 3. Create condensed mission plan from fetched context
@@ -1078,7 +1072,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         project_name: str,
         tool: str,
         product,
-        field_priorities: dict[str, int | None] = None,
+        field_toggles: dict[str, bool | None] = None,
     ) -> str:
         """
         Build thin client prompt WITH 360 Memory, Git integration, and Agent templates.
@@ -1087,8 +1081,6 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
 
         This extends _build_thin_prompt with context injection.
 
-        Handover 0306: Now includes agent templates based on field priority configuration.
-
         Args:
             session: AsyncSession for database access
             orchestrator_id: Orchestrator job UUID
@@ -1096,7 +1088,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
             project_name: Project display name
             tool: AI coding tool (claude-code, codex, gemini, universal)
             product: Product model for context injection
-            field_priorities: Optional user field priority config
+            field_toggles: Optional user field toggle config
 
         Returns:
             Enhanced thin prompt with memory, git, and agent template sections

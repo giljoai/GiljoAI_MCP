@@ -1,10 +1,11 @@
 """
 Testing Configuration Context Generator.
 
-Generates testing configuration context for orchestrators based on field priority.
-Supports priority-based detail levels and agent-specific guidance.
+Generates testing configuration context for orchestrators at varying detail levels.
+Supports agent-specific guidance based on role.
 
 Handover 0271: Testing Configuration Context Integration
+Handover 0820: Removed priority integer coupling, uses detail_level instead
 """
 
 import logging
@@ -15,39 +16,36 @@ logger = logging.getLogger(__name__)
 
 
 class TestingConfigGenerator:
-    """Generate testing configuration context based on priority and agent type."""
+    """Generate testing configuration context based on detail level and agent type."""
 
     @classmethod
-    def generate_context(cls, testing_config: dict[str, Any | None], priority: int = 1) -> str:
+    def generate_context(cls, testing_config: dict[str, Any | None], detail_level: str = "full") -> str:
         """
         Generate testing configuration context.
 
         Args:
             testing_config: Product testing configuration (from config_data.testing_config)
-            priority: Priority level (1=CRITICAL/FULL, 2=IMPORTANT/STANDARDS,
-                                    3=NICE_TO_HAVE/SUMMARY, 4=EXCLUDED/NONE)
+            detail_level: Detail level - "full", "standards", "summary", or "none"
 
         Returns:
-            Formatted testing context as string (empty if priority=4 or config is None)
+            Formatted testing context as string (empty if detail_level="none" or config is None)
         """
-        # Priority 4 (EXCLUDED) returns empty
-        if priority == 4:
+        if detail_level == "none":
             return ""
 
-        # None config returns empty (but empty dict {} is valid)
         if testing_config is None:
             return ""
 
-        if priority == 1:
+        if detail_level == "full":
             return cls._generate_full_config(testing_config)
-        if priority == 2:
+        if detail_level == "standards":
             return cls._generate_standards_only(testing_config)
         return cls._generate_summary(testing_config)
 
     @classmethod
     def _generate_full_config(cls, config: dict[str, Any]) -> str:
         """
-        Generate full testing configuration (Priority 1 - CRITICAL).
+        Generate full testing configuration.
 
         Includes:
         - Coverage target
@@ -72,7 +70,6 @@ class TestingConfigGenerator:
                     if libs:
                         frameworks_text += f"- {platform.title()}: {', '.join(libs)}\n"
             else:
-                # Handle if frameworks is a list
                 frameworks_text += f"- {', '.join(frameworks) if frameworks else 'Standard frameworks'}\n"
 
         # Format requirements
@@ -151,7 +148,7 @@ class Calculator:
     @classmethod
     def _generate_standards_only(cls, config: dict[str, Any]) -> str:
         """
-        Generate standards and frameworks only (Priority 2 - IMPORTANT).
+        Generate standards and frameworks only.
 
         Includes:
         - Coverage target
@@ -192,7 +189,7 @@ Use TDD (Test-Driven Development): Write tests first, then implement code to mak
     @classmethod
     def _generate_summary(cls, config: dict[str, Any]) -> str:
         """
-        Generate summary only (Priority 3 - NICE_TO_HAVE).
+        Generate summary only.
 
         Includes:
         - Coverage target
@@ -221,13 +218,10 @@ Apply TDD approach: Write tests first, then implement code.
             Testing context appropriate for the agent type
         """
         if agent_display_name in ["tester", "implementer"]:
-            # Full config for testing-focused agents
-            return cls.generate_context(testing_config, priority=1)
+            return cls.generate_context(testing_config, detail_level="full")
         if agent_display_name in ["reviewer"]:
-            # Standards only for reviewers
-            return cls.generate_context(testing_config, priority=2)
-        # Summary for others (architect, documenter, etc.)
-        return cls.generate_context(testing_config, priority=3)
+            return cls.generate_context(testing_config, detail_level="standards")
+        return cls.generate_context(testing_config, detail_level="summary")
 
 
 class TestingConfigValidator:
@@ -267,7 +261,6 @@ class TestingConfigValidator:
         frameworks = config.get("frameworks")
         if frameworks is not None:
             if isinstance(frameworks, dict):
-                # Check each platform has a list of frameworks
                 for platform, libs in frameworks.items():
                     if not isinstance(libs, (list, tuple)):
                         logger.warning(f"Frameworks for {platform} must be list/tuple")
