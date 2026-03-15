@@ -172,18 +172,16 @@ async def generate_orchestrator_prompt_thin(
         # Create thin prompt generator
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
-        # BUG FIX: Fetch user's field priority configuration from database
-        # Extract 'priorities' dict from user's field_priority_config JSONB column
-        # Fixed: Was looking for "fields" but should be "priorities"
+        # Extract toggle config from user's field_priority_config JSONB column
         user_field_config = current_user.field_priority_config or {}
-        field_priorities = user_field_config.get("priorities", {})
+        field_toggles = user_field_config.get("priorities", {})
 
-        # Generate thin prompt with user field priorities
+        # Generate thin prompt with user field toggles
         result = await generator.generate(
             project_id=project_id,
-            user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
+            user_id=str(current_user.id),
             tool=tool,
-            field_priorities=field_priorities,  # FIX: Pass user's configured field priorities
+            field_toggles=field_toggles,
         )
 
         # Broadcast WebSocket event for real-time UI update
@@ -379,17 +377,16 @@ async def generate_staging_prompt(
         # Initialize thin client generator
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
-        # BUG FIX: Fetch user's field priority configuration from database
-        # Extract 'priorities' dict from user's field_priority_config JSONB column (v2.0 schema)
+        # Extract toggle config from user's field_priority_config JSONB column
         user_field_config = current_user.field_priority_config or {}
-        field_priorities = user_field_config.get("priorities", {})
+        field_toggles = user_field_config.get("priorities", {})
 
-        # Generate thin prompt with user field priorities
+        # Generate thin prompt with user field toggles
         result = await generator.generate(
             project_id=project_id,
-            user_id=str(current_user.id),  # CRITICAL: Pass user_id for field priorities
+            user_id=str(current_user.id),
             tool=tool,
-            field_priorities=field_priorities,  # FIX: Pass user's configured field priorities
+            field_toggles=field_toggles,
         )
 
         # Use generate_staging_prompt for mode-specific content
@@ -588,13 +585,14 @@ async def get_implementation_prompt(
     # 5. Generate implementation prompt using existing generator method
     generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
-    # Check both gates for git closeout commit: integration enabled + context priority enabled
+    # Check both gates for git closeout commit: integration enabled + git_history toggle enabled
     git_enabled = False
     if project.product and getattr(project.product, "product_memory", None):
         git_config = project.product.product_memory.get("git_integration", {})
-        priorities = (getattr(current_user, "field_priority_config", None) or {}).get("priorities", {})
-        git_history_priority = priorities.get("git_history", 4)
-        git_enabled = git_config.get("enabled", False) and git_history_priority in (1, 2, 3)
+        toggles = (getattr(current_user, "field_priority_config", None) or {}).get("priorities", {})
+        git_toggle = toggles.get("git_history", {})
+        git_history_enabled = git_toggle.get("toggle", False) if isinstance(git_toggle, dict) else bool(git_toggle)
+        git_enabled = git_config.get("enabled", False) and git_history_enabled
 
     # Branch prompt generation by execution mode (0497c)
     prompt_type = (

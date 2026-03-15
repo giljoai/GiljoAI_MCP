@@ -100,7 +100,7 @@ class ProjectMissionUpdatedData(BaseModel):
         default="orchestrator", description="Source of mission generation"
     )
     user_config_applied: bool = Field(default=False, description="Whether user configuration was applied")
-    field_priorities: dict[str, int | None] = Field(None, description="Field priorities used in generation (1-5 scale)")
+    field_toggles: dict[str, Any] = Field(None, description="Field toggle config used in generation")
 
 
 class ProjectMissionUpdatedEvent(BaseModel):
@@ -128,7 +128,7 @@ class ProjectMissionUpdatedEvent(BaseModel):
                     "mission": "Implement user authentication with OAuth2",
                     "generated_by": "orchestrator",
                     "user_config_applied": True,
-                    "field_priorities": {"security": 5, "performance": 4, "ux": 3},
+                    "field_toggles": {"product_core": {"toggle": True}, "git_history": {"toggle": False}},
                 },
             }
         }
@@ -504,7 +504,7 @@ class EventFactory:
         mission: str,
         generated_by: Literal["orchestrator", "user"] = "orchestrator",
         user_config_applied: bool = False,
-        field_priorities: dict[str, int | None] = None,
+        field_toggles: dict[str, Any] = None,
     ) -> dict:
         """
         Create project:mission_updated event.
@@ -515,7 +515,7 @@ class EventFactory:
             mission: Generated mission text
             generated_by: Source of generation ("orchestrator" or "user")
             user_config_applied: Whether user configuration was applied
-            field_priorities: Field priorities used (1-5 scale)
+            field_toggles: Field toggle config used in generation
 
         Returns:
             Event dict ready for JSON serialization
@@ -529,7 +529,6 @@ class EventFactory:
             ... )
             >>> await ws.send_json(event)
         """
-        # Convert UUID to string if needed
         project_id_str = str(project_id) if isinstance(project_id, UUID) else project_id
 
         event = ProjectMissionUpdatedEvent(
@@ -540,7 +539,7 @@ class EventFactory:
                 mission=mission,
                 generated_by=generated_by,
                 user_config_applied=user_config_applied,
-                field_priorities=field_priorities,
+                field_toggles=field_toggles,
             ),
         )
         return event.model_dump(mode="json")

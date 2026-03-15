@@ -9,9 +9,9 @@ Provides REST API for comprehensive user CRUD operations:
 - Soft-delete user (admin only)
 - Change user role (admin only)
 - Change password (self or admin)
-- Field Priority Configuration (Handover 0048):
-  - GET /me/field-priority: Get user's config or defaults
-  - PUT /me/field-priority: Update user's field priority config
+- Field Toggle Configuration (Handover 0048, 0820):
+  - GET /me/field-priority: Get user's toggle config or defaults
+  - PUT /me/field-priority: Update user's field toggle config
   - POST /me/field-priority/reset: Reset to system defaults
 
 All endpoints enforce role-based access control and multi-tenant isolation.
@@ -131,42 +131,32 @@ class PasswordChangeResponse(BaseModel):
 
 class FieldPriorityConfig(BaseModel):
     """
-    Request/Response model for field priority configuration v2.0.
+    Request/Response model for field toggle configuration v3.0.
 
-    Handover 0313: Priority System Refactor
-    - v1.0: Priority = token reduction level (10/7/4/0)
-    - v2.0: Priority = fetch order / mandatory flag (1/2/3/4)
+    Handover 0820: Toggle-only system (removed priority integers).
+    Each category is either enabled (true) or disabled (false).
 
     Valid categories: product_core, vision_documents, agent_templates,
-                     project_description, memory_360, git_history
-
-    Valid priorities:
-    - 1: CRITICAL (always fetch, highest priority)
-    - 2: IMPORTANT (fetch if budget allows)
-    - 3: NICE_TO_HAVE (fetch if budget remaining)
-    - 4: EXCLUDED (never fetch)
+                     project_description, memory_360, git_history,
+                     tech_stack, architecture, testing
     """
 
-    priorities: dict[str, int] = Field(
-        ..., description="Category names mapped to priority (1=CRITICAL, 2=IMPORTANT, 3=NICE_TO_HAVE, 4=EXCLUDED)"
+    priorities: dict[str, Any] = Field(
+        ..., description="Category toggle config. Values: {'toggle': true/false} or flat bool"
     )
-    version: str = Field("2.0", description="Config schema version")
+    version: str = Field("3.0", description="Config schema version")
 
     @field_validator("priorities")
     @classmethod
-    def validate_priority_values(cls, v: dict[str, int]) -> dict[str, int]:
+    def validate_toggle_values(cls, v: dict[str, Any]) -> dict[str, Any]:
         """
-        Validate priority configuration.
+        Validate toggle configuration.
 
         Rules:
-        1. Priority values must be in range [1, 4]
-        2. At least one category must have Priority 1 (CRITICAL)
-        3. Cannot have all categories as EXCLUDED (Priority 4)
-        4. Valid categories only: product_core, vision_documents, agent_templates,
-                                  project_description, memory_360, git_history,
-                                  tech_stack, architecture, testing
+        1. Toggle values must be boolean (or dict with 'toggle' key)
+        2. Valid categories only
+        3. At least one category must be enabled
         """
-        valid_priorities = {1, 2, 3, 4}
         valid_categories = {
             "product_core",
             "vision_documents",
@@ -179,28 +169,31 @@ class FieldPriorityConfig(BaseModel):
             "testing",
         }
 
-        # Validate priority range
-        for category, priority in v.items():
-            if priority not in valid_priorities:
-                raise ValueError(
-                    f"Invalid priority {priority} for category '{category}'. "
-                    f"Must be one of: 1 (CRITICAL), 2 (IMPORTANT), 3 (NICE_TO_HAVE), 4 (EXCLUDED)"
-                )
-
         # Validate category names
         invalid_categories = set(v.keys()) - valid_categories
         if invalid_categories:
             raise ValueError(f"Invalid category names: {invalid_categories}. Valid categories: {valid_categories}")
 
-        # Ensure at least one CRITICAL category
-        critical_categories = [cat for cat, pri in v.items() if pri == 1]
-        if not critical_categories:
-            raise ValueError("At least one category must have Priority 1 (CRITICAL)")
+        # Validate toggle values and check at least one enabled
+        has_enabled = False
+        for category, value in v.items():
+            if isinstance(value, dict):
+                if "toggle" not in value or not isinstance(value["toggle"], bool):
+                    raise ValueError(
+                        f"Invalid toggle config for '{category}'. Must be {{'toggle': true/false}} or a flat boolean"
+                    )
+                if value["toggle"]:
+                    has_enabled = True
+            elif isinstance(value, bool):
+                if value:
+                    has_enabled = True
+            else:
+                raise ValueError(  # noqa: TRY004  Pydantic validators must raise ValueError
+                    f"Invalid value for '{category}': {value}. Must be {{'toggle': true/false}} or a flat boolean"
+                )
 
-        # Ensure not all EXCLUDED
-        all_excluded = all(pri == 4 for pri in v.values())
-        if all_excluded:
-            raise ValueError("Cannot exclude all categories. At least one must be Priority 1, 2, or 3")
+        if not has_enabled:
+            raise ValueError("At least one category must be enabled")
 
         return v
 
@@ -618,7 +611,7 @@ async def reset_password(
     return PasswordChangeResponse(message="Password reset to default. User must change on next login.")
 
 
-# Field Priority Configuration Endpoints (Handover 0048)
+# Field Toggle Configuration Endpoints (Handover 0048, 0820)
 
 
 @router.get("/me/field-priority", response_model=FieldPriorityConfig)
@@ -627,44 +620,40 @@ async def get_field_priority_config(
     user_service: UserService = Depends(get_user_service),
 ) -> FieldPriorityConfig:
     """
-    Get user's field priority configuration or default (v2.0).
+    Get user's field toggle configuration or defaults (v3.0).
 
-    Returns the authenticated user's custom field priority configuration if set,
-    otherwise returns the system default v2.0 configuration.
+    Returns the authenticated user's custom field toggle configuration if set,
+    otherwise returns the system default v3.0 configuration.
 
-    Handover 0313: Priority System Refactor (v1.0 → v2.0)
-    - v1.0: Priority = token reduction level (10/7/4/0)
-    - v2.0: Priority = fetch order / mandatory flag (1/2/3/4)
+    Handover 0820: Toggle-only system (removed priority integers).
 
     Args:
         current_user: Current authenticated user
         user_service: User service for database operations
 
     Returns:
-        FieldPriorityConfig: User's custom config or system defaults (v2.0)
+        FieldPriorityConfig: User's custom config or system defaults (v3.0)
 
     Raises:
         ResourceNotFoundError: User not found (404)
         BaseGiljoError: Database operation failed (500)
 
-    Example Response (v2.0):
+    Example Response (v3.0):
         {
-            "version": "2.0",
+            "version": "3.0",
             "priorities": {
-                "product_core": 1,
-                "agent_templates": 1,
-                "vision_documents": 2,
-                "project_description": 2,
-                "memory_360": 3,
-                "git_history": 4
+                "product_core": {"toggle": true},
+                "agent_templates": {"toggle": true},
+                "vision_documents": {"toggle": true},
+                "git_history": {"toggle": false}
             }
         }
     """
-    logger.debug(f"User {current_user.username} retrieving field priority config")
+    logger.debug(f"User {current_user.username} retrieving field toggle config")
 
     config = await user_service.get_field_priority_config(str(current_user.id))
 
-    logger.debug(f"Returning field priority config for user {current_user.username}")
+    logger.debug(f"Returning field toggle config for user {current_user.username}")
     return FieldPriorityConfig(**config)
 
 
@@ -675,17 +664,15 @@ async def update_field_priority_config(
     user_service: UserService = Depends(get_user_service),
 ) -> FieldPriorityConfig:
     """
-    Update user's field priority configuration (v2.0).
+    Update user's field toggle configuration (v3.0).
 
-    Validates category names and priority values before saving. Emits WebSocket
+    Validates category names and toggle values before saving. Emits WebSocket
     event for real-time UI synchronization across clients.
 
-    Handover 0313: Priority System Refactor (v1.0 → v2.0)
-    - v1.0 removed: field validation, token budget validation
-    - v2.0 added: category validation, CRITICAL requirement, WebSocket emission
+    Handover 0820: Toggle-only system (removed priority integers).
 
     Args:
-        config: New field priority configuration (v2.0)
+        config: New field toggle configuration (v3.0)
         current_user: Current authenticated user
         user_service: User service for database operations
 
@@ -693,25 +680,22 @@ async def update_field_priority_config(
         FieldPriorityConfig: Updated configuration
 
     Raises:
-        ValidationError: Invalid priority or category (400/422)
+        ValidationError: Invalid toggle or category (400/422)
         ResourceNotFoundError: User not found (404)
         BaseGiljoError: Database operation failed (500)
 
-    Example Request (v2.0):
+    Example Request (v3.0):
         {
-            "version": "2.0",
+            "version": "3.0",
             "priorities": {
-                "product_core": 1,
-                "agent_templates": 1,
-                "vision_documents": 2,
-                "project_description": 2,
-                "memory_360": 3,
-                "git_history": 4
+                "product_core": {"toggle": true},
+                "vision_documents": {"toggle": true},
+                "git_history": {"toggle": false}
             }
         }
     """
     logger.debug(
-        f"User {current_user.username} updating field priority config to v{config.version}",
+        f"User {current_user.username} updating field toggle config to v{config.version}",
         extra={
             "user_id": str(current_user.id),
             "tenant_key": current_user.tenant_key,
@@ -719,16 +703,15 @@ async def update_field_priority_config(
         },
     )
 
-    # Pydantic validation already enforced (1-4 range, CRITICAL requirement, valid categories)
-    # Update via service (service handles WebSocket emission)
+    # Pydantic validation already enforced (toggle booleans, valid categories, at least one enabled)
     await user_service.update_field_priority_config(str(current_user.id), config.model_dump())
 
     logger.info(
-        f"Updated field priority config for user: {current_user.username}",
+        f"Updated field toggle config for user: {current_user.username}",
         extra={
             "user_id": str(current_user.id),
             "tenant_key": current_user.tenant_key,
-            "priorities": config.priorities,
+            "toggles": config.priorities,
         },
     )
 
@@ -741,9 +724,9 @@ async def reset_field_priority_config(
     user_service: UserService = Depends(get_user_service),
 ) -> FieldPriorityConfig:
     """
-    Reset field priority configuration to system defaults.
+    Reset field toggle configuration to system defaults.
 
-    Clears user's custom configuration and returns system defaults.
+    Clears user's custom configuration and returns system defaults (v3.0).
     Useful for reverting customizations.
 
     Args:
@@ -751,7 +734,7 @@ async def reset_field_priority_config(
         user_service: User service for database operations
 
     Returns:
-        FieldPriorityConfig: System default configuration
+        FieldPriorityConfig: System default configuration (v3.0)
 
     Raises:
         ResourceNotFoundError: User not found (404)
@@ -759,21 +742,20 @@ async def reset_field_priority_config(
 
     Example Response:
         {
-            "version": "2.0",
+            "version": "3.0",
             "priorities": {
-                "product_core": 1,
-                "agent_templates": 1,
+                "product_core": {"toggle": true},
+                "agent_templates": {"toggle": true},
                 ...
             }
         }
     """
-    logger.debug(f"User {current_user.username} resetting field priority config to defaults")
+    logger.debug(f"User {current_user.username} resetting field toggle config to defaults")
 
     await user_service.reset_field_priority_config(str(current_user.id))
 
-    logger.info(f"Reset field priority config to defaults for user: {current_user.username}")
+    logger.info(f"Reset field toggle config to defaults for user: {current_user.username}")
 
-    # Return system defaults
     from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
 
     return FieldPriorityConfig(**DEFAULT_FIELD_PRIORITY)
