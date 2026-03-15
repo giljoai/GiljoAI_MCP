@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-14 (0816, 0817 created for March audit cleanup)
+**Last Updated:** 2026-03-14 (0817 COMPLETE, 0816 still NOT STARTED)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved), 0812 schema cleanup COMPLETE, 0813 template context separation COMPLETE, 0814 template manager UI redesign COMPLETE, 0815 code review remediation COMPLETE, 0816 vision upload UX NOT STARTED, 0817 audit cleanup remainder NOT STARTED |
+| 0800+ | Enhancement & Feature Series | 0800-0811 triage COMPLETE (20/21 Feb items resolved), 0812 schema cleanup COMPLETE, 0813 template context separation COMPLETE, 0814 template manager UI redesign COMPLETE, 0815 code review remediation COMPLETE, 0816 vision upload UX NOT STARTED, 0817 audit cleanup remainder COMPLETE |
 
 ---
 
@@ -35,7 +35,7 @@
 | 0812 | Remove Unused task.job_id FK | **COMPLETE** | Low | Dead schema removed. Column, FK, 2 indexes dropped. Commit `95b9ec99`. |
 | 0815 | Code Review Remediation (March 2026 Commits) | **COMPLETE** | HIGH | 2 HIGH, 6 MEDIUM, 5 LOW findings fixed. 621 tests passing. |
 | 0816 | Vision Upload Progress UX Fix | **Not Started** | Medium | ProductForm has progress bar UI but never receives upload state from parent. Props-down fix. |
-| 0817 | March 2026 Audit Cleanup Remainder | **Not Started** | Low | 3 broken E2E testids (implement-tab→jobs-tab) + 28 co-located test files to relocate. |
+| 0817 | March 2026 Audit Cleanup Remainder | **COMPLETE** | Low | E2E selectors fixed (`6b87f67a`), 28 test files relocated (`da5fc6d6`). Archived to `completed/`. |
 | 0732b | README Screenshots | Deferred | Low | 30 min. Requires running instance with sample data. |
 | 1014 | Security Event Auditing | Deferred | Medium | Enterprise compliance. No requirement yet. |
 | TODO_vision | Vision Summarizer LLM Upgrade | Deferred | Low | Phase 1 incomplete. Current Sumy works. |
@@ -48,6 +48,7 @@
 | 0814 | Template Manager UI Redesign | 2026-03-12 | COMPLETE (12+ commits) — 4 bugs fixed, dialog redesign, export unification, 20 tests |
 | 0812 | Remove Unused task.job_id FK | 2026-03-12 | COMPLETE (`95b9ec99`) — dead column, FK, 2 indexes removed from tasks table |
 | 0815 | Code Review Remediation (March 2026 Commits) | 2026-03-12 | COMPLETE — 2 HIGH, 6 MEDIUM, 5 LOW findings fixed across 14 files, 621 tests |
+| 0817 | March 2026 Audit Cleanup Remainder | 2026-03-14 | COMPLETE — E2E selectors fixed, 28 test files relocated from src/ to tests/ |
 
 ### Recently Closed (February 2026 - from Active)
 
@@ -149,6 +150,7 @@
 |----|-------|--------|
 | 0812 | Remove Unused task.job_id FK | **COMPLETE** (2026-03-12, `95b9ec99`, dead column + FK + 2 indexes removed) |
 | 0815 | Code Review Remediation (March 2026 Commits) | **COMPLETE** (2026-03-12, 2 HIGH + 6 MEDIUM + 5 LOW findings fixed, 14 files, 621 tests) |
+| 0817 | March 2026 Audit Cleanup Remainder | **COMPLETE** (2026-03-14, E2E selectors fixed + 28 test files relocated, commits `6b87f67a` + `da5fc6d6`) |
 | 0814 | Template Manager UI Redesign | **COMPLETE** (2026-03-12, 12+ commits, 4 bugs fixed, dialog redesign, export unification, 20 tests) |
 | 0259 | Notification Health Alert - Add Project Context | **COMPLETE** (2026-03-12, `e149f09d`, project name + click-to-navigate in health alerts) |
 | 0765a-s | Perfect Score Sprint (19 sessions) | **COMPLETE** (2026-03-08, 67 commits, ~12K+ lines dead code removed, 1390 tests pass / 0 skipped) |
@@ -485,7 +487,7 @@ completed/reference/
 **0814** (Enhancement & Feature Series): 0814 Template Manager UI Redesign (COMPLETE)
 **0815** (Enhancement & Feature Series): 0815 Code Review Remediation March 2026 (COMPLETE)
 **0816** (Enhancement & Feature Series): 0816 Vision Upload Progress UX Fix (NOT STARTED)
-**0817** (Enhancement & Feature Series): 0817 March 2026 Audit Cleanup Remainder (NOT STARTED)
+**0817** (Enhancement & Feature Series): 0817 March 2026 Audit Cleanup Remainder (COMPLETE)
 **0818+** (Enhancement & Feature Series): Available for new feature/enhancement work
 **1000-1014** (Greptile Security): 1000-1014
 
