@@ -225,6 +225,44 @@ describe('ProjectReviewModal.vue', () => {
     })
   })
 
+  describe('Agent Message Lazy Loading', () => {
+    it('loads messages when agent panel is expanded via v-model watcher', async () => {
+      wrapper = await mountAndWaitForData()
+
+      // Simulate panel expansion by setting expandedAgentPanels
+      wrapper.vm.expandedAgentPanels = [0]
+      await flushPromises()
+
+      expect(api.agentJobs.messages).toHaveBeenCalledWith('job-1')
+    })
+
+    it('does not reload messages for already-loaded agent', async () => {
+      wrapper = await mountAndWaitForData()
+
+      // First expansion
+      wrapper.vm.expandedAgentPanels = [0]
+      await flushPromises()
+
+      // Second expansion of same panel
+      wrapper.vm.expandedAgentPanels = [0]
+      await flushPromises()
+
+      // Should only call once (guard in loadAgentMessages)
+      expect(api.agentJobs.messages).toHaveBeenCalledTimes(1)
+    })
+
+    it('resets expanded panels on modal close', async () => {
+      wrapper = await mountAndWaitForData()
+      wrapper.vm.expandedAgentPanels = [0]
+      await flushPromises()
+
+      await wrapper.setProps({ show: false })
+      await flushPromises()
+
+      expect(wrapper.vm.expandedAgentPanels).toEqual([])
+    })
+  })
+
   describe('Response Shape Handling', () => {
     it('extracts jobs from JobListResponse shape (res.data.jobs)', async () => {
       wrapper = await mountAndWaitForData()
