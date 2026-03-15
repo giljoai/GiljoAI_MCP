@@ -301,13 +301,13 @@ job = AgentJob(
 
 **CORRECT**:
 ```python
-# Store field priorities for MCP tool
+# Store field toggles for MCP tool
 job = AgentJob(
     job_id=job_id,
     mission=condensed_mission,
     metadata={
-        'field_priorities': field_priorities,  # CRITICAL
-        'user_id': user_id,                    # CRITICAL
+        'field_toggles': field_toggles,  # CRITICAL
+        'user_id': user_id,              # CRITICAL
         'tool': tool
     }
 )

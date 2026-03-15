@@ -4,39 +4,35 @@ This guide explains how to configure context management in GiljoAI.
 
 ## Overview
 GiljoAI gives you fine-grained control over what context your orchestrators receive using a 2-dimensional model:
-- **Priority** (WHAT to fetch) - Controls importance levels
-- **Depth** (HOW MUCH detail) - Controls token usage
+- **Toggles** (WHAT to fetch) - On/off per category
+- **Depth** (HOW MUCH detail) - Controls token usage per source
 
-## Configuring Priority
+## Configuring Toggles
 
-**Location**: My Settings → Context → Field Priority Configuration
+**Location**: My Settings → Context Configuration
 
 **Steps**:
 1. Navigate to My Settings
 2. Click "Context" tab
-3. Select "Field Priority Configuration"
-4. Adjust priority badges for each field group
+3. Toggle each field group on or off
 
-**Priority Levels**:
-- **Priority 1 (Red)** - CRITICAL - Always included
-- **Priority 2 (Orange)** - IMPORTANT - High priority
-- **Priority 3 (Blue)** - NICE_TO_HAVE - Medium priority
-- **Priority 4 (Gray)** - EXCLUDED - Never included
+**Toggle States**:
+- **Enabled** (toggle on) - Category included in orchestrator context
+- **Disabled** (toggle off) - Category excluded entirely
 
 **Example**:
-- Set "Tech Stack" to Priority 1 if every orchestrator needs it
-- Set "Git History" to Priority 3 if it's only sometimes useful
-- Set unused fields to Priority 4 to exclude them
+- Enable "Tech Stack" if every orchestrator needs it
+- Disable "Git History" if it's not useful for your current workflow
+- Disable unused fields to keep context lean
 
 ## Configuring Depth
 
-**Location**: My Settings → Context → Depth Configuration
+**Location**: My Settings → Context Configuration (depth controls per source)
 
 **Steps**:
 1. Navigate to My Settings
 2. Click "Context" tab
-3. Select "Depth Configuration"
-4. Adjust depth controls for each source
+3. Adjust depth controls for each enabled source
 
 **Depth Controls**:
 
@@ -59,13 +55,13 @@ GiljoAI gives you fine-grained control over what context your orchestrators rece
 
 ### 1. Product Context
 **What**: Product name, description, core features
-**When to use**: Always (set to Priority 1)
+**When to use**: Always (keep enabled)
 **Depth control**: On/Off toggle
 
 ### 2. Vision Documents
 **What**: Uploaded vision documents (chunked)
 **When to use**: For long-term product vision
-**Depth control**: Chunking level (none → heavy)
+**Depth control**: Chunking level (none to heavy)
 
 ### 3. Tech Stack
 **What**: Programming languages, frameworks, databases
@@ -95,32 +91,32 @@ GiljoAI gives you fine-grained control over what context your orchestrators rece
 ### 8. Agent Templates
 **What**: Available agent templates
 **When to use**: For agent selection decisions
-**Depth control**: Detail level (minimal → full)
+**Depth control**: Detail level (minimal to full)
 
 ### 9. Project Context
 **What**: Current project name, description, mission
-**When to use**: Always (set to Priority 1)
+**When to use**: Always (keep enabled)
 **Depth control**: On/Off toggle
 
 ## Best Practices
 
-1. **Set Core Context to Priority 1**:
+1. **Keep Core Context Enabled**:
    - Product Context
    - Project Context
    - Tech Stack
 
-2. **Use Priority 2 for Domain-Specific**:
+2. **Enable Domain-Specific Sources As Needed**:
    - Architecture (for design work)
    - Testing (for QA tasks)
    - Vision Documents (for strategic work)
 
-3. **Use Priority 3 for Nice-to-Have**:
-   - 360 Memory (historical context)
-   - Git History (code evolution)
+3. **Disable What You Don't Need**:
+   - 360 Memory (if no past projects)
+   - Git History (if not relevant)
 
 4. **Adjust Depth Based on Task**:
-   - High-level tasks → Lower depth (overview)
-   - Detailed tasks → Higher depth (full details)
+   - High-level tasks: Lower depth (overview)
+   - Detailed tasks: Higher depth (full details)
 
 5. **Monitor Token Usage**:
    - Watch real-time estimates
@@ -130,13 +126,13 @@ GiljoAI gives you fine-grained control over what context your orchestrators rece
 ## Troubleshooting
 
 **Problem**: Orchestrator lacks important context
-**Solution**: Increase priority or depth for relevant sources
+**Solution**: Enable the relevant source and increase depth
 
 **Problem**: Hitting token limits frequently
 **Solution**: Decrease depth settings, especially for Vision and 360 Memory
 
 **Problem**: Orchestrator fetching irrelevant context
-**Solution**: Lower priority or exclude unnecessary sources
+**Solution**: Disable unnecessary sources
 
 **Problem**: Slow orchestrator startup
 **Solution**: Reduce depth for large sources (Vision, 360 Memory, Git History)

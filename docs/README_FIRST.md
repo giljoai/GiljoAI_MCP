@@ -32,7 +32,7 @@
 - **Agent Monitoring & Graceful Cancellation (Handover 0107)** - Contextual check-ins, passive health monitoring, graceful cancellation
 - **Project Soft Delete with Recovery (Handover 0070)** - 10-day recovery window with UI in Settings → Database
 - Single Active Product Architecture (Handover 0050) - One active product per tenant with database enforcement. **Extension (0050b)**: Projects also follow single-active pattern - one active project per product with cascade deactivation. See features/project_state_management.md and SERVER_ARCHITECTURE_TECH_STACK.md for details.
-- Context Priority Management (Handover 0052) - User-customizable token budgets per field
+- Context Toggle Management (Handover 0052) - User-customizable field toggles and depth controls
 - Multi-Tool Agent Orchestration (Handover 0045) - 40-60% cost optimization via tool mixing
 - Products View Unified Management (Handover 0046) - Complete product lifecycle management
 - Product Rich Context Fields (Handover 0042) - 13+ fields for maximum agent context

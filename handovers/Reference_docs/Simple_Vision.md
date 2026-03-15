@@ -76,7 +76,7 @@ The orchestrator achieves **strong context prioritization and orchestration** th
 - **Mission Planner** (`mission_planner.py`) - Generates condensed missions from vision docs, avoiding context duplication
 - **Agent Selector** (`agent_selector.py`) - Smart agent selection based on capabilities, assigning only necessary agents
 - **Workflow Engine** (`workflow_engine.py`) - Coordinates waterfall/parallel execution, preventing redundant context loading
-- **Field Priority System** - Only includes high-priority fields in missions, respecting token budgets (Handover 0048, 0049)
+- **Field Toggle System** - Only includes enabled fields in missions, with depth controls for token management (Handover 0048, 0049)
 - **Template Resolution Cascade** - Efficient template loading without redundant database hits (Handover 0041)
 
 Instead of flooding agents with ALL product context, the orchestrator intelligently extracts, condenses, and prioritizes information. This means agents get exactly what they need to do their work - nothing more, nothing less.
@@ -225,7 +225,7 @@ The project launch preview is where the orchestrator agent is configured and the
 When you click the **"Stage Project"** button (which technically calls `POST /api/v1/projects/{id}/activate`), the orchestrator:
 1. Reads the human-written project description from the database
 2. Retrieves product context (vision documents, tech stack, dependencies)
-3. Applies field priority settings from "My Settings" to optimize token usage
+3. Applies field toggle/depth settings from "My Settings" to optimize token usage
 4. Generates a condensed mission statement (displayed in "Orchestrator Created Mission" window)
 5. Selects appropriate agents from active templates (max 8 roles, unlimited per type)
 6. Creates agent cards that appear live in the "Agent Team" window
@@ -292,31 +292,30 @@ When all agents complete their work, the project closeout system activates. The 
 
 This ensures projects don't just "end" - they close out properly with documentation, version control updates, and a clean audit trail. The static agent grid layout (Handover 0073) also ensures agent cards maintain consistent positions throughout the project lifecycle.
 
-# Token Management & Field Priority (Handovers 0048, 0049)
+# Token Management & Field Toggles (Handovers 0048, 0049, 0820)
 
 We have a comprehensive token management system to keep context within AI tool limits (Claude Code's 25K token input limit being the primary target).
 
 ## Token Estimation API
 
 The system includes a real-time token estimation endpoint (`/api/products/{product_id}/token-estimate`) that calculates token usage for mission generation based on:
-- Active product fields and their configured priorities
-- Vision documents (chunked and prioritized)
+- Active product fields and their toggle/depth settings
+- Vision documents (chunked with depth controls)
 - Project descriptions
 - Tech stack and dependencies
 - Agent template content
 
 This allows developers to see token estimates BEFORE launching the orchestrator, preventing context overload.
 
-## Field Priority Configuration
+## Field Toggle Configuration
 
-Users can configure **which product fields** get included in missions and at what priority level:
-- **Priority 1 fields**: Always included in missions (critical context)
-- **Priority 2-3 fields**: Included if token budget allows
-- **Priority 4+ fields**: Optional, included only if plenty of budget remains
+Users configure **which product fields** get included in missions via simple on/off toggles, plus depth controls for how much data to serve per category:
+- **Enabled fields** (toggle: true): Included in missions with configured depth
+- **Disabled fields** (toggle: false): Excluded from missions entirely
 
-Default token budget per mission: **2000 tokens** (configurable). The orchestrator intelligently includes fields based on priority until the budget is reached, ensuring the most important context always makes it into the mission prompt.
+Depth controls (e.g., vision documents depth, 360 memory depth, git history commit count) give fine-grained control over how much data each enabled category provides.
 
-This smart prioritization is how we keep context within tool limits while maintaining context quality - we include what matters most, not everything.
+This toggle-based approach keeps context within tool limits while giving users simple, clear control over what context agents receive.
 
 # MCP Integration (Native Support - Handover 0069)
 

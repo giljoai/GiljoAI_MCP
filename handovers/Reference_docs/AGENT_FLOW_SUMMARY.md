@@ -212,13 +212,11 @@ TASK 5: spawn_agent_job() × N       → Create agent database records
 
 ---
 
-## Context Priority System
+## Context Configuration
 
-User configurable in: My Settings → Context → Priority Configuration
-- Priority 1: CRITICAL (always included)
-- Priority 2: IMPORTANT (usually included)
-- Priority 3: NICE_TO_HAVE (if space allows)
-- Priority 4: EXCLUDED (never included)
+User configurable in: My Settings → Context Configuration
+- Enabled (toggle: true): Category included with configured depth
+- Disabled (toggle: false): Category excluded entirely
 
 ---
 
@@ -329,7 +327,7 @@ Zero cross-tenant data leakage possible.
 4. Prompt copy for installing agents (Claude Code CLI)
 5. Enable Serena MCP and custom configure
 6. Github + 360 memory activate
-7. Context priority settings if desired
+7. Context toggle/depth settings if desired
 8. Invite more users as individual tenants
 9. Watch tutorial or instructions (not created yet)
 10. Use application

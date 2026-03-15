@@ -74,34 +74,34 @@ except Exception as e:
 **Code** (line 1412):
 
 ```python
-condensed_mission = await planner._build_context_with_priorities(
+condensed_mission = await planner._build_fetch_instructions(
     product=product,
     project=project,
-    field_priorities=field_priorities,
+    field_toggles=field_toggles,
     user_id=user_id,
     include_serena=include_serena  # ← Pass flag
 )
 ```
 
-Calls `MissionPlanner._build_context_with_priorities()` with the `include_serena` flag.
+Calls `MissionPlanner._build_fetch_instructions()` with the `include_serena` flag.
 
 ### Step 4: Context Building
 
-**Location**: `src/giljo_mcp/mission_planner.py:1050-1464`
+**Location**: `src/giljo_mcp/mission_planner.py`
 
-Function: `_build_context_with_priorities()`
+Function: `_build_fetch_instructions()`
 
-**Function signature** (line 1058):
+**Function signature**:
 
 ```python
-async def _build_context_with_priorities(
+async def _build_fetch_instructions(
     self,
     product: Product,
     project: Project,
-    field_priorities: dict[str, int] = None,
+    field_toggles: dict[str, bool] = None,
     user_id: str = None,
     include_serena: bool = False,  # ← Accept flag
-) -> str:
+) -> list[dict]:
 ```
 
 **Inside the function** (line 1378):
