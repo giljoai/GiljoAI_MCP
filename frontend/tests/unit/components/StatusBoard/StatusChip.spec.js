@@ -34,11 +34,11 @@ describe('StatusChip.vue', () => {
       const statuses = {
         waiting: 'mdi-clock-outline',
         working: 'mdi-cog',
-        blocked: 'mdi-alert-octagon',
+        blocked: 'mdi-account-question',
         complete: 'mdi-check-circle',
-        failed: 'mdi-alert-circle',
-        cancelled: 'mdi-cancel',
-        decommissioned: 'mdi-archive'
+        silent: 'mdi-clock-alert',
+        decommissioned: 'mdi-archive',
+        handed_over: 'mdi-hand-wave',
       };
 
       Object.entries(statuses).forEach(([status, expectedIcon]) => {

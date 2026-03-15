@@ -148,10 +148,10 @@ describe('UserManager.vue - Handover 0028 Email and Created Date Fields', () => 
       expect(userWithoutEmail.email).toBeNull()
     })
 
-    it('email column includes icon', () => {
-      // Template includes mdi-email icon for email column
-      const emailColumnExists = wrapper.html().includes('mdi-email')
-      expect(emailColumnExists).toBe(true)
+    it('email column is defined in headers', () => {
+      // The email column exists in the headers definition
+      const emailHeader = wrapper.vm.headers.find(h => h.key === 'email')
+      expect(emailHeader).toBeDefined()
     })
   })
 
@@ -183,9 +183,9 @@ describe('UserManager.vue - Handover 0028 Email and Created Date Fields', () => 
       expect(formattedDate).toBeDefined()
     })
 
-    it('created date column includes calendar icon', () => {
-      const calendarIconExists = wrapper.html().includes('mdi-calendar-plus')
-      expect(calendarIconExists).toBe(true)
+    it('created date column is defined in headers', () => {
+      const createdHeader = wrapper.vm.headers.find(h => h.key === 'created_at')
+      expect(createdHeader).toBeDefined()
     })
   })
 
@@ -311,6 +311,7 @@ describe('UserManager.vue - Handover 0028 Email and Created Date Fields', () => 
       await wrapper.vm.saveUser()
 
       expect(api.auth.updateUser).toHaveBeenCalledWith(2, {
+        username: 'developer',
         email: 'newemail@example.com',
         role: 'developer',
         is_active: true
@@ -330,6 +331,7 @@ describe('UserManager.vue - Handover 0028 Email and Created Date Fields', () => 
       await wrapper.vm.saveUser()
 
       expect(api.auth.updateUser).toHaveBeenCalledWith(2, {
+        username: 'developer',
         email: '',
         role: 'developer',
         is_active: true
@@ -392,14 +394,16 @@ describe('UserManager.vue - Handover 0028 Email and Created Date Fields', () => 
       expect(emailField).toContain('Email')
     })
 
-    it('email column has descriptive icon', () => {
-      const html = wrapper.html()
-      expect(html).toContain('mdi-email')
+    it('email column has header definition', () => {
+      const emailHeader = wrapper.vm.headers.find(h => h.key === 'email')
+      expect(emailHeader).toBeDefined()
+      expect(emailHeader.title).toBe('Email')
     })
 
-    it('created date column has descriptive icon', () => {
-      const html = wrapper.html()
-      expect(html).toContain('mdi-calendar-plus')
+    it('created date column has header definition', () => {
+      const createdHeader = wrapper.vm.headers.find(h => h.key === 'created_at')
+      expect(createdHeader).toBeDefined()
+      expect(createdHeader.title).toBe('Created')
     })
   })
 

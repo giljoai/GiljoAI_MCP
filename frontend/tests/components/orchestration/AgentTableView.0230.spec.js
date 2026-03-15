@@ -13,11 +13,10 @@ import * as api from '@/services/api'
  *
  * Handover 0230: Prompt Generation & Clipboard Copy
  *
- * Tests the integration of:
- * - api.prompts.agentPrompt() backend endpoint
- * - useClipboard composable
- * - handleCopyPrompt method
- * - canCopyPrompt logic (Claude Code toggle + decommissioned agents)
+ * Post-refactor notes:
+ * - snackbar ref replaced by useToast composable (showToast)
+ * - Success/error feedback now uses toast, not snackbar state
+ * - agent_display_name used instead of agent_type for orchestrator check
  */
 
 // Mock the api module
@@ -40,6 +39,14 @@ vi.mock('@/composables/useClipboard', () => ({
   })
 }))
 
+// Mock useToast composable
+const mockShowToast = vi.fn()
+vi.mock('@/composables/useToast', () => ({
+  useToast: () => ({
+    showToast: mockShowToast,
+  })
+}))
+
 describe('AgentTableView - Copy Prompt (Handover 0230)', () => {
   let wrapper
   let pinia
@@ -49,7 +56,7 @@ describe('AgentTableView - Copy Prompt (Handover 0230)', () => {
     id: 'orch-1',
     job_id: 'job-orch-1',
     agent_name: 'Orchestrator',
-    agent_type: 'orchestrator',
+    agent_display_name: 'orchestrator',
     is_orchestrator: true,
     status: 'working',
     progress: 50,
@@ -61,7 +68,7 @@ describe('AgentTableView - Copy Prompt (Handover 0230)', () => {
     id: 'impl-1',
     job_id: 'job-impl-1',
     agent_name: 'Backend Agent',
-    agent_type: 'implementer',
+    agent_display_name: 'implementer',
     is_orchestrator: false,
     status: 'working',
     progress: 30,
@@ -73,7 +80,7 @@ describe('AgentTableView - Copy Prompt (Handover 0230)', () => {
     id: 'decomm-1',
     job_id: 'job-decomm-1',
     agent_name: 'Old Agent',
-    agent_type: 'tester',
+    agent_display_name: 'tester',
     is_orchestrator: false,
     status: 'decommissioned',
     progress: 0,
@@ -142,22 +149,6 @@ describe('AgentTableView - Copy Prompt (Handover 0230)', () => {
       expect(wrapper.vm.copyingJobId).toBeDefined()
       expect(wrapper.vm.copyingJobId).toBe(null)
     })
-
-    it('component has snackbar ref', () => {
-      wrapper = mount(AgentTableView, {
-        props: {
-          agents: [mockOrchestrator],
-          mode: 'jobs',
-          usingClaudeCodeSubagents: false
-        },
-        global: {
-          plugins: [pinia, vuetify]
-        }
-      })
-
-      expect(wrapper.vm.snackbar).toBeDefined()
-      expect(wrapper.vm.snackbar.show).toBe(false)
-    })
   })
 
   describe('Copy Prompt Functionality', () => {
@@ -184,7 +175,7 @@ describe('AgentTableView - Copy Prompt (Handover 0230)', () => {
       expect(mockCopy).toHaveBeenCalledWith(mockPromptResponse.data.prompt)
     })
 
-    it('shows success snackbar after successful copy', async () => {
+    it('shows success toast after successful copy', async () => {
       wrapper = mount(AgentTableView, {
         props: {
           agents: [mockOrchestrator],
@@ -199,13 +190,16 @@ describe('AgentTableView - Copy Prompt (Handover 0230)', () => {
       await wrapper.vm.handleCopyPrompt(mockOrchestrator)
       await nextTick()
 
-      // Check snackbar state
-      expect(wrapper.vm.snackbar.show).toBe(true)
-      expect(wrapper.vm.snackbar.message).toContain('Prompt copied to clipboard!')
-      expect(wrapper.vm.snackbar.color).toBe('success')
+      // Check toast was called with success
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('copied'),
+          type: 'success'
+        })
+      )
     })
 
-    it('shows error snackbar when API call fails', async () => {
+    it('shows error toast when API call fails', async () => {
       // Mock API failure
       api.default.prompts.agentPrompt.mockRejectedValue(new Error('API Error'))
 
@@ -223,13 +217,16 @@ describe('AgentTableView - Copy Prompt (Handover 0230)', () => {
       await wrapper.vm.handleCopyPrompt(mockOrchestrator)
       await nextTick()
 
-      // Check error snackbar state
-      expect(wrapper.vm.snackbar.show).toBe(true)
-      expect(wrapper.vm.snackbar.message).toContain('Failed to copy prompt')
-      expect(wrapper.vm.snackbar.color).toBe('error')
+      // Check error toast was called
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Failed to copy prompt'),
+          type: 'error'
+        })
+      )
     })
 
-    it('shows error snackbar when clipboard copy fails', async () => {
+    it('shows error toast when clipboard copy fails', async () => {
       // Mock clipboard failure
       mockCopy.mockResolvedValue(false)
 
@@ -247,10 +244,12 @@ describe('AgentTableView - Copy Prompt (Handover 0230)', () => {
       await wrapper.vm.handleCopyPrompt(mockOrchestrator)
       await nextTick()
 
-      // Check error snackbar state
-      expect(wrapper.vm.snackbar.show).toBe(true)
-      expect(wrapper.vm.snackbar.message).toContain('Failed to copy prompt')
-      expect(wrapper.vm.snackbar.color).toBe('error')
+      // Check error toast was called
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error'
+        })
+      )
     })
 
     it('sets loading state during API call', async () => {

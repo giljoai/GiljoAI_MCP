@@ -1,20 +1,25 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ToolConfigSnippet from '@/components/ToolConfigSnippet.vue'
 
-// Mock clipboard API
-const mockClipboard = {
-  writeText: vi.fn()
-}
-Object.defineProperty(navigator, 'clipboard', {
-  value: mockClipboard,
-  configurable: true
-})
+// Mock the clipboard composable
+const mockCopy = vi.fn().mockResolvedValue(true)
+vi.mock('@/composables/useClipboard', () => ({
+  useClipboard: () => ({
+    copy: mockCopy,
+    copied: { value: false },
+    isSupported: { value: true },
+    error: { value: null },
+    reset: vi.fn(),
+  }),
+}))
+
+import ToolConfigSnippet from '@/components/ToolConfigSnippet.vue'
 
 describe('ToolConfigSnippet', () => {
   let wrapper
 
   beforeEach(() => {
+    vi.clearAllMocks()
     wrapper = mount(ToolConfigSnippet, {
       props: {
         language: 'json',
@@ -33,7 +38,7 @@ describe('ToolConfigSnippet', () => {
     const copyButton = wrapper.find('[data-test="copy-button"]')
     await copyButton.trigger('click')
 
-    expect(mockClipboard.writeText).toHaveBeenCalledWith('{"key": "test_api_key"}')
+    expect(mockCopy).toHaveBeenCalledWith('{"key": "test_api_key"}')
     expect(wrapper.vm.copySuccess).toBe(true)
   })
 

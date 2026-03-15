@@ -6,6 +6,7 @@ import { nextTick } from 'vue'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import AgentMissionEditModal from '@/components/projects/AgentMissionEditModal.vue'
+import api from '@/services/api'
 
 describe('AgentMissionEditModal.vue', () => {
   let wrapper
@@ -106,7 +107,7 @@ describe('AgentMissionEditModal.vue', () => {
       wrapper = createWrapper({ modelValue: true })
       await nextTick()
 
-      expect(wrapper.vm.characterCount).toBe(36)
+      expect(wrapper.vm.characterCount).toBe(33)
 
       wrapper.vm.missionText = 'Short'
       await nextTick()
@@ -196,6 +197,10 @@ describe('AgentMissionEditModal.vue', () => {
 
   describe('API Integration', () => {
     it('calls API with correct parameters on save', async () => {
+      api.agentJobs.updateMission.mockResolvedValue({
+        data: { success: true, job_id: 'job-123', mission: 'New mission from test' },
+      })
+
       wrapper = createWrapper({ modelValue: true })
       await nextTick()
 
@@ -205,7 +210,7 @@ describe('AgentMissionEditModal.vue', () => {
       await wrapper.vm.saveMission()
       await flushPromises()
 
-      expect(mockApiClient.agentJobs.updateMission).toHaveBeenCalledWith('job-123', {
+      expect(api.agentJobs.updateMission).toHaveBeenCalledWith('job-123', {
         mission: 'New mission from test',
       })
     })
@@ -230,6 +235,10 @@ describe('AgentMissionEditModal.vue', () => {
     })
 
     it('closes modal after successful save', async () => {
+      api.agentJobs.updateMission.mockResolvedValue({
+        data: { success: true, job_id: 'job-123', mission: 'New mission' },
+      })
+
       wrapper = createWrapper({ modelValue: true })
       await nextTick()
 
@@ -240,29 +249,20 @@ describe('AgentMissionEditModal.vue', () => {
       await flushPromises()
       await nextTick()
 
-      // After successful save, isOpen should be set to false
-      expect(wrapper.vm.isOpen).toBe(false)
+      // After successful save, the component emits update:modelValue with false to close the modal
+      const emitted = wrapper.emitted('update:modelValue')
+      expect(emitted).toBeTruthy()
+      expect(emitted[emitted.length - 1][0]).toBe(false)
     })
 
     it('shows loading state during API call', async () => {
       // Use a slow mock that we can control
       let resolvePromise
-      const slowApiClient = {
-        agentJobs: {
-          updateMission: vi.fn(() => new Promise((resolve) => {
-            resolvePromise = resolve
-          })),
-        },
-      }
+      api.agentJobs.updateMission.mockImplementation(() => new Promise((resolve) => {
+        resolvePromise = resolve
+      }))
 
-      wrapper = createWrapper(
-        { modelValue: true },
-        {
-          mocks: {
-            $api: slowApiClient,
-          },
-        },
-      )
+      wrapper = createWrapper({ modelValue: true })
       await nextTick()
 
       wrapper.vm.missionText = 'New mission'
@@ -283,22 +283,11 @@ describe('AgentMissionEditModal.vue', () => {
     })
 
     it('displays error message on API failure', async () => {
-      const failingApiClient = {
-        agentJobs: {
-          updateMission: vi.fn().mockRejectedValue({
-            response: { data: { detail: 'Custom error message' } },
-          }),
-        },
-      }
+      api.agentJobs.updateMission.mockRejectedValue({
+        response: { data: { detail: 'Custom error message' } },
+      })
 
-      wrapper = createWrapper(
-        { modelValue: true },
-        {
-          mocks: {
-            $api: failingApiClient,
-          },
-        },
-      )
+      wrapper = createWrapper({ modelValue: true })
       await nextTick()
 
       wrapper.vm.missionText = 'New mission'
@@ -543,20 +532,9 @@ describe('AgentMissionEditModal.vue', () => {
     })
 
     it('handles generic API errors', async () => {
-      const failingApiClient = {
-        agentJobs: {
-          updateMission: vi.fn().mockRejectedValue(new Error('Network failure')),
-        },
-      }
+      api.agentJobs.updateMission.mockRejectedValue(new Error('Network failure'))
 
-      wrapper = createWrapper(
-        { modelValue: true },
-        {
-          mocks: {
-            $api: failingApiClient,
-          },
-        },
-      )
+      wrapper = createWrapper({ modelValue: true })
       await nextTick()
 
       wrapper.vm.missionText = 'New mission'

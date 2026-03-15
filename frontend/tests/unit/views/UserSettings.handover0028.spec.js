@@ -147,12 +147,6 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
     })
   })
 
-  describe.skip('API Tab Sub-Navigation (REMOVED - tabs are now top-level)', () => {
-    it('displays API Keys sub-tab', async () => {})
-    it('displays MCP Configuration sub-tab', async () => {})
-    it('displays Integrations sub-tab', async () => {})
-  })
-
   describe('API Keys Tab Content', () => {
     it('renders ApiKeyManager component in API Keys tab', async () => {
       wrapper = mount(UserSettings, {
@@ -168,17 +162,6 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
       expect(apiKeyManager.exists()).toBe(true)
     })
 
-    it.skip('displays API Keys section header (delegated to ApiKeyManager sub-component)', () => {})
-    it.skip('displays API Keys description text (delegated to ApiKeyManager sub-component)', () => {})
-  })
-
-  describe.skip('MCP Configuration Sub-Tab Content (REMOVED - no longer a sub-tab)', () => {
-    it('renders AI Tool Configuration Wizard', async () => {})
-    it('displays AI Tool Self-Configuration header', async () => {})
-    it('displays wizard description', async () => {})
-    it('displays manual configuration option', async () => {})
-    it('has button to open manual configuration dialog', async () => {})
-    it('opens manual configuration dialog when button clicked', async () => {})
   })
 
   describe('Integrations Tab - Serena Toggle', () => {
@@ -195,11 +178,6 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
       const serenaCard = wrapper.find('[data-test="serena-integration-mock"]')
       expect(serenaCard.exists()).toBe(true)
     })
-
-    it.skip('renders Serena toggle switch (delegated to SerenaIntegrationCard)', () => {})
-    it.skip('displays Serena logo/avatar (delegated to SerenaIntegrationCard)', () => {})
-    it.skip('displays Serena description text (delegated to SerenaIntegrationCard)', () => {})
-    it.skip('displays informational alert about Serena (delegated to SerenaIntegrationCard)', () => {})
 
     it('loads Serena status on component mount', async () => {
       const setupService = await import('@/services/setupService')
@@ -294,8 +272,6 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
 
       expect(wrapper.vm.activeTab).toBe('integrations')
     })
-
-    it.skip('defaults to api-keys sub-tab when API tab is active (no sub-tabs anymore)', () => {})
 
     it('can switch between tabs', async () => {
       wrapper = mount(UserSettings, {
@@ -398,6 +374,5 @@ describe('UserSettings.vue - Handover 0028 API & Integrations Tab', () => {
       expect(html).toContain('mdi-puzzle')
     })
 
-    it.skip('Serena toggle has proper accessibility attributes (delegated to SerenaIntegrationCard)', () => {})
   })
 })

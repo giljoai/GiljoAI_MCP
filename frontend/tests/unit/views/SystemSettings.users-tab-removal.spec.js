@@ -89,10 +89,10 @@ describe('SystemSettings.vue - Users Tab Removal', () => {
       expect(html).toContain('mdi-database')
     })
 
-    it('displays Integrations tab', () => {
+    it('displays Prompts tab', () => {
       const html = wrapper.html()
-      expect(html).toContain('Integrations')
-      expect(html).toContain('mdi-api')
+      expect(html).toContain('Prompts')
+      expect(html).toContain('mdi-file-document-edit')
     })
 
     it('displays Security tab', () => {
@@ -101,25 +101,27 @@ describe('SystemSettings.vue - Users Tab Removal', () => {
       expect(html).toContain('mdi-shield-lock')
     })
 
-    it('has exactly 4 tabs (Network, Database, Integrations, Security)', () => {
+    it('has exactly 5 tabs (Identity, Network, Database, Security, Prompts)', () => {
       const html = wrapper.html()
 
-      // Should have exactly 4 tabs after Users removal
+      // Should have exactly 5 tabs after Users removal
+      expect(html).toContain('Identity')
       expect(html).toContain('Network')
       expect(html).toContain('Database')
-      expect(html).toContain('Integrations')
       expect(html).toContain('Security')
+      expect(html).toContain('Prompts')
       expect(html).not.toContain('value="users"')
     })
 
-    it('tab order is correct: Network, Database, Integrations, Security', () => {
+    it('tab order is correct: Identity, Network, Database, Security, Prompts', () => {
       const html = wrapper.html()
 
       // Verify all tabs present
+      expect(html).toContain('Identity')
       expect(html).toContain('Network')
       expect(html).toContain('Database')
-      expect(html).toContain('Integrations')
       expect(html).toContain('Security')
+      expect(html).toContain('Prompts')
     })
   })
 
@@ -140,10 +142,10 @@ describe('SystemSettings.vue - Users Tab Removal', () => {
       expect(databaseConnection.exists()).toBe(true)
     })
 
-    it('has content for Integrations tab', () => {
-      // Look for integrations content markers
+    it('has content for Prompts tab', () => {
+      // Look for prompts content markers
       const html = wrapper.html()
-      expect(html).toContain('Integrations')
+      expect(html).toContain('System Orchestrator Prompt')
     })
 
     it('has content for Security tab', () => {
@@ -167,9 +169,9 @@ describe('SystemSettings.vue - Users Tab Removal', () => {
   })
 
   describe('Active Tab State', () => {
-    it('defaults to Network tab when no Users tab exists', async () => {
-      // Initial active tab should be 'network'
-      expect(wrapper.vm.activeTab).toBe('network')
+    it('defaults to Identity tab when no Users tab exists', async () => {
+      // Initial active tab should be 'identity'
+      expect(wrapper.vm.activeTab).toBe('identity')
     })
 
     it('can switch to Database tab', async () => {
@@ -180,12 +182,12 @@ describe('SystemSettings.vue - Users Tab Removal', () => {
       expect(wrapper.vm.activeTab).toBe('database')
     })
 
-    it('can switch to Integrations tab', async () => {
-      // Switch to integrations tab
-      wrapper.vm.activeTab = 'integrations'
+    it('can switch to Prompts tab', async () => {
+      // Switch to prompts tab
+      wrapper.vm.activeTab = 'prompts'
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.vm.activeTab).toBe('integrations')
+      expect(wrapper.vm.activeTab).toBe('prompts')
     })
 
     it('can switch to Security tab', async () => {
@@ -224,13 +226,13 @@ describe('SystemSettings.vue - Users Tab Removal', () => {
       expect(databaseConnection.exists()).toBe(true)
     })
 
-    it('Integrations tab is accessible and functional', async () => {
-      wrapper.vm.activeTab = 'integrations'
+    it('Prompts tab is accessible and functional', async () => {
+      wrapper.vm.activeTab = 'prompts'
       await wrapper.vm.$nextTick()
 
-      // Integrations content should be visible
-      const integrationsContent = wrapper.html()
-      expect(integrationsContent).toContain('Agent Coding Tools')
+      // Prompts content should be visible
+      const promptsContent = wrapper.html()
+      expect(promptsContent).toContain('System Orchestrator Prompt')
     })
 
     it('Security tab is accessible and functional', async () => {
@@ -272,9 +274,9 @@ describe('SystemSettings.vue - Users Tab Removal', () => {
       expect(html).toContain('mdi-database')
     })
 
-    it('Integrations tab has correct icon', () => {
+    it('Prompts tab has correct icon', () => {
       const html = wrapper.html()
-      expect(html).toContain('mdi-api')
+      expect(html).toContain('mdi-file-document-edit')
     })
 
     it('Security tab has correct icon', () => {
@@ -294,19 +296,21 @@ describe('SystemSettings.vue - Users Tab Removal', () => {
       await wrapper.vm.$nextTick()
       // Verify tabs exist in HTML (Vuetify renders them with role="tab")
       const html = wrapper.html()
+      expect(html).toContain('Identity')
       expect(html).toContain('Network')
       expect(html).toContain('Database')
-      expect(html).toContain('Integrations')
       expect(html).toContain('Security')
+      expect(html).toContain('Prompts')
     })
 
     it('tab content is properly labeled', () => {
       const html = wrapper.html()
       // Verify tab labels exist
+      expect(html).toContain('Identity')
       expect(html).toContain('Network')
       expect(html).toContain('Database')
-      expect(html).toContain('Integrations')
       expect(html).toContain('Security')
+      expect(html).toContain('Prompts')
     })
   })
 
