@@ -1,0 +1,219 @@
+# Post-CE Roadmap
+
+**Purpose:** Forward-looking planning document for post-launch work, including the CE/SaaS branch split and feature development.
+**Replaces:** PRIORITY_ORDER.md served as the launch checklist (now complete). This document is the active planning reference.
+**Last Updated:** 2026-03-15
+
+---
+
+## Current State
+
+- All launch-blocking handovers: **COMPLETE** (322+ archived)
+- All actionable tech debt: **RESOLVED** (techdebt_march_2026-C.md archived)
+- Test suite: **0 failures** across 91 frontend files, 1390+ backend tests
+- Code quality: **8.35/10** (Perfect Score Sprint 0765a-s)
+- Active handovers: **0** (2 deferred: 1014, TODO_vision)
+- Branch: **master** only (no `main` or `saas` branch yet)
+- SaaS scaffold: frontend `.gitkeep` placeholders only, no backend dirs
+
+---
+
+## Phase 0: Branch Split Preparation (Pre-Requisites)
+
+Do these BEFORE creating the `main`/`saas` branches. Order matters.
+
+### 0.1 Stale Branch Cleanup
+
+30 local branches exist from old feature/backup work (0390, 0417, 0480, 0700-series, 0745-series, etc.). Many have corresponding `remotes/origin/claude/*` auto-branches.
+
+**Action:**
+- List all branches with `git branch -a`
+- Confirm each is fully merged into master or obsolete
+- Delete merged/obsolete local branches: `git branch -d <name>`
+- Prune remote tracking refs: `git remote prune origin`
+- Delete stale remote branches if desired: `git push origin --delete <name>`
+
+**Why first:** Avoids leaking internal branch names to the public repo and keeps the branch list clean before the split.
+
+### 0.2 Version Tag Decision
+
+Current tags: v0.1.1 through v0.1.9. The branch split is a milestone.
+
+**Decision needed:**
+- Tag the split point as **v0.2.0** (pre-release milestone) or **v1.0.0** (GA)?
+- Recommendation: v1.0.0 signals CE is production-ready (all launch work is done)
+
+### 0.3 Rename `master` to `main`
+
+The Edition Isolation Guide prescribes CE on `main`. GitHub supports seamless rename.
+
+**Action:**
+```bash
+git branch -m master main
+git push origin -u main
+# Update GitHub default branch in repo settings
+# Then delete old remote: git push origin --delete master
+```
+
+**Why:** Aligns with the documented architecture before SaaS branch exists.
+
+### 0.4 Audit for SaaS Leaks in CE
+
+Before going public, verify no SaaS-specific code leaked into CE directories.
+
+**Checklist:**
+- [ ] No Stripe/Twilio/OAuth/LDAP imports in `src/giljo_mcp/` or `api/`
+- [ ] No multi-org-only features in CE frontend components
+- [ ] `frontend/src/saas/` contains only `.gitkeep` files
+- [ ] `saas/`, `saas_endpoints/`, `saas_middleware/` directories do not exist
+- [ ] Pre-commit edition isolation hook passes
+- [ ] Deletion Test passes (delete all saas dirs, app starts, tests pass)
+
+### 0.5 Sensitive Content Sweep
+
+Before making the repo public, ensure no secrets or private info are committed.
+
+**Checklist:**
+- [ ] No API keys, passwords, or tokens in tracked files
+- [ ] No internal hostnames or IP addresses
+- [ ] `.gitignore` covers `.env`, `config.yaml` (with credentials), `*.pem`, `*.key`
+- [ ] Git history doesn't contain accidentally committed secrets (use `git log -p -S "password"` or similar)
+- [ ] README and docs reference only public URLs
+
+---
+
+## Phase 1: Branch Split Execution
+
+Once Phase 0 is complete, execute the split.
+
+### 1.1 Create `saas` Branch
+
+```bash
+git checkout main
+git checkout -b saas
+git push origin -u saas
+```
+
+### 1.2 Create Backend SaaS Scaffold (on `saas` branch)
+
+```
+saas/
+  __init__.py
+  services/
+    __init__.py
+saas_endpoints/
+  __init__.py
+saas_middleware/
+  __init__.py
+migrations/
+  saas_versions/
+    .gitkeep
+tests/
+  saas/
+    __init__.py
+```
+
+### 1.3 Wire Conditional Loading (on `saas` branch)
+
+In `app.py` / startup, add the conditional registration pattern from `docs/EDITION_ISOLATION_GUIDE.md`:
+- Check if `saas/` directory exists
+- If yes, import and register SaaS routers, middleware, event handlers
+- If no, skip silently (CE mode)
+
+### 1.4 Set Up Remotes
+
+**Option A: Two GitHub repos**
+- Public: `origin` -> `github.com/patrik-giljoai/GiljoAI-MCP` (push `main` only)
+- Private: `private` -> private repo (push `saas` only)
+
+**Option B: Single repo with branch protection**
+- `main` branch: public, protected
+- `saas` branch: private visibility (requires GitHub Enterprise or separate repo)
+
+**Decision needed:** Which remote strategy?
+
+### 1.5 CI/CD Gates
+
+- **CE gate (on `main`):** Deletion Test -- remove all `saas/` dirs, verify startup + tests pass
+- **SaaS gate (on `saas`):** Full test suite including SaaS-specific tests
+- **Merge direction enforcement:** `main --> saas` merges only, weekly minimum
+
+---
+
+## Phase 2: Post-Split Workflow
+
+Once branches exist, this is the ongoing development model.
+
+### Feature Development
+
+| Feature Type | Develop On | Merge Direction |
+|-------------|-----------|-----------------|
+| Bug fixes | `main` | `main --> saas` |
+| Security patches | `main` | `main --> saas` |
+| Core orchestration features | `main` | `main --> saas` |
+| UI/UX improvements (core) | `main` | `main --> saas` |
+| Stripe/billing integration | `saas` | Never to `main` |
+| OAuth/SSO/LDAP | `saas` | Never to `main` |
+| Multi-org management | `saas` | Never to `main` |
+| Usage analytics/metering | `saas` | Never to `main` |
+
+### Merge Cadence
+
+- Merge `main --> saas` at least **weekly**
+- After every significant feature or security fix on `main`
+- Resolve conflicts on `saas` side (SaaS adapts to CE, not vice versa)
+
+---
+
+## Deferred Handovers (3 remaining)
+
+| ID | Title | Effort | Priority | Notes |
+|----|-------|--------|----------|-------|
+| 1014 | Security Event Auditing | 8 hrs | Medium | Enterprise compliance feature. Full spec ready (`handovers/1014_security_auditing.md`, 759 lines). Develop on `saas` when compliance requirements materialize. |
+| TODO_vision | Vision Summarizer LLM Upgrade | 16-24 hrs | Low | Phase 1 partial (DB columns added). Phases 2-3 untouched. Develop on `main` (improves core). |
+| 0409 | Unified Client Quick Setup | 2-3 hrs | Low | All UI components exist. Revisit based on user feedback. Develop on `main`. |
+
+---
+
+## Post-CE Feature Wishlist
+
+From `completed/techdebt_march_2026-C.md`. None are blocking. Prioritize based on user demand.
+
+### CE Features (develop on `main`)
+
+| Item | Effort Est. | Notes |
+|------|-------------|-------|
+| Dashboard Scope Selector | Small | Per-product/project filtering of dashboard stats |
+| Mission Launch Summary | Small | Preview mission plan before execution. UX polish |
+| Orchestrator Message Loop Automation | Medium | Auto-polling toggle for message coordination |
+| 360 Memory Frontend UI | Medium | GitHubSettingsCard, ProductMemoryPanel, LearningTimeline. Backend complete (0135-0139) |
+| Model Selection in Template Manager | Small | DB field exists, needs UI dropdown |
+| MCP HTTP Tool Catalog Refactoring | Large | Registry pattern to replace 1096-line inline JSON. Planned for v4.0 |
+| Developer Workflow Guide | Medium | End-to-end docs + quick start tutorial |
+| Developer Panel | Aspirational | Localhost read-only panel showing architecture, APIs, dependencies |
+
+### SaaS Features (develop on `saas`)
+
+| Item | Effort Est. | Notes |
+|------|-------------|-------|
+| Per-Agent Tool Selection UI | Medium | Dropdown for Claude/Codex/Gemini per agent. Only relevant when multi-tool ships |
+| Codex MCP Integration | Large | OpenAI Codex as agent tool. UI stubs exist (CodexConfigModal.vue). No backend |
+| Gemini MCP Integration | Large | Google Gemini as agent tool. Cross-language (Node.js) complexity |
+| Local LLM Stack Recommendation | Large | LM Studio integration for privacy-preserving suggestions. 16-20h |
+
+---
+
+## Housekeeping (Minor, Do Anytime)
+
+- [ ] Move reference docs to `Reference_docs/`: `LOG_ANALYSIS_GUIDE.md`, `Agent instructions and where they live.md`, `Code_quality_prompt.md`
+- [ ] Update `handovers/README.md` priority table (stale)
+- [ ] Clean up 30 stale local git branches (part of Phase 0.1)
+
+---
+
+## References
+
+- [EDITION_ISOLATION_GUIDE.md](../docs/EDITION_ISOLATION_GUIDE.md) -- authoritative CE/SaaS directory rules
+- [PRIORITY_ORDER.md](./PRIORITY_ORDER.md) -- completed CE launch checklist
+- [techdebt_march_2026-C.md](./completed/techdebt_march_2026-C.md) -- resolved tech debt + post-CE items
+- [handover_catalogue.md](./handover_catalogue.md) -- full handover history
