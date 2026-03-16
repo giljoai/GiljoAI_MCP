@@ -19,11 +19,17 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0822 ALL COMPLETE. No active handovers. |
+| 0800+ | Enhancement & Feature Series | 0823 ACTIVE. 0800-0822 ALL COMPLETE. |
 
 ---
 
 ## Active Handovers (In Root Folder)
+
+### Active (In Root Folder)
+
+| ID | Title | Status | Priority | Notes |
+|----|-------|--------|----------|-------|
+| 0823 | Context Fetch Protocol Injection | Not Started | High | CH2 inline fetch calls, remove context_fetch_instructions, fix depth pipeline |
 
 ### Deferred (Still in Root Folder)
 
@@ -505,6 +511,7 @@ completed/reference/
 **0820** (Enhancement & Feature Series): 0820 Remove Context Priority Framing (COMPLETE)
 **0821** (Enhancement & Feature Series): 0821 Broadcast Deadlock Batch Counter Fix (COMPLETE)
 **0822** (Enhancement & Feature Series): 0822 Memory Gate Quality Fixes (COMPLETE)
+**0823** (Enhancement & Feature Series): 0823 Context Fetch Protocol Injection (NOT STARTED)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
@@ -512,7 +519,7 @@ completed/reference/
 - **0411**: "Jobs Tab Duration UX" (completed Jan) vs "Windows Terminal Agent Spawning" (SUPERSEDED Feb 24, split to 0411a+0411b) - RESOLVED
 - **0481**: 2 files with same number - consolidate
 - **0731**: "Typed Service Returns a-d" (COMPLETE) vs "Legacy Code Removal" (SUPERSEDED 2026-03-08) - different scope, both closed
-- **0732**: "API Consistency Fixes" (COMPLETE 2026-02-23) vs "CE Release Packaging" (IN PROGRESS) - different scope
+- **0732**: "API Consistency Fixes" (COMPLETE 2026-02-23) vs "CE Release Packaging" (COMPLETE) - different scope, both closed
 - **1000**: Main roadmap + status report - acceptable (one is reference)
 
 ### Current Gaps Available
