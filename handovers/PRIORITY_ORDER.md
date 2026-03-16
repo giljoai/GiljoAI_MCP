@@ -25,10 +25,15 @@ Last updated: 2026-03-09
 
 | ID | Title | Effort | Reason |
 |----|-------|--------|--------|
-| 0732b | README Screenshots | 30 min | Requires running instance with sample data. Polish item. |
 | TODO_vision | Vision Summarizer LLM Upgrade | 16-24 hrs | Current Sumy works. Quality improvement, not functional. |
 | 1014 | Security Event Auditing | 8 hrs | Enterprise compliance. No requirement yet. |
 | 0409 | Unified Client Quick Setup | 2-3 hrs | All UI components exist. Revisit if user feedback indicates friction. |
+
+## Recently Completed (moved from Deferred)
+
+| ID | Title | Completed | Notes |
+|----|-------|-----------|-------|
+| 0732b | README Screenshots | 2026-03-14 | Screenshots captured manually by user. Archived to `completed/0732b_readme_screenshots-C.md`. |
 
 ## Retired
 
@@ -50,3 +55,11 @@ Last updated: 2026-03-09
 - [x] `TECHNICAL_DEBT_v2.md` deleted and replaced by `techdebt_march_2026.md` (198 lines vs 2720)
 - [ ] Move remaining reference docs to `Reference_docs/`: `LOG_ANALYSIS_GUIDE.md`, `Agent instructions and where they live.md`, `Code_quality_prompt.md`
 - [ ] Update `handovers/README.md` priority table
+
+---
+
+## Forward-Looking Planning
+
+This document served as the **CE launch checklist** and is now complete. For post-launch planning, branch transition prep, and the feature roadmap, see:
+
+**[ROADMAP.md](./ROADMAP.md)** -- the active forward-looking planning document.
