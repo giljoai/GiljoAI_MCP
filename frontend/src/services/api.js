@@ -530,4 +530,7 @@ export const api = {
 // Export error handling utilities for use in components (Handover 0480f)
 export { parseErrorResponse, getErrorMessage }
 
+// Export the raw axios instance for components needing direct HTTP calls with CSRF/tenant headers
+export { apiClient }
+
 export default api
