@@ -171,8 +171,10 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import setupService from '@/services/setupService'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
+const { showToast } = useToast()
 
 const props = defineProps({
   gitIntegrationEnabled: {
@@ -492,7 +494,8 @@ async function saveConfig() {
         }
       })
     } catch (depthError) {
-      console.warn('[CONTEXT CONFIG] Warning: Depth config save failed:', depthError)
+      console.error('[CONTEXT CONFIG] Depth config save failed:', depthError)
+      showToast({ message: 'Depth settings failed to save. Please try again.', type: 'error' })
     }
   } catch (error) {
     console.error('[CONTEXT CONFIG] Failed to save config:', error)
