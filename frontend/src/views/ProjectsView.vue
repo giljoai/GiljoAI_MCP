@@ -1516,7 +1516,7 @@ onBeforeUnmount(() => {
 
 /* Scrollable project list container */
 .project-list-container {
-  height: calc(100vh - 520px);
+  height: calc(100vh - 260px);
   overflow-y: auto;
   overflow-x: hidden;
 }
