@@ -120,7 +120,7 @@ class User(Base):
     depth_config = Column(
         JSONB,
         nullable=False,
-        default={
+        default=lambda: {
             "vision_documents": "medium",
             "memory_last_n_projects": 3,
             "git_commits": 25,

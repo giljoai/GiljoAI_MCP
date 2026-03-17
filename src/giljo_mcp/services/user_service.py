@@ -28,6 +28,7 @@ from uuid import uuid4
 import bcrypt
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
@@ -994,15 +995,30 @@ class UserService:
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        # Update config
-        user.depth_config = config
+        # Merge into existing config to preserve keys not in the update (e.g. execution_mode)
+        depth_config = dict(
+            user.depth_config
+            or {
+                "vision_documents": "medium",
+                "memory_last_n_projects": 3,
+                "git_commits": 25,
+                "agent_templates": "type_only",
+                "tech_stack_sections": "all",
+                "architecture_depth": "overview",
+                "execution_mode": "claude_code",
+            }
+        )
+        depth_config.update(config)
+        user.depth_config = depth_config
+        flag_modified(user, "depth_config")
         await session.commit()
+        await session.refresh(user)
 
         self._logger.info(f"Updated depth config for user {user.username}")
 
         # Emit WebSocket event if manager available
         await self._emit_websocket_event(
-            event_type="depth_config_updated", data={"user_id": user_id, "depth_config": config}
+            event_type="depth_config_updated", data={"user_id": user_id, "depth_config": depth_config}
         )
 
     # ------------------------------------------------------------------
@@ -1109,6 +1125,7 @@ class UserService:
 
         # Reuse depth config update path for consistency
         user.depth_config = depth_config
+        flag_modified(user, "depth_config")
         await session.commit()
         await session.refresh(user)
 
