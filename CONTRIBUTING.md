@@ -1,19 +1,30 @@
-# Contributing to GiljoAI MCP
+# Contributing to GiljoAI MCP Coding Orchestrator
 
-Thank you for your interest in contributing to GiljoAI Agent Orchestration MCP Server.
+Thank you for your interest in GiljoAI MCP.
 
-## Intellectual Property Agreement
+## Before You Contribute
 
-By submitting a pull request or any other contribution to this repository, you agree that:
+Read this section first. It affects your intellectual property rights.
 
-1. **You irrevocably assign all intellectual property rights** in your contribution to GiljoAI LLC.
-2. **You have the right** to make this assignment (the code is yours, not your employer's, unless you have permission).
-3. **GiljoAI LLC may use your contribution without restriction**, including in proprietary and commercial products such as the GiljoAI Platform (SaaS).
-4. **You retain the right** to use your own contributions in your other projects.
+### Intellectual Property Assignment
 
-This assignment is necessary because GiljoAI distributes the Software under both the GiljoAI Community License (free for single-user) and commercial licenses. Without full IP ownership, we cannot offer commercial licenses.
+By submitting a pull request, patch, or any other contribution to this
+repository, you irrevocably assign all intellectual property rights in
+your contribution to GiljoAI LLC. You represent that you have the right
+to make such assignment. GiljoAI LLC may use, license, and sublicense
+your contribution without restriction, including in proprietary and
+commercial products.
 
-If you do not agree with these terms, please do not submit contributions. You are still welcome to fork the repository for your own use under the terms of the [LICENSE](LICENSE).
+You retain the right to use your own contributions in your other projects.
+
+This assignment is necessary because GiljoAI distributes the Software under
+both the GiljoAI Community License (free for single-user use) and commercial
+licenses. Without full IP ownership of every line of code, we cannot offer
+commercial licenses. This is standard practice for dual-licensed projects.
+
+If you do not agree with these terms, please do not submit contributions.
+You are welcome to fork the repository and use it under the terms of the
+[LICENSE](LICENSE).
 
 ## Development Setup
 
@@ -34,13 +45,13 @@ npm install
 npm run dev
 ```
 
-**Requirements**: Python 3.11+, PostgreSQL 18, Node.js 18+
+**Requirements**: Python 3.11+, PostgreSQL 18, Node.js 20+
 
 ## Code Style
 
-- **Python**: Enforced by [ruff](https://docs.astral.sh/ruff/) (linting) and [black](https://black.readthedocs.io/) (formatting)
+- **Python**: Enforced by [ruff](https://docs.astral.sh/ruff/) (linting and formatting)
 - **Frontend**: Enforced by ESLint (`eslint.config.js` flat config)
-- **Paths**: Always use `pathlib.Path()` -- never hardcode OS-specific paths
+- **Paths**: Always use `pathlib.Path()` — never hardcode OS-specific paths
 - **Logging**: Use `import logging; logger = logging.getLogger(__name__)` in most code. Use `structlog` only in auth, database, WebSocket, and MCP orchestration paths.
 
 Run before committing:
@@ -52,26 +63,25 @@ cd frontend && npx eslint src/ --fix
 
 ## Submitting a Pull Request
 
-1. Create a feature branch from `master`: `git checkout -b feature/short-description`
+1. Create a feature branch from `main`: `git checkout -b feature/short-description`
 2. Make your changes following the code style above
 3. Run tests: `pytest tests/ -x`
 4. Verify frontend builds: `cd frontend && npm run build`
 5. Commit using [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
-6. Push and open a PR against `master`
+6. Push and open a PR against `main`
 
 ## Testing
 
 - Run full suite: `pytest tests/ --cov=src/giljo_mcp`
 - Coverage target: >80% for new code
 - Tests use PostgreSQL with transaction rollback for isolation
-- See `docs/TESTING.md` for patterns and fixtures
 
 ## Architecture
 
-- **Service layer**: Business logic lives in `src/giljo_mcp/services/`. Services raise domain exceptions from `src/giljo_mcp/exceptions.py`.
+- **Service layer**: Business logic in `src/giljo_mcp/services/`. Services raise domain exceptions from `src/giljo_mcp/exceptions.py`.
 - **API layer**: FastAPI endpoints in `api/endpoints/`. Global exception handlers map domain exceptions to HTTP status codes.
 - **Frontend**: Vue 3 + Vuetify + Pinia stores in `frontend/src/`.
-- **Multi-tenant**: All database queries filter by `tenant_key`. Never bypass tenant isolation.
+- **Data isolation**: All database queries filter by `tenant_key`. Never bypass tenant isolation.
 
 See `docs/README_FIRST.md` for navigation and `docs/SERVER_ARCHITECTURE_TECH_STACK.md` for full architecture.
 
