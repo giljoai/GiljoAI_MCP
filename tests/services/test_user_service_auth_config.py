@@ -287,7 +287,11 @@ async def test_update_depth_config_success(user_service, test_user, db_session):
     assert result is None
 
     await db_session.refresh(test_user)
-    assert test_user.depth_config == new_depth
+    # Merge behavior: updated keys reflect new values, unmentioned keys preserved
+    for key, value in new_depth.items():
+        assert test_user.depth_config[key] == value
+    # execution_mode must survive a depth-only update
+    assert "execution_mode" in test_user.depth_config
 
 
 @pytest.mark.asyncio
