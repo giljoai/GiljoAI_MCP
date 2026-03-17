@@ -145,6 +145,11 @@ async def get_git_history(
                 "source": "git_history",
                 "depth": commits,
                 "data": [],
+                "directive": {
+                    "action": "fetch_from_local_repo",
+                    "command": f"git log --oneline -{commits}",
+                    "note": "Git history is not stored on the server. Run this command in the project directory.",
+                },
                 "metadata": {
                     "product_id": product_id,
                     "tenant_key": tenant_key,
@@ -170,6 +175,11 @@ async def get_git_history(
                 "source": "git_history",
                 "depth": commits,
                 "data": [],
+                "directive": {
+                    "action": "fetch_from_local_repo",
+                    "command": f"git log --oneline -{commits}",
+                    "note": "Git history is not stored on the server. Run this command in the project directory.",
+                },
                 "metadata": {
                     "product_id": product_id,
                     "tenant_key": tenant_key,
