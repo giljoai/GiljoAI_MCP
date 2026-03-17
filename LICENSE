@@ -1,22 +1,32 @@
-GiljoAI Community License v1.0
+GiljoAI Community License v1.1
 
 Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
 
 1. DEFINITIONS
 
-   "Software" means the GiljoAI MCP Orchestrator source code, documentation,
-   and associated files in this repository.
+   "Software" means the GiljoAI MCP Coding Orchestrator source code,
+   documentation, and associated files in this repository.
 
-   "Single-User Use" means deployment of the Software where only one (1) user
-   account exists in the system at any given time.
+   "Single-User Use" means deployment of the Software where only one (1)
+   individual accesses or uses the system, regardless of the number of
+   accounts, sessions, or access methods employed.
 
    "Multi-User Use" means deployment of the Software where two (2) or more
-   user accounts exist in the system simultaneously.
+   individuals access or use the system, regardless of whether they share
+   accounts or use separate credentials.
 
    "Commercial License" means a separate written agreement between You and
-   GiljoAI LLC authorizing Multi-User Use.
+   GiljoAI LLC authorizing Multi-User Use, Hosted Service Use, or Competing
+   Product Use.
 
-2. GRANT OF RIGHTS - SINGLE-USER USE
+   "Hosted Service Use" means making the Software available to third parties
+   as a hosted, managed, or embedded service, whether or not a fee is charged.
+
+   "Competing Product Use" means selling, licensing, or distributing the
+   Software or derivative works of the Software as a standalone product that
+   provides substantially similar functionality to the Software.
+
+2. GRANT OF RIGHTS — SINGLE-USER USE
 
    Subject to the terms of this License, GiljoAI LLC grants You a worldwide,
    royalty-free, non-exclusive license to use, copy, modify, and distribute
@@ -28,37 +38,55 @@ Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
 3. MULTI-USER USE REQUIRES COMMERCIAL LICENSE
 
    Multi-User Use of the Software requires a Commercial License from
-   GiljoAI LLC. Commercial Licenses may be obtained at no cost at GiljoAI LLC's
-   discretion.
+   GiljoAI LLC. Commercial Licenses may be obtained at no cost at
+   GiljoAI LLC's discretion.
 
-   To obtain a Commercial License, contact: licensing@giljoai.com
+   To obtain a Commercial License, contact: sales@giljo.ai
 
-4. CONTRIBUTIONS
+4. COMMERCIAL RESTRICTIONS
+
+   Without a Commercial License from GiljoAI LLC, You may not:
+
+   (a) Provide the Software to third parties as a hosted, managed, or
+       embedded service. This includes, but is not limited to, offering
+       the Software as a service bureau, platform service, or managed
+       deployment on behalf of others.
+
+   (b) Sell, license, or distribute the Software or derivative works of
+       the Software as a standalone product that provides substantially
+       similar functionality to the Software.
+
+   These restrictions do not apply to internal use of the Software within
+   Your own organization for Your own purposes.
+
+   To obtain a Commercial License, contact: sales@giljo.ai
+
+5. CONTRIBUTIONS
 
    By submitting a pull request, patch, or any other contribution to this
    repository, You irrevocably assign all intellectual property rights in
-   Your contribution to GiljoAI LLC. You represent that You have the right to
-   make such assignment. GiljoAI LLC may use, license, and sublicense Your
-   contribution without restriction, including in proprietary and commercial
-   products.
+   Your contribution to GiljoAI LLC. You represent that You have the right
+   to make such assignment. GiljoAI LLC may use, license, and sublicense
+   Your contribution without restriction, including in proprietary and
+   commercial products.
 
-   You retain the right to use Your own contributions in other projects.
+   You retain the right to use Your own contributions in Your other projects.
 
-5. REDISTRIBUTION
+6. REDISTRIBUTION
 
    You may redistribute the Software in source or binary form, provided that:
    (a) You include this License in all copies or substantial portions;
    (b) You do not remove or alter any licensing notices or edition branding;
    (c) You do not represent the Software as Your own product.
 
-6. ATTRIBUTION
+7. ATTRIBUTION
 
    The GiljoAI name, logo, and "Community Edition" branding are trademarks
    of GiljoAI LLC. You may not use these marks in derivative works without
    written permission, except to accurately identify the origin of the
    Software.
 
-7. NO WARRANTY
+8. NO WARRANTY
 
    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -67,7 +95,7 @@ Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
    AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-8. TERMINATION
+9. TERMINATION
 
    This License terminates automatically if You violate its terms. Upon
    termination, You must cease all use and distribution of the Software.
