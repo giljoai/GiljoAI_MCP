@@ -35,7 +35,7 @@ class TestGetOrchestratorInstructions:
 
     @pytest.mark.asyncio
     async def test_returns_toggle_based_context(self, db_session: AsyncSession, test_product, test_project):
-        """Test returns identity, project_description_inline, context_fetch_instructions (list), agent_templates."""
+        """Test returns identity, project_description_inline, orchestrator_protocol (with CH2 fetch calls), agent_templates."""
         # Ensure test_product uses same tenant_key as test_project
         test_product.tenant_key = test_project.tenant_key
         await db_session.commit()
@@ -93,8 +93,10 @@ class TestGetOrchestratorInstructions:
         assert "description" in result["project_description_inline"]
         assert "mission" in result["project_description_inline"]
 
-        assert "context_fetch_instructions" in result
-        assert isinstance(result["context_fetch_instructions"], list)
+        # Handover 0823: context_fetch_instructions removed, fetch calls now inline in CH2 protocol
+        assert "context_fetch_instructions" not in result
+        assert "orchestrator_protocol" in result
+        assert "fetch_context" in result["orchestrator_protocol"]["ch2_startup_sequence"]
 
         assert "agent_templates" in result
         assert isinstance(result["agent_templates"], list)
