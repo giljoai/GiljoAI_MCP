@@ -169,8 +169,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
-import setupService from '@/services/setupService'
+import apiClient from '@/services/api'
 import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
@@ -269,7 +268,7 @@ const config = ref<Record<string, ContextConfig>>({
   tech_stack: { enabled: true },
   architecture: { enabled: true },
   testing: { enabled: true },
-  vision_documents: { enabled: true, depth: 'light' },
+  vision_documents: { enabled: true, depth: 'medium' },
   memory_360: { enabled: true, count: 3 },
   git_history: { enabled: false, count: 25 },
   agent_templates: { enabled: true, depth: 'type_only' },
@@ -392,7 +391,7 @@ watch(() => props.gitIntegrationEnabled, (enabled) => {
 async function fetchVisionStats() {
   fetchingVisionStats.value = true
   try {
-    const response = await axios.get('/api/v1/products/active/vision-stats')
+    const response = await apiClient.get('/api/v1/products/active/vision-stats')
     visionStats.value = response.data
   } catch (error) {
     console.warn('[CONTEXT CONFIG] Failed to fetch vision stats:', error)
@@ -414,7 +413,7 @@ async function fetchConfig() {
   loading.value = true
   try {
     // Fetch toggle config from field-priority endpoint (v3.0 format)
-    const toggleResponse = await axios.get('/api/v1/users/me/field-priority')
+    const toggleResponse = await apiClient.get('/api/v1/users/me/field-priority')
     const toggles = toggleResponse.data?.priorities || {}
 
     // Apply backend toggles to frontend keys using reverse mapping
@@ -446,7 +445,7 @@ async function fetchConfig() {
 
     // Fetch depth config from context/depth endpoint
     try {
-      const depthResponse = await axios.get('/api/v1/users/me/context/depth')
+      const depthResponse = await apiClient.get('/api/v1/users/me/context/depth')
       const depthData = depthResponse.data?.depth_config || {}
 
       if (depthData.memory_last_n_projects && config.value.memory_360) {
@@ -478,14 +477,14 @@ async function saveConfig() {
   saving.value = true
   try {
     // Save toggles to field-priority endpoint (v3.0 format)
-    await axios.put('/api/v1/users/me/field-priority', {
+    await apiClient.put('/api/v1/users/me/field-priority', {
       version: '3.0',
       priorities: convertToBackendFormat(config.value),
     })
 
     // Save depth config to context/depth endpoint
     try {
-      await axios.put('/api/v1/users/me/context/depth', {
+      await apiClient.put('/api/v1/users/me/context/depth', {
         depth_config: {
           memory_last_n_projects: config.value.memory_360?.count || 3,
           git_commits: config.value.git_history?.count || 25,
@@ -510,7 +509,7 @@ function resetToDefaults() {
     tech_stack: { enabled: true },
     architecture: { enabled: true },
     testing: { enabled: true },
-    vision_documents: { enabled: true, depth: 'light' },
+    vision_documents: { enabled: true, depth: 'medium' },
     memory_360: { enabled: true, count: 3 },
     git_history: { enabled: true, count: 25 },
     agent_templates: { enabled: true, depth: 'type_only' },
