@@ -269,7 +269,6 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
         "agent_name",
         "categories",
         "depth_config",
-        "apply_user_config",
         "format",
     },
     # Project Closeout
@@ -667,7 +666,7 @@ def _build_context_and_closeout_tools() -> list[dict[str, Any]]:
         # Unified Context Tool (Handover 0350a, updated 0430)
         {
             "name": "fetch_context",
-            "description": "Unified context fetcher. Retrieves product/project context by category with depth control. Categories: product_core (~100 tokens), vision_documents (0-24K), tech_stack (200-400), architecture (300-1.5K), testing (0-400), memory_360 (500-5K), git_history (500-5K), agent_templates (400-2.4K), project (~300), self_identity (agent template content). Use apply_user_config=true to respect user's saved settings. Single tool replaces 9 individual tools for 720 token savings in MCP schema overhead.",
+            "description": "Unified context fetcher. Retrieves product/project context by category with depth control. Categories: product_core (~100 tokens), vision_documents (0-24K), tech_stack (200-400), architecture (300-1.5K), testing (0-400), memory_360 (500-5K), git_history (500-5K), agent_templates (400-2.4K), project (~300), self_identity (agent template content). Single tool replaces 9 individual tools for 720 token savings in MCP schema overhead.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -700,11 +699,6 @@ def _build_context_and_closeout_tools() -> list[dict[str, Any]]:
                     "depth_config": {
                         "type": "object",
                         "description": 'Override depth per category. Example: {"vision_documents": "light"}',
-                    },
-                    "apply_user_config": {
-                        "type": "boolean",
-                        "description": "Apply user's saved settings (default: true)",
-                        "default": True,
                     },
                     "format": {
                         "type": "string",

@@ -22,6 +22,7 @@ from typing import Any
 
 import structlog
 
+from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _RAW_DEPTH_CONFIG
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
@@ -54,18 +55,19 @@ CATEGORY_TOOLS = {
     "self_identity": get_self_identity,
 }
 
-# Default depth settings per category
+# Derive from canonical source (defaults.py) - single source of truth (Handover 0823)
+_CANONICAL_DEPTHS = _RAW_DEPTH_CONFIG["depths"]
 DEFAULT_DEPTHS = {
-    "product_core": None,  # No depth param
-    "vision_documents": "medium",
-    "tech_stack": None,  # No depth param (Handover 0351)
-    "architecture": None,  # No depth param (Handover 0351)
-    "testing": None,  # No depth param (Handover 0351)
-    "memory_360": 5,  # last_n_projects
-    "git_history": 25,  # commits
-    "agent_templates": "type_only",  # Renamed from "standard" (Handover 0351)
-    "project": None,  # No depth param
-    "self_identity": None,  # No depth param (Handover 0430)
+    "product_core": None,
+    "vision_documents": _CANONICAL_DEPTHS.get("vision_documents", "medium"),
+    "tech_stack": None,
+    "architecture": None,
+    "testing": None,
+    "memory_360": _CANONICAL_DEPTHS.get("memory_360", 3),
+    "git_history": _CANONICAL_DEPTHS.get("git_history", 25),
+    "agent_templates": _CANONICAL_DEPTHS.get("agent_templates", "type_only"),
+    "project": None,
+    "self_identity": None,
 }
 
 ALL_CATEGORIES = list(CATEGORY_TOOLS.keys())
@@ -77,7 +79,6 @@ async def fetch_context(
     project_id: str | None = None,
     categories: list[str | None] = None,
     depth_config: dict[str, Any | None] = None,
-    apply_user_config: bool = True,
     output_format: str = "structured",
     agent_name: str | None = None,
     db_manager: DatabaseManager | None = None,
@@ -100,7 +101,6 @@ async def fetch_context(
                           self_identity
         depth_config: Override depth settings per category
                      Example: {"vision_documents": "light", "agent_templates": "minimal"}
-        apply_user_config: Apply user's saved toggle/depth settings (default: True)
         format: Response format - "structured" (nested by category) or "flat" (merged)
         agent_name: Agent template name (required for 'self_identity' category)
         db_manager: Database manager instance
@@ -118,7 +118,6 @@ async def fetch_context(
             "metadata": {
                 "estimated_tokens": 300,
                 "format": "structured",
-                "apply_user_config": true,
                 "depth_config_applied": {...}
             }
         }
@@ -159,7 +158,6 @@ async def fetch_context(
         tenant_key=tenant_key,
         project_id=project_id,
         categories=categories,
-        apply_user_config=apply_user_config,
         format=output_format,
         agent_name=agent_name,
     )
@@ -223,10 +221,12 @@ async def fetch_context(
             db_manager=db_manager,
         )
         data = result.get("data", {})
+        directive = result.get("directive")
         error = None
     except Exception as e:  # Broad catch: tool boundary, logs and re-raises
         logger.error("category_fetch_error", category=category, error=str(e), exc_info=True)
         data = {}
+        directive = None
         error = {"category": category, "error": str(e)}
 
     # Build response
@@ -237,10 +237,13 @@ async def fetch_context(
         "data": {category: data} if output_format == "structured" else data,
         "metadata": {
             "format": output_format,
-            "apply_user_config": apply_user_config,
             "depth_config_applied": {category: effective_depths.get(category)},
         },
     }
+
+    # Propagate directive from inner tool (e.g., git_history local repo fallback)
+    if directive:
+        response["directive"] = {category: directive}
 
     if error:
         response["errors"] = [error]
