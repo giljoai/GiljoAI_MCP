@@ -584,8 +584,185 @@ Completion protocol applies (see CH5 - shown in implementation only)
 """
 
 
-def _build_ch2_startup(orchestrator_id: str, project_id: str) -> str:
-    """Build CH2: STARTUP SEQUENCE section (~350 tokens)."""
+def _build_ch2_fetch_calls(
+    field_toggles: dict[str, bool],
+    depth_config: dict[str, Any],
+    product_id: str,
+    tenant_key: str,
+) -> str:
+    """
+    Generate numbered, inline fetch_context() calls for CH2 Step 2 (Handover 0823).
+
+    Only includes categories the user has toggled ON. Includes depth_config
+    in calls where applicable. The agent sees exactly what to call.
+
+    Args:
+        field_toggles: Dict mapping category name -> bool (enabled/disabled)
+        depth_config: Dict mapping category name -> depth value
+        product_id: Product UUID
+        tenant_key: Tenant isolation key
+
+    Returns:
+        Formatted string with numbered fetch calls, or empty string if none enabled.
+    """
+    # Category configs: maps field name to (framing_template, depth_aware, depth_key)
+    # framing_template may contain {depth} placeholder for depth-aware categories
+    category_configs = {
+        "product_core": {
+            "framing": "Product name, description, and core features.",
+            "depth_aware": False,
+        },
+        "vision_documents": {
+            "framing": "{depth_label} vision document.",
+            "depth_aware": True,
+            "depth_labels": {
+                "light": "33% summarized",
+                "medium": "66% summarized",
+                "full": "Complete (paginated, call until has_more=false)",
+            },
+            "default_depth": "medium",
+        },
+        "tech_stack": {
+            "framing": "Programming languages, frameworks, and databases.",
+            "depth_aware": False,
+        },
+        "architecture": {
+            "framing": "System architecture patterns, API style, and design principles.",
+            "depth_aware": False,
+        },
+        "testing": {
+            "framing": "Quality standards, testing strategy, and frameworks.",
+            "depth_aware": False,
+        },
+        "memory_360": {
+            "framing": "Last {depth} product project closeouts (cumulative knowledge).",
+            "depth_aware": True,
+            "default_depth": 3,
+        },
+        "git_history": {
+            "framing": "Last {depth} recent git commits.",
+            "depth_aware": True,
+            "default_depth": 25,
+        },
+        "agent_templates": {
+            "framing": "Full agent templates with complete prompts for spawning.",
+            "depth_aware": True,
+            "skip_on_depth": "type_only",
+            "default_depth": "type_only",
+        },
+    }
+
+    inlined_fields = {"project_description"}
+    calls = []
+
+    for field, enabled in field_toggles.items():
+        if not enabled:
+            continue
+        if field in inlined_fields:
+            continue
+
+        config = category_configs.get(field)
+        if not config:
+            continue
+
+        # Handle agent_templates skip for type_only
+        if config.get("depth_aware"):
+            field_depth = depth_config.get(field, config.get("default_depth"))
+            skip_value = config.get("skip_on_depth")
+            if skip_value and field_depth == skip_value:
+                continue
+
+        # Build the call string
+        depth_param = ""
+        if config["depth_aware"]:
+            field_depth = depth_config.get(field, config.get("default_depth"))
+            if isinstance(field_depth, str):
+                depth_param = f',\n                 depth_config={{"{field}": "{field_depth}"}}'
+            else:
+                depth_param = f',\n                 depth_config={{"{field}": {field_depth}}}'
+
+        call_str = (
+            f'fetch_context(categories=["{field}"], product_id="{product_id}", tenant_key="{tenant_key}"{depth_param})'
+        )
+
+        # Build framing text
+        framing = config["framing"]
+        if config["depth_aware"]:
+            field_depth = depth_config.get(field, config.get("default_depth"))
+            if "depth_labels" in config:
+                depth_label = config["depth_labels"].get(str(field_depth), str(field_depth))
+                framing = framing.format(depth_label=depth_label)
+            else:
+                framing = framing.format(depth=field_depth)
+
+        calls.append((call_str, framing))
+
+    if not calls:
+        return ""
+
+    lines = []
+    for i, (call_str, framing) in enumerate(calls, 1):
+        lines.append(f"{i}. {call_str}")
+        lines.append(f"   -> {framing}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _build_ch2_startup(
+    orchestrator_id: str,
+    project_id: str,
+    field_toggles: dict[str, bool] | None = None,
+    depth_config: dict[str, Any] | None = None,
+    product_id: str | None = None,
+    tenant_key: str | None = None,
+) -> str:
+    """
+    Build CH2: STARTUP SEQUENCE section (Handover 0823: inline fetch calls).
+
+    When field_toggles and depth_config are provided, Step 2 contains explicit
+    numbered fetch_context() calls. The agent sees exactly what to call.
+
+    Args:
+        orchestrator_id: Job ID for parameter substitution
+        project_id: Project UUID for parameter substitution
+        field_toggles: Category toggle dict (True=enabled). If None, Step 2 is generic.
+        depth_config: Depth settings per category. If None, uses defaults.
+        product_id: Product UUID for fetch calls.
+        tenant_key: Tenant key for fetch calls.
+    """
+    # Build the dynamic Step 2 content
+    if field_toggles and product_id and tenant_key:
+        fetch_calls = _build_ch2_fetch_calls(
+            field_toggles=field_toggles,
+            depth_config=depth_config or {},
+            product_id=product_id,
+            tenant_key=tenant_key,
+        )
+        step2_body = f"""── STEP 2: Fetch Context ───────────────────────────────────────────────────
+Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
+Note: tenant_key auto-injected by server from API key session
+Returns: project_description, mission, field_toggles, orchestrator_protocol
+
+Read this protocol via orchestrator_protocol field.
+
+Then call fetch_context() for EVERY category below.
+You MUST call each one. These are configured by the user and are NOT optional.
+Do NOT skip any.
+
+{fetch_calls}"""
+    else:
+        step2_body = f"""── STEP 2: Fetch Context ───────────────────────────────────────────────────
+Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
+Note: tenant_key auto-injected by server from API key session
+Returns:
+  - project_description: User requirements (INPUT for your analysis)
+  - mission: Product context with priority fields applied
+  - field_toggles: User's context toggle configuration
+  - agent_discovery_tool: Reference to get_available_agents()
+
+Read this protocol via orchestrator_protocol field."""
+
     return f"""════════════════════════════════════════════════════════════════════════════
                        CH2: STARTUP SEQUENCE
 ════════════════════════════════════════════════════════════════════════════
@@ -620,16 +797,7 @@ Scope: Orchestration tasks ONLY — verifying, fetching context, discovering
 
 Update TodoWrite AND call report_progress() as each staging step completes.
 
-── STEP 2: Fetch Context ───────────────────────────────────────────────────
-Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
-Note: tenant_key auto-injected by server from API key session
-Returns:
-  - project_description: User requirements (INPUT for your analysis)
-  - mission: Product context with priority fields applied
-  - field_toggles: User's context toggle configuration
-  - agent_discovery_tool: Reference to get_available_agents()
-
-Read this protocol via orchestrator_protocol field.
+{step2_body}
 
 ⚠️  CONTEXT VARIABLES (CRITICAL):
 Your fetch_context() responses contain AUTHORITATIVE values:
@@ -948,6 +1116,9 @@ def _build_orchestrator_protocol(
     orchestrator_id: str,
     tenant_key: str,
     include_implementation_reference: bool = True,
+    field_toggles: dict[str, bool] | None = None,
+    depth_config: dict[str, Any] | None = None,
+    product_id: str | None = None,
 ) -> dict:
     """
     Build chapter-based orchestrator protocol.
@@ -961,12 +1132,22 @@ def _build_orchestrator_protocol(
         orchestrator_id: Job ID for parameter substitution
         tenant_key: Tenant key for parameter substitution
         include_implementation_reference: Include CH5 (default True)
+        field_toggles: Category toggles for inline fetch injection (Handover 0823)
+        depth_config: Depth settings per category (Handover 0823)
+        product_id: Product UUID for fetch calls (Handover 0823)
 
     Returns:
         Dict with chapter keys and navigation_hint
     """
     ch1 = _build_ch1_mission()
-    ch2 = _build_ch2_startup(orchestrator_id, project_id)
+    ch2 = _build_ch2_startup(
+        orchestrator_id,
+        project_id,
+        field_toggles=field_toggles,
+        depth_config=depth_config,
+        product_id=product_id,
+        tenant_key=tenant_key,
+    )
     ch3 = _build_ch3_spawning_rules(cli_mode)
     ch4 = _build_ch4_error_handling()
     ch5 = _build_ch5_reference(project_id, orchestrator_id) if include_implementation_reference else ""
