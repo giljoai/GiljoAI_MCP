@@ -599,7 +599,6 @@ class ToolAccessor:
         project_id: str | None = None,
         categories: list[str] | None = None,
         depth_config: dict[str, Any] | None = None,
-        apply_user_config: bool = True,
         output_format: str = "structured",
         agent_name: str | None = None,  # Handover 0430: Required for self_identity category
     ) -> dict[str, Any]:
@@ -614,9 +613,8 @@ class ToolAccessor:
             product_id: Product UUID
             tenant_key: Tenant isolation key
             project_id: Project UUID (required for 'project' category)
-            categories: Categories to fetch, or ["all"]
+            categories: Exactly one category to fetch per call
             depth_config: Override depth settings per category
-            apply_user_config: Apply user's saved priority/depth (default: True)
             format: "structured" (nested) or "flat" (merged)
             agent_name: Agent template name (required for 'self_identity' category)
 
@@ -629,9 +627,8 @@ class ToolAccessor:
             product_id=product_id,
             tenant_key=tenant_key,
             project_id=project_id,
-            categories=categories or ["all"],
+            categories=categories,
             depth_config=depth_config,
-            apply_user_config=apply_user_config,
             output_format=output_format,
             agent_name=agent_name,  # Handover 0430
             db_manager=self.db_manager,

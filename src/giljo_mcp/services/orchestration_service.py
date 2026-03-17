@@ -2382,17 +2382,16 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
         Returns a lean response (~500 tokens) with:
         - identity: Orchestrator/project identifiers
         - project_description_inline: Description + mission (always inline)
-        - context_fetch_instructions: Framing pointers to fetch_context() tool
+        - orchestrator_protocol: CH2 contains inline fetch_context() calls (Handover 0823)
 
-        The orchestrator uses these instructions to call fetch_context() on-demand,
-        avoiding the 50K+ token truncation risk of inline context.
+        CH2 protocol now contains explicit, mandatory fetch_context() calls.
+        Agents cannot skip categories. User depth settings control what comes back.
         """
         try:
             async with self._get_session() as session:
                 from sqlalchemy import and_
                 from sqlalchemy.orm import joinedload, selectinload
 
-                from src.giljo_mcp.mission_planner import MissionPlanner
                 from src.giljo_mcp.models import AgentTemplate, Product, Project
 
                 # Validate inputs
@@ -2476,7 +2475,6 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     product = result.scalar_one_or_none()
 
                 # Get user configuration
-                planner = MissionPlanner(self.db_manager)
                 metadata = agent_job.job_metadata or {}
                 user_id = metadata.get("user_id")
 
@@ -2494,14 +2492,8 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     depth_config = metadata.get("depth_config", {})
                     logger.debug("[USER_CONFIG] No user_id, using frozen job_metadata config", extra={"job_id": job_id})
 
-                # Handover 0350b: Generate fetch instructions (replaces inline context)
-                # This returns ~500 tokens instead of 4-8K (up to 50K with vision)
-                fetch_instructions = planner._build_fetch_instructions(
-                    product=product,
-                    project=project,
-                    field_toggles=field_toggles,
-                    depth_config=depth_config,
-                )
+                # Handover 0823: fetch instructions now injected inline in CH2 protocol
+                # _build_fetch_instructions() is no longer called here
 
                 # Get agent templates for reference
                 result = await session.execute(
@@ -2553,7 +2545,6 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                         "mission": agent_job.mission or "",  # Phase C: Mission from AgentJob
                         "project_path": project_path,
                     },
-                    "context_fetch_instructions": fetch_instructions,
                     "agent_templates": template_list,  # Staging prompt: "Returns: ... AVAILABLE AGENT TEMPLATES"
                     "mcp_tools_available": [
                         "fetch_context",
@@ -2590,6 +2581,9 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     orchestrator_id=job_id,
                     tenant_key=tenant_key,
                     include_implementation_reference=not is_staging,  # False for staging, True for implementation
+                    field_toggles=field_toggles,
+                    depth_config=depth_config,
+                    product_id=str(product.id) if product else None,
                 )
                 response["orchestrator_protocol"] = orchestrator_protocol
 
@@ -2604,7 +2598,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     "Returning toggle-based orchestrator instructions",
                     extra={
                         "job_id": job_id,
-                        "enabled_categories": len(fetch_instructions),
+                        "enabled_categories": sum(1 for v in field_toggles.values() if v),
                     },
                 )
 

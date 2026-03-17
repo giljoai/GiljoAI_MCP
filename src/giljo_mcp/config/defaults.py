@@ -76,7 +76,7 @@ DEFAULT_DEPTH_CONFIG: dict[str, Any] = {
     "depths": {
         "vision_documents": "medium",
         "memory_360": 3,
-        "git_history": 5,
+        "git_history": 25,
         "agent_templates": "type_only",
     },
 }
