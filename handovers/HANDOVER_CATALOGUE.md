@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-15 (0818, 0820b, 0822 CLOSED — all active handovers COMPLETE or DEFERRED)
+**Last Updated:** 2026-03-18 (0823b added — depth config runtime lookup)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823 ACTIVE. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823 COMPLETE, 0823b ACTIVE. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -29,7 +29,8 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0823 | Context Fetch Protocol Injection | Not Started | High | CH2 inline fetch calls, remove context_fetch_instructions, fix depth pipeline |
+| 0823 | Context Fetch Protocol Injection | **COMPLETE** | High | CH2 inline fetch calls (`6cf62fce`) |
+| 0823b | Move Depth Config to fetch_context Runtime | Ready to implement | High | Live-tunable depth settings, runtime DB lookup |
 
 ### Deferred (Still in Root Folder)
 
@@ -511,7 +512,8 @@ completed/reference/
 **0820** (Enhancement & Feature Series): 0820 Remove Context Priority Framing (COMPLETE)
 **0821** (Enhancement & Feature Series): 0821 Broadcast Deadlock Batch Counter Fix (COMPLETE)
 **0822** (Enhancement & Feature Series): 0822 Memory Gate Quality Fixes (COMPLETE)
-**0823** (Enhancement & Feature Series): 0823 Context Fetch Protocol Injection (NOT STARTED)
+**0823** (Enhancement & Feature Series): 0823 Context Fetch Protocol Injection (COMPLETE, `6cf62fce`)
+**0823b** (Enhancement & Feature Series): 0823b Move Depth Config to fetch_context Runtime (READY TO IMPLEMENT)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers

@@ -593,33 +593,33 @@ def _build_ch2_fetch_calls(
     """
     Generate numbered, inline fetch_context() calls for CH2 Step 2 (Handover 0823).
 
-    Only includes categories the user has toggled ON. Includes depth_config
-    in calls where applicable. The agent sees exactly what to call.
+    Handover 0823b: depth_config is no longer snapshotted into fetch calls.
+    fetch_context reads the user's current depth settings from the DB at runtime,
+    making depth tunable without re-staging.
+
+    The depth_config parameter is still needed for the agent_templates skip check
+    (skip_on_depth logic).
 
     Args:
         field_toggles: Dict mapping category name -> bool (enabled/disabled)
-        depth_config: Dict mapping category name -> depth value
+        depth_config: Dict mapping category name -> depth value (used only for skip logic)
         product_id: Product UUID
         tenant_key: Tenant isolation key
 
     Returns:
         Formatted string with numbered fetch calls, or empty string if none enabled.
     """
-    # Category configs: maps field name to (framing_template, depth_aware, depth_key)
-    # framing_template may contain {depth} placeholder for depth-aware categories
+    # Category configs: maps field name to framing text and depth-awareness.
+    # Handover 0823b: Framing text is now generic (no depth placeholders).
+    # Depth is resolved at fetch_context runtime, not at protocol build time.
     category_configs = {
         "product_core": {
             "framing": "Product name, description, and core features.",
             "depth_aware": False,
         },
         "vision_documents": {
-            "framing": "{depth_label} vision document.",
+            "framing": "Vision document content.",
             "depth_aware": True,
-            "depth_labels": {
-                "light": "33% summarized",
-                "medium": "66% summarized",
-                "full": "Complete (paginated, call until has_more=false)",
-            },
             "default_depth": "medium",
         },
         "tech_stack": {
@@ -635,12 +635,12 @@ def _build_ch2_fetch_calls(
             "depth_aware": False,
         },
         "memory_360": {
-            "framing": "Last {depth} product project closeouts (cumulative knowledge).",
+            "framing": "Recent product project closeouts (cumulative knowledge).",
             "depth_aware": True,
             "default_depth": 3,
         },
         "git_history": {
-            "framing": "Last {depth} recent git commits.",
+            "framing": "Recent git commits.",
             "depth_aware": True,
             "default_depth": 25,
         },
@@ -672,28 +672,11 @@ def _build_ch2_fetch_calls(
             if skip_value and field_depth == skip_value:
                 continue
 
-        # Build the call string
-        depth_param = ""
-        if config["depth_aware"]:
-            field_depth = depth_config.get(field, config.get("default_depth"))
-            if isinstance(field_depth, str):
-                depth_param = f',\n                 depth_config={{"{field}": "{field_depth}"}}'
-            else:
-                depth_param = f',\n                 depth_config={{"{field}": {field_depth}}}'
+        # Build the call string (no depth_config -- resolved at runtime per 0823b)
+        call_str = f'fetch_context(categories=["{field}"], product_id="{product_id}", tenant_key="{tenant_key}")'
 
-        call_str = (
-            f'fetch_context(categories=["{field}"], product_id="{product_id}", tenant_key="{tenant_key}"{depth_param})'
-        )
-
-        # Build framing text
+        # Framing text is now static/generic (no depth placeholders per 0823b)
         framing = config["framing"]
-        if config["depth_aware"]:
-            field_depth = depth_config.get(field, config.get("default_depth"))
-            if "depth_labels" in config:
-                depth_label = config["depth_labels"].get(str(field_depth), str(field_depth))
-                framing = framing.format(depth_label=depth_label)
-            else:
-                framing = framing.format(depth=field_depth)
 
         calls.append((call_str, framing))
 

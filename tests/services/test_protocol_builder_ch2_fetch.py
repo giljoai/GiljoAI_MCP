@@ -1,12 +1,13 @@
 """
-Tests for CH2 protocol injection and depth defaults consolidation (Handover 0823).
+Tests for CH2 protocol injection and depth defaults consolidation (Handover 0823, 0823b).
 
 Verifies:
 1. DEFAULT_DEPTHS in fetch_context.py matches DEFAULT_DEPTH_CONFIG from defaults.py
 2. CH2 protocol generates inline fetch_context() calls for enabled categories
 3. Disabled categories are excluded from CH2
-4. depth_config values appear correctly in generated fetch calls
-5. Framing text reflects depth (e.g. "Last 3" for memory_360=3)
+4. depth_config values are NOT snapshotted into fetch calls (Handover 0823b)
+5. Framing text is generic, not depth-specific (Handover 0823b)
+6. fetch_context reads user depth_config from DB when not provided (Handover 0823b)
 """
 
 
@@ -146,43 +147,64 @@ class TestCH2InlineFetchCalls:
         ch2 = self._build_ch2(field_toggles=toggles, depth_config={})
         assert 'categories=["project_description"]' not in ch2
 
-    def test_ch2_depth_config_in_memory_360_call(self):
-        """memory_360 fetch call must include depth_config with user's value."""
-        toggles = {"memory_360": True}
-        depth = {"memory_360": 7}
-        ch2 = self._build_ch2(field_toggles=toggles, depth_config=depth)
+    def test_ch2_depth_config_not_in_memory_360_call(self):
+        """memory_360 fetch call must NOT include depth_config (Handover 0823b)."""
+        from src.giljo_mcp.services.protocol_builder import _build_ch2_fetch_calls
 
-        assert '"memory_360": 7' in ch2 or "'memory_360': 7" in ch2
+        result = _build_ch2_fetch_calls(
+            field_toggles={"memory_360": True},
+            depth_config={"memory_360": 7},
+            product_id="prod-123",
+            tenant_key="tk_test",
+        )
+        # depth_config should NOT appear anywhere in the generated fetch calls
+        assert "depth_config" not in result, (
+            "memory_360 fetch call should not contain depth_config (0823b)"
+        )
 
-    def test_ch2_depth_config_in_git_history_call(self):
-        """git_history fetch call must include depth_config with user's value."""
-        toggles = {"git_history": True}
-        depth = {"git_history": 50}
-        ch2 = self._build_ch2(field_toggles=toggles, depth_config=depth)
+    def test_ch2_depth_config_not_in_git_history_call(self):
+        """git_history fetch call must NOT include depth_config (Handover 0823b)."""
+        from src.giljo_mcp.services.protocol_builder import _build_ch2_fetch_calls
 
-        assert '"git_history": 50' in ch2 or "'git_history': 50" in ch2
+        result = _build_ch2_fetch_calls(
+            field_toggles={"git_history": True},
+            depth_config={"git_history": 50},
+            product_id="prod-123",
+            tenant_key="tk_test",
+        )
+        assert "depth_config" not in result, (
+            "git_history fetch call should not contain depth_config (0823b)"
+        )
 
-    def test_ch2_depth_config_in_vision_call(self):
-        """vision_documents fetch call must include depth_config."""
-        toggles = {"vision_documents": True}
-        depth = {"vision_documents": "full"}
-        ch2 = self._build_ch2(field_toggles=toggles, depth_config=depth)
+    def test_ch2_depth_config_not_in_vision_call(self):
+        """vision_documents fetch call must NOT include depth_config (Handover 0823b)."""
+        from src.giljo_mcp.services.protocol_builder import _build_ch2_fetch_calls
 
-        assert '"vision_documents": "full"' in ch2 or "'vision_documents': 'full'" in ch2
+        result = _build_ch2_fetch_calls(
+            field_toggles={"vision_documents": True},
+            depth_config={"vision_documents": "full"},
+            product_id="prod-123",
+            tenant_key="tk_test",
+        )
+        assert "depth_config" not in result, (
+            "vision_documents fetch call should not contain depth_config (0823b)"
+        )
 
-    def test_ch2_framing_reflects_memory_depth(self):
-        """Framing text should say 'Last N' matching depth."""
+    def test_ch2_framing_memory_360_generic(self):
+        """Framing text for memory_360 should be generic, not depth-specific (0823b)."""
         toggles = {"memory_360": True}
         depth = {"memory_360": 3}
         ch2 = self._build_ch2(field_toggles=toggles, depth_config=depth)
-        assert "Last 3" in ch2
+        assert "Recent product project closeouts" in ch2
+        assert "Last 3" not in ch2
 
-    def test_ch2_framing_reflects_git_depth(self):
-        """Framing text should say 'Last N' matching git commits depth."""
+    def test_ch2_framing_git_history_generic(self):
+        """Framing text for git_history should be generic, not depth-specific (0823b)."""
         toggles = {"git_history": True}
         depth = {"git_history": 50}
         ch2 = self._build_ch2(field_toggles=toggles, depth_config=depth)
-        assert "Last 50" in ch2
+        assert "Recent git commits" in ch2
+        assert "Last 50" not in ch2
 
     def test_ch2_non_depth_categories_omit_depth_config(self):
         """Categories without depth (product_core, tech_stack) should not have depth_config."""
@@ -271,3 +293,133 @@ class TestResponseStructure:
         ch2 = result["ch2_startup_sequence"]
         assert 'categories=["product_core"]' in ch2
         assert 'categories=["tech_stack"]' not in ch2
+
+
+class TestFetchContextDepthFromDB:
+    """Phase 4 (Handover 0823b): Verify fetch_context reads depth from DB at runtime."""
+
+    @staticmethod
+    def _make_mock_user(depth_config=None):
+        """Create a mock User object with depth_config."""
+        from unittest.mock import MagicMock
+        user = MagicMock()
+        user.depth_config = depth_config
+        user.is_active = True
+        user.tenant_key = "tk_test"
+        return user
+
+    def test_load_user_depth_config_normalizes_keys(self):
+        """_load_user_depth_config must map DB keys to internal keys."""
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from src.giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
+
+        db_depth = {
+            "memory_last_n_projects": 5,
+            "git_commits": 50,
+            "vision_documents": "full",
+            "agent_templates": "full",
+        }
+
+        mock_user = self._make_mock_user(depth_config=db_depth)
+
+        # Mock the DB session and query
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_user
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+
+        mock_db = MagicMock()
+        mock_db.get_session_async = MagicMock(return_value=mock_session)
+
+        result = asyncio.get_event_loop().run_until_complete(
+            _load_user_depth_config("tk_test", mock_db)
+        )
+
+        assert result is not None
+        assert result["memory_360"] == 5
+        assert result["git_history"] == 50
+        assert result["vision_documents"] == "full"
+        assert result["agent_templates"] == "full"
+
+    def test_load_user_depth_config_returns_none_when_no_user(self):
+        """_load_user_depth_config returns None when no user found."""
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock
+
+        from src.giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+
+        mock_db = MagicMock()
+        mock_db.get_session_async = MagicMock(return_value=mock_session)
+
+        result = asyncio.get_event_loop().run_until_complete(
+            _load_user_depth_config("tk_test", mock_db)
+        )
+
+        assert result is None
+
+    def test_load_user_depth_config_returns_none_when_no_depth_config(self):
+        """_load_user_depth_config returns None when user has no depth_config."""
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock
+
+        from src.giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
+
+        mock_user = self._make_mock_user(depth_config=None)
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_user
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+
+        mock_db = MagicMock()
+        mock_db.get_session_async = MagicMock(return_value=mock_session)
+
+        result = asyncio.get_event_loop().run_until_complete(
+            _load_user_depth_config("tk_test", mock_db)
+        )
+
+        assert result is None
+
+    def test_load_user_depth_config_normalizes_vision_optional(self):
+        """_load_user_depth_config maps vision_documents 'optional' to 'light'."""
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock
+
+        from src.giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
+
+        db_depth = {"vision_documents": "optional"}
+        mock_user = self._make_mock_user(depth_config=db_depth)
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_user
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+
+        mock_db = MagicMock()
+        mock_db.get_session_async = MagicMock(return_value=mock_session)
+
+        result = asyncio.get_event_loop().run_until_complete(
+            _load_user_depth_config("tk_test", mock_db)
+        )
+
+        assert result is not None
+        assert result["vision_documents"] == "light"
