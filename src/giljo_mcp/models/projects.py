@@ -178,8 +178,6 @@ class Project(Base):
     tasks = relationship(
         "Task", foreign_keys="Task.project_id", back_populates="project", cascade="all, delete-orphan"
     )  # Specify FK to avoid ambiguity
-    context_indexes = relationship("ContextIndex", back_populates="project", cascade="all, delete-orphan")
-    document_indexes = relationship("LargeDocumentIndex", back_populates="project", cascade="all, delete-orphan")
     memory_entries = relationship("ProductMemoryEntry", back_populates="project")  # Handover 0390a
 
     __table_args__ = (

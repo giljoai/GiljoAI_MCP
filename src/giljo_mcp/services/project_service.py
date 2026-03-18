@@ -2215,10 +2215,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
         - Agent jobs (AgentJob + AgentExecution)
         - Tasks
         - Messages
-        - Context indexes (ContextIndex)
-        - Large document indexes (LargeDocumentIndex)
-        - Sessions
-        - Vision documents
+        - 360 memory entries (marked as deleted)
         - The project itself
 
         Special handling:
@@ -2282,16 +2279,7 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 "agent_jobs": 0,
                 "tasks": 0,
                 "messages": 0,
-                "context_indexes": 0,
-                "document_indexes": 0,
-                "sessions": 0,
-                "visions": 0,  # NOTE: Vision model deprecated (Handover 0728)
             }
-
-            # Import additional models needed for deletion
-            from src.giljo_mcp.models.context import ContextIndex, LargeDocumentIndex
-            # NOTE: Session import removed (Handover 0423 - dead code cleanup)
-            # NOTE: Vision import removed (Handover 0728 - Vision model deprecated)
 
             # Delete agent jobs (migrated to AgentJob - Handover 0367a)
             # Note: AgentExecution records will cascade delete via FK relationship
@@ -2330,33 +2318,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 await session.delete(message)
             deleted_counts["messages"] = len(messages)
 
-            # Delete context indexes
-            context_index_stmt = select(ContextIndex).where(
-                and_(
-                    ContextIndex.project_id == project_id,
-                    ContextIndex.tenant_key == tenant_key,
-                )
-            )
-            context_indexes = (await session.execute(context_index_stmt)).scalars().all()
-            for ctx_index in context_indexes:
-                await session.delete(ctx_index)
-            deleted_counts["context_indexes"] = len(context_indexes)
-
-            # Delete large document indexes
-            doc_index_stmt = select(LargeDocumentIndex).where(
-                and_(
-                    LargeDocumentIndex.project_id == project_id,
-                    LargeDocumentIndex.tenant_key == tenant_key,
-                )
-            )
-            doc_indexes = (await session.execute(doc_index_stmt)).scalars().all()
-            for doc_index in doc_indexes:
-                await session.delete(doc_index)
-            deleted_counts["document_indexes"] = len(doc_indexes)
-
-            # NOTE: Session deletion removed (Handover 0423 - dead code cleanup)
-            # NOTE: Vision deletion removed (Handover 0728 - Vision model deprecated)
-
             # Mark 360 memory entries as deleted by user (preserve historical reference)
             # Handover 0390b: Use repository instead of JSONB mutation
             memory_entries_marked = 0
@@ -2388,10 +2349,6 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
                 f"{deleted_counts['agent_jobs']} agents, "
                 f"{deleted_counts['tasks']} tasks, "
                 f"{deleted_counts['messages']} messages, "
-                f"{deleted_counts['context_indexes']} context indexes, "
-                f"{deleted_counts['document_indexes']} document indexes, "
-                f"{deleted_counts['sessions']} sessions, "
-                f"{deleted_counts['visions']} visions, "
                 f"{deleted_counts['memory_entries_marked']} 360 memory entries marked"
             )
 
