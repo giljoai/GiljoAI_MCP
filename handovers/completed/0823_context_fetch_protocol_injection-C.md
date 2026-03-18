@@ -5,7 +5,7 @@
 **To Agent:** Next Session
 **Priority:** High
 **Estimated Complexity:** 1 day
-**Status:** Not Started
+**Status:** Completed
 **Edition Scope:** CE (core orchestration)
 
 ---
@@ -304,3 +304,21 @@ All changes are to existing Python code with no DB migrations. Rollback is a sim
 - 0350 series: On-demand context fetch architecture
 - 0390 series: 360 memory normalization (JSONB to table)
 - 0820: Remove context priority framing
+
+---
+
+## Progress Updates
+
+### 2026-03-16 - Implementation Session
+**Status:** Completed
+**Work Done:**
+- All 5 phases implemented in commit `6cf62fce`
+- CH2 inline fetch calls replace broken `context_fetch_instructions` mechanism
+- `context_fetch_instructions` removed from GOI response
+- `apply_user_config` dead flag removed from `fetch_context()`
+- `DEFAULT_DEPTHS` consolidated with `DEFAULT_DEPTH_CONFIG`
+- Dead `categories or ["all"]` default fixed in `tool_accessor.py`
+- Git history directive added for empty DB case
+
+**Final Notes:**
+- Follow-up 0823b created for moving depth config from GOI snapshot to runtime DB lookup
