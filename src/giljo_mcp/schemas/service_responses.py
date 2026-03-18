@@ -346,10 +346,7 @@ class SpawnResult(BaseModel):
     agent_id: str
     execution_id: Optional[str] = None
     agent_prompt: str
-    prompt_tokens: int = 0
     mission_stored: bool = True
-    mission_tokens: int = 0
-    total_tokens: int = 0
     thin_client: bool = True
     thin_client_note: list[str] = Field(default_factory=list)
     predecessor_job_id: Optional[str] = None  # Handover 0497e: Recovery spawning
@@ -368,10 +365,10 @@ class MissionResponse(BaseModel):
     agent_id: Optional[str] = None
     agent_name: Optional[str] = None
     agent_display_name: Optional[str] = None
+    agent_identity: Optional[str] = None  # Handover 0825: Template-derived role identity (who I am)
     mission: Optional[str] = None
     project_id: Optional[str] = None
     parent_job_id: Optional[str] = None
-    estimated_tokens: int = 0
     status: Optional[str] = None
     created_at: Optional[str] = None
     started_at: Optional[str] = None

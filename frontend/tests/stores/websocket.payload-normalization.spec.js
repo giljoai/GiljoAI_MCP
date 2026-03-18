@@ -177,7 +177,7 @@ describe('WebSocket Payload Normalization (Handover 0290)', () => {
         data: {
           project_id: 'uuid-123',
           tenant_key: 'tenant-abc',
-          estimated_tokens: 1500,
+          agent_count: 3,
           status: 'active'
         }
       }
@@ -190,7 +190,7 @@ describe('WebSocket Payload Normalization (Handover 0290)', () => {
       expect(receivedPayload).not.toBeNull()
       expect(receivedPayload.project_id).toBe('uuid-123')
       expect(receivedPayload.tenant_key).toBe('tenant-abc')
-      expect(receivedPayload.estimated_tokens).toBe(1500)
+      expect(receivedPayload.agent_count).toBe(3)
       expect(receivedPayload.status).toBe('active')
     })
 
@@ -513,7 +513,7 @@ describe('WebSocket Payload Normalization (Handover 0290)', () => {
           orchestrator_id: 'orch-123',
           project_id: 'proj-456',
           tenant_key: expectedTenant,  // This was inaccessible before
-          estimated_tokens: 1500,
+          agent_count: 3,
           status: 'active'
         }
       }
@@ -548,7 +548,7 @@ describe('WebSocket Payload Normalization (Handover 0290)', () => {
           orchestrator_id: 'orch-789',
           project_id: expectedProjectId,  // This was inaccessible before
           tenant_key: 'some-tenant',
-          estimated_tokens: 2000
+          agent_count: 4
         }
       }
 

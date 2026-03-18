@@ -213,10 +213,11 @@ class TestGetAgentMissionFullProtocol:
         assert response.agent_display_name is not None
         assert response.mission is not None
         assert response.project_id is not None
-        assert response.estimated_tokens is not None
         assert response.thin_client is True
         assert response.status is not None
         assert response.full_protocol is not None
+        # Handover 0825: agent_identity field present (None when no template_id on job)
+        assert "agent_identity" in MissionResponse.model_fields
 
     @pytest.mark.asyncio
     async def test_protocol_includes_message_handling_instructions(
