@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-18 (0823b added — depth config runtime lookup)
+**Last Updated:** 2026-03-18 (0823 + 0823b closeout — both COMPLETE, archived)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823 COMPLETE, 0823b ACTIVE. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b COMPLETE, 0824 READY. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -29,8 +29,7 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0823 | Context Fetch Protocol Injection | **COMPLETE** | High | CH2 inline fetch calls (`6cf62fce`) |
-| 0823b | Move Depth Config to fetch_context Runtime | Ready to implement | High | Live-tunable depth settings, runtime DB lookup |
+| 0824 | Closeout Self-Decommission Guard | Ready to implement | High | Tool-level guard preventing orchestrator self-decommission during force-close |
 
 ### Deferred (Still in Root Folder)
 
@@ -43,6 +42,8 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0823 | Context Fetch Protocol Injection | 2026-03-18 | COMPLETE (`6cf62fce`) — CH2 inline fetch calls replace broken context_fetch_instructions |
+| 0823b | Move Depth Config to fetch_context Runtime | 2026-03-18 | COMPLETE (`c3899cf7`) — depth config runtime DB lookup, live-tunable settings |
 | 0259 | Notification Health Alert - Add Project Context | 2026-03-12 | COMPLETE (`e149f09d`) — project name + click-to-navigate in health alerts |
 | 0812 | Remove Unused task.job_id FK | 2026-03-12 | COMPLETE (`95b9ec99`) — dead column, FK, 2 indexes removed from tasks table |
 | 0813 | Agent Template Context Separation | 2026-03-12 | COMPLETE — role identity separated from protocols, user_instructions export gap fixed |
@@ -158,6 +159,8 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0823 | Context Fetch Protocol Injection | **COMPLETE** (2026-03-18, `6cf62fce`, CH2 inline fetch calls replace broken context_fetch_instructions) |
+| 0823b | Move Depth Config to fetch_context Runtime | **COMPLETE** (2026-03-18, `c3899cf7`, depth config runtime DB lookup, live-tunable settings) |
 | 0259 | Notification Health Alert - Add Project Context | **COMPLETE** (2026-03-12, `e149f09d`, project name + click-to-navigate in health alerts) |
 | 0812 | Remove Unused task.job_id FK | **COMPLETE** (2026-03-12, `95b9ec99`, dead column + FK + 2 indexes removed) |
 | 0813 | Agent Template Context Separation | **COMPLETE** (2026-03-12, role identity separated from protocols, user_instructions export gap fixed) |
@@ -513,7 +516,8 @@ completed/reference/
 **0821** (Enhancement & Feature Series): 0821 Broadcast Deadlock Batch Counter Fix (COMPLETE)
 **0822** (Enhancement & Feature Series): 0822 Memory Gate Quality Fixes (COMPLETE)
 **0823** (Enhancement & Feature Series): 0823 Context Fetch Protocol Injection (COMPLETE, `6cf62fce`)
-**0823b** (Enhancement & Feature Series): 0823b Move Depth Config to fetch_context Runtime (READY TO IMPLEMENT)
+**0823b** (Enhancement & Feature Series): 0823b Move Depth Config to fetch_context Runtime (COMPLETE, `c3899cf7`)
+**0824** (Enhancement & Feature Series): 0824 Closeout Self-Decommission Guard (READY TO IMPLEMENT)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
