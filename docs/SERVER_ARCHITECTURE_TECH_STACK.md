@@ -257,7 +257,6 @@ WHERE status = 'active';
 **Business Impact**:
 - Prevents project context confusion
 - Ensures clear agent focus
-- Maintains token budget consistency
 - Supports hierarchical architecture (Tenant → Product → Project → Agents)
 
 #### Project Soft Delete with Recovery (Handover 0070)
@@ -593,29 +592,6 @@ CREATE TABLE setup_state (
 - Automatic endpoint disablement (user count > 0)
 - No default credentials (admin/admin eliminated)
 
-#### Token Metrics Tracking (Handover 0020)
-
-**ProjectMetrics Table** - Token usage and reduction tracking:
-```sql
-CREATE TABLE project_metrics (
-    id VARCHAR(36) PRIMARY KEY,
-    tenant_key VARCHAR(36) NOT NULL,
-    project_id VARCHAR(36) NOT NULL,
-    metric_type VARCHAR(50) NOT NULL,  -- 'token_usage', 'token_reduction', 'workflow_time'
-    metric_value INTEGER NOT NULL,
-    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-
-    INDEX idx_metrics_tenant_project (tenant_key, project_id),
-    INDEX idx_metrics_type (metric_type),
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-);
-```
-
-**Tracking Capabilities**:
-- Real-time token usage monitoring
-- context prioritization and orchestration verification
-- Workflow performance analytics
-
 #### MCP Session Management (MCP-over-HTTP)
 
 **MCP Sessions Table** - Session tracking for HTTP transport:
@@ -753,13 +729,12 @@ GiljoAI's context management system uses a 2-dimensional model to give users fin
 2. Orchestrator spawned with thin prompt (~600 tokens)
 3. Orchestrator calls MCP tools based on toggle/depth config
 4. Tools fetch data from database (filtered by tenant_key)
-5. Tools return structured data within token limits (24K max per call)
+5. Tools return structured data within Claude Code's ingest limit (24K max per call)
 6. Orchestrator receives context and proceeds with mission
 
 ### Key Features
 - **Pagination Support**: Vision and 360 memory paginated for large content
 - **Multi-Tenant Isolation**: All tools filter by tenant_key
-- **Token Budgeting**: Real-time estimation prevents context overflow
 - **Backward Compatible**: Legacy context paths maintained
 - **Performance**: <100ms average response time per tool
 
@@ -851,8 +826,6 @@ Project Launch Request
         ▼
    Orchestrator Ready for Execution
 ```
-
-**Token Budget**: 931 tokens (22% under 1200-token staging limit)
 
 **Key Features**:
 - **Dynamic Agent Discovery**: No embedded templates (fetched via MCP tools)
@@ -978,8 +951,6 @@ Terminal 3 (Tester Agent)
    - Include: Deliverables, test results, documentation
    - Notify: Orchestrator of completion
 
-**Token Budget**: ~2400 tokens per agent (protocol + GiljoAI standards)
-
 **Code Reference**:
 - Template: `src/giljo_mcp/templates/generic_agent_template.py`
 - MCP Tool: `src/giljo_mcp/tools/orchestration.py::get_generic_agent_template()`
@@ -1019,8 +990,6 @@ result = get_available_agents()
 - Validates capabilities include required_capabilities
 - Verifies agent status == 'initialized'
 - Reports conflicts (e.g., incompatible versions)
-
-**Token Savings**: 142 tokens (no embedded templates in staging prompt)
 
 **Code Reference**: `src/giljo_mcp/tools/orchestration.py::get_available_agents()`
 
@@ -1077,7 +1046,6 @@ User Clicks "Launch Project"
 **Staging Tools** (Phase 1 - Orchestrator Preparation):
 1. `get_available_agents(tenant_key, active_only)` - **Dynamic agent discovery** (Handover 0246c)
    - Returns: Agent metadata (name, version, type, capabilities)
-   - Token savings: 420 tokens (71% reduction vs embedded templates)
    - Multi-tenant isolation enforced
 2. `health_check()` - Validates MCP server connectivity
 3. `fetch_product_context()` - Retrieves product metadata
@@ -1087,7 +1055,6 @@ User Clicks "Launch Project"
 
 **Agent Execution Tools** (Phases 3-4 - Agent Spawning & Execution):
 1. `get_generic_agent_template(agent_id, job_id, ...)` - Renders unified template (Handover 0246b)
-   - Token budget: ~1,253 tokens per agent
    - 6-phase execution protocol included
    - Variable injection: {agent_id}, {job_id}, {product_id}, {project_id}, {tenant_key}
 2. `get_agent_mission(job_id, tenant_key)` - Fetches mission from database
@@ -1100,7 +1067,7 @@ User Clicks "Launch Project"
 
 **MCP Tool Architecture Principles**:
 - **Thin Client Approach**: Server provides data via HTTP endpoints, client executes code
-- **Token Optimization**: Dynamic fetching (not embedded content) → 85% reduction
+- **Dynamic Fetching**: Context loaded on-demand via MCP tools (not embedded in prompts)
 - **Multi-Tenant Isolation**: All tools filter by tenant_key (zero cross-tenant leakage)
 - **Client-Server Separation**: Server = tool provider (HTTP), Client = executor (local filesystem)
 - **On-Demand Fetching**: Templates and missions fetched only when needed
@@ -1140,7 +1107,6 @@ ALTER TABLE mcp_agent_jobs ADD COLUMN agent_version VARCHAR(20);
     {"name": "implementer", "version": "1.0.3", "compatible": true},
     {"name": "tester", "version": "1.0.2", "compatible": true}
   ],
-  "context_budget_used": 8743,
   "staging_duration_ms": 2341
 }
 ```
@@ -1224,10 +1190,7 @@ src/giljo_mcp/
 ├── tenant.py                   # Multi-tenant isolation manager
 ├── models.py                   # SQLAlchemy ORM models
 ├── template_manager.py         # Unified template system (342 lines)
-├── optimization/               # Serena MCP optimization layer (v3.0)
-│   ├── serena_optimizer.py     # Core optimization engine
-│   ├── tool_interceptor.py     # MCP tool call optimization
-│   └── mission_optimizer.py    # Mission-time rule injection
+├── optimization/               # Serena MCP optimization layer (v3.0, configuration-based)
 ├── auth/                       # Authentication services
 │   ├── manager.py              # AuthManager class
 │   ├── jwt_handler.py          # JWT token operations
@@ -1255,48 +1218,9 @@ src/giljo_mcp/
 - **Orchestration tools** (Handover 0020): Mission generation, agent selection, workflow coordination
 
 **Serena Optimization Layer** (v3.0):
-- **60-90% context prioritization** through symbolic operation enforcement
+- **Symbolic operation enforcement**: Encourages `find_symbol()` over naive `read_file()` for focused context
 - **Mission-time optimization**: Rules injected automatically at agent spawn
-- **Tool interception**: Real-time MCP tool call optimization
-- **Context monitoring**: Tracks token usage and triggers intelligent handoffs
-- **Savings analytics**: Per-project and per-agent context prioritization reporting
-- **Production-ready**: 37 passing unit tests, full database integration
-
-#### HANDOVER 0010 - Serena MCP Optimization Layer (COMPLETE)
-
-**Implementation Status**: ✅ **COMPLETE** - Achieving 60-90% context prioritization through intelligent symbolic operations
-
-**Core Implementation**:
-- **`SerenaOptimizer`** (`src/giljo_mcp/optimization/serena_optimizer.py`) - Core optimization engine with token tracking
-- **`SerenaToolInterceptor`** (`src/giljo_mcp/optimization/tool_interceptor.py`) - Real-time MCP tool call optimization
-- **`MissionOptimizationInjector`** - Mission-time rule injection (preferred over runtime interception)
-- **Database Models**: `OptimizationRule` and `OptimizationMetric` for persistence
-- **MCP Tools**: 6 optimization control tools for dynamic rule management
-
-**Key Features Delivered**:
-- **Automatic Symbolic Operation Enforcement**: Prevents naive `read_file()` usage, enforces `find_symbol()` 
-- **Context-Aware Rule Injection**: Dynamic optimization rules based on project context (codebase size, language)
-- **Real-Time Token Tracking**: Comprehensive savings analytics per agent and per project
-- **Intelligent Handoff Triggers**: Automatic context limit monitoring with handoff suggestions
-- **Mission-Time Optimization**: Rules injected during agent spawn for maximum efficiency
-
-**Integration Points**:
-- **ProjectOrchestrator**: Automatic optimization rule injection at agent spawn
-- **Agent Missions**: All spawned agents receive optimization rules in mission text
-- **Database**: Full persistence with multi-tenant isolation
-- **MCP Tools**: Control tools for optimization management and reporting
-
-**Performance Metrics**:
-- **Token Reduction Target**: 60-90% vs naive file reading approaches
-- **Implementation Quality**: 37 passing unit tests, production-grade error handling
-- **Database Integration**: Full CRUD operations with tenant isolation
-- **Real-Time Analytics**: Per-project context usage and efficiency reporting
-
-**Completion Details**:
-- **Implementation Time**: ~6 hours (research + implementation + testing)
-- **Test Coverage**: 37 unit tests covering all optimization scenarios
-- **Production Status**: Immediately operational for all new agent spawns
-- **Database Schema**: Integrated with existing multi-tenant structure
+- **Context-aware rule injection**: Dynamic rules based on project context (codebase size, language)
 
 **Archive Status**: Moved to `handovers/completed/harmonized/HANDOVER_0010_SERENA_MCP_OPTIMIZATION_LAYER-C.md`
 
@@ -1342,7 +1266,7 @@ src/giljo_mcp/
 
 **Archive Status**: Moved to `handovers/completed/0019_HANDOVER_20251014_AGENT_JOB_MANAGEMENT-C.md`
 
-#### HANDOVER 0020 - Orchestrator Enhancement for 70% Token Reduction (COMPLETE)
+#### HANDOVER 0020 - Orchestrator Enhancement for Context-Focused Orchestration (COMPLETE)
 
 **Implementation Status**: ✅ **COMPLETE** - Intelligent mission generation and agent coordination
 
@@ -1355,12 +1279,11 @@ src/giljo_mcp/
 - **3 MCP tools** for orchestration control
 
 **Key Features Delivered**:
-- **70% Token Reduction Architecture**: Orchestrator reads full context, agents receive condensed missions
+- **Context-Focused Architecture**: Orchestrator reads full context, agents receive condensed missions
 - **Intelligent Mission Generation**: Context-aware mission creation per agent type
 - **Smart Agent Selection**: Automated agent type selection based on work requirements
 - **Workflow Coordination**: Sequential (waterfall) and parallel execution patterns
 - **Failure Recovery**: Automatic retry and recovery strategies
-- **Token Metrics**: Real-time tracking of token usage and reduction
 
 **Orchestration API Endpoints** (7 Total):
 - POST /api/orchestrator/process-vision - Start vision processing workflow
@@ -1369,13 +1292,7 @@ src/giljo_mcp/
 - GET /api/orchestrator/workflow-status - Monitor workflow progress
 - POST /api/orchestrator/coordinate - Start coordination
 - POST /api/orchestrator/handle-failure - Failure recovery
-- GET /api/orchestrator/metrics - Performance and token metrics
-
-**Token Reduction Strategy**:
-1. **Orchestrator reads full vision** (one-time token cost)
-2. **Creates condensed missions** (specific to each agent)
-3. **Agents receive only relevant context** (context prioritization and orchestration)
-4. **Coordination via messaging** (minimal overhead)
+- GET /api/orchestrator/metrics - Performance metrics
 
 **Archive Status**: Moved to `handovers/completed/0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT-C.md`
 

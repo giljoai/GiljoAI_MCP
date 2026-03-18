@@ -435,18 +435,7 @@ stmt = select(Product).where(
 
 ---
 
-## Token Estimation
-
-Token estimates use the heuristic: **1 token ≈ 4 characters**
-
-```python
-def estimate_tokens(data: Any) -> int:
-    import json
-    text = json.dumps(data)
-    return len(text) // 4
-```
-
-**Accuracy**: ~90% accurate for JSON responses, may vary for markdown content.
+**Note**: Response metadata includes an approximate `estimated_tokens` field for informational purposes (heuristic: 1 token ≈ 4 characters).
 
 ---
 

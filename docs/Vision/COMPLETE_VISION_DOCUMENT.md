@@ -28,7 +28,6 @@
 This is the **executive summary** of GiljoAI MCP's vision. For detailed technical information, see:
 
 - **[Agentic Project Management Vision](AGENTIC_PROJECT_MANAGEMENT_VISION.md)** - Strategic vision for multi-agent orchestration with context prioritization and orchestration
-- **[Context Orchestration Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)** - Technical details on context prioritization and orchestration for agentic coding
 - **[Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md)** - Proven patterns for orchestrating specialized AI agent teams
 - **[Project Roadmap](../../handovers/completed/HANDOVER_0012_PROJECT_ROADMAP-C.md)** - 5-project implementation plan (Handovers 0017-0021)
 
@@ -42,13 +41,11 @@ This is the **executive summary** of GiljoAI MCP's vision. For detailed technica
 **For Architects & Technical Leaders**:
 1. This document (Complete Vision) - High-level architecture overview
 2. [Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md) - Architectural patterns
-3. [Token Reduction Architecture](TOKEN_REDUCTION_ARCHITECTURE.md) - Technical optimization strategies
-4. [Server Architecture](../SERVER_ARCHITECTURE_TECH_STACK.md) - v3.0 unified architecture details
+3. [Server Architecture](../SERVER_ARCHITECTURE_TECH_STACK.md) - v3.0 unified architecture details
 
 **For Developers & Implementers**:
 1. [Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md) - Code-level patterns
 2. Implementation handovers: [0017](../../handovers/0017_HANDOVER_20251014_DATABASE_SCHEMA_ENHANCEMENT.md), [0018](../../handovers/0018_HANDOVER_20251014_CONTEXT_MANAGEMENT_SYSTEM.md), [0019](../../handovers/0019_HANDOVER_20251014_AGENT_JOB_MANAGEMENT.md), [0020](../../handovers/0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT.md), [0021](../../handovers/0021_HANDOVER_20251014_DASHBOARD_INTEGRATION.md)
-3. [Token Reduction Architecture](TOKEN_REDUCTION_ARCHITECTURE.md) - Implementation techniques
 
 **For New Team Members**:
 1. This document (Complete Vision) - Start here
@@ -96,7 +93,7 @@ GiljoAI MCP is evolving from a multi-tenant task management system into a **soph
 
 **Automated Agent Spawning**:
 - Orchestrator analyzes project requirements and automatically spawns specialized sub-agents
-- Each agent receives minimal, focused context (1K tokens vs 50K+ traditional)
+- Each agent receives minimal, focused context relevant to its specific task
 - Agents work in parallel on different aspects of the project
 - See [Agentic Project Management Vision](AGENTIC_PROJECT_MANAGEMENT_VISION.md) for details
 
@@ -104,8 +101,7 @@ GiljoAI MCP is evolving from a multi-tenant task management system into a **soph
 - Large vision documents (50K+ tokens) chunked into searchable 5K sections
 - Semantic boundary detection preserves meaning
 - Keyword-based context indexing enables dynamic retrieval
-- Agents load only relevant chunks, reducing token usage by 90%
-- Technical details in [Token Reduction Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)
+- Agents load only relevant chunks for focused context delivery
 
 **Orchestrator Intelligence**:
 - Orchestrator reads full context once, creates condensed missions for each agent
@@ -130,7 +126,7 @@ GiljoAI MCP is evolving from a multi-tenant task management system into a **soph
 **Real-Time Monitoring**:
 - Live dashboard showing all agent activities
 - Message history and acknowledgments
-- Performance metrics and token usage tracking
+- Performance metrics
 - Interactive controls for manual intervention when needed
 
 ### Proven Results from AKE-MCP
@@ -252,36 +248,6 @@ NOTE: These are not profiles, the product fundamentally should work with several
 -  path neutrality so users can choose install foder
 -  Flexible installation with selecting IP address to bind to, databse location if not auto detected, dependancy instlalation, venv creation and transition to "First Setup" forcing admin password settings and continued to standard user onboarding steps.
 
-
-### Technical Architecture - Serena Integration
-
-#### Token Optimization Layer
-
-The system includes a sophisticated Serena MCP optimization layer that dramatically reduces token consumption:
-
-**SerenaOptimizer Class**:
-
-- Enforces symbolic operations over file reads
-- Auto-injects optimization rules into agent missions
-- Intercepts tool calls to add max_answer_chars limits
-- Monitors token usage in real-time
-- Achieves 90% reduction in token consumption
-
-**Symbolic Operation Patterns**:
-
-- `find_symbol()` for specific functions/classes
-- `replace_symbol_body()` for precise edits
-- `max_answer_chars=1000` default limit
-- Dynamic rule updates via messaging
-
-**Integration Points**:
-
-- Agent mission templates include Serena rules
-- Tool interceptor enforces limits automatically
-- Dashboard displays token metrics
-- Configurable thresholds per tenant
-
-This integration ensures that even with 50K+ token vision documents and complex codebases, the system remains efficient and cost-effective.
 
 ### Design Philosophy
 
