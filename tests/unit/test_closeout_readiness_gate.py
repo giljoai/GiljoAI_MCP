@@ -335,6 +335,9 @@ class TestCloseoutGateIntegration:
                 scalars.all.return_value = []
                 result.scalars.return_value = scalars
             elif call_count["n"] == 5:
+                # Orchestrator guard query — no active orchestrator (agent is "impl-1")
+                result.scalar_one_or_none.return_value = None
+            elif call_count["n"] == 6:
                 # Force decommission query — returns same working agent
                 scalars = MagicMock()
                 scalars.all.return_value = [agent_working]
@@ -375,3 +378,354 @@ class TestCloseoutGateIntegration:
         assert "message" in result
         # Verify the agent was decommissioned
         assert agent_working.status == "decommissioned"
+
+
+class TestOrchestratorSelfDecommissionGuard:
+    """Tests for the orchestrator self-decommission guard in close_project_and_update_memory.
+
+    Handover 0824: When force=True is used, the guard prevents decommissioning
+    an active orchestrator (which would lock it out of calling complete_job).
+    """
+
+    @pytest.mark.asyncio
+    async def test_force_close_blocked_when_orchestrator_active(self):
+        """Force-close must be blocked when the calling orchestrator is still active."""
+        project_id = str(uuid4())
+        product_id = str(uuid4())
+        tenant_key = "test-tenant"
+
+        mock_project = MagicMock(spec=Project)
+        mock_project.id = project_id
+        mock_project.tenant_key = tenant_key
+        mock_project.product_id = product_id
+
+        mock_product = MagicMock(spec=Product)
+        mock_product.id = product_id
+        mock_product.tenant_key = tenant_key
+        mock_product.product_memory = {}
+
+        orchestrator_agent = _make_execution(
+            str(uuid4()), "orchestrator", status="working",
+            job_id=str(uuid4()), tenant_key=tenant_key,
+        )
+
+        mock_session = AsyncMock()
+        mock_db_manager = MagicMock()
+        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(
+            return_value=mock_session
+        )
+        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(
+            return_value=False
+        )
+
+        call_count = {"n": 0}
+
+        async def mock_execute(*args, **kwargs):
+            call_count["n"] += 1
+            result = MagicMock()
+            if call_count["n"] == 1:
+                # Project lookup
+                result.scalar_one_or_none.return_value = mock_project
+            elif call_count["n"] == 2:
+                # Product lookup
+                result.scalar_one_or_none.return_value = mock_product
+            elif call_count["n"] == 3:
+                # Readiness check -- orchestrator is working, not ready
+                scalars = MagicMock()
+                scalars.all.return_value = [orchestrator_agent]
+                result.scalars.return_value = scalars
+            elif call_count["n"] == 4:
+                # Todo query for the orchestrator -- empty
+                scalars = MagicMock()
+                scalars.all.return_value = []
+                result.scalars.return_value = scalars
+            elif call_count["n"] == 5:
+                # Orchestrator guard query -- finds the active orchestrator
+                result.scalar_one_or_none.return_value = orchestrator_agent
+            return result
+
+        mock_session.execute = AsyncMock(side_effect=mock_execute)
+
+        with pytest.raises(ProjectStateError) as exc_info:
+            await close_project_and_update_memory(
+                project_id=project_id,
+                summary="Test summary",
+                key_outcomes=["outcome-1"],
+                decisions_made=["decision-1"],
+                tenant_key=tenant_key,
+                db_manager=mock_db_manager,
+                force=True,
+            )
+
+        assert exc_info.value.context["status"] == "ORCHESTRATOR_SELF_DECOMMISSION_BLOCKED"
+        # Must NOT have reached force decommission (call_count should be 5, not 6)
+        assert call_count["n"] == 5
+
+    @pytest.mark.asyncio
+    async def test_force_close_allowed_when_only_specialists_active(self):
+        """Force-close must proceed when only specialist (non-orchestrator) agents are active."""
+        project_id = str(uuid4())
+        product_id = str(uuid4())
+        tenant_key = "test-tenant"
+
+        mock_project = MagicMock(spec=Project)
+        mock_project.id = project_id
+        mock_project.tenant_key = tenant_key
+        mock_project.product_id = product_id
+        mock_project.created_at = datetime.now(timezone.utc)
+        mock_project.completed_at = None
+        mock_project.meta_data = {}
+        mock_project.name = "Test Project"
+
+        mock_product = MagicMock(spec=Product)
+        mock_product.id = product_id
+        mock_product.tenant_key = tenant_key
+        mock_product.product_memory = {}
+
+        specialist_agent = _make_execution(
+            str(uuid4()), "impl-1", status="working",
+            job_id=str(uuid4()), tenant_key=tenant_key,
+        )
+
+        mock_session = AsyncMock()
+        mock_db_manager = MagicMock()
+        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(
+            return_value=mock_session
+        )
+        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(
+            return_value=False
+        )
+
+        call_count = {"n": 0}
+
+        async def mock_execute(*args, **kwargs):
+            call_count["n"] += 1
+            result = MagicMock()
+            if call_count["n"] == 1:
+                # Project lookup
+                result.scalar_one_or_none.return_value = mock_project
+            elif call_count["n"] == 2:
+                # Product lookup
+                result.scalar_one_or_none.return_value = mock_product
+            elif call_count["n"] == 3:
+                # Readiness check -- specialist is working, not ready
+                scalars = MagicMock()
+                scalars.all.return_value = [specialist_agent]
+                result.scalars.return_value = scalars
+            elif call_count["n"] == 4:
+                # Todo query for the specialist -- empty
+                scalars = MagicMock()
+                scalars.all.return_value = []
+                result.scalars.return_value = scalars
+            elif call_count["n"] == 5:
+                # Orchestrator guard query -- no active orchestrator
+                result.scalar_one_or_none.return_value = None
+            elif call_count["n"] == 6:
+                # Force decommission query -- returns the specialist
+                scalars = MagicMock()
+                scalars.all.return_value = [specialist_agent]
+                result.scalars.return_value = scalars
+            return result
+
+        mock_session.execute = AsyncMock(side_effect=mock_execute)
+
+        mock_entry = MagicMock()
+        mock_entry.id = str(uuid4())
+        mock_entry.to_dict.return_value = {"id": str(mock_entry.id)}
+
+        with patch(
+            "src.giljo_mcp.tools.project_closeout.ProductMemoryRepository"
+        ) as MockRepo:
+            repo_instance = MockRepo.return_value
+            repo_instance.get_next_sequence = AsyncMock(return_value=1)
+            repo_instance.create_entry = AsyncMock(return_value=mock_entry)
+
+            with patch(
+                "src.giljo_mcp.tools.project_closeout.emit_websocket_event",
+                new_callable=AsyncMock,
+            ):
+                result = await close_project_and_update_memory(
+                    project_id=project_id,
+                    summary="Test summary for specialist closeout",
+                    key_outcomes=["outcome-1"],
+                    decisions_made=["decision-1"],
+                    tenant_key=tenant_key,
+                    db_manager=mock_db_manager,
+                    force=True,
+                )
+
+        assert "entry_id" in result
+        assert specialist_agent.status == "decommissioned"
+
+    @pytest.mark.asyncio
+    async def test_force_close_allowed_when_orchestrator_complete(self):
+        """Force-close must proceed when orchestrator is already complete but specialists are stuck."""
+        project_id = str(uuid4())
+        product_id = str(uuid4())
+        tenant_key = "test-tenant"
+
+        mock_project = MagicMock(spec=Project)
+        mock_project.id = project_id
+        mock_project.tenant_key = tenant_key
+        mock_project.product_id = product_id
+        mock_project.created_at = datetime.now(timezone.utc)
+        mock_project.completed_at = None
+        mock_project.meta_data = {}
+        mock_project.name = "Test Project"
+
+        mock_product = MagicMock(spec=Product)
+        mock_product.id = product_id
+        mock_product.tenant_key = tenant_key
+        mock_product.product_memory = {}
+
+        complete_orchestrator = _make_execution(
+            str(uuid4()), "orchestrator", status="complete",
+            job_id=str(uuid4()), tenant_key=tenant_key,
+        )
+        working_specialist = _make_execution(
+            str(uuid4()), "impl-1", status="working",
+            job_id=str(uuid4()), tenant_key=tenant_key,
+        )
+
+        mock_session = AsyncMock()
+        mock_db_manager = MagicMock()
+        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(
+            return_value=mock_session
+        )
+        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(
+            return_value=False
+        )
+
+        call_count = {"n": 0}
+
+        async def mock_execute(*args, **kwargs):
+            call_count["n"] += 1
+            result = MagicMock()
+            if call_count["n"] == 1:
+                # Project lookup
+                result.scalar_one_or_none.return_value = mock_project
+            elif call_count["n"] == 2:
+                # Product lookup
+                result.scalar_one_or_none.return_value = mock_product
+            elif call_count["n"] == 3:
+                # Readiness check -- both agents returned; specialist is working
+                scalars = MagicMock()
+                scalars.all.return_value = [complete_orchestrator, working_specialist]
+                result.scalars.return_value = scalars
+            elif call_count["n"] == 4:
+                # Todo query for the working specialist -- empty
+                scalars = MagicMock()
+                scalars.all.return_value = []
+                result.scalars.return_value = scalars
+            elif call_count["n"] == 5:
+                # Orchestrator guard query -- no active orchestrator (it is complete)
+                result.scalar_one_or_none.return_value = None
+            elif call_count["n"] == 6:
+                # Force decommission query -- returns the working specialist
+                scalars = MagicMock()
+                scalars.all.return_value = [working_specialist]
+                result.scalars.return_value = scalars
+            return result
+
+        mock_session.execute = AsyncMock(side_effect=mock_execute)
+
+        mock_entry = MagicMock()
+        mock_entry.id = str(uuid4())
+        mock_entry.to_dict.return_value = {"id": str(mock_entry.id)}
+
+        with patch(
+            "src.giljo_mcp.tools.project_closeout.ProductMemoryRepository"
+        ) as MockRepo:
+            repo_instance = MockRepo.return_value
+            repo_instance.get_next_sequence = AsyncMock(return_value=1)
+            repo_instance.create_entry = AsyncMock(return_value=mock_entry)
+
+            with patch(
+                "src.giljo_mcp.tools.project_closeout.emit_websocket_event",
+                new_callable=AsyncMock,
+            ):
+                result = await close_project_and_update_memory(
+                    project_id=project_id,
+                    summary="Test summary for complete orchestrator",
+                    key_outcomes=["outcome-1"],
+                    decisions_made=["decision-1"],
+                    tenant_key=tenant_key,
+                    db_manager=mock_db_manager,
+                    force=True,
+                )
+
+        assert "entry_id" in result
+        assert working_specialist.status == "decommissioned"
+        # Orchestrator should remain complete, not touched
+        assert complete_orchestrator.status == "complete"
+
+    @pytest.mark.asyncio
+    async def test_force_close_error_includes_orchestrator_job_id(self):
+        """The ORCHESTRATOR_SELF_DECOMMISSION_BLOCKED error must include the orchestrator's job_id."""
+        project_id = str(uuid4())
+        product_id = str(uuid4())
+        tenant_key = "test-tenant"
+        orch_job_id = str(uuid4())
+
+        mock_project = MagicMock(spec=Project)
+        mock_project.id = project_id
+        mock_project.tenant_key = tenant_key
+        mock_project.product_id = product_id
+
+        mock_product = MagicMock(spec=Product)
+        mock_product.id = product_id
+        mock_product.tenant_key = tenant_key
+        mock_product.product_memory = {}
+
+        orchestrator_agent = _make_execution(
+            str(uuid4()), "orchestrator", status="working",
+            job_id=orch_job_id, tenant_key=tenant_key,
+        )
+
+        mock_session = AsyncMock()
+        mock_db_manager = MagicMock()
+        mock_db_manager.get_session_async.return_value.__aenter__ = AsyncMock(
+            return_value=mock_session
+        )
+        mock_db_manager.get_session_async.return_value.__aexit__ = AsyncMock(
+            return_value=False
+        )
+
+        call_count = {"n": 0}
+
+        async def mock_execute(*args, **kwargs):
+            call_count["n"] += 1
+            result = MagicMock()
+            if call_count["n"] == 1:
+                result.scalar_one_or_none.return_value = mock_project
+            elif call_count["n"] == 2:
+                result.scalar_one_or_none.return_value = mock_product
+            elif call_count["n"] == 3:
+                scalars = MagicMock()
+                scalars.all.return_value = [orchestrator_agent]
+                result.scalars.return_value = scalars
+            elif call_count["n"] == 4:
+                scalars = MagicMock()
+                scalars.all.return_value = []
+                result.scalars.return_value = scalars
+            elif call_count["n"] == 5:
+                result.scalar_one_or_none.return_value = orchestrator_agent
+            return result
+
+        mock_session.execute = AsyncMock(side_effect=mock_execute)
+
+        with pytest.raises(ProjectStateError) as exc_info:
+            await close_project_and_update_memory(
+                project_id=project_id,
+                summary="Test summary",
+                key_outcomes=["outcome-1"],
+                decisions_made=["decision-1"],
+                tenant_key=tenant_key,
+                db_manager=mock_db_manager,
+                force=True,
+            )
+
+        # Verify the error context includes the orchestrator's job_id for remediation
+        assert exc_info.value.context["status"] == "ORCHESTRATOR_SELF_DECOMMISSION_BLOCKED"
+        required_sequence = exc_info.value.context["required_sequence"]
+        assert any(orch_job_id in step for step in required_sequence)
