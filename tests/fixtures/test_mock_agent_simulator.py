@@ -56,7 +56,6 @@ def mock_mission_response() -> dict[str, Any]:
                             "mission": "Create REST API endpoint for user management",
                             "project_id": "project-456",
                             "parent_job_id": "orchestrator-789",
-                            "estimated_tokens": 500,
                             "status": "waiting",
                             "thin_client": True,
                         }

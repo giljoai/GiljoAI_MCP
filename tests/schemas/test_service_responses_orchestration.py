@@ -49,18 +49,20 @@ class TestSpawnResult:
             agent_id="agent-2",
             execution_id="exec-2",
             agent_prompt="Prompt here",
-            prompt_tokens=150,
             mission_stored=True,
-            mission_tokens=80,
-            total_tokens=230,
             thin_client=True,
             thin_client_note=["Note 1", "Note 2"],
         )
         assert result.execution_id == "exec-2"
-        assert result.prompt_tokens == 150
-        assert result.mission_tokens == 80
-        assert result.total_tokens == 230
+        assert result.mission_stored is True
         assert len(result.thin_client_note) == 2
+
+    def test_no_token_fields(self):
+        """Handover 0825: SpawnResult no longer has token estimation fields."""
+        result = SpawnResult(job_id="j", agent_id="a", agent_prompt="p")
+        assert not hasattr(result, "prompt_tokens") or "prompt_tokens" not in result.model_fields
+        assert not hasattr(result, "mission_tokens") or "mission_tokens" not in result.model_fields
+        assert not hasattr(result, "total_tokens") or "total_tokens" not in result.model_fields
 
     def test_missing_job_id_raises(self):
         with pytest.raises(ValidationError):
@@ -108,10 +110,10 @@ class TestMissionResponse:
             agent_id="agent-2",
             agent_name="impl-1",
             agent_display_name="implementer",
+            agent_identity="You are IMPLEMENTER. Your expertise...",
             mission="Build feature X",
             project_id="proj-1",
             parent_job_id="parent-1",
-            estimated_tokens=500,
             status="working",
             created_at="2026-01-01T00:00:00Z",
             started_at="2026-01-01T00:01:00Z",
@@ -123,7 +125,16 @@ class TestMissionResponse:
         )
         assert result.full_protocol is not None
         assert result.agent_display_name == "implementer"
-        assert result.estimated_tokens == 500
+        assert result.agent_identity is not None
+
+    def test_no_estimated_tokens_field(self):
+        """Handover 0825: MissionResponse no longer has estimated_tokens field."""
+        assert "estimated_tokens" not in MissionResponse.model_fields
+
+    def test_agent_identity_optional(self):
+        """Handover 0825: agent_identity is None by default."""
+        result = MissionResponse(job_id="j")
+        assert result.agent_identity is None
 
     def test_missing_job_id_raises(self):
         with pytest.raises(ValidationError):

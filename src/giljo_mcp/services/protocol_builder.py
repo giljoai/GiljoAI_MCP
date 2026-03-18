@@ -247,7 +247,11 @@ tell me and I'll use /gil_add to save it to your dashboard."
             "   - NEVER skip this step - planning prevents poor execution"
         )
 
-    return f"""## Agent Lifecycle Protocol (5 Phases)
+    # Handover 0825: Framing directive for lifecycle protocol
+    protocol_framing = "These are your lifecycle operating procedures. Follow them from startup through completion.\n\n"
+    return (
+        protocol_framing
+        + f"""## Agent Lifecycle Protocol (5 Phases)
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
 0. **ENVIRONMENT DETECTION**:
@@ -398,6 +402,7 @@ If your mission references undefined entities, has unclear dependencies, or ambi
 **CRITICAL: MCP tools are NATIVE tool calls. Use them like Read/Write/Bash.**
 **Do NOT use curl, HTTP, or SDK calls.**
 """
+    )
 
 
 # ============================================================================
