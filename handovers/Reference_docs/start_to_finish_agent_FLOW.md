@@ -2055,9 +2055,7 @@ condensed_mission = await planner._build_fetch_instructions(
   "success": true,
   "agent_job_id": "agent-uuid",
   "agent_prompt": "~10 line thin prompt",
-  "prompt_tokens": 50,
   "mission_stored": true,
-  "mission_tokens": 2000,
   "thin_client": true
 }
 ```
@@ -2137,7 +2135,6 @@ async def test_orchestrator_instructions_fetch():
     # Assertions
     assert instructions["project_id"] == str(project.id)
     assert instructions["mission"]  # Condensed mission present
-    assert instructions["estimated_tokens"] < 10000  # Context prioritization applied
     assert instructions["thin_client"] == True
 ```
 
