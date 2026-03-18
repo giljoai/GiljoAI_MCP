@@ -9,18 +9,16 @@ GiljoAI MCP orchestrators have **automatic context tracking**, **staging workflo
 
 **Key Features (v3.2)**:
 - **7-Task Staging Workflow**: Validates environment before agent execution (Handover 0246a)
-- **Dynamic Agent Discovery**: Discovers agents via MCP tools (no embedded templates, 71% token reduction)
+- **Dynamic Agent Discovery**: Discovers agents via MCP tools (no embedded templates)
 - **Generic Agent Template**: Unified protocol for multi-terminal mode (Handover 0246b)
 - **Manual Succession**: User-triggered via UI or slash command
-- **Context Prioritization**: Condenses missions to <10K tokens for handover
-- **Token Optimization**: 85% reduction in orchestrator prompts (~3,500 → ~450-550 tokens)
+- **Context Prioritization**: Condenses missions for handover
 
 **Key Benefit**: **context prioritization and orchestration** through mission condensation + **unlimited project duration** through graceful succession + **environment validation** through comprehensive staging.
 
 ### Complete Orchestrator Workflow Pipeline (v3.2)
 
 **Implementation**: Handovers 0246a, 0246b, 0246c
-**Total Token Savings**: 85% reduction (3,000+ tokens per orchestrator instance)
 
 The orchestrator workflow consists of four key phases:
 
@@ -36,7 +34,6 @@ User Action: "Launch Project"
 │ - Context Prioritization (unified fetch_context())  │
 │ - Agent Job Spawning (AgentJob records)              │
 │ - Activation (project → active status)              │
-│ Token Budget: 931 tokens (22% under 1200 limit)     │
 └────────────┬────────────────────────────────────────┘
              ↓
 ┌─────────────────────────────────────────────────────┐
@@ -44,8 +41,7 @@ User Action: "Launch Project"
 │ - Call get_available_agents() MCP tool              │
 │ - Receives agent metadata (name, version, type)     │
 │ - Validates version compatibility                   │
-│ - NO EMBEDDED TEMPLATES (71% token savings)         │
-│ Token Savings: 420 tokens (dynamic vs embedded)     │
+│ - NO EMBEDDED TEMPLATES (fetched dynamically)       │
 └────────────┬────────────────────────────────────────┘
              ↓
 ┌─────────────────────────────────────────────────────┐
@@ -54,7 +50,6 @@ User Action: "Launch Project"
 │ - Multi-Terminal Mode: get_generic_agent_template() │
 │ - Agent calls get_agent_mission(job_id)             │
 │ - Agent receives mission-specific context           │
-│ Token Budget: ~1,253 tokens per agent (generic)     │
 └────────────┬────────────────────────────────────────┘
              ↓
 ┌─────────────────────────────────────────────────────┐
@@ -65,14 +60,6 @@ User Action: "Launch Project"
 │ - Progress reporting via WebSocket                  │
 └─────────────────────────────────────────────────────┘
 ```
-
-**Token Optimization Breakdown**:
-- **Baseline (pre-0246)**: ~3,500 tokens per orchestrator (fat prompt)
-- **After 0246a (staging)**: ~931 tokens (staging workflow)
-- **After 0246b (generic template)**: +1,253 tokens per agent
-- **After 0246c (dynamic discovery)**: -420 tokens (removed embedded templates)
-- **Final Result**: ~450-550 tokens per orchestrator prompt
-- **Total Savings**: ~3,000 tokens (85% reduction)
 
 ---
 
@@ -125,8 +112,7 @@ Before spawning any agents, the orchestrator executes a **7-task staging workflo
    ├─ Call fetch_context(category=...) once per enabled category
    ├─ Enabled fields: fetch via MCP tool (product_core, project, tech_stack, etc.)
    ├─ Disabled fields: skip entirely
-   ├─ Generate unified orchestrator mission
-   └─ Condense into <10K tokens (See: docs/api/context_tools.md)
+   └─ Generate unified orchestrator mission (See: docs/api/context_tools.md)
 
 6. AGENT JOB SPAWNING
    ├─ Create AgentJob records for each agent
@@ -142,8 +128,6 @@ Before spawning any agents, the orchestrator executes a **7-task staging workflo
 ```
 
 ### Staging Prompt Generation
-
-**Token Budget**: 931 tokens (22% under 1200-token limit)
 
 **Implementation**:
 ```python
@@ -211,8 +195,6 @@ result = get_available_agents()
 - Verifies: `agent.status == 'initialized'`
 - Reports: Version conflicts and incompatibilities
 
-**Token Savings**: 420 tokens (71% reduction vs embedded templates)
-
 **Implementation Details** (Handover 0246c):
 - **New MCP Tool**: `src/giljo_mcp/tools/agent_discovery.py` (167 lines)
 - **Function**: `get_available_agents(session, tenant_key, active_only=True)`
@@ -222,17 +204,6 @@ result = get_available_agents()
   - Active-only filtering option
   - Graceful error handling
   - Production-grade logging
-
-**Before (embedded templates in prompts)**:
-- 5-8 agent templates fully embedded in staging prompt
-- Each template: ~71-86 tokens
-- Total overhead: ~430 tokens per orchestrator
-
-**After (dynamic discovery)**:
-- Single MCP call: `get_available_agents(tenant_key, active_only=True)`
-- Overhead: ~10 tokens (just the function call)
-- Agent metadata returned (name, version, type, capabilities)
-- Templates fetched on-demand when needed
 
 **Code References**:
 - Discovery Tool: `src/giljo_mcp/tools/agent_discovery.py`
@@ -260,7 +231,6 @@ After successful staging, results are stored in `AgentJob.staging_result`:
     {"name": "tester", "version": "1.0.2", "compatible": true},
     {"name": "reviewer", "version": "1.0.1", "compatible": true}
   ],
-  "context_budget_used": 8743,
   "staging_duration_ms": 2341,
   "execution_mode": "claude_code_cli"
 }
@@ -394,7 +364,6 @@ mission_data = get_agent_mission(
     "agent_type": "implementer",
     "mission": "Implement user authentication with JWT tokens...",
     "project_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-    "estimated_tokens": 250,
     "status": "working",
     "thin_client": true,
     "full_protocol": "## Agent Lifecycle Protocol (6 Phases)\\n\\n### Phase 1: STARTUP..."
@@ -478,15 +447,6 @@ complete_job(
     }
 )
 ```
-
-### Template Token Budget
-
-**Token Count**: ~2400 tokens per agent
-
-**Breakdown**:
-- Protocol phases: ~1200 tokens
-- GiljoAI standards: ~800 tokens
-- Communication examples: ~400 tokens
 
 **Code Reference**: `src/giljo_mcp/templates/generic_agent_template.py::GenericAgentTemplate.render()`
 
@@ -849,128 +809,31 @@ result = await write_360_memory(...)
 
 ---
 
-## Context Tracking Architecture
+## Manual Succession / Session Handover
 
-### **How It Works**
+### **Overview**
 
-1. **Context Budget**: Each orchestrator starts with a context budget (default: 200,000 tokens)
-2. **Usage Tracking**: Every message sent/received updates `context_used` counter
-3. **Manual Succession**: User triggers succession via `/gil_handover` command or UI "Hand Over" button
-4. **Handover Summary**: Mission condensed to <10K tokens via MissionPlanner
-5. **Lineage Preservation**: Full succession chain tracked via `spawned_by` links
-
-### **Database Fields** (mcp_agent_jobs table)
-
-```sql
--- Context tracking
-context_used INTEGER DEFAULT 0,          -- Current token usage
-context_budget INTEGER DEFAULT 200000,   -- Maximum tokens allowed
-
--- Succession
-spawned_by INTEGER REFERENCES mcp_agent_jobs(id),  -- Parent orchestrator
-handover_to INTEGER REFERENCES mcp_agent_jobs(id), -- Successor orchestrator
-handover_summary TEXT,                   -- Condensed context for successor
-succession_reason VARCHAR(50),           -- Why succession triggered
-handover_context_refs JSONB              -- References to full context
-```
-
----
-
-## Implementation: OrchestrationService
-
-### **Creating Orchestrator with Context Tracking**
-
-```python
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-
-service = OrchestrationService(session, tenant_key="user123")
-
-# Create orchestrator with context budget
-job = await service.create_orchestrator_job(
-    project_id=project_id,
-    mission=mission,
-    context_budget=200000  # tokens (adjustable)
-)
-
-# Result:
-# job.context_used = 0
-# job.context_budget = 200000
-# job.spawned_by = None (first orchestrator)
-```
-
-### **Tracking Context Usage**
-
-```python
-# After each message send/receive
-await service.update_context_usage(
-    job_id=job.id,
-    additional_tokens=1500  # Message size in tokens
-)
-
-# Check current status
-status = await service.get_context_status(job.id)
-# Returns:
-# {
-#   "context_used": 180000,
-#   "context_budget": 200000,
-#   "percentage_used": 0.90,
-#   "tokens_remaining": 20000
-# }
-```
-
-### **Manual Succession Trigger**
-
-**Note**: As of Handover 0700d, use the simple-handover API endpoint instead of the deprecated `trigger_succession()` method.
+**Note**: As of Handover 0700d, use the simple-handover API endpoint instead of the deprecated `trigger_succession()` method. The context budget tracking system (`context_budget`, `context_used`, `update_context_usage()`, `get_context_status()`) was removed in Handover 0422 -- the MCP server is passive and cannot track external CLI context usage.
 
 ```python
 # User-triggered succession via UI "Hand Over" button or slash command
 # Calls POST /api/agent-jobs/{job_id}/simple-handover
 # This endpoint:
 # 1. Writes session_handover to 360 Memory
-# 2. Resets context_used to 0
-# 3. Returns continuation prompt info
+# 2. Returns continuation prompt info
 
 # Result:
 # - Same agent_id (no agent swap)
-# - Context reset to 0 (fresh start)
-# - 360 Memory entry with handover reason
+# - 360 Memory entry with handover context
 ```
 
 ---
 
 ## Handover Summary Generation
 
-### **Mission Condensation** (70% Token Reduction)
+### **Mission Condensation for Context Handover**
 
-The handover summary is generated using **MissionPlanner** to condense the full project context:
-
-```python
-from src.giljo_mcp.mission_planner import MissionPlanner
-
-planner = MissionPlanner()
-
-# Original context: 180,000 tokens
-full_context = {
-    "vision_documents": [...],
-    "completed_missions": [...],
-    "agent_results": [...],
-    "conversation_history": [...]
-}
-
-# Condensed summary: <10,000 tokens
-handover_summary = await planner.generate_handover_summary(
-    project_id=project_id,
-    parent_job_id=job.id,
-    full_context=full_context
-)
-
-# Summary includes:
-# - Mission objectives (condensed)
-# - Completed work (bullet points)
-# - Blockers and pending items
-# - Key decisions and rationale
-# - References to full context (handover_context_refs JSONB)
-```
+The handover summary condenses the full project context into a focused summary for session continuity:
 
 ### **Handover Summary Structure**
 
@@ -1009,8 +872,6 @@ Full context available in:
 - Conversation history: project_789/messages (timestamp: 2025-11-15T10:30:00Z)
 ```
 
-**Token Count**: ~1,200 tokens (vs 180,000 original)
-
 ---
 
 ## Manual Succession Triggers
@@ -1046,37 +907,12 @@ Dashboard shows "Hand Over" button on working orchestrator cards:
 
 ---
 
-## Succession Timeline UI
-
-### **SuccessionTimeline.vue Component**
-
-Visual timeline showing orchestrator succession chain:
-
-```
-Instance 1              Instance 2              Instance 3
-(Completed)             (Working)               (Pending)
-[====================] [===========>          ] [                    ]
-Context: 100%           Context: 55%            Context: 0%
-Duration: 8h            Duration: 4h            Duration: -
-
-Handover reason: context_limit
-Handover reason: (pending)
-```
-
-**Key Features**:
-- **Instance badges**: Show orchestrator number (1, 2, 3, ...)
-- **Context bars**: Visual progress (green: <70%, yellow: 70-89%, red: 90%+)
-- **Duration tracking**: Time spent per instance
-- **Handover markers**: Show succession reason (context_limit, manual, error)
-- **Lineage navigation**: Click to view parent/successor details
-
 ---
 
 ## Succession Reasons
 
 | Reason | Description | Trigger |
 |--------|-------------|---------|
-| `context_limit` | Automatic at 90% context capacity | Auto (OrchestrationService) |
 | `manual` | User-initiated via `/gil_handover` or UI | Manual (slash command or button) |
 | `error` | Orchestrator encountered unrecoverable error | Auto (error handler) |
 | `completion` | Project completed, new phase starting | Manual (project manager) |
@@ -1087,118 +923,34 @@ Handover reason: (pending)
 
 ### **1. Unlimited Project Duration**
 
-**Before succession**:
-- Orchestrator hits 200K token limit
-- Project stalls (cannot continue)
-- Manual restart required
-
-**After succession**:
-- Auto-spawn successor at 90%
-- Seamless handover (<10K token summary)
+- User triggers session refresh when context window fills
+- Seamless handover via 360 Memory
 - Project continues indefinitely
 
-### **2. 70% Token Reduction**
+### **2. Focused Context Delivery**
 
-**Mission condensation** reduces context size:
-- Original: 180,000 tokens (full conversation history)
-- Condensed: <10,000 tokens (mission summary)
-- **Savings**: 170,000 tokens (94% reduction)
-
-### **3. Graceful Context Management**
-
-**Prevents context pollution**:
-- Old conversations archived (handover_context_refs)
-- Successor starts fresh with essential context
+- Mission condensation delivers only essential context to successor
+- Successor starts fresh with relevant information
 - No degradation in reasoning quality
 
-### **4. Full Lineage Tracking**
+### **3. Full Lineage Tracking**
 
 **Audit trail preserved**:
-- spawned_by chain shows full succession history
-- Handover summaries preserved in database
-- UI timeline visualizes entire project journey
+- Handover summaries preserved in 360 Memory
+- UI timeline visualizes project journey
 
 ---
 
-## Testing Orchestrator Succession
+## Testing Session Handover
 
-### **Unit Test Example**
-
-```python
-@pytest.mark.asyncio
-async def test_manual_succession_trigger(db_session, test_tenant):
-    service = OrchestrationService(db_session, test_tenant)
-
-    # Create orchestrator with small budget for testing
-    job = await service.create_orchestrator_job(
-        project_id=1,
-        mission="Test mission",
-        context_budget=10000  # Small budget
-    )
-
-    # Simulate context usage approaching threshold
-    await service.update_context_usage(job.id, 9100)  # 91% used
-
-    # Check succession status
-    status = await service.get_context_status(job.id)
-    assert status['percentage_used'] >= 0.9
-
-    # Manually trigger handover via API endpoint (user action)
-    # POST /api/agent-jobs/{job.id}/simple-handover
-    # This resets context and writes to 360 Memory
-    # Note: trigger_succession() removed in Handover 0700d
-```
-
-### **Integration Test Example**
-
-```python
-@pytest.mark.asyncio
-async def test_full_succession_workflow(db_session, test_tenant):
-    service = OrchestrationService(db_session, test_tenant)
-
-    # Create orchestrator
-    job1 = await service.create_orchestrator_job(
-        project_id=1,
-        mission="Build authentication system",
-        context_budget=200000
-    )
-
-    # Simulate work (context usage)
-    await service.update_context_usage(job1.id, 180000)  # 90% used
-
-    # Trigger handover via API endpoint
-    # POST /api/agent-jobs/{job1.id}/simple-handover
-    # Note: trigger_succession() method removed in Handover 0700d
-    # Simple handover resets context and writes to 360 Memory
-
-    # Verify 360 Memory entry created
-    # Verify context_used reset to 0
-    assert job1.handover_to == job2.id
-    assert job1.status == "succeeded"
+```bash
+# Test simple handover (360 Memory-based)
+pytest tests/api/test_agent_jobs.py -k "simple_handover" -v
 ```
 
 ---
 
 ## API Endpoints
-
-### **GET /api/orchestrator/context-status/{job_id}**
-
-Get current context usage for orchestrator:
-
-```bash
-curl http://localhost:7272/api/orchestrator/context-status/123
-```
-
-Response:
-```json
-{
-  "job_id": 123,
-  "context_used": 180000,
-  "context_budget": 200000,
-  "percentage_used": 0.90,
-  "tokens_remaining": 20000
-}
-```
 
 ### **POST /api/agent-jobs/{job_id}/simple-handover**
 
@@ -1223,34 +975,7 @@ Response:
 
 ## Best Practices
 
-### **1. Monitor Context Usage Proactively**
-
-Don't wait for 90% threshold:
-```python
-# Check context status regularly
-status = await service.get_context_status(job.id)
-if status['percentage_used'] > 0.75:
-    logger.warning(f"Context at 75% for job {job.id}")
-```
-
-### **2. Configure Context Budget per Project**
-
-Adjust budget based on project complexity:
-```python
-# Simple projects: smaller budget
-job = await service.create_orchestrator_job(
-    project_id=simple_project.id,
-    context_budget=100000  # 100K tokens
-)
-
-# Complex projects: larger budget
-job = await service.create_orchestrator_job(
-    project_id=complex_project.id,
-    context_budget=300000  # 300K tokens (requires tier upgrade)
-)
-```
-
-### **3. Preserve Context References**
+### **1. Preserve Context References**
 
 Always store references to full context:
 ```python
@@ -1267,57 +992,21 @@ handover_context_refs = {
 # Note: trigger_succession() removed in Handover 0700d
 ```
 
-### **4. Test Handover Locally**
+### **2. Test Handover Locally**
 
 Test the simple-handover endpoint:
 ```bash
 # Test simple handover (360 Memory-based)
 pytest tests/api/test_agent_jobs.py -k "simple_handover" -v
-
-# Note: Legacy succession tests removed in Handover 0700d
 ```
 
 ---
 
 ## Troubleshooting
 
-### **Issue: Context Tracking Not Working**
+### **Issue: Successor Not Receiving Context**
 
-**Diagnosis**:
-```python
-# Check if context tracking is enabled
-job = await session.get(AgentJob, job_id)
-if job.context_budget is None:
-    logger.error("Context budget not set!")
-
-# Check if update_context_usage is being called
-# Add logging to OrchestrationService.update_context_usage()
-```
-
-**Solution**: Ensure `create_orchestrator_job()` sets `context_budget` and `update_context_usage()` is called after every message. Succession must be triggered manually when context is high.
-
-### **Issue: Handover Summary Too Large (>10K tokens)**
-
-**Diagnosis**:
-```python
-# Check handover summary size
-summary_tokens = len(job.handover_summary.split()) * 1.3  # Rough estimate
-if summary_tokens > 10000:
-    logger.warning(f"Handover summary: {summary_tokens} tokens (too large!)")
-```
-
-**Solution**: Increase mission condensation ratio in MissionPlanner or exclude verbose agent outputs.
-
-### **Issue: Successor Not Receiving Full Context**
-
-**Diagnosis**:
-```python
-# Check handover_context_refs
-if not job.handover_context_refs:
-    logger.error("No context references in handover!")
-```
-
-**Solution**: Populate `handover_context_refs` with vision doc IDs, agent job IDs, and message timestamps for full context retrieval.
+Ensure the simple-handover endpoint writes a `session_handover` entry to 360 Memory. The continuation agent loads this via `fetch_context(categories=["memory_360"])`.
 
 ---
 
@@ -1355,7 +1044,6 @@ GiljoAI v3.3 provides a **simplified session handover** mechanism that replaces 
 **Same Agent Identity**:
 - Simple handover does NOT create new AgentExecution rows
 - Same `agent_id` is retained throughout all session refreshes
-- `context_used` counter resets to 0 **in-place** on the same row
 - No database migrations or ID swaps occur
 
 **Comparison**:
@@ -1546,9 +1234,9 @@ context = fetch_context(
 - **Quick Reference**: [../CLAUDE.md](../CLAUDE.md#orchestrator-workflow-pipeline-v32-handovers-0246a-c)
 
 ### Handover Documents (0246 Series)
-- **Handover 0246a**: Staging Prompt Implementation (7-task workflow, 931 tokens)
-- **Handover 0246b**: Generic Agent Template (6-phase protocol, 1,253 tokens)
-- **Handover 0246c**: Dynamic Agent Discovery (71% token savings, 420 tokens)
+- **Handover 0246a**: Staging Prompt Implementation (7-task workflow)
+- **Handover 0246b**: Generic Agent Template (6-phase protocol)
+- **Handover 0246c**: Dynamic Agent Discovery
 
 ---
 

@@ -30,7 +30,6 @@ This document defines the **revolutionary multi-tool orchestration architecture*
 
 - **[Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md)** - Core coordination principles
 - **[Complete Vision Document](COMPLETE_VISION_DOCUMENT.md)** - Executive overview of product vision
-- **[Token Reduction Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)** - Technical optimization strategies
 - **[Handover 0041](../../handovers/completed/0041_HANDOVER_AGENT_TEMPLATE_DATABASE_INTEGRATION-C.md)** - Agent Template Database (foundation)
 - **[Handover 0044](../../handovers/)** - Agent Template Export System (in progress)
 - **[Handover 0045](../../handovers/)** - Multi-Tool Orchestration Implementation (planned)
