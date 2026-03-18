@@ -11,13 +11,13 @@
 
 ## Overview
 
-This document serves as the **Single Source of Truth (SSoT)** for understanding the complete orchestrator context flow in GiljoAI MCP v3.1+. It explains how user-configured context toggle cards translate into orchestrator prompts, how context optimization is achieved (77% reduction from 15K-30K baseline to 3,500 tokens), and how agents receive targeted context based on their specific mission.
+This document serves as the **Single Source of Truth (SSoT)** for understanding the complete orchestrator context flow in GiljoAI MCP v3.1+. It explains how user-configured context toggle cards translate into orchestrator prompts, how context depth is controlled (~3,500 tokens at default settings vs 15K-30K at all-full-depth), and how agents receive targeted context based on their specific mission.
 
 > **Note (Handover 0820)**: The original priority-integer system (0-10 scale) has been replaced with a simpler **toggle (on/off) + depth** model. Each context card is either enabled or disabled, and when enabled, the user configures a depth level that controls how much detail is fetched.
 
 **Purpose**: Document the complete end-to-end flow from user setup → orchestrator launch → context building → agent spawning → completion.
 
-**Key Achievement**: **70-77% context optimization** through intelligent toggle-based context extraction and thin client architecture.
+**Key Achievement**: **~3,500 tokens total at default depth settings** through toggle-based context extraction and thin client architecture.
 
 ---
 
@@ -43,7 +43,7 @@ When a toggle is enabled, the user selects a depth that controls how much detail
 
 ### The 13 Cards (Default Toggle + Depth)
 
-| # | Field Path | Label | Default State | Default Depth | Token Budget | Detail Level |
+| # | Field Path | Label | Default State | Default Depth | Approx. Output | Detail Level |
 |---|------------|-------|---------------|---------------|--------------|--------------|
 | 1 | `product.name` | **Product Name** | MANDATORY | n/a | ~20 tokens | Always included |
 | 2 | `product.vision_summary` | **Vision Document** | MANDATORY | n/a | ~500 tokens | Always included (chunked if large) |
@@ -1133,7 +1133,7 @@ get_agent_mission(agent_job_id=456, tenant_key="default")
 
 ---
 
-## Token Budget Analysis
+## Context Size Analysis
 
 ### Before Optimization (Baseline)
 
@@ -1174,7 +1174,7 @@ get_agent_mission(agent_job_id=456, tenant_key="default")
 **Total (All Full Depth)**: **~6,500 tokens**
 **Total (All Minimal Depth)**: **~1,500 tokens**
 
-**Token Reduction**: **77% reduction** from baseline (3,500 vs 15,000 tokens)
+**Context Size**: **77% smaller** than all-full-depth baseline (3,500 vs 15,000 tokens)
 
 ---
 

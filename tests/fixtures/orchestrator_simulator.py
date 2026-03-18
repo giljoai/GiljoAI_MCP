@@ -263,24 +263,20 @@ class OrchestratorSimulator:
 
         condensed_mission = "\n\n".join(mission_parts)
 
-        # Ensure mission is under 10K tokens (1 token ≈ 4 chars)
-        mission_tokens = len(condensed_mission) // 4
-        if mission_tokens > 10000:
-            # Truncate mission to stay under budget
-            max_chars = 10000 * 4
+        # Ensure mission is under 40K chars (~10K tokens)
+        max_chars = 10000 * 4
+        if len(condensed_mission) > max_chars:
             condensed_mission = condensed_mission[:max_chars]
-            mission_tokens = 10000
 
         # Record task completion
         self.staging_result["context_prioritization"] = {
             "status": "completed",
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "mission_tokens": mission_tokens,
             "product_context_fetched": product_context_response.get("success", False),
             "tech_stack_fetched": tech_stack_response.get("success", False),
         }
 
-        logger.info(f"[TASK 5] Context prioritization complete ({mission_tokens} tokens)")
+        logger.info("[TASK 5] Context prioritization complete")
 
     async def task6_spawn_agents(self) -> None:
         """
