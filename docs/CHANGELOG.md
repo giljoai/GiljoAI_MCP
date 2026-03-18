@@ -134,11 +134,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Full user control via UI
   - `depth_config` JSONB column for flexible configuration
   - Six MCP context tools for on-demand fetching
-  - Real-time token estimation
+  - Context depth configuration
   - Quality Standards field added to products table
 
 ### Changed
-- **Prompt Generation**: Migrated from inline context to MCP thin client pattern (76.5% token reduction)
+- **Prompt Generation**: Migrated from inline context to MCP thin client pattern (dynamic context fetching)
 - **Priority System**: Migrated from v1.0 (10/7/4 scores) to v2.0 (1/2/3/4 tier system)
 
 ### Performance
@@ -212,7 +212,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Internal 1.0.0] - 2024-11
 
 ### Added
-- **Stage Project Feature**: 70-80% token reduction through field prioritization
+- **Stage Project Feature**: Focused context delivery through field prioritization
 - Intelligent mission generation, smart agent selection, multi-agent workflow coordination
 - Real-time WebSocket updates, standardized event schemas
 - 95 comprehensive tests

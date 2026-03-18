@@ -201,13 +201,12 @@ Use this when you want a Linux-first installation experience without relying on 
 
 **Implementation**: Handover 0019 - Production ready with 80 passing unit tests, 89% code coverage
 
-### Orchestrator Enhancement - 70% Token Reduction
+### Orchestrator Enhancement - Context-Focused Architecture
 **Intelligent agent coordination system**
 - Template-based agent spawning with role specialization
-- Hierarchical context loading (60% context prioritization)
+- Hierarchical context loading with depth controls
 - Smart handoff mechanism between agents
-- Serena MCP optimization layer (60-90% additional savings via symbolic operations)
-- Context usage tracking and metrics
+- Serena MCP optimization layer (symbolic operations for focused context delivery)
 - Persistent project memory across sessions
 - 22+ MCP tools for agent coordination
 
@@ -312,8 +311,8 @@ Use this when you want a Linux-first installation experience without relying on 
 
 **Agent Orchestration**:
 - Job management system (119+ tests, production ready)
-- context prioritization and orchestration through intelligent coordination
-- Serena MCP optimization (60-90% additional savings)
+- Context prioritization and orchestration through intelligent coordination
+- Serena MCP optimization (symbolic operations for focused context delivery)
 - Real-time WebSocket events for job updates
 - Multi-tenant isolation throughout
 
@@ -379,26 +378,25 @@ User Access (controlled by OS firewall):
 - Priority-based queue system
 - Terminal state management (completed/failed)
 
-### Orchestrator Token Reduction
+### Orchestrator Context Architecture
 
-**70% Total Token Reduction** achieved through:
+**Focused context delivery** achieved through:
 
-1. **Hierarchical Context Loading** (60% reduction):
+1. **Hierarchical Context Loading**:
    - Load base context (project info, current task)
    - Load role-specific context only
    - Load related context (parent agent, recent messages)
    - Skip irrelevant context (other projects, old messages)
 
-2. **Serena MCP Optimization Layer** (60-90% additional reduction):
+2. **Serena MCP Optimization Layer**:
    - Symbolic operations (find_symbol vs read_file)
    - Mission-time optimization rule injection
-   - Real-time token usage tracking
    - Context-based handoff triggers
 
-**Example Impact**:
-- Without optimization: 15,000 tokens for file analysis
-- With optimization: 4,500 tokens (70% reduction)
+**Key Features**:
+- Agents receive focused, relevant context instead of full product dumps
 - Vision document chunking for files > 100KB
+- User-controlled depth settings via toggle cards in My Settings
 
 ### Multi-Tenant Isolation
 
