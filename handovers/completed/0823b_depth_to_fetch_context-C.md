@@ -5,7 +5,7 @@
 **To Agent:** Next Session
 **Priority:** High
 **Estimated Complexity:** 4-6 hours
-**Status:** Ready to implement
+**Status:** Completed
 **Edition Scope:** CE
 
 ## Task Summary
@@ -183,3 +183,21 @@ f1111d00 fix: Use apiClient instead of bare axios in ContextPriorityConfig
 f92fee2f fix: Depth config save now merges instead of overwriting JSONB column
 6cf62fce feat: Context fetch protocol injection (Handover 0823)
 ```
+
+---
+
+## Progress Updates
+
+### 2026-03-18 - Implementation Session
+**Status:** Completed
+**Work Done:**
+- Implemented in commit `c3899cf7`
+- GOI CH2 fetch calls no longer embed `depth_config` parameters (removed snapshot-at-creation behavior)
+- `fetch_context` now reads user's current `depth_config` from DB at runtime
+- Depth settings are live-tunable: changes take effect on next fetch without project recreation
+- Framing text uses generic descriptions instead of depth-specific numbers
+- Agent templates skip logic preserved
+- Backwards compatible: agent-provided depth_config still honored if passed
+
+**Final Notes:**
+- Depth config is now fully runtime-resolved, eliminating stale snapshot problem
