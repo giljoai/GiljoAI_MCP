@@ -22,14 +22,13 @@ This document defines **implementation patterns** for coordinating multiple AI a
 
 - **[Complete Vision Document](COMPLETE_VISION_DOCUMENT.md)** - Executive overview of product vision
 - **[Agentic Project Management Vision](AGENTIC_PROJECT_MANAGEMENT_VISION.md)** - Strategic vision and business case
-- **[Token Reduction Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)** - Technical optimization strategies
 - **[Project Roadmap](../../handovers/completed/HANDOVER_0012_PROJECT_ROADMAP-C.md)** - Implementation timeline
 - **[Agent Job Management Handover](../../handovers/0019_HANDOVER_20251014_AGENT_JOB_MANAGEMENT.md)** - Implementation for Handover 0019
 - **[Orchestrator Enhancement Handover](../../handovers/0020_HANDOVER_20251014_ORCHESTRATOR_ENHANCEMENT.md)** - Implementation for Handover 0020
 
 ### Reading Recommendations
 - **Developers**: Start here, then review implementation handovers (0019, 0020)
-- **Architects**: Read alongside Token Reduction Architecture for complete technical picture
+- **Architects**: Read alongside Agentic Project Management Vision for complete technical picture
 - **Team leads**: Review coordination strategies section, then see Agentic Vision for business context
 - **New contributors**: Study core coordination principles first, then dive into specific patterns
 
@@ -845,7 +844,6 @@ class CoordinationMetrics:
             "handoff_success_rate": await self.calc_handoff_success(),
             "context_sharing_efficiency": await self.calc_sharing_efficiency(),
             "parallel_execution_factor": await self.calc_parallelization(),
-            "token_reduction_achieved": await self.calc_token_reduction(),
             "coordination_overhead": await self.calc_coordination_overhead()
         }
 ```
@@ -883,7 +881,7 @@ class CoordinationMetrics:
 
 ## Conclusion
 
-These coordination patterns enable GiljoAI MCP to orchestrate sophisticated multi-agent teams that can tackle complex projects beyond the capability of any single AI assistant. Through intelligent coordination, message-based communication, and lifecycle management, we achieve superior results with dramatically reduced token usage.
+These coordination patterns enable GiljoAI MCP to orchestrate sophisticated multi-agent teams that can tackle complex projects beyond the capability of any single AI assistant. Through intelligent coordination, message-based communication, and lifecycle management, we achieve superior results with focused context delivery.
 
 ---
 

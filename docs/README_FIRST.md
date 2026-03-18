@@ -39,7 +39,7 @@
 - Agent Template Database Integration (Handover 0041) - Customizable agent behavior with three-layer caching
 - Unified Cross-Platform Installer (Handover 0035) - Windows, Linux, macOS support
 - Admin Settings v3.0 Overhaul (Handovers 0025-0029) - Modern, cohesive interface
-- 70% Token Reduction via Orchestrator Enhancement (Handover 0020) - Breakthrough efficiency
+- Context-Focused Orchestration (Handover 0020) - Efficient context delivery
 - Agent Job Management System (Handover 0019) - Multi-agent coordination foundation
 - Agent Flow Visualization (Handover 0040) - Flow-based, real-time UI for multi-agent orchestration
 
@@ -542,7 +542,7 @@ database:
 
 ### Hierarchical Context Loading
 
-**Purpose**: Reduce token usage by 60% via smart loading
+**Purpose**: Smart context loading for focused agent delivery
 
 **Strategy**:
 1. Load base context (project info, current task)
@@ -552,28 +552,13 @@ database:
 
 ### Vision Document Chunking
 
-**Purpose**: Handle large files that exceed token limits
+**Purpose**: Handle large files via chunking (25K ingest limit)
 
 **Process**:
 1. Detect file size > threshold (default: 100KB)
 2. Split into semantic chunks (functions, classes, sections)
 3. Store chunks with metadata (file, line range, hash)
 4. Load relevant chunks only (based on query/task)
-
-### Context Usage Tracking
-
-**Purpose**: Monitor and optimize token consumption
-
-**Metrics**:
-- Total tokens used per agent
-- Tokens per message
-- Context size per request
-- Chunking efficiency
-
-**Optimization**:
-- Adaptive chunk sizing
-- Cache frequently accessed chunks
-- Expire old context automatically
 
 ---
 
@@ -611,16 +596,11 @@ database:
 ### Serena MCP Optimization Layer (October 2025)
 
 **Handover 0010 - Serena MCP Optimization Implementation** (✅ COMPLETE - HARMONIZED):
-- **Serena Context Analytics**: context-usage analytics and optimization signals powered by symbolic operations
-- **Production Ready**: 37 passing unit tests, full database integration
-- **Core Components**:
-  - `src/giljo_mcp/optimization/serena_optimizer.py` - Optimization engine
-  - `src/giljo_mcp/optimization/tool_interceptor.py` - MCP tool optimization
-  - `src/giljo_mcp/tools/optimization.py` - 6 control tools
+- **Serena Context Analytics**: Optimization signals powered by symbolic operations
+- **Core Concept**: Encourages symbolic operations (find_symbol) over naive file reading for focused context delivery
 - **Features**:
   - Automatic symbolic operation enforcement (find_symbol vs read_file)
   - Mission-time optimization rule injection
-  - Real-time token usage tracking and savings analytics
   - Intelligent context-based handoff triggers
 
 **Integration**: Automatically active in ProjectOrchestrator for all agent spawns

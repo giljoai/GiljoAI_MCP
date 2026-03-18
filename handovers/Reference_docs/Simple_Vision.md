@@ -76,12 +76,10 @@ The orchestrator achieves **strong context prioritization and orchestration** th
 - **Mission Planner** (`mission_planner.py`) - Generates condensed missions from vision docs, avoiding context duplication
 - **Agent Selector** (`agent_selector.py`) - Smart agent selection based on capabilities, assigning only necessary agents
 - **Workflow Engine** (`workflow_engine.py`) - Coordinates waterfall/parallel execution, preventing redundant context loading
-- **Field Toggle System** - Only includes enabled fields in missions, with depth controls for token management (Handover 0048, 0049)
+- **Field Toggle System** - Only includes enabled fields in missions, with depth controls for context management
 - **Template Resolution Cascade** - Efficient template loading without redundant database hits (Handover 0041)
 
 Instead of flooding agents with ALL product context, the orchestrator intelligently extracts, condenses, and prioritizes information. This means agents get exactly what they need to do their work - nothing more, nothing less.
-
-**Technical Reference**: For detailed verification of the token reduction architecture, see `handovers/start_to_finish_agent_FLOW.md`.
 
 For the dynamic agent discovery design and how the same context stack (Product description, Vision documents, Tech Stack, Architecture, Testing notes, Agent templates, 360 Memory, Git history) is applied consistently across Claude Code subagent mode and general multi-terminal CLI mode, see `handovers/dynamiccontext_patrik.md`.
 
@@ -225,7 +223,7 @@ The project launch preview is where the orchestrator agent is configured and the
 When you click the **"Stage Project"** button (which technically calls `POST /api/v1/projects/{id}/activate`), the orchestrator:
 1. Reads the human-written project description from the database
 2. Retrieves product context (vision documents, tech stack, dependencies)
-3. Applies field toggle/depth settings from "My Settings" to optimize token usage
+3. Applies field toggle/depth settings from "My Settings" to control context depth
 4. Generates a condensed mission statement (displayed in "Orchestrator Created Mission" window)
 5. Selects appropriate agents from active templates (max 8 roles, unlimited per type)
 6. Creates agent cards that appear live in the "Agent Team" window
@@ -235,7 +233,7 @@ When you click the **"Stage Project"** button (which technically calls `POST /ap
 
 The orchestrator can be activated by clicking the copy prompt button and pasting it into the CLI tool to get working. The mission populates on-screen for the user to see and review, and agent cards appear as they get selected.
 
-We also have a token counter based on the mission prompts and the agent prompts as a totality. The token estimation system (Handover 0048, 0049) helps keep context within AI tool limits (Claude Code's 25K token input limit being the primary target).
+Vision documents exceeding 25K tokens are automatically chunked to stay within Claude Code CLI's ingest limit.
 
 We also have a "Cancel" option during the launch phase which restores the project to a blank slate and returns it to the project list, removing any created mission and any assigned agents.
 
@@ -291,31 +289,6 @@ When all agents complete their work, the project closeout system activates. The 
 - **Execution Tracking**: Timestamp tracking when closeout was executed (`closeout_executed_at`)
 
 This ensures projects don't just "end" - they close out properly with documentation, version control updates, and a clean audit trail. The static agent grid layout (Handover 0073) also ensures agent cards maintain consistent positions throughout the project lifecycle.
-
-# Token Management & Field Toggles (Handovers 0048, 0049, 0820)
-
-We have a comprehensive token management system to keep context within AI tool limits (Claude Code's 25K token input limit being the primary target).
-
-## Token Estimation API
-
-The system includes a real-time token estimation endpoint (`/api/products/{product_id}/token-estimate`) that calculates token usage for mission generation based on:
-- Active product fields and their toggle/depth settings
-- Vision documents (chunked with depth controls)
-- Project descriptions
-- Tech stack and dependencies
-- Agent template content
-
-This allows developers to see token estimates BEFORE launching the orchestrator, preventing context overload.
-
-## Field Toggle Configuration
-
-Users configure **which product fields** get included in missions via simple on/off toggles, plus depth controls for how much data to serve per category:
-- **Enabled fields** (toggle: true): Included in missions with configured depth
-- **Disabled fields** (toggle: false): Excluded from missions entirely
-
-Depth controls (e.g., vision documents depth, 360 memory depth, git history commit count) give fine-grained control over how much data each enabled category provides.
-
-This toggle-based approach keeps context within tool limits while giving users simple, clear control over what context agents receive.
 
 # MCP Integration (Native Support - Handover 0069)
 
