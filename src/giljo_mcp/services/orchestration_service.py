@@ -1387,6 +1387,35 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                 execution = exec_res.scalar_one_or_none()
 
                 if not execution:
+                    # Check if decommissioned for better diagnostics (Handover 0824)
+                    decomm_stmt = (
+                        select(AgentExecution)
+                        .where(
+                            AgentExecution.job_id == job_id,
+                            AgentExecution.tenant_key == tenant_key,
+                            AgentExecution.status == "decommissioned",
+                        )
+                        .order_by(AgentExecution.started_at.desc())
+                        .limit(1)
+                    )
+                    decomm_res = await session.execute(decomm_stmt)
+                    decommissioned_exec = decomm_res.scalar_one_or_none()
+
+                    if decommissioned_exec:
+                        raise ResourceNotFoundError(
+                            message=(
+                                f"Job {job_id} was decommissioned and cannot report progress. "
+                                f"This typically happens when close_project_and_update_memory(force=true) "
+                                f"was called before complete_job()."
+                            ),
+                            context={
+                                "job_id": job_id,
+                                "method": "report_progress",
+                                "execution_status": "decommissioned",
+                                "cause": "Project was force-closed before this job called complete_job()",
+                            },
+                        )
+
                     raise ResourceNotFoundError(
                         message=f"No active execution found for job {job_id}",
                         context={"job_id": job_id, "method": "report_progress"},
@@ -1830,7 +1859,35 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
 
                     await session.commit()
                 else:
-                    # No active execution found
+                    # No active execution found -- check if decommissioned (Handover 0824)
+                    decomm_stmt = (
+                        select(AgentExecution)
+                        .where(
+                            AgentExecution.job_id == job_id,
+                            AgentExecution.tenant_key == tenant_key,
+                            AgentExecution.status == "decommissioned",
+                        )
+                        .order_by(AgentExecution.started_at.desc())
+                        .limit(1)
+                    )
+                    decomm_res = await session.execute(decomm_stmt)
+                    decommissioned_exec = decomm_res.scalar_one_or_none()
+
+                    if decommissioned_exec:
+                        raise ResourceNotFoundError(
+                            message=(
+                                f"Job {job_id} was decommissioned and cannot transition to 'completed'. "
+                                f"This typically happens when close_project_and_update_memory(force=true) "
+                                f"was called before complete_job()."
+                            ),
+                            context={
+                                "job_id": job_id,
+                                "method": "complete_job",
+                                "execution_status": "decommissioned",
+                                "cause": "Project was force-closed before this job called complete_job()",
+                            },
+                        )
+
                     raise ResourceNotFoundError(
                         message=f"No active execution found for job {job_id}",
                         context={"job_id": job_id, "method": "complete_job"},

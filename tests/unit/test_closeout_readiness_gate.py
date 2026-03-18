@@ -535,8 +535,8 @@ class TestOrchestratorSelfDecommissionGuard:
 
         with patch(
             "src.giljo_mcp.tools.project_closeout.ProductMemoryRepository"
-        ) as MockRepo:
-            repo_instance = MockRepo.return_value
+        ) as mock_repo_cls:
+            repo_instance = mock_repo_cls.return_value
             repo_instance.get_next_sequence = AsyncMock(return_value=1)
             repo_instance.create_entry = AsyncMock(return_value=mock_entry)
 
@@ -635,8 +635,8 @@ class TestOrchestratorSelfDecommissionGuard:
 
         with patch(
             "src.giljo_mcp.tools.project_closeout.ProductMemoryRepository"
-        ) as MockRepo:
-            repo_instance = MockRepo.return_value
+        ) as mock_repo_cls:
+            repo_instance = mock_repo_cls.return_value
             repo_instance.get_next_sequence = AsyncMock(return_value=1)
             repo_instance.create_entry = AsyncMock(return_value=mock_entry)
 
