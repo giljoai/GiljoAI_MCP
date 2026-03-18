@@ -6,6 +6,7 @@ Dispatches to internal get_* tools based on categories parameter.
 
 Handover 0351: Removed depth params for tech_stack, architecture, testing.
 Handover 0351: ENFORCED single-category calls to prevent token budget overflow.
+Handover 0823b: Reads user depth_config from DB at runtime when not provided.
 
 Token Budget Savings:
 - Before: 9 tool schemas x ~100 tokens = ~900 tokens consumed at agent startup
@@ -73,6 +74,89 @@ DEFAULT_DEPTHS = {
 ALL_CATEGORIES = list(CATEGORY_TOOLS.keys())
 
 
+# DB key -> internal key mapping for depth_config normalization (Handover 0823b).
+# Shared with protocol_builder._get_user_config; defined here to avoid cross-imports.
+_DEPTH_KEY_MAPPING: dict[str, str] = {
+    "memory_last_n_projects": "memory_360",
+    "git_commits": "git_history",
+    "agent_templates": "agent_templates",
+    "vision_documents": "vision_documents",
+}
+
+
+async def _load_user_depth_config(
+    tenant_key: str,
+    db_manager: DatabaseManager,
+) -> dict[str, Any] | None:
+    """
+    Load the user's depth_config from the DB at runtime (Handover 0823b).
+
+    Queries the first active user for the given tenant_key and normalizes
+    their depth_config keys from DB format to internal format.
+
+    Args:
+        tenant_key: Tenant isolation key
+        db_manager: Database manager instance
+
+    Returns:
+        Normalized depth config dict, or None if no user or no config found.
+    """
+    from sqlalchemy import and_, select
+
+    from src.giljo_mcp.models.auth import User
+
+    try:
+        async with db_manager.get_session_async() as session:
+            result = await session.execute(
+                select(User)
+                .where(
+                    and_(
+                        User.tenant_key == tenant_key,
+                        User.is_active,
+                    )
+                )
+                .limit(1)
+            )
+            user = result.scalar_one_or_none()
+
+            if not user or user.depth_config is None:
+                logger.debug(
+                    "depth_config_not_found",
+                    tenant_key=tenant_key,
+                    user_found=user is not None,
+                )
+                return None
+
+            # Normalize keys from DB format to internal format
+            normalized: dict[str, Any] = {}
+            for db_key, value in user.depth_config.items():
+                internal_key = _DEPTH_KEY_MAPPING.get(db_key, db_key)
+                normalized[internal_key] = value
+
+            # Normalize vision_documents "optional" -> "light" (same as protocol_builder)
+            if normalized.get("vision_documents") == "optional":
+                normalized["vision_documents"] = "light"
+                logger.debug(
+                    "depth_config_vision_normalized",
+                    tenant_key=tenant_key,
+                )
+
+            logger.info(
+                "depth_config_loaded_from_db",
+                tenant_key=tenant_key,
+                depth_keys=list(normalized.keys()),
+            )
+            return normalized
+
+    except Exception:
+        logger.error(
+            "depth_config_load_failed",
+            tenant_key=tenant_key,
+            exc_info=True,
+        )
+        return None
+
+
 async def fetch_context(
     product_id: str,
     tenant_key: str,
@@ -91,6 +175,9 @@ async def fetch_context(
 
     Handover 0430: Added self_identity category for agent self-awareness.
 
+    Handover 0823b: When depth_config is not provided, reads the user's current
+    depth settings from the DB via tenant_key, making depth live-tunable.
+
     Args:
         product_id: Product UUID
         tenant_key: Tenant isolation key
@@ -99,7 +186,7 @@ async def fetch_context(
                    Valid: product_core, vision_documents, tech_stack, architecture,
                           testing, memory_360, git_history, agent_templates, project,
                           self_identity
-        depth_config: Override depth settings per category
+        depth_config: Override depth settings per category. If None, reads from DB.
                      Example: {"vision_documents": "light", "agent_templates": "minimal"}
         format: Response format - "structured" (nested by category) or "flat" (merged)
         agent_name: Agent template name (required for 'self_identity' category)
@@ -202,12 +289,17 @@ async def fetch_context(
         logger.warning("invalid_category", invalid_category=category, valid_categories=ALL_CATEGORIES)
         raise ValidationError(f"Invalid category: {category}. Valid categories: {ALL_CATEGORIES}")
 
-    # Load user config if requested
+    # Resolve effective depth settings (Handover 0823b)
     effective_depths = DEFAULT_DEPTHS.copy()
 
-    # Apply explicit depth overrides
     if depth_config:
+        # Agent explicitly provided depth -- use it (backwards compatibility)
         effective_depths.update(depth_config)
+    elif db_manager:
+        # No depth from agent -- read user's current settings from DB (Handover 0823b)
+        user_depths = await _load_user_depth_config(tenant_key, db_manager)
+        if user_depths:
+            effective_depths.update(user_depths)
 
     # Fetch the single category (enforced above)
     try:
