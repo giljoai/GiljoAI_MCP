@@ -134,6 +134,41 @@ async def close_project_and_update_memory(
                 )
 
             if not is_ready and force:
+                # Guard: Block force-close if orchestrator is still active (Handover 0824)
+                # The calling orchestrator would decommission itself, making complete_job() impossible
+                orch_stmt = (
+                    select(AgentExecution)
+                    .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                    .where(
+                        and_(
+                            AgentJob.project_id == project_id,
+                            AgentExecution.tenant_key == tenant_key,
+                            AgentExecution.agent_display_name == "orchestrator",
+                            AgentExecution.status.in_(_ACTIVE_STATUSES),
+                        )
+                    )
+                )
+                orch_result = await active_session.execute(orch_stmt)
+                active_orchestrator = orch_result.scalar_one_or_none()
+
+                if active_orchestrator:
+                    raise ProjectStateError(
+                        "Cannot force-close: orchestrator is still active and would be decommissioned",
+                        context={
+                            "status": "ORCHESTRATOR_SELF_DECOMMISSION_BLOCKED",
+                            "message": (
+                                "force=true will decommission ALL active agents including the orchestrator. "
+                                "Complete your own job first, then the project will close cleanly."
+                            ),
+                            "required_sequence": [
+                                f"1. complete_job(job_id='{active_orchestrator.job_id}') -- complete yourself first",
+                                "2. write_360_memory(...) -- write memory entry (if not already written)",
+                                "3. close_project_and_update_memory(force=false) -- should now pass since all agents are complete",
+                            ],
+                            "hint": "Or use write_360_memory() + complete_job() and let the frontend handle project archival.",
+                        },
+                    )
+
                 decommissioned = await _force_decommission_agents(active_session, project_id, tenant_key)
                 if decommissioned:
                     logger.warning(
