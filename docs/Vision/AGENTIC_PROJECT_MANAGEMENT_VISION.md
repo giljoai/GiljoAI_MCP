@@ -25,14 +25,13 @@
 This document provides the **strategic vision** for GiljoAI MCP's agentic capabilities. For additional context, see:
 
 - **[Complete Vision Document](COMPLETE_VISION_DOCUMENT.md)** - Executive overview of entire product vision
-- **[Context Orchestration Architecture](TOKEN_REDUCTION_ARCHITECTURE.md)** - Technical details on context prioritization and orchestration for agentic coding
 - **[Multi-Agent Coordination Patterns](MULTI_AGENT_COORDINATION_PATTERNS.md)** - Implementation patterns for agent orchestration
 - **[Project Roadmap](../../handovers/completed/HANDOVER_0012_PROJECT_ROADMAP-C.md)** - 5-project implementation timeline
 - **[Server Architecture](../SERVER_ARCHITECTURE_TECH_STACK.md)** - v3.0 unified architecture overview
 
 ### Reading Recommendations
 - **Business stakeholders**: Read this document, then review Complete Vision and Project Roadmap
-- **Technical architects**: Follow with Token Reduction Architecture and Coordination Patterns
+- **Technical architects**: Follow with Coordination Patterns
 - **Developers**: Move to Coordination Patterns and implementation handovers (0017-0021)
 
 ---
@@ -130,31 +129,31 @@ graph TD
     MQ --> |Acknowledgments| ACK[Tracking]
 ```
 
-### Token Reduction Strategy
+### Context Management Strategy
 
-**Traditional Approach** (100% tokens):
+**Traditional Approach**:
 - Full codebase context to every agent
 - Repeated information across agents
 - Context overflow common
 
-**GiljoAI MCP Approach** (30% tokens):
+**GiljoAI MCP Approach**:
 
-1. **Vision Chunking** (50K → 5K chunks)
+1. **Vision Chunking** (large docs into manageable sections)
    - Semantic boundary detection
    - Keyword extraction
    - Searchable index creation
 
-2. **Orchestrator Summarization** (5K → 1K missions)
+2. **Orchestrator Summarization** (focused missions per agent)
    - Read full context once
    - Extract agent-specific requirements
    - Create focused missions
 
-3. **Dynamic Discovery** (Load only what's needed)
+3. **Dynamic Discovery** (load only what's needed)
    - Agents request specific context
    - Serena MCP for codebase exploration
    - Just-in-time context loading
 
-**Result**: 70% reduction in token usage while maintaining better context awareness
+**Result**: Focused context delivery with better context awareness
 
 ### Agent Communication Architecture
 
@@ -231,10 +230,10 @@ class AgentCommunication:
 
 ## Success Metrics
 
-### Token Reduction
-- **Target**: 70% reduction vs traditional approach
-- **Measurement**: Compare tokens used for same project
-- **Method**: Track full_context vs condensed_mission tokens
+### Context Efficiency
+- **Target**: Deliver focused, relevant context to each agent
+- **Measurement**: Agents receive only task-relevant context
+- **Method**: Orchestrator summarization and vision chunking
 
 ### Reliability
 - **Target**: 95% successful agent coordination

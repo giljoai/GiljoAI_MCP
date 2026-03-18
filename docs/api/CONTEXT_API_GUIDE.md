@@ -481,39 +481,6 @@ if data['reduction_percentage'] > 0:
 
 ---
 
-### Related (Products API): Active Product Token Estimate
-
-This endpoint lives under the Products API and complements context token stats by applying user Field Priority configuration to the currently active product.
-
-**Endpoint**: `GET /api/v1/products/active/token-estimate`
-
-**Purpose**: Return a real-time token estimate for the active product based on the user’s field priorities (P1/P2/P3) and product `config_data`, including a token budget.
-
-**Success Response (200)**:
-```json
-{
-  "product_id": "uuid",
-  "product_name": "TinyContacts",
-  "field_tokens": {
-    "tech_stack.languages": 12,
-    "tech_stack.backend": 8,
-    "features.core": 45
-  },
-  "total_field_tokens": 81,
-  "structure_tokens": 500,
-  "total_tokens": 581,
-  "token_budget": 2000,
-  "percentage": 29.05
-}
-```
-
-**Notes**:
-- Tied to the active product and user’s Field Priority config (Handover 0049).
-- Budget default set to 2000 (configurable); updates in real time when priorities or product config change.
-- Pairs with WebSocket UI updates to refresh the estimator in User Settings.
-
----
-
 ### Health Check
 
 **Endpoint**: `GET /api/v1/context/health`
@@ -706,26 +673,7 @@ query = "user authentication jwt token password hashing bcrypt"
 query = "auth"
 ```
 
-### 3. Token Budgets
-
-**Best Practice**: Use appropriate budgets per agent type
-```python
-# DO: Appropriate budget for agent role
-budgets = {
-    'backend': 8000,
-    'frontend': 7000,
-    'database': 5000,
-    'tester': 5000,
-    'orchestrator': 50000
-}
-
-max_tokens = budgets.get(agent_type, 10000)
-
-# DON'T: One size fits all
-max_tokens = 50000  # Too much for workers
-```
-
-### 4. Error Handling
+### 3. Error Handling
 
 **Best Practice**: Handle all error cases
 ```python
@@ -745,7 +693,7 @@ except Exception as e:
     logger.error(f"Unexpected error: {e}")
 ```
 
-### 5. Multi-Tenant Isolation
+### 4. Multi-Tenant Isolation
 
 **Best Practice**: Always include tenant key
 ```python
@@ -837,108 +785,6 @@ search_topics(
     'tk_acme_corp',
     ['authentication', 'security', 'jwt', 'authorization']
 )
-```
-
-### Use Case 3: Load Context for Multiple Agents
-
-```python
-import requests
-
-def load_context_for_agents(product_id, tenant_key, agents_and_missions):
-    """Load context for multiple agents with different missions"""
-
-    url = 'http://localhost:7272/api/v1/context/load-for-agent'
-    headers = {
-        'X-Tenant-Key': tenant_key,
-        'Content-Type': 'application/json'
-    }
-
-    results = {}
-
-    for agent_type, mission in agents_and_missions.items():
-        response = requests.post(
-            url,
-            headers=headers,
-            json={
-                'agent_type': agent_type,
-                'mission': mission,
-                'product_id': product_id,
-                'max_tokens': get_budget_for_agent(agent_type)
-            }
-        )
-
-        if response.status_code == 200:
-            data = response.json()
-            results[agent_type] = {
-                'chunks': data['total_chunks'],
-                'tokens': data['total_tokens'],
-                'relevance': data['average_relevance'],
-                'context': data['chunks']
-            }
-            print(f"✓ {agent_type}: {data['total_chunks']} chunks, "
-                  f"{data['total_tokens']} tokens, "
-                  f"{data['average_relevance']:.2f} avg relevance")
-        else:
-            print(f"✗ {agent_type}: Failed ({response.status_code})")
-            results[agent_type] = None
-
-    return results
-
-def get_budget_for_agent(agent_type):
-    """Get recommended token budget for agent type"""
-    budgets = {
-        'backend': 8000,
-        'frontend': 7000,
-        'database': 5000,
-        'tester': 5000,
-        'devops': 4000
-    }
-    return budgets.get(agent_type, 10000)
-
-# Usage
-agents_and_missions = {
-    'backend': 'Implement user authentication with JWT and refresh tokens',
-    'database': 'Design user schema with authentication fields',
-    'tester': 'Create test suite for authentication endpoints'
-}
-
-results = load_context_for_agents('prod-abc-123', 'tk_acme_corp', agents_and_missions)
-```
-
-### Use Case 4: Monitor Token Reduction
-
-```python
-import requests
-
-def monitor_token_reduction(product_id, tenant_key):
-    """Monitor context prioritization statistics"""
-
-    url = f'http://localhost:7272/api/v1/context/products/{product_id}/token-stats'
-    headers = {'X-Tenant-Key': tenant_key}
-
-    response = requests.get(url, headers=headers)
-
-    if response.status_code == 200:
-        data = response.json()
-
-        print(f"Product: {data['product_id']}")
-        print(f"Chunks: {data['chunks_count']}")
-        print(f"Total Tokens: {data['original_tokens']:,}")
-
-        if data['reduction_percentage'] > 0:
-            print(f"Reduction: {data['reduction_percentage']:.1f}%")
-            print(f"Condensed: {data['condensed_tokens']:,} tokens")
-
-        avg_tokens_per_chunk = data['original_tokens'] / data['chunks_count']
-        print(f"Avg per chunk: {avg_tokens_per_chunk:.0f} tokens")
-
-        return data
-    else:
-        print(f"Failed to get stats: {response.status_code}")
-        return None
-
-# Usage
-monitor_token_reduction('prod-abc-123', 'tk_acme_corp')
 ```
 
 ## Code Examples
@@ -1180,7 +1026,7 @@ The Context Management API provides five endpoints for complete vision document 
 1. **Chunk Vision**: Process and index documents
 2. **Search Context**: Find relevant chunks by keywords
 3. **Load for Agent**: Get role-based context
-4. **Token Stats**: Monitor token usage
+4. **Chunk Stats**: Vision document chunking statistics
 5. **Health Check**: System status
 
 All endpoints enforce multi-tenant isolation via `X-Tenant-Key` header and provide

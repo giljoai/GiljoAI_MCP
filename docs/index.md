@@ -324,7 +324,7 @@ Tags: `URGENT` (80% relevancy, minor updates), `OUTDATED` (relevant, needs refre
 - `oct9/PHASE1_STEP8_COMPLETE__FRAGMENTED.md` — PHASE1 STEP8 COMPLETE documentation for GiljoAI MCP (oct9) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `oct9/PHASE4_USER_TASK_ASSIGNMENT_COMPLETE__FRAGMENTED.md` — PHASE4 USER TASK ASSIGNMENT COMPLETE documentation for GiljoAI MCP (oct9) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `Oct_6_LAN_implementation__FRAGMENTED.md` — Oct 6 LAN implementation documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
-- `performance/TOKEN_REDUCTION_ANALYSIS__FRAGMENTED.md` — TOKEN REDUCTION ANALYSIS documentation for GiljoAI MCP (performance) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
+
 - `PLATFORM_TESTING_MATRIX__FRAGMENTED.md` — PLATFORM TESTING MATRIX documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `PRODUCT_AGENT_TEMPLATES__FRAGMENTED.md` — PRODUCT AGENT TEMPLATES documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `PRODUCT_PROPOSAL__FRAGMENTED.md` — PRODUCT PROPOSAL documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
