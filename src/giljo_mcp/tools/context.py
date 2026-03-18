@@ -1,174 +1,13 @@
 """
-Context and Discovery Tools for GiljoAI MCP
-Handles vision documents, context retrieval, and product settings
+Context tools for GiljoAI MCP.
+Handles context retrieval for agent executions.
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
-
-from sqlalchemy import select
-
-from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
-
-
-# Expose MCP tools as importable async functions for API endpoints
-async def get_context_index(product_id: Optional[str] = None) -> dict[str, Any]:
-    """Wrapper for MCP tool - Get the context index for intelligent querying"""
-
-    from giljo_mcp.database import DatabaseManager
-    from giljo_mcp.discovery import DiscoveryManager, PathResolver
-    from giljo_mcp.models import Project
-    from giljo_mcp.tenant import TenantManager
-
-    db_manager = DatabaseManager(is_async=True)
-    tenant_manager = TenantManager()
-    path_resolver = PathResolver(db_manager, tenant_manager)
-    discovery_manager = DiscoveryManager(db_manager, tenant_manager, path_resolver)
-
-    try:
-        tenant_key = tenant_manager.get_current_tenant()
-        project_id = None
-
-        if tenant_key:
-            async with db_manager.get_session_async() as session:
-                project_query = select(Project).where(Project.tenant_key == tenant_key)
-                project_result = await session.execute(project_query)
-                project = project_result.scalar_one_or_none()
-                if project:
-                    project_id = str(project.id)
-
-        # Get all discovery paths
-        paths = await discovery_manager.get_discovery_paths(project_id)
-
-        # Build context source information
-        context_sources = {}
-        for path_key, path in paths.items():
-            if path.exists():
-                if path.is_dir():
-                    files = list(path.glob("*"))
-                    context_sources[path_key] = {
-                        "path": str(path),
-                        "type": "directory",
-                        "files": len(files),
-                        "exists": True,
-                    }
-                else:
-                    context_sources[path_key] = {
-                        "path": str(path),
-                        "type": "file",
-                        "exists": True,
-                        "size": path.stat().st_size,
-                    }
-            else:
-                context_sources[path_key] = {"path": str(path), "exists": False}
-
-        # Build index
-        index = {
-            "product_id": product_id or "default",
-            "sources": context_sources,
-            "documents": [],
-            "last_updated": datetime.now(timezone.utc).isoformat(),
-        }
-
-        return index
-
-    except Exception:  # Broad catch: tool boundary, logs and re-raises
-        logger.exception("Failed to get vision index")
-        raise
-
-
-async def get_vision(
-    part: int = 1, max_tokens: int = VISION_DELIVERY_BUDGET, force_reindex: bool = False
-) -> dict[str, Any]:
-    """
-    Legacy tool - Vision model removed in Handover 0728.
-    Vision functionality now handled by VisionDocument (product-centric).
-    Use vision_documents API instead.
-    """
-    from giljo_mcp.exceptions import ToolError
-
-    raise ToolError(
-        "Vision model deprecated - use VisionDocument API. "
-        "Vision documents are now managed at the product level via VisionDocument model."
-    )
-
-
-async def get_vision_index() -> dict[str, Any]:
-    """Wrapper for MCP tool - Get the vision document index"""
-
-    from giljo_mcp.database import DatabaseManager
-    from giljo_mcp.discovery import PathResolver
-    from giljo_mcp.models import ContextIndex, Project
-    from giljo_mcp.tenant import TenantManager
-
-    db_manager = DatabaseManager(is_async=True)
-    tenant_manager = TenantManager()
-    PathResolver(db_manager, tenant_manager)
-
-    try:
-        tenant_key = tenant_manager.get_current_tenant()
-        if not tenant_key:
-            from giljo_mcp.exceptions import ValidationError
-
-            raise ValidationError("No tenant context available")
-
-        async with db_manager.get_tenant_session_async(tenant_key) as session:
-            project_query = select(Project).where(Project.tenant_key == tenant_key)
-            project_result = await session.execute(project_query)
-            project = project_result.scalar_one_or_none()
-
-            if not project:
-                from giljo_mcp.exceptions import ResourceNotFoundError
-
-                raise ResourceNotFoundError("Project not found")
-
-            # Check for context index in database
-            index_query = select(ContextIndex).where(
-                ContextIndex.project_id == project.id,
-                ContextIndex.tenant_key == tenant_key,
-                ContextIndex.index_type == "vision",
-            )
-            index_result = await session.execute(index_query)
-            index_entries = index_result.scalars().all()
-
-            if index_entries:
-                # Return from database
-                index = {
-                    "files": [],
-                    "total_files": len(index_entries),
-                    "chunks": {},
-                    "from_database": True,
-                }
-
-                for entry in index_entries:
-                    file_info = {
-                        "name": entry.document_name,
-                        "summary": entry.summary,
-                        "token_count": entry.token_count,
-                        "keywords": entry.keywords or [],
-                        "chunk_numbers": entry.chunk_numbers or [],
-                        "content_hash": entry.content_hash,
-                    }
-                    index["files"].append(file_info)
-
-                return index
-
-            # No index found, return placeholder
-            return {
-                "files": [],
-                "total_files": 0,
-                "chunks": {},
-                "from_database": False,
-                "message": "No vision index found - use MCP tools to initialize vision documents",
-            }
-
-    except Exception:  # Broad catch: tool boundary, logs and re-raises
-        logger.exception("Failed to get vision index")
-        raise
 
 
 async def fetch_context(
@@ -226,7 +65,7 @@ async def fetch_context(
 
             execution, _job, project, product = row
 
-            # Resolve project and product for this job (executor → job → project → product)
+            # Resolve project and product for this job (executor -> job -> project -> product)
             project_id = str(project.id) if project is not None else None
             product_id = str(product.id) if product is not None else None
 
@@ -250,7 +89,3 @@ async def fetch_context(
     except Exception:  # Broad catch: tool boundary, logs and re-raises
         logger.exception("Failed to fetch context")
         raise
-
-
-# NOTE: update_context_usage() was removed in Handover 0422 - the MCP server is passive
-# and cannot track external CLI tool context usage. See orchestration_service.py for details.
