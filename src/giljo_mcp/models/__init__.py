@@ -14,7 +14,7 @@ Use specific module imports for clarity and maintainability:
     from src.giljo_mcp.models.products import Product, VisionDocument
     from src.giljo_mcp.models.tasks import Task, Message
     from src.giljo_mcp.models.templates import AgentTemplate
-    from src.giljo_mcp.models.context import ContextIndex, MCPContextIndex
+    from src.giljo_mcp.models.context import MCPContextIndex
     from src.giljo_mcp.models.config import Configuration, GitConfig
 
 ⚠️  LEGACY (Existing Code Only):
@@ -37,7 +37,7 @@ src/giljo_mcp/models/
 ├── agent_identity.py  → AgentJob, AgentExecution (Handover 0366a)
 ├── templates.py       → AgentTemplate, TemplateArchive, TemplateUsageStats
 ├── tasks.py           → Task, Message
-├── context.py         → ContextIndex, LargeDocumentIndex, MCPContextIndex, MCPContextSummary
+├── context.py         → MCPContextIndex
 └── config.py          → Configuration, DiscoveryConfig, GitConfig, GitCommit, SetupState,
                           OptimizationRule, OptimizationMetric, DownloadToken, ApiMetrics
 
@@ -94,10 +94,7 @@ from .config import (
 
 # Context models
 from .context import (
-    ContextIndex,
-    LargeDocumentIndex,
     MCPContextIndex,
-    MCPContextSummary,
 )
 
 # Organization models (Handover 0424a)
@@ -153,15 +150,13 @@ __all__ = [
     "Base",
     # Config
     "Configuration",
-    # Context
-    "ContextIndex",
+    # Config
     "DiscoveryConfig",
     "DownloadToken",
     "GitCommit",
     "GitConfig",
-    "LargeDocumentIndex",
+    # Context
     "MCPContextIndex",
-    "MCPContextSummary",
     "MCPSession",
     "Message",
     "OptimizationMetric",
