@@ -37,7 +37,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -164,7 +164,7 @@ async def handle_initialize(
     Establishes connection and negotiates capabilities.
     """
     client_info = params.get("client_info", {})
-    protocol_version = params.get("protocolVersion", "2024-11-05")
+    protocol_version = params.get("protocolVersion", "2025-03-26")
     capabilities = params.get("capabilities", {})
 
     # Store initialization data in session
@@ -183,7 +183,7 @@ async def handle_initialize(
 
     # Return server capabilities
     return {
-        "protocolVersion": "2024-11-05",
+        "protocolVersion": "2025-03-26",
         "serverInfo": {"name": "giljo-mcp", "version": "1.0.0"},
         "capabilities": {"tools": {"listChanged": False}},
     }
@@ -1065,6 +1065,11 @@ async def mcp_endpoint(
     # Route to method handler
     method = rpc_request.method
     params = rpc_request.params or {}
+
+    # MCP notifications (no id, no response expected) -- return 202 Accepted per Streamable HTTP spec
+    if method.startswith("notifications/"):
+        logger.debug(f"MCP notification received: {method} (session: {session.session_id})")
+        return Response(status_code=202)
 
     try:
         if method == "initialize":
