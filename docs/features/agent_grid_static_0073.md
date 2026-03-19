@@ -40,7 +40,7 @@ Handover 0073 introduces the Static Agent Grid as the canonical orchestration UI
 ## Related Documentation
 
 - features/projects_view_v2.md — Project management UI (complements grid)
-- STAGE_PROJECT_FEATURE.md — Staging and token optimization (pairs with grid for execution)
+- STAGE_PROJECT_FEATURE.md — Staging workflow (pairs with grid for execution)
 - developer_guides/websocket_events_guide.md — Event DI and schema usage
 
 ---
