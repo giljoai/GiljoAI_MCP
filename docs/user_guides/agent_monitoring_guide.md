@@ -57,7 +57,6 @@ An **Agent Execution** represents a **specific agent instance** working on a job
 
 - **Agent ID**: Unique identifier for this executor (agent_a1b2c3d4)
 - **Status**: waiting, working, blocked, complete, failed, cancelled
-- **Context Tracking**: Context used/budget for orchestrators
 - **Succession Chain**: Links to previous/next agents (spawned_by, succeeded_by)
 
 **Key Point**: Each time an agent hands over work, a new execution is created while the job remains the same.
@@ -379,8 +378,6 @@ An agent that hasn't checked in for **10+ minutes**.
 - **`succeeded_by`**: Agent ID of successor executor (succession chain)
 - **`progress`**: Execution completion progress (0-100%)
 - **`current_task`**: Description of current task
-- **`context_used`**: Current context window usage in tokens (orchestrators)
-- **`context_budget`**: Maximum context window budget (orchestrators)
 - **`succession_reason`**: Why succession occurred (context_limit, manual, phase_transition)
 - **`handover_summary`**: Compressed state transfer for successor
 - **`last_progress_at`**: Timestamp of most recent progress report

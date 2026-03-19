@@ -120,8 +120,6 @@ Content-Type: application/json
 2. **Create orchestrator job**: Insert row in `mcp_agent_jobs` table
    - `agent_type`: "orchestrator"
    - `status`: "pending"
-   - `context_budget`: 200,000 tokens (configurable)
-   - `context_used`: 0 tokens (initial)
 3. **Stage prompt generation**: Generate thin client prompt (NOT full mission context yet)
 4. **Return launch prompt**: User copies prompt and launches Claude Code/Codex/Gemini
 
@@ -161,7 +159,6 @@ get_orchestrator_instructions(job_id=123, tenant_key="default")
   "mission_context": "<3,500 token context string>",
   "project_id": "uuid",
   "product_id": "uuid",
-  "context_budget": 200000,
   "field_toggles_applied": {
     "tech_stack": true,
     "architecture": true,
@@ -1115,8 +1112,7 @@ get_agent_mission(agent_job_id=456, tenant_key="default")
               │     - Check agent status via MCP tools        │
               │     - Spawn next agents when dependencies met │
               │     - Handle failures and re-assignment       │
-              │     - Update context_used counter             │
-              │     - Trigger succession at 90% capacity      │
+              │     - User triggers succession when needed     │
               └───────────────────────────────────────────────┘
                                       │
                                       ▼
@@ -1260,7 +1256,6 @@ class OrchestrationService:
             "fetch_instructions": instructions,
             "project_id": str(project.id),
             "product_id": str(product.id),
-            "context_budget": job.context_budget,
             "field_toggles_applied": field_toggles
         }
 ```
@@ -1286,8 +1281,6 @@ CREATE TABLE mcp_agent_jobs (
     mission TEXT,
     project_id UUID REFERENCES projects(id),
     tenant_key VARCHAR(255),
-    context_used INTEGER DEFAULT 0,  -- Token tracking
-    context_budget INTEGER DEFAULT 200000,  -- 200K tokens
     spawned_by INTEGER REFERENCES mcp_agent_jobs(id),  -- Lineage
     handover_to INTEGER REFERENCES mcp_agent_jobs(id),  -- Successor
     handover_summary TEXT,  -- Condensed context for successor

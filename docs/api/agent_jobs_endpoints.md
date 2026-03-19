@@ -303,8 +303,6 @@ Content-Type: application/json
   "status": "complete",
   "progress": 100,
   "current_task": "Completed service layer refactoring",
-  "context_used": 135000,
-  "context_budget": 150000,
   "succession_reason": "context_limit",
   "handover_summary": {
     "completed_tasks": ["Service extraction", "Endpoint modularization", "Test coverage"],
@@ -329,8 +327,6 @@ Content-Type: application/json
 | `status` | string | Execution status (waiting, working, blocked, complete, failed, cancelled, decommissioned) |
 | `progress` | integer | Execution progress 0-100% |
 | `current_task` | string | Description of current/last task (nullable) |
-| `context_used` | integer | Context window usage in tokens (orchestrators only) |
-| `context_budget` | integer | Maximum context budget in tokens |
 | `succession_reason` | string | Why succession occurred (context_limit, manual, phase_transition) (nullable) |
 | `handover_summary` | object | Compressed state transfer for successor (nullable) |
 | `spawned_by` | string | Agent ID who spawned this executor (nullable) |
@@ -494,8 +490,6 @@ Emitted when an execution reports progress (context usage, task completion).
   "job_id": "job_550e8400-e29b-41d4-a716-446655440000",
   "agent_id": "agent_e5f6g7h8i9j0",
   "progress": 45,
-  "context_used": 67500,
-  "context_budget": 150000,
   "current_task": "Implementing test coverage",
   "timestamp": "2025-12-20T12:15:00Z"
 }
