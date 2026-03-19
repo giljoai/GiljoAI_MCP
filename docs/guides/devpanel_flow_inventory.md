@@ -41,7 +41,7 @@ Curated list of user-facing workflows to visualize in the Developer Panel. Each 
 
 - **Task Creation → Assignment → Completion** – Task state transitions, notifications, reporting.  
   _Sources_: docs/AGENT_JOBS_API_REFERENCE.md, tests/integration/test_task_workflow.py (if present), src/giljo_mcp/tools/task.py
-- **Context Prioritization & Chunking** – Adjusting context priorities, chunking pipelines, token budgeting.  
+- **Context Prioritization & Chunking** – Adjusting context priorities and chunking pipelines.  
   _Sources_: src/giljo_mcp/context_management/chunker.py, docs/CONTEXT_MANAGEMENT_SYSTEM.md, tests covering chunking
 - **Vision Document Lifecycle** – Upload, staging, chunking, activation.  
   _Sources_: docs/INSTALLATION_FLOW_PROCESS.md (Phase 2), src/giljo_mcp/context_management

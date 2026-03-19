@@ -62,7 +62,7 @@ async def fetch_context(
 ) -> Dict[str, Any]
 ```
 
-**CRITICAL (Handover 0351)**: The `categories` parameter is an array type, but the implementation **enforces exactly ONE category per call**. Multi-category calls will return an error. This is code-level enforcement for token budget control in SaaS environments.
+**CRITICAL (Handover 0351)**: The `categories` parameter is an array type, but the implementation **enforces exactly ONE category per call**. Multi-category calls will return an error. This is code-level enforcement for per-call output size control.
 
 ### Available Categories
 
@@ -393,7 +393,7 @@ stmt = select(Product).where(
 // Error: categories=["all"] not allowed
 {
   "error": "ALL_NOT_ALLOWED",
-  "message": "categories=['all'] is not allowed. Call fetch_context once per category to stay within token budget.",
+  "message": "categories=['all'] is not allowed. Call fetch_context once per category for controlled context size.",
   "valid_categories": ["product_core", "vision_documents", ...],
   "example": "fetch_context(categories=['vision_documents'], ...)",
   "metadata": {"estimated_tokens": 0}

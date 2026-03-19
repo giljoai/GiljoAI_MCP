@@ -281,7 +281,7 @@ Agents wait for dependencies
 
 ## Critical Implementation Details
 
-### 1. Token Optimization (Handover 0246 Series)
+### 1. Thin Client Architecture (Handover 0246 Series)
 - **Before**: 3,500 token prompts embedded in requests
 - **After**: 450-550 token thin client prompts
 - **Method**: Mission fetched via MCP tools, not embedded
@@ -344,7 +344,7 @@ When orchestrator approaches context limit (90%):
 3. **Mode Toggle Critical**: Determines single vs multi-terminal execution
 4. **Mission Persistence**: Orchestrator creates AND persists mission to database
 5. **Real-time Updates**: WebSocket events drive all UI updates
-6. **Token Efficient**: Thin client architecture reduces prompt size by 85%
+6. **Thin Client**: Smaller prompts with MCP-based context fetching
 7. **Status Translation**: API layer transparently converts backend "pending" to UI "waiting"
 
 ---

@@ -23,7 +23,6 @@ GiljoAI MCP uses a simplified 5-state project lifecycle that provides clear sema
 
 **Characteristics**:
 - Receives agent assignments
-- Consumes context budget tokens
 - Visible in main projects view
 - Orchestrator assigns missions to this project
 - Real-time WebSocket updates
@@ -257,7 +256,6 @@ Ensures clear focus for orchestrator and agents by limiting active work to a sin
 - **Better Resource Allocation**: Focus computational resources on one project
 - **Simpler Mental Model**: Users understand which project is currently active
 - **Orchestrator Clarity**: Mission assignments always target the active project
-- **Token Budget Consistency**: Active project consumes context budget predictably
 
 ### Enforcement Layers
 
