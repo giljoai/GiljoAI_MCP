@@ -289,6 +289,8 @@ export const EVENT_MAP = {
   // =========================
   project_update: { store: 'projects', action: 'handleRealtimeUpdate' }, // legacy
   'project:mission_updated': { store: 'projectState', action: 'handleMissionUpdated' },
+  // Handover 0826: Server-side staging completion signal
+  'project:staging_complete': { store: 'projectState', action: 'handleStagingComplete' },
 
   // =========================
   // Entity updates (legacy multiplexed)

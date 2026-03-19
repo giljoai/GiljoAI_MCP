@@ -1083,7 +1083,9 @@ const statusCounts = computed(() => {
     completed: activeProductProjects.value.filter((p) => p.status === 'completed').length,
     cancelled: activeProductProjects.value.filter((p) => p.status === 'cancelled').length,
     terminated: activeProductProjects.value.filter((p) => p.status === 'terminated').length,
-    staged: activeProductProjects.value.filter((p) => p.staging_status === 'staged').length,
+    staged: activeProductProjects.value.filter(
+      (p) => p.staging_status === 'staged' || p.staging_status === 'staging_complete'
+    ).length,
   }
 })
 
@@ -1095,7 +1097,7 @@ const deletedCount = computed(() => deletedProjects.value.length)
 // Helper function to determine if project is staged
 // Uses staging_status from database for persistence across refresh/restart
 const isProjectStaged = (project) => {
-  return project.staging_status === 'staged'
+  return project.staging_status === 'staged' || project.staging_status === 'staging_complete'
 }
 
 // Launch button visibility - only show when exactly 1 active project exists and it is not staged
