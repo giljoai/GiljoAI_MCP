@@ -4,7 +4,7 @@
 **From Agent:** Research session (architecture analysis)
 **To Agent:** Next Session
 **Priority:** High
-**Status:** Not Started
+**Status:** Completed
 **Edition Scope:** CE
 
 ---
@@ -350,3 +350,28 @@ Product is in dev mode with no deployments. Any existing test data in the local 
 - Zero token estimation dead code in mission/spawn response models
 - All tests green -- legacy assertions updated to match new design
 - No new files created (modifications to existing files only)
+
+---
+
+## Progress Updates
+
+### 2026-03-18 - Implementation Session
+**Status:** Completed
+**Commit:** `1aebbcd8` — feat: Separate agent identity from mission response (0825)
+
+**Work Done:**
+- Phase 1: Stripped dead token estimation fields (`estimated_tokens` from MissionResponse, `prompt_tokens`/`mission_tokens`/`total_tokens` from SpawnResult)
+- Phase 2: Added `agent_identity: Optional[str] = None` field to MissionResponse
+- Phase 3: Simplified `_resolve_spawn_template()` to capture `template_id` only — no more template content baked into mission at spawn time
+- Phase 4: Added identity resolution in `get_agent_mission()` at read time from AgentTemplate, plus mission framing directive
+- Phase 5: Added lifecycle framing directive to `full_protocol` in `protocol_builder.py`
+- Phase 6: Updated 7 test/fixture files — removed dead token field assertions, rewrote template concatenation test, added agent_identity coverage
+- 13 files changed, 1478 tests passing, 0 regressions
+
+**Key Files Modified:**
+- `src/giljo_mcp/schemas/service_responses.py` (schema changes)
+- `src/giljo_mcp/services/orchestration_service.py` (spawn + mission logic)
+- `src/giljo_mcp/services/protocol_builder.py` (framing directive)
+- 7 test/fixture files updated for new design
+
+**All success criteria met.**
