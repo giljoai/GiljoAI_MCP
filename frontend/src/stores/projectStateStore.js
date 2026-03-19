@@ -18,7 +18,7 @@ function normalizeProjectState(project) {
     mission: project?.mission || '',
     status: project?.status || null,
     execution_mode: project?.execution_mode || null,
-    stagingComplete: Boolean(project?.stagingComplete) || false,
+    stagingComplete: Boolean(project?.stagingComplete) || project?.staging_status === 'staging_complete' || false,
     isStaging: Boolean(project?.isStaging) || false,
     isLaunched: Boolean(project?.isLaunched) || false,
   }
@@ -112,6 +112,13 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
     setStagingComplete(projectId, true)
   }
 
+  // Handover 0826: Server-side staging completion signal
+  function handleStagingComplete(payload) {
+    const projectId = payload?.project_id
+    if (!projectId) return
+    setStagingComplete(projectId, true)
+  }
+
   function handleMessageReceived(payload) {
     const projectId = payload?.project_id
     if (!projectId) return
@@ -143,6 +150,7 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
 
     // ws handlers
     handleMissionUpdated,
+    handleStagingComplete,
     handleMessageSent,
     handleMessageReceived,
 
