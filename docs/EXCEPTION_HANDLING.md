@@ -103,9 +103,9 @@ async def get_product(product_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Product not found")
 ```
 
-### Token Benefits
+### Operational Benefits
 
-The exception handling architecture provides significant token savings:
+The exception handling architecture provides:
 
 1. **Request Correlation** - Structlog automatically includes `request_id` in all logs
 2. **Automatic Context Enrichment** - Exception middleware adds tenant, user, and timing info

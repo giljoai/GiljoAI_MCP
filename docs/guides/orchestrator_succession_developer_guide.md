@@ -32,14 +32,7 @@
 │                      Orchestrator Agent                          │
 │  (Running in Claude Code / Codex CLI / Gemini CLI)              │
 │                                                                   │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │ Context Monitor                                            │  │
-│  │ - Tracks context_used vs context_budget                   │  │
-│  │ - Triggers succession at 90% threshold                    │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                          │                                        │
-│                          │ (Context >= 90%)                      │
-│                          ▼                                        │
+│                                                                   │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │ MCP Tool: create_successor_orchestrator()                  │  │
 │  │ - Calls GiljoAI MCP server via HTTP                       │  │
@@ -168,11 +161,7 @@ ALTER TABLE mcp_agent_jobs
     -- Reason for succession ('context_limit', 'manual', 'phase_transition')
     ADD COLUMN IF NOT EXISTS succession_reason VARCHAR(100) NULL,
 
-    -- Current context usage in tokens
-    ADD COLUMN IF NOT EXISTS context_used INTEGER DEFAULT 0 NOT NULL,
-
-    -- Maximum context budget in tokens
-    ADD COLUMN IF NOT EXISTS context_budget INTEGER DEFAULT 150000 NOT NULL;
+;
 ```
 
 ### Indexes for Performance
@@ -191,11 +180,6 @@ ALTER TABLE mcp_agent_jobs
     ADD CONSTRAINT IF NOT EXISTS ck_mcp_agent_job_succession_reason
     CHECK (succession_reason IS NULL OR
            succession_reason IN ('context_limit', 'manual', 'phase_transition'));
-
--- Context usage must be within budget
-ALTER TABLE mcp_agent_jobs
-    ADD CONSTRAINT IF NOT EXISTS ck_mcp_agent_job_context_usage
-    CHECK (context_used >= 0 AND context_used <= context_budget);
 ```
 
 ### Example Data
@@ -208,8 +192,6 @@ INSERT INTO mcp_agent_jobs (
     agent_type,
     mission,
     status,
-    context_used,
-    context_budget,
     handover_to,
     handover_summary,
     succession_reason,
@@ -220,8 +202,6 @@ INSERT INTO mcp_agent_jobs (
     'orchestrator',
     'Develop e-commerce platform...',
     'complete',
-    145000,
-    150000,
     'orch-a1b2c3d4-5e6f-7890-1234-567890abcdef',
     '{"project_status": "60% complete", "active_agents": [...], ...}'::jsonb,
     'context_limit',
@@ -236,9 +216,7 @@ INSERT INTO mcp_agent_jobs (
     mission,
     status,
     spawned_by,
-    project_id,
-    context_used,
-    context_budget
+    project_id
 ) VALUES (
     'tenant-abc123',
     'orch-a1b2c3d4-5e6f-7890-1234-567890abcdef',
@@ -246,9 +224,7 @@ INSERT INTO mcp_agent_jobs (
     'Continue orchestration from predecessor...',
     'waiting',
     'orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124',
-    '6adbec5c-9e11-46b4-ad8b-060c69a8d124',
-    0,
-    150000
+    '6adbec5c-9e11-46b4-ad8b-060c69a8d124'
 );
 ```
 
@@ -259,9 +235,6 @@ INSERT INTO mcp_agent_jobs (
 SELECT
     job_id,
     status,
-    context_used,
-    context_budget,
-    ROUND((context_used::float / context_budget * 100)::numeric, 2) AS usage_percent,
     handover_to,
     spawned_by,
     succession_reason,
@@ -277,9 +250,9 @@ ORDER BY created_at ASC;
 **Expected Output:**
 
 ```
-job_id                                     | status   | usage_percent | handover_to                                | ...
-orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124 | complete | 96.67         | orch-a1b2c3d4-5e6f-7890-1234-567890abcdef  | ...
-orch-a1b2c3d4-5e6f-7890-1234-567890abcdef | waiting  | 0.00          | NULL                                       | ...
+job_id                                     | status   | handover_to                                | ...
+orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124 | complete | orch-a1b2c3d4-5e6f-7890-1234-567890abcdef  | ...
+orch-a1b2c3d4-5e6f-7890-1234-567890abcdef | waiting  | NULL                                       | ...
 ```
 
 ## Backend API Reference
@@ -319,12 +292,7 @@ Manually trigger succession for an orchestrator job.
     "critical_context_refs": ["chunk-123", "chunk-456"],
     "message_count": 42,
     "unresolved_blockers": [],
-    "next_steps": "Implement API endpoints, then frontend integration",
-    "context_usage": {
-      "used": 145000,
-      "budget": 150000,
-      "percentage": 96.67
-    }
+    "next_steps": "Implement API endpoints, then frontend integration"
   },
   "message": "Successor orchestrator created. Original orchestrator marked complete. Launch successor manually from dashboard."
 }
@@ -375,9 +343,6 @@ Retrieve the full succession chain for an orchestrator's project.
     {
       "job_id": "orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124",
       "status": "complete",
-      "context_used": 145000,
-      "context_budget": 150000,
-      "usage_percentage": 96.67,
       "handover_to": "orch-a1b2c3d4-5e6f-7890-1234-567890abcdef",
       "succession_reason": "context_limit",
       "created_at": "2025-11-01T10:00:00Z",
@@ -386,9 +351,6 @@ Retrieve the full succession chain for an orchestrator's project.
     {
       "job_id": "orch-a1b2c3d4-5e6f-7890-1234-567890abcdef",
       "status": "waiting",
-      "context_used": 0,
-      "context_budget": 150000,
-      "usage_percentage": 0.00,
       "spawned_by": "orch-6adbec5c-9e11-46b4-ad8b-060c69a8d124",
       "created_at": "2025-11-02T14:30:00Z",
       "completed_at": null
@@ -431,21 +393,17 @@ Retrieve the full succession chain for an orchestrator's project.
 from giljo_mcp.tools.succession_tools import create_successor_orchestrator
 
 # Orchestrator detects 90% context usage
-async def check_and_create_simple_handover(orchestrator):
-    if orchestrator.context_used >= (orchestrator.context_budget * 0.90):
-        result = await create_successor_orchestrator(
-            current_job_id=orchestrator.job_id,
-            tenant_key=orchestrator.tenant_key,
-            reason="context_limit"
-        )
+async def create_simple_handover(orchestrator):
+    result = await create_successor_orchestrator(
+        current_job_id=orchestrator.job_id,
+        tenant_key=orchestrator.tenant_key,
+        reason="context_limit"
+    )
 
-        print(f"Successor created: {result['successor_id']}")
-        print(f"Handover summary: {result['handover_summary']}")
+    print(f"Successor created: {result['successor_id']}")
+    print(f"Handover summary: {result['handover_summary']}")
 
-        return result['successor_id']
-    else:
-        print("Context usage below threshold, no succession needed")
-        return None
+    return result['successor_id']
 ```
 
 ### Tool: `check_succession_status`
@@ -466,11 +424,8 @@ async def check_and_create_simple_handover(orchestrator):
 ```python
 {
   "should_trigger": True,               # Boolean recommendation
-  "context_used": 135000,               # Current usage in tokens
-  "context_budget": 150000,             # Maximum budget
-  "usage_percentage": 90.00,            # Percentage used
-  "threshold_reached": True,            # True if >= 90%
-  "recommendation": "Context usage at 90.0%. Succession recommended immediately..."
+  "threshold_reached": True,            # True if succession recommended
+  "recommendation": "Succession recommended..."
 }
 ```
 
@@ -480,13 +435,12 @@ async def check_and_create_simple_handover(orchestrator):
 from giljo_mcp.tools.succession_tools import check_succession_status
 
 # Periodically check succession status
-async def monitor_context_usage(orchestrator):
+async def check_succession(orchestrator):
     status = await check_succession_status(
         job_id=orchestrator.job_id,
         tenant_key=orchestrator.tenant_key
     )
 
-    print(f"Context usage: {status['usage_percentage']}%")
     print(f"Recommendation: {status['recommendation']}")
 
     if status['should_trigger']:
@@ -588,8 +542,6 @@ interface Props {
     job_id: string
     agent_type: string
     status: string
-    context_used?: number
-    context_budget?: number
     handover_to?: string
     spawned_by?: string
   }
@@ -598,40 +550,10 @@ interface Props {
 }
 ```
 
-**Computed Properties:**
-
-```javascript
-// Context usage percentage with color coding
-contextUsagePercentage() {
-  if (!this.agent.context_budget) return 0
-  return (this.agent.context_used / this.agent.context_budget) * 100
-}
-
-contextUsageColor() {
-  const pct = this.contextUsagePercentage
-  if (pct >= 90) return 'error'      // Red
-  if (pct >= 75) return 'warning'    // Yellow
-  return 'success'                    // Green
-}
-```
-
 **Template Sections:**
 
 ```vue
 <template>
-  <!-- Context Usage Progress Bar -->
-  <v-progress-linear
-    v-if="agent.context_budget"
-    :model-value="contextUsagePercentage"
-    :color="contextUsageColor"
-    height="8"
-    rounded
-  >
-    <template #default>
-      <span class="text-caption">{{ contextUsagePercentage.toFixed(1) }}%</span>
-    </template>
-  </v-progress-linear>
-
   <!-- NEW Badge (successors) -->
   <v-chip
     v-if="showNewBadge"
@@ -761,21 +683,6 @@ import pytest
 from giljo_mcp.orchestrator_succession import OrchestratorSuccessionManager
 from giljo_mcp.models import AgentJob
 
-def test_context_threshold_detection(db_session, tenant_key):
-    """Test that succession can be triggered when context is high."""
-    manager = OrchestratorSuccessionManager(db_session, tenant_key)
-
-    orchestrator = AgentJob(
-        tenant_key=tenant_key,
-        job_id="orch-test-123",
-        agent_type="orchestrator",
-        context_used=135000,  # 90% of 150000
-        context_budget=150000
-    )
-
-    # User can manually trigger succession when context is high
-    assert (orchestrator.context_used / orchestrator.context_budget) >= 0.9
-
 def test_handover_summary_generation(db_session, tenant_key, orchestrator_with_messages):
     """Test that handover summary is properly compressed."""
     manager = OrchestratorSuccessionManager(db_session, tenant_key)
@@ -787,12 +694,6 @@ def test_handover_summary_generation(db_session, tenant_key, orchestrator_with_m
     assert 'next_steps' in summary
     assert summary['message_count'] > 0
 
-    # Verify compression (rough token estimate)
-    import json
-    summary_str = json.dumps(summary)
-    estimated_tokens = len(summary_str) / 4
-    assert estimated_tokens < 10000  # Target: <10K tokens
-
 def test_successor_creation(db_session, tenant_key, orchestrator):
     """Test that successor is created with correct attributes."""
     manager = OrchestratorSuccessionManager(db_session, tenant_key)
@@ -802,8 +703,6 @@ def test_successor_creation(db_session, tenant_key, orchestrator):
     assert successor.job_id != orchestrator.job_id
     assert successor.spawned_by == orchestrator.job_id
     assert successor.status == "waiting"
-    assert successor.context_used == 0
-    assert successor.context_budget == orchestrator.context_budget
 ```
 
 ### Integration Tests
@@ -822,9 +721,7 @@ async def test_full_succession_workflow(db_session, tenant_key, project):
         tenant_key=tenant_key,
         job_id="orch-1",
         agent_type="orchestrator",
-        project_id=project.project_id,
-        context_used=135000,
-        context_budget=150000
+        project_id=project.project_id
     )
     db_session.add(orch1)
     db_session.commit()
@@ -848,7 +745,6 @@ async def test_full_succession_workflow(db_session, tenant_key, project):
     # Verify Instance 2 (successor)
     assert orch2.status == "waiting"
     assert orch2.spawned_by == orch1.job_id
-    assert orch2.context_used == 0
 ```
 
 ### Security Tests
@@ -909,18 +805,15 @@ def test_succession_latency(db_session, tenant_key, orchestrator):
     assert elapsed_time < 5.0  # Target: <5 seconds
     print(f"Succession completed in {elapsed_time:.2f}s")
 
-def test_handover_summary_token_limit(db_session, tenant_key, large_orchestrator):
-    """Verify handover summary stays under 10K tokens."""
+def test_handover_summary_size_limit(db_session, tenant_key, large_orchestrator):
+    """Verify handover summary stays compact."""
     manager = OrchestratorSuccessionManager(db_session, tenant_key)
 
     summary = manager.generate_handover_summary(large_orchestrator)
 
     import json
     summary_str = json.dumps(summary)
-    estimated_tokens = len(summary_str) / 4  # Rough approximation
-
-    assert estimated_tokens < 10000
-    print(f"Handover summary: {estimated_tokens:.0f} tokens")
+    assert len(summary_str) < 40000  # Keep summaries compact
 ```
 
 ## Integration Examples
@@ -937,22 +830,9 @@ class OrchestratorAgent:
         self.job_id = job_id
         self.tenant_key = tenant_key
         self.client = GiljoMCPClient()
-        self.context_used = 0
-        self.context_budget = 150000
-
-    async def update_context_usage(self, tokens_used):
-        """Update context usage."""
-        self.context_used += tokens_used
-
-        # Check if context is high (approaching 90%)
-        usage_percent = (self.context_used / self.context_budget) * 100
-        if usage_percent >= 80:
-            print(f"Warning: Context usage at {usage_percent:.1f}%")
-            print("Consider triggering manual succession via /gil_handover")
 
     async def create_simple_handover(self):
         """Trigger manual succession (called by user action)."""
-        print(f"Context usage: {self.context_used}/{self.context_budget} tokens")
         print("User triggered succession...")
 
         # Call MCP tool
@@ -976,10 +856,8 @@ orchestrator = OrchestratorAgent(
     tenant_key="tenant-abc123"
 )
 
-# Simulate context growth (user monitors and triggers succession)
-await orchestrator.update_context_usage(50000)  # 50K tokens
-await orchestrator.update_context_usage(40000)  # 90K total (60%)
-await orchestrator.update_context_usage(45000)  # 135K total (90%) → user sees warning, triggers succession manually
+# User triggers succession manually when needed
+await orchestrator.create_simple_handover()
 ```
 
 ### Example 2: Manual Succession via API
@@ -1032,7 +910,6 @@ with db_manager.get_session() as session:
         status_icon = "✅" if orch.status == "complete" else "⏳" if orch.status == "waiting" else "🔄"
         print(f"{status_icon} {orch.job_id}")
         print(f"   Status: {orch.status}")
-        print(f"   Context: {orch.context_used}/{orch.context_budget} ({orch.context_used/orch.context_budget*100:.1f}%)")
         if orch.handover_to:
             print(f"   Handed over to: {orch.handover_to}")
         if orch.spawned_by:
@@ -1061,18 +938,11 @@ ORDER BY created_at;
 
 ### Handover Summary Compression
 
-Target: <10K tokens per handover summary
-
 Techniques:
 1. **Reference context chunks** (IDs only, not full text)
 2. **Summarize completed work** (bullet points, not full history)
 3. **Preserve only pending decisions** (actionable items only)
 4. **Compress message history** (key events only, not full replay)
-
-Example compression ratio:
-- Full context: 145,000 tokens
-- Handover summary: 8,000 tokens
-- Compression ratio: 94.5% reduction
 
 ### Caching Strategies
 
@@ -1165,10 +1035,10 @@ query = f"SELECT * FROM mcp_agent_jobs WHERE job_id = '{job_id}'"
 
 ## Conclusion
 
-Orchestrator succession architecture enables unlimited project duration through intelligent context management. The system provides:
+Orchestrator succession architecture enables unlimited project duration through handover management. The system provides:
 
-- **Automatic handover** at 90% context usage
-- **Compressed state transfer** (<10K tokens)
+- **Manual handover** triggered by user
+- **Compressed state transfer** via handover summaries
 - **Full lineage tracking** via database
 - **Multi-tenant isolation** at all levels
 - **Production-grade testing** (45 tests, 80%+ coverage)
