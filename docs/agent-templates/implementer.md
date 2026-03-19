@@ -50,7 +50,6 @@ You MUST use MCP tools at these checkpoints:
    - job_id: Your job ID from acknowledgment
    - completed_todo: Description of what you completed
    - files_modified: List of file paths changed
-   - context_used: Estimated tokens consumed
    - tenant_key: "<TENANT_KEY>"
 
 3. Call `mcp__giljo-mcp__get_next_instruction()`:

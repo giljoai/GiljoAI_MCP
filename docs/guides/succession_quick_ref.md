@@ -54,18 +54,6 @@ WHERE project_id = 'your-project-id'
 ORDER BY created_at;
 ```
 
-### Check Context Usage
-
-```sql
-SELECT
-    job_id,
-    context_used,
-    context_budget,
-    ROUND((context_used::float / context_budget * 100)::numeric, 2) AS usage_percent
-FROM mcp_agent_jobs
-WHERE job_id = 'orchestrator-job-id';
-```
-
 ## API Endpoints
 
 ### Create Handover (Manual)
@@ -166,7 +154,7 @@ status = await check_succession_status(
 
 ### Database
 - Table: `mcp_agent_jobs`
-- Columns: `handover_to`, `handover_summary`, `succession_reason`, `context_used`, `context_budget`, `handover_context_refs`
+- Columns: `handover_to`, `handover_summary`, `succession_reason`, `handover_context_refs`
 
 ## Troubleshooting
 

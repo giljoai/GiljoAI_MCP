@@ -239,7 +239,7 @@ tools: ["mcp__giljo_mcp__*"]
 
 ### Phase 2: Incremental Progress (AFTER EACH TODO)
 1. Complete one todo
-2. Call `mcp__giljo_mcp__report_progress(completed_todo, files_modified, context_used)`
+2. Call `mcp__giljo_mcp__report_progress(completed_todo, files_modified)`
 3. Call `mcp__giljo_mcp__get_next_instruction()` - check for user feedback
 4. Proceed based on response
 
@@ -331,7 +331,6 @@ async def report_progress(
     job_id: str,
     completed_todo: str,
     files_modified: list[str],
-    context_used: int,
     tenant_key: str
 ) -> dict:
     """Report incremental progress"""
