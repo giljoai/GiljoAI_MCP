@@ -95,7 +95,12 @@
         <!-- Generated Prompt Output -->
         <div v-if="generatedPrompt" class="mt-4">
           <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-            Copy and paste {{ selectedTool === 'codex' ? 'these commands' : 'this' }} in your terminal to configure {{ selectedToolName }}:
+            <template v-if="selectedTool === 'openclaw'">
+              Add this to the <code>mcpServers</code> block in <code>~/.openclaw/openclaw.json</code>, then restart the gateway. Also works with NemoClaw.
+            </template>
+            <template v-else>
+              Copy and paste {{ selectedTool === 'codex' ? 'these commands' : 'this' }} in your terminal to configure {{ selectedToolName }}:
+            </template>
           </v-alert>
 
           <!-- C+D) Codex: Platform selector + Environment Variable command -->
@@ -118,10 +123,10 @@
             />
           </template>
 
-          <!-- E) Configuration Command -->
+          <!-- E) Configuration Command / JSON snippet -->
           <v-textarea
             v-model="generatedPrompt"
-            label="Configuration Command"
+            :label="selectedTool === 'openclaw' ? 'JSON Configuration' : 'Configuration Command'"
             readonly
             rows="3"
             auto-grow
@@ -170,12 +175,14 @@ const aiTools = [
   { name: 'Claude Code', value: 'claude' },
   { name: 'Codex CLI', value: 'codex' },
   { name: 'Gemini CLI', value: 'gemini' },
+  { name: 'OpenClaw', value: 'openclaw' },
 ]
 
 const toolLogos = {
   claude: '/claude_pix.svg',
   codex: '/icons/codex_mark_white.svg',
   gemini: '/gemini-icon.svg',
+  openclaw: '/openclaw-dark.svg',
 }
 
 const selectedToolName = computed(
@@ -201,6 +208,7 @@ function makeKeyName(tool) {
     claude: 'Claude Code',
     codex: 'Codex CLI',
     gemini: 'Gemini',
+    openclaw: 'OpenClaw',
   }
   return `${map[tool] || 'AI Tool'} prompt key`
 }
@@ -234,6 +242,17 @@ function geminiPrompt(serverUrl, apiKey) {
   return `gemini mcp add -t http -H "X-API-Key: ${apiKey}" giljo-mcp ${serverUrl}/mcp`
 }
 
+function openclawPrompt(serverUrl, apiKey) {
+  // JSON snippet for ~/.openclaw/openclaw.json mcpServers block
+  return JSON.stringify({
+    'giljo-mcp': {
+      transport: 'streamable-http',
+      url: `${serverUrl}/mcp`,
+      headers: { Authorization: `Bearer ${apiKey}` },
+    },
+  }, null, 2)
+}
+
 function buildPromptFor(tool, serverUrl, apiKey) {
   switch (tool) {
     case 'claude':
@@ -242,6 +261,8 @@ function buildPromptFor(tool, serverUrl, apiKey) {
       return codexPrompt(serverUrl)
     case 'gemini':
       return geminiPrompt(serverUrl, apiKey)
+    case 'openclaw':
+      return openclawPrompt(serverUrl, apiKey)
     default:
       return `Use these values with your tool:\n- Base URL: ${serverUrl}\n- Header: X-API-Key: ${apiKey}`
   }
