@@ -298,7 +298,6 @@ get_agent_mission(
     "context": {
         "project_id": "uuid",
         "product_id": "uuid",
-        "context_budget": 200000,
         "priority_config": {...}
     }
 }

@@ -260,13 +260,11 @@ async def test_complete_product_lifecycle(db_session, test_tenant):
     orchestration_service = OrchestrationService(db_session, test_tenant)
     orchestrator = await orchestration_service.create_orchestrator_job(
         project_id=project.id,
-        mission="Build MVP for e-commerce platform",
-        context_budget=200000
+        mission="Build MVP for e-commerce platform"
     )
 
     # Verify orchestrator created
     assert orchestrator.status == "pending"
-    assert orchestrator.context_budget == 200000
 ```
 
 ### **Multi-Tenant Isolation Tests**
@@ -315,16 +313,13 @@ async def test_succession_lineage_preservation(db_session, test_tenant):
     # Create orchestrator (instance 1)
     job1 = await service.create_orchestrator_job(
         project_id=1,
-        mission="Build auth system",
-        context_budget=100000
+        mission="Build auth system"
     )
 
     # Manual succession via simple-handover endpoint
-    await service.update_context_usage(job1.id, 91000)
     job2 = await service.create_simple_handover(job1.id, test_tenant, reason="context_limit")
 
     # Trigger another succession (instance 2 -> 3)
-    await service.update_context_usage(job2.id, 91000)
     job3 = await service.create_simple_handover(job2.id, test_tenant, reason="context_limit")
 
     # Verify lineage chain
