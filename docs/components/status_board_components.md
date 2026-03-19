@@ -89,7 +89,7 @@ Action buttons for launching, copying prompts, viewing messages, and managing ag
 
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
-| `job` | Object | Yes | - | Agent job object (must contain job_id, status, agent_type, unread_count, context_used, context_budget) |
+| `job` | Object | Yes | - | Agent job object (must contain job_id, status, agent_type, unread_count) |
 | `claudeCodeCliMode` | Boolean | No | `false` | If true, only orchestrator can be launched |
 
 ### Events
@@ -307,9 +307,7 @@ const agents = ref([
     messages_sent: 5,
     messages_waiting: 2,
     messages_read: 3,
-    unread_count: 2,
-    context_used: 45000,
-    context_budget: 50000
+    unread_count: 2
   }
 ])
 
@@ -542,7 +540,7 @@ Returns array of available action names for given job.
 import { getAvailableActions } from '@/utils/actionConfig'
 
 const actions = getAvailableActions(
-  { status: 'working', agent_type: 'orchestrator', context_used: 45000, context_budget: 50000 },
+  { status: 'working', agent_type: 'orchestrator' },
   false
 )
 // Returns: ['copyPrompt', 'viewMessages', 'cancel']

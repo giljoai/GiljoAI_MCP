@@ -911,7 +911,6 @@ Usage:
 
 What it does:
 - Writes current session context to 360 Memory (session_handover entry)
-- Resets context_used counter to 0 (no new AgentExecution created)
 - Returns a continuation prompt that instructs reading 360 Memory
 - Emits WebSocket event for UI updates
 
