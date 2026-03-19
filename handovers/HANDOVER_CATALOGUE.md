@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-18 (0824 closeout self-decommission guard — COMPLETE)
+**Last Updated:** 2026-03-18 (0826 staging completion hardening — NEW)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825b COMPLETE. 0825 ACTIVE. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b COMPLETE. 0826 ACTIVE. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -29,7 +29,7 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0825 | Agent Identity Separation from Mission Response | Not Started | High | Separate agent_identity field + strip dead token estimation code |
+| 0826 | Staging Completion Hardening | Not Started | High | Thin prompt guard + server-side staging completion signal (remove LLM as single point of failure) |
 
 ### Deferred (Still in Root Folder)
 
@@ -42,6 +42,7 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0825 | Agent Identity Separation from Mission Response | 2026-03-18 | COMPLETE (`1aebbcd8`) — agent_identity field added, dead token fields stripped, template content no longer baked into mission |
 | 0825b | Dead Context Management Code Cleanup | 2026-03-18 | COMPLETE (`83983166`) — removed 4 dead classes, 3 dead models, 3 dead tables, -1,341 lines |
 | 0824 | Closeout Self-Decommission Guard | 2026-03-18 | COMPLETE — pre-flight guard blocks force-close when orchestrator active, decommissioned diagnostics in complete_job/report_progress |
 | 0823 | Context Fetch Protocol Injection | 2026-03-18 | COMPLETE (`6cf62fce`) — CH2 inline fetch calls replace broken context_fetch_instructions |
@@ -521,7 +522,8 @@ completed/reference/
 **0823** (Enhancement & Feature Series): 0823 Context Fetch Protocol Injection (COMPLETE, `6cf62fce`)
 **0823b** (Enhancement & Feature Series): 0823b Move Depth Config to fetch_context Runtime (COMPLETE, `c3899cf7`)
 **0824** (Enhancement & Feature Series): 0824 Closeout Self-Decommission Guard (COMPLETE)
-**0825** (Enhancement & Feature Series): 0825 Agent Identity Separation from Mission Response (ACTIVE)
+**0825** (Enhancement & Feature Series): 0825 Agent Identity Separation from Mission Response (COMPLETE, `1aebbcd8`)
+**0826** (Enhancement & Feature Series): 0826 Staging Completion Hardening (ACTIVE)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
