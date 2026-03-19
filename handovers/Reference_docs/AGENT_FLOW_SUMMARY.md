@@ -208,7 +208,6 @@ TASK 5: spawn_agent_job() × N       → Create agent database records
 - **Before:** 3,500 token prompts embedded in requests
 - **After:** 450-550 token thin prompts
 - **How:** Mission stored in database, fetched via MCP tools
-- **Result:** 70% token reduction
 
 ---
 
@@ -375,10 +374,8 @@ Zero cross-tenant data leakage possible.
 **Flow:**
 1. Create Project → Project Name → Project Description (Context Source)
 2. Orchestrator generated mission shows here (if exists) - *Note: Same Vue component for editing existing projects*
-3. Context Budget → Save Project → Project appears on project list
+3. Save Project → Project appears on project list
 4. Project is default inactive
-
-**Note on Context Budget:** Value to be determined for its use - suggested as informative value inserted into orchestrator launch prompt as instructions to define context space in tokens before session expires.
 
 ### Slide 12: Project Modification Overview
 **Constraint:** Only one project can be active under an activated product at any given time. Only one product can be activated in any tenant.

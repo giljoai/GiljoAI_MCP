@@ -8,25 +8,25 @@
 
 ## Executive Summary
 
-**GiljoAI MCP** solves the two biggest problems with AI-assisted development: **context limitations** and **token inefficiency**. It achieves this through intelligent multi-agent orchestration that delivers **context prioritization and orchestration** while enabling coordinated teams of specialized AI agents to work on complex projects.
+**GiljoAI MCP** solves the two biggest problems with AI-assisted development: **context limitations** and **coordination complexity**. It achieves this through intelligent multi-agent orchestration that delivers **context prioritization and orchestration** while enabling coordinated teams of specialized AI agents to work on complex projects.
 
 **Key Achievements**:
-- **70% Token Reduction**: Production-ready orchestration system (Handover 0020) with intelligent mission generation
+- **Intelligent Mission Generation**: Production-ready orchestration system (Handover 0020) with condensed, focused missions per agent
 - **Multi-Agent Coordination**: Complete job management system (Handover 0019) with JSONB message queues
 - **Production-Ready**: Cross-platform unified installer (Handover 0035), comprehensive security (Handover 0023), professional UI (Handovers 0025-0029)
 - **100% Multi-Tenant Isolation**: Enterprise-grade security and data separation across all layers
 
 ## What is GiljoAI MCP?
 
-GiljoAI MCP Coding Orchestrator is a **production-ready multi-agent orchestration system** that transforms AI coding assistants into coordinated development teams, achieving **70%+ context prioritization** through intelligent context management. It breaks through context limits by orchestrating multiple specialized agents that work together on complex tasks while dramatically reducing token consumption.
+GiljoAI MCP Coding Orchestrator is a **production-ready multi-agent orchestration system** that transforms AI coding assistants into coordinated development teams through intelligent context management. It breaks through context limits by orchestrating multiple specialized agents that work together on complex tasks with focused, role-specific context.
 
-**The Magic**: The orchestrator reads your full project context ONCE (50,000 tokens) and creates condensed, focused missions for each specialized agent (1,500 tokens each). Database experts only get database context, frontend specialists only get UI patterns, and they all coordinate via lightweight JSONB message queues instead of duplicating context. The system automatically manages job lifecycles (pending → active → completed), tracks dependencies through parent-child hierarchies, and handles agent-to-agent communication with sub-100ms performance.
+**The Magic**: The orchestrator reads your full project context ONCE and creates condensed, focused missions for each specialized agent. Database experts only get database context, frontend specialists only get UI patterns, and they all coordinate via lightweight JSONB message queues instead of duplicating context. The system automatically manages job lifecycles (pending → active → completed), tracks dependencies through parent-child hierarchies, and handles agent-to-agent communication with sub-100ms performance.
 
 **Production Status**: Complete implementation with 380+ passing tests, cross-platform installer, comprehensive security (recovery PIN system, first admin lockdown), and professional UI with WCAG 2.1 AA accessibility.
 
 ### The Core Problem It Solves
 
-**Context Limitations & Token Inefficiency**: Traditional AI coding assistants hit context limits when working on large codebases or complex projects. They can't maintain awareness of the entire system while implementing specific features, and they waste massive amounts of tokens by repeatedly analyzing the same code.
+**Context Limitations & Coordination Complexity**: Traditional AI coding assistants hit context limits when working on large codebases or complex projects. They can't maintain awareness of the entire system while implementing specific features, and they lack coordination when multiple concerns must be addressed simultaneously.
 
 **Solution**: Instead of one AI trying to hold everything in memory, GiljoAI MCP creates **teams of specialized agents** that:
 - Share context intelligently through condensed missions (**context prioritization and orchestration**)
@@ -52,14 +52,13 @@ Modern software development involves:
 - No coordination between different development tasks
 - Repeated discovery of the same codebase patterns
 - Knowledge loss when context resets
-- Inefficient token usage
 
 **GiljoAI MCP Solution**:
 - **Persistent orchestration** that remembers project state
 - **Specialized agents** for different development roles
 - **Intelligent handoffs** when agents reach context limits
 - **Shared memory** of project architecture and decisions
-- **Token optimization** through hierarchical context loading
+- **Role-specific context** through depth-level configuration
 
 ### Real-World Impact
 
@@ -71,24 +70,24 @@ Modern software development involves:
 
 **With GiljoAI MCP (context prioritization and orchestration)**:
 - Developer: "Implement user authentication"
-- **Orchestrator** (MissionPlanner): *Reads full vision document ONCE (50,000 tokens), creates condensed missions*
+- **Orchestrator** (MissionPlanner): *Reads full vision document ONCE, creates condensed missions*
 - **AgentSelector**: *Queries AgentTemplate database, selects optimal team based on priority cascade*
 - **WorkflowEngine**: *Spawns agent jobs in waterfall pattern, tracks lifecycle*
-- **Database Expert**: *Receives focused mission (1,500 tokens): database schema + auth requirements only*
+- **Database Expert**: *Receives focused mission: database schema + auth requirements only*
   - Creates job via `POST /api/agent-jobs` (pending → active)
   - Implements auth tables, indexes, constraints
   - Sends completion message via AgentCommunicationQueue
-- **API Implementer**: *Gets focused mission (1,200 tokens): API patterns + auth endpoints only*
+- **API Implementer**: *Gets focused mission: API patterns + auth endpoints only*
   - Acknowledges job, begins implementation
   - Reads database expert's messages for schema details
   - Implements JWT endpoints, middleware
-- **Frontend Specialist**: *Receives focused mission (1,800 tokens): UI patterns + auth flow only*
+- **Frontend Specialist**: *Receives focused mission: UI patterns + auth flow only*
   - Gets messages from API team on endpoint specs
   - Implements login/register forms, token management
-- **Tester**: *Gets focused mission (1,000 tokens): test patterns + auth test cases only*
+- **Tester**: *Gets focused mission: test patterns + auth test cases only*
   - Coordinates via message queue with all teams
   - Writes comprehensive test suite
-- **Result**: Same quality implementation, **85% fewer tokens** (7,500 vs 50,000), sub-100ms job coordination
+- **Result**: Same quality implementation, focused context per agent, sub-100ms job coordination
 
 ---
 
@@ -104,20 +103,18 @@ Modern software development involves:
 - **Vision documents** maintain long-term project understanding
 - **Product configuration** preserves critical features and constraints
 
-### 2. Inefficient Token Usage
+### 2. Redundant Context Loading
 
-**Problem**: Each AI interaction re-analyzes the entire codebase, wasting thousands of tokens.
+**Problem**: Each AI interaction re-analyzes the entire codebase, losing focus across concerns.
 
-**Solution (70% Token Reduction)**:
+**Solution (Intelligent Context Prioritization)**:
 - **Intelligent Mission Generation**: Orchestrator reads full context ONCE, creates condensed missions
 - **Role-based Filtering**: Agents receive only relevant context (database expert doesn't get frontend code)
-- **Message Queue Coordination**: Agent-to-agent communication via JSONB messages (minimal tokens)
-- **Serena MCP Optimization Layer**: 60-90% additional reduction through symbolic operations
+- **Message Queue Coordination**: Agent-to-agent communication via JSONB messages
+- **Serena Symbolic Operations**: Targeted code analysis through find_symbol over full file reads
 - **Context Chunking**: Loads only relevant sections of large documents
 - **Shared Discoveries**: Project memory prevents repeated codebase exploration
 - **Smart Handoffs**: Transfer focused context between agents without duplication
-
-**Proven Results**: Handover 0020 achieved **context prioritization and orchestration** in production testing
 
 ### 3. Lack of Specialization
 
@@ -161,23 +158,21 @@ Modern software development involves:
 
 ## Key Capabilities
 
-### Multi-Agent Orchestration with 70% Token Reduction
+### Multi-Agent Orchestration
 
 **Core Architecture (Handovers 0019 & 0020)**:
 - **Orchestrator Agent**: Reads full project context ONCE, creates condensed missions for each agent via MissionPlanner
-- **Worker Agents**: Specialized implementers receiving only relevant context (70% reduction verified)
-- **Message Queue System**: JSONB-based agent-to-agent communication with minimal token overhead and priority levels
+- **Worker Agents**: Specialized implementers receiving only role-relevant context
+- **Message Queue System**: JSONB-based agent-to-agent communication with priority levels
 - **Job Management**: Complete lifecycle tracking (pending → active → completed/failed) with 13 REST endpoints
 - **Handoff Mechanism**: Intelligent context transfer between agents without duplication
 
-**How 70% Token Reduction Works**:
-1. **Orchestrator reads full vision** (one-time cost, typically 50,000 tokens)
-2. **Generates condensed missions** per agent using MissionPlanner (500-2,000 tokens per mission)
+**How Context Prioritization Works**:
+1. **Orchestrator reads full vision** (one-time cost)
+2. **Generates condensed missions** per agent using MissionPlanner
 3. **Agents receive focused context** via AgentSelector (database expert gets schema, not frontend code)
 4. **Coordination via messages** using AgentCommunicationQueue (not repeated context)
 5. **WorkflowEngine manages execution** with waterfall and parallel patterns
-
-**Proven Results**: 50,000 token vision → 5 agents × 1,500 tokens = 7,500 tokens total (85% reduction, exceeds 70% target)
 
 **Production Status**: 152 tests passing (131 unit + 14 API + 7 integration), 100% critical path coverage
 
@@ -218,7 +213,7 @@ Modern software development involves:
 - **REST API**:
   - `POST /api/orchestrator/process-vision` - Complete workflow orchestration
   - `GET /api/orchestrator/workflow-status/{project_id}` - Status monitoring
-  - `GET /api/orchestrator/metrics/{project_id}` - Token metrics tracking
+  - `GET /api/orchestrator/metrics/{project_id}` - Workflow metrics
   - `POST /api/orchestrator/create-missions` - Mission generation
   - `POST /api/orchestrator/spawn-team` - Agent team spawning
   - `POST /api/orchestrator/coordinate` - Workflow coordination
@@ -241,8 +236,6 @@ Modern software development involves:
 **Context Management**:
 - `get_context()` - Load relevant project context
 - `chunk_vision()` - Handle large documents efficiently
-- `context_usage()` - Monitor token consumption
-- `context_hierarchy()` - Load role-specific information
 
 **Development Workflow**:
 - `git_status()` - Check repository state
@@ -253,14 +246,11 @@ Modern software development involves:
 **Serena Optimization Control** (v3.0):
 - `get_optimization_settings()` - View current optimization configuration
 - `update_optimization_rules()` - Adjust optimization rules per project
-- `get_token_savings_report()` - Comprehensive context prioritization analytics
 - `force_agent_handoff()` - Trigger context-based handoffs
-- `monitor_agent_context()` - Real-time context usage tracking
-- `optimize_agent_mission()` - Inject optimization rules at spawn time
 
 ### Hierarchical Context Loading (v2.0)
 
-**Innovation**: Reduces token usage by 60% through intelligent context filtering.
+**Innovation**: Delivers role-relevant context through intelligent depth-level filtering.
 
 **How It Works**:
 1. **Orchestrator Level**: Gets full project context (architecture, all features, constraints)
@@ -289,13 +279,12 @@ context:
 
 ### Serena MCP Optimization Layer (v3.0)
 
-**Innovation**: Achieves 60-90% context prioritization through intelligent symbolic operations.
+**Innovation**: Improves agent efficiency through intelligent symbolic operations.
 
 **Core Optimization Engine**:
 - **Automatic symbolic operation enforcement** (find_symbol vs read_file)
 - **max_answer_chars injection** prevents massive file reads
 - **Context-aware optimization rules** adapt to project size/language
-- **Real-time token usage tracking** per agent and operation
 - **Intelligent handoff triggers** when context limits approached
 
 **How It Works**:
@@ -303,10 +292,9 @@ context:
 2. **Tool interception**: MCP tool calls optimized in real-time
 3. **Symbolic operations**: Prefer find_symbol() over read_file() for targeted analysis
 4. **Answer limiting**: Auto-inject character limits on searches and file reads
-5. **Savings tracking**: Comprehensive per-project context prioritization metrics
 
 **Impact**:
-- **60-90% context prioritization** vs naive file reading approaches
+- **Focused context delivery** vs naive file reading approaches
 - **Extended agent lifespan** before hitting context limits
 - **Faster codebase navigation** through symbolic operations
 - **Production-grade reliability** with 37 passing unit tests
@@ -320,7 +308,7 @@ context:
 **Architecture**:
 - **Before**: Complex multi-terminal orchestration
 - **After**: Elegant sub-agent delegation through Claude Code
-- **Result**: context prioritization and orchestration, 95% reliability, 30% less coordination code
+- **Result**: Focused context per agent, 95% reliability, 30% less coordination code
 
 **How It Works**:
 1. User activates GiljoAI MCP project
@@ -360,7 +348,7 @@ context:
 
 4. **Orchestration Workflow (Handover 0020)**:
    - Developer requests feature implementation via `POST /api/orchestrator/process-vision`
-   - **MissionPlanner** analyzes vision (50,000 tokens), generates condensed missions per agent (1,500 tokens each)
+   - **MissionPlanner** analyzes vision, generates condensed role-specific missions per agent
    - **AgentSelector** queries AgentTemplate database, applies priority cascade (product > tenant > system)
    - **WorkflowEngine** spawns agent jobs, manages waterfall or parallel execution
 
@@ -372,11 +360,10 @@ context:
    - WebSocket events broadcast real-time updates (6 event types)
    - Jobs complete via `POST /api/agent-jobs/{id}/complete` with results
 
-6. **Token Reduction (Handovers 0019 + 0020)**:
-   - Full vision read ONCE: 50,000 tokens (one-time cost)
-   - 5 condensed missions: 1,500 tokens each = 7,500 tokens
-   - Agent coordination via messages: ~100 tokens total
-   - **Total**: 7,600 tokens vs 50,000 tokens = **85% reduction** (exceeds 70% target)
+6. **Context Prioritization (Handovers 0019 + 0020)**:
+   - Full vision read ONCE by orchestrator
+   - Condensed, role-specific missions generated per agent
+   - Agent coordination via lightweight JSONB messages
 
 7. **Security Throughout (Handovers 0023, 0035)**:
    - All operations require JWT authentication
@@ -389,9 +376,8 @@ context:
    - Admin Settings v3.0 for system configuration
    - Users page for user management and password resets
    - Real-time WebSocket events for job monitoring
-   - Token metrics API for optimization tracking
 
-**Result**: Complete, production-ready system for multi-agent orchestration with proven 70%+ context prioritization.
+**Result**: Complete, production-ready system for multi-agent orchestration with intelligent context prioritization.
 
 ---
 
@@ -504,9 +490,8 @@ context:
 
 ### Performance & Reliability
 
-- **Token optimization**: 60% reduction through hierarchical context loading
+- **Focused context delivery**: Role-relevant context through depth-level configuration
 - **Fault tolerance**: Graceful handling of agent failures
-- **Context management**: Intelligent memory usage and cleanup
 - **Scalable architecture**: Supports teams of any size
 
 ### Security & Compliance
@@ -649,8 +634,7 @@ context:
 
 **Orchestration Workflow**:
 - **Start with orchestration**: Let the orchestrator read full context ONCE and create condensed missions
-- **Trust the context prioritization and orchestration**: Proven system (50K tokens → 7.5K tokens across 5 agents = 85% reduction)
-- **Monitor token metrics**: Use `GET /api/orchestrator/metrics/{project_id}` to track actual savings
+- **Trust the context prioritization**: Orchestrator generates focused, role-specific missions per agent
 - **Use workflow patterns**: Leverage waterfall (sequential) or parallel execution as appropriate
 
 **Agent Coordination**:
@@ -669,7 +653,7 @@ context:
 - **No default credentials**: Always use setup wizard to create first admin with custom credentials
 - **Enable recovery PINs**: Ensure users set 4-digit PINs during first login for self-service password reset
 - **Preserve patterns**: Document successful approaches for reuse in AgentTemplate database
-- **Iterate and improve**: Refine agent coordination based on results and token metrics
+- **Iterate and improve**: Refine agent coordination based on results
 
 ---
 

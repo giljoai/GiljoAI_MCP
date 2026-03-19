@@ -270,7 +270,6 @@ async def stage_project(
         project_id=project_id,
         tenant_key=current_user.tenant_key,
         mission=mission,
-        token_estimate=5000,
         user_config_applied=True
     )
 
@@ -474,7 +473,6 @@ async def regenerate_mission(
         project_id=project_id,
         tenant_key=current_user.tenant_key,
         mission=mission,
-        token_estimate=len(mission) // 4,
         generated_by="user",
         user_config_applied=True
     )
