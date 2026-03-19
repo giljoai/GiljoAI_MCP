@@ -16,7 +16,6 @@ The GiljoAI MCP orchestration system is a **production-ready, multi-layered arch
 
 - **6 Orchestration Modules:** Clean hierarchical design with no circular dependencies
 - **Multi-Tool Routing:** Intelligent routing to Claude Code, Codex, or Gemini based on templates
-- **70% Token Reduction:** Smart context optimization through field priorities and role-based filtering
 - **ACID Message Queue:** Write-ahead logging, circuit breakers, dead-letter queue, crash recovery
 - **7-State Job System:** Comprehensive lifecycle including resume and decommission capabilities
 - **Dependency Coordination:** Automatic detection and code injection for agent dependencies
@@ -137,12 +136,7 @@ The orchestration system follows a clean 4-layer architecture:
    - **Codex/Gemini:** Job queue mode with CLI prompts
    - **Template Cascade:** Product → Tenant → System default
 
-3. **Context Management**
-   - `update_context_usage()` - Track token consumption
-   - `handle_context_limit()` - Enforce context budgets
-   - `get_agent_context_status()` - Monitor context usage
-
-4. **Agent Handoffs**
+3. **Agent Handoffs**
    - `handoff()` - Transfer work between agents with context
    - `check_handoff_needed()` - Determine when handoff required
 
@@ -167,7 +161,6 @@ The orchestration system follows a clean 4-layer architecture:
 
 - **Project:** `create_project()`, `activate_project()`, `deactivate_project()`, `complete_project()`
 - **Agents:** `spawn_agent()`, `spawn_agents_parallel()`
-- **Context:** `update_context_usage()`, `handle_context_limit()`, `get_agent_context_status()`
 - **Handoffs:** `handoff()`, `check_handoff_needed()`
 - **Messages:** `send_welcome_broadcast()`, `broadcast_team_status()`, `poll_and_handle_messages()`
 - **Orchestration:** `process_product_vision()`, `generate_mission_plan()`, `select_agents_for_mission()`, `coordinate_agent_workflow()`
@@ -335,7 +328,7 @@ class MessagePriority(Enum):
 **Size:** 1,564 lines
 **Role:** Mission generation with context prioritization and orchestration
 
-#### Token Optimization Strategy
+#### Context Prioritization Strategy
 
 **Field Priority System** (Handover 0048):
 - User-configurable priorities (1-10) for context sections
@@ -353,7 +346,7 @@ class MessagePriority(Enum):
 - Regex patterns: "wait for", "depends on", "after", "requires", etc.
 - Automatic coordination code injection
 
-**Result:** Achieves **context prioritization and orchestration** while maintaining mission quality
+**Result:** Context depth controls output size while maintaining mission quality
 
 #### Key Methods
 
@@ -362,7 +355,7 @@ class MessagePriority(Enum):
 - `generate_mission()` - Simplified wrapper for orchestrator (Handover 0086A)
 - `generate_missions()` - Generate missions for all agents
 
-**Token Optimization:**
+**Context Prioritization:**
 - `_build_context_with_priorities()` - Build context respecting field priorities
 - `_get_user_configuration()` - Fetch user field priorities (Handover 0086B)
 - `_fetch_serena_codebase_context()` - Fetch Serena context (optional)
@@ -672,7 +665,6 @@ ProjectOrchestrator.process_product_vision()
     ├─ AgentSelector.select_agents()
     ├─ MissionPlanner.generate_missions()
     │   ├─ Field priority filtering
-    │   ├─ Token optimization (70% reduction)
     │   └─ Dependency detection
     ├─ ProjectOrchestrator.spawn_agents_parallel()
     │   └─ Multi-tool routing (Claude/Codex/Gemini)
@@ -859,7 +851,7 @@ This demonstrates mature, documented evolution with clear tracking.
 The GiljoAI MCP orchestration architecture is **production-ready** with:
 
 ✅ **Clean separation of concerns** - 4-layer hierarchy with no circular dependencies
-✅ **Comprehensive features** - Multi-tool routing, token optimization, dependency management
+✅ **Comprehensive features** - Multi-tool routing, context prioritization, dependency management
 ✅ **Production-grade infrastructure** - ACID queues, circuit breakers, crash recovery
 ✅ **Strong multi-tenant isolation** - Complete tenant separation
 ✅ **Extensive documentation** - Inline handover references throughout code

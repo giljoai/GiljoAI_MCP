@@ -120,7 +120,6 @@ async def generate_orchestrator_prompt(request, current_user, db):
 ```python
 class OrchestratorPromptResponse(BaseModel):
     prompt: str  # 3000 lines
-    token_estimate: int  # 30,000 tokens
 ```
 
 **NEW**:
@@ -141,7 +140,6 @@ class ThinPromptResponse(BaseModel):
 ```javascript
 // LaunchTab.vue
 const generatedPrompt = ref('')  // 3000 lines
-const tokenEstimate = ref(0)     // 30,000 tokens
 ```
 
 **NEW**:
@@ -150,7 +148,6 @@ const tokenEstimate = ref(0)     // 30,000 tokens
 const generatedPrompt = ref('')         // 10 lines
 const orchestratorId = ref('')
 const estimatedPromptTokens = ref(0)    // ~50 tokens
-const missionTokens = ref(0)            // ~6,000 tokens
 ```
 
 ---
@@ -203,11 +200,9 @@ tech_stack = await fetch_context(
 
 ## Benefits
 
-### Token Reduction
-- **Fat Prompt**: 30,000 tokens (mission embedded)
-- **Thin Prompt**: 50 tokens (prompt) + 6,000 tokens (MCP fetch)
-- **Savings**: 23,950 tokens (79.8% reduction)
-- **Target**: ≥70% ✅ EXCEEDED
+### Prompt Size Reduction
+- **Fat Prompt**: ~3000 lines (mission embedded)
+- **Thin Prompt**: ~10 lines (identity only, mission fetched via MCP)
 
 ### User Experience
 - **OLD**: User copies 3000 lines into Claude Code CLI
@@ -337,9 +332,6 @@ python -m pytest tests/api/test_thin_prompt_endpoint.py -v
 ```bash
 # Test E2E workflow
 python -m pytest tests/thin_prompt/test_thin_client_e2e.py -v
-
-# Test context prioritization
-python -m pytest tests/thin_prompt/test_token_reduction.py -v
 ```
 
 ### Manual Testing
@@ -350,7 +342,7 @@ python -m pytest tests/thin_prompt/test_token_reduction.py -v
 4. Paste into Claude Code CLI
 5. Verify orchestrator calls `get_orchestrator_instructions()`
 6. Verify mission fetched correctly
-7. Check token estimates
+7. Verify prompt is compact (~10 lines)
 
 ---
 

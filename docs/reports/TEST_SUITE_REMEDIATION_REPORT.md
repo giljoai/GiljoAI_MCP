@@ -85,40 +85,7 @@ grep -r "except Exception" api/endpoints/ --include="*.py" | grep -v "HTTPExcept
 
 ---
 
-### 2.2 TokenEstimateResponse Pydantic Schema Mismatch
-
-**Affected File:** `api/endpoints/products/lifecycle.py` (line ~514)
-
-**Problem:** The endpoint returns a dict missing required fields that `TokenEstimateResponse` expects.
-
-**Error:**
-```
-6 validation errors for TokenEstimateResponse
-field_tokens - Field required
-total_field_tokens - Field required
-overhead_tokens - Field required
-total_tokens - Field required
-token_budget - Field required
-percentage_used - Field required
-```
-
-**Tests Affected:**
-- `test_get_token_estimate_with_active`
-
-**Fix Required:** Either:
-1. Update the endpoint to return all required fields, OR
-2. Update the Pydantic schema to match what the endpoint actually returns
-
-**Investigation Needed:**
-```python
-# Check what the endpoint returns vs schema expects
-# File: api/endpoints/products/lifecycle.py
-# File: api/endpoints/products/models.py (TokenEstimateResponse)
-```
-
----
-
-### 2.3 Vision Document Upload Returns 400
+### 2.2 Vision Document Upload Returns 400
 
 **Affected File:** `api/endpoints/products/vision.py`
 
@@ -145,7 +112,7 @@ percentage_used - Field required
 
 ---
 
-### 2.4 Project execution_mode Not Persisted
+### 2.3 Project execution_mode Not Persisted
 
 **Affected Files:**
 - `api/endpoints/projects.py` or related
@@ -169,7 +136,7 @@ percentage_used - Field required
 
 ---
 
-### 2.5 CLI Mode Prompt Content Missing
+### 2.4 CLI Mode Prompt Content Missing
 
 **Affected File:** `src/giljo_mcp/thin_prompt_generator.py`
 
@@ -193,7 +160,7 @@ percentage_used - Field required
 
 ---
 
-### 2.6 Project Staging Status Schema
+### 2.5 Project Staging Status Schema
 
 **Affected Files:**
 - `api/endpoints/projects.py`
@@ -207,7 +174,7 @@ percentage_used - Field required
 
 ---
 
-### 2.7 Templates API Issues
+### 2.6 Templates API Issues
 
 **Affected File:** `api/endpoints/templates/crud.py`
 
@@ -294,9 +261,8 @@ grep -rn "except Exception" api/endpoints/ --include="*.py" -A2 | grep -B1 "HTTP
 ```
 
 ### Phase 3: Schema/Model Fixes
-1. TokenEstimateResponse schema alignment
-2. Project execution_mode persistence
-3. Project staging_status field
+1. Project execution_mode persistence
+2. Project staging_status field
 
 ### Phase 4: Feature Implementation
 1. CLI mode prompt content in ThinPromptGenerator
@@ -342,7 +308,6 @@ python -m pytest tests/api/ --cov=api --cov-report=html
 | File | Issue | Priority |
 |------|-------|----------|
 | `api/endpoints/agent_jobs/simple_handover.py` | HTTPException pattern | DONE |
-| `api/endpoints/products/lifecycle.py` | TokenEstimate schema | HIGH |
 | `api/endpoints/products/vision.py` | Upload validation | HIGH |
 | `api/endpoints/projects.py` | execution_mode handling | MEDIUM |
 | `api/endpoints/templates/crud.py` | Multiple issues | MEDIUM |
@@ -369,4 +334,3 @@ Of the 90 failures + 81 errors:
 The most impactful fixes are:
 1. HTTPException pattern across endpoints
 2. api_client fixture pattern for db_manager setup
-3. TokenEstimateResponse schema alignment

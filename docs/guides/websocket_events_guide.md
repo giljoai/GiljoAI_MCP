@@ -41,8 +41,7 @@ async def example_endpoint(
     event_data = EventFactory.project_mission_updated(
         project_id=result.project_id,
         tenant_key=current_user.tenant_key,
-        mission=result.mission,
-        token_estimate=len(result.mission) // 4
+        mission=result.mission
     )
 
     # Broadcast to tenant
@@ -124,7 +123,6 @@ event_data = EventFactory.project_mission_updated(
     project_id=project.id,
     tenant_key=current_user.tenant_key,
     mission="Build feature X",
-    token_estimate=5000,
     user_config_applied=True,
     field_toggles={"product_vision": True}
 )

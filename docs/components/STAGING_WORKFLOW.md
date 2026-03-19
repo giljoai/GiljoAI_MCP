@@ -10,15 +10,12 @@ The **Orchestrator Staging Workflow** is a 7-task validation sequence that prepa
 
 **Purpose**: Prevent execution failures through comprehensive pre-flight validation
 
-**Token Budget**: 931 tokens (22% under 1200-token staging limit)
-
 **Complete Workflow**: Tasks 1-7 (Staging) → Task 8 (Execution Phase Monitoring)
 
 **Complete 0246 Series Integration**:
-- **Handover 0246a**: 7-task staging workflow implementation (931 tokens)
-- **Handover 0246b**: Generic agent template with 6-phase protocol (1,253 tokens per agent)
-- **Handover 0246c**: Dynamic agent discovery via MCP tool (71% token savings, 420 tokens)
-- **Total Impact**: 85% reduction in orchestrator prompts (~3,500 → ~450-550 tokens)
+- **Handover 0246a**: 7-task staging workflow implementation
+- **Handover 0246b**: Generic agent template with 6-phase protocol
+- **Handover 0246c**: Dynamic agent discovery via MCP tool
 
 ---
 
@@ -273,7 +270,7 @@ CLIENT PC                          SERVER (F:\GiljoAI_MCP)
 - Version mismatch → Error: Agent X requires v1.0.5, found v1.0.2
 - Missing capability → Error: No agent with "integration_testing" capability
 
-**CRITICAL**: Do NOT embed agent templates inline (save 142 tokens)
+**CRITICAL**: Do NOT embed agent templates inline (use dynamic discovery instead)
 
 **Example Output**:
 ```
@@ -291,7 +288,6 @@ orchestrator   1.2.1    coordination, mission_planning  YES         initialized
 
 ✓ Version conflicts: NONE
 ✓ Missing capabilities: NONE
-✓ Token savings: 142 tokens (no embedded templates)
 ```
 
 ---
@@ -319,22 +315,19 @@ orchestrator   1.2.1    coordination, mission_planning  YES         initialized
    - Identify key objectives
    - Extract critical decisions
    - Summarize tech stack requirements
-7. Apply token budget:
-   - Total mission budget: <10,000 tokens
-   - Condense context strategically
-   - Prioritize most critical information
+7. Condense context strategically, prioritize most critical information
 8. Store mission in orchestrator context
 9. Proceed to Task 6 on success
 
 **Validation Criteria**:
 - All context sources fetched successfully
-- Mission document < 10,000 tokens
+- Mission document is appropriately sized
 - All user priorities respected
 - No context source failures
 
 **Failure Modes**:
 - Context fetch timeout → Warning: Using cached context
-- Mission too large (>10K tokens) → Error: Context condensation failed
+- Mission too large → Error: Reduce depth levels or context sources
 - Missing priority config → Use default: Priority 2, Depth=moderate
 
 **Example Output**:
@@ -342,15 +335,14 @@ orchestrator   1.2.1    coordination, mission_planning  YES         initialized
 ✓ Context prioritization complete
 
 Context Sources Fetched:
-- Product Core: 247 tokens (priority: 1 - CRITICAL)
-- Vision Documents: 3,842 tokens (depth: moderate)
-- Tech Stack: 312 tokens (required: all)
-- Architecture: 1,124 tokens (depth: detailed)
-- Testing: 387 tokens (depth: full)
-- 360 Memory: 1,456 tokens (projects: 3)
-- Git History: 982 tokens (commits: 50)
+- Product Core (priority: 1 - CRITICAL)
+- Vision Documents (depth: moderate)
+- Tech Stack (required: all)
+- Architecture (depth: detailed)
+- Testing (depth: full)
+- 360 Memory (projects: 3)
+- Git History (commits: 50)
 
-Unified Mission: 8,350 tokens (83% of budget)
 Key Objectives: 4
 Critical Decisions: 7
 Tech Stack Requirements: Python 3.11+, FastAPI, Vue3, PostgreSQL 18
@@ -407,14 +399,14 @@ Tech Stack Requirements: Python 3.11+, FastAPI, Vue3, PostgreSQL 18
 ```
 ✓ Agent job spawning complete: 6 jobs created
 
-Job ID                                Agent Type   Status   Exec Mode              Mission Size
-------------------------------------- ------------ -------- ---------------------- ------------
-7e57d004-2b97-0e7a-b45f-5387367791cd  implementer  waiting  claude_code_cli        8,350 tokens
-a1b2c3d4-e5f6-7890-abcd-ef1234567890  tester       waiting  claude_code_cli        8,350 tokens
-12345678-90ab-cdef-1234-567890abcdef  reviewer     waiting  claude_code_cli        8,350 tokens
-fedcba98-7654-3210-fedc-ba9876543210  analyzer     waiting  claude_code_cli        8,350 tokens
-abcdef12-3456-7890-abcd-ef1234567890  documenter   waiting  claude_code_cli        8,350 tokens
-98765432-10fe-dcba-9876-543210fedcba  orchestrator waiting  claude_code_cli        8,350 tokens
+Job ID                                Agent Type   Status   Exec Mode
+------------------------------------- ------------ -------- ----------------------
+7e57d004-2b97-0e7a-b45f-5387367791cd  implementer  waiting  claude_code_cli
+a1b2c3d4-e5f6-7890-abcd-ef1234567890  tester       waiting  claude_code_cli
+12345678-90ab-cdef-1234-567890abcdef  reviewer     waiting  claude_code_cli
+fedcba98-7654-3210-fedc-ba9876543210  analyzer     waiting  claude_code_cli
+abcdef12-3456-7890-abcd-ef1234567890  documenter   waiting  claude_code_cli
+98765432-10fe-dcba-9876-543210fedcba  orchestrator waiting  claude_code_cli
 
 ✓ Job coordination records created
 ✓ Job status polling: ENABLED (interval: 5s)
@@ -458,7 +450,7 @@ Status Changes:
 - WebSocket broadcasting: ENABLED
 - Health monitor: RUNNING (check interval: 30s)
 - Job polling: ACTIVE (interval: 5s)
-- Context tracking: ENABLED (budget: 200,000 tokens)
+- Context tracking: ENABLED
 
 WebSocket Events:
 ✓ project:activated event emitted
@@ -600,11 +592,8 @@ After successful completion, staging results are stored in `AgentJob.staging_res
     {"name": "documenter", "version": "1.0.0", "compatible": true},
     {"name": "orchestrator", "version": "1.2.1", "compatible": true}
   ],
-  "context_budget_used": 8743,
   "staging_duration_ms": 2341,
-  "execution_mode": "claude_code_cli",
-  "token_savings": 142,
-  "total_tokens": 931
+  "execution_mode": "claude_code_cli"
 }
 ```
 
@@ -655,10 +644,10 @@ SELECT name, version, is_active FROM agent_templates WHERE tenant_key = 'YOUR_TE
 
 ---
 
-### Issue: Task 5 (Context Prioritization) Exceeds Token Budget
+### Issue: Task 5 (Context Prioritization) Mission Too Large
 
 **Symptoms**:
-- Mission > 10,000 tokens
+- Mission exceeds practical size
 - Error: "Context condensation failed"
 
 **Diagnosis**:
@@ -758,7 +747,6 @@ The orchestrator workflow relies on three critical MCP tools introduced in the 0
 ### 1. get_available_agents() (Handover 0246c)
 **File**: `src/giljo_mcp/tools/agent_discovery.py` (167 lines)
 **Purpose**: Dynamic agent discovery (replaces embedded templates)
-**Token Savings**: 420 tokens (71% reduction)
 
 **Features**:
 - Multi-tenant isolation (tenant_key filtering)
@@ -767,13 +755,9 @@ The orchestrator workflow relies on three critical MCP tools introduced in the 0
 - Returns: Agent name, version, type, capabilities
 - Graceful error handling
 
-**Before**: 5-8 agent templates embedded (~430 tokens)
-**After**: Single MCP call (~10 tokens)
-
 ### 2. get_generic_agent_template() (Handover 0246b)
 **File**: `src/giljo_mcp/templates/generic_agent_template.py`
 **Purpose**: Unified template for all agent types in multi-terminal mode
-**Token Budget**: ~1,253 tokens per agent
 
 **Features**:
 - 6-phase execution protocol (Initialization → Mission Fetch → Work Execution → Progress Reporting → Communication → Completion)
@@ -784,7 +768,6 @@ The orchestrator workflow relies on three critical MCP tools introduced in the 0
 ### 3. _build_staging_prompt() (Handover 0246a)
 **File**: `src/giljo_mcp/prompts/thin_prompt_generator.py`
 **Purpose**: Generate 7-task staging workflow prompt
-**Token Budget**: 931 tokens (22% under 1200 limit)
 
 **Features**:
 - Complete staging workflow (Tasks 1-7)

@@ -1769,7 +1769,7 @@ The implementation correctly follows the distributed client-server architecture:
 - **Zero Server-Side Code Execution**: Server is pure data provider (security + scalability)
 - **Client-Side File Access**: Agents work directly with project files (performance)
 - **HTTP Transport**: No SSH/VPN complexity (simple firewall configuration)
-- **Token Optimization**: Thin prompts (~450-550 tokens) via dynamic fetching
+- **Thin Prompts**: Compact prompts (~450-550 tokens) via dynamic fetching
 - **Multi-Tenant Security**: Database-level isolation (zero cross-tenant leakage)
 
 **See Also**: [Staging Workflow Architecture](components/STAGING_WORKFLOW.md#architecture-overview) for orchestrator execution details.

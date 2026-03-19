@@ -34,9 +34,9 @@ Key Cross-Cutting Themes:
 ## Mapping by Handover
 
 0049 – Active Product Token Visualization & Field Priority Indicators (Completed)
-- Interactions: ties directly to token estimation and field priority UI/logic
-- Docs impact: reinforce token estimation and priority behaviors
-- Action: Keep; harmonize docs where token flows are described
+- Interactions: ties directly to field priority UI/logic
+- Docs impact: reinforce field priority behaviors
+- Action: Keep; harmonize docs where priority flows are described
 
 0050 – Single Active Product Architecture (Completed)
 - Interactions: foundational constraint; informs UI states and job orchestration
@@ -86,8 +86,8 @@ Key Cross-Cutting Themes:
 - Action: Archive; ensure docs discourage explicit selector
 
 0065 – Token Estimation + Mission Launch Summary (Mixed)
-- State: token estimation endpoint completed; some UI variants superseded
-- Docs impact: emphasize token estimation; avoid deprecated summary UI
+- State: some UI variants superseded
+- Docs impact: avoid deprecated summary UI
 - Action: Keep core; Archive superseded components
 
 0066 – Agent Kanban Dashboard (Superseded by 0073)
@@ -191,7 +191,7 @@ Key Cross-Cutting Themes:
   - Reflect 0074 (no auto‑spawn) and 0084b (import slash commands)
 
 - docs/CONTEXT_API_GUIDE.md
-  - Ensure token statistics endpoints and budget references match 0049/0065 behavior
+  - Ensure context field priority references match current behavior
 
 - docs/index.md and docs/README_FIRST.md
   - Update narrative to reference 0073 as canonical UI and 0088 migration path
@@ -207,7 +207,7 @@ We will proceed lowest‑number first. For each handover:
 4) Validate links and impacted guides
 
 Batch 1 (0049 → 0053)
-- 0049: Add token visualization/priority notes to user + API guides
+- 0049: Add priority notes to user + API guides
 - 0050/0050b: Document single‑active constraints consistently
 - 0051: Defer (unimplemented)
 - 0053: Verify ProjectsView V2 is the current baseline (pre‑0073 visuals)
@@ -234,7 +234,7 @@ Batch 5 (0084b → 0087) + 0088 preview
 - 0084b: finalize slash command docs
 - 0085: settings + config references
 - 0086A/B: confirm Stage Project feature page is aligned (pre‑0088)
-- 0087: finalize token estimation link notes
+- 0087: finalize link behavior notes
 - 0088: prepare thin‑client edits; execute after implementation
 
 ---
