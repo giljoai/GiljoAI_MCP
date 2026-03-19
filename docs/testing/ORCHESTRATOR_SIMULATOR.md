@@ -254,7 +254,6 @@ async def task7_activation() -> None
 - Individual task execution (Tasks 1-7)
 - Full workflow execution
 - Error handling
-- Mission token budget validation
 - Cross-platform path handling
 - Staging result structure
 - Spawned agents tracking
@@ -438,14 +437,14 @@ async def test_mcp_failure(simulator):
 2. Check tenant_key matches between simulator and database
 3. Mock response should include `"agents": [...]`
 
-### Issue: "Mission token budget exceeded"
+### Issue: "Mission too large"
 
-**Cause**: Mission + context exceeds 10K token limit
+**Cause**: Mission + context exceeds size limit
 
 **Solution**:
 1. Reduce mission size
 2. Condense product context
-3. Adjust token calculation logic if needed
+3. Adjust size calculation logic if needed
 
 ---
 

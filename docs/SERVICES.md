@@ -182,9 +182,7 @@ Created → Active → Paused → Active → Completed
 **Note**: As of Handovers 0450-0452 (Jan 2026), all orchestration logic from `orchestrator.py` has been consolidated into OrchestrationService. The `tool_accessor.py` now acts as a pure delegation layer.
 
 **Core Methods**:
-- `create_orchestrator_job(project_id, mission, context_budget)` - Create orchestrator with context tracking
-- `update_context_usage(job_id, additional_tokens)` - Track context consumption
-- `get_context_status(job_id)` - Check context usage vs budget
+- `create_orchestrator_job(project_id, mission)` - Create orchestrator job
 - `generate_handover_summary(job_id)` - Generate condensed context (<10K tokens)
 
 **Note**: `trigger_succession()` removed in Handover 0700d. Use `POST /api/agent-jobs/{job_id}/simple-handover` endpoint for 360 Memory-based session continuity instead.
@@ -207,44 +205,16 @@ Created → Active → Paused → Active → Completed
 **Delegation Pattern**:
 All MCP tools in `tool_accessor.py` delegate to OrchestrationService methods. The ToolAccessor class acts as a thin adapter layer between MCP protocol and service layer.
 
-**Context Tracking Pattern** (Handover 0502):
-```python
-from src.giljo_mcp.services.orchestration_service import OrchestrationService
-
-service = OrchestrationService(session, tenant_key="user123")
-
-# Create orchestrator with context budget
-job = await service.create_orchestrator_job(
-    project_id=project_id,
-    mission=mission,
-    context_budget=200000  # tokens
-)
-
-# Update context usage on message sends
-await service.update_context_usage(job.id, additional_tokens=1500)
-
-# Check if succession needed (use simple-handover API endpoint)
-status = await service.get_context_status(job.id)
-if status['percentage_used'] >= 0.9:
-    # Use POST /api/agent-jobs/{job_id}/simple-handover endpoint
-    # This resets context and returns continuation prompt via 360 Memory
-    pass
-```
-
 **Manual Succession Flow**:
 ```
-1. Context usage tracked per message send
-2. User monitors context via dashboard
-3. User triggers succession via /gil_handover or UI "Hand Over" button
-4. Generate handover summary (<10K tokens via mission condensation)
-5. Spawn successor orchestrator
-6. Transfer active jobs to successor
-7. Update UI timeline (SuccessionTimeline.vue)
+1. User triggers succession via /gil_handover or UI "Hand Over" button
+2. Generate handover summary (<10K tokens via mission condensation)
+3. Spawn successor orchestrator
+4. Transfer active jobs to successor
+5. Update UI timeline (SuccessionTimeline.vue)
 ```
 
 **Database Fields**:
-- `context_used` (INTEGER) - Current token usage
-- `context_budget` (INTEGER) - Maximum tokens (default: 200,000)
 - `spawned_by` (FK) - Parent orchestrator ID (lineage tracking)
 - `handover_to` (FK) - Successor orchestrator ID
 - `handover_summary` (TEXT) - Condensed context for successor
@@ -688,8 +658,7 @@ class OrchestrationService:
         # Create orchestrator job
         job = await self.create_orchestrator_job(
             project_id=project_id,
-            mission=mission,
-            context_budget=200000
+            mission=mission
         )
         return job
 ```
@@ -822,7 +791,7 @@ async def activate_project(self, project_id: int) -> Project:
 **Key Tables**:
 - `mcp_products` - Products with config_data (JSONB)
 - `mcp_projects` - Projects with Single Active constraint
-- `mcp_agent_jobs` - Agent jobs with context tracking
+- `mcp_agent_jobs` - Agent job lifecycle and orchestrator succession
 - `mcp_settings` - Tenant-specific settings (JSONB)
 - `mcp_vision_documents` - Vision docs with chunking metadata
 

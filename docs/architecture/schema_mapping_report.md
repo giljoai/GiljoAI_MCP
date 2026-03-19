@@ -132,9 +132,6 @@ All critical tables and columns are present in the database and match the ORM mo
 - **handover_summary (jsonb, nullable)** - PRESENT - Compressed state transfer
 - **handover_context_refs (json, nullable)** - PRESENT - Context chunk IDs
 - **succession_reason (varchar(100), nullable)** - PRESENT - context_limit, manual, phase_transition
-- **context_used (integer, NOT NULL)** - PRESENT - Current tokens used
-- **context_budget (integer, NOT NULL)** - PRESENT - Max tokens allowed
-
 **Thin Client Architecture (Handover 0088):**
 - **job_metadata (jsonb, NOT NULL, default '{}')** - PRESENT - Field priorities, user_id, tool
 
@@ -186,8 +183,6 @@ All critical tables and columns are present in the database and match the ORM mo
 - alias (varchar(6), NOT NULL, UNIQUE) - 6-char alphanumeric identifier
 - mission (text, NOT NULL)
 - status (varchar(50), nullable)
-- context_budget (integer, nullable)
-- context_used (integer, nullable)
 - created_at (timestamptz, default now())
 - updated_at (timestamptz, nullable)
 - **completed_at (timestamptz, nullable)** - PRESENT
@@ -538,8 +533,6 @@ All expected columns from recent handovers are present:
 - handover_summary: PRESENT
 - handover_context_refs: PRESENT
 - succession_reason: PRESENT
-- context_used: PRESENT
-- context_budget: PRESENT
 - job_metadata: PRESENT
 - last_health_check: PRESENT
 - health_status: PRESENT
@@ -666,7 +659,6 @@ Based on schema analysis, ensure test coverage for:
 
 ### Orchestrator Succession
 - Test handover_summary compression
-- Validate context_used / context_budget calculations
 
 ### Health Monitoring
 - Test health_status transitions
