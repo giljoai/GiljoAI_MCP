@@ -101,14 +101,14 @@
           <!-- C+D) Codex: Platform selector + Environment Variable command -->
           <template v-if="selectedTool === 'codex'">
             <v-radio-group v-model="selectedPlatform" inline hide-details class="platform-radios mb-2">
-              <v-radio label="Windows" value="windows" density="compact" />
-              <v-radio label="Linux / macOS" value="unix" density="compact" />
+              <v-radio label="PowerShell" value="windows" density="compact" />
+              <v-radio label="Linux / macOS / Git Bash" value="unix" density="compact" />
             </v-radio-group>
             <v-textarea
               :model-value="envVarCommand"
               label="Environment Variable"
               readonly
-              rows="1"
+              rows="2"
               auto-grow
               variant="outlined"
               class="font-monospace no-resize mb-3"
@@ -185,7 +185,8 @@ const selectedToolName = computed(
 const envVarCommand = computed(() => {
   const key = generatedKey.value || 'YOUR_API_KEY'
   if (selectedPlatform.value === 'windows') {
-    return `setx GILJO_API_KEY "${key}"`
+    // setx persists for future sessions, $env: applies to current session
+    return `setx GILJO_API_KEY "${key}"\n$env:GILJO_API_KEY="${key}"`
   }
   return `export GILJO_API_KEY="${key}"`
 })
