@@ -283,7 +283,7 @@ Terminal Process:
      └─► Dynamic agent discovery and MCP server spawning:
          ├─► get_available_agents(tenant_key, active_only=True)
          │   └─► NO hardcoded agent list (Handover 0246c)
-         │   └─► Dynamic discovery saves 420 tokens (71% reduction)
+         │   └─► Dynamic discovery via MCP (no hardcoded lists)
          ├─► For each agent needed:
          │   └─► spawn_agent_job(agent_type, mission, ...)
          │       ├─► **TYPE 1 SPAWNING**: Creates database record + UI card
@@ -760,9 +760,9 @@ The following refers to an **old table-based orchestrator command polling system
 
 ## Critical Implementation Details
 
-### 1. Token Optimization (Handover 0246 Series)
-- **Before**: 3,500 token prompts embedded in requests
-- **After**: 450-550 token thin client prompts
+### 1. Thin Client Architecture (Handover 0246 Series)
+- **Before**: 3,500-line prompts embedded in requests
+- **After**: ~10-line thin client prompts
 - **Method**: Mission fetched via MCP tools, not embedded
 
 ### 2. Context Configuration
@@ -1499,7 +1499,7 @@ CLAUDE CODE MODE:                    MULTI-TERMINAL MODE:
 ✅ **Service Layer**
 - AgentJobManager: Full lifecycle support
 - AgentCommunicationQueue: Message routing
-- ThinClientPromptGenerator: 70% token reduction
+- ThinClientPromptGenerator: Thin client prompt generation
 - OrchestrationService: Context prioritization
 
 ✅ **MCP Tools (Complete Suite)**
@@ -1522,7 +1522,7 @@ CLAUDE CODE MODE:                    MULTI-TERMINAL MODE:
 
 ### Performance Metrics
 
-- **Token Reduction**: 70% achieved via thin client architecture
+- **Prompt Size**: Compact thin client prompts (~10 lines vs ~3000 lines)
 - **Template Seeding**: 6 templates in <500ms
 - **Export Generation**: <2 seconds for 8 templates
 - **Download Token**: <100ms generation, <50ms validation
@@ -1534,7 +1534,7 @@ CLAUDE CODE MODE:                    MULTI-TERMINAL MODE:
 #### 1. Thin Client Pattern (Handover 0088)
 - **Before**: 3000-line prompts embedded in requests
 - **After**: 10-line prompts, mission fetched via MCP
-- **Result**: 70% token reduction
+- **Result**: Compact thin client prompts
 
 #### 2. Multi-Tenant Architecture
 - Complete isolation across all layers
@@ -1982,13 +1982,11 @@ await session.commit()
 ```sql
 INSERT INTO mcp_agent_jobs (
     job_id, project_id, tenant_key, agent_type, mission,
-    status, context_budget, context_used, metadata, created_at
+    status, metadata, created_at
 ) VALUES (
     '{uuid}', '{project_id}', '{tenant_key}', 'orchestrator',
     'I am ready to create the project mission...',
     'waiting',  -- Initial status (not 'pending')
-    200000,  -- Sonnet 4.5 default context budget
-    0,  -- Initial context usage
     '{"created_via": "thin_client", "thin_client": true}',
     NOW()
 );
@@ -2033,8 +2031,6 @@ condensed_mission = await planner._build_fetch_instructions(
   "mission": "",  // Empty until orchestrator persists it
   "status": "active",
   "product_id": "prod-uuid",
-  "context_budget": 150000,
-  "context_used": 0,
   "agent_count": 1,  // Orchestrator created
   "agents": []
 }
@@ -2889,11 +2885,11 @@ Your simplified flow description is **ACCURATE**. Here's the verified sequence:
 ## Documentation Cross-References
 
 - Handover 0041: Agent Template Database Integration
-- Handover 0088: Thin Client Architecture (70% token reduction)
+- Handover 0088: Thin Client Architecture
 - Handover 0102: Download Token System
 - Handover 0103: Multi-CLI Support (Claude, Codex, Gemini)
 - Handover 0104: Master Closeout (Security Fixes)
-- Handover 0246 Series: Token Optimization & Dynamic Agent Discovery
+- Handover 0246 Series: Thin Client & Dynamic Agent Discovery
 - docs/MCP_OVER_HTTP_INTEGRATION.md: MCP protocol documentation
 - docs/AI_TOOL_CONFIGURATION_MANAGEMENT.md: CLI configuration guide
 
@@ -2909,7 +2905,6 @@ Your simplified flow description is **ACCURATE**. Here's the verified sequence:
 - 5 critical path connections confirmed
 - Multi-tenant isolation verified at all layers
 - Security hardening confirmed
-- 70% token reduction achieved
 - Complete MCP tool suite present
 
 **System Status**: **PRODUCTION-READY**
