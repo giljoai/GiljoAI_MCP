@@ -23,14 +23,14 @@
       <table class="agents-table" data-testid="agent-status-table">
         <thead>
           <tr>
-            <th class="phase-col-header">Phase</th>
-            <th class="text-center">Agent Name</th>
-            <th>Agent Status</th>
-            <th>Duration</th>
-            <th>Steps</th>
-            <th>Messages Waiting</th>
-            <th></th>
-            <!-- Actions -->
+            <th class="col-phase">Phase</th>
+            <th class="col-play"></th>
+            <th class="col-agent-name">Agent Name</th>
+            <th class="col-center">Agent Status</th>
+            <th class="col-center">Duration</th>
+            <th class="col-center">Steps</th>
+            <th class="col-center">Messages Waiting</th>
+            <th class="col-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -41,8 +41,8 @@
               <span v-else class="phase-badge" :style="{ backgroundColor: getPhaseColor(agent.phase) }">P{{ agent.phase }}</span>
             </td>
             <!-- Agent Display Name: Play Button + Avatar + Name -->
-            <td class="agent-display-name-cell">
-              <!-- Fixed-width play button column: always reserves space -->
+            <!-- Play button: own column, no header -->
+            <td class="play-cell">
               <div class="play-btn-slot">
                 <v-tooltip v-if="shouldShowCopyButton(agent)" text="Copy prompt">
                   <template #activator="{ props: tooltipProps }">
@@ -60,39 +60,44 @@
                   </template>
                 </v-tooltip>
               </div>
-              <button
-                type="button"
-                class="agent-avatar-button"
-                aria-label="View agent details"
-                @click="handleAgentRole(agent)"
-              >
-                <v-avatar :color="getAgentColor(agent?.agent_name || agent?.agent_display_name)" size="32" class="agent-avatar">
-                  <span class="avatar-text">{{ getAgentAbbr(getPrimaryAgentLabel(agent)) }}</span>
-                </v-avatar>
-              </button>
-              <div class="agent-info">
+            </td>
+            <!-- Agent card: avatar + name -->
+            <td class="agent-display-name-cell">
+              <div class="agent-card-row">
                 <button
                   type="button"
-                  class="agent-name-primary agent-name-button"
-                  aria-label="View assigned job"
-                  @click="handleAgentJob(agent)"
+                  class="agent-avatar-button"
+                  aria-label="View agent details"
+                  @click="handleAgentRole(agent)"
                 >
-                  {{ getPrimaryAgentLabel(agent) }}
+                  <v-avatar :color="getAgentColor(agent?.agent_name || agent?.agent_display_name)" size="32" class="agent-avatar">
+                    <span class="avatar-text">{{ getAgentAbbr(getPrimaryAgentLabel(agent)) }}</span>
+                  </v-avatar>
                 </button>
-                <span
-                  v-if="agent.agent_name && !isOrchestrator(agent)"
-                  class="agent-display-name-secondary"
-                >
-                  Skills: {{ agent.agent_name }}
-                </span>
-                <button
-                  v-else-if="isOrchestrator(agent)"
-                  type="button"
-                  class="agent-display-name-secondary agent-name-button"
-                  @click="handleAgentJob(agent)"
-                >
-                  Skills: Fixed system agent
-                </button>
+                <div class="agent-info">
+                  <button
+                    type="button"
+                    class="agent-name-primary agent-name-button"
+                    aria-label="View assigned job"
+                    @click="handleAgentJob(agent)"
+                  >
+                    {{ getPrimaryAgentLabel(agent) }}
+                  </button>
+                  <span
+                    v-if="agent.agent_name && !isOrchestrator(agent)"
+                    class="agent-display-name-secondary"
+                  >
+                    Skills: {{ agent.agent_name }}
+                  </span>
+                  <button
+                    v-else-if="isOrchestrator(agent)"
+                    type="button"
+                    class="agent-display-name-secondary agent-name-button"
+                    @click="handleAgentJob(agent)"
+                  >
+                    Skills: Fixed system agent
+                  </button>
+                </div>
               </div>
             </td>
 
@@ -991,10 +996,29 @@ async function copyToClipboard(text) {
         font-size: 13px;
         font-weight: 400;
         border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+        white-space: nowrap;
 
-        &.phase-col-header {
+        &.col-phase {
           width: 56px;
           text-align: center;
+        }
+
+        &.col-play {
+          width: 48px;
+          padding: 0;
+        }
+
+        &.col-agent-name {
+          width: 1%;
+          white-space: nowrap;
+        }
+
+        &.col-center {
+          text-align: center;
+        }
+
+        &.col-actions {
+          width: 140px;
         }
       }
 
@@ -1032,22 +1056,20 @@ async function copyToClipboard(text) {
           }
         }
 
-        &.agent-display-name-cell {
-          display: flex;
-          align-items: center;
-          gap: 12px;
+        &.play-cell {
+          width: 48px;
+          padding: 16px 4px 16px 16px;
+          text-align: center;
 
           .play-btn-slot {
-            flex-shrink: 0;
-            width: 32px;
-            height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
+            width: 32px;
+            height: 32px;
           }
 
           .play-circle-btn {
-            flex-shrink: 0;
             width: 32px;
             height: 32px;
             border-radius: 50%;
@@ -1081,6 +1103,19 @@ async function copyToClipboard(text) {
               pointer-events: none;
             }
           }
+        }
+
+        &.agent-display-name-cell {
+          width: 1%;
+          white-space: nowrap;
+          padding-left: 4px;
+
+          .agent-card-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            white-space: nowrap;
+          }
 
           .agent-avatar {
             flex-shrink: 0;
@@ -1092,25 +1127,24 @@ async function copyToClipboard(text) {
             }
           }
 
+          .agent-avatar-button,
+          .agent-name-button {
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            text-align: left;
+            color: inherit;
+          }
+
           .agent-info {
             display: flex;
             flex-direction: column;
-            flex: 1;
             min-width: 0;
 
             .agent-name-primary {
               font-weight: 500;
               text-transform: capitalize;
-            }
-
-            .agent-avatar-button,
-            .agent-name-button {
-              background: none;
-              border: none;
-              padding: 0;
-              cursor: pointer;
-              text-align: left;
-              color: inherit;
             }
 
             .agent-display-name-secondary {
@@ -1122,6 +1156,7 @@ async function copyToClipboard(text) {
         }
 
         &.status-cell {
+          text-align: center;
           font-style: italic;
 
           .working-dots {
