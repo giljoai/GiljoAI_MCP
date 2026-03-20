@@ -245,7 +245,7 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
     },
     # Agent Coordination
     "get_pending_jobs": {"agent_display_name", "tenant_key"},
-    "report_progress": {"job_id", "tenant_key", "todo_items"},
+    "report_progress": {"job_id", "tenant_key", "todo_items", "todo_append"},
     "complete_job": {"job_id", "result", "tenant_key"},
     "reactivate_job": {"job_id", "reason", "tenant_key"},
     "dismiss_reactivation": {"job_id", "reason", "tenant_key"},
@@ -557,6 +557,25 @@ def _build_agent_coordination_tools() -> list[dict[str, Any]]:
                                 },
                             },
                             "required": ["content", "status"],
+                        },
+                    },
+                    "todo_append": {
+                        "type": "array",
+                        "description": (
+                            "Steps to APPEND to existing TODO list. Use instead of todo_items "
+                            "when adding work to a reactivated job. Existing completed steps are preserved."
+                        ),
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "content": {"type": "string", "description": "Step description"},
+                                "status": {
+                                    "type": "string",
+                                    "enum": ["pending", "in_progress"],
+                                    "default": "pending",
+                                },
+                            },
+                            "required": ["content"],
                         },
                     },
                 },
