@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-18 (0826 staging completion hardening — NEW)
+**Last Updated:** 2026-03-20 (0826+0827 closed, 0828 active)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b COMPLETE. 0826 ACTIVE. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827 COMPLETE. 0828 ACTIVE. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -29,7 +29,7 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0826 | Staging Completion Hardening | Not Started | High | Thin prompt guard + server-side staging completion signal (remove LLM as single point of failure) |
+| 0828 | OAuth 2.1 PKCE Flow for MCP Client Authorization | Not Started | High | OAuth for GUI-based MCP clients (Claude Desktop). CE scope — uses existing user credentials. |
 
 ### Deferred (Still in Root Folder)
 
@@ -42,6 +42,8 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0827 | Agent Reactivation & Continuation | 2026-03-19 | COMPLETE (7 commits) — display names in messages, auto-block on post-completion message, reactivate_job + dismiss_reactivation tools, todo_append + duration accumulation |
+| 0826 | Staging Completion Hardening | 2026-03-20 | COMPLETE (`e972e2f9`, `ddfda73d`) — thin prompt guard, server-side staging_complete signal, staging_status timing fix, get_orchestrator_instructions response gate |
 | 0825 | Agent Identity Separation from Mission Response | 2026-03-18 | COMPLETE (`1aebbcd8`) — agent_identity field added, dead token fields stripped, template content no longer baked into mission |
 | 0825b | Dead Context Management Code Cleanup | 2026-03-18 | COMPLETE (`83983166`) — removed 4 dead classes, 3 dead models, 3 dead tables, -1,341 lines |
 | 0824 | Closeout Self-Decommission Guard | 2026-03-18 | COMPLETE — pre-flight guard blocks force-close when orchestrator active, decommissioned diagnostics in complete_job/report_progress |
@@ -162,6 +164,8 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0827 | Agent Reactivation & Continuation (4 phases) | **COMPLETE** (2026-03-19, 7 commits, display names + auto-block + reactivate/dismiss tools + todo_append + duration) |
+| 0826 | Staging Completion Hardening | **COMPLETE** (2026-03-20, `e972e2f9`+`ddfda73d`, prompt guard + server-side signal + timing fix + response gate) |
 | 0824 | Closeout Self-Decommission Guard | **COMPLETE** (2026-03-18, pre-flight guard + decommissioned diagnostics) |
 | 0823 | Context Fetch Protocol Injection | **COMPLETE** (2026-03-18, `6cf62fce`, CH2 inline fetch calls replace broken context_fetch_instructions) |
 | 0823b | Move Depth Config to fetch_context Runtime | **COMPLETE** (2026-03-18, `c3899cf7`, depth config runtime DB lookup, live-tunable settings) |
@@ -523,7 +527,9 @@ completed/reference/
 **0823b** (Enhancement & Feature Series): 0823b Move Depth Config to fetch_context Runtime (COMPLETE, `c3899cf7`)
 **0824** (Enhancement & Feature Series): 0824 Closeout Self-Decommission Guard (COMPLETE)
 **0825** (Enhancement & Feature Series): 0825 Agent Identity Separation from Mission Response (COMPLETE, `1aebbcd8`)
-**0826** (Enhancement & Feature Series): 0826 Staging Completion Hardening (ACTIVE)
+**0826** (Enhancement & Feature Series): 0826 Staging Completion Hardening (COMPLETE, `e972e2f9`+`ddfda73d`)
+**0827** (Enhancement & Feature Series): 0827 Agent Reactivation & Continuation (COMPLETE, 7 commits, 4 phases: display names + auto-block + tools + todo_append)
+**0828** (Enhancement & Feature Series): 0828 OAuth 2.1 PKCE Flow for MCP Client Authorization (ACTIVE)
 **1000-1014** (Greptile Security): 1000-1014
 
 ### Known Duplicate Numbers
