@@ -587,11 +587,11 @@ class ProjectService:
                         context={"operation": "update_project_mission", "project_id": project_id},
                     )
 
-                # Handover 0425: Also set staging_status to 'staged' when mission is updated
+                # Handover 0425: Also set staging_status to 'staging' when mission is updated
                 result = await session.execute(
                     update(Project)
                     .where(and_(Project.tenant_key == tenant_key, Project.id == project_id))
-                    .values(mission=mission, staging_status="staged", updated_at=datetime.now(timezone.utc))
+                    .values(mission=mission, staging_status="staging", updated_at=datetime.now(timezone.utc))
                 )
 
                 if result.rowcount == 0:
@@ -2115,8 +2115,8 @@ This is a thin-client launch. Use the get_orchestrator_instructions() MCP tool t
             )
             session.add(agent_execution)
 
-            # Set staging_status to 'staged' when orchestrator is launched
-            project.staging_status = "staged"
+            # Set staging_status to 'staging' when orchestrator is launched
+            project.staging_status = "staging"
             project.updated_at = datetime.now(timezone.utc)
 
             await session.flush()  # Get the IDs without committing

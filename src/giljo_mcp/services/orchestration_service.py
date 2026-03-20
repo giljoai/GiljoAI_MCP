@@ -492,7 +492,7 @@ class OrchestrationService:
 
                 # Update project staging_status when orchestrator is spawned (Handover 0502)
                 if agent_display_name == "orchestrator":
-                    project.staging_status = "staged"
+                    project.staging_status = "staging"
                     project.updated_at = datetime.now(timezone.utc)
 
                 session.add(agent_execution)
@@ -2892,6 +2892,23 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                         error_code="NOT_FOUND",
                         context={"project_id": str(agent_job.project_id), "method": "get_orchestrator_instructions"},
                     )
+
+                # Response gating: if staging is complete, redirect to get_agent_mission
+                if project.staging_status in ("staged", "staging_complete"):
+                    return {
+                        "staging_complete": True,
+                        "redirect": "get_agent_mission",
+                        "identity": {
+                            "job_id": job_id,
+                            "project_id": str(project.id),
+                            "project_name": project.name,
+                        },
+                        "message": (
+                            "Staging is complete. Call get_agent_mission(job_id='...') "
+                            "to retrieve your execution plan and start implementation."
+                        ),
+                        "thin_client": True,
+                    }
 
                 product = None
                 if project.product_id:
