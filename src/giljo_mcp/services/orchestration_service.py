@@ -2977,7 +2977,6 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     "mcp_tools_available": [
                         "fetch_context",
                         "spawn_agent_job",
-                        "get_available_agents",
                         "send_message",
                         "report_progress",
                         "complete_job",

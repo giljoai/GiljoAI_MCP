@@ -747,7 +747,7 @@ Returns:
   - project_description: User requirements (INPUT for your analysis)
   - mission: Product context with priority fields applied
   - field_toggles: User's context toggle configuration
-  - agent_discovery_tool: Reference to get_available_agents()
+  - agent_templates: Available agent templates (name, role, description)
 
 Read this protocol via orchestrator_protocol field."""
 
@@ -796,10 +796,9 @@ When writing missions or referencing directories, ALWAYS use values from context
 NEVER hardcode paths you observe in your terminal session.
 
 ── STEP 3: Discover Agents ─────────────────────────────────────────────────
-Call: get_available_agents(active_only=true)
-Note: tenant_key auto-injected by server from API key session
-Returns: List of available agent templates
-Use agent_name from response when spawning (see CH3 for rules)
+Use the agent_templates field from the Step 2 get_orchestrator_instructions() response.
+This already contains the list of available agent templates (name, role, description).
+Use agent_name from agent_templates when spawning (see CH3 for rules)
 
 ── STEP 4: Create Mission ──────────────────────────────────────────────────
 Analyze project_description + product context
@@ -897,7 +896,7 @@ Orchestrator has NO active role after STAGING_COMPLETE broadcast
 PARAMETER REQUIREMENTS:
 
 ── agent_name (CRITICAL) ───────────────────────────────────────────────────
-MUST exactly match template name from get_available_agents() response
+MUST exactly match template name from agent_templates (returned by get_orchestrator_instructions)
 This is the SINGLE SOURCE OF TRUTH for agent identity
 Example: 'tdd-implementor' (not 'TDD Implementor' or 'implementer')
 
@@ -905,7 +904,7 @@ File mapping: agent_name → .claude/agents/{{agent_name}}.md
 
 Common mistakes:
   ✗ Using agent_display_name value for agent_name parameter
-  ✗ Inventing names not in get_available_agents() response
+  ✗ Inventing names not in agent_templates
   ✗ Case mismatch ('TDD-Implementor' vs 'tdd-implementor')
 
 Claude Code CLI Mode Note:
@@ -936,7 +935,7 @@ EXECUTION MODE AWARENESS:
 
 VALIDATION BEFORE SPAWNING:
 
-1. Verify agent_name exists in get_available_agents() response
+1. Verify agent_name exists in agent_templates from get_orchestrator_instructions()
 2. Check you haven't exceeded recommended limits
 3. Ensure mission is specific to this agent's role
 4. Confirm project_id and tenant_key are correct
@@ -959,7 +958,7 @@ Do NOT: Attempt to continue spawning agents
 
 ── Invalid Agent Name ──────────────────────────────────────────────────────
 Symptom: spawn_agent_job() returns error "agent not found"
-Action: Check agent_name against get_available_agents() response
+Action: Check agent_name against agent_templates from get_orchestrator_instructions()
 Common cause: Typo, case mismatch, using display_name instead of name
 Fix: Use exact agent_name from discovery response
 
@@ -975,8 +974,8 @@ Action: Condense mission further, focus on essentials
 Technique: Reference vision docs instead of embedding content
 Target: <5K tokens for mission plan
 
-── Agent Discovery Empty ───────────────────────────────────────────────────
-Symptom: get_available_agents() returns empty list
+── Agent Templates Empty ───────────────────────────────────────────────────
+Symptom: agent_templates list from get_orchestrator_instructions() is empty
 Cause: No active agent templates in database
 Action: Report to user - template configuration required
 Fix: User must activate templates in My Settings → Agent Templates
