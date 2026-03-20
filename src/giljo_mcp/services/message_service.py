@@ -563,7 +563,7 @@ class MessageService:
                             )
                         )
                         job_row = job_result.first()
-                        await self._websocket_manager.broadcast_job_status_change(
+                        await self._websocket_manager.broadcast_job_status_update(
                             job_id=recipient_execution.job_id,
                             agent_display_name=recipient_execution.agent_display_name,
                             tenant_key=project.tenant_key,
