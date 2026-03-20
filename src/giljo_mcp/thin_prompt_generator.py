@@ -1113,8 +1113,8 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         git_section = self._inject_git_instructions(product)
 
         # Handover 0306: Inject Agent Templates (CONDITIONAL - based on priority)
-        # Handover 0246c: Agent templates no longer embedded (use get_available_agents MCP tool)
-        agent_section = ""  # Deprecated: templates fetched via MCP tool
+        # Handover 0246c: Agent templates returned inline by get_orchestrator_instructions()
+        agent_section = ""  # Templates included in orchestrator instructions response
 
         # Insert injections BEFORE "YOUR ROLE" section
         # This places context EARLY in the prompt for maximum impact
