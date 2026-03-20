@@ -1237,8 +1237,30 @@ class MessageService:
 
                 self._logger.info(f"Retrieved {len(messages_list)} messages for agent {agent_id}")
 
+                # Handover 0827c: Append reactivation guidance for auto-blocked agents
+                reactivation_guidance = None
+                if execution and execution.status == "blocked" and messages_list:
+                    reactivation_guidance = {
+                        "your_status": "blocked",
+                        "your_job_id": str(execution.job_id),
+                        "instruction": (
+                            "You were in COMPLETE status and received a message. "
+                            "Review the message(s) above, then choose ONE action:\n"
+                            f'- If action is needed: call reactivate_job(job_id="{execution.job_id}", '
+                            'reason="brief reason")\n'
+                            f'- If no action needed: call dismiss_reactivation(job_id="{execution.job_id}", '
+                            'reason="informational only")'
+                        ),
+                    }
+
                 # Handover 0731c: Return MessageListResult typed model
-                return MessageListResult(messages=messages_list, count=len(messages_list))
+                result = MessageListResult(messages=messages_list, count=len(messages_list))
+                if reactivation_guidance:
+                    # Attach guidance as extra field on the dict representation
+                    # MessageListResult.model_dump() won't include this, so we
+                    # monkey-patch _reactivation_guidance for the tool response
+                    result._reactivation_guidance = reactivation_guidance
+                return result
 
         except (ResourceNotFoundError, ValidationError, MessageDeliveryError, BaseGiljoError):
             raise  # Re-raise without wrapping
