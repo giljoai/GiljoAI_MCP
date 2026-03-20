@@ -100,7 +100,7 @@ class Project(Base):
     staging_status = Column(
         String(50),
         nullable=True,
-        comment="Staging workflow status: null (not staged) or staged",
+        comment="Staging workflow status: null (not staged), staging (in progress), or staging_complete",
     )
 
     # Handover 0440a: Project taxonomy fields
