@@ -359,6 +359,11 @@ class MessageService:
                             is_staging = sender_execution.status == "waiting"
 
                             if is_orchestrator and is_staging:
+                                # Set staging_status now that staging is truly complete
+                                if project.staging_status != "staging_complete":
+                                    project.staging_status = "staging_complete"
+                                    project.updated_at = datetime.now(timezone.utc)
+
                                 # Enrich response with staging directive (typed model)
                                 response.staging_directive = StagingDirective(
                                     status="STAGING_SESSION_COMPLETE",
