@@ -23,6 +23,7 @@
       <table class="agents-table" data-testid="agent-status-table">
         <thead>
           <tr>
+            <th class="phase-col-header">Phase</th>
             <th class="text-center">Agent Name</th>
             <th>Agent Status</th>
             <th>Duration</th>
@@ -33,7 +34,12 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="agent in sortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
+          <tr v-for="agent in phaseSortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
+            <!-- Phase Badge (Handover 0829) -->
+            <td class="phase-cell" data-testid="phase-badge">
+              <span v-if="isOrchestrator(agent) || agent.phase == null" class="phase-badge phase-badge--none">&mdash;</span>
+              <span v-else class="phase-badge" :style="{ backgroundColor: getPhaseColor(agent.phase) }">P{{ agent.phase }}</span>
+            </td>
             <!-- Agent Display Name: Play Button + Avatar + Name -->
             <td class="agent-display-name-cell">
               <!-- Fixed-width play button column: always reserves space -->
@@ -406,6 +412,30 @@ const executionOrderPhases = computed(() => {
 
   return phases
 })
+
+/**
+ * Handover 0829: Sort table rows by phase order.
+ * Orchestrator always first, then ascending phase, unphased agents last.
+ * Within the same phase, preserves the existing store sort order.
+ */
+const phaseSortedAgents = computed(() => {
+  return [...sortedAgents.value].sort((a, b) => {
+    const phaseA = isOrchestrator(a) ? -1 : (a.phase ?? 999)
+    const phaseB = isOrchestrator(b) ? -1 : (b.phase ?? 999)
+    if (phaseA !== phaseB) return phaseA - phaseB
+    return 0
+  })
+})
+
+/**
+ * Handover 0829: Phase badge color palette.
+ * Reuses tones from the execution order bar for visual consistency.
+ */
+const phaseColors = ['#1565C0', '#00838F', '#6A1B9A', '#E65100', '#2E7D32', '#AD1457']
+function getPhaseColor(phase) {
+  if (phase == null || phase < 1) return 'transparent'
+  return phaseColors[(phase - 1) % phaseColors.length]
+}
 
 /**
  * GiljoAI face icon (dark theme only)
@@ -961,6 +991,11 @@ async function copyToClipboard(text) {
         font-size: 13px;
         font-weight: 400;
         border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+
+        &.phase-col-header {
+          width: 56px;
+          text-align: center;
+        }
       }
 
       tbody tr {
@@ -975,6 +1010,27 @@ async function copyToClipboard(text) {
         padding: 16px;
         color: rgb(var(--v-theme-on-surface));
         font-size: 14px;
+
+        &.phase-cell {
+          width: 56px;
+          text-align: center;
+          padding: 16px 8px;
+
+          .phase-badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: #fff;
+            white-space: nowrap;
+
+            &--none {
+              background: transparent;
+              color: rgba(var(--v-theme-on-surface), 0.35);
+            }
+          }
+        }
 
         &.agent-display-name-cell {
           display: flex;
