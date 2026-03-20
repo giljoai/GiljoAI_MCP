@@ -199,7 +199,9 @@ class MessageService:
                                 and_(
                                     AgentJob.project_id == project_id,
                                     AgentExecution.agent_display_name == agent_ref,
-                                    AgentExecution.status.in_(["waiting", "working", "blocked"]),  # Active statuses
+                                    AgentExecution.status.in_(
+                                        ["waiting", "working", "blocked", "complete"]
+                                    ),  # Active + completed statuses (0827a)
                                     AgentExecution.tenant_key == tenant_key,
                                 )
                             )
@@ -223,6 +225,27 @@ class MessageService:
                 # when concurrent broadcasts update the same AgentExecution counter rows)
                 resolved_to_agents.sort()
 
+                # Resolve sender display name for message enrichment (Handover 0827a)
+                sender_display_name = from_agent or "orchestrator"
+                if from_agent:
+                    sender_lookup = await session.execute(
+                        select(AgentExecution.agent_display_name)
+                        .join(AgentJob)
+                        .where(
+                            and_(
+                                AgentJob.project_id == project.id,
+                                AgentExecution.tenant_key == project.tenant_key,
+                                (AgentExecution.agent_display_name == from_agent)
+                                | (AgentExecution.agent_id == from_agent),
+                            )
+                        )
+                        .order_by(AgentExecution.started_at.desc())
+                        .limit(1)
+                    )
+                    sender_display_row = sender_lookup.scalar_one_or_none()
+                    if sender_display_row:
+                        sender_display_name = sender_display_row
+
                 # Create individual messages for each recipient (Handover 0387 - Broadcast Fan-out)
                 messages = []
                 if len(resolved_to_agents) > 0:
@@ -236,7 +259,11 @@ class MessageService:
                             priority=priority,
                             status="pending",
                             # Store project_id as job_id for WebSocket consumers that key off job_id/project_id.
-                            meta_data={"_from_agent": from_agent or "orchestrator", "job_id": project.id},
+                            meta_data={
+                                "_from_agent": from_agent or "orchestrator",
+                                "_from_display_name": sender_display_name,
+                                "job_id": project.id,
+                            },
                         )
                         session.add(message)
                         messages.append(message)
@@ -1073,6 +1100,23 @@ class MessageService:
                         except (RuntimeError, ValueError) as e:
                             self._logger.warning(f"Failed to emit WebSocket for acknowledged messages: {e}")
 
+                # Handover 0827a: Batch-resolve sender display names for old messages (fallback)
+                sender_ids = {
+                    msg.meta_data.get("_from_agent")
+                    for msg in messages
+                    if msg.meta_data and not msg.meta_data.get("_from_display_name")
+                }
+                uuid_ids = [s for s in sender_ids if s and "-" in s and len(s) == 36]
+                sender_name_map: dict[str, str] = {}
+                if uuid_ids:
+                    name_result = await session.execute(
+                        select(AgentExecution.agent_id, AgentExecution.agent_display_name).where(
+                            AgentExecution.agent_id.in_(uuid_ids),
+                            AgentExecution.tenant_key == tenant_key,
+                        )
+                    )
+                    sender_name_map = {row.agent_id: row.agent_display_name for row in name_result}
+
                 # Convert to AgentMessageQueue-compatible format
                 messages_list = []
                 for msg in messages:
@@ -1080,11 +1124,17 @@ class MessageService:
                     priority_reverse_map = {"low": 0, "normal": 1, "high": 2, "critical": 2}
                     priority_int = priority_reverse_map.get(msg.priority, 1)
 
+                    # Handover 0827a: Prefer display name over raw UUID
+                    from_agent_raw = msg.meta_data.get("_from_agent", "") if msg.meta_data else ""
+                    from_display = (
+                        msg.meta_data.get("_from_display_name", "") if msg.meta_data else ""
+                    ) or sender_name_map.get(from_agent_raw, "")
+
                     messages_list.append(
                         {
                             "id": str(msg.id),
-                            "from_agent": msg.meta_data.get("_from_agent", "") if msg.meta_data else "",
-                            "to_agent": msg.to_agents[0] if msg.to_agents else None,
+                            "from_agent": from_display or from_agent_raw,
+                            "from_agent_id": from_agent_raw,
                             "type": msg.message_type,
                             "content": msg.content,
                             "priority": priority_int,
