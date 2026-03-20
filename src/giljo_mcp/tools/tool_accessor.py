@@ -486,17 +486,19 @@ class ToolAccessor:
         tenant_key: str | None = None,
         progress: dict[str, Any] | None = None,
         todo_items: list[dict] | None = None,
+        todo_append: list[dict] | None = None,
     ) -> dict[str, Any]:
         """Report job progress (delegates to OrchestrationService).
 
         Handover 0407: Accept todo_items parameter for simplified progress reporting.
-        Agents can now send todo_items directly instead of wrapping in progress dict.
+        Handover 0827d: Accept todo_append to add steps without replacing existing ones.
         """
         return await self._orchestration_service.report_progress(
             job_id=job_id,
             progress=progress,
             tenant_key=tenant_key,
             todo_items=todo_items,
+            todo_append=todo_append,
         )
 
     async def complete_job(self, job_id: str, result: dict[str, Any], tenant_key: str | None = None) -> dict[str, Any]:
