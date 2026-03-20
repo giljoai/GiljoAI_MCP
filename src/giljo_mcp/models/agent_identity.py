@@ -22,6 +22,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -263,6 +264,22 @@ class AgentExecution(Base):
         JSON,
         nullable=True,
         comment="Structured completion result from agent (summary, artifacts, commits)",
+    )
+
+    # Reactivation tracking (Handover 0827c)
+    accumulated_duration_seconds = Column(
+        Float,
+        default=0.0,
+        nullable=False,
+        server_default="0.0",
+        comment="Total working time across reactivation cycles (seconds)",
+    )
+    reactivation_count = Column(
+        Integer,
+        default=0,
+        nullable=False,
+        server_default="0",
+        comment="Number of times this agent has been reactivated after completion",
     )
 
     # Display name (optional)

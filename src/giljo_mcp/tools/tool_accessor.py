@@ -503,6 +503,18 @@ class ToolAccessor:
         """Mark job as complete (delegates to OrchestrationService)"""
         return await self._orchestration_service.complete_job(job_id=job_id, result=result, tenant_key=tenant_key)
 
+    async def reactivate_job(self, job_id: str, tenant_key: str | None = None, reason: str = "") -> dict[str, Any]:
+        """Resume work on a completed job (delegates to OrchestrationService). Handover 0827c."""
+        return await self._orchestration_service.reactivate_job(job_id=job_id, tenant_key=tenant_key, reason=reason)
+
+    async def dismiss_reactivation(
+        self, job_id: str, tenant_key: str | None = None, reason: str = ""
+    ) -> dict[str, Any]:
+        """Dismiss reactivation and return to complete (delegates to OrchestrationService). Handover 0827c."""
+        return await self._orchestration_service.dismiss_reactivation(
+            job_id=job_id, tenant_key=tenant_key, reason=reason
+        )
+
     async def report_error(
         self, job_id: str, error: str, tenant_key: str | None = None, **kwargs: Any
     ) -> dict[str, Any]:
