@@ -291,6 +291,15 @@ class MessageService:
                     session, messages, project, from_agent, project_id
                 )
 
+                # Handover 0827b: Auto-block completed agents that receive direct messages
+                await self._auto_block_completed_recipients(
+                    session,
+                    resolved_to_agents,
+                    project,
+                    sender_display_name,
+                    is_broadcast_fanout,
+                )
+
                 # Emit WebSocket events if manager is available
                 await self._broadcast_message_events(
                     session,
@@ -494,6 +503,86 @@ class MessageService:
             self._logger.warning("Failed to update message counters: %s", counter_error)
 
         return sender_execution
+
+    async def _auto_block_completed_recipients(
+        self,
+        session: AsyncSession,
+        resolved_to_agents: list[str],
+        project: Any,
+        sender_display_name: str,
+        is_broadcast_fanout: bool,
+    ) -> list[str]:
+        """Auto-block completed agents that receive a direct message (Handover 0827b).
+
+        When a direct message is delivered to an agent in 'complete' status,
+        transitions it to 'blocked' with a reason. This renders as orange
+        "Needs Input" on the dashboard — a strong visual signal.
+
+        Skips broadcast messages and closed-out projects.
+
+        Returns:
+            List of agent_ids that were auto-blocked.
+        """
+        if is_broadcast_fanout:
+            return []
+
+        # Guard: Don't auto-block if project is closed out
+        if project.status in ("completed", "cancelled"):
+            return []
+
+        auto_blocked_ids = []
+        for recipient_id in resolved_to_agents:
+            # Look up recipient execution
+            exec_result = await session.execute(
+                select(AgentExecution)
+                .where(
+                    AgentExecution.agent_id == recipient_id,
+                    AgentExecution.tenant_key == project.tenant_key,
+                )
+                .order_by(AgentExecution.started_at.desc())
+                .limit(1)
+            )
+            recipient_execution = exec_result.scalar_one_or_none()
+
+            if recipient_execution and recipient_execution.status == "complete":
+                old_status = recipient_execution.status
+                recipient_execution.status = "blocked"
+                recipient_execution.block_reason = f"Received message from {sender_display_name} while completed"
+                await session.flush()
+
+                auto_blocked_ids.append(recipient_id)
+
+                # Broadcast status change via WebSocket
+                if self._websocket_manager:
+                    try:
+                        # Resolve project_id for the broadcast
+                        job_result = await session.execute(
+                            select(AgentJob.job_id, AgentJob.project_id).where(
+                                AgentJob.job_id == recipient_execution.job_id,
+                                AgentJob.tenant_key == project.tenant_key,
+                            )
+                        )
+                        job_row = job_result.first()
+                        await self._websocket_manager.broadcast_job_status_change(
+                            job_id=recipient_execution.job_id,
+                            agent_display_name=recipient_execution.agent_display_name,
+                            tenant_key=project.tenant_key,
+                            old_status=old_status,
+                            new_status="blocked",
+                            project_id=str(job_row.project_id) if job_row else None,
+                        )
+                    except (RuntimeError, ValueError) as e:
+                        self._logger.warning(f"Failed to broadcast auto-block status change for {recipient_id}: {e}")
+
+                self._logger.info(
+                    f"[AUTO-BLOCK] Agent {recipient_execution.agent_display_name} "
+                    f"({recipient_id}) auto-blocked: message from {sender_display_name}"
+                )
+
+        if auto_blocked_ids:
+            await session.commit()
+
+        return auto_blocked_ids
 
     async def _broadcast_message_events(
         self,
