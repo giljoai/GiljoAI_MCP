@@ -354,7 +354,7 @@ def _build_project_tools() -> list[dict[str, Any]]:
         # Orchestrator Tools
         {
             "name": "get_orchestrator_instructions",
-            "description": "Fetch context for orchestrator to CREATE mission plan. Called by: ORCHESTRATOR ONLY at project start (Step 1 of staging workflow) or during implementation phase to refresh context (single source of truth). Returns project description (user requirements), prioritized context fields, and reference to get_available_agents() for discovering specialists. Orchestrator analyzes this INPUT and creates execution plan (does NOT execute work). Token estimate: ~4,500 with context exclusions applied.",
+            "description": "Fetch context for orchestrator to CREATE mission plan. Called by: ORCHESTRATOR ONLY at project start (Step 1 of staging workflow) or during implementation phase to refresh context (single source of truth). Returns project description (user requirements), prioritized context fields, and agent_templates list for discovering specialists. Orchestrator analyzes this INPUT and creates execution plan (does NOT execute work). Token estimate: ~4,500 with context exclusions applied.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
