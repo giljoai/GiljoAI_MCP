@@ -421,6 +421,33 @@ class CompleteJobResult(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ReactivationResult(BaseModel):
+    """Reactivation result (Handover 0827c).
+
+    Returned by OrchestrationService.reactivate_job().
+    """
+
+    status: str = "reactivated"
+    job_id: str
+    reactivation_count: int = 1
+    instruction: str = ""
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DismissResult(BaseModel):
+    """Dismiss reactivation result (Handover 0827c).
+
+    Returned by OrchestrationService.dismiss_reactivation().
+    """
+
+    status: str = "dismissed"
+    job_id: str
+    instruction: str = "Message acknowledged. No action needed. You remain in complete status."
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ErrorReportResult(BaseModel):
     """Error report result.
 
