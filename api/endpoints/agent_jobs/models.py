@@ -118,6 +118,9 @@ class JobResponse(BaseModel):
     phase: Optional[int] = None
     # Handover 0497e: Completion result for frontend display
     result: Optional[dict] = None
+    # Handover 0827d: Reactivation tracking for frontend duration display
+    accumulated_duration_seconds: float = 0.0
+    reactivation_count: int = 0
 
 
 class PendingJobsResponse(BaseModel):

@@ -1313,6 +1313,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
         progress: dict[str, Any] | None = None,
         tenant_key: Optional[str] = None,
         todo_items: list[dict] | None = None,
+        todo_append: list[dict] | None = None,
     ) -> ProgressResult:
         """
         Report job progress (store message in message queue).
@@ -1323,6 +1324,8 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
             tenant_key: Optional tenant key (uses current if not provided)
             todo_items: Simplified TODO items array (Handover 0392)
                         [{"content": "Task A", "status": "completed"}, ...]
+            todo_append: Steps to APPEND to existing TODO list (Handover 0827d).
+                         Preserves existing completed steps, adds new ones.
 
         Returns:
             Dict with success status
@@ -1355,6 +1358,13 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
             if not job_id or not job_id.strip():
                 raise ValidationError(message="job_id cannot be empty", context={"method": "report_progress"})
 
+            # Handover 0827d: todo_append is mutually exclusive with todo_items
+            if todo_append is not None and todo_items is not None:
+                raise ValidationError(
+                    message="Cannot use both todo_items and todo_append in the same call",
+                    context={"method": "report_progress"},
+                )
+
             # Handover 0392: Support top-level todo_items parameter (simplified format)
             # If todo_items provided at top level, derive progress metrics from it
             if todo_items is not None:
@@ -1380,9 +1390,19 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     "current_step": current_step,
                     "todo_items": todo_items,
                 }
+            elif todo_append is not None:
+                # Handover 0827d: todo_append can be called standalone
+                if not isinstance(todo_append, list):
+                    raise ValidationError(
+                        message="todo_append must be a list",
+                        context={"method": "report_progress", "todo_append_type": type(todo_append).__name__},
+                    )
+                # Build a minimal progress dict so existing code paths work
+                progress = {"mode": "append"}
             elif progress is None:
                 raise ValidationError(
-                    message="Either progress or todo_items must be provided", context={"method": "report_progress"}
+                    message="Either progress, todo_items, or todo_append must be provided",
+                    context={"method": "report_progress"},
                 )
             elif not isinstance(progress, dict):
                 raise ValidationError(
@@ -1544,6 +1564,75 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                                 sequence=seq,
                             )
                             session.add(todo_item)
+
+                # Handover 0827d: Append new items without deleting existing ones
+                if isinstance(todo_append, list) and len(todo_append) > 0:
+                    from sqlalchemy import func as sa_func
+
+                    # Find current max sequence number
+                    max_seq_result = await session.execute(
+                        select(sa_func.max(AgentTodoItem.sequence))
+                        .where(AgentTodoItem.job_id == job_id)
+                        .where(AgentTodoItem.tenant_key == tenant_key)
+                    )
+                    max_seq = max_seq_result.scalar() or -1
+
+                    # Insert only new items after existing ones
+                    appended_count = 0
+                    for i, item in enumerate(todo_append):
+                        if isinstance(item, dict) and item.get("content"):
+                            status = item.get("status", "pending")
+                            if status not in ("pending", "in_progress", "completed", "skipped"):
+                                status = "pending"
+
+                            todo_item = AgentTodoItem(
+                                job_id=job_id,
+                                tenant_key=tenant_key,
+                                content=str(item["content"])[:255],
+                                status=status,
+                                sequence=max_seq + 1 + i,
+                            )
+                            session.add(todo_item)
+                            appended_count += 1
+
+                    # Recount totals and update JSONB summary
+                    if appended_count > 0:
+                        from sqlalchemy import func as sa_func
+                        from sqlalchemy.orm.attributes import flag_modified
+
+                        # Flush to ensure new items are visible to COUNT queries
+                        await session.flush()
+
+                        total_result = await session.execute(
+                            select(sa_func.count(AgentTodoItem.id))
+                            .where(AgentTodoItem.job_id == job_id)
+                            .where(AgentTodoItem.tenant_key == tenant_key)
+                        )
+                        completed_result = await session.execute(
+                            select(sa_func.count(AgentTodoItem.id))
+                            .where(AgentTodoItem.job_id == job_id)
+                            .where(AgentTodoItem.tenant_key == tenant_key)
+                            .where(AgentTodoItem.status == "completed")
+                        )
+                        skipped_result = await session.execute(
+                            select(sa_func.count(AgentTodoItem.id))
+                            .where(AgentTodoItem.job_id == job_id)
+                            .where(AgentTodoItem.tenant_key == tenant_key)
+                            .where(AgentTodoItem.status == "skipped")
+                        )
+
+                        total_count = total_result.scalar()
+                        completed_count = completed_result.scalar()
+                        skipped_count = skipped_result.scalar()
+
+                        metadata = job.job_metadata or {}
+                        metadata["todo_steps"] = {
+                            "total_steps": total_count,
+                            "completed_steps": completed_count,
+                            "skipped_steps": skipped_count,
+                        }
+                        job.job_metadata = metadata
+                        flag_modified(job, "job_metadata")
 
                 await session.commit()
                 await session.refresh(execution)
@@ -2536,6 +2625,9 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                             ],
                             "result": execution.result,  # Handover 0497e
                             "template_id": job.template_id,  # Handover 0814: for AgentDetailsModal lookup
+                            # Handover 0827d: Reactivation tracking for frontend duration display
+                            "accumulated_duration_seconds": execution.accumulated_duration_seconds or 0.0,
+                            "reactivation_count": execution.reactivation_count or 0,
                         }
                     )
 
