@@ -101,123 +101,121 @@ async def get_git_history(
         logger.error("db_manager or session is required", operation="get_git_history")
         raise ValueError("db_manager or session parameter is required")
 
-    # Use provided session (for testing) or create new one
     if session is not None:
-        # Use provided session directly (for testing)
-        session_to_use = session
-        should_close = False
-    else:
-        # Create new session from db_manager
-        session_to_use = await db_manager.get_session_async().__aenter__()
-        should_close = True
+        return await _get_git_history_impl(session, product_id, tenant_key, commits)
 
-    try:
-        # Verify product exists for tenant isolation
-        stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
-        result = await session_to_use.execute(stmt)
-        product = result.scalar_one_or_none()
+    async with db_manager.get_session_async() as new_session:
+        return await _get_git_history_impl(new_session, product_id, tenant_key, commits)
 
-        if not product:
-            logger.warning(
-                "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_git_history"
-            )
-            return {
-                "source": "git_history",
-                "depth": commits,
-                "data": [],
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_commits": 0,
-                    "returned_commits": 0,
-                    "git_integration_enabled": False,
-                    "error": "product_not_found",
-                },
-            }
 
-        # Check if GitHub integration is enabled (still in JSONB)
-        git_config = product.product_memory.get("git_integration", {}) if product.product_memory else {}
-        git_enabled = git_config.get("enabled", False)
+async def _get_git_history_impl(
+    session: AsyncSession,
+    product_id: str,
+    tenant_key: str,
+    commits: int,
+) -> dict[str, Any]:
+    """Inner implementation for get_git_history using a provided session."""
+    # Verify product exists for tenant isolation
+    stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
+    result = await session.execute(stmt)
+    product = result.scalar_one_or_none()
 
-        if not git_enabled:
-            logger.debug("git_integration_disabled", product_id=product_id, operation="get_git_history")
-            return {
-                "source": "git_history",
-                "depth": commits,
-                "data": [],
-                "directive": {
-                    "action": "fetch_from_local_repo",
-                    "command": f"git log --oneline -{commits}",
-                    "note": "Git history is not stored on the server. Run this command in the project directory.",
-                },
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_commits": 0,
-                    "returned_commits": 0,
-                    "git_integration_enabled": False,
-                    "reason": "git_integration_disabled",
-                },
-            }
-
-        # Use repository to fetch git commits from table
-        repo = ProductMemoryRepository()
-        all_commits = await repo.get_git_history(
-            session=session_to_use,
-            product_id=product_id,
-            tenant_key=tenant_key,
-            limit=commits,
-        )
-
-        if not all_commits:
-            logger.debug("no_git_commits_found", product_id=product_id, operation="get_git_history")
-            return {
-                "source": "git_history",
-                "depth": commits,
-                "data": [],
-                "directive": {
-                    "action": "fetch_from_local_repo",
-                    "command": f"git log --oneline -{commits}",
-                    "note": "Git history is not stored on the server. Run this command in the project directory.",
-                },
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_commits": 0,
-                    "returned_commits": 0,
-                    "git_integration_enabled": True,
-                },
-            }
-
-        # Repository already returns sorted commits (newest first) and limited
-        filtered_commits = all_commits
-
-        # Calculate token estimate
-        total_tokens = estimate_tokens(filtered_commits)
-
-        logger.info(
-            "git_history_fetched",
-            product_id=product_id,
-            tenant_key=tenant_key,
-            depth=commits,
-            total_commits=len(all_commits),
-            returned_commits=len(filtered_commits),
-            estimated_tokens=total_tokens,
-        )
-
+    if not product:
+        logger.warning("product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_git_history")
         return {
             "source": "git_history",
             "depth": commits,
-            "data": filtered_commits,
+            "data": [],
             "metadata": {
                 "product_id": product_id,
                 "tenant_key": tenant_key,
-                "total_commits": len(all_commits),
-                "returned_commits": len(filtered_commits),
-                "git_integration_enabled": True,
-                "pagination_supported": False,  # Reserved for future implementation
+                "total_commits": 0,
+                "returned_commits": 0,
+                "git_integration_enabled": False,
+                "error": "product_not_found",
             },
         }
-    finally:
-        if should_close and session_to_use:
-            await session_to_use.close()
+
+    # Check if GitHub integration is enabled (still in JSONB)
+    git_config = product.product_memory.get("git_integration", {}) if product.product_memory else {}
+    git_enabled = git_config.get("enabled", False)
+
+    if not git_enabled:
+        logger.debug("git_integration_disabled", product_id=product_id, operation="get_git_history")
+        return {
+            "source": "git_history",
+            "depth": commits,
+            "data": [],
+            "directive": {
+                "action": "fetch_from_local_repo",
+                "command": f"git log --oneline -{commits}",
+                "note": "Git history is not stored on the server. Run this command in the project directory.",
+            },
+            "metadata": {
+                "product_id": product_id,
+                "tenant_key": tenant_key,
+                "total_commits": 0,
+                "returned_commits": 0,
+                "git_integration_enabled": False,
+                "reason": "git_integration_disabled",
+            },
+        }
+
+    # Use repository to fetch git commits from table
+    repo = ProductMemoryRepository()
+    all_commits = await repo.get_git_history(
+        session=session,
+        product_id=product_id,
+        tenant_key=tenant_key,
+        limit=commits,
+    )
+
+    if not all_commits:
+        logger.debug("no_git_commits_found", product_id=product_id, operation="get_git_history")
+        return {
+            "source": "git_history",
+            "depth": commits,
+            "data": [],
+            "directive": {
+                "action": "fetch_from_local_repo",
+                "command": f"git log --oneline -{commits}",
+                "note": "Git history is not stored on the server. Run this command in the project directory.",
+            },
+            "metadata": {
+                "product_id": product_id,
+                "tenant_key": tenant_key,
+                "total_commits": 0,
+                "returned_commits": 0,
+                "git_integration_enabled": True,
+            },
+        }
+
+    # Repository already returns sorted commits (newest first) and limited
+    filtered_commits = all_commits
+
+    # Calculate token estimate
+    total_tokens = estimate_tokens(filtered_commits)
+
+    logger.info(
+        "git_history_fetched",
+        product_id=product_id,
+        tenant_key=tenant_key,
+        depth=commits,
+        total_commits=len(all_commits),
+        returned_commits=len(filtered_commits),
+        estimated_tokens=total_tokens,
+    )
+
+    return {
+        "source": "git_history",
+        "depth": commits,
+        "data": filtered_commits,
+        "metadata": {
+            "product_id": product_id,
+            "tenant_key": tenant_key,
+            "total_commits": len(all_commits),
+            "returned_commits": len(filtered_commits),
+            "git_integration_enabled": True,
+            "pagination_supported": False,  # Reserved for future implementation
+        },
+    }

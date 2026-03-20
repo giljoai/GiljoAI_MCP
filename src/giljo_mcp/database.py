@@ -201,7 +201,7 @@ class DatabaseManager:
                     await session.rollback()
             try:
                 await session.close()
-            except (RuntimeError, OSError) as close_error:
+            except (RuntimeError, OSError, SQLAlchemyError) as close_error:
                 logger.debug(f"Session close during cleanup: {close_error}")
 
     def close(self):
