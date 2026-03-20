@@ -247,6 +247,8 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
     "get_pending_jobs": {"agent_display_name", "tenant_key"},
     "report_progress": {"job_id", "tenant_key", "todo_items"},
     "complete_job": {"job_id", "result", "tenant_key"},
+    "reactivate_job": {"job_id", "reason", "tenant_key"},
+    "dismiss_reactivation": {"job_id", "reason", "tenant_key"},
     "report_error": {"job_id", "error", "tenant_key"},
     # Orchestration Tools
     "get_agent_mission": {"job_id", "tenant_key"},
@@ -575,6 +577,47 @@ def _build_agent_coordination_tools() -> list[dict[str, Any]]:
             },
         },
         {
+            "name": "reactivate_job",
+            "description": (
+                "Resume work on a completed job after receiving a follow-up message. "
+                "Only works when status is 'blocked' (auto-set when a message arrives "
+                "for a completed agent). After reactivating, use report_progress with "
+                "todo_append to add new steps - do not overwrite completed steps."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "Job ID to reactivate"},
+                    "reason": {
+                        "type": "string",
+                        "description": "Why reactivating (e.g., 'fix request from Orchestrator')",
+                    },
+                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
+                },
+                "required": ["job_id"],
+            },
+        },
+        {
+            "name": "dismiss_reactivation",
+            "description": (
+                "Acknowledge a post-completion message without resuming work. "
+                "Returns you to complete status. Use when the message is informational "
+                "and no action is required."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "job_id": {"type": "string", "description": "Job ID to dismiss"},
+                    "reason": {
+                        "type": "string",
+                        "description": "Why no action needed (e.g., 'FYI message only')",
+                    },
+                    "tenant_key": {"type": "string", "description": "Tenant key for isolation"},
+                },
+                "required": ["job_id"],
+            },
+        },
+        {
             "name": "report_error",
             "description": "Report error and pause job for orchestrator review",
             "inputSchema": {
@@ -861,6 +904,8 @@ async def handle_tools_call(
         "get_pending_jobs": state.tool_accessor.get_pending_jobs,
         "report_progress": state.tool_accessor.report_progress,
         "complete_job": state.tool_accessor.complete_job,
+        "reactivate_job": state.tool_accessor.reactivate_job,
+        "dismiss_reactivation": state.tool_accessor.dismiss_reactivation,
         "report_error": state.tool_accessor.report_error,
         # Orchestration Tools (Handover 0088)
         "get_agent_mission": state.tool_accessor.get_agent_mission,
@@ -977,6 +1022,9 @@ async def handle_tools_call(
         # Convert result to JSON string for proper formatting
         # Handover 0731c: Convert Pydantic models to dicts for JSON serialization
         serializable_result = result.model_dump() if isinstance(result, BaseModel) else result
+        # Handover 0827c: Include reactivation guidance if present
+        if hasattr(result, "_reactivation_guidance"):
+            serializable_result["_reactivation_guidance"] = result._reactivation_guidance
         result_text = json.dumps(serializable_result, indent=2, ensure_ascii=False, default=str)
 
         return {"content": [{"type": "text", "text": result_text}], "isError": False}

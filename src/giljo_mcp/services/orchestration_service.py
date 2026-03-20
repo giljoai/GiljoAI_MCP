@@ -37,6 +37,7 @@ from src.giljo_mcp.exceptions import (
     AlreadyExistsError,
     DatabaseError,
     OrchestrationError,
+    ProjectStateError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -54,12 +55,14 @@ from src.giljo_mcp.schemas.service_responses import (
     AgentTodoCounts,
     AgentWorkflowDetail,
     CompleteJobResult,
+    DismissResult,
     ErrorReportResult,
     JobListResult,
     MissionResponse,
     MissionUpdateResult,
     PendingJobsResult,
     ProgressResult,
+    ReactivationResult,
     SpawnResult,
     WorkflowStatus,
 )
@@ -2019,6 +2022,259 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
             if execution and execution.result:
                 return execution.result
             return None
+
+    async def reactivate_job(
+        self, job_id: str, tenant_key: Optional[str] = None, reason: str = ""
+    ) -> ReactivationResult:
+        """
+        Resume work on a completed job after receiving a follow-up message.
+
+        Handover 0827c: Only works when the execution is in 'blocked' status
+        (auto-set by 0827b when a message arrives for a completed agent).
+
+        Transitions: execution blocked->working, job completed->active.
+        Accumulates prior working duration and increments reactivation counter.
+
+        Args:
+            job_id: Job UUID
+            tenant_key: Optional tenant key (uses current if not provided)
+            reason: Why the agent is reactivating
+
+        Returns:
+            ReactivationResult with status, reactivation_count, and instruction
+
+        Raises:
+            ResourceNotFoundError: Job not found or execution not in blocked status
+            ProjectStateError: Project is already closed out
+        """
+        try:
+            if not tenant_key:
+                tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                raise ValidationError(message="No tenant context available", context={"method": "reactivate_job"})
+            if not job_id or not job_id.strip():
+                raise ValidationError(message="job_id cannot be empty", context={"method": "reactivate_job"})
+
+            async with self._get_session() as session:
+                # Find execution in blocked status
+                exec_stmt = (
+                    select(AgentExecution)
+                    .where(
+                        AgentExecution.job_id == job_id,
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentExecution.status == "blocked",
+                    )
+                    .order_by(AgentExecution.started_at.desc())
+                    .limit(1)
+                )
+                exec_res = await session.execute(exec_stmt)
+                execution = exec_res.scalar_one_or_none()
+
+                if not execution:
+                    raise ResourceNotFoundError(
+                        message="Job not found or not in blocked status. Only auto-blocked (post-completion) agents can reactivate.",
+                        context={"job_id": job_id, "method": "reactivate_job"},
+                    )
+
+                # Get job
+                job_res = await session.execute(
+                    select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
+                )
+                job = job_res.scalar_one_or_none()
+                if not job:
+                    raise ResourceNotFoundError(
+                        message=f"Job {job_id} not found", context={"job_id": job_id, "method": "reactivate_job"}
+                    )
+
+                # Check project is not closed out
+                if job.project_id:
+                    project_res = await session.execute(
+                        select(Project).where(Project.id == job.project_id, Project.tenant_key == tenant_key)
+                    )
+                    project = project_res.scalar_one_or_none()
+                    if project and project.status in ("completed", "cancelled"):
+                        raise ProjectStateError(
+                            message="Cannot reactivate - project is already closed out.",
+                            context={"job_id": job_id, "project_status": project.status},
+                        )
+
+                # Accumulate prior working duration
+                if execution.completed_at and execution.started_at:
+                    elapsed = (execution.completed_at - execution.started_at).total_seconds()
+                    current_accumulated = execution.accumulated_duration_seconds or 0.0
+                    execution.accumulated_duration_seconds = current_accumulated + elapsed
+
+                # Transition execution: blocked -> working
+                old_status = execution.status
+                execution.status = "working"
+                execution.completed_at = None
+                execution.started_at = datetime.now(timezone.utc)
+                execution.block_reason = None
+
+                # Increment reactivation counter
+                reactivation_count = (execution.reactivation_count or 0) + 1
+                execution.reactivation_count = reactivation_count
+
+                # Transition job: completed -> active
+                if job.status == "completed":
+                    job.status = "active"
+                    job.completed_at = None
+
+                await session.flush()
+
+                project_id = str(job.project_id) if job.project_id else None
+
+                self._logger.info("Job %s reactivated (#%d): %s", job_id, reactivation_count, reason)
+
+            # Broadcast status change (outside session)
+            try:
+                if self._websocket_manager:
+                    await self._websocket_manager.broadcast_to_tenant(
+                        tenant_key=tenant_key,
+                        event_type="agent:status_changed",
+                        data={
+                            "job_id": job_id,
+                            "project_id": project_id,
+                            "agent_display_name": execution.agent_display_name,
+                            "agent_name": execution.agent_name,
+                            "old_status": old_status,
+                            "status": "working",
+                            "reactivation_count": reactivation_count,
+                        },
+                    )
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
+                self._logger.warning("[WEBSOCKET] Failed to broadcast reactivation: %s", ws_error)
+
+            return ReactivationResult(
+                status="reactivated",
+                job_id=job_id,
+                reactivation_count=reactivation_count,
+                instruction=(
+                    "You have been reactivated. Follow these steps:\n"
+                    "1. Review the message(s) that triggered reactivation.\n"
+                    "2. Call report_progress with todo_append to ADD new steps "
+                    "(do NOT replace your existing completed steps).\n"
+                    "3. Do the work, reporting progress as normal.\n"
+                    "4. Call complete_job() when finished."
+                ),
+            )
+        except (ValidationError, ResourceNotFoundError, ProjectStateError):
+            raise
+        except Exception as e:
+            self._logger.exception("Failed to reactivate job")
+            raise OrchestrationError(
+                message="Failed to reactivate job", context={"job_id": job_id, "error": str(e)}
+            ) from e
+
+    async def dismiss_reactivation(
+        self, job_id: str, tenant_key: Optional[str] = None, reason: str = ""
+    ) -> DismissResult:
+        """
+        Acknowledge a post-completion message without resuming work.
+
+        Handover 0827c: Returns a blocked (auto-blocked from complete) agent
+        back to complete status. Used when the message is informational.
+
+        Args:
+            job_id: Job UUID
+            tenant_key: Optional tenant key (uses current if not provided)
+            reason: Why no action is needed
+
+        Returns:
+            DismissResult with status and instruction
+
+        Raises:
+            ResourceNotFoundError: Job not found or execution not in blocked status
+        """
+        try:
+            if not tenant_key:
+                tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                raise ValidationError(message="No tenant context available", context={"method": "dismiss_reactivation"})
+            if not job_id or not job_id.strip():
+                raise ValidationError(message="job_id cannot be empty", context={"method": "dismiss_reactivation"})
+
+            async with self._get_session() as session:
+                # Find execution in blocked status
+                exec_stmt = (
+                    select(AgentExecution)
+                    .where(
+                        AgentExecution.job_id == job_id,
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentExecution.status == "blocked",
+                    )
+                    .order_by(AgentExecution.started_at.desc())
+                    .limit(1)
+                )
+                exec_res = await session.execute(exec_stmt)
+                execution = exec_res.scalar_one_or_none()
+
+                if not execution:
+                    raise ResourceNotFoundError(
+                        message="Job not found or not in blocked status.",
+                        context={"job_id": job_id, "method": "dismiss_reactivation"},
+                    )
+
+                # Return to complete (restore previous state)
+                old_status = execution.status
+                execution.status = "complete"
+                execution.block_reason = None
+
+                # Restore job status if it was completed before
+                job_res = await session.execute(
+                    select(AgentJob).where(AgentJob.job_id == job_id, AgentJob.tenant_key == tenant_key)
+                )
+                job = job_res.scalar_one_or_none()
+
+                if job and job.status == "active":
+                    # Only restore if no other executions are still active
+                    other_active_stmt = select(AgentExecution).where(
+                        AgentExecution.job_id == job_id,
+                        AgentExecution.tenant_key == tenant_key,
+                        AgentExecution.id != execution.id,
+                        AgentExecution.status.not_in(["complete", "decommissioned"]),
+                    )
+                    other_active_res = await session.execute(other_active_stmt)
+                    other_active = other_active_res.scalar_one_or_none()
+                    if not other_active:
+                        job.status = "completed"
+
+                await session.flush()
+
+                project_id = str(job.project_id) if job and job.project_id else None
+
+                self._logger.info("Job %s reactivation dismissed: %s", job_id, reason)
+
+            # Broadcast status change (outside session)
+            try:
+                if self._websocket_manager:
+                    await self._websocket_manager.broadcast_to_tenant(
+                        tenant_key=tenant_key,
+                        event_type="agent:status_changed",
+                        data={
+                            "job_id": job_id,
+                            "project_id": project_id,
+                            "agent_display_name": execution.agent_display_name,
+                            "agent_name": execution.agent_name,
+                            "old_status": old_status,
+                            "status": "complete",
+                        },
+                    )
+            except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
+                self._logger.warning("[WEBSOCKET] Failed to broadcast dismiss: %s", ws_error)
+
+            return DismissResult(
+                status="dismissed",
+                job_id=job_id,
+                instruction="Message acknowledged. No action needed. You remain in complete status.",
+            )
+        except (ValidationError, ResourceNotFoundError):
+            raise
+        except Exception as e:
+            self._logger.exception("Failed to dismiss reactivation")
+            raise OrchestrationError(
+                message="Failed to dismiss reactivation", context={"job_id": job_id, "error": str(e)}
+            ) from e
 
     async def report_error(self, job_id: str, error: str, tenant_key: Optional[str] = None) -> ErrorReportResult:
         """
