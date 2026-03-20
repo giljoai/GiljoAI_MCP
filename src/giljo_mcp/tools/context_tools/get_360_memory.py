@@ -119,128 +119,128 @@ async def get_360_memory(
         logger.error("db_manager or session is required", operation="get_360_memory")
         raise ValueError("db_manager or session parameter is required")
 
-    # Use provided session (for testing) or create new one
     if session is not None:
-        # Use provided session directly (for testing)
-        session_to_use = session
-        should_close = False
-    else:
-        # Create new session from db_manager
-        session_to_use = await db_manager.get_session_async().__aenter__()
-        should_close = True
+        return await _get_360_memory_impl(session, product_id, tenant_key, last_n_projects, offset, limit)
 
-    try:
-        # Verify product exists for tenant isolation
-        stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
-        result = await session_to_use.execute(stmt)
-        product = result.scalar_one_or_none()
+    async with db_manager.get_session_async() as new_session:
+        return await _get_360_memory_impl(new_session, product_id, tenant_key, last_n_projects, offset, limit)
 
-        if not product:
-            logger.warning(
-                "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_360_memory"
-            )
-            return {
-                "source": "360_memory",
-                "depth": last_n_projects,
-                "data": [],
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_projects": 0,
-                    "last_n_projects": last_n_projects,
-                    "offset": offset,
-                    "limit": limit or 0,
-                    "returned_projects": 0,
-                    "has_more": False,
-                    "next_offset": None,
-                    "error": "product_not_found",
-                },
-            }
 
-        # Use repository to fetch memory entries from table
-        repo = ProductMemoryRepository()
+async def _get_360_memory_impl(
+    session: AsyncSession,
+    product_id: str,
+    tenant_key: str,
+    last_n_projects: int,
+    offset: int,
+    limit: int | None,
+) -> dict[str, Any]:
+    """Inner implementation for get_360_memory using a provided session."""
+    # Verify product exists for tenant isolation
+    stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
+    result = await session.execute(stmt)
+    product = result.scalar_one_or_none()
 
-        # First, get total count (fetch all to determine total)
-        all_entries = await repo.get_entries_by_product(
-            session=session_to_use,
-            product_id=product_id,
-            tenant_key=tenant_key,
-            include_deleted=False,
-        )
-        total_projects = len(all_entries)
-
-        if total_projects == 0:
-            logger.debug("no_memory_entries", product_id=product_id, operation="get_360_memory")
-            return {
-                "source": "360_memory",
-                "depth": last_n_projects,
-                "data": [],
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_projects": 0,
-                    "last_n_projects": last_n_projects,
-                    "offset": offset,
-                    "limit": limit or 0,
-                    "returned_projects": 0,
-                    "has_more": False,
-                    "next_offset": None,
-                },
-            }
-
-        # Fetch entries with pagination (repository already sorts by sequence DESC)
-        entries = await repo.get_entries_by_product(
-            session=session_to_use,
-            product_id=product_id,
-            tenant_key=tenant_key,
-            limit=last_n_projects,
-            offset=0,
-            include_deleted=False,
-        )
-
-        # Convert to dicts (matches existing format via to_dict())
-        filtered_history = [entry.to_dict() for entry in entries]
-
-        # Apply pagination within the filtered results
-        effective_limit = limit if limit is not None else last_n_projects
-        paginated_history = filtered_history[offset : offset + effective_limit]
-
-        # Calculate pagination metadata
-        has_more = (offset + len(paginated_history)) < len(filtered_history)
-        next_offset = offset + len(paginated_history) if has_more else None
-
-        # Calculate token estimate
-        total_tokens = estimate_tokens(paginated_history)
-
-        logger.info(
-            "360_memory_fetched",
-            product_id=product_id,
-            tenant_key=tenant_key,
-            depth=last_n_projects,
-            offset=offset,
-            limit=effective_limit,
-            total_projects=total_projects,
-            returned_projects=len(paginated_history),
-            has_more=has_more,
-            estimated_tokens=total_tokens,
-        )
-
+    if not product:
+        logger.warning("product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_360_memory")
         return {
             "source": "360_memory",
             "depth": last_n_projects,
-            "data": paginated_history,
+            "data": [],
             "metadata": {
                 "product_id": product_id,
                 "tenant_key": tenant_key,
-                "total_projects": total_projects,
+                "total_projects": 0,
                 "last_n_projects": last_n_projects,
                 "offset": offset,
-                "limit": effective_limit,
-                "returned_projects": len(paginated_history),
-                "has_more": has_more,
-                "next_offset": next_offset,
+                "limit": limit or 0,
+                "returned_projects": 0,
+                "has_more": False,
+                "next_offset": None,
+                "error": "product_not_found",
             },
         }
-    finally:
-        if should_close and session_to_use:
-            await session_to_use.close()
+
+    # Use repository to fetch memory entries from table
+    repo = ProductMemoryRepository()
+
+    # First, get total count (fetch all to determine total)
+    all_entries = await repo.get_entries_by_product(
+        session=session,
+        product_id=product_id,
+        tenant_key=tenant_key,
+        include_deleted=False,
+    )
+    total_projects = len(all_entries)
+
+    if total_projects == 0:
+        logger.debug("no_memory_entries", product_id=product_id, operation="get_360_memory")
+        return {
+            "source": "360_memory",
+            "depth": last_n_projects,
+            "data": [],
+            "metadata": {
+                "product_id": product_id,
+                "tenant_key": tenant_key,
+                "total_projects": 0,
+                "last_n_projects": last_n_projects,
+                "offset": offset,
+                "limit": limit or 0,
+                "returned_projects": 0,
+                "has_more": False,
+                "next_offset": None,
+            },
+        }
+
+    # Fetch entries with pagination (repository already sorts by sequence DESC)
+    entries = await repo.get_entries_by_product(
+        session=session,
+        product_id=product_id,
+        tenant_key=tenant_key,
+        limit=last_n_projects,
+        offset=0,
+        include_deleted=False,
+    )
+
+    # Convert to dicts (matches existing format via to_dict())
+    filtered_history = [entry.to_dict() for entry in entries]
+
+    # Apply pagination within the filtered results
+    effective_limit = limit if limit is not None else last_n_projects
+    paginated_history = filtered_history[offset : offset + effective_limit]
+
+    # Calculate pagination metadata
+    has_more = (offset + len(paginated_history)) < len(filtered_history)
+    next_offset = offset + len(paginated_history) if has_more else None
+
+    # Calculate token estimate
+    total_tokens = estimate_tokens(paginated_history)
+
+    logger.info(
+        "360_memory_fetched",
+        product_id=product_id,
+        tenant_key=tenant_key,
+        depth=last_n_projects,
+        offset=offset,
+        limit=effective_limit,
+        total_projects=total_projects,
+        returned_projects=len(paginated_history),
+        has_more=has_more,
+        estimated_tokens=total_tokens,
+    )
+
+    return {
+        "source": "360_memory",
+        "depth": last_n_projects,
+        "data": paginated_history,
+        "metadata": {
+            "product_id": product_id,
+            "tenant_key": tenant_key,
+            "total_projects": total_projects,
+            "last_n_projects": last_n_projects,
+            "offset": offset,
+            "limit": effective_limit,
+            "returned_projects": len(paginated_history),
+            "has_more": has_more,
+            "next_offset": next_offset,
+        },
+    }
