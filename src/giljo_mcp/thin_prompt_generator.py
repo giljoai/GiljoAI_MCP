@@ -535,9 +535,9 @@ class ThinClientPromptGenerator:
             )
             self.db.add(agent_execution)
 
-            # Handover 0425: Set project staging_status to 'staged' when orchestrator is created
+            # Handover 0425: Set project staging_status to 'staging' when orchestrator is created
             # This enables the Staged column in ProjectsView to show "Yes"
-            project.staging_status = "staged"
+            project.staging_status = "staging"
             project.updated_at = datetime.now(timezone.utc)
 
             await self.db.commit()
