@@ -44,6 +44,8 @@
                       v-bind="tooltipProps"
                       type="button"
                       class="play-circle-btn"
+                      :class="{ 'play-btn-faded': isPlayButtonFaded(agent) }"
+                      :disabled="isPlayButtonFaded(agent)"
                       aria-label="Copy agent prompt"
                       @click="handlePlay(agent)"
                     >
@@ -607,6 +609,14 @@ function shouldShowCopyButton(agent) {
 }
 
 /**
+ * Fade the play button for any status other than "waiting"
+ * Gives a clear visual signal that the agent has been launched.
+ */
+function isPlayButtonFaded(agent) {
+  return agent.status !== 'waiting'
+}
+
+/**
  * Handle Play button click
  */
 async function handlePlay(agent) {
@@ -999,7 +1009,7 @@ async function copyToClipboard(text) {
               color: rgba(255, 215, 0, 0.9);
             }
 
-            &:hover {
+            &:hover:not(:disabled) {
               border-color: rgb(var(--v-theme-highlight));
               background: rgba(255, 215, 0, 0.1);
               transform: scale(1.1);
@@ -1007,6 +1017,12 @@ async function copyToClipboard(text) {
               .v-icon {
                 color: rgb(var(--v-theme-highlight));
               }
+            }
+
+            &.play-btn-faded {
+              opacity: 0.25;
+              cursor: default;
+              pointer-events: none;
             }
           }
 
