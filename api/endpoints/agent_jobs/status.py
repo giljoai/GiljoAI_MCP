@@ -72,6 +72,8 @@ def job_to_response(job: dict) -> JobResponse:
         todo_items=todo_items,  # Handover 0423
         phase=job.get("phase"),  # Handover 0411a
         result=job.get("result"),  # Handover 0497e
+        accumulated_duration_seconds=job.get("accumulated_duration_seconds", 0.0),  # Handover 0827d
+        reactivation_count=job.get("reactivation_count", 0),  # Handover 0827d
     )
 
 

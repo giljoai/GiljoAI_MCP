@@ -546,14 +546,19 @@ function formatDuration(agent) {
     return '---'
   }
 
+  // Handover 0827d: Include accumulated time from previous reactivation cycles
+  const accumulatedMs = (agent.accumulated_duration_seconds || 0) * 1000
+
   const start = new Date(agent.started_at).getTime()
   // Use completed_at if available, otherwise use current time (for working agents)
   const end = agent.completed_at ? new Date(agent.completed_at).getTime() : now.value
-  const durationMs = end - start
+  const segmentMs = end - start
 
-  if (durationMs < 0) {
+  if (segmentMs < 0 && accumulatedMs <= 0) {
     return '---'
   }
+
+  const durationMs = accumulatedMs + Math.max(0, segmentMs)
 
   // Less than a minute: show seconds
   if (durationMs < 60000) {
