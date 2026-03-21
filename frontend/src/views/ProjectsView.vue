@@ -89,17 +89,6 @@
             class="flex-grow-1"
             aria-label="Search projects by name"
           ></v-text-field>
-          <v-btn
-            v-if="projectTypes.length > 0"
-            variant="outlined"
-            density="compact"
-            :color="showFilterRow || filterType !== 'all' || filterStatus !== 'all' ? 'primary' : undefined"
-            prepend-icon="mdi-filter-variant"
-            class="flex-shrink-0"
-            @click="showFilterRow = !showFilterRow"
-          >
-            Filters
-          </v-btn>
         </div>
 
         <!-- Collapsible Filter Pills -->
@@ -201,17 +190,19 @@
             Deleted ({{ deletedCount }})
           </v-btn>
 
+          <v-btn
+            v-if="projectTypes.length > 0"
+            variant="outlined"
+            :color="showFilterRow || filterType !== 'all' || filterStatus !== 'all' ? 'primary' : undefined"
+            aria-label="Toggle filters"
+            style="min-width: 0; padding: 0 12px"
+            @click="showFilterRow = !showFilterRow"
+          >
+            <v-icon>mdi-filter-variant</v-icon>
+          </v-btn>
+
           <v-divider vertical class="mx-1" style="height: 24px" />
 
-          <!-- Date Format Toggle -->
-          <v-btn
-            variant="outlined"
-            :title="`Switch to ${dateLocale === 'US' ? 'EU' : 'US'} date format`"
-            prepend-icon="mdi-calendar"
-            @click="toggleDateLocale"
-          >
-            {{ dateLocale }} Format
-          </v-btn>
         </div>
       </v-card-title>
 
@@ -259,13 +250,6 @@
             </div>
           </template>
 
-          <!-- Product Column -->
-          <template v-slot:item.product="{ item }">
-            <span class="text-caption project-name-link" @click.stop="router.push('/products')">
-              {{ activeProduct?.name || '—' }}
-            </span>
-          </template>
-
           <!-- Staged Column -->
           <template v-slot:item.staging_status="{ item }">
             <v-chip
@@ -279,7 +263,7 @@
 
           <!-- Created Date Column -->
           <template v-slot:item.created_at="{ item }">
-            {{ formatDateShort(item.created_at) }}
+            {{ formatDate(item.created_at) }}
           </template>
 
           <!-- Completed Date Column -->
@@ -287,24 +271,22 @@
             <div class="text-center">
               {{
                 item.status === 'completed' || item.status === 'cancelled' || item.status === 'terminated'
-                  ? formatDateShort(item.completed_at || item.updated_at)
+                  ? formatDate(item.completed_at || item.updated_at)
                   : '—'
               }}
             </div>
           </template>
 
-          <!-- Status Column (StatusBadge with actions dropdown) -->
+          <!-- Status Column (display-only badge; actions moved to ... menu) -->
           <template v-slot:item.status="{ item }">
             <div class="d-flex align-center justify-center">
               <StatusBadge
                 :status="normalizeStatus(item.status)"
-                :project-id="item.id"
-                @action="handleStatusAction"
               />
             </div>
           </template>
 
-          <!-- Actions Column (edit/delete menu) -->
+          <!-- Actions Column (status actions + edit/delete menu) -->
           <template v-slot:item.menu="{ item }">
             <div class="d-flex align-center justify-center">
               <v-menu>
@@ -318,7 +300,20 @@
                   ></v-btn>
                 </template>
 
-                <v-list density="compact" min-width="150">
+                <v-list density="compact" min-width="180">
+                  <!-- Status-aware actions -->
+                  <v-list-item
+                    v-for="sa in getStatusActions(item.status)"
+                    :key="sa.key"
+                    :prepend-icon="sa.icon"
+                    :title="sa.label"
+                    :class="sa.color ? `text-${sa.color}` : undefined"
+                    @click="handleStatusAction({ action: sa.key, projectId: item.id })"
+                  ></v-list-item>
+
+                  <v-divider class="my-1" />
+
+                  <!-- Edit and Delete -->
                   <v-list-item
                     prepend-icon="mdi-pencil"
                     title="Edit Project"
@@ -328,6 +323,7 @@
                   <v-list-item
                     prepend-icon="mdi-delete"
                     title="Delete Project"
+                    class="text-error"
                     @click="confirmDelete(item)"
                   ></v-list-item>
                 </v-list>
@@ -393,9 +389,9 @@
           <div v-if="editingProject" class="text-caption text-medium-emphasis mb-4">
             <div>Project ID: <span style="font-family: monospace">{{ editingProject.id }}</span></div>
             <div>
-              Created: {{ formatDateFull(editingProject.created_at) }}
+              Created: {{ formatDate(editingProject.created_at, true) }}
               <span class="mx-2">|</span>
-              Updated: {{ formatDateFull(editingProject.updated_at) }}
+              Updated: {{ formatDate(editingProject.updated_at, true) }}
             </div>
           </div>
 
@@ -783,7 +779,19 @@ const purgingAllDeleted = ref(false)
 const sortConfig = ref([{ key: 'created_at', order: 'desc' }])
 
 // Date locale preference (US: MM-DD-YYYY, EU: DD-MM-YYYY)
-const dateLocale = ref(localStorage.getItem('dateLocale') || 'US')
+// Format date as dd-MMM-yyyy (locked format)
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function formatDate(dateStr, includeTime = false) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mmm = MONTHS[d.getMonth()]
+  const yyyy = d.getFullYear()
+  if (!includeTime) return `${dd}-${mmm}-${yyyy}`
+  const hh = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${dd}-${mmm}-${yyyy} ${hh}:${min}`
+}
 
 // Form data
 const projectData = ref({
@@ -807,13 +815,12 @@ const statusFilterOptions = computed(() => [
 
 // Table headers
 const headers = [
-  { title: 'Name', key: 'name', sortable: true, width: '33%' },
-  { title: 'Product', key: 'product', sortable: false, width: '12%' },
-  { title: 'Staged', key: 'staging_status', sortable: true, width: '7%' },
-  { title: 'Created', key: 'created_at', sortable: true, width: '11%' },
-  { title: 'Completed', key: 'completed_at', sortable: true, width: '11%', align: 'center' },
-  { title: 'Status', key: 'status', sortable: true, width: '13%', align: 'center' },
-  { title: 'Actions', key: 'menu', sortable: false, width: '4%', align: 'center' },
+  { title: 'Name', key: 'name', sortable: true, width: '38%' },
+  { title: 'Staged', key: 'staging_status', sortable: true, width: '9%' },
+  { title: 'Created', key: 'created_at', sortable: true, width: '13%' },
+  { title: 'Completed', key: 'completed_at', sortable: true, width: '13%', align: 'center' },
+  { title: 'Status', key: 'status', sortable: true, width: '15%', align: 'center' },
+  { title: 'Actions', key: 'menu', sortable: false, width: '5%', align: 'center' },
 ]
 
 // --- Inline taxonomy state and logic (Handover 0440c) ---
@@ -1112,45 +1119,6 @@ const activeProject = computed(() => {
   return activeProductProjects.value.find((p) => p.status === 'active')
 })
 
-// Format date with locale support (date only for table columns)
-function formatDateShort(dateStr) {
-  if (!dateStr) return '—'
-  const date = new Date(dateStr)
-
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const year = date.getFullYear()
-
-  if (dateLocale.value === 'EU') {
-    return `${day}-${month}-${year}`
-  } else {
-    return `${month}-${day}-${year}`
-  }
-}
-
-// Format date with time (for edit dialog details)
-function formatDateFull(dateStr) {
-  if (!dateStr) return '—'
-  const date = new Date(dateStr)
-
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const year = date.getFullYear()
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-
-  if (dateLocale.value === 'EU') {
-    return `${day}-${month}-${year} ${hours}:${minutes}`
-  } else {
-    return `${month}-${day}-${year} ${hours}:${minutes}`
-  }
-}
-
-// Toggle date locale between US and EU
-function toggleDateLocale() {
-  dateLocale.value = dateLocale.value === 'US' ? 'EU' : 'US'
-  localStorage.setItem('dateLocale', dateLocale.value)
-}
 
 // Normalize status values for UI (e.g., legacy 'paused' -> 'inactive')
 function normalizeStatus(status) {
@@ -1158,6 +1126,31 @@ function normalizeStatus(status) {
     return 'inactive'
   }
   return status || 'inactive'
+}
+
+// Status action definitions for the "..." menu (moved from StatusBadge)
+const statusActionDefs = {
+  activate: { label: 'Activate', icon: 'mdi-play-circle', color: 'success', confirm: false },
+  deactivate: { label: 'Deactivate', icon: 'mdi-pause-circle', color: null, confirm: true },
+  complete: { label: 'Complete', icon: 'mdi-check-circle', color: null, confirm: true },
+  cancel: { label: 'Cancel Project', icon: 'mdi-cancel', color: 'warning', confirm: true },
+  reopen: { label: 'Reopen', icon: 'mdi-refresh', destructive: false, confirm: false },
+  review: { label: 'Review', icon: 'mdi-eye', destructive: false, confirm: false },
+}
+
+const actionsByStatus = {
+  inactive: ['activate', 'complete', 'cancel'],
+  active: ['deactivate', 'complete', 'cancel'],
+  completed: ['review'],
+  cancelled: ['reopen'],
+  terminated: ['review'],
+}
+
+// Get available status actions for a project based on its current status
+function getStatusActions(status) {
+  const normalized = normalizeStatus(status)
+  const keys = actionsByStatus[normalized] || []
+  return keys.map((key) => ({ key, ...statusActionDefs[key] }))
 }
 
 // Methods
