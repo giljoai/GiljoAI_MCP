@@ -2,23 +2,21 @@
   <div class="project-tabs-container">
     <!-- Project Header (static, no scroll) -->
     <div class="project-header">
-      <div class="d-flex align-center gap-4">
-        <h1 class="text-h4">Project:</h1>
-        <h2 class="project-name d-flex align-center">
-          <!-- Series Chip (Handover 0440c) -->
-          <v-chip
-            v-if="project?.project_type_id || project?.series_number"
-            :color="project?.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
-            size="small"
-            variant="flat"
-            class="mr-3"
-            :title="project?.project_type?.label || 'Untyped'"
-          >
-            {{ project.taxonomy_alias }}
-          </v-chip>
-          <span>{{ project?.name || 'Loading...' }}</span>
-        </h2>
-      </div>
+      <h1 class="project-label">Project:</h1>
+      <h2 class="project-name">
+        <!-- Series Chip (Handover 0440c) -->
+        <v-chip
+          v-if="project?.project_type_id || project?.series_number"
+          :color="project?.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
+          size="small"
+          variant="flat"
+          class="project-badge mr-3"
+          :title="project?.project_type?.label || 'Untyped'"
+        >
+          {{ project.taxonomy_alias }}
+        </v-chip>
+        <span class="project-title">{{ project?.name || 'Loading...' }}</span>
+      </h2>
       <p class="text-subtitle-1 text-medium-emphasis mb-0">
         Project ID: {{ project?.project_id || project?.id || 'N/A' }}
       </p>
@@ -723,18 +721,34 @@ async function handleContinueWorking() {
 .project-header {
   margin-bottom: 16px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 
-  h1.text-h4 {
+  .project-label {
     font-size: 1.5rem;
     font-weight: 400;
     margin: 0;
   }
 
   .project-name {
+    display: flex;
+    align-items: center;
     color: rgb(var(--v-theme-primary));
     font-size: 2rem;
     font-weight: 400;
     margin: 0;
+  }
+
+  .project-badge {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .text-subtitle-1 {
+    width: 100%;
   }
 }
 
@@ -854,16 +868,26 @@ async function handleContinueWorking() {
   }
 }
 
-/* Mobile Responsive */
+/* Mobile / Portrait Responsive */
+@media (max-width: 1024px) {
+  .project-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+
+    .project-label {
+      font-size: 1.2rem;
+    }
+
+    .project-name {
+      font-size: 1.1rem;
+    }
+  }
+}
+
 @media (max-width: 600px) {
   .project-tabs-container {
     padding: 16px;
-  }
-
-  .project-header {
-    .project-name {
-      font-size: 1.5rem;
-    }
   }
 
   .action-buttons-row {
