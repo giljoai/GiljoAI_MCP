@@ -60,7 +60,7 @@ def mock_agent_job():
         tenant_key="tenant-test",
         project_id=str(uuid4()),
         mission="Test mission for implementation",
-        job_type="orchestrator",
+        job_type="agent",  # Handover 0830: Use "agent" for worker protocol tests
         status="active",
     )
 
