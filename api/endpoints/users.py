@@ -26,7 +26,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 # REMOVED: PlainTextResponse import (no longer needed)
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from api.endpoints.dependencies import get_user_service
+from api.endpoints.dependencies import get_db_manager, get_user_service
 from src.giljo_mcp.auth.dependencies import (
     get_current_active_user,
     require_admin,
@@ -916,3 +916,59 @@ async def update_execution_mode(
         execution_mode=payload.execution_mode,
     )
     return {"execution_mode": payload.execution_mode}
+
+
+# ---------------------------------------------------------------------------
+# Notification preferences (Handover 0831)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/me/settings/notification-preferences")
+async def get_notification_preferences(
+    current_user: User = Depends(get_current_active_user),
+    db_manager=Depends(get_db_manager),
+) -> dict[str, Any]:
+    """
+    Get the current user's notification preferences.
+
+    Returns default preferences if not yet customized.
+    """
+    from src.giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
+
+    prefs = current_user.notification_preferences or DEFAULT_NOTIFICATION_PREFERENCES
+    return {"notification_preferences": prefs}
+
+
+@router.put("/me/settings/notification-preferences")
+async def update_notification_preferences(
+    payload: dict[str, Any],
+    current_user: User = Depends(get_current_active_user),
+    db_manager=Depends(get_db_manager),
+) -> dict[str, Any]:
+    """
+    Update the current user's notification preferences.
+
+    Supported fields:
+    - context_tuning_reminder: bool (default: true)
+    - tuning_reminder_threshold: int (minimum 3, default: 10)
+    """
+    from sqlalchemy import update as sql_update
+
+    from src.giljo_mcp.config.defaults import DEFAULT_NOTIFICATION_PREFERENCES
+    from src.giljo_mcp.models.auth import User as UserModel
+
+    prefs = dict(current_user.notification_preferences or DEFAULT_NOTIFICATION_PREFERENCES)
+
+    if "context_tuning_reminder" in payload:
+        prefs["context_tuning_reminder"] = bool(payload["context_tuning_reminder"])
+
+    if "tuning_reminder_threshold" in payload:
+        threshold = int(payload["tuning_reminder_threshold"])
+        prefs["tuning_reminder_threshold"] = max(threshold, 3)
+
+    async with db_manager.get_session_async() as session:
+        stmt = sql_update(UserModel).where(UserModel.id == current_user.id).values(notification_preferences=prefs)
+        await session.execute(stmt)
+        await session.commit()
+
+    return {"notification_preferences": prefs}

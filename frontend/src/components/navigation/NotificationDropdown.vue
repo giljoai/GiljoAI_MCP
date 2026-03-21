@@ -165,6 +165,7 @@ const getNotificationIcon = (type) => {
     message_received: 'mdi-message-alert',
     connection_lost: 'mdi-wifi-off',
     connection_restored: 'mdi-wifi-check',
+    context_tuning: 'mdi-tune',
     success: 'mdi-check-circle',
     error: 'mdi-alert-circle',
     info: 'mdi-information',
@@ -183,6 +184,7 @@ const getNotificationColor = (type) => {
     message_received: 'success',
     connection_lost: 'error',
     connection_restored: 'success',
+    context_tuning: 'info',
     success: 'success',
     error: 'error',
     info: 'info',
@@ -242,6 +244,11 @@ const handleNotificationClick = async (notification) => {
     } catch (error) {
       console.error('[NotificationDropdown] Error marking notification as read:', error)
     }
+  }
+
+  // Handover 0831: context_tuning notifications stay on current page (no project navigation)
+  if (notification.type === 'context_tuning') {
+    return
   }
 
   // Handover 0259: Navigate to project if notification has project context

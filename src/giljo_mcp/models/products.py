@@ -118,6 +118,14 @@ class Product(Base):
         comment="Product memory config storage. Contains git_integration settings only.",
     )
 
+    # Product Context Tuning state (Handover 0831)
+    tuning_state = Column(
+        JSONB,
+        nullable=True,
+        default=None,
+        comment="Context tuning state: last_tuned_at, last_tuned_at_sequence, pending_proposals",
+    )
+
     # Consolidated vision summaries (Handover 0377)
     # These store pre-computed summaries aggregated from ALL active vision documents
     consolidated_vision_light = Column(
