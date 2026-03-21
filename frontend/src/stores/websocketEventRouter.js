@@ -394,6 +394,22 @@ export const EVENT_MAP = {
   'product:memory:updated': { store: 'products', action: 'handleProductMemoryUpdated' },
   'product:learning:added': { store: 'products', action: 'handleProductLearningAdded' },
   'product:status:changed': { store: 'products', action: 'handleProductStatusChanged' },
+
+  // Handover 0831: Product context tuning proposals ready
+  'product:tuning:proposals_ready': {
+    handler: async (payload) => {
+      const notificationStore = useNotificationStore()
+      notificationStore.addNotification({
+        type: 'context_tuning',
+        title: 'Tuning Proposals Ready',
+        message: 'Your CLI tool has submitted context tuning proposals. Review them in the product details.',
+        metadata: {
+          product_id: payload.product_id,
+          product_name: payload.product_name,
+        },
+      })
+    },
+  },
 }
 
 /**

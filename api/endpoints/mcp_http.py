@@ -295,6 +295,13 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
     },
     # Download Tools
     "generate_download_token": {"content_type", "tenant_key"},
+    # Product Context Tuning (Handover 0831)
+    "submit_tuning_review": {
+        "product_id",
+        "tenant_key",
+        "proposals",
+        "overall_summary",
+    },
 }
 
 
@@ -836,6 +843,50 @@ def _build_context_and_closeout_tools() -> list[dict[str, Any]]:
                 "required": ["project_id", "summary", "key_outcomes", "decisions_made"],
             },
         },
+        # Product Context Tuning Review (Handover 0831)
+        {
+            "name": "submit_tuning_review",
+            "description": "Submit product context tuning proposals after comparing current product context against recent project history. Called after analyzing the tuning comparison prompt.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "product_id": {"type": "string", "description": "Target product UUID"},
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
+                    "proposals": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "section": {
+                                    "type": "string",
+                                    "description": "Context section key (e.g., tech_stack, architecture, description)",
+                                },
+                                "drift_detected": {"type": "boolean", "description": "Whether drift was found"},
+                                "current_summary": {
+                                    "type": "string",
+                                    "description": "Brief description of current value",
+                                },
+                                "evidence": {"type": "string", "description": "What 360 memory / git shows"},
+                                "proposed_value": {"type": "string", "description": "Suggested replacement text"},
+                                "confidence": {
+                                    "type": "string",
+                                    "enum": ["high", "medium", "low"],
+                                    "description": "Confidence level",
+                                },
+                                "reasoning": {"type": "string", "description": "Why the change is recommended"},
+                            },
+                            "required": ["section", "drift_detected"],
+                        },
+                        "description": "Per-section tuning proposals",
+                    },
+                    "overall_summary": {
+                        "type": "string",
+                        "description": "High-level drift assessment",
+                    },
+                },
+                "required": ["product_id", "proposals"],
+            },
+        },
     ]
 
 
@@ -941,6 +992,8 @@ async def handle_tools_call(
         "write_360_memory": state.tool_accessor.write_360_memory,
         # Download Tools (Handover 0384)
         "generate_download_token": state.tool_accessor.generate_download_token,
+        # Product Context Tuning (Handover 0831)
+        "submit_tuning_review": state.tool_accessor.submit_tuning_review,
     }
 
     if tool_name not in tool_map:

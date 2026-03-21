@@ -82,6 +82,27 @@ DEFAULT_DEPTH_CONFIG: dict[str, Any] = {
 }
 
 
+DEFAULT_NOTIFICATION_PREFERENCES: dict[str, Any] = {
+    "context_tuning_reminder": True,
+    "tuning_reminder_threshold": 10,
+}
+
+# Section keys that map to tuning-eligible product context fields
+TUNING_SECTION_TOGGLE_MAP: dict[str, str] = {
+    "description": "product_core",
+    "tech_stack": "tech_stack",
+    "architecture": "architecture",
+    "core_features": "architecture",
+    "codebase_structure": "architecture",
+    "database_type": "tech_stack",
+    "backend_framework": "tech_stack",
+    "frontend_framework": "tech_stack",
+    "quality_standards": "testing",
+    "target_platforms": "product_core",
+    "vision_documents": "vision_documents",
+}
+
+
 def get_toggle_for_category(category: str) -> bool:
     """
     Get the toggle status for a specific category.

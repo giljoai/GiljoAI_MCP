@@ -437,3 +437,55 @@ When pending proposals exist, the Edit Product tabs show a comparison overlay: c
 2. **Notification model** — Verify whether the existing notification system supports a "blue" severity or if a new severity level needs to be added. Check current severity enum values.
 3. **WebSocket event naming** — Proposed: `product:tuning:proposals_ready`. Verify this follows the existing event naming convention in the WebSocket handler.
 4. **Context toggle field mapping** — **DECIDED:** Sub-fields (Core Features, Codebase Structure, Database, Backend/Frontend Framework) follow their parent toggle for v1. If Architecture is toggled off, all architecture sub-fields are excluded from the tuning menu. Independent sub-field toggles are not needed — add only if users request it post-launch.
+
+---
+
+## Implementation Summary
+
+**Status:** Completed
+**Date:** 2026-03-21
+**Implementing Agent:** Claude Opus 4.6
+
+### What Was Built
+
+- **Data model:** `tuning_state` JSONB on Product, `notification_preferences` JSONB on User
+- **Migration:** `i9j0k1l2m345_0831_product_context_tuning.py` (additive, safe for fresh + upgrade)
+- **Backend service:** `ProductTuningService` (prompt assembly, proposal storage, apply/dismiss/clear, staleness check)
+- **MCP tool #24:** `submit_tuning_review` (schema + allowlist + tool_map + accessor + implementation)
+- **API endpoints:** 5 new endpoints under `/api/v1/products/{id}/tuning/` (sections, generate-prompt, proposals, apply, dismiss-all)
+- **User settings:** notification-preferences GET/PUT endpoints on `/me/settings/`
+- **Notification hook:** Post-write staleness check in `write_360_memory` (integer comparison, no LLM)
+- **Frontend:** `ProductTuningMenu.vue` (section selection + prompt generation), `ProductTuningReview.vue` (proposal diff/review)
+- **UI integrations:** ProductDetailsDialog (Tune Context button), NotificationDropdown (context_tuning type), notifications store (info badge), websocketEventRouter (proposals_ready event)
+- **Tests:** 39 unit tests across 9 test classes covering all service methods, section mappings, tenant isolation, and edge cases
+- **Defaults:** `DEFAULT_NOTIFICATION_PREFERENCES`, `TUNING_SECTION_TOGGLE_MAP` in config/defaults.py
+
+### Key Files
+
+| File | Change |
+|------|--------|
+| `src/giljo_mcp/services/product_tuning_service.py` | NEW (338 lines) |
+| `src/giljo_mcp/tools/submit_tuning_review.py` | NEW (103 lines) |
+| `api/endpoints/products/tuning.py` | NEW (203 lines) |
+| `frontend/src/components/products/ProductTuningMenu.vue` | NEW (307 lines) |
+| `frontend/src/components/products/ProductTuningReview.vue` | NEW (431 lines) |
+| `tests/services/test_product_tuning_service.py` | NEW (1302 lines) |
+| `migrations/versions/i9j0k1l2m345_0831_product_context_tuning.py` | NEW |
+| `src/giljo_mcp/models/products.py` | Added tuning_state column |
+| `src/giljo_mcp/models/auth.py` | Added notification_preferences column |
+| `src/giljo_mcp/config/defaults.py` | Added notification + section toggle defaults |
+| `api/endpoints/mcp_http.py` | Registered submit_tuning_review tool |
+| `src/giljo_mcp/tools/tool_accessor.py` | Added submit_tuning_review proxy |
+| `src/giljo_mcp/tools/write_360_memory.py` | Added staleness check hook |
+| `api/endpoints/users.py` | Added notification preferences endpoints |
+
+### Open Questions Resolved
+
+1. **Prompt copy UX:** Reused `v-textarea` readonly + copy button pattern (same as existing prompt displays)
+2. **Notification model:** No "blue" severity exists. Used `info` type with `context_tuning` notification type instead. Does not escalate badge color above info.
+3. **WebSocket event naming:** `product:tuning:proposals_ready` follows existing `domain:sub:action` convention
+4. **Context toggle mapping:** Sub-fields follow parent toggle as decided. TUNING_SECTION_TOGGLE_MAP maps each section to its parent toggle.
+
+### Installation Impact
+
+Migration runs automatically via `install.py run_database_migrations()`. Additive only (new nullable columns). Safe for both fresh installs and upgrades. No config.yaml changes needed.
