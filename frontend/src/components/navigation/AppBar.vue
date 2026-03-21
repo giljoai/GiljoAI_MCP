@@ -9,14 +9,21 @@
           @click="$emit('toggle-drawer')"
         ></v-app-bar-nav-icon>
 
-        <!-- GiljoAI Logo -->
+        <!-- GiljoAI Logo (full on wide, mascot icon on narrow) -->
         <v-img
           src="/Giljo_YW.svg"
           alt="GiljoAI"
           height="36"
           width="auto"
           max-width="140"
-          class="ml-2"
+          class="ml-2 app-logo-full"
+        ></v-img>
+        <v-img
+          src="/giljo_YW_Face.svg"
+          alt="GiljoAI"
+          height="28"
+          width="28"
+          class="ml-2 app-logo-icon"
         ></v-img>
       </div>
 
@@ -243,5 +250,20 @@ const handleLogout = async () => {
 
 .about-link {
   color: #ffc300;
+}
+
+/* Logo toggle: full logo on wide, mascot icon on narrow */
+.app-logo-icon {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .app-logo-full {
+    display: none;
+  }
+
+  .app-logo-icon {
+    display: block;
+  }
 }
 </style>
