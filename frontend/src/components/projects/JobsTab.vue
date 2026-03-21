@@ -27,9 +27,9 @@
             <th class="col-play"></th>
             <th class="col-agent-name">Agent Name</th>
             <th class="col-center">Agent Status</th>
-            <th class="col-center">Duration</th>
-            <th class="col-center">Steps</th>
-            <th class="col-center">Messages Waiting</th>
+            <th class="col-center hide-mobile">Duration</th>
+            <th class="col-center hide-mobile">Steps</th>
+            <th class="col-center hide-mobile">Messages Waiting</th>
             <th class="col-actions"></th>
           </tr>
         </thead>
@@ -114,12 +114,12 @@
             </td>
 
             <!-- Duration: Time from working to completed (or elapsed if still working) -->
-            <td class="duration-cell" data-testid="duration">
+            <td class="duration-cell hide-mobile" data-testid="duration">
               {{ formatDuration(agent) }}
             </td>
 
             <!-- Steps (numeric TODO progress) -->
-            <td class="steps-cell text-center">
+            <td class="steps-cell text-center hide-mobile">
               <button
                 v-if="agent.steps && typeof agent.steps.completed === 'number' && typeof agent.steps.total === 'number'"
                 type="button"
@@ -134,7 +134,7 @@
             </td>
 
             <!-- Messages (waiting count) -->
-            <td class="messages-waiting-cell text-center">
+            <td class="messages-waiting-cell text-center hide-mobile">
               <button
                 type="button"
                 class="message-count-button"
@@ -145,96 +145,132 @@
               </button>
             </td>
 
-            <!-- Actions -->
+            <!-- Actions: inline icons on wide screens, three-dot menu on narrow -->
             <td class="actions-cell">
-              <!-- Messages button: opens Message Audit Modal (Handover 0358) -->
-              <v-tooltip text="View messages">
-                <template #activator="{ props: tooltipProps }">
-                  <v-btn
-                    v-bind="tooltipProps"
-                    icon="mdi-message-outline"
-                    size="small"
-                    variant="text"
-                    :color="actionIconColor"
-                    aria-label="View messages"
-                    data-testid="jobs-messages-btn"
-                    @click="handleMessages(agent)"
-                  />
-                </template>
-              </v-tooltip>
-
-              <!-- GiljoAI Face button: shows agent role/template (Handover 0358) -->
-              <v-tooltip text="View agent role">
-                <template #activator="{ props: tooltipProps }">
-                  <v-btn
-                    v-bind="tooltipProps"
-                    size="small"
-                    variant="text"
-                    aria-label="View agent role"
-                    data-testid="jobs-role-btn"
-                    @click="handleAgentRole(agent)"
-                  >
-                    <img
-                      :src="giljoFaceIcon"
-                      alt="Agent Role"
-                      class="giljo-face-icon"
+              <!-- Inline icons (hidden on narrow/portrait screens) -->
+              <div class="actions-inline">
+                <v-tooltip text="View messages">
+                  <template #activator="{ props: tooltipProps }">
+                    <v-btn
+                      v-bind="tooltipProps"
+                      icon="mdi-message-outline"
+                      size="small"
+                      variant="text"
+                      :color="actionIconColor"
+                      aria-label="View messages"
+                      data-testid="jobs-messages-btn"
+                      @click="handleMessages(agent)"
                     />
-                  </v-btn>
-                </template>
-              </v-tooltip>
+                  </template>
+                </v-tooltip>
 
-              <!-- Job button: shows agent job/mission (Handover 0358) -->
-              <v-tooltip text="View assigned job">
-                <template #activator="{ props: tooltipProps }">
-                  <v-btn
-                    v-bind="tooltipProps"
-                    icon="mdi-briefcase-outline"
-                    size="small"
-                    variant="text"
-                    :color="actionIconColor"
-                    aria-label="View assigned job"
-                    data-testid="jobs-info-btn"
-                    @click="handleAgentJob(agent)"
-                  />
-                </template>
-              </v-tooltip>
+                <v-tooltip text="View agent role">
+                  <template #activator="{ props: tooltipProps }">
+                    <v-btn
+                      v-bind="tooltipProps"
+                      size="small"
+                      variant="text"
+                      aria-label="View agent role"
+                      data-testid="jobs-role-btn"
+                      @click="handleAgentRole(agent)"
+                    >
+                      <img
+                        :src="giljoFaceIcon"
+                        alt="Agent Role"
+                        class="giljo-face-icon"
+                      />
+                    </v-btn>
+                  </template>
+                </v-tooltip>
 
-              <!-- Hand Over button: for orchestrators in any active state (not decommissioned/handed_over) -->
-              <v-tooltip
-                v-if="agent.agent_display_name === 'orchestrator' && !['decommissioned', 'handed_over', 'waiting'].includes(agent.status)"
-                text="Hand over"
-              >
-                <template #activator="{ props: tooltipProps }">
-                  <v-btn
-                    v-bind="tooltipProps"
-                    icon="mdi-refresh"
-                    size="small"
-                    variant="text"
-                    :color="actionIconColor"
-                    aria-label="Hand over session"
-                    @click="handleHandOver(agent)"
-                  />
-                </template>
-              </v-tooltip>
+                <v-tooltip text="View assigned job">
+                  <template #activator="{ props: tooltipProps }">
+                    <v-btn
+                      v-bind="tooltipProps"
+                      icon="mdi-briefcase-outline"
+                      size="small"
+                      variant="text"
+                      :color="actionIconColor"
+                      aria-label="View assigned job"
+                      data-testid="jobs-info-btn"
+                      @click="handleAgentJob(agent)"
+                    />
+                  </template>
+                </v-tooltip>
 
-              <!-- Stop button: only for working orchestrators (Handover 0498) -->
-              <v-tooltip
-                v-if="agent.agent_display_name === 'orchestrator' && agent.status === 'working'"
-                text="Stop project"
-              >
-                <template #activator="{ props: tooltipProps }">
-                  <v-btn
-                    v-bind="tooltipProps"
-                    icon="mdi-stop-circle-outline"
-                    size="small"
-                    variant="text"
-                    color="error"
-                    aria-label="Stop project"
-                    data-testid="jobs-stop-btn"
-                    @click="handleStopProject(agent)"
-                  />
-                </template>
-              </v-tooltip>
+                <v-tooltip
+                  v-if="agent.agent_display_name === 'orchestrator' && !['decommissioned', 'handed_over', 'waiting'].includes(agent.status)"
+                  text="Hand over"
+                >
+                  <template #activator="{ props: tooltipProps }">
+                    <v-btn
+                      v-bind="tooltipProps"
+                      icon="mdi-refresh"
+                      size="small"
+                      variant="text"
+                      :color="actionIconColor"
+                      aria-label="Hand over session"
+                      @click="handleHandOver(agent)"
+                    />
+                  </template>
+                </v-tooltip>
+
+                <v-tooltip
+                  v-if="agent.agent_display_name === 'orchestrator' && agent.status === 'working'"
+                  text="Stop project"
+                >
+                  <template #activator="{ props: tooltipProps }">
+                    <v-btn
+                      v-bind="tooltipProps"
+                      icon="mdi-stop-circle-outline"
+                      size="small"
+                      variant="text"
+                      color="error"
+                      aria-label="Stop project"
+                      data-testid="jobs-stop-btn"
+                      @click="handleStopProject(agent)"
+                    />
+                  </template>
+                </v-tooltip>
+              </div>
+
+              <!-- Three-dot menu (shown only on narrow/portrait screens) -->
+              <div class="actions-menu">
+                <v-menu>
+                  <template #activator="{ props: menuProps }">
+                    <v-btn
+                      v-bind="menuProps"
+                      icon="mdi-dots-vertical"
+                      size="small"
+                      variant="text"
+                      :color="actionIconColor"
+                      aria-label="Agent actions"
+                    />
+                  </template>
+                  <v-list density="compact">
+                    <v-list-item prepend-icon="mdi-message-outline" title="View messages" @click="handleMessages(agent)" />
+                    <v-list-item title="View agent role" @click="handleAgentRole(agent)">
+                      <template #prepend>
+                        <img :src="giljoFaceIcon" alt="Agent Role" class="giljo-face-icon menu-icon" />
+                      </template>
+                    </v-list-item>
+                    <v-list-item prepend-icon="mdi-briefcase-outline" title="View assigned job" @click="handleAgentJob(agent)" />
+                    <v-list-item
+                      v-if="agent.agent_display_name === 'orchestrator' && !['decommissioned', 'handed_over', 'waiting'].includes(agent.status)"
+                      prepend-icon="mdi-refresh"
+                      title="Hand over"
+                      @click="handleHandOver(agent)"
+                    />
+                    <v-list-item
+                      v-if="agent.agent_display_name === 'orchestrator' && agent.status === 'working'"
+                      prepend-icon="mdi-stop-circle-outline"
+                      title="Stop project"
+                      class="text-error"
+                      @click="handleStopProject(agent)"
+                    />
+                  </v-list>
+                </v-menu>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -243,44 +279,48 @@
 
     <!-- Message Composer (Bottom) -->
     <div class="message-composer">
-      <v-btn
-        class="recipient-btn"
-        :variant="selectedRecipient === 'orchestrator' ? 'flat' : 'outlined'"
-        color="yellow-darken-2"
-        @click="selectedRecipient = 'orchestrator'"
-      >
-        Orchestrator
-      </v-btn>
+      <div class="composer-channels">
+        <v-btn
+          class="recipient-btn"
+          :variant="selectedRecipient === 'orchestrator' ? 'flat' : 'outlined'"
+          color="yellow-darken-2"
+          @click="selectedRecipient = 'orchestrator'"
+        >
+          Orchestrator
+        </v-btn>
 
-      <v-btn
-        class="broadcast-btn"
-        :variant="selectedRecipient === 'broadcast' ? 'flat' : 'outlined'"
-        color="yellow-darken-2"
-        @click="selectedRecipient = 'broadcast'"
-      >
-        Broadcast
-      </v-btn>
+        <v-btn
+          class="broadcast-btn"
+          :variant="selectedRecipient === 'broadcast' ? 'flat' : 'outlined'"
+          color="yellow-darken-2"
+          @click="selectedRecipient = 'broadcast'"
+        >
+          Broadcast
+        </v-btn>
+      </div>
 
-      <v-text-field
-        v-model="messageText"
-        class="message-input"
-        placeholder="Type message..."
-        variant="outlined"
-        density="compact"
-        hide-details
-        aria-label="Message to agent"
-        @keyup.enter="sendMessage"
-      />
+      <div class="composer-input">
+        <v-text-field
+          v-model="messageText"
+          class="message-input"
+          placeholder="Type message..."
+          variant="outlined"
+          density="compact"
+          hide-details
+          aria-label="Message to agent"
+          @keyup.enter="sendMessage"
+        />
 
-      <v-btn
-        icon="mdi-play"
-        class="send-btn"
-        color="yellow-darken-2"
-        :loading="sending"
-        :disabled="!messageText.trim()"
-        aria-label="Send message"
-        @click="sendMessage"
-      />
+        <v-btn
+          icon="mdi-play"
+          class="send-btn"
+          color="yellow-darken-2"
+          :loading="sending"
+          :disabled="!messageText.trim()"
+          aria-label="Send message"
+          @click="sendMessage"
+        />
+      </div>
     </div>
 
     <!-- REMOVED: Hand Over Dialog (0461d) - Uses simple handover API now -->
@@ -1200,15 +1240,31 @@ async function copyToClipboard(text) {
 
         &.actions-cell {
           text-align: right;
+          white-space: nowrap;
 
-          .v-btn {
-            min-width: auto;
-            padding: 4px;
-            margin-left: 4px;
+          .actions-inline {
+            display: inline-flex;
+            align-items: center;
+
+            .v-btn {
+              min-width: auto;
+              padding: 4px;
+              margin-left: 4px;
+            }
+
+            .v-icon {
+              opacity: 1;
+            }
           }
 
-          .v-icon {
-            opacity: 1;
+          .actions-menu {
+            display: none;
+
+            .giljo-face-icon.menu-icon {
+              width: 20px;
+              height: 20px;
+              margin-right: 8px;
+            }
           }
         }
       }
@@ -1217,12 +1273,41 @@ async function copyToClipboard(text) {
 
   .message-composer {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     align-items: center;
     padding: 16px;
     background: rgba(var(--v-theme-on-surface), 0.05);
     border-radius: 12px;
     margin-bottom: 20px;
+
+    .composer-channels {
+      display: flex;
+      gap: 12px;
+      order: 0;
+    }
+
+    .composer-input {
+      display: flex;
+      flex: 1;
+      gap: 12px;
+      align-items: center;
+      min-width: 0;
+      order: 1;
+    }
+
+    @media (max-width: 576px) {
+      .composer-channels {
+        order: 2;
+        width: 100%;
+      }
+
+      .composer-input {
+        order: 1;
+        width: 100%;
+        flex-basis: 100%;
+      }
+    }
 
     .recipient-btn,
     .broadcast-btn {
@@ -1317,6 +1402,52 @@ async function copyToClipboard(text) {
     width: 20px;
     height: 20px;
     object-fit: contain;
+  }
+
+  /* Responsive: below 1200px — collapse action icons to three-dot menu */
+  @media (max-width: 1200px) {
+    .table-container .agents-table {
+      tbody td.actions-cell {
+        .actions-inline {
+          display: none;
+        }
+
+        .actions-menu {
+          display: inline-flex;
+        }
+      }
+    }
+  }
+
+  /* Responsive: below 840px — hide agent name text, show avatar only, centered */
+  @media (max-width: 840px) {
+    .table-container .agents-table {
+      thead th.col-agent-name {
+        text-align: center;
+      }
+
+      tbody td.agent-display-name-cell {
+        text-align: center;
+        padding-left: 16px;
+
+        .agent-card-row {
+          justify-content: center;
+        }
+
+        .agent-info {
+          display: none;
+        }
+      }
+    }
+  }
+
+  /* Responsive: portrait / narrow screens — hide extra columns */
+  @media (max-width: 768px) {
+    .table-container .agents-table {
+      .hide-mobile {
+        display: none;
+      }
+    }
   }
 
 }
