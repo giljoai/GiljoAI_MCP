@@ -374,6 +374,7 @@ class MissionResponse(BaseModel):
     started_at: Optional[str] = None
     thin_client: bool = True
     full_protocol: Optional[str] = None
+    current_team_state: Optional[list[dict]] = None  # Handover 0830: Live team state for orchestrator
     blocked: bool = False
     error: Optional[str] = None
     user_instruction: Optional[str] = None

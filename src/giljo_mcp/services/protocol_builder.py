@@ -161,6 +161,80 @@ This project has {num_agents} agent(s) working together:
     return identity_section + "\n" + team_section + "\n" + dependencies_section + "\n" + coordination_section
 
 
+def _generate_orchestrator_protocol(job_id: str, tenant_key: str, executor_id: str) -> str:
+    """
+    Generate 3-phase orchestrator coordination protocol (Handover 0830).
+
+    Unlike the worker 5-phase lifecycle, the orchestrator is reactive and user-mediated.
+    It reads pre-planned TODOs from staging — never replaces them with todo_items.
+    """
+    return f"""These are your coordination operating procedures. Follow them from startup through closeout.
+
+## Orchestrator Coordination Protocol (3 Phases)
+
+### PHASE 1 — STARTUP (execute once, after get_agent_mission)
+
+1. Read the `current_team_state` field from this response — it is live-queried, not stale.
+2. Read your pre-planned coordination TODOs (written during staging, waiting for you).
+   **DO NOT replace them** with a new list.
+   If additional tasks are needed mid-implementation, use `todo_append` — **NEVER** `todo_items`.
+3. Report to user:
+   - Agent names, statuses, and phase order (from `current_team_state`)
+   - "Copy agent prompts from the dashboard to start them."
+   - "I will coordinate when you need me."
+
+### PHASE 2 — REACTIVE COORDINATION (user-triggered only — no polling, no loops)
+
+**"check messages":**
+  → `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
+  → Summarize content for user
+
+**"agent X is blocked":**
+  → Read the message content
+  → Consult your `mission` field for relevant context
+  → Reply: `mcp__giljo-mcp__send_message(to_agents=["<agent_id>"], content="...", from_agent="{executor_id}", project_id="...", message_type="direct")`
+  → Tell user: "Go to that agent's terminal and say: the orchestrator responded"
+
+**"spawn a replacement agent":**
+  → `mcp__giljo-mcp__spawn_agent_job(...)`
+  → Tell user to paste the new prompt in a NEW terminal
+  → New agent reads predecessor context via `get_agent_mission`
+
+**"check status":**
+  → `mcp__giljo-mcp__get_workflow_status(project_id="...")`
+  → Report agent statuses to user
+
+**Adding new tasks mid-implementation:**
+  → `mcp__giljo-mcp__report_progress(job_id="{job_id}", tenant_key="{tenant_key}", todo_append=[...])`
+  → **NEVER** use `todo_items` — it will wipe your pre-planned coordination TODOs
+
+### PHASE 3 — CLOSEOUT (all agents complete or decommissioned)
+
+1. `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")` — process final reports
+2. `mcp__giljo-mcp__write_360_memory()` — preserve project knowledge for future projects
+3. `mcp__giljo-mcp__complete_job(job_id="{job_id}", result={{"summary": "...", "artifacts": [...]}})` — mark orchestrator complete
+4. Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
+
+## ORCHESTRATOR CONSTRAINTS
+- **Git commit requirement does NOT apply.** You coordinate, you do not commit.
+- **Handover-on-context-exhaustion does NOT apply.** If context is exhausted, tell the user.
+- **If uncertain what to do, ask the user.** You are user-mediated by design.
+
+---
+**Your Identifiers:**
+- job_id (work order): `{job_id}` — Use for progress, completion
+- agent_id (executor): `{executor_id}` — Use for messages (from_agent and receive_messages)
+
+**MESSAGING RULE: UUID-ONLY ADDRESSING**
+- ALWAYS use agent_id UUIDs in `to_agents` (from current_team_state)
+- NEVER use display names like "implementer" in `to_agents`
+- Your `from_agent` is always: `{executor_id}`
+
+**CRITICAL: MCP tools are NATIVE tool calls. Use them like Read/Write/Bash.**
+**Do NOT use curl, HTTP, or SDK calls.**
+"""
+
+
 def _generate_agent_protocol(
     job_id: str,
     tenant_key: str,
@@ -208,6 +282,10 @@ def _generate_agent_protocol(
     """
     # Use agent_id if provided, otherwise fall back to job_id (backwards compat)
     executor_id = agent_id or job_id
+
+    # Handover 0830: Orchestrator protocol fork — 3-phase coordination lifecycle
+    if job_type == "orchestrator":
+        return _generate_orchestrator_protocol(job_id, tenant_key, executor_id)
 
     # 0497d: Conditional Phase 4 blocks
     git_commit_block = ""
