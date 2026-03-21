@@ -233,7 +233,7 @@ resetForm() // Clear form fields
 ### Date Formatting
 
 ```javascript
-formatDateShort(dateStr) // Format as MM/DD or MM/DD/YY
+formatDate(dateStr, includeTime = false) // Format as dd-MMM-yyyy (locked format)
 ```
 
 ## Dialog System
@@ -393,7 +393,7 @@ in deleted modal.
 
 #### Date Format
 
-Modify `formatDateShort()` method to customize date display.
+Dates use a locked `dd-MMM-yyyy` format via `formatDate()`. Pass `includeTime: true` for `dd-MMM-yyyy HH:mm`.
 
 ## Performance Considerations
 

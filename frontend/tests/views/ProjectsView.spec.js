@@ -581,19 +581,26 @@ describe('ProjectsView.vue', () => {
   })
 
   describe('Date Formatting', () => {
-    it('formats dates as MM-DD-YYYY for US locale', async () => {
+    it('formats dates as dd-MMM-yyyy', async () => {
       const wrapper = await createWrapper()
-      // Use noon UTC to avoid timezone boundary issues
       const dateStr = '2024-10-28T12:00:00Z'
-      const formatted = wrapper.vm.formatDateShort(dateStr)
+      const formatted = wrapper.vm.formatDate(dateStr)
 
-      expect(formatted).toMatch(/10-28-2024/)
+      expect(formatted).toMatch(/28-Oct-2024/)
+    })
+
+    it('formats dates with time when includeTime is true', async () => {
+      const wrapper = await createWrapper()
+      const dateStr = '2024-10-28T14:30:00Z'
+      const formatted = wrapper.vm.formatDate(dateStr, true)
+
+      expect(formatted).toMatch(/28-Oct-2024 \d{2}:\d{2}/)
     })
 
     it('returns dash for empty dates', async () => {
       const wrapper = await createWrapper()
-      expect(wrapper.vm.formatDateShort(null)).toBe('\u2014')
-      expect(wrapper.vm.formatDateShort('')).toBe('\u2014')
+      expect(wrapper.vm.formatDate(null)).toBe('\u2014')
+      expect(wrapper.vm.formatDate('')).toBe('\u2014')
     })
   })
 
