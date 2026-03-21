@@ -15,7 +15,33 @@
       <v-card-text v-if="product">
         <!-- Product Name -->
         <div class="text-h6 mb-2">{{ product.name }}</div>
-        <div class="text-caption text-medium-emphasis mb-4">ID: {{ product.id }}</div>
+        <div class="text-caption text-medium-emphasis mb-2">ID: {{ product.id }}</div>
+
+        <!-- Context Tuning (Handover 0831) -->
+        <div class="d-flex align-center mb-4">
+          <v-btn
+            variant="outlined"
+            color="primary"
+            size="small"
+            prepend-icon="mdi-tune"
+            @click="showTuningMenu = !showTuningMenu"
+          >
+            Tune Context
+          </v-btn>
+        </div>
+
+        <ProductTuningMenu
+          v-if="showTuningMenu"
+          :product-id="product.id"
+          class="mb-4"
+        />
+
+        <ProductTuningReview
+          v-if="product.tuning_state?.pending_proposals"
+          :product-id="product.id"
+          :pending-proposals="product.tuning_state.pending_proposals"
+          class="mb-4"
+        />
 
         <!-- Description -->
         <div class="mb-4">
@@ -373,6 +399,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import api from '@/services/api'
+import ProductTuningMenu from './ProductTuningMenu.vue'
+import ProductTuningReview from './ProductTuningReview.vue'
 
 const props = defineProps({
   modelValue: {
@@ -394,6 +422,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'refresh-product'])
+
+// Context Tuning toggle (Handover 0831)
+const showTuningMenu = ref(false)
 
 const isOpen = computed({
   get: () => props.modelValue,
