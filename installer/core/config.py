@@ -445,7 +445,7 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                     "multi_tenant": True,
                     "websocket": True,
                     # Security features (optional)
-                    "ssl_enabled": self.settings.get("features", {}).get("ssl", False),
+                    "ssl_enabled": self.settings.get("ssl_enabled", False),
                 },
                 "paths": {
                     "install_dir": install_dir,
@@ -455,7 +455,9 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                     "temp": str(Path(install_dir) / "temp"),
                     "static": str(Path(install_dir) / "frontend" / "dist"),
                     "templates": str(Path(install_dir) / "frontend" / "templates"),
-                    "certs": None,  # v3.0: SSL cert path removed (use docs for SSL setup)
+                    "certs": str(Path(install_dir) / "certs") if self.settings.get("ssl_enabled") else None,
+                    "ssl_cert": self.settings.get("ssl_cert"),
+                    "ssl_key": self.settings.get("ssl_key"),
                 },
                 "logging": {
                     "level": "DEBUG",  # v3.0: Default to DEBUG for localhost
