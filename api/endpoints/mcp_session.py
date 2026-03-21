@@ -190,6 +190,67 @@ class MCPSessionManager:
         logger.info(f"Created new MCP session: {new_session.session_id} (tenant: {user.tenant_key})")
         return new_session
 
+    async def get_or_create_session_from_jwt(
+        self, user_id: str, tenant_key: str, username: str | None = None
+    ) -> MCPSession:
+        """Create or reuse an MCP session for an OAuth JWT-authenticated user.
+
+        Unlike get_or_create_session(), this method does not require an API key.
+        Sessions are identified by user_id + tenant_key combination.
+
+        Args:
+            user_id: User ID from JWT 'sub' claim.
+            tenant_key: Tenant key from JWT payload (required for isolation).
+            username: Username from JWT payload (stored in session_data for audit).
+
+        Returns:
+            An existing or newly created MCPSession instance.
+        """
+        stmt = (
+            select(MCPSession)
+            .where(
+                MCPSession.user_id == user_id,
+                MCPSession.tenant_key == tenant_key,
+                MCPSession.api_key_id.is_(None),
+            )
+            .order_by(MCPSession.last_accessed.desc())
+        )
+        result = await self.db.execute(stmt)
+        sessions = result.scalars().all()
+        existing_session = sessions[0] if sessions else None
+
+        if existing_session and not existing_session.is_expired:
+            existing_session.last_accessed = datetime.now(timezone.utc)
+            existing_session.extend_expiration(self.DEFAULT_SESSION_LIFETIME_HOURS)
+            await self.db.commit()
+            await self.db.refresh(existing_session)
+            logger.debug(f"Reusing JWT session: {existing_session.session_id}")
+            return existing_session
+
+        new_session = MCPSession(
+            api_key_id=None,
+            user_id=user_id,
+            tenant_key=tenant_key,
+            session_data={
+                "initialized": False,
+                "capabilities": {},
+                "client_info": {},
+                "tool_call_history": [],
+                "auth_method": "oauth_jwt",
+                "username": username,
+            },
+            created_at=datetime.now(timezone.utc),
+            last_accessed=datetime.now(timezone.utc),
+        )
+        new_session.extend_expiration(self.DEFAULT_SESSION_LIFETIME_HOURS)
+
+        self.db.add(new_session)
+        await self.db.commit()
+        await self.db.refresh(new_session)
+
+        logger.info(f"Created new JWT session: {new_session.session_id} (tenant: {tenant_key})")
+        return new_session
+
     async def get_session(self, session_id: str, tenant_key: str | None = None) -> MCPSession | None:
         """Retrieve a session by ID, returning None if expired or not found."""
         stmt = select(MCPSession).where(MCPSession.session_id == session_id)

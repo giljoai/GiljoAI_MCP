@@ -271,8 +271,8 @@ class MCPSession(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     session_id = Column(String(36), unique=True, nullable=False, default=generate_uuid, index=True)
 
-    # Foreign keys
-    api_key_id = Column(String(36), ForeignKey("api_keys.id", ondelete="CASCADE"), nullable=False)
+    # Foreign keys (nullable for OAuth JWT sessions that have no API key)
+    api_key_id = Column(String(36), ForeignKey("api_keys.id", ondelete="CASCADE"), nullable=True)
     tenant_key = Column(String(36), nullable=False, index=True)
 
     # SECURITY: User ID for audit trail (Handover 0424 Phase 0)
