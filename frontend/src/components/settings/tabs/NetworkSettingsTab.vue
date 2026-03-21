@@ -143,7 +143,20 @@
         <v-divider class="my-6" />
 
         <div data-test="https-status-section">
-          <h3 class="text-h6 mb-3">HTTPS Encryption</h3>
+          <div class="d-flex align-center justify-space-between mb-3">
+            <h3 class="text-h6">HTTPS Encryption</h3>
+            <v-switch
+              :model-value="sslStatus.ssl_enabled"
+              :loading="sslToggling"
+              :disabled="sslToggling"
+              :label="sslStatus.ssl_enabled ? 'Enabled' : 'Disabled'"
+              color="success"
+              hide-details
+              density="compact"
+              data-test="ssl-toggle"
+              @update:model-value="toggleSsl"
+            />
+          </div>
 
           <v-alert
             :type="sslStatus.ssl_enabled ? 'success' : 'info'"
@@ -151,28 +164,15 @@
             class="mb-4"
             data-test="https-status-alert"
           >
-            <div class="d-flex align-center justify-space-between" style="gap: 16px;">
-              <div class="d-flex align-center" style="min-width: 0;">
-                <v-icon start>{{ sslStatus.ssl_enabled ? 'mdi-lock' : 'mdi-lock-open-outline' }}</v-icon>
-                <div>
-                  <strong>HTTPS:</strong>
-                  {{ sslStatus.ssl_enabled ? 'Enabled' : 'Disabled' }}
-                  <span v-if="sslStatus.has_certificate && !sslStatus.ssl_enabled" class="text-caption ml-1">
-                    (certificate available)
-                  </span>
-                </div>
+            <div class="d-flex align-center">
+              <v-icon start>{{ sslStatus.ssl_enabled ? 'mdi-lock' : 'mdi-lock-open-outline' }}</v-icon>
+              <div>
+                <strong>HTTPS:</strong>
+                {{ sslStatus.ssl_enabled ? 'Enabled' : 'Disabled' }}
+                <span v-if="sslStatus.has_certificate && !sslStatus.ssl_enabled" class="text-caption ml-1">
+                  (certificate available)
+                </span>
               </div>
-              <v-switch
-                :model-value="sslStatus.ssl_enabled"
-                :loading="sslToggling"
-                :disabled="sslToggling"
-                color="success"
-                hide-details
-                density="compact"
-                style="flex-shrink: 0;"
-                data-test="ssl-toggle"
-                @update:model-value="toggleSsl"
-              />
             </div>
           </v-alert>
 
