@@ -190,7 +190,7 @@ onMounted(async () => {
     const edition = configService.getEdition()
     if (edition === 'community') {
       const apiBaseUrl =
-        window.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:7272'
+        window.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:7272`
       const response = await fetch(`${apiBaseUrl}/api/setup/status`, {
         method: 'GET',
         cache: 'no-cache',
