@@ -1604,154 +1604,27 @@ START NOW:
         self, orchestrator_id: str, project, agent_jobs: list, git_enabled: bool = False
     ) -> str:
         """
-        Build multi-terminal orchestrator implementation prompt.
+        Build multi-terminal orchestrator implementation prompt (Handover 0830).
 
-        The orchestrator in multi-terminal mode is a reactive coordinator:
-        it does NOT spawn agents (the user does that via play buttons), but
-        monitors status, relays messages, and guides closeout.
-
-        Used by GET /api/prompts/implementation/{project_id} when
-        execution_mode == "multi_terminal".
+        Genuinely thin: identity + single instruction to call get_agent_mission().
+        All behavioral protocol, team state, and tool catalog live server-side
+        in get_agent_mission() response — never baked into the prompt.
         """
-        # SECTION 1: Identity & Context Recap
-        identity_section = [
-            "# GiljoAI Implementation Phase - Multi-Terminal Mode",
+        lines = [
+            "# GiljoAI Implementation Phase - Orchestrator",
             "",
             "## FIRST ACTION (MANDATORY)",
-            "Before anything else, verify MCP connection:",
-            "```python",
+            "Verify MCP connection:",
+            "```",
             "mcp__giljo-mcp__health_check()",
             "```",
-            'Expected: `{"status": "healthy"}` - If failed, STOP and report error',
             "",
-            "## Who You Are",
-            f"You are the ORCHESTRATOR for project '{project.name}'",
-            f"Job ID: {orchestrator_id}",
-            f"Project ID: {project.id}",
+            f"You are the ORCHESTRATOR for project '{project.name}'.",
+            f"Job ID: `{orchestrator_id}` | Project ID: `{project.id}`",
             "",
-            "## Current State",
-            "You completed staging in a previous session.",
-            "Your specialist agents are now running in separate terminals.",
-            "You are idle by default — the user will ask you when they need coordination.",
-            "---",
-            "",
-        ]
-
-        # SECTION 2: Team Roster
-        agent_roster_lines = []
-        if agent_jobs:
-            for idx, agent in enumerate(agent_jobs, 1):
-                mission = getattr(agent.job, "mission", None) or "(No mission)"
-                mission_summary = mission[:80] + "..." if len(mission) > 80 else mission
-                agent_roster_lines.extend(
-                    [
-                        f"**{idx}. {agent.agent_name}** ({agent.agent_display_name})",
-                        f"   - Agent ID: `{agent.agent_id}`",
-                        f"   - Job ID: `{agent.job_id}`",
-                        f"   - Status: {agent.status}",
-                        f"   - Mission: {mission_summary}",
-                        "",
-                    ]
-                )
-        else:
-            agent_roster_lines.append("(No specialist agents spawned yet)")
-
-        team_section = [
-            "## Your Team",
-            "",
-            "These agents are running independently in their own terminals.",
-            "They may message you for coordination.",
-            "",
-            *agent_roster_lines,
-        ]
-
-        # SECTION 3: Reactive Coordinator Role
-        coordinator_section = [
-            "## Your Role: Reactive Coordinator",
-            "",
-            'Tell the user: "I am launched and ready to support the team.',
-            'Ask me to check agent status, relay messages, or coordinate when needed."',
-            "",
-            "**Do NOT poll or loop.** The MCP server is passive — you act only when the user asks.",
-            "",
-            "### Available MCP Tools",
-            "",
-            f'- **Check status**: `mcp__giljo-mcp__get_workflow_status(project_id="{project.id}")`',
-            '- **Check inbox**: `mcp__giljo-mcp__receive_messages(agent_id="<your_agent_id>", tenant_key="<auto>")`',
-            f'- **Send message**: `mcp__giljo-mcp__send_message(to_agents=["<agent_id>"], content="...", from_agent="<your_agent_id>", project_id="{project.id}")`',
-            f'- **Report progress**: `mcp__giljo-mcp__report_progress(job_id="{orchestrator_id}", tenant_key="<auto>", todo_items=[...])`',
-            f'- **Re-read mission**: `mcp__giljo-mcp__get_orchestrator_instructions(job_id="{orchestrator_id}")`',
-            "",
-            "Note: tenant_key is auto-injected by server from your API key session.",
-            "",
-        ]
-
-        # SECTION 4: Handling Agent Issues
-        issues_section = [
-            "## Handling Agent Issues",
-            "",
-            "If a tester or agent reports problems, you can spawn a fresh agent:",
-            "```python",
-            "mcp__giljo-mcp__spawn_agent_job(...)",
+            "Call `get_agent_mission` to receive your current team state and operating protocol:",
             "```",
-            "The new agent appears on the dashboard.",
-            "Tell the user to copy its prompt into a NEW terminal (fresh context is better than context fog).",
-            "The new agent should read the predecessor's completion result and git commits to understand prior work.",
-            "",
+            f'mcp__giljo-mcp__get_agent_mission(job_id="{orchestrator_id}")',
+            "```",
         ]
-
-        # SECTION 5: Project Closeout
-        git_closeout_lines = []
-        if git_enabled:
-            tag = getattr(project, "taxonomy_alias", None) or project.name
-            git_closeout_lines = [
-                "### Git Closeout Commit",
-                "Before completing, create a closeout commit:",
-                "```bash",
-                f'git commit --allow-empty -m "closeout({tag}): {project.name}"',
-                "```",
-                "",
-            ]
-
-        closeout_section = [
-            "## Project Closeout",
-            "",
-            "When all agents show status 'complete' (check via `get_workflow_status`):",
-            "",
-            "1. Call `receive_messages()` to process any final reports",
-            "2. Call `mcp__giljo-mcp__write_360_memory()` to preserve project knowledge",
-            *git_closeout_lines,
-            f'3. Call `mcp__giljo-mcp__complete_job(job_id="{orchestrator_id}")` to mark yourself complete',
-            '4. Tell the user: "Project is complete. Use /gil_add to save follow-up projects or technical debt tasks."',
-            "",
-            "### If Agents Are NOT Complete (CLOSEOUT_BLOCKED Recovery)",
-            "",
-            "If `get_workflow_status()` shows agents not in 'complete' or 'decommissioned' status:",
-            "",
-            "1. **Send them a completion request:**",
-            "   ```python",
-            '   mcp__giljo-mcp__send_message(to_agents=["<agent_id>"],',
-            '       content="Please read all pending messages via receive_messages(), '
-            'complete remaining TODO items, then call complete_job().")',
-            "   ```",
-            "",
-            "2. **Wait ~30 seconds**, then re-check `get_workflow_status()`.",
-            "",
-            "3. **If agent is still not complete** (terminal may be closed/dead), tell the user:",
-            '   "Agent [name] (job_id: [id]) did not complete. Their terminal may be closed.',
-            "   To reactivate: Open a new terminal and run:",
-            "   ```",
-            "   claude --dangerously-skip-permissions",
-            "   \"You are resuming agent work. Call mcp__giljo-mcp__get_agent_mission(job_id='[job_id]')",
-            "   to get your mission, then call receive_messages() to read pending messages,",
-            '   complete your TODO items, and call complete_job() when done."',
-            "   ```",
-            '   "',
-            "",
-            "After all agents respond or the user intervenes, proceed with closeout above.",
-            "",
-        ]
-
-        all_sections = identity_section + team_section + coordinator_section + issues_section + closeout_section
-
-        return "\n".join(all_sections)
+        return "\n".join(lines)
