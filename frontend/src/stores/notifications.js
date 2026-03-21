@@ -13,7 +13,7 @@ export const useNotificationStore = defineStore('notifications', () => {
   )
 
   // Badge color based on highest priority unread notification (Handover: notification color system)
-  // Priority: connection_lost (red/error) > agent_health (yellow/warning) > others (default)
+  // Priority: connection_lost (red/error) > agent_health (yellow/warning) > context_tuning (info, no escalation) > others (default)
   const badgeColor = computed(() => {
     const unread = notifications.value.filter((n) => !n.read)
     if (unread.length === 0) return 'error' // default when no unread
@@ -25,6 +25,10 @@ export const useNotificationStore = defineStore('notifications', () => {
     // Check for warning notifications (yellow)
     const hasWarning = unread.some((n) => n.type === 'agent_health')
     if (hasWarning) return 'warning'
+
+    // Handover 0831: context_tuning stays info, does not escalate
+    const hasContextTuning = unread.some((n) => n.type === 'context_tuning')
+    if (hasContextTuning) return 'info'
 
     // Default color for other notification types
     return 'primary'

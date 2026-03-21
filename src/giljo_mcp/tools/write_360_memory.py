@@ -439,6 +439,37 @@ async def write_360_memory(
                 data={"entry": entry.to_dict()},
             )
 
+            # Handover 0831: Check tuning staleness after memory write (lightweight integer comparison)
+            try:
+                from giljo_mcp.services.product_tuning_service import ProductTuningService
+
+                tuning_service = ProductTuningService(
+                    db_manager=db_manager,
+                    tenant_key=tenant_key,
+                )
+                staleness = await tuning_service.check_tuning_staleness(
+                    product_id=str(product.id),
+                    user_id=str(product.tenant_key),
+                )
+                if staleness.get("is_stale"):
+                    await emit_websocket_event(
+                        event_type="notification:new",
+                        tenant_key=tenant_key,
+                        product_id=str(product.id),
+                        data={
+                            "type": "context_tuning",
+                            "title": "Context Review Suggested",
+                            "message": (
+                                f"{staleness['projects_since_tune']} projects completed since your last "
+                                f"context review. Tune your product context?"
+                            ),
+                            "severity": "info",
+                            "metadata": {"product_id": str(product.id), "product_name": product.name},
+                        },
+                    )
+            except (RuntimeError, ValueError, KeyError, OSError) as staleness_err:
+                logger.debug(f"Tuning staleness check skipped: {staleness_err}")
+
             # Build success response with optional verification details
             result = {
                 "sequence_number": sequence_number,

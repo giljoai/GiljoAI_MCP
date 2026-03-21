@@ -648,4 +648,37 @@ class ToolAccessor:
             db_manager=self.db_manager,
         )
 
+    # Product Context Tuning (Handover 0831)
+
+    async def submit_tuning_review(
+        self,
+        product_id: str,
+        tenant_key: str,
+        proposals: list[dict[str, Any]],
+        overall_summary: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Submit product context tuning proposals after comparing current
+        product context against recent project history (Handover 0831).
+
+        Args:
+            product_id: Target product UUID
+            tenant_key: Tenant isolation key
+            proposals: Per-section proposals with drift_detected, evidence, proposed_value
+            overall_summary: High-level drift assessment
+
+        Returns:
+            Success response with review_id
+        """
+        from giljo_mcp.tools.submit_tuning_review import submit_tuning_review as tool_func
+
+        return await tool_func(
+            product_id=product_id,
+            tenant_key=tenant_key,
+            proposals=proposals,
+            overall_summary=overall_summary,
+            db_manager=self.db_manager,
+            websocket_manager=self._websocket_manager,
+        )
+
     # Agent Discovery Tools (Handover 0422)
