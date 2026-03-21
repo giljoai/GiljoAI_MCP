@@ -9,7 +9,8 @@
     <NavigationDrawer
       v-if="!route.meta.hideDrawer"
       v-model="drawer"
-      :rail="rail"
+      :rail="isMobile ? false : rail"
+      :temporary="isMobile"
       :current-user="currentUser"
       @toggle-rail="rail = !rail"
     />
@@ -27,7 +28,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -46,6 +47,18 @@ const messageStore = useMessageStore()
 
 const drawer = ref(true)
 const rail = ref(false)
+const windowWidth = ref(window.innerWidth)
+const SIDEBAR_BREAKPOINT = 1024
+const isMobile = computed(() => windowWidth.value <= SIDEBAR_BREAKPOINT)
+
+function onResize() {
+  windowWidth.value = window.innerWidth
+  if (isMobile.value) {
+    drawer.value = false
+  }
+}
+
+window.addEventListener('resize', onResize)
 const currentUser = ref(null)
 
 const loadCurrentUser = async () => {
@@ -118,8 +131,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // Disconnect WebSocket
   wsStore.disconnect()
+  window.removeEventListener('resize', onResize)
 })
 
 // Reload user after login (navigation from /login)
