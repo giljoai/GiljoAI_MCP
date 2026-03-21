@@ -446,6 +446,7 @@
                   label="Serial #"
                   density="compact"
                   variant="outlined"
+                  maxlength="4"
                   :error="seriesCheckResult === false"
                   :color="seriesCheckResult === true ? 'success' : undefined"
                   :messages="seriesCheckMessage"

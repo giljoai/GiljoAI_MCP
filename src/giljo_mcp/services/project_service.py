@@ -196,6 +196,18 @@ class ProjectService:
                 if not tenant_key:
                     tenant_key = f"tk_{uuid4().hex}"
 
+                # Validate taxonomy format: series 1-9999, subseries single letter
+                if series_number is not None and (series_number < 1 or series_number > 9999):
+                    raise ValidationError(
+                        message="Series number must be between 1 and 9999.",
+                        context={"series_number": series_number},
+                    )
+                if subseries is not None and (len(subseries) != 1 or not subseries.isalpha()):
+                    raise ValidationError(
+                        message="Subseries must be a single letter (a-z).",
+                        context={"subseries": subseries},
+                    )
+
                 # Application-level duplicate check before insert
                 if series_number is not None:
                     dup_query = select(Project.id).where(
