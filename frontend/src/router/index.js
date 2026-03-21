@@ -18,6 +18,19 @@ const routes = [
     },
   },
   {
+    path: '/oauth/authorize',
+    name: 'OAuthAuthorize',
+    component: () => import('@/views/OAuthAuthorize.vue'),
+    meta: {
+      layout: 'auth',
+      title: 'Authorize Application',
+      showInNav: false,
+      requiresAuth: false, // Page handles its own auth
+      requiresSetup: false, // Skip setup check for this route
+      requiresPasswordChange: false, // Skip password change check for this route
+    },
+  },
+  {
     path: '/welcome',
     name: 'CreateAdminAccount',
     component: () => import('@/views/CreateAdminAccount.vue'),
