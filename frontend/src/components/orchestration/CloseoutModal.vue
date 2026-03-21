@@ -257,6 +257,10 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  projectStatus: {
+    type: String,
+    default: 'active',
+  },
 })
 
 const emit = defineEmits(['close', 'continue', 'closeout'])
@@ -319,8 +323,12 @@ const handleContinueWorking = async () => {
   error.value = null
 
   try {
-    // Call the continue-working endpoint to restore/reactivate project
-    await api.projects.restoreCompleted(props.projectId)
+    // Only call the restore endpoint if the project is completed.
+    // If the project is still active (all jobs terminal but not yet closed out),
+    // just dismiss the modal — there's nothing to restore.
+    if (props.projectStatus === 'completed') {
+      await api.projects.restoreCompleted(props.projectId)
+    }
 
     emit('continue')
     emit('close')
