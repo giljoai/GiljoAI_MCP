@@ -3,14 +3,17 @@
     id="navigation"
     :model-value="modelValue"
     :rail="rail"
-    permanent
+    :permanent="!temporary"
+    :temporary="temporary"
+    :mobile="false"
     color="surface"
     width="180"
     class="navigation-drawer-container"
     @update:model-value="$emit('update:model-value', $event)"
   >
-    <!-- Edge-Aligned Collapse/Expand Tab -->
+    <!-- Edge-Aligned Collapse/Expand Tab (hidden in temporary/mobile mode) -->
     <div
+      v-if="!temporary"
       class="edge-toggle-tab"
       :aria-label="rail ? 'Expand sidebar' : 'Collapse sidebar'"
       role="button"
@@ -75,6 +78,10 @@ const props = defineProps({
     default: true,
   },
   rail: {
+    type: Boolean,
+    default: false,
+  },
+  temporary: {
     type: Boolean,
     default: false,
   },
@@ -187,6 +194,11 @@ watch(
 
 .navigation-drawer-container {
   overflow: visible;
+}
+
+/* Force width in temporary mode — Vuetify defaults to 256px which causes peek-through */
+.navigation-drawer-container.v-navigation-drawer--temporary {
+  width: 180px !important;
 }
 
 .edge-toggle-tab {

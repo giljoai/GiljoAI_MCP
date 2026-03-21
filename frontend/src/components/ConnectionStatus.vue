@@ -11,7 +11,7 @@
       aria-label="Connection status, click for details"
       @click="showDebugPanel = !showDebugPanel"
     >
-      <span class="text-caption">{{ statusText }}</span>
+      <span class="text-caption status-label">{{ statusText }}</span>
       <v-tooltip v-if="showTooltip" activator="parent" location="bottom">
         <div class="text-caption">
           <div v-if="isReconnecting">
@@ -432,5 +432,12 @@ onUnmounted(() => {
 
 .event-test {
   border-left: 2px solid rgb(var(--v-theme-warning));
+}
+
+/* Mobile format: hide status text, show only wifi icon */
+@media (max-width: 1024px) {
+  .status-label {
+    display: none;
+  }
 }
 </style>
