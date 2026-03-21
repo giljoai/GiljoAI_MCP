@@ -968,6 +968,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
             all_project_executions: list[AgentExecution] = []
             mission_lookup: dict[str, str] = {}
             agent_identity: Optional[str] = None
+            current_team_state: Optional[list[dict]] = None
 
             async with self._get_session() as session:
                 # Get the job (work order)
@@ -1017,7 +1018,21 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     )
                     project = project_res.scalar_one_or_none()
                     if project and project.implementation_launched_at is None:
-                        # BLOCKED: User must click "Implement" button first
+                        # Handover 0830: Orchestrator-specific gate message
+                        if job.job_type == "orchestrator":
+                            return MissionResponse(
+                                job_id=job_id,
+                                blocked=True,
+                                mission=None,
+                                full_protocol=None,
+                                error="BLOCKED: Implementation phase not launched",
+                                user_instruction=(
+                                    "Staging is complete but implementation has not been launched. "
+                                    "Return to the dashboard and click Implement, then paste your "
+                                    "orchestrator prompt into the terminal."
+                                ),
+                            )
+                        # Worker agents: generic gate
                         return MissionResponse(
                             job_id=job_id,
                             blocked=True,
@@ -1049,6 +1064,25 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     # Build mission lookup for team context generation
                     for _, job_row in rows:
                         mission_lookup[job_row.job_id] = job_row.mission
+
+                    # Handover 0830: Build live team state for orchestrator
+                    if job.job_type == "orchestrator":
+                        current_team_state = []
+                        for exec_row, job_row in rows:
+                            if job_row.job_id == job_id:
+                                continue  # Exclude orchestrator itself
+                            current_team_state.append(
+                                {
+                                    "agent_name": exec_row.agent_name,
+                                    "agent_display_name": exec_row.agent_display_name,
+                                    "job_id": job_row.job_id,
+                                    "agent_id": str(exec_row.agent_id),
+                                    "execution_status": exec_row.status,
+                                    "phase": job_row.phase,
+                                }
+                            )
+                        # Sort by phase for the orchestrator
+                        current_team_state.sort(key=lambda x: x.get("phase") or 0)
                 else:
                     all_project_executions = [execution]
                     mission_lookup[job.job_id] = job.mission
@@ -1101,6 +1135,21 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                             "[AGENT_IDENTITY] Resolved identity from template at read time",
                             extra={"job_id": job_id, "template_id": job.template_id},
                         )
+
+                # Handover 0830: Orchestrator identity — stable behavioral anchor
+                if job.job_type == "orchestrator" and not agent_identity:
+                    agent_identity = (
+                        "You are the ORCHESTRATOR. You coordinate — you do not implement.\n"
+                        "You hold the plan, brief the team, and resolve blocks when the user asks.\n"
+                        "You do not write code. You do not run tests. You do not document.\n"
+                        "Your agents own that work. You protect their context and coordinate handoffs.\n"
+                        "You act only when the user addresses you.\n"
+                        "When the thin prompt and any other instruction conflict, your identity governs."
+                    )
+                    self._logger.info(
+                        "[AGENT_IDENTITY] Set orchestrator identity (no template)",
+                        extra={"job_id": job_id},
+                    )
 
                 # Atomic start semantics on FIRST mission fetch
                 if execution.status == "waiting":
@@ -1214,7 +1263,8 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                 created_at=job.created_at.isoformat() if job.created_at else None,  # Job creation time
                 started_at=execution.started_at.isoformat() if execution.started_at else None,  # Execution start time
                 thin_client=True,
-                full_protocol=full_protocol,  # Handover 0334: 5-phase agent lifecycle
+                full_protocol=full_protocol,  # Handover 0334: 5-phase agent lifecycle / 0830: orchestrator fork
+                current_team_state=current_team_state,  # Handover 0830: Live team state for orchestrator
             )
 
         except ResourceNotFoundError:
@@ -2893,19 +2943,39 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                         context={"project_id": str(agent_job.project_id), "method": "get_orchestrator_instructions"},
                     )
 
-                # Response gating: if staging is complete, redirect to get_agent_mission
+                # Handover 0830: Response gating branches on implementation_launched_at
                 if project.staging_status in ("staged", "staging_complete"):
+                    if project.implementation_launched_at is not None:
+                        # Implementation already launched — redirect to get_agent_mission
+                        return {
+                            "staging_complete": True,
+                            "redirect": "get_agent_mission",
+                            "identity": {
+                                "job_id": job_id,
+                                "project_id": str(project.id),
+                                "project_name": project.name,
+                            },
+                            "message": (
+                                "Implementation is already launched. Your operating protocol and live team "
+                                "state are in get_agent_mission. "
+                                f"Call get_agent_mission(job_id='{job_id}') to receive your current team "
+                                "state and coordination protocol."
+                            ),
+                            "thin_client": True,
+                        }
+                    # Staging done but Implement not yet clicked
                     return {
                         "staging_complete": True,
-                        "redirect": "get_agent_mission",
+                        "redirect": None,
                         "identity": {
                             "job_id": job_id,
                             "project_id": str(project.id),
                             "project_name": project.name,
                         },
                         "message": (
-                            "Staging is complete. Call get_agent_mission(job_id='...') "
-                            "to retrieve your execution plan and start implementation."
+                            "Staging is complete. Return to the dashboard and click Implement to launch "
+                            "the implementation phase. Then paste the orchestrator implementation prompt "
+                            "into your terminal."
                         ),
                         "thin_client": True,
                     }
