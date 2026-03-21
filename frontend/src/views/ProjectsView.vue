@@ -303,7 +303,7 @@
                 <v-list density="compact" min-width="180">
                   <!-- Status-aware actions -->
                   <v-list-item
-                    v-for="sa in getStatusActions(item.status)"
+                    v-for="sa in getStatusActions(item)"
                     :key="sa.key"
                     :prepend-icon="sa.icon"
                     :title="sa.label"
@@ -313,13 +313,14 @@
 
                   <v-divider class="my-1" />
 
-                  <!-- Edit and Delete -->
+                  <!-- Edit (not available for completed/cancelled/terminated) -->
                   <v-list-item
+                    v-if="!['completed', 'cancelled', 'terminated'].includes(normalizeStatus(item.status))"
                     prepend-icon="mdi-pencil"
                     title="Edit Project"
                     @click="editProject(item)"
                   ></v-list-item>
-                  <v-divider class="my-1" />
+                  <v-divider v-if="!['completed', 'cancelled', 'terminated'].includes(normalizeStatus(item.status))" class="my-1" />
                   <v-list-item
                     prepend-icon="mdi-delete"
                     title="Delete Project"
@@ -1122,22 +1123,25 @@ const statusActionDefs = {
   deactivate: { label: 'Deactivate', icon: 'mdi-pause-circle', color: null, confirm: true },
   complete: { label: 'Complete', icon: 'mdi-check-circle', color: null, confirm: true },
   cancel: { label: 'Cancel Project', icon: 'mdi-cancel', color: 'warning', confirm: true },
-  reopen: { label: 'Reopen', icon: 'mdi-refresh', destructive: false, confirm: false },
-  review: { label: 'Review', icon: 'mdi-eye', destructive: false, confirm: false },
+  reopen: { label: 'Reopen', icon: 'mdi-refresh', color: 'success', confirm: false },
+  review: { label: 'Review', icon: 'mdi-eye', color: null, confirm: false },
 }
 
 const actionsByStatus = {
   inactive: ['activate', 'complete', 'cancel'],
   active: ['deactivate', 'complete', 'cancel'],
   completed: ['review'],
-  cancelled: ['reopen'],
+  cancelled: ['review'],
   terminated: ['review'],
 }
 
 // Get available status actions for a project based on its current status
-function getStatusActions(status) {
-  const normalized = normalizeStatus(status)
-  const keys = actionsByStatus[normalized] || []
+function getStatusActions(item) {
+  const normalized = normalizeStatus(item.status)
+  let keys = [...(actionsByStatus[normalized] || [])]
+  if (normalized === 'cancelled' && !isProjectStaged(item)) {
+    keys.unshift('reopen')
+  }
   return keys.map((key) => ({ key, ...statusActionDefs[key] }))
 }
 
@@ -1306,7 +1310,7 @@ async function handleStatusAction({ action, projectId }) {
         break
       }
       case 'reopen':
-        await projectStore.restoreCompletedProject(projectId)
+        await api.projects.restore(projectId)
         break
       case 'cancel':
         await projectStore.cancelProject(projectId)
