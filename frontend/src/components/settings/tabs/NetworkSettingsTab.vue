@@ -139,70 +139,93 @@
           />
         </div>
 
-        <!-- HTTPS Status -->
+        <!-- HTTPS Configuration -->
         <v-divider class="my-6" />
 
         <div data-test="https-status-section">
           <h3 class="text-h6 mb-3">HTTPS Encryption</h3>
 
           <v-alert
-            :type="props.sslEnabled ? 'success' : 'info'"
+            :type="sslStatus.ssl_enabled ? 'success' : 'info'"
             variant="tonal"
             class="mb-4"
             data-test="https-status-alert"
           >
+            <div class="d-flex align-center justify-space-between">
+              <div class="d-flex align-center">
+                <v-icon start>{{ sslStatus.ssl_enabled ? 'mdi-lock' : 'mdi-lock-open-outline' }}</v-icon>
+                <div>
+                  <strong>HTTPS:</strong>
+                  {{ sslStatus.ssl_enabled ? 'Enabled' : 'Disabled' }}
+                  <span v-if="sslStatus.has_certificate && !sslStatus.ssl_enabled" class="text-caption ml-1">
+                    (certificate available)
+                  </span>
+                </div>
+              </div>
+              <v-switch
+                :model-value="sslStatus.ssl_enabled"
+                :loading="sslToggling"
+                :disabled="sslToggling"
+                color="success"
+                hide-details
+                density="compact"
+                data-test="ssl-toggle"
+                @update:model-value="toggleSsl"
+              />
+            </div>
+          </v-alert>
+
+          <!-- Restart required banner -->
+          <v-alert
+            v-if="sslRestartRequired"
+            type="warning"
+            variant="tonal"
+            class="mb-4"
+            data-test="ssl-restart-alert"
+          >
             <div class="d-flex align-center">
-              <v-icon start>{{ props.sslEnabled ? 'mdi-lock' : 'mdi-lock-open-outline' }}</v-icon>
+              <v-icon start>mdi-restart</v-icon>
               <div>
-                <strong>HTTPS:</strong>
-                {{ props.sslEnabled ? 'Enabled' : 'Disabled' }}
+                <strong>Server restart required</strong> for HTTPS changes to take effect.
               </div>
             </div>
           </v-alert>
 
-          <div v-if="!props.sslEnabled">
-            <div
-              class="d-flex align-center cursor-pointer mb-3"
-              data-test="https-setup-toggle"
-              @click="showHttpsInstructions = !showHttpsInstructions"
-            >
-              <v-icon start size="small">
-                {{ showHttpsInstructions ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
-              </v-icon>
-              <span class="text-subtitle-2 text-medium-emphasis">How to enable HTTPS</span>
+          <!-- Error banner -->
+          <v-alert
+            v-if="sslError"
+            type="error"
+            variant="tonal"
+            class="mb-4"
+            closable
+            data-test="ssl-error-alert"
+            @click:close="sslError = ''"
+          >
+            {{ sslError }}
+          </v-alert>
+
+          <!-- Certificate info when SSL is enabled -->
+          <div v-if="sslStatus.has_certificate" class="mb-3">
+            <div class="text-caption text-medium-emphasis">
+              <v-icon size="x-small" class="mr-1">mdi-certificate</v-icon>
+              Certificate: <code>{{ sslStatus.cert_path }}</code>
             </div>
-
-            <v-alert
-              v-if="showHttpsInstructions"
-              type="info"
-              variant="outlined"
-              class="mb-4"
-              data-test="https-setup-instructions"
-            >
-              <div class="text-body-2">
-                <p class="mb-2">To enable HTTPS encryption:</p>
-
-                <p class="mb-1"><strong>1.</strong> Generate a certificate:</p>
-                <pre class="ml-4 mb-3"><code>python scripts/generate_ssl_cert.py</code></pre>
-
-                <p class="mb-1"><strong>2.</strong> Or provide your own certificates in <code>config.yaml</code>:</p>
-                <pre class="ml-4 mb-3"><code>features:
-  ssl_enabled: true
-paths:
-  ssl_cert: /path/to/cert.pem
-  ssl_key: /path/to/key.pem</code></pre>
-
-                <p class="mb-2"><strong>3.</strong> Restart the server</p>
-
-                <p class="mb-1">
-                  For production deployments, use Let's Encrypt for trusted certificates.
-                </p>
-                <p class="mb-0">
-                  See <code>docs/security/HTTPS_SETUP.md</code> for detailed instructions.
-                </p>
-              </div>
-            </v-alert>
           </div>
+
+          <!-- Self-signed certificate note -->
+          <v-alert
+            v-if="sslStatus.ssl_enabled"
+            type="info"
+            variant="outlined"
+            density="compact"
+            class="mb-4"
+          >
+            <div class="text-body-2">
+              Self-signed certificates will show browser warnings. For production, use
+              Let's Encrypt for trusted certificates.
+              See <code>docs/security/HTTPS_SETUP.md</code> for details.
+            </div>
+          </v-alert>
         </div>
 
         <!-- Network Configuration Info -->
@@ -235,7 +258,8 @@ paths:
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getApiBaseURL } from '@/config/api'
 import { useClipboard } from '@/composables/useClipboard'
 
 const { copy: clipboardCopy } = useClipboard()
@@ -269,12 +293,21 @@ const emit = defineEmits(['refresh', 'save'])
 // Local state for CORS management (disabled for now)
 const newOrigin = ref('')
 
-// Local state for HTTPS setup instructions toggle
-const showHttpsInstructions = ref(false)
+// SSL state
+const sslStatus = ref({
+  ssl_enabled: false,
+  has_certificate: false,
+  cert_path: null,
+  key_path: null,
+})
+const sslToggling = ref(false)
+const sslRestartRequired = ref(false)
+const sslError = ref('')
 
 // Methods
 function handleRefresh() {
   emit('refresh')
+  loadSslStatus()
 }
 
 function isDefaultOrigin(origin) {
@@ -303,4 +336,60 @@ function removeOrigin() {
   // Would emit save event with updated origins
   // For now this is disabled
 }
+
+async function loadSslStatus() {
+  try {
+    const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1]
+    const response = await fetch(`${getApiBaseURL()}/api/v1/config/ssl`, {
+      credentials: 'include',
+      headers: {
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
+    })
+    if (response.ok) {
+      sslStatus.value = await response.json()
+    }
+  } catch (error) {
+    console.error('[NETWORK] Failed to load SSL status:', error)
+    // Fall back to prop value
+    sslStatus.value.ssl_enabled = props.sslEnabled
+  }
+}
+
+async function toggleSsl(enabled) {
+  sslToggling.value = true
+  sslError.value = ''
+  sslRestartRequired.value = false
+
+  try {
+    const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1]
+    const response = await fetch(`${getApiBaseURL()}/api/v1/config/ssl`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
+      body: JSON.stringify({ enabled }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to toggle SSL')
+    }
+
+    const result = await response.json()
+    sslStatus.value = result
+    sslRestartRequired.value = result.restart_required
+  } catch (error) {
+    sslError.value = error.message || 'Failed to toggle SSL'
+    console.error('[NETWORK] SSL toggle failed:', error)
+  } finally {
+    sslToggling.value = false
+  }
+}
+
+onMounted(() => {
+  loadSslStatus()
+})
 </script>
