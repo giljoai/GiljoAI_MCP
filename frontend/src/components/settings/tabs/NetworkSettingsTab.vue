@@ -204,7 +204,7 @@
             {{ sslError }}
           </v-alert>
 
-          <!-- Certificate info when SSL is enabled -->
+          <!-- Certificate info when certs exist -->
           <div v-if="sslStatus.has_certificate" class="mb-3">
             <div class="text-caption text-medium-emphasis">
               <v-icon size="x-small" class="mr-1">mdi-certificate</v-icon>
@@ -212,7 +212,98 @@
             </div>
           </div>
 
-          <!-- Self-signed certificate note -->
+          <!-- Post-install HTTPS setup guide (shown when toggling on without trusted certs) -->
+          <div v-if="!sslStatus.ssl_enabled && !sslStatus.has_certificate">
+            <div
+              class="d-flex align-center cursor-pointer mb-3"
+              data-test="https-setup-toggle"
+              @click="showHttpsGuide = !showHttpsGuide"
+            >
+              <v-icon start size="small">
+                {{ showHttpsGuide ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
+              </v-icon>
+              <span class="text-subtitle-2 text-medium-emphasis">
+                How to set up trusted HTTPS certificates
+              </span>
+            </div>
+
+            <v-card v-if="showHttpsGuide" variant="outlined" class="mb-4 pa-4">
+              <div class="text-body-2">
+                <p class="mb-3">
+                  To avoid browser "connection not private" warnings, you need
+                  <strong>trusted certificates</strong>. Choose one option:
+                </p>
+
+                <v-expansion-panels variant="accordion">
+                  <v-expansion-panel>
+                    <v-expansion-panel-title>
+                      <v-icon start color="success" size="small">mdi-star</v-icon>
+                      <strong>Option 1: mkcert (Recommended for local/LAN)</strong>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                      <p class="mb-2">
+                        mkcert creates a local Certificate Authority trusted by your browser.
+                        No internet required, works offline.
+                      </p>
+                      <p class="mb-1"><strong>Install mkcert:</strong></p>
+                      <div class="mb-2 pa-2 bg-grey-darken-4 rounded">
+                        <code class="d-block">Windows: winget install FiloSottile.mkcert</code>
+                        <code class="d-block">macOS: &nbsp; brew install mkcert</code>
+                        <code class="d-block">Linux: &nbsp; sudo apt install mkcert</code>
+                      </div>
+                      <p class="mb-1"><strong>Generate trusted certificates:</strong></p>
+                      <div class="mb-2 pa-2 bg-grey-darken-4 rounded">
+                        <code class="d-block">mkcert -install</code>
+                        <code class="d-block">mkcert -cert-file certs/ssl_cert.pem -key-file certs/ssl_key.pem localhost 127.0.0.1 ::1</code>
+                      </div>
+                      <p class="mb-0">Then flip the HTTPS toggle above and restart the server.</p>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+
+                  <v-expansion-panel>
+                    <v-expansion-panel-title>
+                      <v-icon start color="info" size="small">mdi-web</v-icon>
+                      <strong>Option 2: Let's Encrypt (Public-facing servers)</strong>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                      <p class="mb-2">
+                        Free, globally trusted certificates. Requires a public domain name
+                        and port 80/443 accessible from the internet.
+                      </p>
+                      <div class="mb-2 pa-2 bg-grey-darken-4 rounded">
+                        <code class="d-block">sudo apt install certbot</code>
+                        <code class="d-block">sudo certbot certonly --standalone -d yourdomain.com</code>
+                      </div>
+                      <p class="mb-0">
+                        Copy the generated cert and key to <code>certs/</code>,
+                        update <code>config.yaml</code> paths, then flip the toggle above.
+                      </p>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+
+                  <v-expansion-panel>
+                    <v-expansion-panel-title>
+                      <v-icon start color="warning" size="small">mdi-alert-outline</v-icon>
+                      <strong>Option 3: Self-signed (Quick, but shows browser warning)</strong>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                      <p class="mb-2">
+                        Generates a certificate immediately but browsers will show a
+                        "connection not private" warning. You'll need to click
+                        "Advanced" → "Proceed" each time.
+                      </p>
+                      <p class="mb-0">
+                        Just flip the HTTPS toggle above — a self-signed certificate
+                        will be generated automatically if none exists.
+                      </p>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
+              </div>
+            </v-card>
+          </div>
+
+          <!-- Trusted cert note when SSL is enabled -->
           <v-alert
             v-if="sslStatus.ssl_enabled"
             type="info"
@@ -221,8 +312,9 @@
             class="mb-4"
           >
             <div class="text-body-2">
-              Self-signed certificates will show browser warnings. For production, use
-              Let's Encrypt for trusted certificates.
+              If your browser shows a security warning, your certificate is self-signed.
+              Use <strong>mkcert</strong> for locally-trusted certificates or
+              <strong>Let's Encrypt</strong> for production.
               See <code>docs/security/HTTPS_SETUP.md</code> for details.
             </div>
           </v-alert>
@@ -303,6 +395,7 @@ const sslStatus = ref({
 const sslToggling = ref(false)
 const sslRestartRequired = ref(false)
 const sslError = ref('')
+const showHttpsGuide = ref(false)
 
 // Methods
 function handleRefresh() {
