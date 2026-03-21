@@ -116,6 +116,14 @@ class User(Base):
         JSONB, nullable=True, default=None, comment="User-customizable field priority for agent mission generation"
     )
 
+    # Notification Preferences (Handover 0831)
+    notification_preferences = Column(
+        JSONB,
+        nullable=True,
+        default=None,
+        comment="User notification preferences: tuning reminders, thresholds",
+    )
+
     # Depth Configuration (Handover 0314)
     depth_config = Column(
         JSONB,
