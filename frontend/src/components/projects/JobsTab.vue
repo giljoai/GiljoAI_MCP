@@ -37,8 +37,9 @@
           <tr v-for="agent in phaseSortedAgents" :key="agent.job_id || agent.agent_id" data-testid="agent-row" :data-agent-display-name="agent.agent_display_name" :data-agent-status="agent.status">
             <!-- Phase Badge (Handover 0829) -->
             <td class="phase-cell" data-testid="phase-badge">
-              <span v-if="isOrchestrator(agent) || agent.phase == null" class="phase-badge phase-badge--none">&mdash;</span>
-              <span v-else class="phase-badge" :style="{ backgroundColor: getPhaseColor(agent.phase) }">P{{ agent.phase }}</span>
+              <span v-if="isOrchestrator(agent)" class="phase-badge">Start</span>
+              <span v-else-if="agent.phase == null" class="phase-badge phase-badge--none">&mdash;</span>
+              <span v-else class="phase-badge">P{{ agent.phase }}</span>
             </td>
             <!-- Agent Display Name: Play Button + Avatar + Name -->
             <!-- Play button: own column, no header -->
@@ -1032,10 +1033,10 @@ async function copyToClipboard(text) {
       thead th {
         text-align: left;
         padding: 12px 16px;
-        color: rgba(var(--v-theme-on-surface), 0.6);
-        font-size: 13px;
-        font-weight: 400;
-        border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+        color: rgb(var(--v-theme-on-surface));
+        font-size: 14px;
+        font-weight: 500;
+        border-bottom: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
         white-space: nowrap;
 
         &.col-phase {
@@ -1086,7 +1087,8 @@ async function copyToClipboard(text) {
             font-weight: 600;
             padding: 2px 8px;
             border-radius: 10px;
-            color: #fff;
+            background-color: #FBC02D;
+            color: #182739;
             white-space: nowrap;
 
             &--none {
@@ -1387,12 +1389,12 @@ async function copyToClipboard(text) {
     border-radius: 12px;
     background: rgba(var(--v-theme-on-surface), 0.1);
     color: rgb(var(--v-theme-on-surface));
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 400;
 
     &.message-waiting {
-      background: rgba(255, 152, 0, 0.2);
-      color: var(--status-blocked);
+      background: transparent;
+      color: rgb(var(--v-theme-on-surface));
     }
 
   }
