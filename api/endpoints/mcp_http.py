@@ -42,6 +42,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.auth.dependencies import get_db_session
+from src.giljo_mcp.auth.jwt_manager import JWTManager
 from src.giljo_mcp.exceptions import ValidationError
 from src.giljo_mcp.services.silence_detector import auto_clear_silent
 
@@ -1085,24 +1086,25 @@ async def mcp_endpoint(
     Returns:
         JSON-RPC 2.0 response (success or error)
     """
-    # Resolve API key from supported headers
+    # Resolve credentials from supported headers
     api_key_value: str | None = None
+    bearer_token: str | None = None
 
     # Preferred header for this server (backward compatible)
     if x_api_key:
         api_key_value = x_api_key
 
-    # Fallback: Authorization: Bearer <token> (for Codex/Gemini URL transports)
+    # Extract Bearer token from Authorization header
     if not api_key_value and authorization:
         try:
             scheme, _, token = authorization.partition(" ")
             if scheme.lower() == "bearer" and token:
-                api_key_value = token
+                bearer_token = token
         except (ValueError, KeyError):
-            api_key_value = None
+            bearer_token = None
 
-    # Validate API key presence
-    if not api_key_value:
+    # Validate that some credential was provided
+    if not api_key_value and not bearer_token:
         return JSONRPCErrorResponse(
             error=JSONRPCError(
                 code=-32600,
@@ -1114,20 +1116,39 @@ async def mcp_endpoint(
 
     # Initialize session manager
     session_manager = MCPSessionManager(db)
+    session = None
 
-    # Get or create session
-    session = await session_manager.get_or_create_session(api_key_value)
+    # For Bearer tokens, try JWT validation first, then fall back to API key
+    if bearer_token and not api_key_value:
+        try:
+            payload = JWTManager.verify_token(bearer_token)
+            session = await session_manager.get_or_create_session_from_jwt(
+                user_id=payload["sub"],
+                tenant_key=payload["tenant_key"],
+                username=payload.get("username"),
+            )
+        except HTTPException:
+            # Not a valid JWT -- treat as API key (backward compatibility)
+            api_key_value = bearer_token
+
+    # API key authentication path (X-API-Key header or Bearer fallback)
+    if not session and api_key_value:
+        session = await session_manager.get_or_create_session(api_key_value)
+
     if not session:
         return JSONRPCErrorResponse(
-            error=JSONRPCError(code=-32600, message="Invalid API key", data={"authenticated": False}), id=rpc_request.id
+            error=JSONRPCError(code=-32600, message="Invalid credentials", data={"authenticated": False}),
+            id=rpc_request.id,
         )
 
     # Log IP address for security tracking (passive, non-blocking)
-    client_ip = request.client.host if request.client else "unknown"
-    try:
-        await session_manager.log_ip(session.api_key_id, client_ip)
-    except (OSError, ValueError, KeyError):
-        logger.debug("IP logging failed for MCP request (non-blocking)")
+    # Skip for JWT sessions that have no associated API key
+    if session.api_key_id:
+        client_ip = request.client.host if request.client else "unknown"
+        try:
+            await session_manager.log_ip(session.api_key_id, client_ip)
+        except (OSError, ValueError, KeyError):
+            logger.debug("IP logging failed for MCP request (non-blocking)")
 
     # Route to method handler
     method = rpc_request.method
