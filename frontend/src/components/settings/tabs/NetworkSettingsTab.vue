@@ -151,8 +151,8 @@
             class="mb-4"
             data-test="https-status-alert"
           >
-            <div class="d-flex align-center justify-space-between">
-              <div class="d-flex align-center">
+            <div class="d-flex align-center justify-space-between" style="gap: 16px;">
+              <div class="d-flex align-center" style="min-width: 0;">
                 <v-icon start>{{ sslStatus.ssl_enabled ? 'mdi-lock' : 'mdi-lock-open-outline' }}</v-icon>
                 <div>
                   <strong>HTTPS:</strong>
@@ -169,6 +169,7 @@
                 color="success"
                 hide-details
                 density="compact"
+                style="flex-shrink: 0;"
                 data-test="ssl-toggle"
                 @update:model-value="toggleSsl"
               />
@@ -212,8 +213,8 @@
             </div>
           </div>
 
-          <!-- Post-install HTTPS setup guide (shown when toggling on without trusted certs) -->
-          <div v-if="!sslStatus.ssl_enabled && !sslStatus.has_certificate">
+          <!-- HTTPS setup guide (always available for post-install certificate setup) -->
+          <div>
             <div
               class="d-flex align-center cursor-pointer mb-3"
               data-test="https-setup-toggle"
@@ -223,7 +224,7 @@
                 {{ showHttpsGuide ? 'mdi-chevron-down' : 'mdi-chevron-right' }}
               </v-icon>
               <span class="text-subtitle-2 text-medium-emphasis">
-                How to set up trusted HTTPS certificates
+                {{ sslStatus.ssl_enabled ? 'How to use trusted certificates (no browser warnings)' : 'How to set up trusted HTTPS certificates' }}
               </span>
             </div>
 
@@ -303,21 +304,6 @@
             </v-card>
           </div>
 
-          <!-- Trusted cert note when SSL is enabled -->
-          <v-alert
-            v-if="sslStatus.ssl_enabled"
-            type="info"
-            variant="outlined"
-            density="compact"
-            class="mb-4"
-          >
-            <div class="text-body-2">
-              If your browser shows a security warning, your certificate is self-signed.
-              Use <strong>mkcert</strong> for locally-trusted certificates or
-              <strong>Let's Encrypt</strong> for production.
-              See <code>docs/security/HTTPS_SETUP.md</code> for details.
-            </div>
-          </v-alert>
         </div>
 
         <!-- Network Configuration Info -->
