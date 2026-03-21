@@ -83,6 +83,7 @@ try:
         mcp_installer,
         messages,
         network,
+        oauth,
         products,
         project_types,
         projects,
@@ -348,6 +349,8 @@ def _configure_middleware(app: FastAPI) -> None:
         ],
         exempt_prefixes=[
             "/api/auth/",  # Auth endpoints (login, register, refresh — no CSRF cookie yet)
+            "/api/oauth/token",  # OAuth token exchange (external MCP clients, PKCE-protected)
+            "/api/oauth/.well-known/",  # OAuth metadata (public GET)
             "/api/setup/",  # Setup wizard (runs before auth is configured)
             "/mcp",  # MCP-over-HTTP (API key auth, not cookie-based)
             "/api/download/",  # Public download endpoints
@@ -400,6 +403,7 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(templates.router)
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(auth_pin_recovery.router, prefix="/api/auth", tags=["auth"])
+    app.include_router(oauth.router, prefix="/api/oauth", tags=["oauth"])
     # Handover 0506: Fixed user endpoint path to /api/v1/users
     app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
     # v3: authenticated user-scoped settings
