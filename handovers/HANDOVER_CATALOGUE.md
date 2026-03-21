@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-20 (0826+0827 closed, 0828 active)
+**Last Updated:** 2026-03-21 (0829+0830 closed, 0828 active)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827 COMPLETE. 0828 ACTIVE. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0829+0830 COMPLETE. 0828 ACTIVE. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -42,6 +42,8 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0830 | Orchestrator Staging-to-Implementation Harmonization | 2026-03-21 | COMPLETE (`80199d49`) — thin prompt stripped, orchestrator agent_identity populated, full_protocol forked for orchestrator lifecycle, live team state in get_agent_mission |
+| 0829 | Phase Column & Sort Order in Jobs Tab | 2026-03-20 | COMPLETE (`4af6dad5`) — Phase column added to Jobs tab, phase-based sort order |
 | 0827 | Agent Reactivation & Continuation | 2026-03-19 | COMPLETE (7 commits) — display names in messages, auto-block on post-completion message, reactivate_job + dismiss_reactivation tools, todo_append + duration accumulation |
 | 0826 | Staging Completion Hardening | 2026-03-20 | COMPLETE (`e972e2f9`, `ddfda73d`) — thin prompt guard, server-side staging_complete signal, staging_status timing fix, get_orchestrator_instructions response gate |
 | 0825 | Agent Identity Separation from Mission Response | 2026-03-18 | COMPLETE (`1aebbcd8`) — agent_identity field added, dead token fields stripped, template content no longer baked into mission |
@@ -164,6 +166,8 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0830 | Orchestrator Staging-to-Implementation Harmonization | **COMPLETE** (2026-03-21, `80199d49`, thin prompt + agent_identity + protocol fork + live team state) |
+| 0829 | Phase Column & Sort Order in Jobs Tab | **COMPLETE** (2026-03-20, `4af6dad5`, phase column + sort order in Jobs tab) |
 | 0827 | Agent Reactivation & Continuation (4 phases) | **COMPLETE** (2026-03-19, 7 commits, display names + auto-block + reactivate/dismiss tools + todo_append + duration) |
 | 0826 | Staging Completion Hardening | **COMPLETE** (2026-03-20, `e972e2f9`+`ddfda73d`, prompt guard + server-side signal + timing fix + response gate) |
 | 0824 | Closeout Self-Decommission Guard | **COMPLETE** (2026-03-18, pre-flight guard + decommissioned diagnostics) |
