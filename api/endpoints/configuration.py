@@ -438,6 +438,122 @@ async def update_database_password(update: DatabasePasswordUpdate, current_user:
     }
 
 
+class SSLToggleRequest(BaseModel):
+    enabled: bool = Field(..., description="Enable or disable SSL")
+    domain: str = Field("localhost", description="Domain name for certificate generation")
+
+
+class SSLStatusResponse(BaseModel):
+    ssl_enabled: bool
+    has_certificate: bool
+    cert_path: Optional[str] = None
+    key_path: Optional[str] = None
+    restart_required: bool = True
+    message: str
+
+
+@router.get("/ssl", response_model=SSLStatusResponse)
+async def get_ssl_status(current_user: User = Depends(require_admin)):
+    """Get current SSL/HTTPS configuration status."""
+    from src.giljo_mcp._config_io import read_config
+
+    config = read_config()
+    ssl_enabled = config.get("features", {}).get("ssl_enabled", False)
+    cert_path = config.get("paths", {}).get("ssl_cert")
+    key_path = config.get("paths", {}).get("ssl_key")
+
+    has_cert = bool(cert_path and key_path and Path(cert_path).exists() and Path(key_path).exists())
+
+    return SSLStatusResponse(
+        ssl_enabled=ssl_enabled,
+        has_certificate=has_cert,
+        cert_path=cert_path if has_cert else None,
+        key_path=key_path if has_cert else None,
+        restart_required=False,
+        message="HTTPS is enabled" if ssl_enabled else "HTTPS is disabled",
+    )
+
+
+@router.post("/ssl", response_model=SSLStatusResponse)
+async def toggle_ssl(request_body: SSLToggleRequest, current_user: User = Depends(require_admin)):
+    """Enable or disable SSL/HTTPS. Generates self-signed certificates if none exist."""
+    from src.giljo_mcp._config_io import read_config, write_config
+
+    config = read_config()
+    if not config:
+        raise HTTPException(status_code=500, detail="config.yaml is empty or not found")
+
+    cert_path = config.get("paths", {}).get("ssl_cert")
+    key_path = config.get("paths", {}).get("ssl_key")
+    has_cert = bool(cert_path and key_path and Path(cert_path).exists() and Path(key_path).exists())
+
+    if request_body.enabled and not has_cert:
+        # Generate self-signed certificates
+        certs_dir = Path.cwd() / "certs"
+        certs_dir.mkdir(parents=True, exist_ok=True)
+
+        generated_key = certs_dir / "ssl_key.pem"
+        generated_cert = certs_dir / "ssl_cert.pem"
+
+        import subprocess
+
+        cmd = [
+            "openssl",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:4096",
+            "-keyout",
+            str(generated_key),
+            "-out",
+            str(generated_cert),
+            "-days",
+            "365",
+            "-nodes",
+            "-subj",
+            f"/CN={request_body.domain}/O=GiljoAI MCP/C=US",
+        ]
+
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+        except FileNotFoundError as e:
+            raise HTTPException(
+                status_code=500,
+                detail="OpenSSL not found. Install OpenSSL to generate certificates.",
+            ) from e
+        except subprocess.CalledProcessError as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Certificate generation failed: {e.stderr}",
+            ) from e
+
+        # Update paths in config
+        if "paths" not in config:
+            config["paths"] = {}
+        config["paths"]["ssl_cert"] = str(generated_cert.absolute())
+        config["paths"]["ssl_key"] = str(generated_key.absolute())
+        cert_path = str(generated_cert.absolute())
+        key_path = str(generated_key.absolute())
+        has_cert = True
+
+    # Update ssl_enabled flag
+    if "features" not in config:
+        config["features"] = {}
+    config["features"]["ssl_enabled"] = request_body.enabled
+
+    write_config(config)
+
+    status = "enabled" if request_body.enabled else "disabled"
+    return SSLStatusResponse(
+        ssl_enabled=request_body.enabled,
+        has_certificate=has_cert,
+        cert_path=cert_path if has_cert else None,
+        key_path=key_path if has_cert else None,
+        restart_required=True,
+        message=f"HTTPS {status}. Server restart required for changes to take effect.",
+    )
+
+
 @router.get("/frontend")
 async def get_frontend_configuration():
     """
