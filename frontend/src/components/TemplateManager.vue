@@ -1,7 +1,7 @@
 <template>
-  <v-card class="template-manager" elevation="2">
+  <v-card class="template-manager">
     <v-card-title class="d-flex align-center">
-      <span>Agent Template Manager</span>
+      Agent Template Manager
       <v-tooltip location="top" max-width="400">
         <template #activator="{ props }">
           <v-icon v-bind="props" color="warning" size="small" class="ml-2">mdi-alert</v-icon>
@@ -99,7 +99,7 @@
         :items="filteredTemplates"
         :search="search"
         :loading="loading"
-        class="elevation-1 templates-table"
+        class="elevation-0 templates-table"
         item-key="id"
         :items-per-page="10"
         :item-class="(item) => (item.is_active ? '' : 'inactive-template')"
@@ -122,21 +122,13 @@
         </template>
 
         <template v-slot:item.cli_tool="{ item }">
-          <v-chip size="small" variant="outlined">
-            <template v-slot:prepend>
-              <v-avatar
-                size="18"
-                class="mr-1"
-                :class="{ 'codex-icon': item.cli_tool === 'codex' }"
-              >
-                <v-img
-                  :src="getToolLogo(item.cli_tool || 'claude')"
-                  :alt="getToolName(item.cli_tool || 'claude')"
-                />
-              </v-avatar>
-            </template>
-            {{ getToolName(item.cli_tool || 'claude') }}
-          </v-chip>
+          <v-img
+            :src="getToolLogo(item.cli_tool || 'claude')"
+            :alt="getToolName(item.cli_tool || 'claude')"
+            width="24"
+            height="24"
+            class="mx-auto"
+          />
         </template>
 
         <template v-slot:item.updated_at="{ item }">
@@ -603,7 +595,7 @@ const resetting = ref(false)
 const headers = [
   { title: 'Agent Name', key: 'name', align: 'start' },
   { title: 'Role', key: 'role', align: 'start' },
-  { title: 'Tool', key: 'cli_tool', align: 'start' },
+  { title: 'Tool', key: 'cli_tool', align: 'center' },
   { title: 'Active', key: 'is_active', align: 'center' },
   { title: 'Export Status', key: 'export_status', align: 'center', sortable: false },
   { title: 'Updated', key: 'updated_at', align: 'start' },
@@ -957,8 +949,8 @@ const getCategoryColor = (role) => {
 
 const getToolLogo = (tool) => {
   const logos = {
-    claude: '/claude_pix.svg',
-    codex: '/icons/codex_mark.svg',
+    claude: '/Claude_AI_symbol.svg',
+    codex: '/codex_logo.svg',
     gemini: '/gemini-icon.svg',
   }
   return logos[tool] || logos.claude
@@ -1070,16 +1062,6 @@ watch(
 
   .templates-table {
     background: var(--v-theme-surface);
-
-    :deep(.v-data-table__th) {
-      background: var(--v-theme-background);
-      color: var(--v-theme-primary);
-      font-weight: 600;
-    }
-
-    :deep(.v-data-table__td) {
-      color: var(--v-theme-on-surface);
-    }
 
     :deep(.v-data-table-footer) {
       background: var(--v-theme-surface);

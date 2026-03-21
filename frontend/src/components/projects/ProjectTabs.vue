@@ -179,6 +179,7 @@
       :project-id="project.project_id || project.id"
       :project-name="project.name"
       :product-id="project.product_id"
+      :project-status="project.status"
       @close="showCloseoutModal = false"
       @closeout="handleCloseoutComplete"
       @continue="handleContinueWorking"

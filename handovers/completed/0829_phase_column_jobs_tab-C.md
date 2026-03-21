@@ -2,7 +2,7 @@
 
 **Edition Scope:** CE
 **Priority:** Low (polish, non-blocking)
-**Status:** Not Started
+**Status:** COMPLETE (2026-03-20, `4af6dad5`)
 **Date:** 2026-03-20
 **Origin:** Multi-terminal alpha trial UX observation. The "Proposed Execution Order" bar above the Jobs table shows phase ordering, but the table itself is unsorted and has no phase indicator per row.
 
