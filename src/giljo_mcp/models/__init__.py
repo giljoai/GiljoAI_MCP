@@ -97,6 +97,11 @@ from .context import (
     MCPContextIndex,
 )
 
+# OAuth models
+from .oauth import (
+    OAuthAuthorizationCode,
+)
+
 # Organization models (Handover 0424a)
 from .organizations import (
     Organization,
@@ -159,6 +164,8 @@ __all__ = [
     "MCPContextIndex",
     "MCPSession",
     "Message",
+    # OAuth
+    "OAuthAuthorizationCode",
     "OptimizationMetric",
     "OptimizationRule",
     "OrgMembership",
