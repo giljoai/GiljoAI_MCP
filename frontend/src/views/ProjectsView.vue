@@ -153,20 +153,6 @@
         <span class="text-h6">Project List</span>
 
         <div class="d-flex align-center ga-2">
-          <!-- Launch Project Button (only when exactly 1 active project) -->
-          <v-btn
-            v-if="hasActiveProject"
-            color="primary"
-            variant="flat"
-            prepend-icon="mdi-rocket-launch"
-            :title="isWorking(activeProject) ? 'View running jobs' : 'Launch active project'"
-            @click="launchProject(activeProject.id)"
-          >
-            {{ isWorking(activeProject) ? 'Working' : 'Launch Project' }}
-          </v-btn>
-
-          <v-divider v-if="hasActiveProject" vertical class="mx-1" style="height: 24px" />
-
           <!-- New Project Button -->
           <v-btn
             color="primary"
@@ -248,6 +234,20 @@
                 Project ID: {{ item.id }}
               </div>
             </div>
+          </template>
+
+          <!-- Quick Action Column (no header) -->
+          <template v-slot:item.quick_action="{ item }">
+            <v-chip
+              v-if="normalizeStatus(item.status) === 'inactive'"
+              color="success"
+              variant="tonal"
+              size="small"
+              class="cursor-pointer"
+              @click.stop="activateAndLaunch(item.id)"
+            >
+              Activate
+            </v-chip>
           </template>
 
           <!-- Staged Column -->
@@ -729,7 +729,6 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useProductStore } from '@/stores/products'
-import { useProjectTabsStore } from '@/stores/projectTabs'
 import { useNotificationStore } from '@/stores/notifications'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ManualCloseoutModal from '@/components/orchestration/ManualCloseoutModal.vue'
@@ -746,7 +745,6 @@ const router = useRouter()
 // Stores
 const projectStore = useProjectStore()
 const productStore = useProductStore()
-const tabsStore = useProjectTabsStore()
 const notificationStore = useNotificationStore()
 
 // Reactive state
@@ -815,7 +813,8 @@ const statusFilterOptions = computed(() => [
 
 // Table headers
 const headers = [
-  { title: 'Name', key: 'name', sortable: true, width: '38%' },
+  { title: 'Name', key: 'name', sortable: true, width: '33%' },
+  { title: '', key: 'quick_action', sortable: false, width: '7%', align: 'center' },
   { title: 'Staged', key: 'staging_status', sortable: true, width: '9%' },
   { title: 'Created', key: 'created_at', sortable: true, width: '13%' },
   { title: 'Completed', key: 'completed_at', sortable: true, width: '13%', align: 'center' },
@@ -1109,17 +1108,6 @@ const isProjectStaged = (project) => {
 }
 
 // Launch button visibility - only show when exactly 1 active project exists and it is not staged
-const hasActiveProject = computed(() => {
-  const activeProjects = activeProductProjects.value.filter((p) => p.status === 'active')
-  return activeProjects.length === 1 && !isProjectStaged(activeProjects[0])
-})
-
-// Get the single active project
-const activeProject = computed(() => {
-  return activeProductProjects.value.find((p) => p.status === 'active')
-})
-
-
 // Normalize status values for UI (e.g., legacy 'paused' -> 'inactive')
 function normalizeStatus(status) {
   if (status === 'paused') {
@@ -1154,29 +1142,17 @@ function getStatusActions(status) {
 }
 
 // Methods
-// Handover 0062: Launch project
-function launchProject(projectId) {
-  // Navigate to Project Launch Panel
+
+// Activate project and navigate to its jobs page
+async function activateAndLaunch(projectId) {
+  await projectStore.activateProject(projectId)
   router.push({ name: 'ProjectLaunch', params: { projectId }, query: { via: 'jobs' } })
 }
 
 // Handle row click to navigate to project
 function handleRowClick(event, item) {
   if (item && item.id) {
-    launchProject(item.id)
-  }
-}
-
-// Show "Working" label when the currently launched project is executing
-function isWorking(project) {
-  try {
-    if (!tabsStore || !tabsStore.currentProject) return false
-    const current = tabsStore.currentProject
-    const launched = tabsStore.isLaunched === true
-    const sameId = current?.id === project.id || current?.project_id === project.id
-    return launched && sameId
-  } catch {
-    return false
+    router.push({ name: 'ProjectLaunch', params: { projectId: item.id }, query: { via: 'jobs' } })
   }
 }
 
