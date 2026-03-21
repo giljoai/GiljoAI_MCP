@@ -354,6 +354,13 @@ class UnifiedInstaller:
                 return result
             result["steps"].append("frontend_dependencies_installed")
 
+            # Step 7.5: HTTPS setup (optional - uses mkcert for trusted local certs)
+            if not self.settings.get("headless"):
+                self._print_header("HTTPS Configuration (Optional)")
+                https_result = self.setup_https()
+                if https_result.get("enabled"):
+                    result["steps"].append("https_configured")
+
             # Step 8: Create desktop shortcuts (if requested - Windows only)
             if self.settings.get("create_shortcuts", False):
                 self._print_header("Creating Desktop Shortcuts")
@@ -935,6 +942,259 @@ class UnifiedInstaller:
         self._print_warning("Node.js not found after install attempt")
         self._print_warning("Frontend will not be available. Backend-only installation will continue.")
         return result
+
+    def setup_https(self) -> Dict[str, Any]:
+        """
+        Optional HTTPS setup using mkcert for locally-trusted certificates.
+
+        mkcert creates a local Certificate Authority, installs it in the system
+        trust store, and generates certificates signed by that CA. Browsers
+        trust these certs without warnings — no "Your connection is not private".
+
+        Cross-platform: Windows, Linux, macOS.
+        Requires elevated privileges for trust store installation.
+        """
+        result: Dict[str, Any] = {"enabled": False}
+
+        print(f"\n{Fore.CYAN}HTTPS encrypts all traffic between your browser and GiljoAI.{Style.RESET_ALL}")
+        print("Uses mkcert to generate locally-trusted certificates (no browser warnings).")
+        print(f"{Fore.WHITE}You can always enable HTTPS later from Admin Settings > Network.{Style.RESET_ALL}")
+
+        print(
+            f"\n{Fore.YELLOW}Enable HTTPS? [y/N]: {Style.RESET_ALL}",
+            end="",
+            flush=True,
+        )
+        response = input().strip().lower()
+        if response not in ("y", "yes"):
+            self._print_info("Skipping HTTPS — can be enabled later from Admin Settings > Network")
+            return result
+
+        # Check if mkcert is already installed
+        mkcert_path = shutil.which("mkcert")
+
+        if not mkcert_path:
+            mkcert_path = self._install_mkcert()
+
+        if not mkcert_path:
+            self._print_warning("mkcert not available — HTTPS setup skipped")
+            self._print_info("You can install mkcert later and enable HTTPS from Admin Settings > Network")
+            return result
+
+        # Install the local CA into the system trust store
+        self._print_info("Installing local Certificate Authority into system trust store...")
+        try:
+            subprocess.run(
+                [mkcert_path, "-install"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self._print_success("Local CA installed — browsers will trust certificates from this machine")
+        except subprocess.CalledProcessError as e:
+            self._print_error(f"CA installation failed: {e.stderr}")
+            self._print_info("You may need to run the installer with administrator privileges")
+            return result
+        except subprocess.TimeoutExpired:
+            self._print_error("CA installation timed out")
+            return result
+
+        # Generate certificates for localhost and common local addresses
+        certs_dir = self.install_dir / "certs"
+        certs_dir.mkdir(parents=True, exist_ok=True)
+
+        cert_path = certs_dir / "ssl_cert.pem"
+        key_path = certs_dir / "ssl_key.pem"
+
+        # Build domain list: localhost + any configured external host
+        domains = ["localhost", "127.0.0.1", "::1"]
+        external_host = self.settings.get("external_host", "")
+        if external_host and external_host not in domains:
+            domains.append(external_host)
+
+        self._print_info(f"Generating trusted certificate for: {', '.join(domains)}")
+        try:
+            subprocess.run(
+                [mkcert_path, "-cert-file", str(cert_path), "-key-file", str(key_path)] + domains,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self._print_success(f"Certificate: {cert_path}")
+            self._print_success(f"Key: {key_path}")
+        except subprocess.CalledProcessError as e:
+            self._print_error(f"Certificate generation failed: {e.stderr}")
+            return result
+        except subprocess.TimeoutExpired:
+            self._print_error("Certificate generation timed out")
+            return result
+
+        # Store SSL settings for config generation
+        self.settings["ssl_enabled"] = True
+        self.settings["ssl_cert"] = str(cert_path.absolute())
+        self.settings["ssl_key"] = str(key_path.absolute())
+
+        # Update config.yaml if it already exists (step 5 ran before us)
+        config_yaml = self.install_dir / "config.yaml"
+        if config_yaml.exists():
+            try:
+                import yaml
+
+                with open(config_yaml) as f:
+                    config = yaml.safe_load(f) or {}
+
+                if "features" not in config:
+                    config["features"] = {}
+                config["features"]["ssl_enabled"] = True
+
+                if "paths" not in config:
+                    config["paths"] = {}
+                config["paths"]["ssl_cert"] = str(cert_path.absolute())
+                config["paths"]["ssl_key"] = str(key_path.absolute())
+
+                with open(config_yaml, "w") as f:
+                    yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+                self._print_success("config.yaml updated with HTTPS settings")
+            except Exception as e:
+                self._print_warning(f"Could not update config.yaml: {e}")
+
+        self._print_success("HTTPS configured — your browser will trust this connection")
+        result["enabled"] = True
+        return result
+
+    def _install_mkcert(self) -> Optional[str]:
+        """
+        Attempt to install mkcert on the current platform.
+
+        Returns:
+            Path to mkcert binary if successful, None otherwise.
+        """
+        platform_name = platform.system()
+        headless = self.settings.get("headless")
+
+        if platform_name == "Windows":
+            # Try winget first (built into Windows 11, available on Windows 10)
+            winget_path = shutil.which("winget")
+            if winget_path:
+                if not headless:
+                    print(
+                        f"\n{Fore.YELLOW}Install mkcert via winget? [Y/n]: {Style.RESET_ALL}",
+                        end="",
+                        flush=True,
+                    )
+                    response = input().strip().lower()
+                    if response not in ("", "y", "yes"):
+                        return None
+
+                self._print_info("Installing mkcert via winget...")
+                try:
+                    subprocess.run(
+                        ["winget", "install", "FiloSottile.mkcert", "--accept-source-agreements", "--accept-package-agreements"],
+                        check=True,
+                        timeout=120,
+                    )
+                    # winget may require PATH refresh
+                    mkcert_path = shutil.which("mkcert")
+                    if mkcert_path:
+                        self._print_success("mkcert installed via winget")
+                        return mkcert_path
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    pass
+
+            # Try chocolatey as fallback
+            choco_path = shutil.which("choco")
+            if choco_path:
+                self._print_info("Installing mkcert via Chocolatey...")
+                try:
+                    subprocess.run(
+                        ["choco", "install", "mkcert", "-y"],
+                        check=True,
+                        timeout=120,
+                    )
+                    mkcert_path = shutil.which("mkcert")
+                    if mkcert_path:
+                        self._print_success("mkcert installed via Chocolatey")
+                        return mkcert_path
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    pass
+
+            self._print_warning("Could not auto-install mkcert on Windows")
+            self._print_info("Install manually: winget install FiloSottile.mkcert")
+            self._print_info("  or: choco install mkcert")
+            return None
+
+        elif platform_name == "Linux":
+            # Try apt (Debian/Ubuntu)
+            apt_path = shutil.which("apt")
+            if apt_path:
+                if not headless:
+                    print(
+                        f"\n{Fore.YELLOW}Install mkcert via apt? [Y/n]: {Style.RESET_ALL}",
+                        end="",
+                        flush=True,
+                    )
+                    response = input().strip().lower()
+                    if response not in ("", "y", "yes"):
+                        return None
+
+                self._print_info("Installing mkcert via apt...")
+                try:
+                    subprocess.run(["sudo", "apt", "install", "-y", "mkcert"], check=True, timeout=60)
+                    mkcert_path = shutil.which("mkcert")
+                    if mkcert_path:
+                        self._print_success("mkcert installed via apt")
+                        return mkcert_path
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    pass
+
+            # Try snap as fallback
+            snap_path = shutil.which("snap")
+            if snap_path:
+                self._print_info("Installing mkcert via snap...")
+                try:
+                    subprocess.run(["sudo", "snap", "install", "mkcert"], check=True, timeout=60)
+                    mkcert_path = shutil.which("mkcert")
+                    if mkcert_path:
+                        self._print_success("mkcert installed via snap")
+                        return mkcert_path
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    pass
+
+            self._print_warning("Could not auto-install mkcert on Linux")
+            self._print_info("Install manually: sudo apt install mkcert")
+            return None
+
+        elif platform_name == "Darwin":
+            brew_path = shutil.which("brew")
+            if brew_path:
+                if not headless:
+                    print(
+                        f"\n{Fore.YELLOW}Install mkcert via Homebrew? [Y/n]: {Style.RESET_ALL}",
+                        end="",
+                        flush=True,
+                    )
+                    response = input().strip().lower()
+                    if response not in ("", "y", "yes"):
+                        return None
+
+                self._print_info("Installing mkcert via Homebrew...")
+                try:
+                    subprocess.run(["brew", "install", "mkcert"], check=True, timeout=120)
+                    mkcert_path = shutil.which("mkcert")
+                    if mkcert_path:
+                        self._print_success("mkcert installed via Homebrew")
+                        return mkcert_path
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    pass
+
+            self._print_warning("Could not auto-install mkcert on macOS")
+            self._print_info("Install manually: brew install mkcert")
+            return None
+
+        return None
 
     def _get_postgresql_scan_paths(self) -> List[Path]:
         """
@@ -1927,21 +2187,22 @@ class UnifiedInstaller:
         network_ips = self._get_all_network_ips()
         frontend_port = self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT)
         api_port = self.settings.get("api_port", DEFAULT_API_PORT)
+        protocol = "https" if self.settings.get("ssl_enabled") else "http"
 
         # Show localhost first (most common)
-        print(f"   {Fore.CYAN}http://localhost:{frontend_port}{Style.RESET_ALL}")
+        print(f"   {Fore.CYAN}{protocol}://localhost:{frontend_port}{Style.RESET_ALL}")
 
         # Show network IPs if detected
         if network_ips:
             print(f"\n   {Fore.WHITE}Or from other devices on your network:{Style.RESET_ALL}")
             for ip in network_ips:
-                print(f"   {Fore.CYAN}http://{ip}:{frontend_port}{Style.RESET_ALL}")
+                print(f"   {Fore.CYAN}{protocol}://{ip}:{frontend_port}{Style.RESET_ALL}")
 
         print()
 
         # API documentation
         print(f"{Fore.YELLOW}API Documentation:{Style.RESET_ALL}")
-        print(f"  {Fore.CYAN}http://localhost:{api_port}/docs{Style.RESET_ALL}")
+        print(f"  {Fore.CYAN}{protocol}://localhost:{api_port}/docs{Style.RESET_ALL}")
         print()
 
         # Next steps (updated for Handover 0034)
