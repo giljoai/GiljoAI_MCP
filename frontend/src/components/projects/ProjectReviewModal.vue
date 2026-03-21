@@ -42,17 +42,19 @@
           </div>
 
           <!-- Section 2: Mission -->
-          <div v-if="projectData.mission" class="mb-6">
+          <div class="mb-6">
             <h3 class="text-h6 mb-2">Mission</h3>
             <v-card variant="outlined" class="pa-3">
-              <pre class="text-body-2" style="white-space: pre-wrap;">{{ missionText }}</pre>
+              <pre v-if="missionText" class="text-body-2" style="white-space: pre-wrap;">{{ missionText }}</pre>
+              <p v-else class="text-caption text-medium-emphasis">No data</p>
             </v-card>
           </div>
 
           <!-- Section 3: Agent Roster -->
-          <div v-if="agents.length" class="mb-6">
+          <div class="mb-6">
             <h3 class="text-h6 mb-2">Agents ({{ agents.length }})</h3>
-            <v-table density="compact">
+            <p v-if="!agents.length" class="text-caption text-medium-emphasis">No data</p>
+            <v-table v-else density="compact">
               <thead>
                 <tr>
                   <th>Agent</th>
@@ -72,6 +74,7 @@
 
           <!-- Section 4: Agent Details (expandable, lazy-loaded messages) -->
           <div v-if="agents.length" class="mb-6">
+
             <h3 class="text-h6 mb-2">Agent Details</h3>
             <v-expansion-panels v-model="expandedAgentPanels" variant="accordion">
               <v-expansion-panel
@@ -107,9 +110,10 @@
           </div>
 
           <!-- Section 5: 360 Memory -->
-          <div v-if="memoryEntries.length" class="mb-6">
+          <div class="mb-6">
             <h3 class="text-h6 mb-2">360 Memory ({{ memoryEntries.length }} entries)</h3>
-            <v-expansion-panels variant="accordion">
+            <p v-if="!memoryEntries.length" class="text-caption text-medium-emphasis">No data</p>
+            <v-expansion-panels v-else variant="accordion">
               <v-expansion-panel v-for="(entry, i) in memoryEntries" :key="i" :value="i">
                 <v-expansion-panel-title>
                   <div class="d-flex align-center w-100">
