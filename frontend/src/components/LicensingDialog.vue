@@ -52,7 +52,7 @@ const userCount = ref(0)
 async function checkLicensing() {
   try {
     const apiBaseUrl =
-      window.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:7272'
+      window.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:7272`
     const response = await fetch(`${apiBaseUrl}/api/setup/status`, {
       method: 'GET',
       cache: 'no-cache',
