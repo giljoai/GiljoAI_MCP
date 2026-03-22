@@ -1341,6 +1341,19 @@ class UnifiedInstaller:
             # Determine pip executable (platform-specific)
             pip_executable = self.platform.get_venv_pip(self.venv_dir)
 
+            # Upgrade pip to latest before installing packages
+            self._print_info("Upgrading pip to latest version...")
+            try:
+                subprocess.run(
+                    [str(pip_executable), "install", "--upgrade", "pip"],
+                    check=True,
+                    capture_output=True,
+                    timeout=60,
+                )
+                self._print_success("pip upgraded")
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                self._print_warning("pip upgrade skipped (non-critical)")
+
             # Step 2: Install requirements
             if not self.requirements_file.exists():
                 self._print_error(f"requirements.txt not found: {self.requirements_file}")
