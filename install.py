@@ -77,7 +77,7 @@ from typing import Any, Dict, List, Optional
 
 # Third-party imports (safe after bootstrap)
 import click
-from colorama import Fore, Style, init
+from colorama import Back, Fore, Style, init
 
 # Import unified platform handlers and core modules
 from installer.platforms import get_platform_handler
@@ -1133,11 +1133,11 @@ class UnifiedInstaller:
             ca_dir = ca_result.stdout.strip()
             if ca_dir:
                 ca_cert = str(Path(ca_dir) / "rootCA.pem")
-                print(f"\n{Fore.YELLOW}{'=' * 60}")
+                print(f"\n{Back.RED}{Fore.WHITE}{Style.BRIGHT}{'=' * 60}")
                 print(f"  IMPORTANT: AI Tool Certificate Trust")
                 print(f"{'=' * 60}{Style.RESET_ALL}")
-                print(f"\n  Node.js-based AI tools (Claude Code, Gemini CLI) need")
-                print(f"  one extra step to trust your HTTPS certificate.\n")
+                print(f"\n{Fore.RED}{Style.BRIGHT}  Node.js-based AI tools (Claude Code, Gemini CLI) need")
+                print(f"  one extra step to trust your HTTPS certificate.{Style.RESET_ALL}\n")
 
                 if current_os == "Windows":
                     print(f"  {Fore.GREEN}Run in PowerShell (as Administrator):{Style.RESET_ALL}")
