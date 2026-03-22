@@ -245,7 +245,7 @@ def check_postgresql_installed() -> bool:
 
 def check_pip_available() -> bool:
     """
-    Check if pip is available.
+    Check if pip is available (system PATH or venv).
 
     Returns:
         True if pip is available, False otherwise
@@ -255,7 +255,16 @@ def check_pip_available() -> bool:
     if pip_path:
         print_success(f"pip detected at: {pip_path}")
         return True
-    print_error("pip not found in system PATH")
+
+    # Check venv pip (pip may not be on system PATH but exists in venv)
+    venv_pip = Path.cwd() / "venv" / "Scripts" / "pip.exe"
+    if not venv_pip.exists():
+        venv_pip = Path.cwd() / "venv" / "bin" / "pip"
+    if venv_pip.exists():
+        print_success(f"pip detected in venv: {venv_pip}")
+        return True
+
+    print_error("pip not found in system PATH or venv")
     return False
 
 
@@ -1155,6 +1164,7 @@ def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool,
     This script handles the complete startup process for GiljoAI MCP,
     including dependency checking, database verification, and service launching.
     """
+    exit_code = 0
     try:
         if stop:
             exit_code = stop_services()
@@ -1162,17 +1172,24 @@ def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool,
             exit_code = run_startup(
                 check_only=check_only, verbose=verbose, no_browser=no_browser, no_migrations=no_migrations
             )
-        sys.exit(exit_code)
     except KeyboardInterrupt:
         print_info("\nStartup cancelled by user")
-        sys.exit(0)
     except Exception as e:
         print_error(f"Unexpected error: {e}")
         if verbose:
             import traceback
 
             traceback.print_exc()
-        sys.exit(1)
+        exit_code = 1
+    finally:
+        # Keep window open on error so the user can read the output
+        if exit_code != 0:
+            print_error("\nStartup failed. Press Enter to close this window...")
+            try:
+                input()
+            except EOFError:
+                pass
+        sys.exit(exit_code)
 
 
 if __name__ == "__main__":
