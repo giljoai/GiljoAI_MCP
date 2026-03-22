@@ -246,6 +246,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import setupService from '@/services/setupService'
 import GilMascot from '@/components/GilMascot.vue'
 
 const router = useRouter()
@@ -424,6 +425,7 @@ const createAdmin = async () => {
       confirm_pin: confirmPin.value,
     })
 
+    setupService.invalidateStatusCache()
     router.push('/')
   } catch (error) {
     console.error('[CREATE_ADMIN] Failed:', error)
