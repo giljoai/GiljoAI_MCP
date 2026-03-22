@@ -194,6 +194,27 @@ async def lifespan(app: FastAPI):
     app.state.websocket_manager = state.websocket_manager
     app.state.websocket_broker = state.websocket_broker
 
+    # Suppress Windows ProactorEventLoop ConnectionResetError noise
+    # (Python 3.12+ on Windows: browser closes keep-alive connections,
+    # proactor transport logs ERROR trying to shutdown already-closed sockets)
+    import asyncio
+    import sys
+
+    if sys.platform == "win32":
+        loop = asyncio.get_running_loop()
+        _original_handler = loop.get_exception_handler()
+
+        def _suppress_connection_reset(loop, context):
+            exc = context.get("exception")
+            if isinstance(exc, ConnectionResetError):
+                return
+            if _original_handler:
+                _original_handler(loop, context)
+            else:
+                loop.default_exception_handler(context)
+
+        loop.set_exception_handler(_suppress_connection_reset)
+
     logger.info("=" * 70)
     logger.info("API startup complete - All systems initialized")
     logger.info("=" * 70)
