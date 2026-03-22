@@ -1,28 +1,33 @@
 @echo off
 REM ============================================================
-REM Launch Control Panel using System Python
+REM Launch Control Panel using project virtual environment
 REM ============================================================
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
-REM Check if Python is available in system PATH
-python --version >nul 2>&1
-if %errorlevel% neq 0 (
+REM Try project venv first (has psycopg2 and other deps)
+if exist "venv\Scripts\python.exe" (
+    echo Starting GiljoAI MCP Developer Control Panel...
+    echo Using project venv Python
     echo.
-    echo ERROR: Python is not installed or not in system PATH
-    echo Please install Python or add it to your PATH
-    echo.
-    pause
-    exit /b 1
+    "venv\Scripts\python.exe" "dev_tools\control_panel.py" %*
+    goto :done
 )
 
-REM Launch control panel using system Python
-echo Starting GiljoAI MCP Developer Control Panel...
-echo Using system Python from PATH
+if exist ".venv\Scripts\python.exe" (
+    echo Starting GiljoAI MCP Developer Control Panel...
+    echo Using project .venv Python
+    echo.
+    ".venv\Scripts\python.exe" "dev_tools\control_panel.py" %*
+    goto :done
+)
+
+REM Fallback to system Python
+echo Warning: No project venv found. Using system Python (some features may be unavailable).
 echo.
+python "dev_tools\control_panel.py" %*
 
-python "%~dp0control_panel.py"
-
+:done
 if %errorlevel% neq 0 (
     echo.
     echo Control panel exited with error code: %errorlevel%
