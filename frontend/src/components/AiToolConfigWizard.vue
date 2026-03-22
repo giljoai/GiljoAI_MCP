@@ -103,6 +103,20 @@
             </template>
           </v-alert>
 
+          <!-- Gemini + HTTPS: self-signed cert warning -->
+          <v-alert
+            v-if="selectedTool === 'gemini' && isHttps"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            <strong>HTTPS with self-signed certificates:</strong> Gemini CLI requires an extra setup step.
+            Run this once in your terminal before using Gemini:
+            <code class="d-block mt-1 text-body-2">export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"</code>
+            <span class="text-caption">Add this to your <code>~/.bashrc</code> to make it permanent.</span>
+          </v-alert>
+
           <!-- C+D) Codex: Platform selector + Environment Variable command -->
           <template v-if="selectedTool === 'codex'">
             <v-radio-group v-model="selectedPlatform" inline hide-details class="platform-radios mb-2">
@@ -189,6 +203,8 @@ const selectedToolName = computed(
   () => aiTools.find((t) => t.value === selectedTool.value)?.name || 'AI Tool',
 )
 
+const isHttps = computed(() => window.location.protocol === 'https:')
+
 const envVarCommand = computed(() => {
   const key = generatedKey.value || 'YOUR_API_KEY'
   if (selectedPlatform.value === 'windows') {
@@ -230,7 +246,7 @@ function buildServerUrl() {
 }
 
 function claudePrompt(serverUrl, apiKey) {
-  return `claude mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "X-API-Key: ${apiKey}"`
+  return `claude mcp add --transport http giljo-mcp ${serverUrl}/mcp --header "Authorization: Bearer ${apiKey}"`
 }
 
 function codexPrompt(serverUrl) {
@@ -240,7 +256,7 @@ function codexPrompt(serverUrl) {
 }
 
 function geminiPrompt(serverUrl, apiKey) {
-  return `gemini mcp add -t http -H "X-API-Key: ${apiKey}" giljo-mcp ${serverUrl}/mcp`
+  return `gemini mcp add -t http -H "Authorization: Bearer ${apiKey}" giljo-mcp ${serverUrl}/mcp`
 }
 
 function openclawPrompt(serverUrl, apiKey) {
@@ -265,7 +281,7 @@ function buildPromptFor(tool, serverUrl, apiKey) {
     case 'openclaw':
       return openclawPrompt(serverUrl, apiKey)
     default:
-      return `Use these values with your tool:\n- Base URL: ${serverUrl}\n- Header: X-API-Key: ${apiKey}`
+      return `Use these values with your tool:\n- Base URL: ${serverUrl}\n- Header: Authorization: Bearer ${apiKey}`
   }
 }
 

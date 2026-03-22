@@ -64,7 +64,7 @@ def get_claude_code_config(server_url: str, api_key: str) -> str:
         Command string for HTTP transport
     """
     return f"""claude mcp add --transport http giljo-mcp {server_url}/mcp \\
-  --header "X-API-Key: {api_key}" """
+  --header "Authorization: Bearer {api_key}" """
 
 
 def get_codex_config(server_url: str, api_key: str) -> str:
@@ -88,8 +88,8 @@ def get_gemini_config(server_url: str, api_key: str) -> str:
     """
     Generate Gemini CLI MCP HTTP transport command.
 
-    Gemini CLI supports custom headers directly; pass X-API-Key and set
-    transport to HTTP. Order is: <name> <url>.
+    Gemini CLI supports custom headers directly; pass Authorization: Bearer
+    and set transport to HTTP. Order is: <name> <url>.
 
     Args:
         server_url: GiljoAI server URL
@@ -98,7 +98,7 @@ def get_gemini_config(server_url: str, api_key: str) -> str:
     Returns:
         Command string for HTTP transport (single line)
     """
-    return f'gemini mcp add -t http -H "X-API-Key: {api_key}" giljo-mcp {server_url}/mcp'
+    return f'gemini mcp add -t http -H "Authorization: Bearer {api_key}" giljo-mcp {server_url}/mcp'
 
 
 def get_http_tool_instructions(tool_id: str) -> list[str]:
