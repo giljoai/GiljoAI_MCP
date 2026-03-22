@@ -176,6 +176,18 @@
             </div>
           </v-alert>
 
+          <v-alert
+            v-if="sslStatus.ssl_enabled"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            <strong>CLI tool note:</strong> Some coding tools (e.g., Gemini CLI) may require additional
+            certificate trust configuration when using self-signed HTTPS certificates. Regenerate your
+            MCP configuration commands from the Configurator after enabling HTTPS.
+          </v-alert>
+
           <!-- Restart required banner -->
           <v-alert
             v-if="sslRestartRequired"
@@ -190,6 +202,24 @@
                 <strong>Server restart required</strong> for HTTPS changes to take effect.
               </div>
             </div>
+          </v-alert>
+
+          <!-- MCP re-attachment warning after protocol change -->
+          <v-alert
+            v-if="showMcpReattachWarning"
+            type="warning"
+            variant="tonal"
+            class="mb-4"
+            closable
+            @click:close="showMcpReattachWarning = false"
+          >
+            <strong>Action required:</strong> Changing the protocol (HTTP/HTTPS) invalidates existing
+            MCP tool connections. You must remove and re-add your coding tools:
+            <ol class="mt-2 ml-4 text-body-2">
+              <li>Remove existing connections: <code>claude mcp remove giljo-mcp</code>, <code>codex mcp remove giljo-mcp</code>, <code>gemini mcp remove giljo-mcp</code></li>
+              <li>Delete old API keys from User Settings</li>
+              <li>Use the Configurator to generate new connection commands</li>
+            </ol>
           </v-alert>
 
           <!-- Error banner -->
@@ -381,6 +411,7 @@ const sslStatus = ref({
 const sslToggling = ref(false)
 const sslRestartRequired = ref(false)
 const sslError = ref('')
+const showMcpReattachWarning = ref(false)
 const showHttpsGuide = ref(false)
 
 // Methods
@@ -460,6 +491,7 @@ async function toggleSsl(enabled) {
     const result = await response.json()
     sslStatus.value = result
     sslRestartRequired.value = result.restart_required
+    showMcpReattachWarning.value = true
   } catch (error) {
     sslError.value = error.message || 'Failed to toggle SSL'
     console.error('[NETWORK] SSL toggle failed:', error)
