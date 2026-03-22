@@ -981,8 +981,47 @@ class UnifiedInstaller:
             self._print_info("You can install mkcert later and enable HTTPS from Admin Settings > Network")
             return result
 
-        # Install the local CA into the system trust store
-        self._print_info("Installing local Certificate Authority into system trust store...")
+        # Install certutil so mkcert can register the CA in browser trust stores
+        # Windows: Chrome/Edge use Windows cert store natively — no extra tools needed
+        # macOS: Chrome/Safari use Keychain natively — but Firefox needs certutil
+        # Linux: Chrome and Firefox both need certutil (NSS database)
+        current_os = platform.system()
+        if current_os == "Linux":
+            if not shutil.which("certutil"):
+                self._print_info("Installing libnss3-tools (required for browser certificate trust)...")
+                try:
+                    subprocess.run(
+                        ["sudo", "apt", "install", "-y", "libnss3-tools"],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                    )
+                    self._print_success("libnss3-tools installed")
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+                    self._print_warning("Could not install libnss3-tools — browser may still show certificate warnings")
+                    self._print_info("Fix later: sudo apt install libnss3-tools && mkcert -install")
+        elif current_os == "Darwin":
+            if not shutil.which("certutil"):
+                if shutil.which("brew"):
+                    self._print_info("Installing nss (required for Firefox certificate trust)...")
+                    try:
+                        subprocess.run(
+                            ["brew", "install", "nss"],
+                            check=True,
+                            capture_output=True,
+                            text=True,
+                            timeout=120,
+                        )
+                        self._print_success("nss installed (Firefox will trust certificates)")
+                    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+                        self._print_warning("Could not install nss — Firefox may show certificate warnings")
+                        self._print_info("Fix later: brew install nss && mkcert -install")
+                else:
+                    self._print_info("If using Firefox: brew install nss && mkcert -install")
+
+        # Install the local CA into the system and browser trust stores
+        self._print_info("Installing local Certificate Authority into trust stores...")
         try:
             subprocess.run(
                 [mkcert_path, "-install"],
