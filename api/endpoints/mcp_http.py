@@ -27,7 +27,7 @@ Authentication:
 - Automatic tenant/project context resolution
 
 Example Usage (Claude Code):
-    claude mcp add --transport http giljo-mcp http://server:7272/mcp \
+    claude mcp add --transport http giljo-mcp https://server:7272/mcp \
       --header "X-API-Key: gk_YOUR_API_KEY_HERE"
 """
 

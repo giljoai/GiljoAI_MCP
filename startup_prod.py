@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3  # noqa: EXE001
 """
 GiljoAI MCP - Production Startup Script
 
@@ -94,8 +94,8 @@ def start_api_server(verbose: bool = False) -> Optional[subprocess.Popen]:
             # Background mode: hide output for quiet startup
             logs_dir = Path.cwd() / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
-            api_stdout = open(logs_dir / "api_stdout.log", "a", buffering=1, encoding="utf-8")
-            api_stderr = open(logs_dir / "api_stderr.log", "a", buffering=1, encoding="utf-8")
+            api_stdout = open(logs_dir / "api_stdout.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            api_stderr = open(logs_dir / "api_stderr.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
             popen_kwargs["stdout"] = api_stdout
             popen_kwargs["stderr"] = api_stderr
 
@@ -161,7 +161,7 @@ def start_frontend_production_server(verbose: bool = False) -> Optional[subproce
             # Background mode: hide output for quiet startup
             logs_dir = Path.cwd() / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
-            fe_stdout = open(logs_dir / "frontend_prod.log", "a", buffering=1, encoding="utf-8")
+            fe_stdout = open(logs_dir / "frontend_prod.log", "a", buffering=1, encoding="utf-8")  # noqa: SIM115
             fe_stderr = fe_stdout  # Use same file for stderr
             popen_kwargs["stdout"] = fe_stdout
             popen_kwargs["stderr"] = fe_stderr
@@ -244,7 +244,7 @@ def run_production_startup(
     # Step 3: Check database connectivity
     print_header("Database Connectivity")
     print_info("Checking database connection...")
-    db_success, db_error = check_database_connectivity()
+    db_success, _db_error = check_database_connectivity()
 
     if not db_success:
         print_error("Database connectivity check failed")
@@ -254,10 +254,19 @@ def run_production_startup(
     # Step 4: Check first-run status
     print_header("Setup Status")
     print_info("Checking setup completion status...")
-    is_first_run, state = check_first_run()
+    is_first_run, _state = check_first_run()
 
-    # Step 5: Get ports from config
+    # Step 5: Get ports and protocol from config
     api_port, frontend_port = get_config_ports()
+    try:
+        import yaml as _yaml
+
+        _cfg_path = Path("config.yaml")
+        _cfg_data = _yaml.safe_load(_cfg_path.read_text()) if _cfg_path.exists() else {}
+        _ssl_on = _cfg_data.get("features", {}).get("ssl_enabled", False)
+    except (OSError, ValueError, ImportError):
+        _ssl_on = False
+    http_proto = "https" if _ssl_on else "http"
 
     # Step 6: Check port availability
     print_header("Port Availability")
@@ -312,8 +321,8 @@ def run_production_startup(
         network_ip = get_network_ip()
         if network_ip:
             print_info("Access the application via network IP:")
-            print_success(f"Network URL: http://{network_ip}:{frontend_port}")
-        print_success(f"Localhost URL: http://localhost:{frontend_port}")
+            print_success(f"Network URL: {http_proto}://{network_ip}:{frontend_port}")
+        print_success(f"Localhost URL: {http_proto}://localhost:{frontend_port}")
 
         print_header("GiljoAI MCP - Production Mode Active")
     else:
@@ -324,33 +333,33 @@ def run_production_startup(
             # Open welcome setup
             target_route = "/welcome"
             if network_ip:
-                setup_url = f"http://{network_ip}:{frontend_port}{target_route}"
+                setup_url = f"{http_proto}://{network_ip}:{frontend_port}{target_route}"
                 print_info("First-run detected - opening welcome setup at network IP...")
             else:
-                setup_url = f"http://localhost:{frontend_port}{target_route}"
+                setup_url = f"{http_proto}://localhost:{frontend_port}{target_route}"
                 print_info("First-run detected - opening welcome setup...")
 
             open_browser(setup_url, delay=2)
         else:
             # Open dashboard
             if network_ip:
-                dashboard_url = f"http://{network_ip}:{frontend_port}"
+                dashboard_url = f"{http_proto}://{network_ip}:{frontend_port}"
                 print_info("Opening dashboard at network IP...")
             else:
-                dashboard_url = f"http://localhost:{frontend_port}"
+                dashboard_url = f"{http_proto}://localhost:{frontend_port}"
                 print_info("Opening dashboard...")
 
             open_browser(dashboard_url, delay=2)
 
     # Step 9: Display status
     print_header("Services Running (PRODUCTION MODE)")
-    print_success(f"API Server: http://localhost:{api_port}")
-    print_success(f"API Docs: http://localhost:{api_port}/docs")
-    print_success(f"Frontend (Production): http://localhost:{frontend_port}")
+    print_success(f"API Server: {http_proto}://localhost:{api_port}")
+    print_success(f"API Docs: {http_proto}://localhost:{api_port}/docs")
+    print_success(f"Frontend (Production): {http_proto}://localhost:{frontend_port}")
 
     network_ip = get_network_ip()
     if network_ip:
-        print_success(f"Network Access: http://{network_ip}:{frontend_port}")
+        print_success(f"Network Access: {http_proto}://{network_ip}:{frontend_port}")
 
     print_info("\nPress Ctrl+C to stop all services")
 
