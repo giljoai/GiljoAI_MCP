@@ -38,12 +38,6 @@ Run / Inspect
 - Endpoints require `ENABLE_DEVPANEL=true` in the environment (auto-set by the launcher) and only accept localhost requests.
 - Quick prototype: open `dev_tools/devpanel/frontend/index.html` in a browser after starting the backend.
 - You can build your own frontend (e.g., Vite app) under `dev_tools/devpanel` that consumes these endpoints, or simply inspect the JSON inventories.
-- Flow Editor (React Flow):
-  - Flow JSON lives in `dev_tools/devpanel/flows/`; regenerate seeds with `python dev_tools/devpanel/scripts/build_flow_data.py`.
-  - Autosave requires `ALLOW_DEVPANEL_EDIT=true` (set alongside `ENABLE_DEVPANEL=true`).
-  - Install/build once: `cd dev_tools/devpanel/frontend/flow-editor && npm install && npm run build`.
-  - Open `dev_tools/devpanel/frontend/flow-editor/dist/index.html` (or use the “Flow Editor” CTA in the main panel) to launch the editor UI.
-
 Uninstall / Clean Up
 - Remove the env file and dev DB:
   - `rm .env.devpanel devpanel.db`
@@ -57,7 +51,6 @@ Troubleshooting
 File Map (for reference)
 - `dev_tools/devpanel/scripts/devpanel_install.py`
 - `dev_tools/devpanel/scripts/devpanel_index.py`
-- `dev_tools/devpanel/scope/*.md`
 - `dev_tools/devpanel/README.md`
 
 Notes
