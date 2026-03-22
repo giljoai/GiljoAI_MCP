@@ -203,8 +203,7 @@ async def generate_ai_tool_config(
     host = getattr(config.services, "external_host", None) or config.services.api.host
     port = config.services.api.port
 
-    # Use http (wss for production with SSL)
-    protocol = "https" if getattr(config.features, "ssl_enabled", False) else "http"
+    protocol = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
     server_url = f"{protocol}://{host}:{port}"
 
     logger.info(f"Generating config for tool '{tool_id}' with server URL: {server_url}")
