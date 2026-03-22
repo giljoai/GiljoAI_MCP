@@ -1119,6 +1119,55 @@ class UnifiedInstaller:
                 self._print_warning(f"Could not update config.yaml: {e}")
 
         self._print_success("HTTPS configured — your browser will trust this connection")
+
+        # Get mkcert CA root path and show NODE_EXTRA_CA_CERTS instructions
+        # Node.js-based tools (Claude Code, Gemini CLI) use their own CA bundle,
+        # not the OS trust store, so they need this env var to trust mkcert certs.
+        try:
+            ca_result = subprocess.run(
+                [mkcert_path, "-CAROOT"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            ca_dir = ca_result.stdout.strip()
+            if ca_dir:
+                ca_cert = str(Path(ca_dir) / "rootCA.pem")
+                print(f"\n{Fore.YELLOW}{'=' * 60}")
+                print(f"  IMPORTANT: AI Tool Certificate Trust")
+                print(f"{'=' * 60}{Style.RESET_ALL}")
+                print(f"\n  Node.js-based AI tools (Claude Code, Gemini CLI) need")
+                print(f"  one extra step to trust your HTTPS certificate.\n")
+
+                if current_os == "Windows":
+                    print(f"  {Fore.GREEN}Run in PowerShell (as Administrator):{Style.RESET_ALL}")
+                    print(f"  {Fore.CYAN}[System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', '{ca_cert}', 'User'){Style.RESET_ALL}")
+                    print(f"\n  {Fore.GREEN}Or set manually:{Style.RESET_ALL}")
+                    print(f"  {Fore.WHITE}Settings > System > Environment Variables > User variables")
+                    print(f"  Name:  NODE_EXTRA_CA_CERTS")
+                    print(f"  Value: {ca_cert}{Style.RESET_ALL}")
+                elif current_os == "Darwin":
+                    print(f"  {Fore.GREEN}Run in your terminal:{Style.RESET_ALL}")
+                    print(f"  {Fore.CYAN}echo 'export NODE_EXTRA_CA_CERTS=\"{ca_cert}\"' >> ~/.zshrc && source ~/.zshrc{Style.RESET_ALL}")
+                    print(f"\n  {Fore.WHITE}(Use ~/.bashrc instead if you use bash){Style.RESET_ALL}")
+                else:
+                    print(f"  {Fore.GREEN}Run in your terminal:{Style.RESET_ALL}")
+                    print(f"  {Fore.CYAN}echo 'export NODE_EXTRA_CA_CERTS=\"{ca_cert}\"' >> ~/.bashrc && source ~/.bashrc{Style.RESET_ALL}")
+                    print(f"\n  {Fore.WHITE}(Use ~/.zshrc if you use zsh, or ~/.config/fish/config.fish for fish){Style.RESET_ALL}")
+
+                print(f"\n  This is a one-time setup. New terminal windows will")
+                print(f"  inherit the setting automatically.")
+                print(f"\n{Fore.YELLOW}{'=' * 60}{Style.RESET_ALL}")
+
+                print(
+                    f"\n{Fore.YELLOW}Press Enter to continue...{Style.RESET_ALL}",
+                    end="",
+                    flush=True,
+                )
+                input()
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError, OSError):
+            pass
+
         result["enabled"] = True
         return result
 
@@ -2215,8 +2264,8 @@ class UnifiedInstaller:
         return self.platform.get_network_ips()
 
     def _print_success_summary(self) -> None:
-        """Print installation success summary with manual start instructions"""
-        separator = "=" * 70
+        """Print installation success summary with startup instructions"""
+        separator = "=" * 60
 
         print(f"\n{Fore.GREEN}{Style.BRIGHT}{separator}{Style.RESET_ALL}")
         print(f"{Fore.GREEN}{Style.BRIGHT}  Installation Complete!{Style.RESET_ALL}")
@@ -2224,85 +2273,34 @@ class UnifiedInstaller:
 
         # Database credentials
         if self.database_credentials:
-            print(f"{Fore.YELLOW}Database Credentials (SAVE THESE):{Style.RESET_ALL}")
-            print("  • Database: giljo_mcp")
-            print("  • Owner: giljo_owner")
-            print("  • User: giljo_user")
-            print("  • Host: localhost")
-            print("  • Port: 5432")
-            print()
+            print(f"{Fore.YELLOW}Database: {Fore.WHITE}giljo_mcp @ localhost:5432 (owner: giljo_owner, user: giljo_user){Style.RESET_ALL}\n")
 
-        # REMOVED (Handover 0034): Default admin account messaging
-        # Fresh installs will create admin via CreateAdminAccount.vue
-
-        # Startup guidance
-        print(f"{Fore.CYAN}{Style.BRIGHT}Recommended startup:{Style.RESET_ALL}")
-        print(f"  {Fore.GREEN}python startup.py{Style.RESET_ALL}")
-        print(f"  {Fore.WHITE}(Automatically uses the installer virtual environment){Style.RESET_ALL}")
-        if platform.system() == "Windows":
-            print(f"  {Fore.GREEN}start_giljo.bat{Style.RESET_ALL}  (optional launcher)")
-        else:
-            print(f"  {Fore.GREEN}./start_giljo.sh{Style.RESET_ALL}  (optional launcher)")
-        print()
-
-        # Manual start instructions
-        print(f"{Fore.CYAN}{Style.BRIGHT}Manual control (separate terminals):{Style.RESET_ALL}\n")
-
-        print(f"{Fore.WHITE}1. Start the API server:{Style.RESET_ALL}")
-        if platform.system() == "Windows":
-            print(f"   {Fore.GREEN}venv\\Scripts\\python.exe api\\run_api.py{Style.RESET_ALL}")
-        else:
-            print(f"   {Fore.GREEN}venv/bin/python api/run_api.py{Style.RESET_ALL}")
-        print()
-
-        print(f"{Fore.WHITE}2. Start the frontend (in a new terminal):{Style.RESET_ALL}")
-        print(f"   {Fore.GREEN}cd frontend{Style.RESET_ALL}")
-        print(f"   {Fore.GREEN}npm run dev{Style.RESET_ALL}")
-        print()
-
-        print(f"{Fore.WHITE}3. Open your browser:{Style.RESET_ALL}")
-
-        # Detect network IPs
-        network_ips = self._get_all_network_ips()
+        # Detect protocol and ports
         frontend_port = self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT)
         api_port = self.settings.get("api_port", DEFAULT_API_PORT)
         protocol = "https" if self.settings.get("ssl_enabled") else "http"
 
-        # Show localhost first (most common)
-        print(f"   {Fore.CYAN}{protocol}://localhost:{frontend_port}{Style.RESET_ALL}")
+        # How to start
+        print(f"{Fore.CYAN}{Style.BRIGHT}Start the application:{Style.RESET_ALL}")
+        print(f"  {Fore.GREEN}python startup.py{Style.RESET_ALL}")
+        print()
+
+        # Where to go
+        print(f"{Fore.CYAN}{Style.BRIGHT}Then open your browser:{Style.RESET_ALL}")
+        print(f"  {Fore.CYAN}{protocol}://localhost:{frontend_port}{Style.RESET_ALL}")
 
         # Show network IPs if detected
+        network_ips = self._get_all_network_ips()
         if network_ips:
-            print(f"\n   {Fore.WHITE}Or from other devices on your network:{Style.RESET_ALL}")
             for ip in network_ips:
-                print(f"   {Fore.CYAN}{protocol}://{ip}:{frontend_port}{Style.RESET_ALL}")
-
+                print(f"  {Fore.WHITE}{protocol}://{ip}:{frontend_port}  (LAN){Style.RESET_ALL}")
         print()
 
-        # API documentation
-        print(f"{Fore.YELLOW}API Documentation:{Style.RESET_ALL}")
-        print(f"  {Fore.CYAN}{protocol}://localhost:{api_port}/docs{Style.RESET_ALL}")
+        # API docs
+        print(f"{Fore.WHITE}API docs: {Fore.CYAN}{protocol}://localhost:{api_port}/docs{Style.RESET_ALL}")
         print()
 
-        # Next steps (updated for Handover 0034)
-        print(f"{Fore.WHITE}{Style.BRIGHT}Next Steps:{Style.RESET_ALL}")
-        print("  1. Start the services with python startup.py (or the manual commands above)")
-        print("  2. Open your browser to the frontend URL")
-        print(f"  3. {Fore.YELLOW}Create your administrator account{Style.RESET_ALL} (first-run only)")
-        print("  4. Configure optional features:")
-        print("     • MCP integration")
-        print("     • Serena integration")
-        print("  5. Create your first product and start orchestrating!")
-        print()
-
-        # Firewall configuration note
-        print(f"{Fore.YELLOW}Network Access (Optional):{Style.RESET_ALL}")
-        print("  To allow access from other devices on your network:")
-        print("  1. Configure your OS firewall (see docs/guides/FIREWALL_CONFIGURATION.md)")
-        print("  2. Update config.yaml: firewall_configured: true")
-        print()
-
-        print(f"{Fore.GREEN}Installation successful! Start the services to continue.{Style.RESET_ALL}\n")
+        print(f"{Fore.GREEN}Create your administrator account on first visit.{Style.RESET_ALL}\n")
 
     def _print_postgresql_install_guide(self) -> None:
         """Print platform-specific PostgreSQL installation guide"""
