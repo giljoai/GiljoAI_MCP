@@ -163,38 +163,34 @@ class WindowsPlatformHandler(PlatformHandler):
         desktop = Path(shell.SpecialFolders("Desktop"))
 
         shortcuts_created = []
+        python_exe = str(venv_dir / "Scripts" / "python.exe")
+        icons_dir = install_dir / "frontend" / "public"
 
-        # Main application shortcut
-        shortcut_path = desktop / "GiljoAI MCP.lnk"
-        shortcut = shell.CreateShortcut(str(shortcut_path))
-        shortcut.TargetPath = str(venv_dir / "Scripts" / "python.exe")
-        shortcut.Arguments = str(install_dir / "startup.py")
-        shortcut.WorkingDirectory = str(install_dir)
+        # Start shortcut (launches backend + frontend + opens browser)
+        start_path = desktop / "GiljoAI MCP.lnk"
+        start_shortcut = shell.CreateShortcut(str(start_path))
+        start_shortcut.TargetPath = python_exe
+        start_shortcut.Arguments = f'"{install_dir / "startup.py"}" --verbose'
+        start_shortcut.WorkingDirectory = str(install_dir)
+        start_ico = icons_dir / "Start.ico"
+        if start_ico.exists():
+            start_shortcut.IconLocation = str(start_ico)
+        start_shortcut.Description = "Start GiljoAI MCP (backend + frontend + browser)"
+        start_shortcut.save()
+        shortcuts_created.append(str(start_path))
 
-        # Try to use favicon as icon
-        favicon_path = install_dir / "frontend" / "public" / "favicon.ico"
-        if favicon_path.exists():
-            shortcut.IconLocation = str(favicon_path)
-
-        shortcut.Description = "Launch GiljoAI MCP Orchestrator"
-        shortcut.save()
-
-        shortcuts_created.append(str(shortcut_path))
-
-        # Dashboard-only shortcut
-        dashboard_shortcut_path = desktop / "GiljoAI Dashboard.lnk"
-        dashboard_shortcut = shell.CreateShortcut(str(dashboard_shortcut_path))
-        dashboard_shortcut.TargetPath = str(venv_dir / "Scripts" / "python.exe")
-        dashboard_shortcut.Arguments = f"{install_dir / 'startup.py'} --dashboard-only"
-        dashboard_shortcut.WorkingDirectory = str(install_dir)
-
-        if favicon_path.exists():
-            dashboard_shortcut.IconLocation = str(favicon_path)
-
-        dashboard_shortcut.Description = "Launch GiljoAI Dashboard Only"
-        dashboard_shortcut.save()
-
-        shortcuts_created.append(str(dashboard_shortcut_path))
+        # Stop shortcut (graceful shutdown)
+        stop_path = desktop / "Stop GiljoAI.lnk"
+        stop_shortcut = shell.CreateShortcut(str(stop_path))
+        stop_shortcut.TargetPath = python_exe
+        stop_shortcut.Arguments = f'"{install_dir / "startup.py"}" --stop'
+        stop_shortcut.WorkingDirectory = str(install_dir)
+        stop_ico = icons_dir / "Stop.ico"
+        if stop_ico.exists():
+            stop_shortcut.IconLocation = str(stop_ico)
+        stop_shortcut.Description = "Stop GiljoAI MCP services"
+        stop_shortcut.save()
+        shortcuts_created.append(str(stop_path))
 
         return {
             "success": True,
@@ -216,26 +212,25 @@ class WindowsPlatformHandler(PlatformHandler):
         """
         desktop = Path.home() / "Desktop"
         shortcuts_created = []
+        python_exe = f'"{venv_dir / "Scripts" / "python.exe"}"'
 
-        # Main application batch file
+        # Start batch file
         main_bat = desktop / "GiljoAI MCP.bat"
         with open(main_bat, "w") as f:
             f.write("@echo off\n")
             f.write(f'cd /d "{install_dir}"\n')
-            f.write(f'"{venv_dir / "Scripts" / "python.exe"}" startup.py\n')
+            f.write(f"{python_exe} startup.py --verbose\n")
             f.write("pause\n")
-
         shortcuts_created.append(str(main_bat))
 
-        # Dashboard-only batch file
-        dashboard_bat = desktop / "GiljoAI Dashboard.bat"
-        with open(dashboard_bat, "w") as f:
+        # Stop batch file
+        stop_bat = desktop / "Stop GiljoAI.bat"
+        with open(stop_bat, "w") as f:
             f.write("@echo off\n")
             f.write(f'cd /d "{install_dir}"\n')
-            f.write(f'"{venv_dir / "Scripts" / "python.exe"}" startup.py --dashboard-only\n')
+            f.write(f"{python_exe} startup.py --stop\n")
             f.write("pause\n")
-
-        shortcuts_created.append(str(dashboard_bat))
+        shortcuts_created.append(str(stop_bat))
 
         return {
             "success": True,
