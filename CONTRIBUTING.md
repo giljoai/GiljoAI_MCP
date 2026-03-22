@@ -9,13 +9,13 @@ Read this section first. It affects your intellectual property rights.
 ### Intellectual Property Assignment
 
 By submitting a pull request, patch, or any other contribution to this
-repository, you irrevocably assign all intellectual property rights in
-your contribution to GiljoAI LLC. You represent that you have the right
+repository, You irrevocably assign all intellectual property rights in
+Your contribution to GiljoAI LLC. You represent that You have the right
 to make such assignment. GiljoAI LLC may use, license, and sublicense
-your contribution without restriction, including in proprietary and
+Your contribution without restriction, including in proprietary and
 commercial products.
 
-You retain the right to use your own contributions in your other projects.
+You retain the right to use Your own contributions in Your other projects.
 
 This assignment is necessary because GiljoAI distributes the Software under
 both the GiljoAI Community License (free for single-user use) and commercial

@@ -6,7 +6,7 @@
 
 **Last Updated**: 2025-11-02
 **Version**: v3.0+
-**Applies To**: GiljoAI MCP Server with Handover 0080
+**Applies To**: GiljoAI MCP Coding Orchestrator with Handover 0080
 
 ## Table of Contents
 

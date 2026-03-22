@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# GiljoAI MCP Server - One-Liner Installation Script
+# GiljoAI MCP Coding Orchestrator - One-Liner Installation Script
 # For macOS and Linux
-# Usage: curl -fsSL https://install.giljoai.com/install.sh | bash
+# Usage: curl -fsSL https://install.giljo.ai/install.sh | bash
 
 set -e  # Exit on error
 
@@ -46,10 +46,10 @@ log_message() {
 # Display banner
 show_banner() {
     echo ""
-    echo "╔════════════════════════════════════════════════════════╗"
-    echo "║       GiljoAI MCP Server - Installation                ║"
-    echo "║       Multi-Agent Orchestration Platform                ║"
-    echo "╚════════════════════════════════════════════════════════╝"
+    echo "╔═════════════════════════════════════════════════════════════════════╗"
+    echo "║       GiljoAI MCP Coding Orchestrator - Installation                ║"
+    echo "║       Multi-Agent Orchestration Platform                            ║"
+    echo "╚═════════════════════════════════════════════════════════════════════╝"
     echo ""
 }
 
@@ -241,7 +241,7 @@ prompt_install_directory() {
 
 # Download latest release
 download_latest_release() {
-    print_info "Downloading GiljoAI MCP Server..."
+    print_info "Downloading GiljoAI MCP Coding Orchestrator..."
     log_message "Downloading from GitHub: $GITHUB_REPO"
     
     TEMP_DIR=$(mktemp -d)
@@ -344,7 +344,7 @@ show_success() {
     echo "║           Installation Complete!                        ║"
     echo "╚════════════════════════════════════════════════════════╝"
     echo ""
-    print_success "GiljoAI MCP Server installed successfully"
+    print_success "GiljoAI MCP Coding Orchestrator installed successfully"
     echo ""
     echo "Next steps:"
     echo ""

@@ -277,5 +277,5 @@ GiljoAI MCP frontend application.
 
 ---
 
-**Frontend Tester Agent** GiljoAI Agent Orchestration MCP Server Date:
+**Frontend Tester Agent** GiljoAI MCP Coding Orchestrator Date:
 2025-10-30 Handover: 0077

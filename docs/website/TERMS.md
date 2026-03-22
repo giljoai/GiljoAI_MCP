@@ -7,7 +7,7 @@
 
 ## 1. What This Agreement Covers
 
-These Terms of Service ("Terms") govern your use of GiljoAI MCP software and the giljoai.com website ("Services"), operated by GiljoAI LLC, a New Hampshire limited liability company ("GiljoAI," "we," "us").
+These Terms of Service ("Terms") govern your use of GiljoAI MCP software and the giljo.ai website ("Services"), operated by GiljoAI LLC, a New Hampshire limited liability company ("GiljoAI," "we," "us").
 
 By installing, accessing, or using GiljoAI MCP, you agree to these Terms. If you do not agree, do not use the Services.
 
@@ -30,7 +30,7 @@ A separate subscription to an MCP-compatible AI coding tool (such as Claude Code
 
 ### Community Edition
 
-The Community Edition is free for individual use under the **GiljoAI Community License v1.0**. The full license text is available at [LICENSE](https://github.com/giljoai/giljoai-mcp/blob/main/LICENSE).
+The Community Edition is free for individual use under the **GiljoAI Community License v1.1**. The full license text is available at [LICENSE](https://github.com/giljoai/giljoai-mcp/blob/main/LICENSE).
 
 Key terms:
 - **Single-user use**: Free, no payment required
@@ -59,7 +59,7 @@ You are responsible for:
 ## 5. Intellectual Property
 
 - **Your data**: You retain full ownership of all products, projects, vision documents, agent configurations, and 360 Memory entries you create. GiljoAI claims no rights to your content.
-- **GiljoAI software**: The GiljoAI MCP software, documentation, branding, and website content are the property of GiljoAI LLC, licensed to you under the GiljoAI Community License v1.0.
+- **GiljoAI software**: The GiljoAI MCP software, documentation, branding, and website content are the property of GiljoAI LLC, licensed to you under the GiljoAI Community License v1.1.
 - **AI-generated output**: Code and content produced by third-party AI tools through GiljoAI MCP workflows are subject to the terms of those AI tool providers, not GiljoAI.
 
 ---

@@ -42,7 +42,7 @@
                           │ HTTP POST
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   GiljoAI MCP Server                             │
+│              GiljoAI MCP Coding Orchestrator                    │
 │                                                                   │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │ API Endpoint: POST /agent_jobs/{id}/create_simple_handover    │  │
