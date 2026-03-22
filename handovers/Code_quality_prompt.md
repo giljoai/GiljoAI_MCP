@@ -96,7 +96,7 @@ Search for:
 #### Subagent 5: Convention & Documentation Compliance
 
 Search for:
-- **Forbidden terminology**: Grep all shipping files for "MIT", "open source", "open core". These violate the GiljoAI Community License v1.0.
+- **Forbidden terminology**: Grep all shipping files for "MIT", "open source", "open core". These violate the GiljoAI Community License v1.1.
 - **Version consistency**: All public-facing version numbers should match (pyproject.toml, package.json, app.py, AppBar.vue, etc.).
 - **CE/SaaS import boundary**: CE code (`src/giljo_mcp/`, `api/`, `frontend/src/` excluding `saas/` dirs) must NEVER import from `saas/` directories.
 - **Documentation sync**: Do docstrings and inline comments match current behavior? Flag stale references to removed features, old status values, or deleted files.

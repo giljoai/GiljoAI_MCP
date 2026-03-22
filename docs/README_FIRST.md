@@ -693,7 +693,7 @@ cd frontend/ && npm run dev
 - **Issues**: https://github.com/patrik-giljoai/GiljoAI-MCP/issues
 - **Documentation**: `docs/README_FIRST.md` (this file)
 - **License**: See LICENSE file
-- **Edition**: GiljoAI MCP Community Edition (GiljoAI Community License v1.0). See [Licensing Philosophy](../LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md)
+- **Edition**: GiljoAI MCP Community Edition (GiljoAI Community License v1.1). See [Licensing Philosophy](../LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md)
 - **Contributing**: See CONTRIBUTING.md
 
 ---

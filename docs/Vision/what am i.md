@@ -1,4 +1,4 @@
-> **Note (2026-03-07):** This is an informal developer vision document. The project now uses the GiljoAI Community License v1.0 (single-user free, multi-user requires commercial license). Strategy: one repo now, Community Edition + SaaS fork later. See LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md for details.
+> **Note (2026-03-07):** This is an informal developer vision document. The project now uses the GiljoAI Community License v1.1 (single-user free, multi-user requires commercial license). Strategy: one repo now, Community Edition + SaaS fork later. See LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md for details.
 >
 > **Last Updated:** 2026-03-08
 

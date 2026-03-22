@@ -13,7 +13,7 @@
 If you discover a security vulnerability, please report it responsibly:
 
 1. **Do NOT** open a public GitHub issue for security vulnerabilities
-2. Email security concerns to the project maintainers via the repository contact information
+2. Email security concerns to **abuse@giljo.ai**
 3. Include a description of the vulnerability, steps to reproduce, and potential impact
 
 ## Response Timeline

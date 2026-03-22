@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Highlights
 - **Perfect Score Sprint (0765a-s):** 19-session quality sprint -- 67 commits, ~12,000 lines dead code removed, codebase score raised from 7.8 to 8.35/10
 - **Edition Isolation Architecture (0771):** Two-edition model (CE + SaaS) with physical directory separation, import boundary enforcement, and conditional loading patterns
-- **Community Edition Branding:** GiljoAI Community License v1.0, edition badges, About dialog, licensing enforcement
+- **Community Edition Branding:** GiljoAI Community License v1.1, edition badges, About dialog, licensing enforcement
 
 ### Added
 - CSRF double-submit cookie protection enabled end-to-end (0765f)

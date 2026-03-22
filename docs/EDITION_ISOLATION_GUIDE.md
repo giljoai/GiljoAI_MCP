@@ -20,7 +20,7 @@ GiljoAI MCP ships as **two editions** from a single repository with two long-liv
 
 Enterprise is a deployment mode of SaaS (self-hosted by corporate IT), not a separate edition or codebase. There is no Enterprise branch or Enterprise directory.
 
-The Community Edition is licensed under the **GiljoAI Community License v1.0** (single-user free, multi-user requires commercial license). This is NOT an OSI-approved license. Never reference MIT, open source, or open core in code, documentation, or UI.
+The Community Edition is licensed under the **GiljoAI Community License v1.1** (single-user free, multi-user requires commercial license). This is NOT an OSI-approved license. Never reference MIT, open source, or open core in code, documentation, or UI.
 
 ---
 
