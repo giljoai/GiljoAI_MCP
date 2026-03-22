@@ -3,13 +3,12 @@
     <v-row no-gutters class="fill-height">
       <v-col cols="12" class="d-flex flex-column align-center justify-center">
         <v-card class="admin-card mx-auto" max-width="500" elevation="8">
-          <v-card-title class="text-h4 text-center pa-6 admin-title">
-            Create Administrator Account
-          </v-card-title>
-
-          <v-card-subtitle class="text-center pb-4 text-body-1">
-            Set up your first administrator to access GiljoAI MCP
-          </v-card-subtitle>
+          <div class="text-center pa-6">
+            <h1 class="admin-title text-h3 mb-2">Welcome</h1>
+            <h3 class="text-subtitle-1 text-medium-emphasis">
+              Create your administrator account to get started
+            </h3>
+          </div>
 
           <v-card-text class="pa-6">
             <v-form ref="adminForm" v-model="formValid" @submit.prevent="createAdmin">
