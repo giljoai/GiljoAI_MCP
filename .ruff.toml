@@ -226,6 +226,9 @@ inline-quotes = "double"
     "T201",   # CLI entry point - print() for user-facing startup output
     "BLE001", # Broad exception OK for graceful startup error handling
 ]
+"api/startup/shutdown.py" = [
+    "T201",   # Console progress bars for shutdown steps - print() is intentional
+]
 
 # --- CLI scripts and launchers (print() is the user interface) ---
 "scripts/**/*.py" = [
