@@ -231,28 +231,32 @@ class LinuxPlatformHandler(PlatformHandler):
             desktop_dir.mkdir(parents=True, exist_ok=True)
 
             shortcuts_created = []
+            python_bin = str(venv_dir / "bin" / "python")
+            startup_script = str(install_dir / "startup.py")
 
-            # Main application launcher
+            # Start launcher
             main_desktop = desktop_dir / "giljoai-mcp.desktop"
             self._create_desktop_file(
                 main_desktop,
                 name="GiljoAI MCP",
-                exec_path=f'"{venv_dir / "bin" / "python"}" "{install_dir / "startup.py"}"',
+                exec_path=f'"{python_bin}" "{startup_script}" --verbose',
                 working_dir=install_dir,
-                description="Launch GiljoAI MCP Orchestrator",
+                description="Start GiljoAI MCP (backend + frontend + browser)",
+                terminal=True,
             )
             shortcuts_created.append(str(main_desktop))
 
-            # Dashboard-only launcher
-            dashboard_desktop = desktop_dir / "giljoai-dashboard.desktop"
+            # Stop launcher
+            stop_desktop = desktop_dir / "giljoai-stop.desktop"
             self._create_desktop_file(
-                dashboard_desktop,
-                name="GiljoAI Dashboard",
-                exec_path=f'"{venv_dir / "bin" / "python"}" "{install_dir / "startup.py"}" --dashboard-only',
+                stop_desktop,
+                name="Stop GiljoAI",
+                exec_path=f'"{python_bin}" "{startup_script}" --stop',
                 working_dir=install_dir,
-                description="Launch GiljoAI Dashboard Only",
+                description="Stop GiljoAI MCP services",
+                terminal=True,
             )
-            shortcuts_created.append(str(dashboard_desktop))
+            shortcuts_created.append(str(stop_desktop))
 
             # Try to trust desktop files (GNOME)
             for desktop_file in shortcuts_created:
@@ -273,7 +277,9 @@ class LinuxPlatformHandler(PlatformHandler):
         except Exception as e:
             return {"success": False, "error": str(e), "message": f"Failed to create desktop launchers: {e}"}
 
-    def _create_desktop_file(self, path: Path, name: str, exec_path: str, working_dir: Path, description: str) -> None:
+    def _create_desktop_file(
+        self, path: Path, name: str, exec_path: str, working_dir: Path, description: str, terminal: bool = False
+    ) -> None:
         """
         Create .desktop file with proper format.
 
@@ -283,7 +289,9 @@ class LinuxPlatformHandler(PlatformHandler):
             exec_path: Executable command
             working_dir: Working directory
             description: Application description
+            terminal: If True, launch in a terminal window
         """
+        terminal_str = "true" if terminal else "false"
         content = f"""[Desktop Entry]
 Version=1.0
 Type=Application
@@ -291,7 +299,7 @@ Name={name}
 Comment={description}
 Exec={exec_path}
 Path={working_dir}
-Terminal=false
+Terminal={terminal_str}
 Categories=Development;
 """
         path.write_text(content)

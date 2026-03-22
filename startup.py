@@ -1076,12 +1076,79 @@ def run_startup(
     return 0
 
 
+def stop_services() -> int:
+    """Stop all running GiljoAI MCP services by finding and terminating their processes."""
+    print_info("Stopping GiljoAI MCP services...")
+
+    stopped = 0
+
+    # Find and kill API server (run_api.py)
+    try:
+        if platform.system() == "Windows":
+            result = subprocess.run(
+                ["wmic", "process", "where", "CommandLine like '%run_api.py%' and Name='python.exe'", "get", "ProcessId"],
+                capture_output=True, text=True, timeout=10,
+            )
+            for line in result.stdout.strip().split("\n")[1:]:
+                pid = line.strip()
+                if pid.isdigit():
+                    subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10)
+                    print_success(f"Stopped API server (PID: {pid})")
+                    stopped += 1
+        else:
+            result = subprocess.run(
+                ["pgrep", "-f", "run_api.py"],
+                capture_output=True, text=True, timeout=10,
+            )
+            for pid in result.stdout.strip().split("\n"):
+                if pid.strip().isdigit():
+                    subprocess.run(["kill", pid.strip()], capture_output=True, timeout=10)
+                    print_success(f"Stopped API server (PID: {pid.strip()})")
+                    stopped += 1
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+
+    # Find and kill frontend dev server (npm/vite)
+    try:
+        if platform.system() == "Windows":
+            result = subprocess.run(
+                ["wmic", "process", "where", "CommandLine like '%vite%' and Name='node.exe'", "get", "ProcessId"],
+                capture_output=True, text=True, timeout=10,
+            )
+            for line in result.stdout.strip().split("\n")[1:]:
+                pid = line.strip()
+                if pid.isdigit():
+                    subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10)
+                    print_success(f"Stopped frontend server (PID: {pid})")
+                    stopped += 1
+        else:
+            result = subprocess.run(
+                ["pgrep", "-f", "vite"],
+                capture_output=True, text=True, timeout=10,
+            )
+            for pid in result.stdout.strip().split("\n"):
+                if pid.strip().isdigit():
+                    subprocess.run(["kill", pid.strip()], capture_output=True, timeout=10)
+                    print_success(f"Stopped frontend server (PID: {pid.strip()})")
+                    stopped += 1
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        pass
+
+    if stopped == 0:
+        print_info("No running GiljoAI services found")
+    else:
+        print_success(f"Stopped {stopped} service(s)")
+
+    return 0
+
+
 @click.command()
 @click.option("--check-only", is_flag=True, help="Only check dependencies without starting services")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output (show console windows on Windows)")
 @click.option("--no-browser", is_flag=True, help="Skip automatic browser launch (show URLs instead)")
 @click.option("--no-migrations", is_flag=True, help="Skip automatic database migrations")
-def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool) -> None:
+@click.option("--stop", is_flag=True, help="Stop all running GiljoAI services")
+def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool, stop: bool) -> None:
     """
     GiljoAI MCP - Unified Startup Script
 
@@ -1089,9 +1156,12 @@ def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool)
     including dependency checking, database verification, and service launching.
     """
     try:
-        exit_code = run_startup(
-            check_only=check_only, verbose=verbose, no_browser=no_browser, no_migrations=no_migrations
-        )
+        if stop:
+            exit_code = stop_services()
+        else:
+            exit_code = run_startup(
+                check_only=check_only, verbose=verbose, no_browser=no_browser, no_migrations=no_migrations
+            )
         sys.exit(exit_code)
     except KeyboardInterrupt:
         print_info("\nStartup cancelled by user")
