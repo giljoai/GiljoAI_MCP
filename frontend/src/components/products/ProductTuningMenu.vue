@@ -234,14 +234,9 @@ async function fetchSections() {
   sectionsError.value = ''
 
   try {
-    const response = await api.products.getTuningSections
-      ? api.products.getTuningSections(props.productId)
-      : (await import('@/services/api')).apiClient.get(
-          `/api/v1/products/${props.productId}/tuning/sections`
-        )
-
+    const response = await api.products.getTuningSections(props.productId)
     const data = response.data
-    sections.value = data.sections || data || []
+    sections.value = data.sections || []
     // Pre-select all sections by default
     selectedSections.value = [...sections.value]
   } catch (error) {
@@ -271,12 +266,10 @@ async function generatePrompt() {
   generatingPrompt.value = true
 
   try {
-    const response = await api.products.generateTuningPrompt
-      ? api.products.generateTuningPrompt(props.productId, { sections: selectedSections.value })
-      : (await import('@/services/api')).apiClient.post(
-          `/api/v1/products/${props.productId}/tuning/generate-prompt`,
-          { sections: selectedSections.value }
-        )
+    const response = await api.products.generateTuningPrompt(
+      props.productId,
+      selectedSections.value,
+    )
 
     const data = response.data
     generatedPrompt.value = data.prompt || data.generated_prompt || ''

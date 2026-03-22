@@ -15,7 +15,6 @@
                 class="mb-3"
               />
               <h1 class="text-h5 font-weight-bold">GiljoAI MCP Login</h1>
-              <p class="text-body-2 text-medium-emphasis mt-2">Agent Orchestration System</p>
               <v-chip
                 size="small"
                 variant="outlined"
@@ -143,10 +142,14 @@
 
           <!-- Footer Info -->
           <v-card-text class="text-center pa-4">
-            <p class="text-caption text-medium-emphasis">
-              <v-icon size="small" class="mr-1">mdi-shield-lock</v-icon>
-              Authentication required for all connections
-            </p>
+            <a
+              href="https://www.giljo.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-caption text-medium-emphasis text-decoration-none"
+            >
+              www.giljo.ai
+            </a>
           </v-card-text>
         </v-card>
       </v-col>
