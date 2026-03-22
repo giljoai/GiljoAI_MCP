@@ -2601,6 +2601,9 @@ pg_restore -l {backup_file.name} | head -20
             "- Build output (frontend/dist/)\n"
             "- All npm dependencies (frontend/node_modules/)\n"
             "- Frontend test caches (Vitest, Playwright)\n\n"
+            "HTTPS Certificates:\n"
+            "- Generated SSL certificates (certs/)\n"
+            "- mkcert CA removed from trust stores\n\n"
             "⚠ This action CANNOT be undone!\n\n"
             "Continue?",
             icon="warning",
@@ -2629,7 +2632,7 @@ pg_restore -l {backup_file.name} | head -20
 
         # Step 1: Delete configuration files and venv
         try:
-            self.update_status_message("Step 1/8: Deleting configuration files and venv...")
+            self.update_status_message("Step 1/9: Deleting configuration files and venv...")
 
             targets = [
                 (self.project_root / ".venv", "Virtual environment (.venv)"),
@@ -2667,7 +2670,7 @@ pg_restore -l {backup_file.name} | head -20
         try:
             import shutil  # Local import for this scope
 
-            self.update_status_message("Step 1.5/8: Cleaning Python cache files...")
+            self.update_status_message("Step 1.5/9: Cleaning Python cache files...")
 
             cache_targets = [
                 (self.project_root / ".pytest_cache", "Pytest cache"),
@@ -2730,7 +2733,7 @@ pg_restore -l {backup_file.name} | head -20
 
         # Step 3: Delete database (with fallback)
         try:
-            self.update_status_message("Step 3/8: Deleting database...")
+            self.update_status_message("Step 3/9: Deleting database...")
 
             db_deleted = False
 
@@ -2755,7 +2758,7 @@ pg_restore -l {backup_file.name} | head -20
 
         # Step 4: Delete logs directory
         try:
-            self.update_status_message("Step 4/8: Cleaning logs directory...")
+            self.update_status_message("Step 4/9: Cleaning logs directory...")
 
             logs_dir = self.project_root / "logs"
             if logs_dir.exists():
@@ -2770,7 +2773,7 @@ pg_restore -l {backup_file.name} | head -20
 
         # Step 5: Delete data directory
         try:
-            self.update_status_message("Step 5/8: Cleaning data directory...")
+            self.update_status_message("Step 5/9: Cleaning data directory...")
 
             data_dir = self.project_root / "data"
             if data_dir.exists():
@@ -2785,7 +2788,7 @@ pg_restore -l {backup_file.name} | head -20
 
         # Step 6: Delete session memories
         try:
-            self.update_status_message("Step 6/8: Cleaning session memories...")
+            self.update_status_message("Step 6/9: Cleaning session memories...")
 
             sessions_dir = self.project_root / "docs" / "sessions"
             if sessions_dir.exists():
@@ -2800,7 +2803,7 @@ pg_restore -l {backup_file.name} | head -20
 
         # Step 7: Delete frontend build artifacts and dependencies
         try:
-            self.update_status_message("Step 7/8: Cleaning frontend artifacts and dependencies...")
+            self.update_status_message("Step 7/9: Cleaning frontend artifacts and dependencies...")
 
             frontend_targets = [
                 (self.project_root / "frontend" / "dist", "Frontend build output"),
@@ -2825,9 +2828,46 @@ pg_restore -l {backup_file.name} | head -20
         except Exception as e:
             errors.append(f"Frontend cleanup: {e}")
 
-        # Step 8: Verify and retry any surviving directories
+        # Step 8: Clean mkcert certificates and CA trust
         try:
-            self.update_status_message("Step 8/8: Verifying deletion and retrying failures...")
+            self.update_status_message("Step 8/9: Cleaning HTTPS certificates...")
+
+            # Delete generated cert files
+            certs_dir = self.project_root / "certs"
+            cert_files_deleted = False
+            if certs_dir.exists():
+                for cert_file in ("ssl_cert.pem", "ssl_key.pem"):
+                    cert_path = certs_dir / cert_file
+                    if cert_path.exists():
+                        try:
+                            cert_path.unlink()
+                            cert_files_deleted = True
+                        except Exception as e:
+                            errors.append(f"Certificate {cert_file}: {e}")
+
+                if cert_files_deleted:
+                    deleted.append("HTTPS certificates (ssl_cert.pem, ssl_key.pem)")
+
+            # Uninstall mkcert CA from system trust stores
+            mkcert_path = shutil.which("mkcert")
+            if mkcert_path:
+                try:
+                    subprocess.run(
+                        [mkcert_path, "-uninstall"],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    deleted.append("mkcert CA (removed from trust stores)")
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+                    errors.append(f"mkcert CA uninstall: {e}")
+
+        except Exception as e:
+            errors.append(f"Certificate cleanup: {e}")
+
+        # Step 9: Verify and retry any surviving directories
+        try:
+            self.update_status_message("Step 9/9: Verifying deletion and retrying failures...")
             time.sleep(1)  # Brief pause for filesystem sync
 
             retry_targets = [
