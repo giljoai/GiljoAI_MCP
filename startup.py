@@ -690,7 +690,7 @@ def start_frontend_server(verbose: bool = False) -> Optional[subprocess.Popen]:
         return None
 
 
-def wait_for_api_ready(port: int, max_attempts: int = 60, interval: float = 0.5) -> bool:
+def wait_for_api_ready(port: int, max_attempts: int = 60, interval: float = 0.5, ssl_enabled: bool = False) -> bool:
     """
     Wait for API server to be ready by checking /health endpoint.
 
@@ -698,25 +698,34 @@ def wait_for_api_ready(port: int, max_attempts: int = 60, interval: float = 0.5)
         port: API port number
         max_attempts: Maximum number of attempts (default 60 = 30 seconds)
         interval: Interval between attempts in seconds
+        ssl_enabled: If True, use https:// for health check
 
     Returns:
         True if API is ready, False if timeout
     """
+    import ssl
     import urllib.error
     import urllib.request
 
-    url = f"http://localhost:{port}/health"
+    protocol = "https" if ssl_enabled else "http"
+    url = f"{protocol}://localhost:{port}/health"
     print_info(f"Waiting for API to be ready (max {max_attempts * interval:.0f}s)...")
+
+    # For HTTPS with mkcert self-signed certs, skip certificate verification
+    ssl_context = None
+    if ssl_enabled:
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
 
     for attempt in range(1, max_attempts + 1):
         try:
-            with urllib.request.urlopen(url, timeout=1) as response:
+            with urllib.request.urlopen(url, timeout=1, context=ssl_context) as response:
                 if response.status == 200:
                     print_success(f"API ready after {attempt * interval:.1f}s")
                     return True
         except (urllib.error.URLError, ConnectionError, OSError):
-            # API not ready yet, wait and retry
-            if attempt % 10 == 0:  # Show progress every 5 seconds
+            if attempt % 10 == 0:
                 print_info(f"Still waiting... ({attempt * interval:.0f}s elapsed)")
             time.sleep(interval)
         except Exception as e:
@@ -1018,7 +1027,7 @@ def run_startup(
 
     # Step 8.5: Wait for API to be ready before opening browser
     print_header("Waiting for Services")
-    api_ready = wait_for_api_ready(api_port, max_attempts=60, interval=0.5)
+    api_ready = wait_for_api_ready(api_port, max_attempts=60, interval=0.5, ssl_enabled=ssl_enabled)
 
     if not api_ready:
         print_warning("API did not respond to health check, but continuing anyway")
