@@ -40,9 +40,11 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useWebSocketStore } from '@/stores/websocket'
+import { useUserStore } from '@/stores/user'
 
 const productsStore = useProductStore()
 const wsStore = useWebSocketStore()
+const userStore = useUserStore()
 
 // Loading state for initial fetch
 const loading = ref(true)
@@ -67,13 +69,17 @@ onMounted(async () => {
     console.warn('[ActiveProductDisplay] Failed to register WS handler')
   }
 
-  // 2. Fetch initial active product
-  loading.value = true
-  try {
-    await productsStore.fetchActiveProduct()
-  } catch (err) {
-    console.error('[ActiveProductDisplay] Failed to fetch active product:', err)
-  } finally {
+  // 2. Fetch initial active product (skip if no user authenticated, e.g. fresh install)
+  if (userStore.isAuthenticated) {
+    loading.value = true
+    try {
+      await productsStore.fetchActiveProduct()
+    } catch (err) {
+      console.error('[ActiveProductDisplay] Failed to fetch active product:', err)
+    } finally {
+      loading.value = false
+    }
+  } else {
     loading.value = false
   }
 })
