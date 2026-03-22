@@ -643,6 +643,22 @@ def _register_event_handlers(app: FastAPI) -> None:
     # Setting it here would be None since lifespan hasn't run yet
 
 
+def _build_openapi_servers() -> list[dict[str, str]]:
+    """Build OpenAPI servers list respecting ssl_enabled config."""
+    try:
+        from src.giljo_mcp._config_io import read_config
+
+        config_data = read_config()
+        ssl_enabled = config_data.get("features", {}).get("ssl_enabled", False)
+    except (OSError, ImportError, ValueError):
+        ssl_enabled = False
+    proto = "https" if ssl_enabled else "http"
+    return [
+        {"url": f"{proto}://localhost:7272", "description": "Local development server"},
+        {"url": f"{proto}://0.0.0.0:7272", "description": "LAN accessible server"},
+    ]
+
+
 def create_app() -> FastAPI:
     """Create and configure FastAPI application"""
 
@@ -693,11 +709,7 @@ def create_app() -> FastAPI:
                 "description": "Statistics and monitoring - system metrics, performance, and health checks",
             },
         ],
-        servers=[
-            {"url": "http://localhost:7272", "description": "Local development server"},
-            {"url": "http://0.0.0.0:7272", "description": "LAN accessible server"},
-            {"url": "https://api.giljoai.com", "description": "Production server (future)"},
-        ],
+        servers=_build_openapi_servers(),
         contact={
             "name": "GiljoAI Support",
             "url": "https://github.com/giljoai/mcp-orchestrator",

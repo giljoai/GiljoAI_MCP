@@ -129,7 +129,7 @@
             v-model="newOrigin"
             label="Add New Origin"
             variant="outlined"
-            placeholder="http://192.168.1.100:7274"
+            placeholder="https://192.168.1.100:7274"
             hint="Disabled for single-server installations"
             persistent-hint
             :append-icon="'mdi-plus'"
