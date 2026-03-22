@@ -2408,6 +2408,11 @@ pg_restore -l {backup_file.name} | head -20
 
         checks["frontend_cache"] = frontend_cache_clean
 
+        # Check HTTPS certificates deleted
+        certs_dir = self.project_root / "certs"
+        cert_exists = (certs_dir / "ssl_cert.pem").exists() or (certs_dir / "ssl_key.pem").exists()
+        checks["https_certs"] = not cert_exists
+
         return checks
 
     def display_fresh_state_report(self):
