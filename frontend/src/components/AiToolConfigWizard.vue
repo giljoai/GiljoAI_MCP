@@ -104,27 +104,28 @@
           </v-alert>
 
           <!-- HTTPS: Node.js cert trust warning (Claude Code + Gemini are Node.js-based) -->
-          <v-alert
-            v-if="(selectedTool === 'gemini' || selectedTool === 'claude') && isHttps"
-            type="warning"
-            variant="tonal"
-            density="compact"
-            class="mb-3"
-          >
-            <strong>HTTPS with self-signed certificates:</strong> Node.js-based CLI tools require a one-time setup step.
-            <v-radio-group v-model="certPlatform" inline hide-details density="compact" class="mt-2 mb-1">
+          <template v-if="(selectedTool === 'gemini' || selectedTool === 'claude') && isHttps">
+            <v-radio-group v-model="certPlatform" inline hide-details class="platform-radios mb-2">
               <v-radio label="PowerShell" value="windows" density="compact" />
               <v-radio label="Linux / macOS / Git Bash" value="unix" density="compact" />
             </v-radio-group>
-            <template v-if="certPlatform === 'windows'">
-              <code class="d-block mt-1 text-body-2">[System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', (mkcert -CAROOT) + '\rootCA.pem', 'User')</code>
-              <span class="text-caption">Then restart your terminal. This is a one-time setup.</span>
-            </template>
-            <template v-else>
-              <code class="d-block mt-1 text-body-2">export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"</code>
-              <span class="text-caption">Add to your <code>~/.bashrc</code> or <code>~/.zshrc</code> to make it permanent.</span>
-            </template>
-          </v-alert>
+            <v-alert
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mb-3"
+            >
+              <strong>HTTPS with self-signed certificates:</strong> Node.js-based CLI tools require a one-time setup step.
+              <template v-if="certPlatform === 'windows'">
+                <code class="d-block mt-1 text-body-2">[System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', (mkcert -CAROOT) + '\rootCA.pem', 'User')</code>
+                <span class="text-caption">Then restart your terminal. This is a one-time setup.</span>
+              </template>
+              <template v-else>
+                <code class="d-block mt-1 text-body-2">export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"</code>
+                <span class="text-caption">Add to your <code>~/.bashrc</code> or <code>~/.zshrc</code> to make it permanent.</span>
+              </template>
+            </v-alert>
+          </template>
 
           <!-- C+D) Codex: Platform selector + Environment Variable command -->
           <template v-if="selectedTool === 'codex'">
