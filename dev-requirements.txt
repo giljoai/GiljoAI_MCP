@@ -14,6 +14,7 @@ fakeredis>=2.20.0          # Fake Redis for testing cache behavior
 black>=23.0.0              # Code formatter (opinionated)
 ruff>=0.1.0                # Fast Python linter (replaces flake8, isort, etc.)
 mypy>=1.5.0                # Static type checking
+pre-commit>=3.5.0          # Git pre-commit hook framework
 
 # Documentation (Optional - install if building docs)
 mkdocs>=1.5.0              # Documentation site generator
