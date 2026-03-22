@@ -20,6 +20,7 @@ class SetupService {
     this._statusCache = null
     this._statusCacheTime = 0
     this._statusCacheTTL = 2000 // 2 seconds — covers rapid-fire router guard calls
+    this._statusPending = null // Deduplicates concurrent in-flight requests
   }
 
   /**
@@ -35,12 +36,27 @@ class SetupService {
    * @returns {Promise<{is_fresh_install: boolean, total_users_count: number, requires_admin_creation: boolean}>}
    */
   async checkEnhancedStatus() {
-    // Return cached result if within TTL (prevents 6x duplicate calls during router guard evaluation)
+    // Return cached result if within TTL
     const now = Date.now()
     if (this._statusCache && now - this._statusCacheTime < this._statusCacheTTL) {
       return this._statusCache
     }
 
+    // If a request is already in-flight, reuse it (deduplicates concurrent calls)
+    if (this._statusPending) {
+      return this._statusPending
+    }
+
+    this._statusPending = this._fetchStatus()
+    try {
+      const result = await this._statusPending
+      return result
+    } finally {
+      this._statusPending = null
+    }
+  }
+
+  async _fetchStatus() {
     try {
       const response = await fetch(`${this.getBaseURL()}/api/setup/status`, {
         method: 'GET',
@@ -55,7 +71,7 @@ class SetupService {
           requires_admin_creation: data.requires_admin_creation,
         }
         this._statusCache = result
-        this._statusCacheTime = now
+        this._statusCacheTime = Date.now()
         return result
       } else {
         console.warn('[SETUP_SERVICE] Setup status endpoint failed:', response.status)
