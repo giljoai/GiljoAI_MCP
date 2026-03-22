@@ -15,6 +15,11 @@ class SetupService {
   constructor() {
     // IMPORTANT: Don't cache baseURL at construction time
     // Read it dynamically from window.API_BASE_URL or API_CONFIG at call time
+
+    // Cache for setup status (prevents duplicate calls during router guard evaluation)
+    this._statusCache = null
+    this._statusCacheTime = 0
+    this._statusCacheTTL = 2000 // 2 seconds — covers rapid-fire router guard calls
   }
 
   /**
@@ -30,6 +35,12 @@ class SetupService {
    * @returns {Promise<{is_fresh_install: boolean, total_users_count: number, requires_admin_creation: boolean}>}
    */
   async checkEnhancedStatus() {
+    // Return cached result if within TTL (prevents 6x duplicate calls during router guard evaluation)
+    const now = Date.now()
+    if (this._statusCache && now - this._statusCacheTime < this._statusCacheTTL) {
+      return this._statusCache
+    }
+
     try {
       const response = await fetch(`${this.getBaseURL()}/api/setup/status`, {
         method: 'GET',
@@ -38,14 +49,16 @@ class SetupService {
 
       if (response.ok) {
         const data = await response.json()
-        return {
+        const result = {
           is_fresh_install: data.is_fresh_install,
           total_users_count: data.total_users_count,
           requires_admin_creation: data.requires_admin_creation,
         }
+        this._statusCache = result
+        this._statusCacheTime = now
+        return result
       } else {
         console.warn('[SETUP_SERVICE] Setup status endpoint failed:', response.status)
-        // Conservative fallback - assume fresh install (allows account creation)
         return {
           is_fresh_install: true,
           total_users_count: 0,
@@ -54,13 +67,20 @@ class SetupService {
       }
     } catch (error) {
       console.warn('[SETUP_SERVICE] Status check failed:', error)
-      // Conservative fallback - assume fresh install (allows account creation)
       return {
         is_fresh_install: true,
         total_users_count: 0,
         requires_admin_creation: true,
       }
     }
+  }
+
+  /**
+   * Invalidate the setup status cache (call after admin account creation)
+   */
+  invalidateStatusCache() {
+    this._statusCache = null
+    this._statusCacheTime = 0
   }
 
   /**
