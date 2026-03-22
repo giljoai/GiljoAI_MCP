@@ -4,17 +4,19 @@ Set objFSO = CreateObject("Scripting.FileSystemObject")
 ' Get the directory where this VBS script is located
 strScriptPath = objFSO.GetParentFolderName(WScript.ScriptFullName)
 strPythonScript = objFSO.BuildPath(strScriptPath, "control_panel.py")
+strProjectRoot = objFSO.GetParentFolderName(strScriptPath)
 
-' Find Python executable in venv or system
-strVenvPython = objFSO.BuildPath(objFSO.GetParentFolderName(strScriptPath), "venv\Scripts\python.exe")
-If objFSO.FileExists(strVenvPython) Then
+' Find Python executable: prefer venv_devtools, then project venv, then system
+strDevtoolsPython = objFSO.BuildPath(strScriptPath, "venv_devtools\Scripts\python.exe")
+strVenvPython = objFSO.BuildPath(strProjectRoot, "venv\Scripts\python.exe")
+
+If objFSO.FileExists(strDevtoolsPython) Then
+    strPython = strDevtoolsPython
+ElseIf objFSO.FileExists(strVenvPython) Then
     strPython = strVenvPython
 Else
     strPython = "python"
 End If
 
-' Build command for Windows Terminal
-strCmd = "wt.exe -w 0 nt --title ""GiljoAI Control Panel"" """ & strPython & """ """ & strPythonScript & """"
-
-' Run as administrator
-objShell.ShellExecute "wt.exe", "-w 0 nt --title ""GiljoAI Control Panel"" """ & strPython & """ """ & strPythonScript & """", "", "runas", 1
+' Run as administrator in Windows Terminal
+objShell.ShellExecute "wt.exe", "-w 0 nt --title ""GiljoAI Control Panel"" """ & strPython & """ """ & strPythonScript & """", strProjectRoot, "runas", 1
