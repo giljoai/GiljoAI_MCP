@@ -326,10 +326,9 @@ async def get_vision_document_stats(
     )
 
     result_db = await db.execute(stmt)
-    vision_doc = result_db.scalar_one_or_none()
+    vision_docs = result_db.scalars().all()
 
-    if not vision_doc:
-        # No vision document for this product
+    if not vision_docs:
         return VisionDocumentStatsResponse(
             product_id=product_id,
             product_name=product_name,
@@ -340,14 +339,18 @@ async def get_vision_document_stats(
             summary_tokens=0,
         )
 
-    # Vision document exists, return its stats
-    meta_data = vision_doc.meta_data or {}
+    # Aggregate stats across all active vision documents
+    total_tokens = sum(doc.total_tokens or 0 for doc in vision_docs)
+    chunk_count = sum(doc.chunk_count or 0 for doc in vision_docs)
+    is_summarized = any((doc.meta_data or {}).get("is_summarized", False) for doc in vision_docs)
+    summary_tokens = sum((doc.meta_data or {}).get("summary_tokens", 0) for doc in vision_docs)
+
     return VisionDocumentStatsResponse(
         product_id=product_id,
         product_name=product_name,
         has_vision_document=True,
-        total_tokens=vision_doc.total_tokens or 0,
-        chunk_count=vision_doc.chunk_count or 0,
-        is_summarized=meta_data.get("is_summarized", False),
-        summary_tokens=meta_data.get("summary_tokens", 0),
+        total_tokens=total_tokens,
+        chunk_count=chunk_count,
+        is_summarized=is_summarized,
+        summary_tokens=summary_tokens,
     )
