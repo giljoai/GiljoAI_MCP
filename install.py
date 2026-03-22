@@ -958,8 +958,8 @@ class UnifiedInstaller:
 
         print(f"\n{Fore.CYAN}HTTPS encrypts all traffic between your browser and GiljoAI.{Style.RESET_ALL}")
         print("Uses mkcert to generate locally-trusted certificates (no browser warnings).")
-        print(f"{Fore.YELLOW}Note: Some CLI tools (Gemini CLI) require extra certificate trust")
-        print(f"configuration with self-signed HTTPS. HTTP is recommended for local/LAN use.{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Note: Some CLI tools (Gemini CLI) require extra certificate trust{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}configuration with self-signed HTTPS. HTTP is recommended for local/LAN use.{Style.RESET_ALL}")
         print(f"{Fore.WHITE}You can always enable HTTPS later from Admin Settings > Network.{Style.RESET_ALL}")
 
         print(
@@ -1028,11 +1028,11 @@ class UnifiedInstaller:
         # (so the user sees progress) and give them enough time to read and accept.
         is_windows = current_os == "Windows"
         if is_windows:
-            print(f"\n{Fore.YELLOW}{'=' * 60}")
-            print("  A Windows Security dialog will appear asking you to")
-            print("  install a certificate. Click 'Yes' to trust it.")
-            print("  This is the mkcert root CA — it's safe and local-only.")
-            print(f"{'=' * 60}{Style.RESET_ALL}\n")
+            print(f"\n{Fore.YELLOW}{'=' * 60}{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}  A Windows Security dialog will appear asking you to{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}  install a certificate. Click 'Yes' to trust it.{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}  This is the mkcert root CA — it's safe and local-only.{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}{'=' * 60}{Style.RESET_ALL}\n")
 
         self._print_info("Installing local Certificate Authority into trust stores...")
         try:
@@ -1133,11 +1133,11 @@ class UnifiedInstaller:
             ca_dir = ca_result.stdout.strip()
             if ca_dir:
                 ca_cert = str(Path(ca_dir) / "rootCA.pem")
-                print(f"\n{Back.RED}{Fore.WHITE}{Style.BRIGHT}{'=' * 60}")
-                print(f"  IMPORTANT: AI Tool Certificate Trust")
-                print(f"{'=' * 60}{Style.RESET_ALL}")
-                print(f"\n{Fore.RED}{Style.BRIGHT}  Node.js-based AI tools (Claude Code, Gemini CLI) need")
-                print(f"  one extra step to trust your HTTPS certificate.{Style.RESET_ALL}\n")
+                print(f"\n{Back.RED}{Fore.WHITE}{Style.BRIGHT}{'=' * 60}{Style.RESET_ALL}")
+                print(f"{Back.RED}{Fore.WHITE}{Style.BRIGHT}  IMPORTANT: AI Tool Certificate Trust{Style.RESET_ALL}")
+                print(f"{Back.RED}{Fore.WHITE}{Style.BRIGHT}{'=' * 60}{Style.RESET_ALL}")
+                print(f"\n{Fore.RED}{Style.BRIGHT}  Node.js-based AI tools (Claude Code, Gemini CLI) need{Style.RESET_ALL}")
+                print(f"{Fore.RED}{Style.BRIGHT}  one extra step to trust your HTTPS certificate.{Style.RESET_ALL}\n")
 
                 if current_os == "Windows":
                     print(f"  {Fore.GREEN}Run in PowerShell (as Administrator):{Style.RESET_ALL}")
