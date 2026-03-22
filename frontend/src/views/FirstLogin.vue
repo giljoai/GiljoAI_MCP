@@ -49,7 +49,6 @@
                 v-model="currentPassword"
                 label="Current Password"
                 prepend-inner-icon="mdi-lock-outline"
-                :append-inner-icon="showCurrentPassword ? 'mdi-eye' : 'mdi-eye-off'"
                 :type="showCurrentPassword ? 'text' : 'password'"
                 variant="outlined"
                 :rules="[(v) => !!v || 'Current password is required']"
@@ -60,16 +59,23 @@
                 aria-required="true"
                 hint="Enter the temporary password you used to log in"
                 persistent-hint
-                @click:append-inner="showCurrentPassword = !showCurrentPassword"
                 @input="error = ''"
-              />
+              >
+                <template #append-inner>
+                  <v-icon
+                    tabindex="-1"
+                    @click="showCurrentPassword = !showCurrentPassword"
+                  >
+                    {{ showCurrentPassword ? 'mdi-eye' : 'mdi-eye-off' }}
+                  </v-icon>
+                </template>
+              </v-text-field>
 
               <!-- New Password -->
               <v-text-field
                 v-model="newPassword"
                 label="New Password"
                 prepend-inner-icon="mdi-lock"
-                :append-inner-icon="showNewPassword ? 'mdi-eye' : 'mdi-eye-off'"
                 :type="showNewPassword ? 'text' : 'password'"
                 variant="outlined"
                 :rules="passwordRules"
@@ -78,16 +84,23 @@
                 class="mb-4"
                 aria-label="Enter your new password"
                 aria-required="true"
-                @click:append-inner="showNewPassword = !showNewPassword"
                 @input="error = ''"
-              />
+              >
+                <template #append-inner>
+                  <v-icon
+                    tabindex="-1"
+                    @click="showNewPassword = !showNewPassword"
+                  >
+                    {{ showNewPassword ? 'mdi-eye' : 'mdi-eye-off' }}
+                  </v-icon>
+                </template>
+              </v-text-field>
 
               <!-- Confirm Password -->
               <v-text-field
                 v-model="confirmPassword"
                 label="Confirm New Password"
                 prepend-inner-icon="mdi-lock-check"
-                :append-inner-icon="showConfirmPassword ? 'mdi-eye' : 'mdi-eye-off'"
                 :type="showConfirmPassword ? 'text' : 'password'"
                 variant="outlined"
                 :rules="confirmPasswordRules"
@@ -96,9 +109,17 @@
                 class="mb-4"
                 aria-label="Confirm your new password"
                 aria-required="true"
-                @click:append-inner="showConfirmPassword = !showConfirmPassword"
                 @input="error = ''"
-              />
+              >
+                <template #append-inner>
+                  <v-icon
+                    tabindex="-1"
+                    @click="showConfirmPassword = !showConfirmPassword"
+                  >
+                    {{ showConfirmPassword ? 'mdi-eye' : 'mdi-eye-off' }}
+                  </v-icon>
+                </template>
+              </v-text-field>
 
               <!-- Password Strength Indicator -->
               <v-progress-linear
