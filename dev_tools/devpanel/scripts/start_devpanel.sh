@@ -45,9 +45,6 @@ fi
 echo "[DevPanel] Ensuring runtime utilities are present (watchdog, rich, aiohttp, tiktoken, aiofiles, packaging)..."
 "$VENV_PY" -m pip install watchdog rich aiohttp tiktoken aiofiles packaging >/dev/null 2>&1
 
-echo "[DevPanel] Building flow data (start_to_finish_agent_FLOW)..."
-"$VENV_PY" dev_tools/devpanel/scripts/build_flow_data.py >/dev/null 2>&1
-
 cd "$REPO_ROOT"
 
 echo "[DevPanel] Generating inventories (Phase 1001)..."
