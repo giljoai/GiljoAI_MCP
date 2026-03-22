@@ -665,15 +665,6 @@
         <input id="search-input" type="search" placeholder="Search across APIs, tools, templates…" />
       </div>
 
-      <div class="cta-card">
-        <p class="eyebrow" style="margin: 0;">New tool</p>
-        <strong>Flow Editor</strong>
-        <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
-          Build editable diagrams that autosave into <code>dev_tools/devpanel/flows</code>.
-        </p>
-        <a href="flow-editor/dist/index.html" target="_blank" rel="noreferrer">Launch Editor →</a>
-      </div>
-
       <div class="nav-groups" id="nav-groups"></div>
     </nav>
 
@@ -1021,14 +1012,10 @@
         }
 
         const curatedHTML = ['installation', 'tasks'].map((key) => renderCuratedFlow(key)).join('');
-        const startFlowLink = `<div class="flow-wrapper" style="padding:12px;border:1px dashed rgba(148,163,184,0.35);border-radius:14px;margin-top:12px;">
-          <p>Need the full start-to-finish diagram? <a href="flows.html" style="color:var(--heading-color);">Open visualization →</a></p>
-          <p style="margin:8px 0 0;">Ready to edit nodes or metadata? <a href="flow-editor/dist/index.html" style="color:var(--accent-400);" target="_blank" rel="noreferrer">Launch Flow Editor →</a></p>
-        </div>`;
 
         const jumpNav = `<div class="flow-nav"><label for="flow-jump">Jump to flow:</label><select id="flow-jump"><option value="">Select…</option><option value="flow-installation-wrapper">Installation Flow</option><option value="flow-tasks-wrapper">Task Creation Flow</option></select></div>`;
 
-        contentEl.innerHTML = `<div class="flow-wrapper">${jumpNav}${outlineHTML}${curatedHTML}${startFlowLink}</div>`;
+        contentEl.innerHTML = `<div class="flow-wrapper">${jumpNav}${outlineHTML}${curatedHTML}</div>`;
 
         const flowJump = document.getElementById('flow-jump');
         if (flowJump) {
