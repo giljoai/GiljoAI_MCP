@@ -42,6 +42,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import setupService from '@/services/setupService'
 
 const STORAGE_KEY = 'giljo_license_dismissed_at'
 const REMINDER_DAYS = 30
@@ -51,16 +52,7 @@ const userCount = ref(0)
 
 async function checkLicensing() {
   try {
-    const apiBaseUrl =
-      window.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:7272`
-    const response = await fetch(`${apiBaseUrl}/api/setup/status`, {
-      method: 'GET',
-      cache: 'no-cache',
-    })
-
-    if (!response.ok) return
-
-    const data = await response.json()
+    const data = await setupService.checkEnhancedStatus()
     const totalUsers = data.total_users_count || 0
 
     if (totalUsers <= 1) return
