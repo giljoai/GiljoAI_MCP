@@ -5,7 +5,7 @@ Request/response models for product operations.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -18,11 +18,11 @@ class ProductCreate(BaseModel):
     project_path: Optional[str] = Field(
         None, description="File system path to product folder (required for agent export)"
     )
-    config_data: Optional[Dict[str, Any]] = Field(None, description="Rich configuration data (JSONB)")
-    product_memory: Optional[Dict[str, Any]] = Field(
+    config_data: Optional[dict[str, Any]] = Field(None, description="Rich configuration data (JSONB)")
+    product_memory: Optional[dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
-    target_platforms: Optional[List[str]] = Field(
+    target_platforms: Optional[list[str]] = Field(
         default=["all"], description="Target platforms: windows, linux, macos, or all - Handover 0425"
     )
 
@@ -33,11 +33,11 @@ class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     project_path: Optional[str] = None
-    config_data: Optional[Dict[str, Any]] = Field(None, description="Rich configuration data (JSONB)")
-    product_memory: Optional[Dict[str, Any]] = Field(
+    config_data: Optional[dict[str, Any]] = Field(None, description="Rich configuration data (JSONB)")
+    product_memory: Optional[dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
-    target_platforms: Optional[List[str]] = Field(
+    target_platforms: Optional[list[str]] = Field(
         None, description="Target platforms: windows, linux, macos, or all - Handover 0425"
     )
 
@@ -58,16 +58,16 @@ class ProductResponse(BaseModel):
     unfinished_projects: int = 0
     vision_documents_count: int = 0
     config_data: Optional[dict] = Field(None, description="Rich configuration data")
-    has_config_data: bool = Field(False, description="Whether product has config_data populated")
-    is_active: bool = Field(False, description="Whether this product is currently active")
+    has_config_data: bool = Field(default=False, description="Whether product has config_data populated")
+    is_active: bool = Field(default=False, description="Whether this product is currently active")
     project_path: Optional[str] = Field(
         None, description="File system path to product folder (required for agent export)"
     )
-    product_memory: Optional[Dict[str, Any]] = Field(
+    product_memory: Optional[dict[str, Any]] = Field(
         default_factory=lambda: {"github": {}, "sequential_history": [], "context": {}},
         description="360 Memory storage (GitHub, sequential_history, context) - Handover 0412",
     )
-    target_platforms: Optional[List[str]] = Field(
+    target_platforms: Optional[list[str]] = Field(
         default=["all"], description="Target platforms: windows, linux, macos, or all - Handover 0425"
     )
 
@@ -91,7 +91,7 @@ class ProductActivationResponse(BaseModel):
     )
     product: ProductResponse = Field(..., description="Full activated product details")
     message: str = Field(..., description="Success message")
-    deactivated_projects: List[str] = Field(default_factory=list, description="IDs of projects that were auto-paused")
+    deactivated_projects: list[str] = Field(default_factory=list, description="IDs of projects that were auto-paused")
 
 
 class ProductDeleteResponse(BaseModel):
@@ -109,7 +109,7 @@ class ProductDeleteResponse(BaseModel):
 class ActiveProductRefreshResponse(BaseModel):
     """Response for /refresh-active endpoint"""
 
-    has_active_product: bool = Field(False, description="Whether there is an active product")
+    has_active_product: bool = Field(default=False, description="Whether there is an active product")
     product: Optional[ProductResponse] = Field(None, description="Full product details if active")
     total_products_count: Optional[int] = None
     last_refreshed_at: Optional[datetime] = None
@@ -137,20 +137,24 @@ class VisionChunk(BaseModel):
     char_start: int
     char_end: int
     boundary_type: str
-    keywords: List[str]
-    headers: List[str]
+    keywords: list[str]
+    headers: list[str]
 
 
 class VisionDocumentStatsResponse(BaseModel):
-    """Vision document statistics response for active product"""
+    """Aggregated vision document statistics for active product.
+
+    Stats are summed across all active vision documents for the product,
+    since products support multiple uploaded documents (Handover 0043).
+    """
 
     product_id: str = Field(..., description="Active product ID")
     product_name: str = Field(..., description="Active product name")
-    has_vision_document: bool = Field(..., description="Whether active product has a vision document")
-    total_tokens: int = Field(default=0, description="Total tokens in vision document")
-    chunk_count: int = Field(default=0, description="Number of chunks in vision document")
-    is_summarized: bool = Field(default=False, description="Whether vision document is summarized")
-    summary_tokens: int = Field(default=0, description="Token count of summary (if available)")
+    has_vision_document: bool = Field(..., description="Whether active product has any active vision documents")
+    total_tokens: int = Field(default=0, description="Total tokens across all active vision documents")
+    chunk_count: int = Field(default=0, description="Total chunks across all active vision documents")
+    is_summarized: bool = Field(default=False, description="Whether any vision document has been summarized")
+    summary_tokens: int = Field(default=0, description="Total summary tokens across all summarized documents")
 
 
 class CascadeImpact(BaseModel):
@@ -177,7 +181,7 @@ class GitHubSettingsRequest(BaseModel):
         None,
         description="GitHub repository URL (HTTPS or SSH format). Required when enabled=True",
     )
-    auto_commit: bool = Field(False, description="Whether to automatically commit changes to GitHub")
+    auto_commit: bool = Field(default=False, description="Whether to automatically commit changes to GitHub")
 
 
 class GitHubSettingsResponse(BaseModel):
