@@ -958,6 +958,8 @@ class UnifiedInstaller:
 
         print(f"\n{Fore.CYAN}HTTPS encrypts all traffic between your browser and GiljoAI.{Style.RESET_ALL}")
         print("Uses mkcert to generate locally-trusted certificates (no browser warnings).")
+        print(f"{Fore.YELLOW}Note: Some CLI tools (Gemini CLI) require extra certificate trust")
+        print(f"configuration with self-signed HTTPS. HTTP is recommended for local/LAN use.{Style.RESET_ALL}")
         print(f"{Fore.WHITE}You can always enable HTTPS later from Admin Settings > Network.{Style.RESET_ALL}")
 
         print(
