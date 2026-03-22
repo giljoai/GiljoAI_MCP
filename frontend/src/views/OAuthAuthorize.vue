@@ -79,7 +79,6 @@
                 v-model="password"
                 label="Password"
                 prepend-inner-icon="mdi-lock"
-                :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
                 :type="showPassword ? 'text' : 'password'"
                 variant="outlined"
                 :rules="[rules.required]"
@@ -87,10 +86,18 @@
                 autocomplete="current-password"
                 class="mt-4"
                 aria-label="Password"
-                @click:append-inner="showPassword = !showPassword"
                 @keyup.enter="handleLogin"
                 @input="error = ''"
-              />
+              >
+                <template #append-inner>
+                  <v-icon
+                    tabindex="-1"
+                    @click="showPassword = !showPassword"
+                  >
+                    {{ showPassword ? 'mdi-eye' : 'mdi-eye-off' }}
+                  </v-icon>
+                </template>
+              </v-text-field>
 
               <v-btn
                 type="submit"
