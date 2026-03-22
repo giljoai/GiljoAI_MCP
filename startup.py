@@ -1046,7 +1046,7 @@ def run_startup(
             print_info("Login to your published IP on your PC to begin setup!")
             print_success(f"Localhost URL: {http_proto}://localhost:{frontend_port}/setup")
 
-        print_header("Welcome to GiljoAI's Agent Orchestration MCP Server! -Gil")
+        print_header("Welcome to GiljoAI MCP Coding Orchestrator! -Gil")
     else:
         # Auto-launch browser
         # v3.0 Enhancement: Use network IP for fresh installs (better UX than localhost)

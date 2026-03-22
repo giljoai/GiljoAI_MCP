@@ -225,7 +225,7 @@ Your CLI Tool (Claude Code / Codex / Gemini)
         |
         | MCP-over-HTTP (API key auth, JSON-RPC 2.0)
         v
-  GiljoAI MCP Server (port 7272)
+  GiljoAI MCP Coding Orchestrator (port 7272)
   +--> REST API (products, projects, tasks, agents, messages)
   +--> MCP Endpoint (30+ tools for AI agent coordination)
   +--> WebSocket (real-time dashboard updates)

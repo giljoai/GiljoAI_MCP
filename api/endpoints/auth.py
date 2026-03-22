@@ -665,7 +665,7 @@ async def register_user(
                 detail=(
                     "GiljoAI Community Edition is licensed for single-user use. "
                     "Multi-user deployments require a Commercial License. "
-                    "Contact licensing@giljoai.com to obtain one."
+                    "Contact sales@giljo.ai to obtain one."
                 ),
             )
 

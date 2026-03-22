@@ -23,7 +23,7 @@
 
         <v-alert type="info" variant="tonal" density="compact" class="mt-4">
           <template v-slot:text>
-            Contact <strong>licensing@giljoai.com</strong> to obtain a Commercial License.
+            Contact <strong>sales@giljo.ai</strong> to obtain a Commercial License.
           </template>
         </v-alert>
       </v-card-text>

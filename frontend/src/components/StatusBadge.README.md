@@ -297,4 +297,4 @@ describe('StatusBadge', () => {
 
 ## License
 
-Part of GiljoAI MCP Server - Internal component
+Part of GiljoAI MCP Coding Orchestrator - Internal component
