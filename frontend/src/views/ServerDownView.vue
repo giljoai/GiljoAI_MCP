@@ -10,7 +10,7 @@
 
           <v-card-text class="pa-6">
             <v-alert type="error" variant="tonal" class="mb-4">
-              Unable to connect to GiljoAI MCP Server
+              Unable to connect to GiljoAI MCP Coding Orchestrator
             </v-alert>
 
             <p class="text-body-1 mb-4">

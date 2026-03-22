@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Database Backup Utility (`src/giljo_mcp/database_backup.py`) provides production-grade PostgreSQL database backup functionality for the GiljoAI MCP Server. It creates timestamped backups with comprehensive metadata generation, including schema structure, table statistics, and restore instructions.
+The Database Backup Utility (`src/giljo_mcp/database_backup.py`) provides production-grade PostgreSQL database backup functionality for the GiljoAI MCP Coding Orchestrator. It creates timestamped backups with comprehensive metadata generation, including schema structure, table statistics, and restore instructions.
 
 ## Features
 
