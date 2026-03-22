@@ -20,7 +20,7 @@
 
 ## Edition
 
-This is the **GiljoAI MCP Community Edition** -- the full orchestration platform, free for single-user use under the [GiljoAI Community License v1.0](LICENSE).
+This is the **GiljoAI MCP Community Edition** -- the full orchestration platform, free for single-user use under the [GiljoAI Community License v1.1](LICENSE).
 
 **What's included in Community Edition:**
 - Core orchestration engine (mission planning, agent coordination, context management)

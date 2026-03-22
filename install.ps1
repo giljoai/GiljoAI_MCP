@@ -1,6 +1,6 @@
-# GiljoAI MCP Server - One-Liner Installation Script
+# GiljoAI MCP Coding Orchestrator - One-Liner Installation Script
 # For Windows (PowerShell)
-# Usage: irm https://install.giljoai.com/install.ps1 | iex
+# Usage: irm https://install.giljo.ai/install.ps1 | iex
 
 # Requires PowerShell 5.1 or higher
 
@@ -45,10 +45,10 @@ function Write-Log {
 # Display banner
 function Show-Banner {
     Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║       GiljoAI MCP Server - Installation                ║" -ForegroundColor Cyan
-    Write-Host "║       Multi-Agent Orchestration Platform                ║" -ForegroundColor Cyan
-    Write-Host "╚════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host "╔═════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+    Write-Host "║       GiljoAI MCP Coding Orchestrator - Installation                ║" -ForegroundColor Cyan
+    Write-Host "║       Multi-Agent Orchestration Platform                            ║" -ForegroundColor Cyan
+    Write-Host "╚═════════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
 }
 
@@ -253,7 +253,7 @@ function Get-InstallDirectory {
 
 # Download latest release
 function Get-LatestRelease {
-    Write-Info "Downloading GiljoAI MCP Server..."
+    Write-Info "Downloading GiljoAI MCP Coding Orchestrator..."
     Write-Log "Downloading from GitHub: $GITHUB_REPO"
     
     $tempDir = Join-Path $env:TEMP "giljoai_install_$(Get-Random)"
@@ -376,7 +376,7 @@ function Show-Success {
     Write-Host "║           Installation Complete!                        ║" -ForegroundColor Green
     Write-Host "╚════════════════════════════════════════════════════════╝" -ForegroundColor Green
     Write-Host ""
-    Write-Success "GiljoAI MCP Server installed successfully"
+    Write-Success "GiljoAI MCP Coding Orchestrator installed successfully"
     Write-Host ""
     Write-Host "Next steps:"
     Write-Host ""

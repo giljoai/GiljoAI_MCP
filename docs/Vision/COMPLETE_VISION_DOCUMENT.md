@@ -1,11 +1,11 @@
 # GiljoAI MCP - Complete Vision Document
-**Product Name**: GiljoAI Agent Orchestration MCP Server
+**Product Name**: GiljoAI MCP Coding Orchestrator
 **Short Name**: GiljoAI_MCP
 **Last Updated**: 2025-01-05
 **Status**: Living Document
 **Harmonization Status**: ✅ Aligned with codebase
 
-> **Licensing Note (2026-03-07):** This project uses the **GiljoAI Community License v1.0** (single-user free, multi-user requires commercial license). This is NOT an OSI open-source license. Do not reference MIT, open source, or open core. See `LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md`.
+> **Licensing Note (2026-03-07):** This project uses the **GiljoAI Community License v1.1** (single-user free, multi-user requires commercial license). This is NOT an OSI open-source license. Do not reference MIT, open source, or open core. See `LICENSING_AND_COMMERCIALIZATION_PHILOSOPHY.md`.
 >
 > **Edition Note (2026-03-08):** Two editions — Community Edition (CE, public, `main` branch) and SaaS Edition (private, `saas` branch). Enterprise is a deployment mode of SaaS, not a separate edition. SaaS-only code is physically isolated in `saas/` directories. See `docs/EDITION_ISOLATION_GUIDE.md`.
 
@@ -258,7 +258,7 @@ Every decision prioritizes developer experience:
 - **Immediate Value**: Works out of the box, no complex setup
 - **Progressive Disclosure**: Simple for simple cases, powerful when needed
 - **Tool Philosophy**: Does one thing exceptionally well
-- **Community Edition**: Full product, free for single-user use (GiljoAI Community License v1.0)
+- **Community Edition**: Full product, free for single-user use (GiljoAI Community License v1.1)
 
 ### Two-Edition Architecture (Decided 2026-03-07)
 

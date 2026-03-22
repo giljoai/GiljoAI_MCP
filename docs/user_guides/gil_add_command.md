@@ -46,7 +46,7 @@ Description: Add JWT token-based authentication to replace the current
 session-based auth, improving security and enabling stateless API access
 
 Where should this task live?
-1. Active product: GiljoAI MCP Server
+1. Active product: GiljoAI MCP Coding Orchestrator
 2. All Tasks (unscoped - no product association)
 
 Which would you prefer? (1 or 2)
@@ -80,7 +80,7 @@ Claude: Task punted successfully!
 Title: Implement JWT authentication for API endpoints
 Category: backend
 Priority: high
-Scope: GiljoAI MCP Server
+Scope: GiljoAI MCP Coding Orchestrator
 Task ID: task-def456
 
 This task is now in your Tasks dashboard and can be converted to a

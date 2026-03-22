@@ -71,7 +71,7 @@ This guide provides comprehensive technical documentation for the agent monitori
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      GiljoAI MCP Server                      │
+│              GiljoAI MCP Coding Orchestrator                │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │ Database: last_progress_at, last_message_check_at     │  │
 │  │ MCP Tools: report_progress, receive_messages          │  │

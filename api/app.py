@@ -734,10 +734,10 @@ def create_app() -> FastAPI:
         contact={
             "name": "GiljoAI Support",
             "url": "https://github.com/giljoai/mcp-orchestrator",
-            "email": "support@giljoai.com",
+            "email": "infoteam@giljo.ai",
         },
         license_info={
-            "name": "GiljoAI Community License v1.0",
+            "name": "GiljoAI Community License v1.1",
             "url": "https://github.com/patrik-giljoai/GiljoAI_MCP/blob/master/LICENSE",
         },
     )
