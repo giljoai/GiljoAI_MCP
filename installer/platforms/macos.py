@@ -183,34 +183,47 @@ class MacOSPlatformHandler(PlatformHandler):
 """
 
     def supports_desktop_shortcuts(self) -> bool:
-        """
-        macOS does not currently support shortcuts.
-
-        Future enhancement: Create .app bundles
-
-        Returns:
-            False (not currently supported)
-        """
-        return False
+        """macOS supports shell script launchers on Desktop."""
+        return True
 
     def create_desktop_shortcuts(self, install_dir: Path, venv_dir: Path) -> Dict[str, Any]:
         """
-        Create desktop shortcuts (not currently supported on macOS).
-
-        Future enhancement: Create .app bundles for macOS applications.
+        Create macOS desktop launchers as executable shell scripts.
 
         Args:
             install_dir: Installation directory
             venv_dir: Virtual environment directory
 
         Returns:
-            Result dictionary indicating not supported
+            Result dictionary with success status
         """
-        return {
-            "success": False,
-            "method": "not_supported",
-            "message": "Desktop shortcuts not currently supported on macOS. Future enhancement: .app bundles",
-        }
+        try:
+            desktop = Path.home() / "Desktop"
+            shortcuts_created = []
+            python_bin = str(venv_dir / "bin" / "python")
+            startup_script = str(install_dir / "startup.py")
+
+            # Start script
+            start_sh = desktop / "GiljoAI MCP.command"
+            start_sh.write_text(f'#!/bin/bash\ncd "{install_dir}"\n"{python_bin}" "{startup_script}" --verbose\n')
+            start_sh.chmod(0o755)
+            shortcuts_created.append(str(start_sh))
+
+            # Stop script
+            stop_sh = desktop / "Stop GiljoAI.command"
+            stop_sh.write_text(f'#!/bin/bash\ncd "{install_dir}"\n"{python_bin}" "{startup_script}" --stop\n')
+            stop_sh.chmod(0o755)
+            shortcuts_created.append(str(stop_sh))
+
+            return {
+                "success": True,
+                "method": "command",
+                "shortcuts_created": shortcuts_created,
+                "message": f"Created {len(shortcuts_created)} desktop launchers",
+            }
+
+        except Exception as e:
+            return {"success": False, "error": str(e), "message": f"Failed to create launchers: {e}"}
 
     def run_npm_command(self, cmd: List[str], cwd: Path, timeout: int = 300) -> Dict[str, Any]:
         """
