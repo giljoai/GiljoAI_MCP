@@ -104,15 +104,8 @@ class GiljoDevControlPanel:
             handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
             self.logger.addHandler(handler)
 
-        # Check admin privileges
+        # Check admin privileges (informational only - most features work without admin)
         self.is_admin = self.check_admin()
-        if not self.is_admin:
-            messagebox.showwarning(
-                "Admin Privileges Required",
-                "Some features may not work without administrator privileges.\n\n"
-                "Windows: Run as Administrator\n"
-                "Linux/macOS: Run with sudo",
-            )
 
         # Build UI
         self.build_ui()
