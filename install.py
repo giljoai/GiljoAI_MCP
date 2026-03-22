@@ -2358,17 +2358,46 @@ class UnifiedInstaller:
 
                         if current_version and current_version != "baseline_v33":
                             # Existing database from pre-v33 migration chain.
-                            # Schema is already correct from incremental migrations.
-                            # Stamp to baseline_v33 so future migrations descend correctly.
+                            # Reconcile schema: add any columns that may be missing
+                            # depending on which old revision the DB stopped at.
+                            # All use IF NOT EXISTS / ADD COLUMN IF NOT EXISTS for safety.
                             self._print_info(
                                 f"Upgrading migration chain: {current_version} -> baseline_v33"
                             )
+                            self._print_info("Reconciling schema for baseline_v33...")
+
+                            reconcile_statements = [
+                                # Handover 0831: Product context tuning
+                                "ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_preferences JSONB",
+                                "ALTER TABLE products ADD COLUMN IF NOT EXISTS tuning_state JSONB",
+                                # Handover 0440a: Project taxonomy
+                                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_type_id VARCHAR(36)",
+                                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS series_number INTEGER",
+                                "ALTER TABLE projects ADD COLUMN IF NOT EXISTS subseries VARCHAR(1)",
+                                # Handover 0411a: Agent job phases
+                                "ALTER TABLE agent_jobs ADD COLUMN IF NOT EXISTS phase INTEGER",
+                                # Handover 0497b: Agent execution result
+                                "ALTER TABLE agent_executions ADD COLUMN IF NOT EXISTS result JSON",
+                                # Handover 0827c: Reactivation tracking
+                                "ALTER TABLE agent_executions ADD COLUMN IF NOT EXISTS accumulated_duration_seconds FLOAT DEFAULT 0.0",
+                                "ALTER TABLE agent_executions ADD COLUMN IF NOT EXISTS reactivation_count INTEGER DEFAULT 0",
+                                # Handover 0828: OAuth JWT sessions (nullable api_key_id)
+                                "ALTER TABLE mcp_sessions ALTER COLUMN api_key_id DROP NOT NULL",
+                            ]
+
+                            for stmt_text in reconcile_statements:
+                                try:
+                                    await session.execute(text(stmt_text))
+                                except Exception as reconcile_err:
+                                    self._print_warning(f"Reconcile skipped: {reconcile_err}")
+
+                            # Stamp to baseline_v33
                             stamp_query = text(
                                 "UPDATE alembic_version SET version_num = 'baseline_v33'"
                             )
                             await session.execute(stamp_query)
                             await session.commit()
-                            self._print_success("Migration chain updated to baseline_v33")
+                            self._print_success("Schema reconciled and stamped to baseline_v33")
                             await db_manager.close_async()
                             return True
 
