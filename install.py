@@ -1023,22 +1023,38 @@ class UnifiedInstaller:
                     self._print_info("If using Firefox: brew install nss && mkcert -install")
 
         # Install the local CA into the system and browser trust stores
+        # On Windows, mkcert -install triggers a Windows Security dialog asking
+        # the user to trust the root CA certificate. We must NOT capture output
+        # (so the user sees progress) and give them enough time to read and accept.
+        is_windows = current_os == "Windows"
+        if is_windows:
+            print(f"\n{Fore.YELLOW}{'=' * 60}")
+            print("  A Windows Security dialog will appear asking you to")
+            print("  install a certificate. Click 'Yes' to trust it.")
+            print("  This is the mkcert root CA — it's safe and local-only.")
+            print(f"{'=' * 60}{Style.RESET_ALL}\n")
+
         self._print_info("Installing local Certificate Authority into trust stores...")
         try:
             subprocess.run(
                 [mkcert_path, "-install"],
                 check=True,
-                capture_output=True,
+                capture_output=not is_windows,
                 text=True,
-                timeout=30,
+                timeout=120 if is_windows else 30,
             )
             self._print_success("Local CA installed — browsers will trust certificates from this machine")
         except subprocess.CalledProcessError as e:
-            self._print_error(f"CA installation failed: {e.stderr}")
-            self._print_info("You may need to run the installer with administrator privileges")
+            stderr_msg = e.stderr if e.stderr else "User may have declined the certificate trust dialog"
+            self._print_error(f"CA installation failed: {stderr_msg}")
+            if is_windows:
+                self._print_info("Re-run the installer or run: mkcert -install  (click 'Yes' on the dialog)")
+            else:
+                self._print_info("You may need to run the installer with administrator privileges")
             return result
         except subprocess.TimeoutExpired:
-            self._print_error("CA installation timed out")
+            self._print_error("CA installation timed out (user may not have responded to the trust dialog)")
+            self._print_info("Re-run the installer or run: mkcert -install")
             return result
 
         # Generate certificates for localhost and common local addresses
@@ -1293,6 +1309,28 @@ class UnifiedInstaller:
             )
 
             self._print_success("Dependencies installed successfully")
+
+            # Install pre-commit hooks (ensures git commits work without manual venv activation)
+            self._print_info("Setting up pre-commit hooks...")
+            try:
+                python_executable = self.platform.get_venv_python(self.venv_dir)
+                subprocess.run(
+                    [str(python_executable), "-m", "pip", "install", "-q", "pre-commit>=3.5.0"],
+                    check=True,
+                    capture_output=True,
+                    timeout=60,
+                )
+                subprocess.run(
+                    [str(python_executable), "-m", "pre_commit", "install"],
+                    check=True,
+                    capture_output=True,
+                    cwd=str(self.install_dir),
+                    timeout=30,
+                )
+                self._print_success("Pre-commit hooks installed")
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
+                self._print_warning(f"Pre-commit hook setup skipped: {e}")
+                self._print_info("Install later: pip install pre-commit && pre-commit install")
 
             # Download NLTK data for vision summarization (Handover 0345b)
             self._print_info("Downloading NLTK data for vision summarization...")
