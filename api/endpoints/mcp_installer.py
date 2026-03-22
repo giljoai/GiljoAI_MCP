@@ -65,10 +65,10 @@ class ShareLinkResponse(BaseModel):
 
 def get_server_url() -> str:
     """
-    Get server URL from configuration.
+    Get server URL from configuration, respecting ssl_enabled.
 
     Returns:
-        Server URL (e.g., "http://localhost:7272")
+        Server URL (e.g., "https://localhost:7272" or "http://localhost:7272")
     """
     try:
         config = get_config()
@@ -79,7 +79,8 @@ def get_server_url() -> str:
         if host == "0.0.0.0":
             host = "localhost"
 
-        return f"http://{host}:{port}"
+        protocol = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
+        return f"{protocol}://{host}:{port}"
     except (OSError, ValueError, KeyError) as e:
         logger.warning(f"Failed to get server URL from config: {e}")
         return "http://localhost:7272"

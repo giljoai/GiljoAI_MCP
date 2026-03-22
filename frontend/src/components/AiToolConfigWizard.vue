@@ -225,7 +225,8 @@ async function generateApiKey() {
 }
 
 function buildServerUrl() {
-  return `http://${serverIp.value}:${serverPort.value}`
+  const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
+  return `${protocol}://${serverIp.value}:${serverPort.value}`
 }
 
 function claudePrompt(serverUrl, apiKey) {

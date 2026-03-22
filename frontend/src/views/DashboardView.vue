@@ -40,7 +40,7 @@
           <strong>Congratulations!</strong> GiljoAI MCP is now accessible over your local network.
         </p>
         <p class="mb-2">
-          <strong>Server URL:</strong> <code>http://{{ serverIp }}:{{ serverPort }}</code>
+          <strong>Server URL:</strong> <code>{{ serverProtocol }}://{{ serverIp }}:{{ serverPort }}</code>
         </p>
         <p class="text-body-2">
           Download the comprehensive setup and testing guide to verify network connectivity and
@@ -163,6 +163,7 @@ const setupStatus = ref({
 const showLanWelcome = ref(false)
 const serverIp = ref('localhost')
 const serverPort = ref(7272)
+const serverProtocol = computed(() => window.location.protocol === 'https:' ? 'https' : 'http')
 
 // Stats
 const stats = computed(() => ({
@@ -276,7 +277,7 @@ This guide helps you verify and troubleshoot network connectivity for GiljoAI MC
 
 ## Your Configuration
 
-**Server URL:** http://${serverIp.value}:${serverPort.value}
+**Server URL:** ${serverProtocol.value}://${serverIp.value}:${serverPort.value}
 **Mode:** Server/LAN
 **Status:** Services restarted and ready
 
@@ -294,12 +295,12 @@ Expected: Reply from ${serverIp.value}
 
 **2. API Health Check**
 \`\`\`bash
-curl http://${serverIp.value}:${serverPort.value}/health
+curl ${serverProtocol.value}://${serverIp.value}:${serverPort.value}/health
 \`\`\`
 Expected: {"status": "ok"}
 
 **3. Browser Access**
-Open: http://${serverIp.value}:7274
+Open: ${serverProtocol.value}://${serverIp.value}:7274
 
 ---
 

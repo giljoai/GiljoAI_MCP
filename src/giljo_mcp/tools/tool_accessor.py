@@ -411,7 +411,8 @@ class ToolAccessor:
                 config_data = read_config()
                 host = config_data.get("services", {}).get("external_host", "localhost")
                 port = config.server.api_port
-                server_url = f"http://{host}:{port}"
+                protocol = "https" if config.get_nested("features.ssl_enabled", default=False) else "http"
+                server_url = f"{protocol}://{host}:{port}"
                 download_url = f"{server_url}/api/download/temp/{token}/{filename}"
 
                 token_data = await token_manager.get_token_info(token, tenant_key)

@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-22 (0833 complete, 0828+0831 active)
+**Last Updated:** 2026-03-22 (0834 complete, 0828+0831 active)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0829+0830+0832+0833 COMPLETE. 0828+0831 ACTIVE. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0829+0830+0832+0833+0834 COMPLETE. 0828+0831 ACTIVE. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -43,6 +43,7 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0834 | Dynamic Protocol Resolution (HTTP/HTTPS) | 2026-03-22 | COMPLETE — all URL-generating code respects ssl_enabled config, 14 files fixed across 3 phases, integration test added |
 | 0833 | Vision Stats Multi-Doc Aggregation & DB Test Button Fix | 2026-03-22 | COMPLETE — multi-doc stats aggregation, missing testDatabase API method, Windows path fix in handover instructions |
 | 0832 | SSL/HTTPS Admin UI Toggle | 2026-03-21 | COMPLETE — interactive SSL toggle in Admin Settings > Network tab, auto-generates self-signed certs, config.yaml persistence |
 | 0830 | Orchestrator Staging-to-Implementation Harmonization | 2026-03-21 | COMPLETE (`80199d49`) — thin prompt stripped, orchestrator agent_identity populated, full_protocol forked for orchestrator lifecycle, live team state in get_agent_mission |
@@ -169,6 +170,7 @@
 
 | ID | Title | Status |
 |----|-------|--------|
+| 0834 | Dynamic Protocol Resolution (HTTP/HTTPS) | **COMPLETE** (2026-03-22, all URL-generating code respects ssl_enabled, 14 files fixed, integration test) |
 | 0833 | Vision Stats Multi-Doc Aggregation & DB Test Button Fix | **COMPLETE** (2026-03-22, multi-doc vision stats aggregation, missing testDatabase API method, Windows path fix) |
 | 0832 | SSL/HTTPS Admin UI Toggle | **COMPLETE** (2026-03-21, interactive SSL toggle in Admin > Network, auto-cert generation, config.yaml persistence) |
 | 0830 | Orchestrator Staging-to-Implementation Harmonization | **COMPLETE** (2026-03-21, `80199d49`, thin prompt + agent_identity + protocol fork + live team state) |
