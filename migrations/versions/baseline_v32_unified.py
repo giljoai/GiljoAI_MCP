@@ -244,6 +244,7 @@ def upgrade() -> None:
     sa.Column('consolidated_vision_medium_tokens', sa.Integer(), nullable=True, comment='Token count of consolidated medium summary'),
     sa.Column('consolidated_vision_hash', sa.String(length=64), nullable=True, comment='SHA-256 hash of aggregated vision documents (for change detection)'),
     sa.Column('consolidated_at', sa.DateTime(timezone=True), nullable=True, comment='Timestamp when consolidated summaries were last generated'),
+    sa.Column('tuning_state', postgresql.JSONB(astext_type=sa.Text()), nullable=True, comment='Context tuning state: last_tuned_at, last_tuned_at_sequence, pending_proposals'),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -332,6 +333,7 @@ def upgrade() -> None:
     sa.Column('last_login', sa.DateTime(timezone=True), nullable=True),
     sa.Column('field_priority_config', postgresql.JSONB(astext_type=sa.Text()), nullable=True, comment='User-customizable field priority for agent mission generation'),
     sa.Column('depth_config', postgresql.JSONB(astext_type=sa.Text()), nullable=False, comment='User depth configuration for context granularity (Handover 0314)'),
+    sa.Column('notification_preferences', postgresql.JSONB(astext_type=sa.Text()), nullable=True, comment='User notification preferences: tuning reminders, thresholds'),
     sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ondelete='SET NULL'),
     sa.CheckConstraint("role IN ('admin', 'developer', 'viewer')", name='ck_user_role'),
     sa.CheckConstraint('failed_pin_attempts >= 0', name='ck_user_pin_attempts_positive'),
