@@ -39,15 +39,17 @@ def get_server_url(request=None) -> str:
         request: Optional request object to detect HTTPS
 
     Returns:
-        Server URL (e.g., "http://10.1.0.164:7272")
+        Server URL (e.g., "https://10.1.0.164:7272" or "http://10.1.0.164:7272")
     """
     try:
         config = get_config()
         host = config.get_nested("services.external_host", "localhost")
         port = config.server.api_port
 
-        # Detect HTTPS from request headers if available
-        scheme = "https" if (request and request.headers.get("x-forwarded-proto") == "https") else "http"
+        # Check ssl_enabled first, then fall back to proxy header detection
+        ssl_enabled = config.get_nested("features.ssl_enabled", default=False)
+        proxy_https = request and request.headers.get("x-forwarded-proto") == "https"
+        scheme = "https" if (ssl_enabled or proxy_https) else "http"
 
         return f"{scheme}://{host}:{port}"
     except (OSError, ValueError, KeyError) as e:
@@ -444,7 +446,7 @@ async def generate_download_token(
 
     Returns:
         {
-            "download_url": "http://server:7272/api/download/temp/{token}/file.zip",
+            "download_url": "https://server:7272/api/download/temp/{token}/file.zip",
             "expires_at": "2025-11-04T10:45:00Z",
             "content_type": "slash_commands",
             "one_time_use": true

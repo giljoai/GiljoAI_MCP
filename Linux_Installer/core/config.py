@@ -167,6 +167,9 @@ class ConfigManager:
             # v3.0: Always bind to 0.0.0.0 (firewall controls access)
             bind_address = "0.0.0.0"
             api_url_host = "localhost"  # Default for frontend connections
+            ssl_enabled = self.settings.get("ssl_enabled", False)
+            http_proto = "https" if ssl_enabled else "http"
+            ws_proto = "wss" if ssl_enabled else "ws"
 
             env_content = f"""# GiljoAI MCP Environment Configuration v3.0
 # Generated: {datetime.now().isoformat()}
@@ -224,8 +227,8 @@ SERVICE_BIND=0.0.0.0
 # FRONTEND CONFIGURATION
 # =============================================================================
 # API URL for frontend (WebSocket uses same port in v2.0)
-VITE_API_URL=http://{api_url_host}:{api_port}
-VITE_WS_URL=ws://{api_url_host}:{api_port}
+VITE_API_URL={http_proto}://{api_url_host}:{api_port}
+VITE_WS_URL={ws_proto}://{api_url_host}:{api_port}
 VITE_APP_MODE=localhost
 VITE_API_PORT={api_port}
 
