@@ -51,16 +51,11 @@ async function handleAuthFailure(error) {
   const { default: router } = await import('@/router')
 
   try {
-    const setupResponse = await fetch(`${apiClient.defaults.baseURL}/api/setup/status`, {
-      method: 'GET',
-      cache: 'no-cache',
-    })
-    if (setupResponse.ok) {
-      const setupData = await setupResponse.json()
-      if (setupData.is_fresh_install) {
-        router.push('/welcome')
-        return Promise.reject(error)
-      }
+    const { default: setupService } = await import('@/services/setupService')
+    const setupData = await setupService.checkEnhancedStatus()
+    if (setupData.is_fresh_install) {
+      router.push('/welcome')
+      return Promise.reject(error)
     }
   } catch {
     // Secure fallback to login

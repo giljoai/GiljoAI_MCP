@@ -166,6 +166,7 @@ import NotificationDropdown from '@/components/navigation/NotificationDropdown.v
 import RoleBadge from '@/components/common/RoleBadge.vue'
 import api from '@/services/api'
 import configService from '@/services/configService'
+import setupService from '@/services/setupService'
 
 const props = defineProps({
   currentUser: {
@@ -189,17 +190,9 @@ onMounted(async () => {
     await configService.fetchConfig()
     const edition = configService.getEdition()
     if (edition === 'community') {
-      const apiBaseUrl =
-        window.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:7272`
-      const response = await fetch(`${apiBaseUrl}/api/setup/status`, {
-        method: 'GET',
-        cache: 'no-cache',
-      })
-      if (response.ok) {
-        const data = await response.json()
-        if ((data.total_users_count || 0) > 1) {
-          licenseStatus.value = 'Unlicensed'
-        }
+      const data = await setupService.checkEnhancedStatus()
+      if ((data.total_users_count || 0) > 1) {
+        licenseStatus.value = 'Unlicensed'
       }
     }
   } catch {
