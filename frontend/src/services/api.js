@@ -374,6 +374,7 @@ export const api = {
     update: (data) => apiClient.put('/api/v1/config/', data),
 
     getDatabase: () => apiClient.get('/api/v1/settings/database'),
+    testDatabase: () => apiClient.get('/api/v1/config/health/database'),
 
     // User settings - cookie domain management
     getCookieDomains: () => apiClient.get('/api/v1/user/settings/cookie-domains'),

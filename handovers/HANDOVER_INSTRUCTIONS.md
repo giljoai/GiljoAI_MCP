@@ -8,7 +8,7 @@ This document provides standardized instructions for creating effective handover
 ## 🎯 Quick Reference: The Golden Rules
 
 **Before you start ANY handover implementation:**
-READ FIRST "F:\GiljoAI_MCP\handovers\Reference_docs\QUICK_LAUNCH.txt" and "F:\GiljoAI_MCP\handovers\Reference_docs\AGENT_FLOW_SUMMARY.md"
+READ FIRST `handovers/Reference_docs/QUICK_LAUNCH.txt` and `handovers/Reference_docs/AGENT_FLOW_SUMMARY.md`
 
 Follow these principles " "Use Test-Driven Development (TDD):
   1. Write the test FIRST (it should fail initially)
