@@ -46,9 +46,6 @@ call "%VENV_PY%" -m pip install -e .[dev]
 echo [DevPanel] Ensuring runtime utilities are present (watchdog, rich, aiohttp, tiktoken, aiofiles, packaging)...
 call "%VENV_PY%" -m pip install watchdog rich aiohttp tiktoken aiofiles packaging >nul 2>&1
 
-echo [DevPanel] Building flow data (start_to_finish_agent_FLOW)...
-call "%VENV_PY%" dev_tools\devpanel\scripts\build_flow_data.py >nul 2>&1
-
 echo [DevPanel] Generating inventories (Phase 1001)...
 call "%VENV_PY%" dev_tools\devpanel\scripts\devpanel_index.py --out temp\devpanel\index
 if errorlevel 1 (
