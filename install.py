@@ -2313,7 +2313,12 @@ class UnifiedInstaller:
             import os
 
             async def check_and_stamp_base():
-                """Check if alembic_version table exists, create and stamp if needed."""
+                """Check alembic_version and handle fresh vs upgrade installs.
+
+                For upgrades from pre-v33 databases: the schema is already correct
+                (all incremental migrations ran), so we stamp to baseline_v33 to
+                align with the consolidated migration chain.
+                """
                 try:
                     from sqlalchemy import text
 
@@ -2337,19 +2342,38 @@ class UnifiedInstaller:
                         table_exists = result_check.scalar()
 
                         if not table_exists:
-                            self._print_info("Fresh install detected - will run all migrations from scratch")
+                            self._print_info("Fresh install detected - will run baseline migration")
                             await db_manager.close_async()
                             return True
 
-                        # Check if version is stamped
+                        # Check current version
                         version_query = text("SELECT version_num FROM alembic_version LIMIT 1")
                         result_version = await session.execute(version_query)
                         current_version = result_version.scalar()
 
-                        if current_version:
-                            self._print_info(f"Existing database detected - current version: {current_version}")
-                        else:
-                            self._print_info("Empty alembic_version table - will stamp and run migrations")
+                        if current_version == "baseline_v33":
+                            self._print_info("Database already at baseline_v33 - up to date")
+                            await db_manager.close_async()
+                            return True
+
+                        if current_version and current_version != "baseline_v33":
+                            # Existing database from pre-v33 migration chain.
+                            # Schema is already correct from incremental migrations.
+                            # Stamp to baseline_v33 so future migrations descend correctly.
+                            self._print_info(
+                                f"Upgrading migration chain: {current_version} -> baseline_v33"
+                            )
+                            stamp_query = text(
+                                "UPDATE alembic_version SET version_num = 'baseline_v33'"
+                            )
+                            await session.execute(stamp_query)
+                            await session.commit()
+                            self._print_success("Migration chain updated to baseline_v33")
+                            await db_manager.close_async()
+                            return True
+
+                        if not current_version:
+                            self._print_info("Empty alembic_version table - will run migrations")
 
                         await db_manager.close_async()
                         return True

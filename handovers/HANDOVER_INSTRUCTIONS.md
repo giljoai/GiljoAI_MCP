@@ -159,6 +159,23 @@ A customer downloading GiljoAI originates with `install.py`. The installation fl
 
 **If your handover touches models, config, dependencies, or auth flow — the installation impact section is mandatory, not optional.**
 
+### Database Migration Protocol
+
+The project uses a **single consolidated baseline migration** (`baseline_v33_unified.py`) that creates the entire schema from scratch. Incremental migrations descend from this baseline for ongoing changes.
+
+**When adding/modifying/removing model columns or tables:**
+1. Create an incremental Alembic migration as usual (for existing DB upgrades)
+2. The incremental migration MUST include idempotency guards (check if column/table exists before acting)
+3. Do NOT update the baseline for every change — incremental migrations handle upgrades
+
+**Periodic baseline squash (before releases or every ~50 handovers):**
+1. Regenerate the baseline from current SQLAlchemy models (delete all incrementals, create a new `baseline_vNN`)
+2. Update `install.py` stamp logic to recognize old revision IDs and stamp to the new baseline
+3. Verify with a fresh install: drop DB, `python install.py`, confirm server starts and `/welcome` works
+4. The goal: fresh installs always get one clean migration, existing installs stamp past it
+
+**Why this matters:** Drift between models and baseline caused fresh installs to crash (March 2026). The baseline is the front door for new users — it must match the models exactly.
+
 ---
 
 ## Commercial-Grade Code Quality Gate (Non-Negotiable)
