@@ -134,7 +134,7 @@
               Version 1.0.0<br />
               Community Edition<br />
               License: {{ licenseStatus }}<br /><br />
-              GiljoAI Community License v1.0<br />
+              GiljoAI Community License v1.1<br />
               Free for single-user use. Multi-user deployments require a Commercial License.<br /><br />
               <a
                 href="https://github.com/patrik-giljoai/GiljoAI_MCP/blob/master/LICENSE"
@@ -143,7 +143,7 @@
               >View License</a>
               <template v-if="licenseStatus === 'Unlicensed'">
                 &nbsp;&middot;&nbsp;
-                <a href="mailto:licensing@giljoai.com" class="about-link">Get a License</a>
+                <a href="mailto:sales@giljo.ai" class="about-link">Get a License</a>
               </template>
             </v-card-text>
           </v-card>

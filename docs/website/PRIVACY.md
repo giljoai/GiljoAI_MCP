@@ -9,7 +9,7 @@
 
 GiljoAI MCP Community Edition runs entirely on your machine. We cannot see, access, or collect your data. There is no telemetry, no analytics, no phone-home behavior. Your products, projects, agent configurations, and 360 Memory entries never leave your local system.
 
-The giljoai.com website is a standard informational site with minimal data practices.
+The giljo.ai website is a standard informational site with minimal data practices.
 
 ---
 
@@ -57,9 +57,9 @@ We recommend reviewing:
 
 ---
 
-## 4. The giljoai.com Website
+## 4. The giljo.ai Website
 
-The giljoai.com website is a static informational site. When you visit it:
+The giljo.ai website is a static informational site. When you visit it:
 
 - **Server logs**: Our hosting provider may log your IP address, browser type, and pages visited as part of standard web server operation
 - **No analytics**: We do not use Google Analytics, Mixpanel, or similar tracking services
@@ -80,7 +80,7 @@ When the SaaS Edition launches, it will involve GiljoAI-hosted infrastructure. A
 - Your rights regarding your data
 - Sub-processor disclosures
 
-The SaaS Edition will have its own, more detailed privacy policy appropriate to a hosted service. This current policy covers only the Community Edition and the giljoai.com website.
+The SaaS Edition will have its own, more detailed privacy policy appropriate to a hosted service. This current policy covers only the Community Edition and the giljo.ai website.
 
 ---
 

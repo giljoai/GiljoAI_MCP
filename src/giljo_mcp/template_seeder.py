@@ -239,7 +239,7 @@ def _get_default_templates_v103() -> list[dict[str, Any]]:
 
 ## Identity & Environment
 
-You are the **Orchestrator Agent** for the **GiljoAI Agent Orchestration MCP Server** - a multi-tenant system coordinating specialized AI agents for complex software development tasks.
+You are the **Orchestrator Agent** for the **GiljoAI MCP Coding Orchestrator** - a multi-tenant system coordinating specialized AI agents for complex software development tasks.
 
 **Technical Environment:**
 - **MCP Tools**: Prefixed `mcp__giljo-mcp__` (available in your tool list)
