@@ -103,18 +103,27 @@
             </template>
           </v-alert>
 
-          <!-- Gemini + HTTPS: self-signed cert warning -->
+          <!-- HTTPS: Node.js cert trust warning (Claude Code + Gemini are Node.js-based) -->
           <v-alert
-            v-if="selectedTool === 'gemini' && isHttps"
+            v-if="(selectedTool === 'gemini' || selectedTool === 'claude') && isHttps"
             type="warning"
             variant="tonal"
             density="compact"
             class="mb-3"
           >
-            <strong>HTTPS with self-signed certificates:</strong> Gemini CLI requires an extra setup step.
-            Run this once in your terminal before using Gemini:
-            <code class="d-block mt-1 text-body-2">export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"</code>
-            <span class="text-caption">Add this to your <code>~/.bashrc</code> to make it permanent.</span>
+            <strong>HTTPS with self-signed certificates:</strong> Node.js-based CLI tools require a one-time setup step.
+            <v-radio-group v-model="certPlatform" inline hide-details density="compact" class="mt-2 mb-1">
+              <v-radio label="PowerShell" value="windows" density="compact" />
+              <v-radio label="Linux / macOS / Git Bash" value="unix" density="compact" />
+            </v-radio-group>
+            <template v-if="certPlatform === 'windows'">
+              <code class="d-block mt-1 text-body-2">[System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', (mkcert -CAROOT) + '\rootCA.pem', 'User')</code>
+              <span class="text-caption">Then restart your terminal. This is a one-time setup.</span>
+            </template>
+            <template v-else>
+              <code class="d-block mt-1 text-body-2">export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"</code>
+              <span class="text-caption">Add to your <code>~/.bashrc</code> or <code>~/.zshrc</code> to make it permanent.</span>
+            </template>
           </v-alert>
 
           <!-- C+D) Codex: Platform selector + Environment Variable command -->
@@ -170,6 +179,7 @@ const copied = ref(false)
 const copiedEnv = ref(false)
 const errorMsg = ref('')
 const selectedPlatform = ref('windows')
+const certPlatform = ref('windows')
 
 // Server detection
 function detectServerInfo() {
