@@ -93,6 +93,7 @@
 
                 <!-- Confirm Password -->
                 <v-text-field
+                  ref="confirmPasswordField"
                   v-model="confirmPassword"
                   label="Confirm Password"
                   :type="showConfirmPassword ? 'text' : 'password'"
@@ -288,6 +289,7 @@ function flashHappy(event) {
 // Form refs
 const step1Form = ref(null)
 const step2Form = ref(null)
+const confirmPasswordField = ref(null)
 
 // Form data
 const workspaceName = ref('')
@@ -391,6 +393,13 @@ function onlyNumbers(event) {
 }
 
 // Clear error on input
+// Re-validate confirm password when password changes (user corrects password 1)
+watch(password, () => {
+  if (confirmPasswordField.value && confirmPassword.value) {
+    confirmPasswordField.value.validate()
+  }
+})
+
 watch([workspaceName, username, email, password, confirmPassword, recoveryPin, confirmPin], () => {
   errorMessage.value = ''
 })
