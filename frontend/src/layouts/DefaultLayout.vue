@@ -38,6 +38,7 @@ import AppBar from '@/components/navigation/AppBar.vue'
 import NavigationDrawer from '@/components/navigation/NavigationDrawer.vue'
 import ToastManager from '@/components/ToastManager.vue'
 import LicensingDialog from '@/components/LicensingDialog.vue'
+import setupService from '@/services/setupService'
 
 const route = useRoute()
 const router = useRouter()
@@ -85,25 +86,13 @@ onMounted(async () => {
   // This prevents race condition where DefaultLayout redirects to /login
   // before router guard can redirect to /welcome
   try {
-    const apiBaseUrl =
-      window.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:7272`
-    const setupResponse = await fetch(`${apiBaseUrl}/api/setup/status`, {
-      method: 'GET',
-      cache: 'no-cache',
-    })
-
-    if (setupResponse.ok) {
-      const setupData = await setupResponse.json()
-
-      if (setupData.is_fresh_install) {
-        // Fresh install (0 users) - redirect to create admin account
-        router.push('/welcome')
-        return
-      }
+    const setupData = await setupService.checkEnhancedStatus()
+    if (setupData.is_fresh_install) {
+      router.push('/welcome')
+      return
     }
   } catch (setupError) {
     console.warn('[DefaultLayout] Failed to check fresh install status:', setupError)
-    // Continue with auth check (secure fallback)
   }
 
   // Normal operation: load current user
