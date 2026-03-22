@@ -72,9 +72,16 @@
                 density="comfortable"
                 class="mb-4"
                 prepend-inner-icon="mdi-lock"
-                :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
-                @click:append-inner="showPassword = !showPassword"
-              />
+              >
+                <template #append-inner>
+                  <v-icon
+                    tabindex="-1"
+                    @click="showPassword = !showPassword"
+                  >
+                    {{ showPassword ? 'mdi-eye' : 'mdi-eye-off' }}
+                  </v-icon>
+                </template>
+              </v-text-field>
 
               <!-- Confirm Password -->
               <v-text-field
@@ -86,9 +93,16 @@
                 density="comfortable"
                 class="mb-4"
                 prepend-inner-icon="mdi-lock-check"
-                :append-inner-icon="showConfirmPassword ? 'mdi-eye' : 'mdi-eye-off'"
-                @click:append-inner="showConfirmPassword = !showConfirmPassword"
-              />
+              >
+                <template #append-inner>
+                  <v-icon
+                    tabindex="-1"
+                    @click="showConfirmPassword = !showConfirmPassword"
+                  >
+                    {{ showConfirmPassword ? 'mdi-eye' : 'mdi-eye-off' }}
+                  </v-icon>
+                </template>
+              </v-text-field>
 
               <!-- Compact Password Compliance Indicator -->
               <div v-if="passwordMeetsAll" class="d-flex align-center mb-4">
