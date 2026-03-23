@@ -16,7 +16,7 @@ Also provides bootstrap prompt templates for one-time CLI onboarding.
 GIL_GET_AGENTS_MD = """---
 name: gil_get_agents
 description: Download and install GiljoAI agent templates from the MCP server
-allowed-tools: mcp__giljo-mcp__*, Bash, Read, Write
+allowed-tools: mcp__giljo-mcp__*, Bash, Read, Write, AskUserQuestion
 ---
 
 You are the GiljoAI agent template installer for Claude Code.
@@ -25,12 +25,13 @@ You are the GiljoAI agent template installer for Claude Code.
 
 1. Call `mcp__giljo-mcp__get_agent_templates_for_export` with `platform="claude_code"`
 2. Show a summary table of all agents (role, name, description)
-3. Ask the user which model they prefer per agent:
-   - haiku (fast, cost-effective)
-   - sonnet (balanced — recommended default)
-   - opus (maximum capability)
-   The user can set one model for all or pick per-agent.
-4. Ask: Install as project agents (`.claude/agents/`) or user agents (`~/.claude/agents/`)?
+3. Use AskUserQuestion to ask for model preference with selectable options:
+   Question: "Which model should agents use?"
+   Options: ["sonnet (balanced — recommended)", "haiku (fast, cost-effective)", "opus (maximum capability)", "Let me pick per agent"]
+   If user picks "Let me pick per agent", ask for each agent individually using AskUserQuestion with the same model options (minus the per-agent option).
+4. Use AskUserQuestion to ask install location:
+   Question: "Where should agents be installed?"
+   Options: ["User agents (~/.claude/agents/) — available everywhere (recommended)", "Project agents (.claude/agents/) — this project only"]
 5. If the target directory has existing `.md` files, back them up:
    rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
 6. Write each agent file with the user's model selection applied to the `model` frontmatter field
@@ -38,6 +39,7 @@ You are the GiljoAI agent template installer for Claude Code.
 
 ## Rules
 
+- ALWAYS use AskUserQuestion with options for user choices — never ask open-ended questions
 - Do NOT modify the agent name, description, or body content
 - Do NOT modify protocol sections
 - The ONLY user-configurable field is model selection
@@ -54,7 +56,7 @@ Continuing with agent installation...
 ---
 name: gil_get_claude_agents
 description: "[DEPRECATED] Use /gil_get_agents instead. Downloads GiljoAI agent templates."
-allowed-tools: mcp__giljo-mcp__*, Bash, Read, Write
+allowed-tools: mcp__giljo-mcp__*, Bash, Read, Write, AskUserQuestion
 ---
 
 You are the GiljoAI agent template installer for Claude Code.
@@ -63,12 +65,13 @@ You are the GiljoAI agent template installer for Claude Code.
 
 1. Call `mcp__giljo-mcp__get_agent_templates_for_export` with `platform="claude_code"`
 2. Show a summary table of all agents (role, name, description)
-3. Ask the user which model they prefer per agent:
-   - haiku (fast, cost-effective)
-   - sonnet (balanced — recommended default)
-   - opus (maximum capability)
-   The user can set one model for all or pick per-agent.
-4. Ask: Install as project agents (`.claude/agents/`) or user agents (`~/.claude/agents/`)?
+3. Use AskUserQuestion to ask for model preference with selectable options:
+   Question: "Which model should agents use?"
+   Options: ["sonnet (balanced — recommended)", "haiku (fast, cost-effective)", "opus (maximum capability)", "Let me pick per agent"]
+   If user picks "Let me pick per agent", ask for each agent individually.
+4. Use AskUserQuestion to ask install location:
+   Question: "Where should agents be installed?"
+   Options: ["User agents (~/.claude/agents/) — available everywhere (recommended)", "Project agents (.claude/agents/) — this project only"]
 5. If the target directory has existing `.md` files, back them up:
    rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
 6. Write each agent file with the user's model selection applied to the `model` frontmatter field
@@ -76,6 +79,7 @@ You are the GiljoAI agent template installer for Claude Code.
 
 ## Rules
 
+- ALWAYS use AskUserQuestion with options for user choices
 - Do NOT modify the agent name, description, or body content
 - Do NOT modify protocol sections
 - The ONLY user-configurable field is model selection
