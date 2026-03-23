@@ -8,15 +8,15 @@ across Claude Code, Gemini CLI, and Codex CLI platforms.
 import pytest
 
 from src.giljo_mcp.tools.slash_command_templates import (
-    GIL_GET_AGENTS_MD,
-    GIL_ADD_MD,
-    GIL_GET_AGENTS_GEMINI_TOML,
-    GIL_ADD_GEMINI_TOML,
-    GIL_GET_AGENTS_CODEX_SKILL_MD,
-    GIL_ADD_CODEX_SKILL_MD,
     BOOTSTRAP_CLAUDE_CODE,
-    BOOTSTRAP_GEMINI_CLI,
     BOOTSTRAP_CODEX_CLI,
+    BOOTSTRAP_GEMINI_CLI,
+    GIL_ADD_CODEX_SKILL_MD,
+    GIL_ADD_GEMINI_TOML,
+    GIL_ADD_MD,
+    GIL_GET_AGENTS_CODEX_SKILL_MD,
+    GIL_GET_AGENTS_GEMINI_TOML,
+    GIL_GET_AGENTS_MD,
     get_all_templates,
 )
 
@@ -28,7 +28,6 @@ class TestGetAllTemplates:
         """Calling with no args returns Claude Code templates."""
         result = get_all_templates()
         assert "gil_get_agents.md" in result
-        assert "gil_get_claude_agents.md" in result
         assert "gil_add.md" in result
 
     def test_get_all_templates_claude_code_explicit(self):
@@ -51,7 +50,7 @@ class TestGetAllTemplates:
 
     def test_get_all_templates_invalid_platform(self):
         """Calling with unknown platform raises ValueError."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Unknown platform"):
             get_all_templates(platform="unknown_platform")
 
 

@@ -130,8 +130,8 @@ async def get_available_agents(session: AsyncSession, tenant_key: str, depth: st
                     "has_stale_agents": true,
                     "stale_count": 1,
                     "stale_agents": ["implementer"],
-                    "action_required": "Some agent templates may be outdated. Run /gil_get_claude_agents to sync, or continue anyway?",
-                    "options": ["Run /gil_get_claude_agents", "Continue anyway", "Abort staging"]
+                    "action_required": "Some agent templates may be outdated. Run /gil_get_agents to sync, or continue anyway?",
+                    "options": ["Run /gil_get_agents", "Continue anyway", "Abort staging"]
                 }
             }
         }
@@ -199,10 +199,10 @@ async def get_available_agents(session: AsyncSession, tenant_key: str, depth: st
                 "action_required": (
                     "Some agent templates have been modified since last export. "
                     "Local .claude/agents/ files may be outdated. "
-                    "Run /gil_get_claude_agents to sync, or continue anyway?"
+                    "Run /gil_get_agents to sync, or continue anyway?"
                 ),
                 "options": [
-                    "Run /gil_get_claude_agents",
+                    "Run /gil_get_agents",
                     "Continue anyway (risk using stale templates)",
                     "Abort staging",
                 ],
