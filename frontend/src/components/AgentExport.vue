@@ -244,17 +244,18 @@ async function generateBootstrapPrompt(platform) {
     const template = bootstrapTemplates[platform]
     if (!template) throw new Error(`Unknown platform: ${platform}`)
 
-    // For Codex: only need slash_commands (skills) token — agents installed via skill
-    const slashContentType = 'slash_commands'
-    const slashUrl = await generateToken(slashContentType, platform)
-
+    // Generate all tokens in parallel to minimize async time before clipboard write.
+    // The browser's transient activation (user gesture) expires after ~5s in Chrome,
+    // so sequential fetches can cause navigator.clipboard.writeText to be rejected.
     let prompt
     if (platform === 'codex_cli') {
-      // Codex uses {SKILLS_URL} placeholder
+      const slashUrl = await generateToken('slash_commands', platform)
       prompt = template.replace('{SKILLS_URL}', slashUrl)
     } else {
-      // Claude and Gemini need both slash commands and agent templates
-      const agentUrl = await generateToken('agent_templates', platform)
+      const [slashUrl, agentUrl] = await Promise.all([
+        generateToken('slash_commands', platform),
+        generateToken('agent_templates', platform),
+      ])
       prompt = template
         .replace('{SLASH_COMMANDS_URL}', slashUrl)
         .replace('{AGENT_TEMPLATES_URL}', agentUrl)
