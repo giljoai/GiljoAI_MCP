@@ -687,7 +687,6 @@ def get_all_templates(platform: str = "claude_code") -> dict[str, str]:
     if platform == "claude_code":
         return {
             "gil_get_agents.md": GIL_GET_AGENTS_MD,
-            "gil_get_claude_agents.md": GIL_GET_CLAUDE_AGENTS_MD,
             "gil_add.md": GIL_ADD_MD,
         }
 
