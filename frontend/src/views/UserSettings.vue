@@ -162,10 +162,7 @@
             <!-- GiljoAI MCP Integration -->
             <McpIntegrationCard />
 
-            <!-- Slash Command Setup -->
-            <SlashCommandSetup />
-
-            <!-- Agent Export (multi-platform) -->
+            <!-- Agent Export (multi-platform — includes slash commands/skills) -->
             <AgentExport />
 
             <!-- Serena MCP Integration (Handover 0277: Simplified to toggle only) -->
@@ -210,7 +207,7 @@ import { useWebSocketV2 } from '@/composables/useWebSocket'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import AgentExport from '@/components/AgentExport.vue'
-import SlashCommandSetup from '@/components/SlashCommandSetup.vue'
+// SlashCommandSetup removed — consolidated into AgentExport (0836)
 import GitAdvancedSettingsDialog from '@/components/GitAdvancedSettingsDialog.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
 import StartupQuickStart from '@/components/settings/StartupQuickStart.vue'
