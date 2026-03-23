@@ -165,8 +165,8 @@
             <!-- Slash Command Setup -->
             <SlashCommandSetup />
 
-            <!-- Claude Code Agent Export -->
-            <ClaudeCodeExport />
+            <!-- Agent Export (multi-platform) -->
+            <AgentExport />
 
             <!-- Serena MCP Integration (Handover 0277: Simplified to toggle only) -->
             <SerenaIntegrationCard
@@ -209,7 +209,7 @@ import { useRouter } from 'vue-router'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
-import ClaudeCodeExport from '@/components/ClaudeCodeExport.vue'
+import AgentExport from '@/components/AgentExport.vue'
 import SlashCommandSetup from '@/components/SlashCommandSetup.vue'
 import GitAdvancedSettingsDialog from '@/components/GitAdvancedSettingsDialog.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
