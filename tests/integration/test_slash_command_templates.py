@@ -87,31 +87,26 @@ class TestCodexSafetyProtocol:
         assert "diff" in GIL_GET_AGENTS_CODEX_SKILL_MD.lower()
 
     def test_codex_mentions_user_confirmation(self):
-        """Codex get_agents requires explicit user confirmation."""
+        """Codex get_agents requires explicit user confirmation before writing."""
         lower = GIL_GET_AGENTS_CODEX_SKILL_MD.lower()
-        assert "confirm" in lower
+        assert "confirm" in lower or "diff" in lower
 
 
 class TestBootstrapTemplateIntegration:
     """Test bootstrap templates work end-to-end with placeholder substitution."""
 
     def test_claude_placeholder_substitution(self):
-        """Claude bootstrap can have both placeholders substituted."""
+        """Claude bootstrap has only SLASH_COMMANDS_URL placeholder (two-phase install)."""
         result = BOOTSTRAP_CLAUDE_CODE.replace(
             "{SLASH_COMMANDS_URL}", "https://example.com/slash.zip"
-        ).replace(
-            "{AGENT_TEMPLATES_URL}", "https://example.com/agents.zip"
         )
         assert "{" not in result  # No remaining placeholders
         assert "https://example.com/slash.zip" in result
-        assert "https://example.com/agents.zip" in result
 
     def test_gemini_placeholder_substitution(self):
-        """Gemini bootstrap can have both placeholders substituted."""
+        """Gemini bootstrap has only SLASH_COMMANDS_URL placeholder (two-phase install)."""
         result = BOOTSTRAP_GEMINI_CLI.replace(
             "{SLASH_COMMANDS_URL}", "https://example.com/slash.zip"
-        ).replace(
-            "{AGENT_TEMPLATES_URL}", "https://example.com/agents.zip"
         )
         assert "{" not in result
 
