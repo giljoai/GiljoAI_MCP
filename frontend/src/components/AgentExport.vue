@@ -109,11 +109,33 @@
 
 <script setup>
 import { reactive } from 'vue'
-import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 
-const { copy: clipboardCopy } = useClipboard()
 const { showToast } = useToast()
+
+/**
+ * Copy text to clipboard directly within the user-gesture call stack.
+ * navigator.clipboard.writeText requires an active user gesture and document focus.
+ * Using it inline (not behind an extra async hop) preserves the gesture context.
+ */
+async function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text)
+    return true
+  }
+  // Fallback: textarea + execCommand for non-secure contexts
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.position = 'fixed'
+  ta.style.left = '-999999px'
+  document.body.appendChild(ta)
+  ta.focus()
+  ta.select()
+  const ok = document.execCommand('copy')
+  document.body.removeChild(ta)
+  if (!ok) throw new Error('Clipboard copy failed')
+  return true
+}
 
 // Platform definitions
 const platforms = [
@@ -238,13 +260,9 @@ async function generateBootstrapPrompt(platform) {
         .replace('{AGENT_TEMPLATES_URL}', agentUrl)
     }
 
-    const success = await clipboardCopy(prompt)
-    if (success) {
-      const label = platforms.find((p) => p.id === platform)?.label || platform
-      showToast({ message: `${label} setup prompt copied to clipboard`, type: 'success' })
-    } else {
-      throw new Error('Clipboard copy failed')
-    }
+    await copyToClipboard(prompt)
+    const label = platforms.find((p) => p.id === platform)?.label || platform
+    showToast({ message: `${label} setup prompt copied to clipboard`, type: 'success' })
   } catch (error) {
     console.error(`[AGENT EXPORT] Bootstrap prompt failed for ${platform}:`, error)
     showToast({ message: `Failed to generate setup prompt: ${error.message}`, type: 'error' })
