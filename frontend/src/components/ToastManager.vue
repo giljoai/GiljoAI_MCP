@@ -1,42 +1,37 @@
 <template>
-  <v-snackbar-queue
-    v-model="toasts"
-    :location="vuetifyLocation"
-    :timeout="storeDuration"
-    multi-line
-    class="toast-manager"
-  >
-    <template v-for="(toast, index) in toasts" :key="toast.id">
-      <v-snackbar
-        v-model="toast.show"
-        :color="toast.color"
-        :location="vuetifyLocation"
-        :timeout="toast.timeout !== undefined ? toast.timeout : storeDuration"
-        :multi-line="toast.multiLine"
-        @update:model-value="(val) => !val && removeToast(index)"
-      >
-        <div class="d-flex align-center">
-          <v-icon v-if="toast.icon" :icon="toast.icon" class="mr-3" />
-          <div class="flex-grow-1">
-            <div v-if="toast.title" class="font-weight-bold">{{ toast.title }}</div>
-            <div>{{ toast.message }}</div>
-          </div>
+  <div class="toast-manager">
+    <v-snackbar
+      v-for="(toast, index) in toasts"
+      :key="toast.id"
+      v-model="toast.show"
+      :color="toast.color"
+      :location="vuetifyLocation"
+      :timeout="toast.timeout !== undefined ? toast.timeout : storeDuration"
+      :multi-line="toast.multiLine"
+      :style="{ marginBottom: `${index * 60}px` }"
+      @update:model-value="(val) => !val && removeToast(index)"
+    >
+      <div class="d-flex align-center">
+        <v-icon v-if="toast.icon" :icon="toast.icon" class="mr-3" />
+        <div class="flex-grow-1">
+          <div v-if="toast.title" class="font-weight-bold">{{ toast.title }}</div>
+          <div>{{ toast.message }}</div>
         </div>
+      </div>
 
-        <template v-slot:actions>
-          <v-btn v-if="toast.action" variant="text" @click="handleAction(toast)">
-            {{ toast.action.label }}
-          </v-btn>
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            aria-label="Close notification"
-            @click="toast.show = false"
-          />
-        </template>
-      </v-snackbar>
-    </template>
-  </v-snackbar-queue>
+      <template v-slot:actions>
+        <v-btn v-if="toast.action" variant="text" @click="handleAction(toast)">
+          {{ toast.action.label }}
+        </v-btn>
+        <v-btn
+          icon="mdi-close"
+          variant="text"
+          aria-label="Close notification"
+          @click="toast.show = false"
+        />
+      </template>
+    </v-snackbar>
+  </div>
 </template>
 
 <script setup>
