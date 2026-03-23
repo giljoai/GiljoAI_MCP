@@ -111,6 +111,13 @@ class TestBootstrapPromptTemplates:
         """Codex bootstrap mentions running the skill for agent install."""
         assert "gil-get-agents" in BOOTSTRAP_CODEX_CLI
 
+    def test_claude_and_gemini_bootstraps_include_model_selection(self):
+        """Claude and Gemini bootstraps must ask for model preference (parity with slash commands)."""
+        assert "model" in BOOTSTRAP_CLAUDE_CODE.lower()
+        assert "model" in BOOTSTRAP_GEMINI_CLI.lower()
+        # Codex delegates to $gil-get-agents skill which handles model selection
+        assert "gil-get-agents" in BOOTSTRAP_CODEX_CLI
+
     def test_all_bootstraps_mention_restart(self):
         """All bootstrap prompts mention restarting the CLI tool."""
         assert "restart" in BOOTSTRAP_CLAUDE_CODE.lower()
