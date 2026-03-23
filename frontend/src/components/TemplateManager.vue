@@ -121,16 +121,6 @@
           </v-chip>
         </template>
 
-        <template v-slot:item.cli_tool="{ item }">
-          <v-img
-            :src="getToolLogo(item.cli_tool || 'claude')"
-            :alt="getToolName(item.cli_tool || 'claude')"
-            width="24"
-            height="24"
-            class="mx-auto"
-          />
-        </template>
-
         <template v-slot:item.updated_at="{ item }">
           <span class="text-caption">{{ formatDate(item.updated_at) }}</span>
         </template>
@@ -252,38 +242,8 @@
         <v-card-text>
           <v-container>
             <v-row>
-              <!-- CLI Tool Selector (FIRST FIELD) -->
-              <v-col cols="12">
-                <div class="text-subtitle-2 mb-2">
-                  CLI Tool
-                  <v-tooltip location="right">
-                    <template v-slot:activator="{ props }">
-                      <v-icon v-bind="props" size="small" color="primary" class="ml-1"
-                        >mdi-help-circle</v-icon
-                      >
-                    </template>
-                    <span>Select the AI coding tool for this agent template</span>
-                  </v-tooltip>
-                </div>
-                <v-radio-group
-                  v-model="editingTemplate.cli_tool"
-                  inline
-                  density="compact"
-                  class="justify-center"
-                  aria-label="Select CLI tool"
-                  @update:model-value="onCliToolChange"
-                >
-                  <v-radio
-                    v-for="tool in cliToolOptions"
-                    :key="tool.value"
-                    :value="tool.value"
-                    :label="tool.title"
-                  />
-                </v-radio-group>
-              </v-col>
-
-              <!-- Role / Suffix / Model — single row -->
-              <v-col cols="4">
+              <!-- Role / Suffix — single row -->
+              <v-col cols="6">
                 <v-select
                   v-model="editingTemplate.role"
                   :items="roleOptions"
@@ -304,7 +264,7 @@
                 </v-select>
               </v-col>
 
-              <v-col cols="5">
+              <v-col cols="6">
                 <v-text-field
                   v-model="editingTemplate.custom_suffix"
                   label="Custom Suffix (optional)"
@@ -325,50 +285,13 @@
                 </div>
               </v-col>
 
-              <v-col cols="3">
-                <v-select
-                  v-if="modelOptions.length > 0"
-                  v-model="editingTemplate.model"
-                  :items="modelOptions"
-                  label="Model"
-                  density="compact"
-                  aria-label="Select Claude model"
-                >
-                  <template v-slot:append-inner>
-                    <v-tooltip location="top">
-                      <template v-slot:activator="{ props }">
-                        <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
-                      </template>
-                      <span>Select Claude model (sonnet, opus, haiku)</span>
-                    </v-tooltip>
-                  </template>
-                </v-select>
-                <v-text-field
-                  v-else
-                  :model-value="editingTemplate.cli_tool === 'claude' ? 'sonnet' : 'Default'"
-                  label="Model"
-                  density="compact"
-                  readonly
-                  aria-label="Model name"
-                >
-                  <template v-slot:append-inner>
-                    <v-tooltip location="top">
-                      <template v-slot:activator="{ props }">
-                        <v-icon v-bind="props" size="small" color="info">mdi-information-outline</v-icon>
-                      </template>
-                      <span>Model determined by {{ editingTemplate.cli_tool }} CLI configuration</span>
-                    </v-tooltip>
-                  </template>
-                </v-text-field>
-              </v-col>
-
-              <!-- Description (Conditional - Claude only) -->
-              <v-col v-if="showDescription" cols="12">
+              <!-- Description -->
+              <v-col cols="12">
                 <v-text-field
                   v-model="editingTemplate.description"
                   label="Description"
                   density="compact"
-                  hint="Short description of agent responsibilities (required for Claude)"
+                  hint="Short description of agent responsibilities (used by all platforms)"
                   persistent-hint
                   aria-label="Agent description"
                 >
@@ -377,7 +300,7 @@
                       <template v-slot:activator="{ props }">
                         <v-icon v-bind="props" size="small" color="primary">mdi-help-circle</v-icon>
                       </template>
-                      <span>Required for Claude - Brief description of what this agent does</span>
+                      <span>Brief description of what this agent does</span>
                     </v-tooltip>
                   </template>
                 </v-text-field>
@@ -518,9 +441,7 @@ import { format } from 'date-fns'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
-import { useClipboard } from '@/composables/useClipboard'
 import { getAgentColor as getAgentColorConfig } from '@/config/agentColors'
-const { copy: clipboardCopy } = useClipboard()
 
 // Handover 0335: WebSocket setup for real-time export status updates
 const { on, off } = useWebSocketV2()
@@ -532,15 +453,6 @@ const currentTenantKey = computed(() => userStore.currentUser?.tenant_key)
 // This allows receiving export events even when this component is not mounted
 // (v-window-item lazy loads components)
 const templateExportEvent = inject('templateExportEvent', ref(null))
-
-async function copyToClipboardSafe(text, onSuccess, onError) {
-  const success = await clipboardCopy(text)
-  if (success) {
-    if (onSuccess) onSuccess()
-  } else {
-    if (onError) onError(new Error('Failed to copy to clipboard'))
-  }
-}
 
 // Reactive data
 const templates = ref([])
@@ -595,7 +507,6 @@ const resetting = ref(false)
 const headers = [
   { title: 'Agent Name', key: 'name', align: 'start' },
   { title: 'Role', key: 'role', align: 'start' },
-  { title: 'Tool', key: 'cli_tool', align: 'center' },
   { title: 'Active', key: 'is_active', align: 'center' },
   { title: 'Export Status', key: 'export_status', align: 'center', sortable: false },
   { title: 'Updated', key: 'updated_at', align: 'start' },
@@ -622,14 +533,6 @@ const statusOptions = [
   { title: 'Active', value: 'active' },
   { title: 'Archived', value: 'archived' },
   { title: 'Draft', value: 'draft' },
-]
-
-// CLI tool options for create/edit modal (Handover 0103)
-const cliToolOptions = [
-  { title: 'Claude Code', value: 'claude' },
-  { title: 'Codex CLI', value: 'codex' },
-  { title: 'Gemini CLI', value: 'gemini' },
-  { title: 'Generic', value: 'generic' },
 ]
 
 // Computed
@@ -659,17 +562,6 @@ const generatedName = computed(() => {
     .replace(/[^a-z0-9-]/g, '')
     .replace(/\s+/g, '-')
   return `${role}-${cleanSuffix}`
-})
-
-const showDescription = computed(() => {
-  return editingTemplate.value.cli_tool === 'claude'
-})
-
-const modelOptions = computed(() => {
-  if (editingTemplate.value.cli_tool === 'claude') {
-    return ['sonnet', 'opus', 'haiku']
-  }
-  return [] // Read-only for non-Claude
 })
 
 const totalActiveAgents = computed(() => activeStats.value.totalActive)
@@ -843,15 +735,6 @@ const onRoleChange = (newRole) => {
   editingTemplate.value.background_color = getCategoryColor(newRole)
 }
 
-// Handover 0103: Handle CLI tool change (clear preview)
-const onCliToolChange = () => {
-  previewContent.value = ''
-  // Set default model for Claude
-  if (editingTemplate.value.cli_tool === 'claude') {
-    editingTemplate.value.model = 'sonnet'
-  }
-}
-
 // Handover 0103: Save template and generate preview
 const saveTemplateAndPreview = async () => {
   saving.value = true
@@ -865,7 +748,7 @@ const saveTemplateAndPreview = async () => {
       background_color: editingTemplate.value.background_color,
       description: editingTemplate.value.description,
       user_instructions: editingTemplate.value.user_instructions,
-      model: editingTemplate.value.cli_tool === 'claude' ? editingTemplate.value.model : null,
+      model: editingTemplate.value.model || null,
       tools: editingTemplate.value.tools,
       behavioral_rules: editingTemplate.value.behavioral_rules || [],
       success_criteria: editingTemplate.value.success_criteria || [],
@@ -910,20 +793,6 @@ const saveTemplateAndPreview = async () => {
   }
 }
 
-// Handover 0103: Copy preview to clipboard
-const copyPreview = async () => {
-  await copyToClipboardSafe(
-    previewContent.value,
-    () => {
-      showToast({ message: 'Preview copied to clipboard', type: 'success' })
-    },
-    (error) => {
-      console.error('Failed to copy preview:', error)
-      showToast({ message: 'Failed to copy to clipboard', type: 'error' })
-    },
-  )
-}
-
 const confirmDelete = (template) => {
   deletingTemplate.value = template
   deleteDialog.value = true
@@ -945,24 +814,6 @@ const deleteTemplate = async () => {
 
 const getCategoryColor = (role) => {
   return getAgentColorConfig(role).hex
-}
-
-const getToolLogo = (tool) => {
-  const logos = {
-    claude: '/Claude_AI_symbol.svg',
-    codex: '/codex_logo.svg',
-    gemini: '/gemini-icon.svg',
-  }
-  return logos[tool] || logos.claude
-}
-
-const getToolName = (tool) => {
-  const names = {
-    claude: 'Claude',
-    codex: 'Codex',
-    gemini: 'Gemini',
-  }
-  return names[tool] || 'Claude'
 }
 
 const formatDate = (date) => {

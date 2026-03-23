@@ -516,8 +516,11 @@ export const api = {
   // Downloads
   downloads: {
     // Generate slash commands installation instructions with timed download URL
-    generateSlashCommandsInstructions: () =>
-      apiClient.post('/api/download/generate-token', null, { params: { content_type: 'slash_commands' } }),
+    generateSlashCommandsInstructions: (platform = 'claude_code') =>
+      apiClient.post('/api/download/generate-token', null, { params: { content_type: 'slash_commands', platform } }),
+    // Generate agent templates download token with platform
+    generateAgentTemplatesToken: (platform = 'claude_code') =>
+      apiClient.post('/api/download/generate-token', null, { params: { content_type: 'agent_templates', platform } }),
   },
 
   system: {

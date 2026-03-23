@@ -1,0 +1,311 @@
+<template>
+  <v-card variant="outlined" class="mb-4">
+    <v-card-text>
+      <div class="d-flex align-center mb-3">
+        <v-avatar size="40" rounded="0" class="mr-2">
+          <v-img src="/giljo_face_lightblue.svg" alt="GiljoAI" />
+        </v-avatar>
+        <h3 class="text-h6 mb-0">Agent Export</h3>
+      </div>
+
+      <!-- Section 1: One-Time Setup -->
+      <div class="mb-5">
+        <div class="d-flex align-center mb-2">
+          <h4 class="text-subtitle-1 font-weight-medium mb-0 mr-2">One-Time Setup</h4>
+          <v-tooltip location="top" max-width="400">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
+            </template>
+            <span>Generates a combined bootstrap prompt that installs slash commands and agent templates in one step. Paste into your CLI tool.</span>
+          </v-tooltip>
+        </div>
+        <p class="text-body-2 text-medium-emphasis mb-3">
+          Generate a setup prompt for your CLI tool. Paste it into the tool to install slash commands and agent templates.
+        </p>
+
+        <div class="d-flex flex-wrap gap-3">
+          <v-btn
+            v-for="p in platforms"
+            :key="p.id"
+            variant="tonal"
+            :color="p.color"
+            :loading="setupLoading[p.id]"
+            :disabled="setupLoading[p.id]"
+            :data-testid="`setup-${p.id}`"
+            @click="generateBootstrapPrompt(p.id)"
+          >
+            <v-avatar size="20" rounded="0" class="mr-2">
+              <v-img :src="p.icon" :alt="p.label" />
+            </v-avatar>
+            Setup GiljoAI for {{ p.label }}
+          </v-btn>
+        </div>
+      </div>
+
+      <!-- Section 2: Manual Downloads (collapsed) -->
+      <v-expansion-panels variant="accordion" class="mb-4">
+        <v-expansion-panel>
+          <v-expansion-panel-title>
+            <div class="d-flex align-center">
+              <v-icon start size="small">mdi-download</v-icon>
+              <span class="font-weight-medium">Manual Downloads</span>
+              <span class="text-caption text-medium-emphasis ml-2">(advanced)</span>
+            </div>
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <!-- Agent Templates -->
+            <div class="mb-3">
+              <div class="text-subtitle-2 mb-2">Agent Templates</div>
+              <div class="d-flex flex-wrap gap-2">
+                <v-btn
+                  v-for="p in platforms"
+                  :key="`agent-${p.id}`"
+                  variant="text"
+                  size="small"
+                  :loading="downloadLoading[`agents_${p.id}`]"
+                  @click="downloadZip('agent_templates', p.id)"
+                >
+                  <v-avatar size="18" rounded="0" class="mr-1">
+                    <v-img :src="p.icon" :alt="p.label" />
+                  </v-avatar>
+                  {{ p.label }}
+                </v-btn>
+              </div>
+            </div>
+
+            <!-- Slash Commands -->
+            <div>
+              <div class="text-subtitle-2 mb-2">Slash Commands / Skills</div>
+              <div class="d-flex flex-wrap gap-2">
+                <v-btn
+                  v-for="p in platforms"
+                  :key="`slash-${p.id}`"
+                  variant="text"
+                  size="small"
+                  :loading="downloadLoading[`slash_${p.id}`]"
+                  @click="downloadZip('slash_commands', p.id)"
+                >
+                  <v-avatar size="18" rounded="0" class="mr-1">
+                    <v-img :src="p.icon" :alt="p.label" />
+                  </v-avatar>
+                  {{ p.label }}
+                </v-btn>
+              </div>
+            </div>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
+
+      <!-- Section 3: After Setup -->
+      <v-alert type="info" variant="tonal" density="compact">
+        <div class="text-body-2">
+          After setup, use <code>/gil_get_agents</code> to update agent templates and
+          <code>/gil_add</code> to create tasks and projects from your CLI tool.
+        </div>
+      </v-alert>
+    </v-card-text>
+  </v-card>
+</template>
+
+<script setup>
+import { reactive } from 'vue'
+import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
+
+const { copy: clipboardCopy } = useClipboard()
+const { showToast } = useToast()
+
+// Platform definitions
+const platforms = [
+  { id: 'claude_code', label: 'Claude Code', icon: '/claude_pix.svg', color: 'deep-orange' },
+  { id: 'codex_cli', label: 'Codex CLI', icon: '/codex_logo.svg', color: 'green' },
+  { id: 'gemini_cli', label: 'Gemini CLI', icon: '/gemini-icon.svg', color: 'blue' },
+]
+
+// Bootstrap prompt templates (must match backend slash_command_templates.py)
+const bootstrapTemplates = {
+  claude_code: `Install the GiljoAI CLI integration. This is a one-time setup.
+
+Step 1 — Install slash commands:
+Download: {SLASH_COMMANDS_URL}
+Extract to: ~/.claude/commands/ (create if needed, overwrite existing)
+Delete the downloaded zip.
+
+Step 2 — Install agent templates:
+Download: {AGENT_TEMPLATES_URL}
+Extract to: ~/.claude/agents/ (create if needed)
+If existing agents are present, back them up to ~/.claude/agents/backup_YYYYMMDD_HHMMSS/ first.
+Delete the downloaded zip.
+
+Adapt all commands for the OS you are running on.
+After both installs complete, instruct the user to restart Claude Code.
+Note: Download links expire in 15 minutes.`,
+
+  gemini_cli: `Install the GiljoAI CLI integration. This is a one-time setup.
+
+Step 1 — Install custom commands:
+Download: {SLASH_COMMANDS_URL}
+Extract to: ~/.gemini/commands/ (create if needed, overwrite existing)
+Delete the downloaded zip.
+
+Step 2 — Install agent templates:
+Download: {AGENT_TEMPLATES_URL}
+Extract to: ~/.gemini/agents/ (create if needed)
+If existing agents are present, back them up to ~/.gemini/agents/backup_YYYYMMDD_HHMMSS/ first.
+Delete the downloaded zip.
+
+Adapt all commands for the OS you are running on.
+After both installs complete, instruct the user to restart Gemini CLI.
+Note: Download links expire in 15 minutes.`,
+
+  codex_cli: `Install the GiljoAI CLI integration. This is a one-time setup.
+
+Step 1 — Install skills:
+Download: {SKILLS_URL}
+Extract to: ~/.codex/skills/ (create if needed, overwrite existing)
+Delete the downloaded zip.
+
+Step 2 — Install agent templates:
+Skills are now installed. Run the $gil-get-agents skill to install agent templates
+with proper config.toml integration. This step is interactive — the skill will
+guide you through model selection and config file merge.
+
+Adapt all commands for the OS you are running on.
+After skill installation, instruct the user to restart Codex CLI, then run $gil-get-agents.
+Note: Download link expires in 15 minutes.`,
+}
+
+// Loading states
+const setupLoading = reactive({
+  claude_code: false,
+  codex_cli: false,
+  gemini_cli: false,
+})
+
+const downloadLoading = reactive({})
+
+/**
+ * Generate a download token for a given content type and platform.
+ * Returns the download_url from the server response.
+ */
+async function generateToken(contentType, platform) {
+  const response = await fetch(
+    `/api/download/generate-token?content_type=${contentType}&platform=${platform}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    },
+  )
+  if (!response.ok) {
+    throw new Error(`Token generation failed: ${response.status}`)
+  }
+  const data = await response.json()
+  return data.download_url
+}
+
+/**
+ * Generate the combined bootstrap prompt for a platform and copy to clipboard.
+ */
+async function generateBootstrapPrompt(platform) {
+  setupLoading[platform] = true
+  try {
+    const template = bootstrapTemplates[platform]
+    if (!template) throw new Error(`Unknown platform: ${platform}`)
+
+    // For Codex: only need slash_commands (skills) token — agents installed via skill
+    const slashContentType = 'slash_commands'
+    const slashUrl = await generateToken(slashContentType, platform)
+
+    let prompt
+    if (platform === 'codex_cli') {
+      // Codex uses {SKILLS_URL} placeholder
+      prompt = template.replace('{SKILLS_URL}', slashUrl)
+    } else {
+      // Claude and Gemini need both slash commands and agent templates
+      const agentUrl = await generateToken('agent_templates', platform)
+      prompt = template
+        .replace('{SLASH_COMMANDS_URL}', slashUrl)
+        .replace('{AGENT_TEMPLATES_URL}', agentUrl)
+    }
+
+    const success = await clipboardCopy(prompt)
+    if (success) {
+      const label = platforms.find((p) => p.id === platform)?.label || platform
+      showToast({ message: `${label} setup prompt copied to clipboard`, type: 'success' })
+    } else {
+      throw new Error('Clipboard copy failed')
+    }
+  } catch (error) {
+    console.error(`[AGENT EXPORT] Bootstrap prompt failed for ${platform}:`, error)
+    showToast({ message: `Failed to generate setup prompt: ${error.message}`, type: 'error' })
+  } finally {
+    setupLoading[platform] = false
+  }
+}
+
+/**
+ * Download a ZIP file directly for a content type and platform.
+ */
+async function downloadZip(contentType, platform) {
+  const key = `${contentType === 'slash_commands' ? 'slash' : 'agents'}_${platform}`
+  downloadLoading[key] = true
+  try {
+    const endpoint =
+      contentType === 'slash_commands'
+        ? `/api/download/slash-commands.zip?platform=${platform}`
+        : `/api/download/agent-templates.zip?active_only=true&platform=${platform}`
+
+    const response = await fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Download failed with status ${response.status}`)
+    }
+
+    const blob = await response.blob()
+    const filename =
+      contentType === 'slash_commands'
+        ? `slash-commands-${platform}.zip`
+        : `agent-templates-${platform}.zip`
+
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    showToast({ message: 'Download complete', type: 'success' })
+  } catch (error) {
+    console.error(`[AGENT EXPORT] Download failed:`, error)
+    showToast({ message: `Download failed: ${error.message}`, type: 'error' })
+  } finally {
+    downloadLoading[key] = false
+  }
+}
+</script>
+
+<style scoped>
+code {
+  background-color: rgba(var(--v-theme-on-surface), 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875em;
+}
+
+.gap-2 {
+  gap: 8px;
+}
+
+.gap-3 {
+  gap: 12px;
+}
+</style>
