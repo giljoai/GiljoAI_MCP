@@ -207,7 +207,6 @@ import { useWebSocketV2 } from '@/composables/useWebSocket'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import AgentExport from '@/components/AgentExport.vue'
-// SlashCommandSetup removed — consolidated into AgentExport (0836)
 import GitAdvancedSettingsDialog from '@/components/GitAdvancedSettingsDialog.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
 import StartupQuickStart from '@/components/settings/StartupQuickStart.vue'
