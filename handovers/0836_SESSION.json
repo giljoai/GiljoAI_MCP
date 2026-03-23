@@ -158,6 +158,7 @@
 
   "cross_cutting_findings": {
     "old_command_rename": "/gil_get_claude_agents -> /gil_get_agents. Source code is clean. User-facing docs fixed by 0836a agent. Completed handovers left as-is (historical).",
-    "platform_param_plumbing": "All paths now pass platform through: MCP tool, direct ZIP download, token-based download. 0836a verified all 3 flows."
+    "platform_param_plumbing": "All paths now pass platform through: MCP tool, direct ZIP download, token-based download. 0836a verified all 3 flows.",
+    "bundled_audit_commit": "Commit 8e4dbefa contains audit fixes from all 3 agents — 0836a (downloads.py platform bug, docs rename), 0836b (frontend test stubs), 0836c (agent_discovery rename, dead code, test zombies). All were staged together because they were uncommitted at audit time."
   }
 }
