@@ -11,13 +11,13 @@
             >
           </template>
           <div>
-            <strong>Core slash commands:</strong>
+            <strong>Core commands:</strong>
             <ul class="mt-2 mb-2 pl-4">
-              <li>/gil_get_claude_agents - Download + install agent templates</li>
+              <li>/gil_get_agents - Download + install agent templates</li>
               <li>/gil_add - Add tasks or projects to the dashboard</li>
             </ul>
             <p class="text-caption mb-0">
-              <em>*Only supported slash commands will be imported</em>
+              <em>*Available as slash commands (Claude), custom commands (Gemini), or skills (Codex)</em>
             </p>
           </div>
         </v-tooltip>
