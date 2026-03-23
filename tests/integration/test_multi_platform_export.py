@@ -93,15 +93,15 @@ class TestGilAddConsistency:
 class TestBootstrapPromptTemplates:
     """Test bootstrap prompt templates have correct placeholders."""
 
-    def test_claude_has_both_url_placeholders(self):
-        """Claude bootstrap has SLASH_COMMANDS_URL and AGENT_TEMPLATES_URL."""
+    def test_claude_has_slash_commands_url_placeholder(self):
+        """Claude bootstrap has SLASH_COMMANDS_URL (commands-only, two-phase install)."""
         assert "{SLASH_COMMANDS_URL}" in BOOTSTRAP_CLAUDE_CODE
-        assert "{AGENT_TEMPLATES_URL}" in BOOTSTRAP_CLAUDE_CODE
+        assert "{AGENT_TEMPLATES_URL}" not in BOOTSTRAP_CLAUDE_CODE
 
-    def test_gemini_has_both_url_placeholders(self):
-        """Gemini bootstrap has SLASH_COMMANDS_URL and AGENT_TEMPLATES_URL."""
+    def test_gemini_has_slash_commands_url_placeholder(self):
+        """Gemini bootstrap has SLASH_COMMANDS_URL (commands-only, two-phase install)."""
         assert "{SLASH_COMMANDS_URL}" in BOOTSTRAP_GEMINI_CLI
-        assert "{AGENT_TEMPLATES_URL}" in BOOTSTRAP_GEMINI_CLI
+        assert "{AGENT_TEMPLATES_URL}" not in BOOTSTRAP_GEMINI_CLI
 
     def test_codex_has_skills_url_placeholder(self):
         """Codex bootstrap has SKILLS_URL placeholder (not agent templates)."""
@@ -111,11 +111,16 @@ class TestBootstrapPromptTemplates:
         """Codex bootstrap mentions running the skill for agent install."""
         assert "gil-get-agents" in BOOTSTRAP_CODEX_CLI
 
-    def test_claude_and_gemini_bootstraps_include_model_selection(self):
-        """Claude and Gemini bootstraps must ask for model preference (parity with slash commands)."""
-        assert "model" in BOOTSTRAP_CLAUDE_CODE.lower()
-        assert "model" in BOOTSTRAP_GEMINI_CLI.lower()
-        # Codex delegates to $gil-get-agents skill which handles model selection
+    def test_bootstraps_are_commands_only_two_phase(self):
+        """All bootstraps install commands/skills only — no agent download or model selection."""
+        for bootstrap in [BOOTSTRAP_CLAUDE_CODE, BOOTSTRAP_GEMINI_CLI, BOOTSTRAP_CODEX_CLI]:
+            assert "model" not in bootstrap.lower(), "Bootstrap must not contain model selection (two-phase install)"
+            assert "{AGENT_TEMPLATES_URL}" not in bootstrap, "Bootstrap must not download agent templates"
+
+    def test_bootstraps_direct_user_to_agent_installer(self):
+        """All bootstraps tell user to run the agent installer after restart."""
+        assert "gil_get_agents" in BOOTSTRAP_CLAUDE_CODE
+        assert "gil_get_agents" in BOOTSTRAP_GEMINI_CLI
         assert "gil-get-agents" in BOOTSTRAP_CODEX_CLI
 
     def test_all_bootstraps_mention_restart(self):

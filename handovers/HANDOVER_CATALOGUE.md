@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-22 (0835 complete, 0828+0831 active)
+**Last Updated:** 2026-03-23 (0836a/b/c audited, 0836d active, 0828+0831 active)
 
 ---
 
@@ -29,10 +29,11 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0836 | Multi-Platform Agent Template Export (Parent) | Not Started | Critical | Platform-neutral templates with server-side assembly for Claude Code, Codex CLI, Gemini CLI. Consolidated bootstrap prompt. CE launch blocker. |
-| 0836a | Backend Assembler + MCP Endpoint | Not Started | Critical | AgentTemplateAssembler class, 3 formatters, get_agent_templates_for_export MCP tool, platform-aware ZIP. No dependencies. |
-| 0836b | Slash Commands, Skills, Bootstrap Prompts | Not Started | Critical | /gil_get_agents + /gil_add for all 3 platforms, combined bootstrap prompts. Uses 0836a API contract. |
-| 0836c | Frontend UI + Integration Tests | Not Started | Critical | Remove tool selector, multi-platform Integrations page, test suite. Depends on 0836a endpoint. |
+| 0836 | Multi-Platform Agent Template Export (Parent) | In Progress | Critical | Platform-neutral templates with server-side assembly for Claude Code, Codex CLI, Gemini CLI. CE launch blocker. |
+| 0836a | Backend Assembler + MCP Endpoint | Complete (audited) | Critical | AgentTemplateAssembler, 3 formatters, MCP tool, platform-aware ZIP. Audit: 1 blocker + 3 cleanup fixes. |
+| 0836b | Slash Commands, Skills, Bootstrap Prompts | Complete (audited) | Critical | /gil_get_agents + /gil_add for all 3 platforms. Audit: orphan test stubs + dead doc. |
+| 0836c | Frontend UI + Integration Tests | Complete (audited) | Critical | AgentExport.vue, removed tool selector. Audit: test zombies + dead code + lint. |
+| 0836d | Two-Phase Install Pattern & Codex Skill Rewrite | Not Started | Critical | Standardize all platforms to bootstrap=commands-only, then restart+run agent installer. Replace Codex skill with battle-tested version (gil- prefix, relative paths, merge rules). |
 | 0828 | OAuth 2.1 PKCE Flow for MCP Client Authorization | Not Started | High | OAuth for GUI-based MCP clients (Claude Desktop). CE scope — uses existing user credentials. |
 | 0831 | Product Context Tuning — Scope Drift Detection & Review | Not Started | Medium | Post-closeout context review: compares product context vs 360 memory + git to detect drift, proposes updates. CE scope. |
 

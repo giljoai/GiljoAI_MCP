@@ -150,15 +150,40 @@
     "lint": "clean"
   },
 
-  "coordinator": {
+  "0836d": {
     "agent": "Session coordinator (continuation agent)",
-    "role": "Picked up from previous session. Reviewing uncommitted changes from 0836a/0836b audits. Will commit their work, then handle 0836c audit or coordinate merge.",
-    "status": "active"
+    "status": "complete",
+    "description": "Two-phase install pattern + Codex skill rewrite",
+    "commits": [
+      {
+        "hash": "8e4dbefa",
+        "description": "Combined audit fixes from 0836a/b/c agents"
+      },
+      {
+        "hash": "b58b9ed9",
+        "description": "Bootstrap prompts now ask model preference (superseded by 0836d two-phase)"
+      },
+      {
+        "hash": "pending",
+        "description": "0836d: Two-phase install + Codex skill rewrite",
+        "details": "All bootstraps simplified to commands/skills-only. Agent install delegated to slash command/skill. Codex skill rewritten with gil- prefix, relative config_file paths, TOML format reference, merge rules, verification step.",
+        "files_changed": [
+          "src/giljo_mcp/tools/slash_command_templates.py",
+          "frontend/src/components/AgentExport.vue",
+          "tests/integration/test_multi_platform_export.py",
+          "tests/integration/test_slash_command_templates.py",
+          "tests/test_slash_command_templates.py",
+          "handovers/0836d_TWO_PHASE_INSTALL_AND_CODEX_SKILL_REWRITE.md",
+          "handovers/HANDOVER_CATALOGUE.md"
+        ]
+      }
+    ]
   },
 
   "cross_cutting_findings": {
     "old_command_rename": "/gil_get_claude_agents -> /gil_get_agents. Source code is clean. User-facing docs fixed by 0836a agent. Completed handovers left as-is (historical).",
     "platform_param_plumbing": "All paths now pass platform through: MCP tool, direct ZIP download, token-based download. 0836a verified all 3 flows.",
-    "bundled_audit_commit": "Commit 8e4dbefa contains audit fixes from all 3 agents — 0836a (downloads.py platform bug, docs rename), 0836b (frontend test stubs), 0836c (agent_discovery rename, dead code, test zombies). All were staged together because they were uncommitted at audit time."
+    "bundled_audit_commit": "Commit 8e4dbefa contains audit fixes from all 3 agents.",
+    "two_phase_install": "0836d decision: All platforms now use two-phase install. Bootstrap = commands/skills only. Agent install = slash command/skill (has model selection, location choice, backups). Eliminates bootstrap/slash-command sync burden. Codex skill battle-tested with gil- prefix and relative paths."
   }
 }
