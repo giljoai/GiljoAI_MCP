@@ -1,5 +1,5 @@
 """
-Template rendering utilities for packaging/export (Claude Code, generic, etc.).
+Template rendering utilities for packaging/export (Claude Code, Gemini CLI, Codex CLI).
 
 Implements 0102a/0103 rules for Claude Code agent templates:
 - YAML frontmatter with: name, description, model, color (optional)
@@ -10,6 +10,8 @@ Implements 0102a/0103 rules for Claude Code agent templates:
   1) is_default first
   2) updated_at descending
   3) name ascending
+
+Handover 0836a: Added render_gemini_agent() and render_codex_agent() for multi-platform export.
 """
 
 from __future__ import annotations
@@ -175,6 +177,35 @@ def select_templates_for_packaging(templates: Iterable[AgentTemplate], max_count
     return sorted_list[:max_count]
 
 
+def _build_body_parts(template: AgentTemplate) -> list[str]:
+    """Build the shared body content parts used by all renderers.
+
+    Returns list of text parts: system_instructions, user_instructions,
+    behavioral_rules, success_criteria.
+    """
+    parts: list[str] = []
+
+    bootstrap = (template.system_instructions or "").strip()
+    if bootstrap:
+        parts.append(bootstrap)
+
+    role_prose = (template.user_instructions or "").strip()
+    if role_prose:
+        parts.append(f"\n{role_prose}")
+
+    rules = template.behavioral_rules or []
+    if isinstance(rules, list) and rules:
+        parts.append("\n## Behavioral Rules")
+        parts.extend(f"- {r}" for r in rules)
+
+    criteria = template.success_criteria or []
+    if isinstance(criteria, list) and criteria:
+        parts.append("\n## Success Criteria")
+        parts.extend(f"- {c}" for c in criteria)
+
+    return parts
+
+
 def render_generic_agent(template: AgentTemplate) -> str:
     """Render agent template to generic plaintext format.
 
@@ -212,6 +243,73 @@ def render_generic_agent(template: AgentTemplate) -> str:
     return "\n".join(parts)
 
 
+def render_gemini_agent(template: AgentTemplate) -> str:
+    """Render a single AgentTemplate to Gemini CLI-compatible Markdown.
+
+    Gemini CLI uses YAML frontmatter with different schema than Claude Code:
+    - name, description, kind (always 'agent'), model, max_turns, tools
+    - No color support (Gemini doesn't support agent colors)
+
+    Handover 0836a: Multi-platform agent export.
+    """
+    description = template.description or (f"Subagent for {template.role}" if template.role else "Subagent")
+
+    frontmatter: dict[str, object] = {
+        "name": template.name,
+        "description": description,
+        "kind": "agent",
+        "model": "gemini-2.5-pro",
+        "max_turns": 50,
+        "tools": ["shell", "read_file", "write_file", "mcp_*"],
+    }
+
+    yaml_header = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False).strip()
+
+    body_parts = _build_body_parts(template)
+    body_text = "\n".join(body_parts).rstrip() + "\n"
+    return f"---\n{yaml_header}\n---\n\n{body_text}"
+
+
+def render_codex_agent(template: AgentTemplate) -> dict[str, object]:
+    """Render a single AgentTemplate to Codex CLI structured data.
+
+    Codex CLI agents are configured via TOML, not markdown files.
+    Returns a dict that an LLM can use to write the config locally.
+
+    Handover 0836a: Multi-platform agent export.
+    """
+    description = template.description or (f"Subagent for {template.role}" if template.role else "Subagent")
+
+    body_parts = _build_body_parts(template)
+    developer_instructions = "\n".join(body_parts).rstrip()
+
+    return {
+        "agent_name": template.name,
+        "description": description,
+        "role": template.role or "agent",
+        "developer_instructions": developer_instructions,
+        "suggested_model": "gpt-5.2-codex",
+        "suggested_reasoning_effort": "medium",
+    }
+
+
+# TOML format reference string for Codex CLI agent configuration
+CODEX_TOML_FORMAT_REFERENCE = """\
+# Codex CLI agent configuration (add to ~/.codex/config.toml)
+# Each agent is a [agents.<name>] section.
+#
+# [agents.implementer-frontend]
+# model = "gpt-5.2-codex"
+# reasoning_effort = "medium"
+# instructions = \"\"\"
+# <developer_instructions content here>
+# \"\"\"
+#
+# Multiple agents can be defined in the same config.toml file.
+# Existing sections not managed by GiljoAI should be preserved.
+"""
+
+
 def render_template(template: AgentTemplate) -> str:
     """Render template based on cli_tool field.
 
@@ -237,9 +335,12 @@ def render_template(template: AgentTemplate) -> str:
 
 
 __all__ = [
+    "CODEX_TOML_FORMAT_REFERENCE",
     "_slugify_filename",
     "hex_to_claude_color",
     "render_claude_agent",
+    "render_codex_agent",
+    "render_gemini_agent",
     "render_generic_agent",
     "render_template",
     "select_templates_for_packaging",
