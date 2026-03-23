@@ -9,7 +9,6 @@ import pytest
 
 from src.giljo_mcp.tools.slash_command_templates import (
     GIL_GET_AGENTS_MD,
-    GIL_GET_CLAUDE_AGENTS_MD,
     GIL_ADD_MD,
     GIL_GET_AGENTS_GEMINI_TOML,
     GIL_ADD_GEMINI_TOML,
@@ -64,11 +63,6 @@ class TestClaudeCodeTemplates:
         assert "name: gil_get_agents" in GIL_GET_AGENTS_MD
         assert "allowed-tools:" in GIL_GET_AGENTS_MD
 
-    def test_deprecated_claude_agents_has_migration_notice(self):
-        """GIL_GET_CLAUDE_AGENTS_MD starts with deprecation notice."""
-        stripped = GIL_GET_CLAUDE_AGENTS_MD.lstrip()
-        assert stripped.startswith("NOTE: This command has been renamed")
-
 
 class TestGeminiTemplates:
     """Tests for Gemini CLI template constants."""
@@ -118,7 +112,6 @@ class TestTemplateQuality:
         """All template constants are non-empty strings."""
         templates = [
             GIL_GET_AGENTS_MD,
-            GIL_GET_CLAUDE_AGENTS_MD,
             GIL_ADD_MD,
             GIL_GET_AGENTS_GEMINI_TOML,
             GIL_ADD_GEMINI_TOML,

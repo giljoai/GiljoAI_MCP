@@ -16,7 +16,6 @@ from src.giljo_mcp.tools.slash_command_templates import (
     GIL_GET_AGENTS_CODEX_SKILL_MD,
     GIL_GET_AGENTS_GEMINI_TOML,
     GIL_GET_AGENTS_MD,
-    GIL_GET_CLAUDE_AGENTS_MD,
     get_all_templates,
 )
 
@@ -134,7 +133,6 @@ class TestTemplateQualityGates:
 
     _ALL_TEMPLATES = (
         ("GIL_GET_AGENTS_MD", GIL_GET_AGENTS_MD),
-        ("GIL_GET_CLAUDE_AGENTS_MD", GIL_GET_CLAUDE_AGENTS_MD),
         ("GIL_ADD_MD", GIL_ADD_MD),
         ("GIL_GET_AGENTS_GEMINI_TOML", GIL_GET_AGENTS_GEMINI_TOML),
         ("GIL_ADD_GEMINI_TOML", GIL_ADD_GEMINI_TOML),

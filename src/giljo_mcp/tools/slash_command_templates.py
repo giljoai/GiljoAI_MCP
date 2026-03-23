@@ -49,44 +49,6 @@ You are the GiljoAI agent template installer for Claude Code.
 - Do NOT use PowerShell or Windows-style paths
 """
 
-GIL_GET_CLAUDE_AGENTS_MD = """NOTE: This command has been renamed to /gil_get_agents.
-Run the "Setup GiljoAI" prompt from the dashboard to update your slash commands.
-Continuing with agent installation...
-
----
-name: gil_get_claude_agents
-description: "[DEPRECATED] Use /gil_get_agents instead. Downloads GiljoAI agent templates."
-allowed-tools: mcp__giljo-mcp__*, Bash, Read, Write, AskUserQuestion
----
-
-You are the GiljoAI agent template installer for Claude Code.
-
-## Your Job
-
-1. Call `mcp__giljo-mcp__get_agent_templates_for_export` with `platform="claude_code"`
-2. Show a summary table of all agents (role, name, description)
-3. Use AskUserQuestion to ask for model preference with selectable options:
-   Question: "Which model should agents use?"
-   Options: ["sonnet (balanced — recommended)", "haiku (fast, cost-effective)", "opus (maximum capability)", "Let me pick per agent"]
-   If user picks "Let me pick per agent", ask for each agent individually.
-4. Use AskUserQuestion to ask install location:
-   Question: "Where should agents be installed?"
-   Options: ["User agents (~/.claude/agents/) — available everywhere (recommended)", "Project agents (.claude/agents/) — this project only"]
-5. If the target directory has existing `.md` files, back them up:
-   rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
-6. Write each agent file with the user's model selection applied to the `model` frontmatter field
-7. Report what was installed and instruct the user to restart Claude Code
-
-## Rules
-
-- ALWAYS use AskUserQuestion with options for user choices
-- Do NOT modify the agent name, description, or body content
-- Do NOT modify protocol sections
-- The ONLY user-configurable field is model selection
-- Colors are pre-assigned by the server — do not change them
-- Use the Bash tool for file operations (cross-platform via Git Bash)
-"""
-
 
 GIL_ADD_MD = """---
 description: "Add a task or project to the GiljoAI dashboard. Routes to task (technical debt/TODOs) or project (actionable work items) based on context."
