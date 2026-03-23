@@ -239,3 +239,26 @@ The ZIP generation in `downloads.py` already calls `get_all_templates()` — it 
 - `get_all_templates()` returns platform-appropriate files
 - All templates use Bash/shell for file operations (cross-platform)
 - Codex skill hard-prompts the config.toml backup+diff+confirm sequence
+
+## Implementation Summary (2026-03-22)
+
+**Status:** Complete
+
+### What Was Built
+- **10 template constants** in `slash_command_templates.py`:
+  - `GIL_GET_AGENTS_MD` — new Claude Code slash command with MCP tool + model selection
+  - `GIL_GET_CLAUDE_AGENTS_MD` — deprecated alias with migration notice
+  - `GIL_ADD_MD` — preserved (unchanged behavior)
+  - `GIL_GET_AGENTS_GEMINI_TOML` + `GIL_ADD_GEMINI_TOML` — TOML-format Gemini custom commands
+  - `GIL_GET_AGENTS_CODEX_SKILL_MD` + `GIL_ADD_CODEX_SKILL_MD` — Codex CLI skills with config.toml safety protocol
+  - `BOOTSTRAP_CLAUDE_CODE`, `BOOTSTRAP_GEMINI_CLI`, `BOOTSTRAP_CODEX_CLI` — one-time onboarding prompts
+- **`get_all_templates(platform=...)`** — updated to accept platform parameter, returns correct filenames per platform, raises `ValueError` on invalid platform
+- **`downloads.py`** — `/slash-commands.zip` endpoint now accepts `?platform=` query parameter
+
+### Key Files Modified
+- `src/giljo_mcp/tools/slash_command_templates.py` (complete rewrite)
+- `api/endpoints/downloads.py` (platform query param on slash-commands.zip endpoint)
+- `tests/test_slash_command_templates.py` (new — 13 tests, all passing)
+
+### All Success Criteria Met
+- All 13 tests passing, zero lint issues
