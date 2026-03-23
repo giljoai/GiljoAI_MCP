@@ -1,0 +1,117 @@
+{
+  "handover": "0836",
+  "title": "Multi-Platform Agent Template Export",
+  "branch": "feature/0836-multi-platform-export",
+  "protocol": "Each sub-handover agent (a, b, c) updates its section below after completing work or audit fixes. Read before starting to avoid conflicts.",
+
+  "0836a": {
+    "agent": "Backend Assembler + MCP Endpoint",
+    "status": "complete",
+    "commit": "ab9ac51f",
+    "audit_status": "complete",
+    "audit_fixes": [
+      {
+        "issue": "downloads.py:540 — stage_slash_commands() called without platform param in token-based download flow",
+        "classification": "BLOCKER",
+        "fix": "Added platform=platform to stage_slash_commands() call in generate_download_token endpoint",
+        "file": "api/endpoints/downloads.py"
+      },
+      {
+        "issue": "downloads.py:696 — legacy comment referenced old /gil_get_claude_agents command",
+        "classification": "cleanup",
+        "fix": "Updated to /gil_get_agents",
+        "file": "api/endpoints/downloads.py"
+      },
+      {
+        "issue": "file_staging.py module docstring showed old signatures without platform param",
+        "classification": "cleanup",
+        "fix": "Updated docstring examples to include platform parameter",
+        "file": "src/giljo_mcp/file_staging.py"
+      },
+      {
+        "issue": "5 user-facing docs still referenced /gil_get_claude_agents instead of /gil_get_agents",
+        "classification": "cleanup",
+        "fix": "Renamed in MCP_SLASH_COMMANDS_QUICK_REFERENCE.md, MCP_SLASH_COMMANDS_USER_GUIDE.md, token_efficient_mcp_downloads_user_guide.md, token_efficient_downloads_technical_guide.md, installer/templates/README.md",
+        "file": "docs/guides/ + installer/templates/README.md"
+      }
+    ],
+    "audit_not_fixed": [
+      {
+        "issue": "Completed handovers and docs/archive still reference old /gil_get_claude_agents",
+        "reason": "Historical records — should not be modified"
+      }
+    ],
+    "key_files": [
+      "src/giljo_mcp/template_renderer.py",
+      "src/giljo_mcp/tools/agent_template_assembler.py",
+      "src/giljo_mcp/tools/tool_accessor.py",
+      "api/endpoints/downloads.py",
+      "src/giljo_mcp/file_staging.py",
+      "api/endpoints/mcp_http.py",
+      "tests/unit/test_template_assembler_0836a.py"
+    ],
+    "tests_passing": 123,
+    "lint": "clean"
+  },
+
+  "0836b": {
+    "agent": "Slash Commands, Skills, Bootstrap Prompts",
+    "status": "complete",
+    "commit": "d279d45e",
+    "audit_status": "complete",
+    "audit_fixes": [
+      {
+        "issue": "5 frontend test files still stubbed/mocked deleted ClaudeCodeExport + SlashCommandSetup components",
+        "classification": "orphan cleanup",
+        "fix": "Replaced with AgentExport stubs in all 5 test files. Updated assertion in UserSettings.spec.js from testing old components to testing AgentExport.",
+        "files": [
+          "frontend/__tests__/views/UserSettings.spec.js",
+          "frontend/tests/views/UserSettings.spec.js",
+          "frontend/tests/unit/views/UserSettings.spec.js",
+          "frontend/tests/unit/views/UserSettings.handover0028.spec.js",
+          "frontend/tests/unit/global-tab-styles.spec.js"
+        ]
+      },
+      {
+        "issue": "Dead doc: CLAUDE_CODE_EXPORT_TEST_SUMMARY.md for deleted component",
+        "classification": "orphan cleanup",
+        "fix": "Deleted frontend/tests/unit/components/CLAUDE_CODE_EXPORT_TEST_SUMMARY.md",
+        "files": ["frontend/tests/unit/components/CLAUDE_CODE_EXPORT_TEST_SUMMARY.md"]
+      }
+    ],
+    "audit_not_fixed": [
+      {
+        "issue": "docs/cleanup/dependency_graph.json and dependency_graph.html reference deleted components",
+        "reason": "Generated reference files — will be stale until next regeneration, not worth manual patching"
+      }
+    ],
+    "key_files": [
+      "src/giljo_mcp/tools/slash_command_templates.py",
+      "tests/test_slash_command_templates.py",
+      "tests/integration/test_slash_command_templates.py"
+    ],
+    "tests_passing": 62,
+    "lint": "clean",
+    "notes": "downloads.py:540 platform param fix and docs updates were done by 0836a agent — confirmed clean from 0836b perspective. Bootstrap templates verified in sync between backend and frontend."
+  },
+
+  "0836c": {
+    "agent": "Frontend UI + Integration Tests",
+    "status": "awaiting_audit",
+    "commit": null,
+    "audit_status": "not_started",
+    "audit_fixes": [],
+    "key_files": [
+      "frontend/src/components/AgentExport.vue",
+      "frontend/src/views/UserSettings.vue",
+      "frontend/src/services/api.js",
+      "tests/integration/test_multi_platform_export.py",
+      "tests/integration/test_agent_template_assembler.py"
+    ]
+  },
+
+  "cross_cutting_findings": {
+    "old_command_rename": "/gil_get_claude_agents -> /gil_get_agents. Source code is clean. User-facing docs fixed by 0836a agent. Completed handovers left as-is (historical).",
+    "platform_param_plumbing": "All paths now pass platform through: MCP tool, direct ZIP download, token-based download. 0836a verified all 3 flows."
+  }
+}
