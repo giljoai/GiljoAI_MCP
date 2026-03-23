@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0829+0830+0832+0833+0834+0835 COMPLETE. 0828+0831 ACTIVE. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0829+0830+0832+0833+0834+0835 COMPLETE. 0836+0828+0831 ACTIVE. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -29,6 +29,10 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
+| 0836 | Multi-Platform Agent Template Export (Parent) | Not Started | Critical | Platform-neutral templates with server-side assembly for Claude Code, Codex CLI, Gemini CLI. Consolidated bootstrap prompt. CE launch blocker. |
+| 0836a | Backend Assembler + MCP Endpoint | Not Started | Critical | AgentTemplateAssembler class, 3 formatters, get_agent_templates_for_export MCP tool, platform-aware ZIP. No dependencies. |
+| 0836b | Slash Commands, Skills, Bootstrap Prompts | Not Started | Critical | /gil_get_agents + /gil_add for all 3 platforms, combined bootstrap prompts. Uses 0836a API contract. |
+| 0836c | Frontend UI + Integration Tests | Not Started | Critical | Remove tool selector, multi-platform Integrations page, test suite. Depends on 0836a endpoint. |
 | 0828 | OAuth 2.1 PKCE Flow for MCP Client Authorization | Not Started | High | OAuth for GUI-based MCP clients (Claude Desktop). CE scope — uses existing user credentials. |
 | 0831 | Product Context Tuning — Scope Drift Detection & Review | Not Started | Medium | Post-closeout context review: compares product context vs 360 memory + git to detect drift, proposes updates. CE scope. |
 
