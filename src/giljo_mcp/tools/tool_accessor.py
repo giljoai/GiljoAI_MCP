@@ -427,6 +427,55 @@ class ToolAccessor:
             logger.exception("Failed to generate download token")
             raise
 
+    async def get_agent_templates_for_export(self, tenant_key: str, platform: str) -> dict[str, Any]:
+        """
+        Export agent templates formatted for the target CLI platform.
+
+        Returns pre-assembled files (Claude Code, Gemini CLI) or structured
+        data (Codex CLI) ready for the calling agent to install locally.
+
+        Handover 0836a: Multi-platform agent template export.
+
+        Args:
+            tenant_key: Tenant identifier for multi-tenant isolation.
+            platform: Target platform — 'claude_code', 'codex_cli', or 'gemini_cli'.
+
+        Returns:
+            Dict with platform, agents list, install_paths, template_count, format_version.
+        """
+        from sqlalchemy import select
+
+        from giljo_mcp.models import AgentTemplate
+        from giljo_mcp.template_renderer import select_templates_for_packaging
+        from giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
+
+        try:
+            async with self.get_session_async() as session:
+                stmt = (
+                    select(AgentTemplate)
+                    .where(
+                        AgentTemplate.tenant_key == tenant_key,
+                        AgentTemplate.is_active,
+                    )
+                    .order_by(AgentTemplate.name)
+                )
+
+                result = await session.execute(stmt)
+                all_active = result.scalars().all()
+
+                if not all_active:
+                    raise ValidationError(f"No active templates found for tenant: {tenant_key}")
+
+                selected = select_templates_for_packaging(all_active, max_count=8)
+
+                assembler = AgentTemplateAssembler()
+                return assembler.assemble(selected, platform)
+        except ValidationError:
+            raise
+        except Exception:  # Broad catch: tool boundary, logs and re-raises
+            logger.exception("Failed to export agent templates")
+            raise
+
     async def get_orchestrator_instructions(self, job_id: str, tenant_key: str) -> dict[str, Any]:
         """Delegate to OrchestrationService (Handover 0451)"""
         return await self._orchestration_service.get_orchestrator_instructions(job_id, tenant_key)

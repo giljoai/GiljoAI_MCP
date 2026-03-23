@@ -156,20 +156,23 @@ class FileStaging:
         staging_path: Path,
         tenant_key: str,
         db_session: AsyncSession | None = None,
+        platform: str = "claude_code",
     ) -> tuple[Path | None, str]:
         """
         Stage agent templates as a ZIP file.
 
         Queries the database for active agent templates belonging to the
-        tenant and creates a ZIP file with .md files.
+        tenant and creates a ZIP file with platform-appropriate content.
 
         **Handover 0421**: Updates last_exported_at timestamp for all exported templates
         to enable staleness detection in get_available_agents().
+        **Handover 0836a**: Platform-aware rendering via AgentTemplateAssembler.
 
         Args:
             staging_path: Pre-created staging directory (temp/{tenant_key}/{token}/)
             tenant_key: Tenant identifier
             db_session: Optional DB session override
+            platform: Target platform (claude_code, codex_cli, gemini_cli)
 
         Returns:
             Tuple (zip_path|None, message)
@@ -199,16 +202,24 @@ class FileStaging:
                 return (None, msg)
 
             # Apply packaging selection (cap to 8 templates)
-            from .template_renderer import _slugify_filename, render_claude_agent, select_templates_for_packaging
+            from .template_renderer import select_templates_for_packaging
+            from .tools.agent_template_assembler import AgentTemplateAssembler
 
             selected = select_templates_for_packaging(all_active, max_count=8)
 
-            # Create ZIP file with Claude-compatible YAML/Markdown
+            # Assemble templates for the target platform (Handover 0836a)
+            assembler = AgentTemplateAssembler()
+            export_data = assembler.assemble(selected, platform)
+
+            # Create ZIP file with platform-appropriate content
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-                for template in selected:
-                    filename = f"{_slugify_filename(template.name)}.md"
-                    content = render_claude_agent(template)
-                    zf.writestr(filename, content)
+                if platform == "codex_cli":
+                    import json
+
+                    zf.writestr("agents.json", json.dumps(export_data, indent=2))
+                else:
+                    for agent in export_data["agents"]:
+                        zf.writestr(agent["filename"], agent["content"])
 
             # ═══════════════════════════════════════════════════════════════════════
             # Handover 0421: Update export timestamp for staleness detection
