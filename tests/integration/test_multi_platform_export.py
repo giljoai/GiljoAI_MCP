@@ -90,31 +90,6 @@ class TestGilAddConsistency:
             assert "Interactive Mode" in add_content, f"{platform} missing interactive mode"
 
 
-class TestDeprecatedAlias:
-    """Test the deprecated /gil_get_claude_agents alias."""
-
-    def test_deprecated_alias_included_in_claude_templates(self):
-        """Claude platform still includes the deprecated alias."""
-        result = get_all_templates(platform="claude_code")
-        assert "gil_get_claude_agents.md" in result
-
-    def test_deprecated_alias_has_migration_notice(self):
-        """Deprecated alias starts with migration notice."""
-        result = get_all_templates(platform="claude_code")
-        content = result["gil_get_claude_agents.md"]
-        assert "renamed" in content.lower()
-
-    def test_gemini_has_no_deprecated_alias(self):
-        """Gemini does not include the deprecated Claude-specific alias."""
-        result = get_all_templates(platform="gemini_cli")
-        assert not any("claude_agents" in f for f in result)
-
-    def test_codex_has_no_deprecated_alias(self):
-        """Codex does not include the deprecated Claude-specific alias."""
-        result = get_all_templates(platform="codex_cli")
-        assert not any("claude_agents" in f for f in result)
-
-
 class TestBootstrapPromptTemplates:
     """Test bootstrap prompt templates have correct placeholders."""
 

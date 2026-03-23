@@ -196,11 +196,11 @@ class TestAgentStalenessDetection:
         warning = result["data"]["staleness_warning"]
 
         # Verify action_required mentions key concepts
-        assert "gil_get_claude_agents" in warning["action_required"]
+        assert "gil_get_agents" in warning["action_required"]
         assert "sync" in warning["action_required"].lower() or "export" in warning["action_required"].lower()
 
         # Verify options provide clear choices
-        assert any("gil_get_claude_agents" in option for option in warning["options"])
+        assert any("gil_get_agents" in option for option in warning["options"])
         assert any("continue" in option.lower() for option in warning["options"])
         assert any("abort" in option.lower() for option in warning["options"])
 

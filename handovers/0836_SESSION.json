@@ -97,17 +97,63 @@
 
   "0836c": {
     "agent": "Frontend UI + Integration Tests",
-    "status": "awaiting_audit",
-    "commit": null,
-    "audit_status": "not_started",
-    "audit_fixes": [],
+    "status": "complete",
+    "commit": "1ad0e30c",
+    "audit_status": "complete",
+    "audit_fixes": [
+      {
+        "issue": "4 tests still referenced removed GIL_GET_CLAUDE_AGENTS_MD deprecated alias",
+        "classification": "test zombie",
+        "fix": "Removed TestDeprecatedAlias class, updated file count assertion, removed stale assertion",
+        "files": ["tests/integration/test_multi_platform_export.py", "tests/integration/test_slash_command_templates.py", "tests/test_slash_command_templates.py"]
+      },
+      {
+        "issue": "agent_discovery.py staleness warnings referenced old /gil_get_claude_agents command",
+        "classification": "stale reference",
+        "fix": "Updated to /gil_get_agents in source and test",
+        "files": ["src/giljo_mcp/tools/agent_discovery.py", "tests/unit/test_agent_discovery_staleness.py"]
+      },
+      {
+        "issue": "file_staging.py had orphaned save_metadata() and get_staging_path() methods",
+        "classification": "dead code",
+        "fix": "Removed both methods, removed unused json and fastapi imports",
+        "files": ["src/giljo_mcp/file_staging.py"]
+      },
+      {
+        "issue": "TemplateManager.vue had orphaned '// Export state' comment",
+        "classification": "orphan cleanup",
+        "fix": "Removed empty comment",
+        "files": ["frontend/src/components/TemplateManager.vue"]
+      },
+      {
+        "issue": "Ruff lint: unsorted imports and broad pytest.raises in test_slash_command_templates.py",
+        "classification": "lint",
+        "fix": "Sorted imports, added match parameter to pytest.raises",
+        "files": ["tests/test_slash_command_templates.py"]
+      }
+    ],
+    "audit_not_fixed": [
+      {
+        "issue": "cli_tool and model fields still in TemplateManager.vue form data and sent to API",
+        "reason": "BY DESIGN — DB column cli_tool is NOT NULL with default 'claude'. Assembler ignores at export time. Removing would break API contract."
+      }
+    ],
     "key_files": [
       "frontend/src/components/AgentExport.vue",
+      "frontend/src/components/TemplateManager.vue",
       "frontend/src/views/UserSettings.vue",
-      "frontend/src/services/api.js",
       "tests/integration/test_multi_platform_export.py",
-      "tests/integration/test_agent_template_assembler.py"
-    ]
+      "tests/integration/test_agent_template_assembler.py",
+      "tests/integration/test_slash_command_templates.py"
+    ],
+    "tests_passing": 100,
+    "lint": "clean"
+  },
+
+  "coordinator": {
+    "agent": "Session coordinator (continuation agent)",
+    "role": "Picked up from previous session. Reviewing uncommitted changes from 0836a/0836b audits. Will commit their work, then handle 0836c audit or coordinate merge.",
+    "status": "active"
   },
 
   "cross_cutting_findings": {
