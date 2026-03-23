@@ -24,9 +24,9 @@ class TestGetAllTemplatesRegistry:
     """Test the get_all_templates() registry function."""
 
     def test_claude_code_file_count(self):
-        """Claude Code returns exactly 3 files (get_agents, deprecated alias, add)."""
+        """Claude Code returns exactly 2 files (get_agents, add)."""
         result = get_all_templates(platform="claude_code")
-        assert len(result) == 3
+        assert len(result) == 2
 
     def test_gemini_cli_file_count(self):
         """Gemini CLI returns exactly 2 files (get_agents, add)."""
