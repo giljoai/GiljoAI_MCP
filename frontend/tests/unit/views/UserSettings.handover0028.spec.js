@@ -28,12 +28,8 @@ vi.mock('@/components/ApiKeyManager.vue', () => ({
   default: { template: '<div data-test="api-key-manager-mock">API Key Manager</div>' }
 }))
 
-vi.mock('@/components/ClaudeCodeExport.vue', () => ({
-  default: { template: '<div data-test="claude-code-export-mock">Claude Code Export</div>' }
-}))
-
-vi.mock('@/components/SlashCommandSetup.vue', () => ({
-  default: { template: '<div data-test="slash-command-setup-mock">Slash Command Setup</div>' }
+vi.mock('@/components/AgentExport.vue', () => ({
+  default: { template: '<div data-test="agent-export-mock">Agent Export</div>' }
 }))
 
 vi.mock('@/components/GitAdvancedSettingsDialog.vue', () => ({

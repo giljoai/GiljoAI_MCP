@@ -17,11 +17,8 @@ vi.mock('@/components/TemplateManager.vue', () => ({
 vi.mock('@/components/ApiKeyManager.vue', () => ({
   default: { name: 'ApiKeyManager', template: '<div>Mock Keys</div>' },
 }))
-vi.mock('@/components/ClaudeCodeExport.vue', () => ({
-  default: { name: 'ClaudeCodeExport', template: '<div>Mock Export</div>' },
-}))
-vi.mock('@/components/SlashCommandSetup.vue', () => ({
-  default: { name: 'SlashCommandSetup', template: '<div>Mock Setup</div>' },
+vi.mock('@/components/AgentExport.vue', () => ({
+  default: { name: 'AgentExport', template: '<div>Mock Agent Export</div>' },
 }))
 vi.mock('@/components/SerenaAdvancedSettingsDialog.vue', () => ({
   default: { name: 'SerenaAdvancedSettingsDialog', template: '<div>Mock Dialog</div>' },
@@ -112,8 +109,7 @@ describe('UserSettings.vue - Git Integration', () => {
           ContextPriorityConfig: true,
           TemplateManager: true,
           ApiKeyManager: true,
-          ClaudeCodeExport: true,
-          SlashCommandSetup: true,
+          AgentExport: true,
           SerenaAdvancedSettingsDialog: true,
           GitAdvancedSettingsDialog: true,
           McpIntegrationCard: true,
