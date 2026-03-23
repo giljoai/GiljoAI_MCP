@@ -21,7 +21,7 @@ Downloads are:
 1. **Slash commands ZIP** (public)
    - Endpoint: `GET /api/download/slash-commands.zip`
    - Contains:
-     - `gil_get_claude_agents.md`
+     - `gil_get_agents.md`
      - `gil_activate.md`
      - `gil_launch.md`
      - `gil_handover.md`
@@ -47,7 +47,7 @@ Downloads are:
 
 Run:
 ```
-/gil_get_claude_agents
+/gil_get_agents
 ```
 
 This stages a one-time ZIP URL via `mcp__giljo-mcp__get_agent_download_url`, downloads it, and then asks where to install:
@@ -96,6 +96,6 @@ Download a script that embeds the correct server URL:
 ## Troubleshooting
 
 - **Commands not showing**: reinstall slash commands and restart Claude Code.
-- **Agent templates not showing**: rerun `/gil_get_claude_agents` and restart Claude Code.
+- **Agent templates not showing**: rerun `/gil_get_agents` and restart Claude Code.
 - **401 / not authenticated**: check `X-API-Key` and MCP connection config.
 

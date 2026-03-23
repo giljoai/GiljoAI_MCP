@@ -185,7 +185,7 @@ After successful installation:
 ### Slash Commands
 ```
 $HOME/.claude/commands/
-├── gil_get_claude_agents.md
+├── gil_get_agents.md
 ├── gil_activate.md
 ├── gil_launch.md
 └── gil_handover.md

@@ -11,7 +11,7 @@
 GiljoAI provides a small set of `/gil_*` slash commands that install agent templates and control the project workflow (activate → launch), without requiring the AI to paste large template files into chat.
 
 Current supported commands:
-- `/gil_get_claude_agents`
+- `/gil_get_agents`
 - `/gil_activate`
 - `/gil_launch`
 - `/gil_handover`
@@ -42,7 +42,7 @@ This installs command files into `~/.claude/commands/`.
 
 Run:
 ```
-/gil_get_claude_agents
+/gil_get_agents
 ```
 
 This command:
@@ -100,7 +100,7 @@ No new agent instances are created - you simply continue with a fresh context wi
 ## Troubleshooting
 
 - **Command not found**: Re-run `mcp__giljo-mcp__setup_slash_commands` and restart Claude Code.
-- **Agents not available**: Re-run `/gil_get_claude_agents` and restart Claude Code.
+- **Agents not available**: Re-run `/gil_get_agents` and restart Claude Code.
 - **401 / not authenticated**: Verify your MCP connection and API key (`X-API-Key`).
-- **Wrong install location**: Re-run `/gil_get_claude_agents` and pick the correct location.
+- **Wrong install location**: Re-run `/gil_get_agents` and pick the correct location.
 
