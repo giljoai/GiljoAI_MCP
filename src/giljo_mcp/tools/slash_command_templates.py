@@ -1,79 +1,86 @@
 """
-Slash command markdown templates for Claude Code/Codex/Gemini (Handover 0093)
+Slash command templates for Claude Code, Codex CLI, and Gemini CLI (Handover 0836b)
 
-This module provides markdown templates with YAML frontmatter for slash commands
-that can be installed to ~/.claude/commands/ directory.
+This module provides platform-specific command templates:
+- Claude Code: Markdown with YAML frontmatter (.md) for ~/.claude/commands/
+- Gemini CLI: TOML format (.toml) for ~/.gemini/commands/
+- Codex CLI: Markdown skills (.md) for ~/.codex/skills/<name>/SKILL.md
 
-Note: gil_activate, gil_launch, gil_handover slash commands removed - users
-use the web UI for these actions. Only gil_get_claude_agents is needed for CLI.
+Also provides bootstrap prompt templates for one-time CLI onboarding.
 """
 
-GIL_GET_CLAUDE_AGENTS_MD = """---
-name: gil_get_claude_agents
-description: Download and install GiljoAI agent templates to Claude Code
-allowed-tools: []
+# =============================================================================
+# CLAUDE CODE TEMPLATES
+# =============================================================================
+
+GIL_GET_AGENTS_MD = """---
+name: gil_get_agents
+description: Download and install GiljoAI agent templates from the MCP server
+allowed-tools: mcp__giljo-mcp__*, Bash, Read, Write
 ---
 
-Install GiljoAI agent templates to your Claude Code environment.
+You are the GiljoAI agent template installer for Claude Code.
 
-## STEP 1: Generate Download URL
+## Your Job
 
-Call the MCP tool to generate a download URL:
+1. Call `mcp__giljo-mcp__get_agent_templates_for_export` with `platform="claude_code"`
+2. Show a summary table of all agents (role, name, description)
+3. Ask the user which model they prefer per agent:
+   - haiku (fast, cost-effective)
+   - sonnet (balanced — recommended default)
+   - opus (maximum capability)
+   The user can set one model for all or pick per-agent.
+4. Ask: Install as project agents (`.claude/agents/`) or user agents (`~/.claude/agents/`)?
+5. If the target directory has existing `.md` files, back them up:
+   rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
+6. Write each agent file with the user's model selection applied to the `model` frontmatter field
+7. Report what was installed and instruct the user to restart Claude Code
 
-```
-mcp__giljo-mcp__generate_download_token(content_type="agent_templates")
-```
+## Rules
 
-This returns:
-- `download_url` - Valid for 15 minutes, one-time use
-- `expires_at` - Expiration timestamp
-- `content_type` - "agent_templates"
-
-## STEP 2: Download Templates
-
-Use the Bash tool (NOT PowerShell) to download. The URL contains auth token - no headers needed:
-
-```bash
-curl -o /tmp/agents.zip "{download_url}"
-```
-
-## STEP 3: Ask User Install Location
-
-Ask: "Where should I install the {template_count} agent templates?"
-
-Options (present in this order):
-1. **Project agents (Recommended)** (`.claude/agents/`) - Available only in this project
-2. **User agents** (`~/.claude/agents/`) - Available across all your projects
-
-## STEP 4: Extract to Chosen Location
-
-Use Bash to extract based on user choice:
-
-**For Project agents:**
-```bash
-mkdir -p .claude/agents && unzip -o /tmp/agents.zip -d .claude/agents/ && rm /tmp/agents.zip
-```
-
-**For User agents:**
-```bash
-mkdir -p ~/.claude/agents && unzip -o /tmp/agents.zip -d ~/.claude/agents/ && rm /tmp/agents.zip
-```
-
-## STEP 5: Confirm and Restart Notice
-
-Tell the user:
-1. How many templates were installed (from `template_count`)
-2. Where they were installed
-3. **They must restart Claude Code** (Ctrl+C and relaunch) for agents to become available
-4. After restart, use agents via `@agent-name` in Claude Code
-
-Example: "Installed 6 agent templates to ~/.claude/agents/. **Please restart Claude Code** for the agents to become available."
-
-## IMPORTANT
-
-- Use the Bash tool for curl/unzip commands (works on Windows via Git Bash, Linux, macOS)
+- Do NOT modify the agent name, description, or body content
+- Do NOT modify protocol sections
+- The ONLY user-configurable field is model selection
+- Colors are pre-assigned by the server — do not change them
+- Use the Bash tool for file operations (cross-platform via Git Bash)
 - Unix paths (/tmp, ~/.claude/) work on ALL platforms
 - Do NOT use PowerShell or Windows-style paths
+"""
+
+GIL_GET_CLAUDE_AGENTS_MD = """NOTE: This command has been renamed to /gil_get_agents.
+Run the "Setup GiljoAI" prompt from the dashboard to update your slash commands.
+Continuing with agent installation...
+
+---
+name: gil_get_claude_agents
+description: "[DEPRECATED] Use /gil_get_agents instead. Downloads GiljoAI agent templates."
+allowed-tools: mcp__giljo-mcp__*, Bash, Read, Write
+---
+
+You are the GiljoAI agent template installer for Claude Code.
+
+## Your Job
+
+1. Call `mcp__giljo-mcp__get_agent_templates_for_export` with `platform="claude_code"`
+2. Show a summary table of all agents (role, name, description)
+3. Ask the user which model they prefer per agent:
+   - haiku (fast, cost-effective)
+   - sonnet (balanced — recommended default)
+   - opus (maximum capability)
+   The user can set one model for all or pick per-agent.
+4. Ask: Install as project agents (`.claude/agents/`) or user agents (`~/.claude/agents/`)?
+5. If the target directory has existing `.md` files, back them up:
+   rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
+6. Write each agent file with the user's model selection applied to the `model` frontmatter field
+7. Report what was installed and instruct the user to restart Claude Code
+
+## Rules
+
+- Do NOT modify the agent name, description, or body content
+- Do NOT modify protocol sections
+- The ONLY user-configurable field is model selection
+- Colors are pre-assigned by the server — do not change them
+- Use the Bash tool for file operations (cross-platform via Git Bash)
 """
 
 
@@ -355,156 +362,6 @@ Open the dashboard and select a product to activate, then try again.
 
 ---
 
-## Examples
-
-### Example 1: Direct Task Mode with --name
-```
-User: /gil_add --name "Refactor auth service" --priority high --category backend
-
-Claude:
-[Parses flags: name="Refactor auth service", priority="high", category="backend"]
-[Calls mcp__giljo-mcp__create_task with title="Refactor auth service", description="Refactor auth service", priority="high", category="backend"]
-
-Task created successfully.
-
-Title: Refactor auth service
-Priority: high
-Category: backend
-Task ID: task-abc123
-
-You can view this task in the GiljoAI Tasks dashboard.
-```
-
-### Example 2: Direct Task Mode with --task
-```
-User: /gil_add --task "Fix WebSocket reconnection" --priority medium
-
-Claude:
-[Parses flags: task="Fix WebSocket reconnection", priority="medium"]
-[Calls mcp__giljo-mcp__create_task with title="Fix WebSocket reconnection", description="Fix WebSocket reconnection", priority="medium", category="general"]
-
-Task created successfully.
-
-Title: Fix WebSocket reconnection
-Priority: medium
-Category: general
-Task ID: task-def456
-
-You can view this task in the GiljoAI Tasks dashboard.
-```
-
-### Example 3: Direct Project Mode
-```
-User: /gil_add --project "Agent Health Monitoring v2" --description "Implement real-time agent health checks with configurable thresholds and alerting"
-
-Claude:
-[Parses flags: project="Agent Health Monitoring v2", description="Implement real-time..."]
-[Calls mcp__giljo-mcp__create_project with name="Agent Health Monitoring v2", description="Implement real-time agent health checks with configurable thresholds and alerting"]
-
-Project created successfully.
-
-Name: Agent Health Monitoring v2
-Description: Implement real-time agent health checks with configurable thresholds and alerting
-Project ID: proj-ghi789
-Alias: agent-health-monitoring-v2
-
-Project created as inactive. Open the GiljoAI dashboard to activate and launch.
-```
-
-### Example 4: Interactive Mode (Routes to Task)
-```
-User: [has been discussing a CSS alignment bug in the status board]
-User: /gil_add
-
-Claude:
-Based on our conversation, this sounds like a task:
-
-Title: Fix CSS alignment issue in StatusChip component
-Description: The StatusChip badge text is misaligned when health indicator icons are present, causing visual inconsistency in the status board grid layout.
-
-Would you like to add it as:
-1. Task - technical debt / future TODO
-2. Project - actionable work for orchestrator execution
-
-User: 1
-
-Claude:
-What category best describes this task?
-1. frontend - UI/UX work
-2. backend - Server/API work
-3. database - Schema/query work
-4. infra - DevOps/deployment work
-5. docs - Documentation work
-6. general - Other/miscellaneous
-
-Select a number (1-6):
-
-User: 1
-
-Claude:
-What is the priority level?
-1. low - Nice to have
-2. medium - Should do eventually (default)
-3. high - Important, do soon
-4. critical - Blocking, do ASAP
-
-Select a number (1-4, default is 2):
-
-User: 2
-
-Claude:
-[Calls mcp__giljo-mcp__create_task with collected information]
-
-Task created successfully.
-
-Title: Fix CSS alignment issue in StatusChip component
-Category: frontend
-Priority: medium
-Task ID: task-jkl012
-
-This task is now in your Tasks dashboard.
-```
-
-### Example 5: Interactive Mode (Routes to Project)
-```
-User: [has been discussing a new agent template management overhaul]
-User: /gil_add
-
-Claude:
-Based on our conversation, this sounds like a project:
-
-Project Name: Agent Template Management Overhaul
-Description: Redesign the agent template system to support versioned templates, template inheritance, and per-organization template customization. Includes database schema changes, service layer updates, API endpoints, and frontend template editor.
-
-Would you like to add it as:
-1. Task - technical debt / future TODO
-2. Project - actionable work for orchestrator execution
-
-User: 2
-
-Claude:
-Project Name: Agent Template Management Overhaul
-Description: Redesign the agent template system to support versioned templates, template inheritance, and per-organization template customization. Includes database schema changes, service layer updates, API endpoints, and frontend template editor.
-
-Does this look correct?
-
-User: yes
-
-Claude:
-[Calls mcp__giljo-mcp__create_project with collected information]
-
-Project created successfully.
-
-Name: Agent Template Management Overhaul
-Description: Redesign the agent template system to support versioned templates, template inheritance, and per-organization template customization. Includes database schema changes, service layer updates, API endpoints, and frontend template editor.
-Project ID: proj-mno345
-Alias: agent-template-management-overhaul
-
-Project created as inactive. Open the GiljoAI dashboard to activate and launch.
-```
-
----
-
 ## Important Notes
 
 1. **MCP Tool Parameters:** The `create_task` tool accepts `title`, `description`, `priority`, and `category`. The `create_project` tool accepts `name` and `description`. Tasks and projects are always bound to the active product (enforced server-side).
@@ -528,15 +385,308 @@ The `$ARGUMENTS` variable will contain the user's input after `/gil_add`.
 Execute the appropriate mode based on the presence of flags in `$ARGUMENTS`.
 """
 
+# =============================================================================
+# GEMINI CLI TEMPLATES
+# =============================================================================
 
-def get_all_templates() -> dict[str, str]:
+GIL_GET_AGENTS_GEMINI_TOML = """description = "Download and install GiljoAI agent templates from the MCP server"
+
+prompt = \"\"\"
+You are the GiljoAI agent template installer for Gemini CLI.
+
+## Your Job
+
+1. Call the GiljoAI MCP tool `get_agent_templates_for_export` with `platform="gemini_cli"`
+2. Show a summary table of all agents (role, name, description)
+3. Ask the user which model they prefer per agent (default: gemini-2.5-pro)
+   The user can set one model for all or pick per-agent.
+4. Ask: Install as project agents (`.gemini/agents/`) or user agents (`~/.gemini/agents/`)?
+5. If the target directory has existing agent `.md` files, back them up:
+   rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
+6. Write each agent file with the user's model selection applied
+7. Note: parallel subagent execution is experimental in Gemini CLI.
+   Agents will work but may execute sequentially.
+8. Instruct the user to restart Gemini CLI
+
+## Rules
+
+- Do NOT modify agent names, descriptions, or body content
+- Do NOT modify GiljoAI protocol sections
+- User-configurable fields: model selection, max_turns (default 50)
+- Colors are NOT supported in Gemini agent frontmatter — omit them
+- Use shell tool for file operations (cross-platform)
+- Unix paths work on ALL platforms
+\"\"\"
+"""
+
+GIL_ADD_GEMINI_TOML = """description = "Add a task or project to the GiljoAI dashboard"
+
+prompt = \"\"\"
+You are executing the gil_add command to create either a task or a project in the GiljoAI MCP server's dashboard.
+
+Tasks are technical debt, TODOs, small fixes, "do this later" items, and scope creep punts.
+Projects are actionable work items requiring orchestrator coordination, feature implementations, multi-step development work, or continuation of completed work.
+
+## Three Modes of Operation
+
+### Direct Task Mode (--task or --name flags)
+When arguments contain --task or --name, create a task immediately.
+
+### Direct Project Mode (--project flag)
+When arguments contain --project, create a project immediately.
+
+### Interactive Mode (No recognized flags)
+When arguments are empty or contain no recognized flags, use conversation context to suggest the appropriate type and guide the user through creation.
+
+## Execution Instructions
+
+### Step 1: Parse Arguments
+
+Task flags:
+- --task (triggers direct task mode)
+- --name "Task Name" (triggers direct task mode, required name for task)
+- --priority [low|medium|high|critical] (optional, default: medium)
+- --category [frontend|backend|database|infra|docs|general] (optional, default: general)
+- --description "Detailed description" (optional)
+
+Project flags:
+- --project "Project Name" (triggers direct project mode)
+- --description "Detailed description" (optional)
+
+### Step 2: Route to Mode
+- If arguments contain --name or --task -> Direct Task Mode
+- If arguments contain --project -> Direct Project Mode
+- Otherwise -> Interactive Mode
+
+## Direct Task Mode
+1. Parse and validate flags (name required, validate priority/category values)
+2. Call GiljoAI MCP tool create_task with: title, description, priority, category
+3. Confirm success with task ID
+
+## Direct Project Mode
+1. Parse and validate flags (project name required)
+2. If --description missing, generate from conversation context
+3. Call GiljoAI MCP tool create_project with: name, description
+4. Confirm success with project ID. Note: project created as inactive.
+
+## Interactive Mode
+1. Review conversation context to suggest task vs project
+2. Present suggestion with generated title/description
+3. Ask user to confirm type (task or project)
+4. For tasks: ask category (frontend/backend/database/infra/docs/general) and priority (low/medium/high/critical)
+5. For projects: confirm name and description
+6. Call appropriate MCP tool and confirm success
+
+## Important Notes
+- Never pass tenant_key to MCP tools (auto-injected)
+- Both tasks and projects require an active product (server-side enforced)
+- Projects are created as inactive — user activates via dashboard
+\"\"\"
+"""
+
+# =============================================================================
+# CODEX CLI TEMPLATES (Skills)
+# =============================================================================
+
+GIL_GET_AGENTS_CODEX_SKILL_MD = """---
+name: gil-get-agents
+description: "Download and install GiljoAI agent templates into Codex CLI"
+---
+
+You are the GiljoAI agent template installer for Codex CLI.
+
+## Your Job
+
+1. Call the GiljoAI MCP tool `get_agent_templates_for_export` with `platform="codex_cli"`
+2. Show a summary table of all agents (role, name, description)
+3. Ask the user which model to use per agent (default: gpt-5.2-codex)
+   and reasoning effort per agent (low/medium/high, default: medium).
+   The user can set one for all or pick per-agent.
+4. **config.toml Safety Protocol** (MANDATORY):
+   a. Check if `~/.codex/config.toml` exists
+   b. If YES: back up to `~/.codex/config.toml.bak.YYYYMMDD_HHMMSS`
+   c. Read current config to identify existing `[agents.*]` sections
+   d. Prepare merge: add/update only GiljoAI agent entries, preserve everything else
+   e. Show unified diff of config.toml changes to user before writing
+   f. ONLY write after explicit user confirmation
+   g. If config.toml does NOT exist: create it with only GiljoAI agent entries
+5. Write `.toml` agent files to `~/.codex/agents/` using the `toml_format_reference`
+   from the API response
+6. Instruct the user to restart Codex CLI
+
+## Rules
+
+- Do NOT modify agent names, descriptions, or developer_instructions content
+- Do NOT modify GiljoAI protocol sections within developer_instructions
+- User-configurable fields: model, model_reasoning_effort, nickname_candidates
+- ALWAYS show config.toml diff before writing — this file affects the user's entire Codex setup
+- ALWAYS back up existing config.toml before modifying
+- If user declines the diff, abort without writing
+- If config.toml has existing [agents.*] entries, preserve them
+- Use shell commands for file operations (cross-platform)
+"""
+
+GIL_ADD_CODEX_SKILL_MD = """---
+name: gil-add
+description: "Add a task or project to the GiljoAI dashboard"
+---
+
+You are executing the gil-add skill to create either a **task** or a **project** in the GiljoAI MCP server's dashboard.
+
+**Tasks** are technical debt, TODOs, small fixes, "do this later" items, and scope creep punts.
+**Projects** are actionable work items requiring orchestrator coordination, feature implementations, multi-step development work, or continuation of completed work.
+
+## Three Modes of Operation
+
+### Direct Task Mode (--task or --name flags)
+When arguments contain `--task` or `--name`, create a task immediately.
+
+### Direct Project Mode (--project flag)
+When arguments contain `--project`, create a project immediately.
+
+### Interactive Mode (No recognized flags)
+When arguments are empty or contain no recognized flags, use conversation context to suggest the appropriate type and guide the user through creation.
+
+## Execution Instructions
+
+### Step 1: Parse Arguments
+
+**Task flags:**
+- `--task` (triggers direct task mode)
+- `--name "Task Name"` (triggers direct task mode, required name for task)
+- `--priority [low|medium|high|critical]` (optional, default: medium)
+- `--category [frontend|backend|database|infra|docs|general]` (optional, default: general)
+- `--description "Detailed description"` (optional)
+
+**Project flags:**
+- `--project "Project Name"` (triggers direct project mode)
+- `--description "Detailed description"` (optional)
+
+### Step 2: Route to Mode
+- If arguments contain `--name` or `--task` -> Direct Task Mode
+- If arguments contain `--project` -> Direct Project Mode
+- Otherwise -> Interactive Mode
+
+## Direct Task Mode
+1. Parse and validate flags (name required, validate priority/category values)
+2. Call GiljoAI MCP tool `create_task` with: title, description, priority, category
+3. Confirm success with task ID
+
+## Direct Project Mode
+1. Parse and validate flags (project name required)
+2. If `--description` missing, generate from conversation context
+3. Call GiljoAI MCP tool `create_project` with: name, description
+4. Confirm success with project ID. Note: project created as inactive.
+
+## Interactive Mode
+1. Review conversation context to suggest task vs project
+2. Present suggestion with generated title/description
+3. Ask user to confirm type (task or project)
+4. For tasks: ask category (frontend/backend/database/infra/docs/general) and priority (low/medium/high/critical)
+5. For projects: confirm name and description
+6. Call appropriate MCP tool and confirm success
+
+## Important Notes
+- Never pass `tenant_key` to MCP tools (auto-injected by security layer)
+- Both tasks and projects require an active product (server-side enforced)
+- Projects are created as inactive — user activates via dashboard
+"""
+
+# =============================================================================
+# BOOTSTRAP PROMPT TEMPLATES
+# =============================================================================
+
+BOOTSTRAP_CLAUDE_CODE = """Install the GiljoAI CLI integration. This is a one-time setup.
+
+Step 1 — Install slash commands:
+Download: {SLASH_COMMANDS_URL}
+Extract to: ~/.claude/commands/ (create if needed, overwrite existing)
+Delete the downloaded zip.
+
+Step 2 — Install agent templates:
+Download: {AGENT_TEMPLATES_URL}
+Extract to: ~/.claude/agents/ (create if needed)
+If existing agents are present, back them up to ~/.claude/agents/backup_YYYYMMDD_HHMMSS/ first.
+Delete the downloaded zip.
+
+Adapt all commands for the OS you are running on.
+After both installs complete, instruct the user to restart Claude Code.
+Note: Download links expire in 15 minutes.
+"""
+
+BOOTSTRAP_GEMINI_CLI = """Install the GiljoAI CLI integration. This is a one-time setup.
+
+Step 1 — Install custom commands:
+Download: {SLASH_COMMANDS_URL}
+Extract to: ~/.gemini/commands/ (create if needed, overwrite existing)
+Delete the downloaded zip.
+
+Step 2 — Install agent templates:
+Download: {AGENT_TEMPLATES_URL}
+Extract to: ~/.gemini/agents/ (create if needed)
+If existing agents are present, back them up to ~/.gemini/agents/backup_YYYYMMDD_HHMMSS/ first.
+Delete the downloaded zip.
+
+Adapt all commands for the OS you are running on.
+After both installs complete, instruct the user to restart Gemini CLI.
+Note: Download links expire in 15 minutes.
+"""
+
+BOOTSTRAP_CODEX_CLI = """Install the GiljoAI CLI integration. This is a one-time setup.
+
+Step 1 — Install skills:
+Download: {SKILLS_URL}
+Extract to: ~/.codex/skills/ (create if needed, overwrite existing)
+Delete the downloaded zip.
+
+Step 2 — Install agent templates:
+Skills are now installed. Run the $gil-get-agents skill to install agent templates
+with proper config.toml integration. This step is interactive — the skill will
+guide you through model selection and config file merge.
+
+Adapt all commands for the OS you are running on.
+After skill installation, instruct the user to restart Codex CLI, then run $gil-get-agents.
+Note: Download link expires in 15 minutes.
+"""
+
+# =============================================================================
+# TEMPLATE REGISTRY
+# =============================================================================
+
+_VALID_PLATFORMS = ("claude_code", "gemini_cli", "codex_cli")
+
+
+def get_all_templates(platform: str = "claude_code") -> dict[str, str]:
     """
-    Return all slash command templates
+    Return slash command/skill templates for the given platform.
+
+    Args:
+        platform: Target CLI platform. One of 'claude_code', 'gemini_cli', 'codex_cli'.
 
     Returns:
-        dict[str, str]: Mapping of filename to markdown content
+        dict[str, str]: Mapping of filename to template content.
+
+    Raises:
+        ValueError: If platform is not recognized.
     """
+    if platform not in _VALID_PLATFORMS:
+        raise ValueError(f"Unknown platform '{platform}'. Must be one of: {', '.join(_VALID_PLATFORMS)}")
+
+    if platform == "claude_code":
+        return {
+            "gil_get_agents.md": GIL_GET_AGENTS_MD,
+            "gil_get_claude_agents.md": GIL_GET_CLAUDE_AGENTS_MD,
+            "gil_add.md": GIL_ADD_MD,
+        }
+
+    if platform == "gemini_cli":
+        return {
+            "gil_get_agents.toml": GIL_GET_AGENTS_GEMINI_TOML,
+            "gil_add.toml": GIL_ADD_GEMINI_TOML,
+        }
+
+    # codex_cli
     return {
-        "gil_get_claude_agents.md": GIL_GET_CLAUDE_AGENTS_MD,
-        "gil_add.md": GIL_ADD_MD,
+        "gil-get-agents/SKILL.md": GIL_GET_AGENTS_CODEX_SKILL_MD,
+        "gil-add/SKILL.md": GIL_ADD_CODEX_SKILL_MD,
     }
