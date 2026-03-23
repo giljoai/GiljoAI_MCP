@@ -18,7 +18,7 @@ If you don’t already have the `/gil_*` commands in Claude Code:
 ## Daily Workflow (4 Commands)
 
 ```text
-1. /gil_get_claude_agents            # Install/update agent templates (choose Project vs User)
+1. /gil_get_agents            # Install/update agent templates (choose Project vs User)
    → Restart Claude Code
 
 2. /gil_activate                     # Activate a project (requires project_id UUID)
@@ -35,7 +35,7 @@ Optional:
 
 | Command | Purpose | Restart Required? |
 |---------|---------|-------------------|
-| `/gil_get_claude_agents` | Download + install agent templates | ✅ Yes |
+| `/gil_get_agents` | Download + install agent templates | ✅ Yes |
 | `/gil_activate` | Activate project for staging | ❌ No |
 | `/gil_launch` | Launch staged project into execution | ❌ No |
 | `/gil_handover` | Trigger orchestrator succession | ❌ No |
