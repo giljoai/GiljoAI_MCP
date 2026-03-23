@@ -132,9 +132,13 @@ Extract to: ~/.claude/commands/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
 Step 2 — Install agent templates:
+First, ask the user where to install agents:
+  1. Project agents (.claude/agents/) — available only in the current project
+  2. User agents (~/.claude/agents/) — available across all projects (recommended)
+
 Download: {AGENT_TEMPLATES_URL}
-Extract to: ~/.claude/agents/ (create if needed)
-If existing agents are present, back them up to ~/.claude/agents/backup_YYYYMMDD_HHMMSS/ first.
+Extract to the chosen directory (create if needed).
+If existing agents are present, back them up to a backup_YYYYMMDD_HHMMSS/ subfolder first.
 Delete the downloaded zip.
 
 Adapt all commands for the OS you are running on.
@@ -149,9 +153,13 @@ Extract to: ~/.gemini/commands/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
 Step 2 — Install agent templates:
+First, ask the user where to install agents:
+  1. Project agents (.gemini/agents/) — available only in the current project
+  2. User agents (~/.gemini/agents/) — available across all projects (recommended)
+
 Download: {AGENT_TEMPLATES_URL}
-Extract to: ~/.gemini/agents/ (create if needed)
-If existing agents are present, back them up to ~/.gemini/agents/backup_YYYYMMDD_HHMMSS/ first.
+Extract to the chosen directory (create if needed).
+If existing agents are present, back them up to a backup_YYYYMMDD_HHMMSS/ subfolder first.
 Delete the downloaded zip.
 
 Adapt all commands for the OS you are running on.
