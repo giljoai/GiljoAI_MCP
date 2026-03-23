@@ -1,9 +1,12 @@
 """
 Claude Code Agent Template Export API
 
-Provides REST endpoint for exporting agent templates to Claude Code format
-with YAML frontmatter. Supports multi-tenant isolation, automatic backups,
-and path validation for security.
+DEPRECATED (Handover 0836a): This endpoint writes files directly to disk on the
+server. The preferred export path is now the `get_agent_templates_for_export` MCP
+tool (returns content for the calling agent to write locally) or the platform-aware
+ZIP download at GET /api/download/agent-templates.zip?platform=claude_code.
+
+This module is retained for backward compatibility but should not be extended.
 
 Architecture:
 - POST /export/claude-code - Export templates to specified directory
