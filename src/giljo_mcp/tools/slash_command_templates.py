@@ -570,7 +570,7 @@ Extract to: ~/.claude/commands/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
 Step 2 — Install agent templates:
-Before downloading, use AskUserQuestion to ask the user where to install agents with these options:
+Use AskUserQuestion to ask the user where to install agents with these options:
 - "User agents (~/.claude/agents/) — available everywhere (recommended)"
 - "Project agents (.claude/agents/) — this project only"
 
@@ -579,8 +579,14 @@ Extract to the chosen directory (create if needed).
 If existing agents are present, back them up to a backup_YYYYMMDD_HHMMSS/ subfolder first.
 Delete the downloaded zip.
 
+Step 3 — Configure model preference:
+Use AskUserQuestion to ask: "Which model should agents use?"
+Options: ["sonnet (balanced — recommended)", "haiku (fast, cost-effective)", "opus (maximum capability)", "Let me pick per agent"]
+If user picks "Let me pick per agent", ask for each agent individually using AskUserQuestion with the same model options (minus the per-agent option).
+Then rewrite the `model` field in each installed agent .md file's YAML frontmatter to match the user's choice (sonnet, haiku, or opus).
+
 Adapt all commands for the OS you are running on.
-After both installs complete, instruct the user to restart Claude Code.
+After all steps complete, instruct the user to restart Claude Code.
 Note: Download links expire in 15 minutes.
 """
 
@@ -592,17 +598,23 @@ Extract to: ~/.gemini/commands/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
 Step 2 — Install agent templates:
-First, ask the user where to install agents:
-  1. Project agents (.gemini/agents/) — available only in the current project
-  2. User agents (~/.gemini/agents/) — available across all projects (recommended)
+Ask the user where to install agents:
+  1. User agents (~/.gemini/agents/) — available across all projects (recommended)
+  2. Project agents (.gemini/agents/) — available only in the current project
 
 Download: {AGENT_TEMPLATES_URL}
 Extract to the chosen directory (create if needed).
 If existing agents are present, back them up to a backup_YYYYMMDD_HHMMSS/ subfolder first.
 Delete the downloaded zip.
 
+Step 3 — Configure model preference:
+Ask the user: "Which model should agents use?"
+Options: gemini-2.5-pro (recommended), gemini-2.5-flash, gemini-2.0-flash, or let me pick per agent.
+If user picks per-agent, ask for each agent individually with the same options (minus the per-agent option).
+Then rewrite the `model` field in each installed agent .md file's YAML frontmatter to match the user's choice.
+
 Adapt all commands for the OS you are running on.
-After both installs complete, instruct the user to restart Gemini CLI.
+After all steps complete, instruct the user to restart Gemini CLI.
 Note: Download links expire in 15 minutes.
 """
 
