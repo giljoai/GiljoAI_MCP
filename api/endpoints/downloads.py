@@ -106,34 +106,33 @@ def render_install_script(
 @router.get("/slash-commands.zip")
 async def download_slash_commands(
     request: Request,
+    platform: str = Query(
+        default="claude_code",
+        pattern="^(claude_code|gemini_cli|codex_cli)$",
+        description="Target CLI platform: claude_code, gemini_cli, or codex_cli",
+    ),
 ):
     """
-    Download slash command templates as complete ZIP file.
+    Download slash command/skill templates as ZIP file.
 
     **Public endpoint** - No authentication required.
-    Slash commands contain no sensitive data, only markdown instructions.
+    Templates contain no sensitive data, only instructions.
 
-    This endpoint generates a ZIP file containing:
-    - All slash command markdown files with YAML frontmatter
-    - install.sh (Unix/macOS/Linux installer)
-    - install.ps1 (Windows PowerShell installer)
-
-    Supported commands:
-    - gil_get_claude_agents.md (unified agent installer)
-    - gil_add.md (unified task/project creation)
-
-    NOTE: gil_activate, gil_launch, gil_handover removed (0388) - users perform these via web UI
+    Returns platform-appropriate templates:
+    - claude_code: .md files for ~/.claude/commands/
+    - gemini_cli: .toml files for ~/.gemini/commands/
+    - codex_cli: SKILL.md files for ~/.codex/skills/
 
     Returns:
         Response with complete ZIP file download
 
     Example:
-        curl http://localhost:7272/api/download/slash-commands.zip -o slash-commands.zip
+        curl http://localhost:7272/api/download/slash-commands.zip?platform=claude_code
     """
-    logger.info("Generating slash commands ZIP (public download)")
+    logger.info(f"Generating slash commands ZIP (public download, platform={platform})")
 
-    # Get all slash command templates
-    templates = get_all_templates()
+    # Get platform-specific slash command templates
+    templates = get_all_templates(platform=platform)
 
     # Add install scripts with server URL rendered
     server_url = get_server_url(request)
@@ -172,6 +171,7 @@ async def download_agent_templates(
     x_api_key: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db_session),
     active_only: bool = Query(default=True, description="Only include active templates"),
+    platform: str = Query(default="claude_code", description="Target platform: claude_code, codex_cli, gemini_cli"),
 ):
     """
     Download agent templates as complete ZIP file (dynamic content from database).
@@ -274,19 +274,33 @@ async def download_agent_templates(
                 detail="No system default templates available. Please authenticate to access your custom templates.",
             )
 
-    # Build file dictionary using 0102a/0103 renderer and 8-role cap
-    from src.giljo_mcp.template_renderer import (
-        _slugify_filename,
-        render_claude_agent,
-        select_templates_for_packaging,
-    )
+    # Validate platform parameter
+    valid_platforms = {"claude_code", "codex_cli", "gemini_cli"}
+    if platform not in valid_platforms:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid platform '{platform}'. Must be one of: {', '.join(sorted(valid_platforms))}",
+        )
+
+    # Build file dictionary using assembler for platform-aware rendering (Handover 0836a)
+    from src.giljo_mcp.template_renderer import select_templates_for_packaging
+    from src.giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
 
     selected = select_templates_for_packaging(templates, max_count=8)
 
+    assembler = AgentTemplateAssembler()
+    export_data = assembler.assemble(selected, platform)
+
     files = {}
-    for template in selected:
-        filename = f"{_slugify_filename(template.name)}.md"
-        files[filename] = render_claude_agent(template)
+    if platform == "codex_cli":
+        # Codex returns structured JSON — package as a single JSON file
+        import json
+
+        files["agents.json"] = json.dumps(export_data, indent=2)
+    else:
+        # Claude Code and Gemini CLI return pre-assembled .md files
+        for agent in export_data["agents"]:
+            files[agent["filename"]] = agent["content"]
 
     # Add install scripts with server URL rendered
     server_url = get_server_url(request)
@@ -427,6 +441,7 @@ async def download_install_script(
 async def generate_download_token(
     request: Request,
     content_type: str | None = Query(None, pattern="^(slash_commands|agent_templates)$"),
+    platform: str = Query(default="claude_code", description="Target platform: claude_code, codex_cli, gemini_cli"),
     db: AsyncSession = Depends(get_db_session),
     body: dict | None = Body(None),
 ) -> dict:
@@ -478,15 +493,25 @@ async def generate_download_token(
             detail="Authentication required to generate download token",
         ) from e
 
-    # Derive content_type from query or JSON body (compat with older tests)
+    # Derive content_type and platform from query or JSON body (compat with older tests)
     if not content_type and body:
         content_type = body.get("content_type")
+    if body and body.get("platform"):
+        platform = body.get("platform", platform)
 
     # Validate content_type
     if content_type not in ["slash_commands", "agent_templates"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid content_type. Must be 'slash_commands' or 'agent_templates'",
+        )
+
+    # Validate platform (Handover 0836a)
+    valid_platforms = {"claude_code", "codex_cli", "gemini_cli"}
+    if platform not in valid_platforms:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid platform '{platform}'. Must be one of: {', '.join(sorted(valid_platforms))}",
         )
 
     logger.info(
@@ -514,7 +539,12 @@ async def generate_download_token(
     if content_type == "slash_commands":
         zip_path, message = await staging.stage_slash_commands(staging_path)
     else:
-        zip_path, message = await staging.stage_agent_templates(staging_path, tenant_key, db_session=db)
+        zip_path, message = await staging.stage_agent_templates(
+            staging_path,
+            tenant_key,
+            db_session=db,
+            platform=platform,
+        )
 
     if not zip_path:
         # Mark failed and return error

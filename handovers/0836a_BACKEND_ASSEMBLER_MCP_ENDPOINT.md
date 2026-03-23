@@ -108,3 +108,35 @@ Read this endpoint. If it's redundant with the assembler path (likely — it wri
 - ZIP downloads work with `?platform=gemini_cli` parameter
 - Existing Claude Code export flow unchanged (backward compatible)
 - All tests pass, ruff clean
+
+---
+
+## Implementation Summary
+
+**Status:** Complete
+**Date:** 2026-03-22
+
+### What Was Built
+- **`render_gemini_agent()`** — YAML frontmatter with `kind: agent`, `model: gemini-2.5-pro`, `max_turns: 50`, Gemini tool list. Body matches Claude output exactly.
+- **`render_codex_agent()`** — Returns structured dict with `agent_name`, `developer_instructions`, `suggested_model: gpt-5.2-codex`, `suggested_reasoning_effort: medium`.
+- **`_build_body_parts()`** — Shared helper extracting body assembly from all renderers.
+- **`AgentTemplateAssembler`** — Single `assemble(templates, platform)` method routing to 3 internal formatters. Returns API contract response with `install_paths`, `format_version`, `template_count`.
+- **`get_agent_templates_for_export` MCP tool** — Registered in `ToolAccessor`. Queries active templates, applies 8-cap, calls assembler.
+- **Platform-aware ZIP** — `GET /api/download/agent-templates.zip?platform=X` and `POST /generate-token` both accept `platform` param. `file_staging.py` routes through assembler.
+- **`claude_export.py`** — Marked deprecated (writes to server disk; replaced by MCP tool returning content).
+
+### Key Files
+| File | Change |
+|------|--------|
+| `src/giljo_mcp/template_renderer.py` | Added `render_gemini_agent`, `render_codex_agent`, `_build_body_parts`, `CODEX_TOML_FORMAT_REFERENCE` |
+| `src/giljo_mcp/tools/agent_template_assembler.py` | NEW — `AgentTemplateAssembler` class |
+| `src/giljo_mcp/tools/tool_accessor.py` | Added `get_agent_templates_for_export` method |
+| `api/endpoints/downloads.py` | Added `platform` query param to ZIP and token endpoints |
+| `src/giljo_mcp/file_staging.py` | Added `platform` param to `stage_agent_templates` |
+| `api/endpoints/claude_export.py` | Marked deprecated |
+| `tests/unit/test_template_assembler_0836a.py` | NEW — 19 tests covering all renderers and assembler |
+
+### Test Results
+- 19 new tests: all passing
+- 29 existing renderer tests: all passing (backward compatible)
+- Ruff: clean, zero lint issues
