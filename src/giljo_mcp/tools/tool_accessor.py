@@ -360,7 +360,9 @@ class ToolAccessor:
 
         return await OrchestrationService.health_check()
 
-    async def generate_download_token(self, content_type: str, tenant_key: str) -> dict[str, Any]:
+    async def generate_download_token(
+        self, content_type: str, tenant_key: str, platform: str = "claude_code"
+    ) -> dict[str, Any]:
         """
         Generate one-time download URL for agent templates or slash commands.
 
@@ -391,10 +393,10 @@ class ToolAccessor:
                 # Stage files
                 staging_path = await staging.create_staging_directory(tenant_key, token)
                 if content_type == "slash_commands":
-                    zip_path, message = await staging.stage_slash_commands(staging_path)
+                    zip_path, message = await staging.stage_slash_commands(staging_path, platform=platform)
                 else:
                     zip_path, message = await staging.stage_agent_templates(
-                        staging_path, tenant_key, db_session=session
+                        staging_path, tenant_key, db_session=session, platform=platform
                     )
 
                 if not zip_path:
