@@ -109,8 +109,7 @@ describe('UserSettings.vue', () => {
           ApiKeyManager: true,
           McpConfigComponent: true,
           AiToolConfigWizard: true,
-          ClaudeCodeExport: true,
-          SlashCommandSetup: true,
+          AgentExport: true,
           SerenaAdvancedSettingsDialog: true,
           ContextPriorityConfig: true,
           StartupQuickStart: true,
@@ -207,7 +206,7 @@ describe('UserSettings.vue', () => {
     // These functions were removed in the Handover 0277 integration card refactor.
     // SerenaIntegrationCard and GitIntegrationCard now manage their own state internally.
 
-    it('should keep SlashCommandSetup and ClaudeCodeExport inline', async () => {
+    it('should render AgentExport in integrations tab', async () => {
       wrapper = mountComponent()
       await wrapper.vm.$nextTick()
 
@@ -215,12 +214,9 @@ describe('UserSettings.vue', () => {
       wrapper.vm.activeTab = 'integrations'
       await wrapper.vm.$nextTick()
 
-      // These components should still be rendered (as stubs)
-      const slashCommandSetup = wrapper.findComponent({ name: 'SlashCommandSetup' })
-      const claudeCodeExport = wrapper.findComponent({ name: 'ClaudeCodeExport' })
-
-      expect(slashCommandSetup.exists()).toBe(true)
-      expect(claudeCodeExport.exists()).toBe(true)
+      // AgentExport replaces the old ClaudeCodeExport + SlashCommandSetup
+      const agentExport = wrapper.findComponent({ name: 'AgentExport' })
+      expect(agentExport.exists()).toBe(true)
     })
   })
 })
