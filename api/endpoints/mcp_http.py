@@ -294,7 +294,8 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
         "author_job_id",
     },
     # Download Tools
-    "generate_download_token": {"content_type", "tenant_key"},
+    "generate_download_token": {"content_type", "tenant_key", "platform"},
+    "get_agent_templates_for_export": {"tenant_key", "platform"},
     # Product Context Tuning (Handover 0831)
     "submit_tuning_review": {
         "product_id",
@@ -521,8 +522,31 @@ def _build_task_and_utility_tools() -> list[dict[str, Any]]:
                         "description": "Type of content to download",
                     },
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
+                    "platform": {
+                        "type": "string",
+                        "enum": ["claude_code", "codex_cli", "gemini_cli"],
+                        "description": "Target CLI platform for formatting",
+                        "default": "claude_code",
+                    },
                 },
                 "required": ["content_type"],
+            },
+        },
+        # Agent Template Export (Handover 0836)
+        {
+            "name": "get_agent_templates_for_export",
+            "description": "Export agent templates formatted for the target CLI platform. Returns pre-assembled files for Claude Code/Gemini or structured data for Codex CLI.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "tenant_key": {"type": "string", "description": "Tenant isolation key"},
+                    "platform": {
+                        "type": "string",
+                        "enum": ["claude_code", "codex_cli", "gemini_cli"],
+                        "description": "Target CLI platform: claude_code, codex_cli, or gemini_cli",
+                    },
+                },
+                "required": ["platform"],
             },
         },
     ]
@@ -992,6 +1016,8 @@ async def handle_tools_call(
         "write_360_memory": state.tool_accessor.write_360_memory,
         # Download Tools (Handover 0384)
         "generate_download_token": state.tool_accessor.generate_download_token,
+        # Agent Template Export (Handover 0836)
+        "get_agent_templates_for_export": state.tool_accessor.get_agent_templates_for_export,
         # Product Context Tuning (Handover 0831)
         "submit_tuning_review": state.tool_accessor.submit_tuning_review,
     }
