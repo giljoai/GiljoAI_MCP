@@ -84,8 +84,24 @@ class TestCodexTemplates:
     def test_codex_get_agents_has_config_toml_safety(self):
         """GIL_GET_AGENTS_CODEX_SKILL_MD contains config.toml safety guidance."""
         assert "config.toml" in GIL_GET_AGENTS_CODEX_SKILL_MD
-        assert "back up" in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "backup" in GIL_GET_AGENTS_CODEX_SKILL_MD
         assert "diff" in GIL_GET_AGENTS_CODEX_SKILL_MD
+
+    def test_codex_get_agents_requires_gil_prefix(self):
+        """Codex skill must instruct agents to use gil- prefix (avoids built-in role shadowing)."""
+        assert "gil-" in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "prefix" in GIL_GET_AGENTS_CODEX_SKILL_MD.lower()
+        assert "shadow" in GIL_GET_AGENTS_CODEX_SKILL_MD.lower() or "built-in" in GIL_GET_AGENTS_CODEX_SKILL_MD.lower()
+
+    def test_codex_get_agents_uses_relative_config_paths(self):
+        """Codex skill must specify relative config_file paths (tilde paths fail in Codex CLI)."""
+        assert 'agents/gil-' in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "RELATIVE" in GIL_GET_AGENTS_CODEX_SKILL_MD
+
+    def test_codex_get_agents_has_verification_step(self):
+        """Codex skill includes a verification step to confirm custom templates are loaded."""
+        assert "Verification" in GIL_GET_AGENTS_CODEX_SKILL_MD
+        assert "mcp__giljo_mcp__health_check" in GIL_GET_AGENTS_CODEX_SKILL_MD
 
     def test_codex_gil_add_has_same_modes_as_claude(self):
         """GIL_ADD_CODEX_SKILL_MD mentions all three operation modes."""
