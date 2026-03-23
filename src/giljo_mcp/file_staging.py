@@ -99,16 +99,16 @@ class FileStaging:
     async def stage_slash_commands(
         self,
         staging_path: Path,
+        platform: str = "claude_code",
     ) -> tuple[Path | None, str]:
         """
         Stage slash commands as a ZIP file.
 
-        Creates a ZIP file containing GiljoAI slash command files (.md) for CLI tools.
-        Includes core commands: gil_get_claude_agents (unified agent installer),
-        gil_add (unified task/project creation)
+        Creates a ZIP file containing platform-specific slash command/skill files.
 
         Args:
             staging_path: Pre-created staging directory (temp/{tenant_key}/{token}/)
+            platform: Target CLI platform (claude_code, gemini_cli, codex_cli)
 
         Returns:
             Tuple (zip_path|None, message)
@@ -120,21 +120,8 @@ class FileStaging:
             staging_path.mkdir(parents=True, exist_ok=True)
             zip_path = staging_path / "slash_commands.zip"
 
-            # Get all templates
-            all_templates = get_all_templates()
-            # Select a stable subset - core commands for CLI users
-            # NOTE (Handover 0388): gil_activate, gil_launch removed -
-            # users perform these actions via web UI, not CLI.
-            wanted = [
-                "gil_get_claude_agents.md",  # Unified agent installer (interactive)
-                "gil_add.md",  # Unified task/project creation (Handover 0433)
-            ]
-            missing = [w for w in wanted if w not in all_templates]
-            if missing:
-                msg = f"Missing slash command templates: {', '.join(missing)}"
-                logger.error(msg)
-                return (None, msg)
-            templates = {name: all_templates[name] for name in wanted}
+            # Get platform-specific templates (0836b)
+            templates = get_all_templates(platform=platform)
 
             # Create ZIP file with single command
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
