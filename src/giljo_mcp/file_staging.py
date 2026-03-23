@@ -16,24 +16,22 @@ Usage:
     # Create staging path
     staging_path = await staging.create_staging_directory(tenant_key, token)
 
-    # Stage slash commands
-    zip_path, msg = await staging.stage_slash_commands(staging_path)
+    # Stage slash commands (platform: claude_code, gemini_cli, codex_cli)
+    zip_path, msg = await staging.stage_slash_commands(staging_path, platform="claude_code")
 
-    # Stage agent templates
-    zip_path, msg = await staging.stage_agent_templates(staging_path, tenant_key, db_session)
+    # Stage agent templates (platform: claude_code, gemini_cli, codex_cli)
+    zip_path, msg = await staging.stage_agent_templates(staging_path, tenant_key, db_session, platform="claude_code")
 
     # Cleanup
     await staging.cleanup(tenant_key, token)
 """
 
-import json
 import logging
 import re
 import shutil
 import zipfile
 from pathlib import Path
 
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -236,33 +234,6 @@ class FileStaging:
                 await session.rollback()
             return (None, msg)
 
-    async def save_metadata(self, staging_dir: Path, metadata: dict) -> Path:
-        """
-        Save metadata JSON file to staging directory.
-
-        Args:
-            staging_dir: Staging directory path
-            metadata: Metadata dictionary to save
-
-        Returns:
-            Path: Path to metadata.json file
-
-        Raises:
-            HTTPException: If file write fails
-        """
-        try:
-            metadata_path = staging_dir / "metadata.json"
-            metadata_path.write_text(json.dumps(metadata, indent=2))
-
-            logger.debug(f"Saved metadata to: {metadata_path}")
-            return metadata_path
-
-        except (OSError, ValueError, RuntimeError) as e:
-            logger.exception("Error saving metadata")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save metadata"
-            ) from e
-
     async def cleanup(self, tenant_key: str, token: str) -> bool:
         """
         Remove staging directory and all contents.
@@ -294,19 +265,6 @@ class FileStaging:
             # Best-effort cleanup - log but don't raise
             logger.warning(f"Error cleaning up staging directory: {e}")
             return False
-
-    async def get_staging_path(self, tenant_key: str, token: str) -> Path:
-        """
-        Get staging directory path for a token.
-
-        Args:
-            tenant_key: Tenant identifier
-            token: UUID token string
-
-        Returns:
-            Path: Staging directory path (may not exist)
-        """
-        return self.base_path / tenant_key / token
 
     @staticmethod
     def validate_filename(filename: str) -> bool:

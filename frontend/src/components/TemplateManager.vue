@@ -469,8 +469,6 @@ const activeStats = ref({
 }) // Tracks system reservation + user slots
 const previewContent = ref('') // Handover 0103: Preview window content
 
-// Export state
-
 // Search and filters
 const search = ref('')
 const filterCategory = ref(null)

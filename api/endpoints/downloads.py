@@ -537,7 +537,7 @@ async def generate_download_token(
     staging = FileStaging(db_session=db)
     staging_path = await staging.create_staging_directory(tenant_key, token)
     if content_type == "slash_commands":
-        zip_path, message = await staging.stage_slash_commands(staging_path)
+        zip_path, message = await staging.stage_slash_commands(staging_path, platform=platform)
     else:
         zip_path, message = await staging.stage_agent_templates(
             staging_path,
@@ -693,5 +693,5 @@ async def download_temp_file(
 
 #
 # NOTE: Legacy agent-template installers were removed in Jan 2026.
-# Use the `gil_get_claude_agents` slash command (which calls `/api/download/generate-token`)
+# Use the `gil_get_agents` slash command (which calls `/api/download/generate-token`)
 # for the supported download-and-install flow.

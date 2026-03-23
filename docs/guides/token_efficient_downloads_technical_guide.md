@@ -23,7 +23,7 @@ Key principles:
 
 - `GET /api/download/slash-commands.zip`
 - Contains:
-  - `gil_get_claude_agents.md`
+  - `gil_get_agents.md`
   - `gil_activate.md`
   - `gil_launch.md`
   - `gil_handover.md`
@@ -78,7 +78,7 @@ Agents should not paste large template content into chat. Instead:
 ### `get_agent_download_url`
 
 - Purpose: stage active agent templates and return a one-shot ZIP URL.
-- Used by the `/gil_get_claude_agents` slash command.
+- Used by the `/gil_get_agents` slash command.
 - Implementation: `src/giljo_mcp/tools/tool_accessor.py` (`ToolAccessor.get_agent_download_url`)
 
 ---
