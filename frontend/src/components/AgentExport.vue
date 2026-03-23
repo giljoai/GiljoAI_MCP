@@ -158,25 +158,9 @@ Download: {SLASH_COMMANDS_URL}
 Extract to: ~/.claude/commands/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
-Step 2 — Install agent templates:
-Use AskUserQuestion to ask the user where to install agents with these options:
-- "User agents (~/.claude/agents/) — available everywhere (recommended)"
-- "Project agents (.claude/agents/) — this project only"
-
-Download: {AGENT_TEMPLATES_URL}
-Extract to the chosen directory (create if needed).
-If existing agents are present, back them up to a backup_YYYYMMDD_HHMMSS/ subfolder first.
-Delete the downloaded zip.
-
-Step 3 — Configure model preference:
-Use AskUserQuestion to ask: "Which model should agents use?"
-Options: ["sonnet (balanced — recommended)", "haiku (fast, cost-effective)", "opus (maximum capability)", "Let me pick per agent"]
-If user picks "Let me pick per agent", ask for each agent individually using AskUserQuestion with the same model options (minus the per-agent option).
-Then rewrite the \`model\` field in each installed agent .md file's YAML frontmatter to match the user's choice (sonnet, haiku, or opus).
-
 Adapt all commands for the OS you are running on.
-After all steps complete, instruct the user to restart Claude Code.
-Note: Download links expire in 15 minutes.`,
+After installation, instruct the user to restart Claude Code, then run /gil_get_agents to install agent templates.
+Note: Download link expires in 15 minutes.`,
 
   gemini_cli: `Install the GiljoAI CLI integration. This is a one-time setup.
 
@@ -185,25 +169,9 @@ Download: {SLASH_COMMANDS_URL}
 Extract to: ~/.gemini/commands/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
-Step 2 — Install agent templates:
-Ask the user where to install agents:
-  1. User agents (~/.gemini/agents/) — available across all projects (recommended)
-  2. Project agents (.gemini/agents/) — available only in the current project
-
-Download: {AGENT_TEMPLATES_URL}
-Extract to the chosen directory (create if needed).
-If existing agents are present, back them up to a backup_YYYYMMDD_HHMMSS/ subfolder first.
-Delete the downloaded zip.
-
-Step 3 — Configure model preference:
-Ask the user: "Which model should agents use?"
-Options: gemini-2.5-pro (recommended), gemini-2.5-flash, gemini-2.0-flash, or let me pick per agent.
-If user picks per-agent, ask for each agent individually with the same options (minus the per-agent option).
-Then rewrite the \`model\` field in each installed agent .md file's YAML frontmatter to match the user's choice.
-
 Adapt all commands for the OS you are running on.
-After all steps complete, instruct the user to restart Gemini CLI.
-Note: Download links expire in 15 minutes.`,
+After installation, instruct the user to restart Gemini CLI, then run /gil_get_agents to install agent templates.
+Note: Download link expires in 15 minutes.`,
 
   codex_cli: `Install the GiljoAI CLI integration. This is a one-time setup.
 
@@ -212,13 +180,8 @@ Download: {SKILLS_URL}
 Extract to: ~/.codex/skills/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
-Step 2 — Install agent templates:
-Skills are now installed. Run the $gil-get-agents skill to install agent templates
-with proper config.toml integration. This step is interactive — the skill will
-guide you through model selection and config file merge.
-
 Adapt all commands for the OS you are running on.
-After skill installation, instruct the user to restart Codex CLI, then run $gil-get-agents.
+After installation, instruct the user to restart Codex CLI, then run $gil-get-agents to install agent templates.
 Note: Download link expires in 15 minutes.`,
 }
 
@@ -261,22 +224,11 @@ async function generateBootstrapPrompt(platform) {
     const template = bootstrapTemplates[platform]
     if (!template) throw new Error(`Unknown platform: ${platform}`)
 
-    // Generate all tokens in parallel to minimize async time before clipboard write.
-    // The browser's transient activation (user gesture) expires after ~5s in Chrome,
-    // so sequential fetches can cause navigator.clipboard.writeText to be rejected.
-    let prompt
-    if (platform === 'codex_cli') {
-      const slashUrl = await generateToken('slash_commands', platform)
-      prompt = template.replace('{SKILLS_URL}', slashUrl)
-    } else {
-      const [slashUrl, agentUrl] = await Promise.all([
-        generateToken('slash_commands', platform),
-        generateToken('agent_templates', platform),
-      ])
-      prompt = template
-        .replace('{SLASH_COMMANDS_URL}', slashUrl)
-        .replace('{AGENT_TEMPLATES_URL}', agentUrl)
-    }
+    // Two-phase install: bootstrap only installs commands/skills.
+    // Agent templates are installed later via the slash command/skill itself.
+    const url = await generateToken('slash_commands', platform)
+    const placeholder = platform === 'codex_cli' ? '{SKILLS_URL}' : '{SLASH_COMMANDS_URL}'
+    const prompt = template.replace(placeholder, url)
 
     await copyToClipboard(prompt)
     const label = platforms.find((p) => p.id === platform)?.label || platform
