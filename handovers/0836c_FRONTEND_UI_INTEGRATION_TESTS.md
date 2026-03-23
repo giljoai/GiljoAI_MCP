@@ -163,3 +163,59 @@ This may already be partially handled by 0836a's ZIP generation changes. Coordin
 - Existing Claude Code users see no regression
 - `ruff check` and `npm run lint` pass clean
 - Frontend builds without errors
+
+---
+
+## Implementation Summary
+
+**Status:** Complete
+**Date:** 2026-03-22
+
+### What Was Built
+
+**TemplateManager.vue cleanup:**
+- Removed CLI tool selector radio group (was Claude/Codex/Gemini/Generic)
+- Removed "Tool" column from data table
+- Ungated description field (now always visible for all platforms)
+- Removed model dropdown from create/edit dialog (model is an export-time choice)
+- Removed dead code: `cliToolOptions`, `showDescription`, `modelOptions`, `onCliToolChange`, `getToolLogo`, `getToolName`, `copyPreview`, `copyToClipboardSafe`
+
+**AgentExport.vue (replaces ClaudeCodeExport.vue):**
+- Multi-platform UI with 3 setup buttons (Claude Code, Codex CLI, Gemini CLI)
+- Generates combined bootstrap prompts with platform-specific download URLs
+- Manual download section (collapsed) with per-platform ZIP downloads for both agent templates and slash commands
+- After-setup info section with `/gil_get_agents` and `/gil_add` commands
+- Removed old ClaudeCodeExport.vue
+
+**Supporting changes:**
+- `UserSettings.vue` — updated import to AgentExport
+- `SlashCommandSetup.vue` — updated tooltip to reflect new command name `/gil_get_agents`
+- `api.js` — added `generateAgentTemplatesToken(platform)` method
+
+**Integration tests (69 new tests across 3 files):**
+- `test_agent_template_assembler.py` — 17 tests: color mapping, platform consistency, edge cases
+- `test_multi_platform_export.py` — 22 tests: pipeline, backward compatibility, bootstrap templates
+- `test_slash_command_templates.py` — 30 tests: registry, cross-platform consistency, quality gates
+
+### Key Files
+| File | Change |
+|------|--------|
+| `frontend/src/components/TemplateManager.vue` | Removed tool selector, ungated fields, cleaned dead code |
+| `frontend/src/components/AgentExport.vue` | NEW — multi-platform export UI |
+| `frontend/src/components/ClaudeCodeExport.vue` | DELETED — replaced by AgentExport.vue |
+| `frontend/src/views/UserSettings.vue` | Updated import |
+| `frontend/src/services/api.js` | Added platform-aware download method |
+| `frontend/src/components/SlashCommandSetup.vue` | Updated tooltip text |
+| `tests/integration/test_agent_template_assembler.py` | NEW — 17 tests |
+| `tests/integration/test_multi_platform_export.py` | NEW — 22 tests |
+| `tests/integration/test_slash_command_templates.py` | NEW — 30 tests |
+
+### Test Results
+- 69 new integration tests: all passing
+- 32 existing 0836a/b tests: all passing (backward compatible)
+- Ruff: clean, zero lint issues
+- ESLint: clean
+- Frontend build: successful
+
+### Deferred
+- Platform Export Preferences panel in template create/edit dialog (collapsed, optional per-agent model overrides) — not implemented. The handover spec marks it as optional and the assembler already handles model selection at export time via the slash commands. Can be added in a follow-up if needed.
