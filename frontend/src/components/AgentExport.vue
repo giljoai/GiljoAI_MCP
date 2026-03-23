@@ -114,16 +114,21 @@ import { useToast } from '@/composables/useToast'
 const { showToast } = useToast()
 
 /**
- * Copy text to clipboard directly within the user-gesture call stack.
- * navigator.clipboard.writeText requires an active user gesture and document focus.
- * Using it inline (not behind an extra async hop) preserves the gesture context.
+ * Copy text to clipboard. Tries Clipboard API first, falls back to textarea.
+ * Both methods can fail on first click (gesture expired after async token fetches),
+ * so errors are caught and re-thrown with a clear message.
  */
 async function copyToClipboard(text) {
+  // Try Clipboard API first
   if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text)
-    return true
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      // Clipboard API rejected (gesture expired, no focus, permission denied) — fall through
+    }
   }
-  // Fallback: textarea + execCommand for non-secure contexts
+  // Fallback: hidden textarea + execCommand
   const ta = document.createElement('textarea')
   ta.value = text
   ta.style.position = 'fixed'
@@ -133,7 +138,7 @@ async function copyToClipboard(text) {
   ta.select()
   const ok = document.execCommand('copy')
   document.body.removeChild(ta)
-  if (!ok) throw new Error('Clipboard copy failed')
+  if (!ok) throw new Error('Clipboard copy failed — click the button again')
   return true
 }
 
