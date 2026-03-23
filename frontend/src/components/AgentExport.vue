@@ -132,9 +132,9 @@ Extract to: ~/.claude/commands/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
 Step 2 — Install agent templates:
-First, ask the user where to install agents:
-  1. Project agents (.claude/agents/) — available only in the current project
-  2. User agents (~/.claude/agents/) — available across all projects (recommended)
+Before downloading, use AskUserQuestion to ask the user where to install agents with these options:
+- "User agents (~/.claude/agents/) — available everywhere (recommended)"
+- "Project agents (.claude/agents/) — this project only"
 
 Download: {AGENT_TEMPLATES_URL}
 Extract to the chosen directory (create if needed).
