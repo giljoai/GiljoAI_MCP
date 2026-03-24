@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-23 (0836a-e COMPLETE, 0837+0828+0831 active)
+**Last Updated:** 2026-03-23 (0834+0835+0836 archived, 0837+0828+0831 active)
 
 ---
 
