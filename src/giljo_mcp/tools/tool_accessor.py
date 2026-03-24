@@ -94,6 +94,7 @@ class ToolAccessor:
         description: str = "",
         product_id: str | None = None,
         tenant_key: str | None = None,
+        project_type: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a new project bound to the active product.
@@ -122,6 +123,13 @@ class ToolAccessor:
 
         # Resolve effective tenant key
         effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
+
+        # Resolve optional type label to project_type_id (Handover 0837b)
+        project_type_id = None
+        if project_type:
+            resolved_type = await self._project_service.get_project_type_by_label(project_type, effective_tenant_key)
+            if resolved_type:
+                project_type_id = resolved_type.id
 
         # Resolve product_id from active product if not explicitly provided
         if not product_id:
@@ -152,6 +160,7 @@ class ToolAccessor:
             product_id=product_id,
             tenant_key=effective_tenant_key,
             status="inactive",
+            project_type_id=project_type_id,
         )
 
         logger.info(

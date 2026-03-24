@@ -53,10 +53,11 @@
     "agent": "Slash Command Template Updates",
     "status": "complete",
     "depends_on": "0837b",
-    "commit": "pending_user_commit",
+    "commit": "fdec0c63",
     "files_changed": [
       "src/giljo_mcp/tools/slash_command_templates.py",
-      "tests/test_slash_command_templates.py"
+      "tests/test_slash_command_templates.py",
+      "handovers/0837_SESSION.json"
     ],
     "tests_passing": 56,
     "lint": "clean (1 pre-existing Q000 in test file, not from this change)",
