@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.endpoints.dependencies import get_task_service
@@ -28,7 +29,7 @@ from api.schemas.task import (
     TaskUpdate,
 )
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
-from src.giljo_mcp.models import Task, User
+from src.giljo_mcp.models import Product, Task, User
 from src.giljo_mcp.services.task_service import TaskService
 
 
@@ -186,6 +187,29 @@ async def create_task(
     to ensure all tasks are isolated to a specific product.
     """
     logger.debug(f"User {getattr(current_user, 'username', 'unknown')} creating task '{task_create.title}'")
+
+    # Validate the product exists, is active, and belongs to the user's tenant
+    stmt = select(Product).where(
+        and_(
+            Product.id == task_create.product_id,
+            Product.tenant_key == current_user.tenant_key,
+            Product.deleted_at.is_(None),
+        )
+    )
+    result = await db.execute(stmt)
+    product = result.scalar_one_or_none()
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found or does not belong to your tenant.",
+        )
+
+    if not product.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active product set. Please activate a product before creating tasks.",
+        )
 
     task = Task(
         tenant_key=current_user.tenant_key,
