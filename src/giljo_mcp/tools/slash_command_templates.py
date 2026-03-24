@@ -90,6 +90,7 @@ Check `$ARGUMENTS` for the following flags:
 **Project flags:**
 - `--project "Project Name"` (triggers direct project mode, required name for project)
 - `--description "Detailed description"` (optional, Claude generates from context if missing)
+- `--type "Type Label"` (optional, human-readable project type e.g. "Frontend", "Backend")
 
 **Valid Categories:** `frontend`, `backend`, `database`, `infra`, `docs`, `general`
 **Valid Priorities:** `low`, `medium`, `high`, `critical`
@@ -155,6 +156,7 @@ Check `$ARGUMENTS` for the following flags:
    Extract values from $ARGUMENTS:
    - name: value of --project flag (required)
    - description: value of --description flag (optional)
+   - project_type: value of --type flag (optional, e.g. "Frontend", "Backend")
    ```
 
 3. **Generate Description (if missing):**
@@ -165,7 +167,9 @@ Check `$ARGUMENTS` for the following flags:
    ```
    name: <project name>
    description: <description value>
+   project_type: <type value, if provided>
    ```
+   Only include `project_type` if `--type` was specified. If the type label doesn't match any existing project type, the project is created without a type (no error).
 
 5. **Confirm Success:**
    ```
@@ -279,14 +283,22 @@ Check `$ARGUMENTS` for the following flags:
    ```
    Allow user to edit or confirm.
 
-2. **Call MCP Tool:**
+2. **Ask for Project Type (optional):**
+   ```
+   Would you like to assign a project type? (optional)
+   Enter a type label (e.g. "Frontend", "Backend") or press Enter to skip:
+   ```
+   If the user provides a type, pass it as `project_type`. If skipped, omit the parameter.
+
+3. **Call MCP Tool:**
    Use `mcp__giljo-mcp__create_project` with:
    ```
    name: <confirmed project name>
    description: <confirmed description>
+   project_type: <type label, if provided>
    ```
 
-3. **Confirm Success:**
+4. **Confirm Success:**
    ```
    Project created successfully.
 
@@ -330,7 +342,7 @@ Open the dashboard and select a product to activate, then try again.
 
 ## Important Notes
 
-1. **MCP Tool Parameters:** The `create_task` tool accepts `title`, `description`, `priority`, and `category`. The `create_project` tool accepts `name` and `description`. Tasks and projects are always bound to the active product (enforced server-side).
+1. **MCP Tool Parameters:** The `create_task` tool accepts `title`, `description`, `priority`, and `category`. The `create_project` tool accepts `name`, `description`, and optionally `project_type` (a human-readable label like "Frontend"). Tasks and projects are always bound to the active product (enforced server-side).
 
 2. **Tenant Key:** Never pass `tenant_key` to MCP tools. It is auto-injected by the MCP security layer.
 
@@ -465,6 +477,7 @@ Task flags:
 Project flags:
 - --project "Project Name" (triggers direct project mode)
 - --description "Detailed description" (optional)
+- --type "Type Label" (optional, human-readable project type e.g. "Frontend", "Backend")
 
 ### Step 2: Route to Mode
 - If arguments contain --name or --task -> Direct Task Mode
@@ -479,21 +492,23 @@ Project flags:
 ## Direct Project Mode
 1. Parse and validate flags (project name required)
 2. If --description missing, generate from conversation context
-3. Call GiljoAI MCP tool create_project with: name, description
+3. Call GiljoAI MCP tool create_project with: name, description, project_type (if --type provided)
 4. Confirm success with project ID. Note: project created as inactive.
+5. If --type was provided but doesn't match an existing project type, the project is created without a type (no error).
 
 ## Interactive Mode
 1. Review conversation context to suggest task vs project
 2. Present suggestion with generated title/description
 3. Ask user to confirm type (task or project)
 4. For tasks: ask category (frontend/backend/database/infra/docs/general) and priority (low/medium/high/critical)
-5. For projects: confirm name and description
+5. For projects: confirm name and description, ask for optional project type label
 6. Call appropriate MCP tool and confirm success
 
 ## Important Notes
 - Never pass tenant_key to MCP tools (auto-injected)
 - Both tasks and projects require an active product (server-side enforced)
 - Projects are created as inactive — user activates via dashboard
+- The create_project MCP tool accepts an optional project_type parameter (human-readable label like "Frontend")
 \"\"\"
 """
 
@@ -660,6 +675,7 @@ When arguments are empty or contain no recognized flags, use conversation contex
 **Project flags:**
 - `--project "Project Name"` (triggers direct project mode)
 - `--description "Detailed description"` (optional)
+- `--type "Type Label"` (optional, human-readable project type e.g. "Frontend", "Backend")
 
 ### Step 2: Route to Mode
 - If arguments contain `--name` or `--task` -> Direct Task Mode
@@ -674,21 +690,23 @@ When arguments are empty or contain no recognized flags, use conversation contex
 ## Direct Project Mode
 1. Parse and validate flags (project name required)
 2. If `--description` missing, generate from conversation context
-3. Call GiljoAI MCP tool `create_project` with: name, description
+3. Call GiljoAI MCP tool `create_project` with: name, description, project_type (if `--type` provided)
 4. Confirm success with project ID. Note: project created as inactive.
+5. If `--type` was provided but doesn't match an existing project type, the project is created without a type (no error).
 
 ## Interactive Mode
 1. Review conversation context to suggest task vs project
 2. Present suggestion with generated title/description
 3. Ask user to confirm type (task or project)
 4. For tasks: ask category (frontend/backend/database/infra/docs/general) and priority (low/medium/high/critical)
-5. For projects: confirm name and description
+5. For projects: confirm name and description, ask for optional project type label
 6. Call appropriate MCP tool and confirm success
 
 ## Important Notes
 - Never pass `tenant_key` to MCP tools (auto-injected by security layer)
 - Both tasks and projects require an active product (server-side enforced)
 - Projects are created as inactive — user activates via dashboard
+- The `create_project` MCP tool accepts an optional `project_type` parameter (human-readable label like "Frontend")
 """
 
 # =============================================================================
