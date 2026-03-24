@@ -87,13 +87,13 @@ class TestAssemblerPlatformConsistency:
             expected = render_claude_agent(template)
             assert result["agents"][i]["content"] == expected
 
-    def test_gemini_frontmatter_kind_is_agent(self):
-        """Gemini frontmatter must have kind: agent."""
+    def test_gemini_frontmatter_kind_is_local(self):
+        """Gemini frontmatter must have kind: local (matches built-in agent format)."""
         result = self.assembler.assemble(self.templates, "gemini_cli")
         for agent in result["agents"]:
             yaml_section = agent["content"].split("---\n")[1]
             fm = yaml.safe_load(yaml_section)
-            assert fm["kind"] == "agent"
+            assert fm["kind"] == "local"
 
     def test_gemini_tools_is_yaml_list(self):
         """Gemini frontmatter tools must be a YAML list."""
