@@ -2,53 +2,51 @@
   <v-card variant="outlined" class="mb-4">
     <v-card-text>
       <div class="d-flex align-center mb-3">
-        <v-avatar size="40" rounded="0" class="mr-2">
-          <v-img src="/giljo_face_lightblue.svg" alt="GiljoAI" />
-        </v-avatar>
-        <h3 class="text-h6 mb-0">Agent Export</h3>
+        <v-icon size="28" class="mr-2" color="primary">mdi-export</v-icon>
+        <h3 class="text-h6 mb-0 mr-2">Skills, Commands and Agents Export</h3>
+        <v-tooltip location="top" max-width="400">
+          <template #activator="{ props }">
+            <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
+          </template>
+          <span>Generates a combined bootstrap prompt that installs slash commands and agent templates in one step. Paste into your CLI tool.</span>
+        </v-tooltip>
       </div>
 
-      <!-- Section 1: One-Time Setup -->
       <div class="mb-5">
-        <div class="d-flex align-center mb-2">
-          <h4 class="text-subtitle-1 font-weight-medium mb-0 mr-2">One-Time Setup</h4>
-          <v-tooltip location="top" max-width="400">
-            <template #activator="{ props }">
-              <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
-            </template>
-            <span>Generates a combined bootstrap prompt that installs slash commands and agent templates in one step. Paste into your CLI tool.</span>
-          </v-tooltip>
-        </div>
-        <p class="text-body-2 text-medium-emphasis mb-3">
-          Generate a setup prompt for your CLI tool. Paste it into the tool to install slash commands and agent templates.
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          Generate a setup prompt for your AI coding agents.
         </p>
 
-        <div class="d-flex flex-wrap gap-3">
-          <v-btn
-            v-for="p in platforms"
-            :key="p.id"
-            variant="tonal"
-            :color="p.color"
-            :loading="setupLoading[p.id]"
-            :disabled="setupLoading[p.id]"
-            :data-testid="`setup-${p.id}`"
-            @click="generateBootstrapPrompt(p.id)"
-          >
-            <v-avatar size="20" rounded="0" class="mr-2">
-              <v-img :src="p.icon" :alt="p.label" />
-            </v-avatar>
-            Setup GiljoAI for {{ p.label }}
-          </v-btn>
-        </div>
+        <v-card variant="tonal" class="mb-0">
+          <v-card-text class="pa-3">
+            <div class="d-flex flex-wrap justify-center" style="gap: 25px;">
+              <div v-for="p in platforms" :key="p.id" class="d-flex align-center gap-2">
+                <v-avatar size="24" rounded="0">
+                  <v-img :src="p.icon" :alt="p.label" />
+                </v-avatar>
+                <v-btn
+                  variant="flat"
+                  color="primary"
+                  :loading="setupLoading[p.id]"
+                  :disabled="setupLoading[p.id]"
+                  :data-testid="`setup-${p.id}`"
+                  @click="generateBootstrapPrompt(p.id)"
+                >
+                  {{ p.buttonLabel }}
+                </v-btn>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
       </div>
 
       <!-- Section 2: Manual Downloads (collapsed) -->
       <v-expansion-panels variant="accordion" class="mb-4">
         <v-expansion-panel>
-          <v-expansion-panel-title>
-            <div class="d-flex align-center">
+          <v-expansion-panel-title class="manual-downloads-title">
+            <div class="d-flex align-center text-light-blue" style="font-size: 0.8125rem;">
               <v-icon start size="small">mdi-download</v-icon>
-              <span class="font-weight-medium">Manual Downloads</span>
+              Manual Downloads
               <span class="text-caption text-medium-emphasis ml-2">(advanced)</span>
             </div>
           </v-expansion-panel-title>
@@ -144,9 +142,9 @@ async function copyToClipboard(text) {
 
 // Platform definitions
 const platforms = [
-  { id: 'claude_code', label: 'Claude Code', icon: '/claude_pix.svg', color: 'deep-orange' },
-  { id: 'codex_cli', label: 'Codex CLI', icon: '/codex_logo.svg', color: 'green' },
-  { id: 'gemini_cli', label: 'Gemini CLI', icon: '/gemini-icon.svg', color: 'blue' },
+  { id: 'claude_code', label: 'Claude Code', buttonLabel: 'Claude Prompt', icon: '/claude_pix.svg', color: 'deep-orange' },
+  { id: 'codex_cli', label: 'Codex CLI', buttonLabel: 'Codex Prompt', icon: '/codex_logo.svg', color: 'green' },
+  { id: 'gemini_cli', label: 'Gemini CLI', buttonLabel: 'Gemini Prompt', icon: '/gemini-icon.svg', color: 'blue' },
 ]
 
 // Bootstrap prompt templates (must match backend slash_command_templates.py)
@@ -303,5 +301,10 @@ code {
 
 .gap-3 {
   gap: 12px;
+}
+
+.manual-downloads-title {
+  padding: 8px 0 !important;
+  min-height: unset !important;
 }
 </style>
