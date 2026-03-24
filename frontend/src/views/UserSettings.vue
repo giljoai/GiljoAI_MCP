@@ -68,10 +68,19 @@
       <!-- Setup Settings -->
       <v-window-item value="startup">
         <v-card data-test="startup-settings">
-          <v-card-title>Startup</v-card-title>
+          <v-card-title class="d-flex align-center justify-space-between">
+            <span>Startup</span>
+            <v-btn
+              v-if="startupRef?.setupFinished"
+              variant="text"
+              color="primary"
+              icon="mdi-refresh"
+              @click="startupRef?.resetChecklist()"
+            />
+          </v-card-title>
           <v-card-subtitle>Visual setup quick start</v-card-subtitle>
           <v-card-text>
-            <StartupQuickStart :git-enabled="gitEnabled" :serena-enabled="serenaEnabled" />
+            <StartupQuickStart ref="startupRef" :git-enabled="gitEnabled" :serena-enabled="serenaEnabled" />
           </v-card-text>
         </v-card>
       </v-window-item>
@@ -228,6 +237,7 @@ const gitEnabled = ref(false)
 const templateExportEvent = ref(null)
 provide('templateExportEvent', templateExportEvent)
 const togglingGit = ref(false)
+const startupRef = ref(null)
 
 // Settings object
 const settings = ref({
@@ -324,7 +334,12 @@ onMounted(async () => {
   maybeShowIntroTour()
 })
 
-watch(activeTab, () => {
+watch(activeTab, (newTab) => {
+  // Push tab to URL so browser back button returns to previous tab
+  const currentQuery = router.currentRoute.value.query
+  if (currentQuery.tab !== newTab) {
+    router.push({ query: { ...currentQuery, tab: newTab } })
+  }
   maybeShowIntroTour()
 })
 

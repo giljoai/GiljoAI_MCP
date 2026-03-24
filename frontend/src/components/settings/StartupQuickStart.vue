@@ -4,21 +4,22 @@
     <v-card variant="outlined" class="mb-4 setup-checklist">
       <v-card-text>
         <div class="d-flex flex-column align-center ga-1 mb-3 text-center">
-          <div class="text-h6 font-weight-bold">My setup check list!</div>
+          <div class="text-h6 font-weight-bold">{{ checklistTitle }}</div>
         </div>
 
-        <div class="checklist-grid">
+        <div class="checklist-grid" :class="{ finished: setupFinished }">
           <div class="checklist-items-row">
             <div v-for="item in checklistItems" :key="item.id" class="checklist-item">
               <v-checkbox-btn
                 v-model="checklist[item.id]"
                 density="compact"
                 hide-details
-                color="secondary"
+                :color="setupFinished ? 'success' : 'secondary'"
                 class="checklist-item-checkbox"
                 false-icon="mdi-radiobox-blank"
                 true-icon="mdi-radiobox-marked"
                 :aria-label="item.label"
+                :disabled="setupFinished || !isStepReachable(item.id)"
                 @update:model-value="() => handleChecklistToggle(item)"
               />
               <div class="checklist-item-label">
@@ -31,8 +32,8 @@
             class="checklist-bar"
             aria-label="Setup progress"
             :style="{
-              '--progress': checklistProgress,
-              '--progress-color': checklistCompleted === checklistItems.length ? 'rgb(var(--v-theme-success))' : 'rgb(var(--v-theme-secondary))',
+              '--progress': setupFinished ? 1 : checklistProgress,
+              '--progress-color': setupFinished ? 'rgb(var(--v-theme-success))' : (checklistCompleted === checklistItems.length ? 'rgb(var(--v-theme-success))' : 'rgb(var(--v-theme-secondary))'),
             }"
           >
             <div class="checklist-progress-track" />
@@ -42,11 +43,17 @@
                 v-for="item in checklistItems"
                 :key="`${item.id}-dot`"
                 class="checklist-dot"
-                :class="{ done: checklist[item.id] }"
+                :class="{ done: checklist[item.id], finished: setupFinished }"
                 :title="item.label"
               />
             </div>
           </div>
+        </div>
+
+        <div v-if="allChecked && !setupFinished" class="d-flex justify-center mt-4">
+          <v-btn color="success" variant="flat" @click="finishSetup">
+            Finished
+          </v-btn>
         </div>
       </v-card-text>
     </v-card>
@@ -168,6 +175,7 @@ const props = defineProps({
 const router = useRouter()
 
 const CHECKLIST_STORAGE_KEY = 'giljo_startup_checklist_v1'
+const FINISHED_STORAGE_KEY = 'giljo_startup_finished_v1'
 const checklistItems = [
   { id: 'tools', label: 'Installed agentic CLI tools', stepId: 'tools' },
   { id: 'connect', label: 'Attach MCP server', stepId: 'connect' },
@@ -332,14 +340,24 @@ const productSteps = [
 const accentColor = computed(() => 'primary')
 
 const activeStepId = ref(null)
+const setupFinished = ref(false)
 
 const activeStep = computed(() =>
   activeStepId.value ? setupSteps.find((s) => s.id === activeStepId.value) : null,
 )
 
-const allSetupComplete = computed(() =>
+const allChecked = computed(() =>
   checklistItems.every((item) => checklist.value[item.id]),
 )
+
+const allSetupComplete = computed(() => allChecked.value && setupFinished.value)
+
+const checklistTitle = computed(() => {
+  if (setupFinished.value) return 'Congratulations! You are set up!'
+  const anyChecked = checklistItems.some((item) => checklist.value[item.id])
+  if (!anyChecked) return 'My setup check list, Lets get going!'
+  return 'My setup check list!'
+})
 
 const checklistCompleted = computed(() => checklistItems.filter((i) => checklist.value[i.id]).length)
 const checklistProgress = computed(() => {
@@ -369,9 +387,14 @@ const mcpHttpSnippet = computed(() => {
 function loadChecklist() {
   try {
     const raw = localStorage.getItem(CHECKLIST_STORAGE_KEY)
-    if (!raw) return
-    const parsed = JSON.parse(raw)
-    checklist.value = { ...checklist.value, ...parsed }
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      checklist.value = { ...checklist.value, ...parsed }
+    }
+    const finishedRaw = localStorage.getItem(FINISHED_STORAGE_KEY)
+    if (finishedRaw) {
+      setupFinished.value = JSON.parse(finishedRaw)
+    }
   } catch {
     // ignore
   }
@@ -385,9 +408,54 @@ function saveChecklist() {
   }
 }
 
+function isStepReachable(stepId) {
+  const idx = checklistItems.findIndex((i) => i.id === stepId)
+  if (idx === 0) return true
+  // Can only reach step N if step N-1 is checked
+  return checklist.value[checklistItems[idx - 1].id]
+}
+
 function handleChecklistToggle(item) {
-  activeStepId.value = item.id
+  // If unchecking, also uncheck all subsequent steps
+  const idx = checklistItems.findIndex((i) => i.id === item.id)
+  if (!checklist.value[item.id]) {
+    for (let i = idx + 1; i < checklistItems.length; i++) {
+      checklist.value[checklistItems[i].id] = false
+    }
+    // Reset finished state if any item is unchecked
+    setupFinished.value = false
+    saveFinished()
+  }
+
+  // Show the card for the last checked item
+  const lastChecked = [...checklistItems].reverse().find((i) => checklist.value[i.id])
+  activeStepId.value = lastChecked ? lastChecked.id : null
+
   saveChecklist()
+}
+
+function resetChecklist() {
+  for (const item of checklistItems) {
+    checklist.value[item.id] = false
+  }
+  setupFinished.value = false
+  activeStepId.value = null
+  saveChecklist()
+  saveFinished()
+}
+
+function finishSetup() {
+  setupFinished.value = true
+  activeStepId.value = null
+  saveFinished()
+}
+
+function saveFinished() {
+  try {
+    localStorage.setItem(FINISHED_STORAGE_KEY, JSON.stringify(setupFinished.value))
+  } catch {
+    // ignore
+  }
 }
 
 function goUserSettingsTab(tab) {
@@ -409,6 +477,8 @@ function runAction(action) {
 onMounted(() => {
   loadChecklist()
 })
+
+defineExpose({ setupFinished, resetChecklist })
 </script>
 
 <style scoped>
@@ -485,6 +555,19 @@ onMounted(() => {
 .checklist-dot.done {
   background: rgb(var(--v-theme-secondary));
   border-color: rgb(var(--v-theme-secondary));
+}
+
+.checklist-dot.finished {
+  background: rgb(var(--v-theme-success));
+  border-color: rgb(var(--v-theme-success));
+}
+
+.checklist-grid.finished .checklist-progress-track {
+  background: rgb(var(--v-theme-success));
+}
+
+.checklist-grid.finished .checklist-item-label {
+  color: rgb(var(--v-theme-success));
 }
 
 .checklist-dots {
