@@ -13,7 +13,7 @@
           <template #activator="{ props }">
             <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
           </template>
-          <span>Connect your AI coding tool to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI. Creates MCP integration CLI command for your coding agent of choice.</span>
+          <span>Connect your AI coding agent to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI. Creates an MCP integration CLI command for your AI coding agent of choice.</span>
         </v-tooltip>
       </div>
       <p class="text-body-2 text-medium-emphasis mb-4">

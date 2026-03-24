@@ -242,7 +242,7 @@ Use this when you want a Linux-first installation experience without relying on 
 - Connection pooling configuration
 
 **Integrations Tab** (Handover 0027):
-- Agent Coding Tools section:
+- AI Coding Agents section:
   - Claude Code CLI (MCP JSON config)
   - Codex CLI (TOML config)
   - Gemini CLI (JSON config with capabilities)

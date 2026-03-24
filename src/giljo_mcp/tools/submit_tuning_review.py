@@ -4,7 +4,7 @@ MCP Tool: submit_tuning_review (Tool #24, Handover 0831)
 Allows agents to submit structured product context tuning proposals
 after analyzing current product context against recent project history.
 
-Called by the user's CLI tool after reviewing the tuning comparison prompt.
+Called by the user's AI coding agent after reviewing the tuning comparison prompt.
 """
 
 import logging
@@ -71,7 +71,7 @@ async def submit_tuning_review(
     """
     Submit product context tuning proposals.
 
-    Called by the user's CLI tool after analyzing the comparison prompt.
+    Called by the user's AI coding agent after analyzing the comparison prompt.
     Stores proposals on the product for user review in the dashboard.
 
     Args:

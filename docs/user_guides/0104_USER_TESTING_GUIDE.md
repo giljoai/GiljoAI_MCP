@@ -1,6 +1,6 @@
 # Testing Guide - Fresh Install & CLI Downloads
 
-**What You're Testing**: Fresh installation flow + multi-CLI agent/slash command downloads
+**What You're Testing**: Fresh installation flow + multi-AI coding agent/slash command downloads
 
 **Prerequisites**:
 - Laptop for fresh install (Windows/Mac/Linux)

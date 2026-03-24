@@ -9,7 +9,7 @@
 
 ## Problem Statement
 
-In multi-terminal mode, each AI coding tool (Claude Code, Codex CLI, Gemini CLI) runs in its own terminal with its own agent session. These terminals **cannot communicate directly** -- the GiljoAI MCP server is the only coordination layer. This creates several gaps:
+In multi-terminal mode, each AI coding agent (Claude Code, Codex CLI, Gemini CLI) runs in its own terminal with its own agent session. These terminals **cannot communicate directly** -- the GiljoAI MCP server is the only coordination layer. This creates several gaps:
 
 1. **No polling mechanism** -- Once an orchestrator completes staging, it has no way to periodically check on spawned agents. It either blocks waiting or exits.
 2. **Completed agents are dead** -- When Agent A finishes and another agent sends it a "fix this" message, Agent A cannot re-enter a working state. The status transition `complete -> working` does not exist.

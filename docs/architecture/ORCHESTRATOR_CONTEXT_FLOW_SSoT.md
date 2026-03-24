@@ -601,7 +601,7 @@ def _inject_git_instructions(self, git_config: dict) -> str:
     """
     Inject git command instructions when Git integration enabled.
 
-    Note: This does NOT fetch commits (CLI agents do that using user's credentials).
+    Note: This does NOT fetch commits (AI coding agents do that using user's credentials).
     This adds INSTRUCTIONS for agents to run git commands.
     """
     commit_limit = git_config.get("commit_limit", 20)

@@ -40,15 +40,15 @@ When you use the Community Edition, the following data is stored in **your local
 
 ---
 
-## 3. Third-Party AI Tools
+## 3. Third-Party AI Coding Agents
 
-GiljoAI MCP coordinates with AI coding tools (Claude Code, Codex CLI, Gemini CLI) that you configure and connect yourself. When your AI tool connects to GiljoAI MCP via MCP protocol:
+GiljoAI MCP coordinates with AI coding agents (Claude Code, Codex CLI, Gemini CLI) that you configure and connect yourself. When your AI coding agent connects to GiljoAI MCP via MCP protocol:
 
-- Your AI tool sends requests to your local GiljoAI MCP server
+- Your AI coding agent sends requests to your local GiljoAI MCP server
 - GiljoAI MCP responds with context, tool results, and coordination data
-- Your AI tool then communicates with its own AI model provider (Anthropic, OpenAI, Google, etc.)
+- Your AI coding agent then communicates with its own AI model provider (Anthropic, OpenAI, Google, etc.)
 
-**The data your AI tool sends to its model provider is governed by that provider's privacy policy, not ours.** GiljoAI MCP has no control over and no visibility into what your AI tool transmits to its backend.
+**The data your AI coding agent sends to its model provider is governed by that provider's privacy policy, not ours.** GiljoAI MCP has no control over and no visibility into what your AI coding agent transmits to its backend.
 
 We recommend reviewing:
 - [Anthropic's Privacy Policy](https://www.anthropic.com/privacy) (Claude Code)
@@ -127,6 +127,6 @@ Questions about this Privacy Policy:
 | Does the software phone home? | No. Zero telemetry, zero analytics. |
 | Where is my data stored? | In your local PostgreSQL database, on your machine. |
 | Can GiljoAI access my data? | No. We have no connection to your installation. |
-| What about my AI tool? | Your AI tool's data practices are governed by that tool's provider. |
+| What about my AI coding agent? | Your AI coding agent's data practices are governed by that agent's provider. |
 | Does the website track me? | No cookies, no analytics. Standard server logs only. |
 | What about SaaS Edition? | Will have its own privacy policy when launched. |

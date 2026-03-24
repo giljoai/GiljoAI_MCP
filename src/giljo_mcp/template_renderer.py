@@ -209,7 +209,7 @@ def _build_body_parts(template: AgentTemplate) -> list[str]:
 def render_generic_agent(template: AgentTemplate) -> str:
     """Render agent template to generic plaintext format.
 
-    Used for Codex, Gemini, and other generic CLI tools.
+    Used for Codex, Gemini, and other generic AI coding agents.
 
     Args:
         template: AgentTemplate model instance
@@ -286,7 +286,7 @@ def render_gemini_agent(template: AgentTemplate) -> str:
 def render_codex_agent(template: AgentTemplate) -> dict[str, object]:
     """Render a single AgentTemplate to Codex CLI structured data.
 
-    Codex CLI agents are configured via TOML, not markdown files.
+    Codex AI coding agents are configured via TOML, not markdown files.
     Returns a dict that an LLM can use to write the config locally.
 
     Handover 0836a: Multi-platform agent export.
@@ -306,9 +306,9 @@ def render_codex_agent(template: AgentTemplate) -> dict[str, object]:
     }
 
 
-# TOML format reference string for Codex CLI agent configuration
+# TOML format reference string for Codex AI coding agent configuration
 CODEX_TOML_FORMAT_REFERENCE = """\
-# Codex CLI agent configuration (add to ~/.codex/config.toml)
+# Codex AI coding agent configuration (add to ~/.codex/config.toml)
 # Each agent is a [agents.<name>] section.
 #
 # [agents.implementer-frontend]

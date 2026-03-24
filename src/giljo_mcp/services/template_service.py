@@ -273,7 +273,7 @@ class TemplateService:
             content: Template content/text (required)
             role: Agent role this template is for
             category: Template category (default: "custom")
-            cli_tool: CLI tool identifier
+            cli_tool: AI coding agent identifier
             background_color: Background color for UI
             product_id: Parent product ID if template belongs to a product
             tenant_key: Tenant key for multi-tenancy (auto-determined if not provided)

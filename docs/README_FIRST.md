@@ -24,8 +24,8 @@
 
 **New Implementation Features** (October 2025):
 
-- **[AI Tool Configuration Management](guides/AI_TOOL_CONFIGURATION_MANAGEMENT.md)** - Multi-AI tool support via user settings (Claude, CODEX, Gemini)
-- **Template System Evolution** - Database-backed templates with AI tool preferences (managed via UnifiedTemplateManager)
+- **[AI Tool Configuration Management](guides/AI_TOOL_CONFIGURATION_MANAGEMENT.md)** - Multi-AI coding agent support via user settings (Claude, CODEX, Gemini)
+- **Template System Evolution** - Database-backed templates with AI coding agent preferences (managed via UnifiedTemplateManager)
 
 **Recent Production Features**:
 
@@ -240,9 +240,9 @@ python install.py
 - Live updates via WebSocket
 - Multi-tenant data isolation
 
-**AI Tool Configuration** (Avatar → My Settings → API and Integrations):
-- **AI Tool MCP Configurator**: One-click setup for Claude Code, CODEX, Gemini
-- **Manual AI Tool Configuration**: Custom setup for any AI tool
+**AI Coding Agent Configuration** (Avatar → My Settings → API and Integrations):
+- **AI Coding Agent MCP Configurator**: One-click setup for Claude Code, CODEX, Gemini
+- **Manual AI Coding Agent Configuration**: Custom setup for any AI coding agent
 - **Personal API Keys**: Generate and manage user API keys
 - **Serena MCP**: Advanced code analysis integration
 
@@ -502,7 +502,7 @@ database:
 
 **Endpoints**:
 - `/auth/*` - Authentication (login, password change)
-- `/users/*` - User settings and AI tool configuration
+- `/users/*` - User settings and AI coding agent configuration
 - `/projects/*` - Project CRUD
 - `/agents/*` - Agent management
 - `/tasks/*` - Task management
@@ -612,7 +612,7 @@ database:
   - `ApiKeyManager.vue` (266 lines) - Full-featured key management UI
   - `ApiKeyWizard.vue` - Key generation modal
   - Integrated into UserSettings → API and Integrations tab
-- **AI Tools Integration**:
+- **AI Coding Agent Integration**:
   - `AIToolSetup.vue` - Automatic key generation during config creation
   - One-click generation for Claude Code, CODEX, Gemini
   - User API keys automatically embedded in configurations
@@ -670,7 +670,7 @@ python install.py
 # 4. Access application
 # Browser opens to http://localhost:7274
 # First Login
-# Configure AI tools via Avatar → My Settings → API & Integrations
+# Configure AI coding agents via Avatar → My Settings → API & Integrations
 # Start building!
 ```
 
