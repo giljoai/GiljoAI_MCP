@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-23 (0836a-e ALL COMPLETE, 0828+0831 active)
+**Last Updated:** 2026-03-23 (0836a-e COMPLETE, 0837+0828+0831 active)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0829+0830+0832+0833+0834+0835+0836(a-e) COMPLETE. 0828+0831 ACTIVE. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0829+0830+0832+0833+0834+0835+0836(a-e) COMPLETE. 0837(a-d)+0828+0831 ACTIVE. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -29,6 +29,11 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
+| 0837 | Project Creation Taxonomy Fix (Parent) | Not Started | Critical | MCP create_project broken after first project per tenant — NULLS NOT DISTINCT constraint lockout. Auto-assign series_number, resolve type by label, audit all constraints. |
+| 0837a | Auto-Assign Series Number | Not Started | Critical | Root cause fix: auto-assign MAX+1 with FOR UPDATE lock when series_number not provided. |
+| 0837b | Type Resolution by Label + MCP Schema | Not Started | High | Accept optional `type` param ("Frontend" not UUID), resolve via project_types table. |
+| 0837c | Slash Command Template Updates | Not Started | Medium | Update /gil_add templates to pass type param for projects across all 3 platforms. |
+| 0837d | Multi-Tenant Constraint Audit | Not Started | High | Audit all UniqueConstraints for similar lockout patterns. 12 constraints to verify. |
 | 0828 | OAuth 2.1 PKCE Flow for MCP Client Authorization | Not Started | High | OAuth for GUI-based MCP clients (Claude Desktop). CE scope — uses existing user credentials. |
 | 0831 | Product Context Tuning — Scope Drift Detection & Review | Not Started | Medium | Post-closeout context review: compares product context vs 360 memory + git to detect drift, proposes updates. CE scope. |
 
