@@ -208,8 +208,34 @@ class ProjectService:
                         context={"subseries": subseries},
                     )
 
+                # Auto-assign series_number when not provided (Handover 0837a)
+                # This prevents uq_project_taxonomy violations for MCP callers
+                # that don't supply taxonomy fields.
+                if series_number is None:
+                    # Lock matching rows to prevent concurrent duplicates,
+                    # then compute max. FOR UPDATE can't be used with aggregates.
+                    # Include deleted rows: uq_project_taxonomy doesn't exclude them.
+                    lock_query = select(Project.id).where(
+                        Project.tenant_key == tenant_key,
+                    )
+                    if project_type_id:
+                        lock_query = lock_query.where(Project.project_type_id == project_type_id)
+                    else:
+                        lock_query = lock_query.where(Project.project_type_id.is_(None))
+                    await session.execute(lock_query.with_for_update())
+
+                    max_query = select(func.coalesce(func.max(Project.series_number), 0) + 1).where(
+                        Project.tenant_key == tenant_key,
+                    )
+                    if project_type_id:
+                        max_query = max_query.where(Project.project_type_id == project_type_id)
+                    else:
+                        max_query = max_query.where(Project.project_type_id.is_(None))
+                    result = await session.execute(max_query)
+                    series_number = result.scalar_one()
+
                 # Application-level duplicate check before insert
-                if series_number is not None:
+                else:
                     dup_query = select(Project.id).where(
                         Project.tenant_key == tenant_key,
                         Project.series_number == series_number,
