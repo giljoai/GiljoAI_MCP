@@ -367,10 +367,20 @@ You are the GiljoAI agent template installer for Gemini CLI.
 3. Ask the user which model they prefer per agent (default: gemini-2.5-pro)
    The user can set one model for all or pick per-agent.
 4. Ask: Install as project agents (`.gemini/agents/`) or user agents (`~/.gemini/agents/`)?
+   NOTE: Project agents require folder trust. If the user picks project agents,
+   remind them to run `/permissions trust` in Gemini CLI for the project folder.
 5. If the target directory has existing agent `.md` files, back them up:
    rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
 6. Write each agent file with the user's model selection applied to the `model` frontmatter field
-7. Instruct the user to restart Gemini CLI
+7. **Enable experimental agents flag** (MANDATORY):
+   Read the user's `.gemini/settings.json` (project-level or `~/.gemini/settings.json` for user-level).
+   If `experimental.enableAgents` is not already set to `true`, add it:
+   ```json
+   { "experimental": { "enableAgents": true } }
+   ```
+   Merge with existing settings — do NOT overwrite MCP server configs or other settings.
+   Show the diff before writing. This flag is required for custom agents to load.
+8. Instruct the user to restart Gemini CLI
 
 ## Gemini Agent Format Reference
 
@@ -402,11 +412,20 @@ CRITICAL format rules:
 - `mcp_*` grants access to all configured MCP servers
 - Colors are NOT supported — omit any color fields
 
+## Troubleshooting
+
+If agents don't appear after restart:
+1. Check folder trust: run `/permissions trust` in Gemini CLI
+2. Verify `experimental.enableAgents` is `true` in settings.json
+3. Check YAML frontmatter: `kind` must be `local`, tools must use correct names
+4. Run `/agents list` to see registered agents
+
 ## Rules
 
 - Do NOT modify agent names, descriptions, or body content from the server
 - Do NOT modify GiljoAI protocol sections
 - User-configurable fields: model selection, max_turns (default 50)
+- ALWAYS ensure experimental.enableAgents is set in settings.json
 - Use run_shell_command tool for file operations (cross-platform)
 - Unix paths work on ALL platforms
 \"\"\"
