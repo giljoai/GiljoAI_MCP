@@ -117,7 +117,7 @@ Content-Type: application/json
 | `status` | string | Job status (active, completed, cancelled) |
 | `progress` | integer | Completion progress 0-100% |
 | `spawned_by` | string | Parent agent ID who spawned this job (nullable) |
-| `tool_type` | string | AI tool assigned (claude-code, codex, gemini, universal) |
+| `tool_type` | string | AI coding agent assigned (claude-code, codex, gemini, universal) |
 | `context_chunks` | array | Context chunk IDs associated with job |
 | `messages` | array | Communication messages for agent |
 | `started_at` | string (ISO 8601) | When first execution started (nullable) |

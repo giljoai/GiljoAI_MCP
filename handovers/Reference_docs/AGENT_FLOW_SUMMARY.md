@@ -268,12 +268,12 @@ Zero cross-tenant data leakage possible.
 - GiljoAI MCP Server can be deployed on LAN, WAN, or hosted
 - Backend and Database connect to the MCP Server
 - Server exposes two interfaces: Web Frontend Visualization + MCP over HTTP Server
-- Developer PC connects via Browser (to Web Frontend) and MCP-enabled Agentic Coding tools via CLI/Terminal (to MCP Server)
+- Developer PC connects via Browser (to Web Frontend) and MCP-enabled AI coding agents via CLI/Terminal (to MCP Server)
 
 ### Slide 3: Multiuser Architecture
 - Single GiljoAI MCP Server (LAN/WAN/Hosted) with Backend and Database
 - Multiple Developer PCs can connect simultaneously
-- Each Developer PC has: Browser + MCP-enabled Agentic Coding tools (CLI/Terminal)
+- Each Developer PC has: Browser + MCP-enabled AI coding agents (CLI/Terminal)
 - All connect to the same Web Frontend and MCP over HTTP Server
 
 ### Slide 4: Server Application Layers
@@ -321,7 +321,7 @@ Zero cross-tenant data leakage possible.
 
 ### Slide 7: Application Setup Overview
 1. Navigate to user settings
-2. MCP tool prompt for attaching Terminal CLI tool (Claude, Codex, Gemini)
+2. MCP tool prompt for attaching Terminal AI coding agent (Claude, Codex, Gemini)
 3. Prompt copy to install slash commands
 4. Prompt copy for installing agents (Claude Code CLI)
 5. Enable Serena MCP and custom configure

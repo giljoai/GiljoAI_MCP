@@ -12,7 +12,7 @@
 - **[Simple_Vision.md](../handovers/Simple_Vision.md)** - User journey including MCP integration setup
 - **[start_to_finish_agent_FLOW.md](../handovers/start_to_finish_agent_FLOW.md)** - Technical verification
 
-**Supported AI Tools** (native MCP support):
+**Supported AI Coding Agents** (native MCP support):
 - **Claude Code** - via `claude-code mcp add` command
 - **Codex CLI** - via `codex mcp add` command  
 - **Gemini CLI** - via `gemini mcp add` command

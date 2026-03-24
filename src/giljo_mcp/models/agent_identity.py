@@ -235,7 +235,7 @@ class AgentExecution(Base):
         String(20),
         default="universal",
         nullable=False,
-        comment="AI coding tool assigned (claude-code, codex, gemini, universal)",
+        comment="AI coding agent assigned (claude-code, codex, gemini, universal)",
     )
 
     # Message counter columns (Handover 0387e - AUTHORITATIVE)

@@ -51,7 +51,7 @@ After running `python install.py`, you'll see the installation summary:
 
 ⚠️  IMPORTANT FIRST STEPS:
    1. Complete setup wizard (create admin account)
-   2. Configure AI tools via Avatar → My Settings → API & Integrations
+   2. Configure AI coding agents via Avatar → My Settings → API & Integrations
    3. Configure firewall if needed for network access
 
 Happy orchestrating! 🤖✨

@@ -6,7 +6,7 @@
 **Sources:** SaaS Readiness Briefing v1.0.2, Priority Order, Handover Instructions, Complete Vision Document, Server Architecture & Tech Stack, Simple Vision, Binary Docs Licensing Brief, 0770 SaaS Edition Proposal, Workflow Architecture (PDF/PPTX), Edition Isolation Guide, past session history (Feb–Mar 2026)
 
 ### Developer Working Model
-- **Solo vibe coder** using AI agent coding tools (Claude Code CLI, Codex, Gemini) since January 2026
+- **Solo vibe coder** using AI coding agents (Claude Code CLI, Codex, Gemini) since January 2026
 - **Parallel agent execution** — multiple agents can work simultaneously via the handover system
 - **~8 hours/day** of active agent-assisted development
 - **Target CE launch: 4 weeks (approx. April 5, 2026)**

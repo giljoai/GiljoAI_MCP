@@ -13,7 +13,7 @@
 - **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - Complete user journey with agent coordination
 - **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Technical agent flow
 
-**Supported AI Tools**:
+**Supported AI Coding Agents**:
 - Claude Code, Codex CLI, Gemini CLI (all with native MCP support)
 
 ---

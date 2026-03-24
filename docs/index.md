@@ -28,7 +28,7 @@ Tags: `URGENT` (80% relevancy, minor updates), `OUTDATED` (relevant, needs refre
 - `agent_templates/ui_visual_designer__FRAGMENTED.md` — ui visual designer documentation for GiljoAI MCP (agent_templates) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `agent_templates/ux_expert__FRAGMENTED.md` — ux expert documentation for GiljoAI MCP (agent_templates) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `agents/README.md` — README documentation for GiljoAI MCP (agents) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
-- `AI_CODING_TOOLS_COMPARISON__FRAGMENTED.md` — AI CODING TOOLS COMPARISON documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
+- `AI_CODING_TOOLS_COMPARISON__FRAGMENTED.md` — AI CODING AGENTS COMPARISON documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `AI_TOOL_INTEGRATION__FRAGMENTED.md` — AI TOOL INTEGRATION documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `AKE_MCP_ORCHESTRATOR_ANALYSIS__FRAGMENTED.md` — AKE MCP ORCHESTRATOR ANALYSIS documentation for GiljoAI MCP purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
 - `api/api_implementation_guide__FRAGMENTED.md` — api implementation documentation for GiljoAI MCP (api) purpose, usage, and context for maintainers and agents. — Tag: FRAGMENTED
@@ -429,6 +429,6 @@ Tags: `URGENT` (80% relevancy, minor updates), `OUTDATED` (relevant, needs refre
 
 ## New Implementation Documentation (October 2025 Harmonization)
 
-- `AI_TOOL_CONFIGURATION_MANAGEMENT.md` — Multi-AI tool support and configuration generator for Claude Code, CODEX, and Gemini CLI integration. — Tag: CURRENT
+- `AI_TOOL_CONFIGURATION_MANAGEMENT.md` — Multi-AI coding agent support and configuration generator for Claude Code, CODEX, and Gemini CLI integration. — Tag: CURRENT
 - `ENHANCED_SETUP_FLOW.md` — Two-phase authentication redesign with WebSocket-enabled setup and welcome screen workflow. — Tag: CURRENT
-- `TEMPLATE_SYSTEM_EVOLUTION.md` — Database-backed template management system replacing legacy file-based templates with AI tool preferences. — Tag: CURRENT
+- `TEMPLATE_SYSTEM_EVOLUTION.md` — Database-backed template management system replacing legacy file-based templates with AI coding agent preferences. — Tag: CURRENT

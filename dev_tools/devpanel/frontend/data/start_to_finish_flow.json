@@ -53,11 +53,11 @@
         "id": "step3",
         "label": "Step 3\nMCP Agent Staging",
         "details": [
-          "1. **CLI Tool Installation** - User downloads and installs templates",
+          "1. **AI Coding Agent Installation** - User downloads and installs templates",
           "[ ] Verify download endpoint serves ZIP file",
-          "[ ] Confirm CLI tool extracts to correct location",
+          "[ ] Confirm AI coding agent extracts to correct location",
           "[ ] Check MCP config update",
-          "[ ] Verify agents appear in CLI tool registry",
+          "[ ] Verify agents appear in AI coding agent registry",
           "File: `api/endpoints/downloads.py` (download endpoint)",
           "Documentation: Claude Code MCP integration docs",
           ""
