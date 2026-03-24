@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-23 (0834+0835+0836 archived, 0837+0828+0831 active)
+**Last Updated:** 2026-03-23 (0831+0834+0835+0836 archived, 0837+0828 active)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0829+0830+0832+0833+0834+0835+0836(a-e) COMPLETE. 0837(a-d)+0828+0831 ACTIVE. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0829+0830+0831+0832+0833+0834+0835+0836(a-e) COMPLETE. 0837(a-d)+0828 ACTIVE. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -35,7 +35,6 @@
 | 0837c | Slash Command Template Updates | Not Started | Medium | Update /gil_add templates to pass type param for projects across all 3 platforms. |
 | 0837d | Multi-Tenant Constraint Audit | Not Started | High | Audit all UniqueConstraints for similar lockout patterns. 12 constraints to verify. |
 | 0828 | OAuth 2.1 PKCE Flow for MCP Client Authorization | Not Started | High | OAuth for GUI-based MCP clients (Claude Desktop). CE scope — uses existing user credentials. |
-| 0831 | Product Context Tuning — Scope Drift Detection & Review | Not Started | Medium | Post-closeout context review: compares product context vs 360 memory + git to detect drift, proposes updates. CE scope. |
 
 ### Deferred (Still in Root Folder)
 
@@ -48,6 +47,7 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0831 | Product Context Tuning — Scope Drift Detection & Review | 2026-03-23 | COMPLETE — ProductTuningService, submit_tuning_review MCP tool #24, 5 tuning endpoints, 2 Vue components, 39 tests, staleness notification hook. |
 | 0836 | Multi-Platform Agent Template Export (all sub-handovers) | 2026-03-23 | COMPLETE — 0836a-e: assembler+MCP, slash commands, frontend UI, two-phase install, Codex skill rewrite, Gemini format fix. All 3 platforms verified working. |
 | 0835 | Bearer Auth Migration & HTTPS Contextual Warnings | 2026-03-22 | COMPLETE — wizard outputs Authorization: Bearer for all CLIs, HTTPS warnings in wizard/network tab/installer, protocol toggle re-attach warning |
 | 0834 | Dynamic Protocol Resolution (HTTP/HTTPS) | 2026-03-22 | COMPLETE — all URL-generating code respects ssl_enabled config, 14 files fixed across 3 phases, integration test added |
