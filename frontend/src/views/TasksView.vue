@@ -114,7 +114,7 @@
           color="primary"
           variant="flat"
           prepend-icon="mdi-plus"
-          @click="showTaskDialog = true"
+          @click="handleNewTask"
         >
           New Task
         </v-btn>
@@ -450,8 +450,7 @@
       @confirm="showNoProductDialog = false"
     >
       <p class="text-body-1">
-        No products are set to active state. Please activate a product before converting tasks
-        to projects.
+        No products are set to active state. Please activate a product before creating or converting tasks.
       </p>
     </BaseDialog>
 
@@ -793,6 +792,14 @@ function cancelTask() {
     category: 'general',
     due_date: null,
   }
+}
+
+function handleNewTask() {
+  if (!productStore.effectiveProductId) {
+    showNoProductDialog.value = true
+    return
+  }
+  showTaskDialog.value = true
 }
 
 async function saveTask() {
