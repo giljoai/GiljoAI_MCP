@@ -2,12 +2,10 @@
   <v-card variant="outlined" class="mb-4">
     <v-card-text>
       <div class="d-flex align-center mb-3">
-        <v-avatar size="40" rounded="0" class="mr-2" color="grey-darken-2">
-          <v-icon size="28" color="white">mdi-github</v-icon>
-        </v-avatar>
+        <v-icon size="40" class="mr-2" color="white">mdi-github</v-icon>
         <div class="flex-grow-1">
           <div class="d-flex align-center">
-            <h3 class="text-h6 mb-0 mr-2">Git + 360 Memory</h3>
+            <h3 class="text-h6 mb-0 mr-2">Git + GiljoAI 360 Memory</h3>
             <v-tooltip location="top" max-width="400">
               <template #activator="{ props }">
                 <v-icon v-bind="props" size="small" color="medium-emphasis"
@@ -24,21 +22,16 @@
                 </p>
                 <p class="mt-2 mb-0 text-caption">
                   <strong>Note:</strong> Git must be configured on your system with access to your
-                  repositories.
+                  repositories. 360 Memory is always added to the project.
                 </p>
               </div>
             </v-tooltip>
           </div>
-          <p class="text-caption text-medium-emphasis mb-0">
-            Track git commits in 360 Memory for orchestrator context
-          </p>
         </div>
       </div>
 
       <p class="text-body-2 text-medium-emphasis mb-3">
-        Enable to automatically include git commit history in project summaries. Commits are stored
-        in product memory for future orchestrator reference.
-        <strong>Git configuration is your responsibility on your local system.</strong>
+        Enable to automatically include git commit history in project summaries.
       </p>
 
       <div class="d-flex align-center mb-3">
@@ -70,19 +63,15 @@
                 @update:model-value="$emit('update:enabled', $event)"
               />
             </div>
-            <v-btn
-              color="primary"
-              variant="flat"
-              size="small"
-              width="120"
-              :disabled="loading"
-              @click="$emit('openAdvanced')"
-            >
-              Advanced
-            </v-btn>
           </div>
         </v-card-text>
       </v-card>
+
+      <v-alert type="info" variant="tonal" density="compact" class="mt-4">
+        <div class="text-body-2">
+          Git configuration is your responsibility on your local system.
+        </div>
+      </v-alert>
     </v-card-text>
   </v-card>
 </template>
@@ -93,22 +82,13 @@ defineProps({
     type: Boolean,
     default: false,
   },
-  config: {
-    type: Object,
-    default: () => ({
-      use_in_prompts: false,
-      include_commit_history: true,
-      max_commits: 50,
-      branch_strategy: 'main',
-    }),
-  },
   loading: {
     type: Boolean,
     default: false,
   },
 })
 
-defineEmits(['update:enabled', 'openAdvanced'])
+defineEmits(['update:enabled'])
 </script>
 
 <style scoped>
