@@ -8,7 +8,7 @@
           <template #activator="{ props }">
             <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
           </template>
-          <span>Generates a combined bootstrap prompt that installs slash commands and agent templates in one step. Paste into your CLI tool.</span>
+          <span>Generates a combined bootstrap prompt that installs slash commands and agent templates in one step. Paste into your AI coding agent.</span>
         </v-tooltip>
       </div>
 
@@ -98,7 +98,7 @@
       <v-alert type="info" variant="tonal" density="compact">
         <div class="text-body-2">
           After setup, use <code>/gil_get_agents</code> to update agent templates and
-          <code>/gil_add</code> to create tasks and projects from your CLI tool.
+          <code>/gil_add</code> to create tasks and projects from your AI coding agent.
         </div>
       </v-alert>
     </v-card-text>

@@ -148,14 +148,14 @@
                 </span>
               </template>
               <span v-if="item.may_be_stale">
-                This template was modified after the last export. Re-export to CLI tools to get the
+                This template was modified after the last export. Re-export to your AI coding agents to get the
                 latest version.
               </span>
               <span v-else-if="item.last_exported_at">
                 Last exported: {{ formatDate(item.last_exported_at) }}
               </span>
               <span v-else>
-                This template has never been exported to CLI tools. Use the export feature to make it
+                This template has never been exported to your AI coding agents. Use the export feature to make it
                 available.
               </span>
             </v-tooltip>

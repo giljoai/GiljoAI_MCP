@@ -31,10 +31,10 @@
 | giljo.ai | giljoai.com |
 
 ### Passive Orchestrator Framing (Critical)
-GiljoAI does NOT have AI inference capabilities. It assembles context and generates structured prompts. The user's AI tool (Claude Code, Codex, Gemini) does the thinking. All messaging must reflect this:
+GiljoAI does NOT have AI inference capabilities. It assembles context and generates structured prompts. The user's AI coding agent (Claude Code, Codex, Gemini) does the thinking. All messaging must reflect this:
 - "Receives" not "sends"
 - "Agents standing by" not "orchestrating"
-- "Bring Your Own AI" — users supply their own AI tool subscription
+- "Bring Your Own AI" — users supply their own AI coding agent subscription
 
 ### Two-Edition Model
 | | Community Edition | SaaS Edition |
@@ -119,12 +119,12 @@ Organization
 
 ## 4. CLIENT-SERVER ARCHITECTURE
 
-GiljoAI is a **distributed system**. The server provides data; the AI tools execute on the client.
+GiljoAI is a **distributed system**. The server provides data; the AI coding agents execute on the client.
 
 ```
 CLIENT (Developer's Machine)              SERVER (GiljoAI MCP)
 ────────────────────────────              ────────────────────────
-AI Tool (Claude/Codex/Gemini)             FastAPI API Server (0.0.0.0:7272)
+AI Coding Agent (Claude/Codex/Gemini)      FastAPI API Server (0.0.0.0:7272)
 Project source files (local)              PostgreSQL database (localhost:5432)
 Orchestrator execution                    MCP HTTP endpoint (POST /mcp)
 Agent execution                           WebSocket server (real-time UI)
@@ -137,7 +137,7 @@ Code reading/writing                      Vue 3 dashboard (port 7274)
 **Server does:** Store product definitions, agent templates, missions, context data. Serve MCP tools. Serve dashboard UI.
 **Server does NOT:** Execute AI agents, access project files, run inference.
 
-**Client does:** Execute orchestrators and agents (in the user's AI tool), read/write project files.
+**Client does:** Execute orchestrators and agents (in the user's AI coding agent), read/write project files.
 **Client does NOT:** Store missions, agent templates, or product data.
 
 ---
@@ -161,8 +161,8 @@ Code reading/writing                      Vue 3 dashboard (port 7274)
 ### 5C. Project Workflow (Define → Stage → Execute → Close)
 1. **Define:** Create a Project under a Product. Write a human description of what you want built.
 2. **Stage:** Click "Stage" — the system assembles context from the Product and generates a structured prompt. Prompt goes to clipboard.
-3. **Paste:** Paste into your AI tool (Claude Code, Codex, Gemini). The AI reads the prompt, connects to GiljoAI via MCP.
-4. **Mission Generation:** The AI tool calls MCP tools to generate a mission plan with agent assignments.
+3. **Paste:** Paste into your AI coding agent (Claude Code, Codex, Gemini). The AI reads the prompt, connects to GiljoAI via MCP.
+4. **Mission Generation:** The AI coding agent calls MCP tools to generate a mission plan with agent assignments.
 5. **Execute:** Agents execute their assigned work. Progress visible on the real-time dashboard.
 6. **Close Out:** When complete, the system writes a closeout summary to 360 Memory. Next project starts with richer context.
 

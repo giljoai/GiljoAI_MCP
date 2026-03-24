@@ -15,7 +15,7 @@ GiljoAI MCP is a **passive orchestrator** — it manages context, generates stru
 - **PostgreSQL 14+** running locally (18 recommended)
 - **pip** (Python package manager)
 - **npm** (optional, for frontend development mode)
-- **A subscription to an AI coding tool:** Claude Code CLI, Codex CLI, Gemini CLI, or any MCP-compatible client
+- **A subscription to an AI coding agent:** Claude Code CLI, Codex CLI, Gemini CLI, or any MCP-compatible client
 
 GiljoAI MCP runs entirely on your machine. No cloud account required. No data leaves your system.
 
@@ -67,7 +67,7 @@ After account creation, you're logged into the dashboard automatically.
 
 ## Step 3: Generate an API Key
 
-Your AI tool needs an API key to connect to GiljoAI MCP.
+Your AI coding agent needs an API key to connect to GiljoAI MCP.
 
 1. Click your **avatar** (top right) → **My Settings**
 2. Go to the **API and Integrations** tab
@@ -78,9 +78,9 @@ Your key will look like: `gk_xxxxxxxxxxxx`
 
 ---
 
-## Step 4: Connect Your AI Tool
+## Step 4: Connect Your AI Coding Agent
 
-Go to **My Settings → Integrations** tab. GiljoAI provides configuration snippets for each supported tool.
+Go to **My Settings → Integrations** tab. GiljoAI provides configuration snippets for each supported AI coding agent.
 
 **Claude Code CLI:**
 
@@ -153,15 +153,15 @@ A Project is a unit of work under your Product — a feature, a refactor, a bugf
 - It generates a structured prompt pre-loaded with your product context and the orchestration protocol
 - The prompt is copied to your clipboard
 
-**This is the key moment: GiljoAI does not call any AI model.** It assembles the context and protocol. Your AI tool does the thinking.
+**This is the key moment: GiljoAI does not call any AI model.** It assembles the context and protocol. Your AI coding agent does the thinking.
 
 ---
 
 ## Step 7: Paste and Execute
 
-1. Open your AI tool (Claude Code, Codex, Gemini) in a terminal
+1. Open your AI coding agent (Claude Code, Codex, Gemini) in a terminal
 2. Paste the staged prompt
-3. Your AI tool reads the prompt, connects to GiljoAI via MCP, and generates the mission plan
+3. Your AI coding agent reads the prompt, connects to GiljoAI via MCP, and generates the mission plan
 4. Agents are assigned based on the mission requirements
 5. Switch to the **Implementation** tab in GiljoAI's dashboard
 6. Copy the implementation prompt and paste it back into your terminal
@@ -191,7 +191,7 @@ Your next project starts with this accumulated intelligence. The more you build,
 
 ## What's Next
 
-- **Customize agent templates**: Settings → Agents tab. Edit role instructions, add new specializations, export to your AI tool.
+- **Customize agent templates**: Settings → Agents tab. Edit role instructions, add new specializations, export to your AI coding agent.
 - **Tune context delivery**: Settings → Context tab. Control which context categories each orchestrator receives and at what depth.
 - **Capture ideas**: Use the Tasks view to log ideas, then convert them to full projects when ready.
 
@@ -199,9 +199,9 @@ Your next project starts with this accumulated intelligence. The more you build,
 
 ## Troubleshooting
 
-**"Connection refused" when AI tool tries to reach MCP:**
+**"Connection refused" when AI coding agent tries to reach MCP:**
 - Verify GiljoAI MCP is running (`python startup.py`)
-- Check the API key is correct in your tool's MCP configuration
+- Check the API key is correct in your AI coding agent's MCP configuration
 - Confirm port 7272 is not blocked by your firewall
 
 **Setup wizard won't launch:**
@@ -221,7 +221,7 @@ Your next project starts with this accumulated intelligence. The more you build,
 ## Architecture at a Glance
 
 ```
-Your CLI Tool (Claude Code / Codex / Gemini)
+Your AI Coding Agent (Claude Code / Codex / Gemini)
         |
         | MCP-over-HTTP (API key auth, JSON-RPC 2.0)
         v
@@ -239,4 +239,4 @@ Your CLI Tool (Claude Code / Codex / Gemini)
   +--> Agent monitoring, prompt staging, project management
 ```
 
-All components run locally. Your AI tool connects via MCP. GiljoAI assembles context and manages coordination. Your AI tool does the thinking.
+All components run locally. Your AI coding agent connects via MCP. GiljoAI assembles context and manages coordination. Your AI coding agent does the thinking.

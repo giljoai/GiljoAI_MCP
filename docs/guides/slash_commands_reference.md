@@ -571,7 +571,7 @@ def install_claude_commands(self):
 
 **Option B: Frontend Setup Wizard** (Phase 0.5)
 ```vue
-<!-- Step 3: AI Tool Integration -->
+<!-- Step 3: AI Coding Agent Integration -->
 <template>
   <v-card>
     <v-card-title>Configure Claude Code Commands</v-card-title>

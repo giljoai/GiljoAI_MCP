@@ -392,7 +392,7 @@ class ThinClientPromptGenerator:
         Args:
             project_id: Project UUID
             user_id: Optional user ID for tracking and fetching toggle/depth config
-            tool: AI coding tool (claude-code, codex, gemini, universal)
+            tool: AI coding agent (claude-code, codex, gemini, universal)
             field_toggles: Optional field toggle config (True=enabled, False=disabled)
             depth_config: Optional depth configuration (v2.0 depth settings)
             continuation_mode: If True, generate continuation prompt (reads 360 Memory instead of re-staging)
@@ -800,7 +800,7 @@ Begin by verifying MCP connection, then fetch context and CREATE the mission pla
             project_id: Project UUID
             project: Project model
             product: Product model
-            tool: AI coding tool (claude-code, codex, gemini, universal)
+            tool: AI coding agent (claude-code, codex, gemini, universal)
             field_toggles: User field toggle config (True=enabled, False=disabled)
             depth_config: User depth configuration (vision_documents, memory_last_n_projects, etc.)
 
@@ -1086,7 +1086,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
             orchestrator_id: Orchestrator job UUID
             project_id: Project UUID
             project_name: Project display name
-            tool: AI coding tool (claude-code, codex, gemini, universal)
+            tool: AI coding agent (claude-code, codex, gemini, universal)
             product: Product model for context injection
             field_toggles: Optional user field toggle config
 
