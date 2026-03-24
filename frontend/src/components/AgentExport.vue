@@ -157,7 +157,12 @@ Extract to: ~/.claude/commands/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
 Adapt all commands for the OS you are running on.
-After installation, instruct the user to restart Claude Code, then run /gil_get_agents to install agent templates.
+After installation, tell the user:
+Two commands are now available:
+- /gil_get_agents — install/update GiljoAI agent templates
+- /gil_add — add tasks and projects from the CLI (try /gil_add --help)
+
+Restart Claude Code, then run /gil_get_agents to install agent templates.
 Note: Download link expires in 15 minutes.`,
 
   gemini_cli: `Install the GiljoAI CLI integration. This is a one-time setup.
@@ -168,7 +173,12 @@ Extract to: ~/.gemini/commands/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
 Adapt all commands for the OS you are running on.
-After installation, instruct the user to restart Gemini CLI, then run /gil_get_agents to install agent templates.
+After installation, tell the user:
+Two commands are now available:
+- /gil_get_agents — install/update GiljoAI agent templates
+- /gil_add — add tasks and projects from the CLI (try /gil_add --help)
+
+Restart Gemini CLI, then run /gil_get_agents to install agent templates.
 Note: Download link expires in 15 minutes.`,
 
   codex_cli: `Install the GiljoAI CLI integration. This is a one-time setup.
@@ -179,7 +189,12 @@ Extract to: ~/.codex/skills/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
 Adapt all commands for the OS you are running on.
-After installation, instruct the user to restart Codex CLI, then run $gil-get-agents to install agent templates.
+After installation, tell the user:
+Two skills are now available:
+- $gil-get-agents — install/update GiljoAI agent templates
+- $gil-add — add tasks and projects from the CLI (try $gil-add --help)
+
+Restart Codex CLI, then run $gil-get-agents to install agent templates.
 Note: Download link expires in 15 minutes.`,
 }
 

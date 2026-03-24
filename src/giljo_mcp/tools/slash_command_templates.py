@@ -97,9 +97,40 @@ Check `$ARGUMENTS` for the following flags:
 
 ### Step 2: Route to Mode
 
+- If `$ARGUMENTS` contains `--help` -> Show Help (see below)
 - If `$ARGUMENTS` contains `--name` or `--task` -> Direct Task Mode
 - If `$ARGUMENTS` contains `--project` -> Direct Project Mode
 - Otherwise -> Interactive Mode
+
+---
+
+## Help Mode
+
+When `$ARGUMENTS` contains `--help`, display this usage guide and stop:
+
+```
+/gil_add — Add tasks and projects to the GiljoAI dashboard
+
+TASKS (technical debt, TODOs, small fixes):
+  /gil_add --task "Fix login bug" --priority high --category backend
+  /gil_add --name "Refactor auth" --priority medium
+
+PROJECT (orchestrator work items):
+  /gil_add --project "API Redesign" --description "Full REST API overhaul"
+  /gil_add --project "New Feature" --type "Frontend"
+
+INTERACTIVE (context-aware):
+  /gil_add                  — analyzes conversation, suggests task or project
+
+FLAGS:
+  --task, --name            Task title (triggers direct task mode)
+  --project                 Project name (triggers direct project mode)
+  --priority                low | medium | high | critical (default: medium)
+  --category                frontend | backend | database | infra | docs | general
+  --type                    Project type label (e.g. "Frontend", "Backend")
+  --description             Detailed description
+  --help                    Show this help
+```
 
 ---
 
@@ -480,9 +511,21 @@ Project flags:
 - --type "Type Label" (optional, human-readable project type e.g. "Frontend", "Backend")
 
 ### Step 2: Route to Mode
+- If arguments contain --help -> Show Help (see below)
 - If arguments contain --name or --task -> Direct Task Mode
 - If arguments contain --project -> Direct Project Mode
 - Otherwise -> Interactive Mode
+
+## Help Mode
+When arguments contain --help, display this usage guide and stop:
+
+/gil_add — Add tasks and projects to the GiljoAI dashboard
+
+TASKS: /gil_add --task "Fix bug" --priority high --category backend
+PROJECTS: /gil_add --project "New Feature" --type "Frontend"
+INTERACTIVE: /gil_add (analyzes conversation, suggests task or project)
+
+FLAGS: --task/--name (task title), --project (project name), --priority (low/medium/high/critical), --category (frontend/backend/database/infra/docs/general), --type (project type label), --description (details), --help (this help)
 
 ## Direct Task Mode
 1. Parse and validate flags (name required, validate priority/category values)
@@ -678,9 +721,21 @@ When arguments are empty or contain no recognized flags, use conversation contex
 - `--type "Type Label"` (optional, human-readable project type e.g. "Frontend", "Backend")
 
 ### Step 2: Route to Mode
+- If arguments contain `--help` -> Show Help (see below)
 - If arguments contain `--name` or `--task` -> Direct Task Mode
 - If arguments contain `--project` -> Direct Project Mode
 - Otherwise -> Interactive Mode
+
+## Help Mode
+When arguments contain `--help`, display this usage guide and stop:
+
+$gil-add — Add tasks and projects to the GiljoAI dashboard
+
+TASKS: $gil-add --task "Fix bug" --priority high --category backend
+PROJECTS: $gil-add --project "New Feature" --type "Frontend"
+INTERACTIVE: $gil-add (analyzes conversation, suggests task or project)
+
+FLAGS: --task/--name (task title), --project (project name), --priority (low/medium/high/critical), --category (frontend/backend/database/infra/docs/general), --type (project type label), --description (details), --help (this help)
 
 ## Direct Task Mode
 1. Parse and validate flags (name required, validate priority/category values)
@@ -721,7 +776,12 @@ Extract to: ~/.claude/commands/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
 Adapt all commands for the OS you are running on.
-After installation, instruct the user to restart Claude Code, then run /gil_get_agents to install agent templates.
+After installation, tell the user:
+Two commands are now available:
+- /gil_get_agents — install/update GiljoAI agent templates
+- /gil_add — add tasks and projects from the CLI (try /gil_add --help)
+
+Restart Claude Code, then run /gil_get_agents to install agent templates.
 Note: Download link expires in 15 minutes.
 """
 
@@ -733,7 +793,12 @@ Extract to: ~/.gemini/commands/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
 Adapt all commands for the OS you are running on.
-After installation, instruct the user to restart Gemini CLI, then run /gil_get_agents to install agent templates.
+After installation, tell the user:
+Two commands are now available:
+- /gil_get_agents — install/update GiljoAI agent templates
+- /gil_add — add tasks and projects from the CLI (try /gil_add --help)
+
+Restart Gemini CLI, then run /gil_get_agents to install agent templates.
 Note: Download link expires in 15 minutes.
 """
 
@@ -745,7 +810,12 @@ Extract to: ~/.codex/skills/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
 Adapt all commands for the OS you are running on.
-After installation, instruct the user to restart Codex CLI, then run $gil-get-agents to install agent templates.
+After installation, tell the user:
+Two skills are now available:
+- $gil-get-agents — install/update GiljoAI agent templates
+- $gil-add — add tasks and projects from the CLI (try $gil-add --help)
+
+Restart Codex CLI, then run $gil-get-agents to install agent templates.
 Note: Download link expires in 15 minutes.
 """
 
