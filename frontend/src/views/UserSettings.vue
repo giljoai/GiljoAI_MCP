@@ -175,10 +175,8 @@
             <!-- Git + 360 Memory Integration (system-level) -->
             <GitIntegrationCard
               :enabled="gitEnabled"
-              :config="gitConfig"
               :loading="togglingGit"
               @update:enabled="toggleGit"
-              @openAdvanced="openGitAdvanced"
             />
 
           </v-card-text>
@@ -186,13 +184,6 @@
       </v-window-item>
     </v-window>
     </div>
-
-    <!-- Git Advanced Settings Dialog -->
-    <GitAdvancedSettingsDialog
-      v-model="showGitAdvanced"
-      :value="gitConfig"
-      @save="saveGitConfig"
-    />
 
     <!-- Product intro tour (shown on first Startup visit unless hidden) -->
     <ProductIntroTour v-model="showIntroTour" />
@@ -207,7 +198,6 @@ import { useWebSocketV2 } from '@/composables/useWebSocket'
 import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import AgentExport from '@/components/AgentExport.vue'
-import GitAdvancedSettingsDialog from '@/components/GitAdvancedSettingsDialog.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
 import StartupQuickStart from '@/components/settings/StartupQuickStart.vue'
 import ProductIntroTour from '@/components/settings/ProductIntroTour.vue'
@@ -237,13 +227,6 @@ const gitEnabled = ref(false)
 // This allows TemplateManager to receive export events even when not actively mounted
 const templateExportEvent = ref(null)
 provide('templateExportEvent', templateExportEvent)
-const showGitAdvanced = ref(false)
-const gitConfig = ref({
-  use_in_prompts: false,
-  include_commit_history: true,
-  max_commits: 50,
-  branch_strategy: 'main',
-})
 const togglingGit = ref(false)
 
 // Settings object
@@ -363,18 +346,10 @@ onUnmounted(() => {
 async function loadGitSettings() {
   try {
     const settings = await setupService.getGitSettings()
-    gitConfig.value = settings
     gitEnabled.value = settings.enabled || false
   } catch (error) {
     console.error('[USER SETTINGS] Failed to load git settings:', error)
-    // Set defaults on error
     gitEnabled.value = false
-    gitConfig.value = {
-      use_in_prompts: false,
-      include_commit_history: true,
-      max_commits: 50,
-      branch_strategy: 'main',
-    }
   }
 }
 
@@ -384,10 +359,6 @@ async function toggleGit(enabled) {
   try {
     const result = await setupService.toggleGit(enabled)
     gitEnabled.value = result.enabled
-    // Update config from server response
-    if (result.settings) {
-      gitConfig.value = result.settings
-    }
   } catch (error) {
     console.error('[USER SETTINGS] Git toggle failed:', error)
     // Revert on error
@@ -397,30 +368,6 @@ async function toggleGit(enabled) {
   }
 }
 
-async function openGitAdvanced() {
-  // Load fresh config before opening
-  try {
-    const settings = await setupService.getGitSettings()
-    gitConfig.value = settings
-    gitEnabled.value = settings.enabled || false
-    showGitAdvanced.value = true
-  } catch (error) {
-    console.error('[USER SETTINGS] Failed to load Git config:', error)
-  }
-}
-
-async function saveGitConfig(payload, done) {
-  try {
-    const updated = await setupService.updateGitSettings(payload)
-    gitConfig.value = updated.settings || payload
-    gitEnabled.value = updated.enabled || payload.use_in_prompts
-    showGitAdvanced.value = false
-  } catch (error) {
-    console.error('[USER SETTINGS] Failed to save Git config:', error)
-  } finally {
-    if (typeof done === 'function') done()
-  }
-}
 
 /**
  * Handle real-time Git integration updates from WebSocket

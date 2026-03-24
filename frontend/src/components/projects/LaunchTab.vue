@@ -50,6 +50,7 @@
                     v-bind="tooltipProps"
                     :class="{ 'icon-disabled': !gitEnabled }"
                     size="48"
+                    color="white"
                     data-testid="github-status-icon"
                     style="cursor: pointer;"
                     aria-label="GitHub integration status"
