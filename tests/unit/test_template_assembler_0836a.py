@@ -60,10 +60,16 @@ class TestRenderGeminiAgent:
 
         assert frontmatter["name"] == "implementer-frontend"
         assert frontmatter["description"] == "Implements frontend features using Vue 3"
-        assert frontmatter["kind"] == "agent"
+        assert frontmatter["kind"] == "local"
         assert frontmatter["model"] == "gemini-2.5-pro"
         assert frontmatter["max_turns"] == 50
-        assert frontmatter["tools"] == ["shell", "read_file", "write_file", "mcp_*"]
+        assert "run_shell_command" in frontmatter["tools"]
+        assert "read_file" in frontmatter["tools"]
+        assert "write_file" in frontmatter["tools"]
+        assert "glob" in frontmatter["tools"]
+        assert "grep_search" in frontmatter["tools"]
+        assert "mcp_*" in frontmatter["tools"]
+        assert "shell" not in frontmatter["tools"]  # Must use run_shell_command
 
     def test_no_color_field(self):
         """Gemini does not support agent colors — no color in frontmatter."""
