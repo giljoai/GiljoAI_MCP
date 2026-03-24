@@ -11,7 +11,7 @@
     </v-card-title>
 
     <v-card-subtitle class="mt-2">
-      View and revoke API keys used by AI tool integrations
+      View and revoke API keys used by AI coding agent integrations
     </v-card-subtitle>
 
     <v-divider class="mt-4" />

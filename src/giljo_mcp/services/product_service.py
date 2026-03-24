@@ -918,7 +918,7 @@ class ProductService:
         }
 
         REMOVED: GitHub API integration, URL validation
-        Git operations are handled by CLI agents (Claude Code, Codex, Gemini).
+        Git operations are handled by AI coding agents (Claude Code, Codex, Gemini).
 
         Args:
             product_id: Product UUID

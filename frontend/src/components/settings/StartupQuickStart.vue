@@ -177,7 +177,7 @@ const router = useRouter()
 const CHECKLIST_STORAGE_KEY = 'giljo_startup_checklist_v1'
 const FINISHED_STORAGE_KEY = 'giljo_startup_finished_v1'
 const checklistItems = [
-  { id: 'tools', label: 'Installed agentic CLI tools', stepId: 'tools' },
+  { id: 'tools', label: 'Installed AI coding agents', stepId: 'tools' },
   { id: 'connect', label: 'Attach MCP server', stepId: 'connect' },
   { id: 'slash', label: 'Install slash commands', stepId: 'slash' },
   { id: 'templates', label: 'Reviewed agents', stepId: 'templates' },
@@ -197,7 +197,7 @@ const setupSteps = [
   {
     id: 'tools',
     icon: 'mdi-console-line',
-    title: 'Pick your coding tool(s)',
+    title: 'Pick your AI coding agent(s)',
     subtitle: 'Claude Code or multi-terminal mode',
     body:
       'Giljo MCP works with Claude Code CLI (tightly integrated subagents) and also with "multi-terminal mode" (Codex + others) where multiple tools share one MCP server over HTTP.',
@@ -235,7 +235,7 @@ const setupSteps = [
     title: 'Install slash commands',
     subtitle: 'Required for best CLI flows',
     body:
-      'Install the Giljo slash commands so your CLI tool can quickly call MCP tools and fetch instructions. This is the baseline for a great UX.',
+      'Install the Giljo slash commands so your AI coding agent can quickly call MCP tools and fetch instructions. This is the baseline for a great UX.',
     primaryAction: {
       id: 'open-slash-primary',
       label: 'Configure Integrations',
@@ -281,7 +281,7 @@ const setupSteps = [
     title: 'Configure integrations',
     subtitle: 'Connect tools + enable power-ups',
     body:
-      'Configure integrations to connect your AI tools via MCP, and optionally enable power-ups like Git and Serena.',
+      'Configure integrations to connect your AI coding agents via MCP, and optionally enable power-ups like Git and Serena.',
     primaryAction: {
       id: 'open-integrations-primary',
       label: 'Configure Integrations',

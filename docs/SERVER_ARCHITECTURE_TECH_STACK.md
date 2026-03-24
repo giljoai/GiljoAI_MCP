@@ -1144,7 +1144,7 @@ api/
 │   ├── messages.py       # Inter-agent messaging
 │   ├── users.py          # ✨ User management + password reset
 │   ├── setup.py          # Setup wizard endpoints
-│   ├── ai_tools.py       # AI tool configuration generator (425 lines)
+│   ├── ai_tools.py       # AI coding agent configuration generator (425 lines)
 │   ├── templates.py      # Template CRUD operations
 │   ├── mcp_http.py       # MCP-over-HTTP endpoint (398 lines)
 │   └── mcp_session.py    # MCP session management (186 lines)
@@ -1327,7 +1327,7 @@ frontend/
 │   │   ├── AgentCard.vue  # Agent status display
 │   │   ├── ProjectCard.vue# Project overview cards
 │   │   ├── MessageQueue.vue# Real-time message display
-│   │   ├── AIToolSetup.vue # AI tool configuration UI (243 lines)
+│   │   ├── AIToolSetup.vue # AI coding agent configuration UI (243 lines)
 │   │   ├── ApiKeyManager.vue # User API key management (266 lines, Handover 0028)
 │   │   ├── ApiKeyWizard.vue  # API key generation modal
 │   │   ├── UserManager.vue # ✨ Enhanced with email + created date (Handover 0028)
@@ -1439,7 +1439,7 @@ GiljoAI MCP v3.0 includes a complete refactoring of Admin Settings with improved
 - 47 comprehensive tests
 
 **3. Integrations Tab** (Handover 0027):
-- **Agent Coding Tools Section**:
+- **AI Coding Agents Section**:
   - Claude Code CLI with MCP configuration modal
   - Codex CLI with TOML configuration support
   - Gemini CLI with multi-modal capabilities
@@ -1461,7 +1461,7 @@ GiljoAI MCP v3.0 includes a complete refactoring of Admin Settings with improved
 - Industry-standard API key masking (`gk_****...****`)
 - Single API key type (simplified UX)
 - Serena integration toggle
-- AI tool configuration instructions:
+- AI coding agent configuration instructions:
   - Claude Code CLI setup guide
   - Codex CLI setup guide
   - Gemini CLI setup guide

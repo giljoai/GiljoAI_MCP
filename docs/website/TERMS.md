@@ -20,9 +20,9 @@ GiljoAI MCP is a **passive orchestration platform** for AI-assisted software dev
 **GiljoAI MCP does not include:**
 - AI model access or inference capabilities
 - Token credits or AI processing
-- Subscriptions to third-party AI tools
+- Subscriptions to third-party AI coding agents
 
-A separate subscription to an MCP-compatible AI coding tool (such as Claude Code, Codex CLI, or Gemini CLI) is required. GiljoAI is not affiliated with Anthropic, OpenAI, Google, or any AI model provider.
+A separate subscription to an MCP-compatible AI coding agent (such as Claude Code, Codex CLI, or Gemini CLI) is required. GiljoAI is not affiliated with Anthropic, OpenAI, Google, or any AI model provider.
 
 ---
 
@@ -50,7 +50,7 @@ You are responsible for:
 
 - **Your own infrastructure**: Installing, configuring, and maintaining the software on your own hardware
 - **Your database**: All data created by GiljoAI MCP is stored in your local PostgreSQL instance. You are responsible for backups, security, and maintenance.
-- **Your AI tool subscriptions**: Any costs incurred through your use of third-party AI tools (token usage, subscription fees) are between you and that provider
+- **Your AI coding agent subscriptions**: Any costs incurred through your use of third-party AI coding agents (token usage, subscription fees) are between you and that provider
 - **Your credentials**: Keeping your admin password, recovery PIN, and API keys secure
 - **Your generated code**: All code produced by AI agents operating through GiljoAI MCP is your responsibility to review, test, and validate before use
 
@@ -60,7 +60,7 @@ You are responsible for:
 
 - **Your data**: You retain full ownership of all products, projects, vision documents, agent configurations, and 360 Memory entries you create. GiljoAI claims no rights to your content.
 - **GiljoAI software**: The GiljoAI MCP software, documentation, branding, and website content are the property of GiljoAI LLC, licensed to you under the GiljoAI Community License v1.1.
-- **AI-generated output**: Code and content produced by third-party AI tools through GiljoAI MCP workflows are subject to the terms of those AI tool providers, not GiljoAI.
+- **AI-generated output**: Code and content produced by third-party AI coding agents through GiljoAI MCP workflows are subject to the terms of those AI coding agent providers, not GiljoAI.
 
 ---
 

@@ -1,4 +1,4 @@
-# AI Tool Configuration Management
+# AI Coding Agent Configuration Management
 
 **Document Version**: 10_13_2025  
 **Status**: Single Source of Truth  
@@ -8,7 +8,7 @@
 
 ## Overview
 
-GiljoAI MCP v3.0 implements **AI-agnostic integration** that supports multiple AI development tools including Claude Code, CODEX CLI, and Gemini CLI. The system provides a **user-friendly configuration generator** that creates ready-to-use MCP configuration files for seamless integration across platforms.
+GiljoAI MCP v3.0 implements **AI-agnostic integration** that supports multiple AI coding agents including Claude Code, CODEX CLI, and Gemini CLI. The system provides a **user-friendly configuration generator** that creates ready-to-use MCP configuration files for seamless integration across platforms.
 
 ### Quick MCP Commands (0069)
 
@@ -64,16 +64,16 @@ Notes:
 
 ### Key Features
 
-- **Multi-AI Tool Support**: Claude Code, CODEX, Gemini CLI
+- **Multi-AI Coding Agent Support**: Claude Code, CODEX, Gemini CLI
 - **Configuration Generator API**: Automated MCP config creation
 - **Cross-Platform Setup**: Windows, Linux, macOS compatibility
 - **User-Friendly Interface**: Copy-paste and download workflows
 - **Tenant-Specific Configs**: Multi-tenant configuration isolation
-- **Template-Level Preferences**: AI tool selection per agent template
+- **Template-Level Preferences**: AI coding agent selection per agent template
 
 ---
 
-## Supported AI Development Tools
+## Supported AI Coding Agents
 
 ### Claude Code CLI
 **Status**: Primary integration  
@@ -94,13 +94,13 @@ Notes:
 
 ## Architecture Components
 
-### 1. AI Tool Configuration API
+### 1. AI Coding Agent Configuration API
 
 **Location**: `api/endpoints/ai_tools.py` (425 lines)
 
 **Key Endpoints**:
 ```python
-GET  /api/ai-tools/supported          # List available AI tools
+GET  /api/ai-tools/supported          # List available AI coding agents
 GET  /api/ai-tools/config-generator/{tool}  # Generate tool-specific config
 POST /api/ai-tools/validate-config   # Validate configuration syntax
 ```
@@ -114,7 +114,7 @@ async def generate_ai_tool_config(
     server_url: str = Query(None),
     deployment_mode: str = Query("localhost")
 ):
-    """Generate AI tool-specific MCP configuration"""
+    """Generate AI coding agent-specific MCP configuration"""
     
     config_generator = AIToolConfigGenerator()
     config = config_generator.generate_config(
@@ -231,7 +231,7 @@ async def generate_ai_tool_config(
 **Core Logic**:
 ```python
 class AIToolConfigGenerator:
-    """Generate AI tool-specific MCP configurations"""
+    """Generate AI coding agent-specific MCP configurations"""
     
     SUPPORTED_TOOLS = {
         "claude": {
@@ -446,16 +446,16 @@ mcp_integrations:
 
 ## User Experience Workflow
 
-### Step 1: Access AI Tools Setup
+### Step 1: Access AI Coding Agent Setup
 
 **From Settings Page**:
 ```
-Settings → API and Integrations → [Connect AI Tools]
+Settings → API and Integrations → [Connect AI Coding Agents]
 ```
 
 **From Dashboard Quick Actions**:
 ```
-Dashboard → Quick Actions → [Setup AI Tools]
+Dashboard → Quick Actions → [Setup AI Coding Agents]
 ```
 
 ### Step 2: Tool Selection
@@ -463,7 +463,7 @@ Dashboard → Quick Actions → [Setup AI Tools]
 **Available Options**:
 ```
 ┌─────────────────────────────────────────┐
-│ Select AI Tool:  [Claude Code CLI ▼]   │
+│ Select AI Coding Agent:  [Claude Code CLI ▼]   │
 ├─────────────────────────────────────────┤
 │ 🤖 Claude Code CLI (Recommended)       │
 │    Sub-agent spawning, real-time sync   │
@@ -576,7 +576,7 @@ Each tenant receives **isolated configurations**:
 
 ---
 
-## Template-Level AI Tool Preferences
+## Template-Level AI Coding Agent Preferences
 
 ### Database Schema Enhancement
 
@@ -590,7 +590,7 @@ class AgentTemplate(Base):
     name = Column(String(255), nullable=False)
     role = Column(String(100), nullable=False)
     
-    # AI Tool Preference (NEW)
+    # AI Coding Agent Preference (NEW)
     preferred_tool = Column(String(50), default="claude")  # claude, codex, gemini
     
     # Template content
@@ -608,7 +608,7 @@ async def create_template(
     template: TemplateCreateRequest,
     current_user: User = Depends(get_current_user)
 ):
-    """Create new agent template with AI tool preference"""
+    """Create new agent template with AI coding agent preference"""
     
     new_template = AgentTemplate(
         id=str(uuid.uuid4()),
@@ -636,7 +636,7 @@ async def spawn_agent_with_tool_preference(
     mission: str,
     tenant_key: str
 ):
-    """Spawn agent using template's preferred AI tool"""
+    """Spawn agent using template's preferred AI coding agent"""
     
     template = await get_template(template_name, tenant_key)
     preferred_tool = template.preferred_tool or "claude"
@@ -657,7 +657,7 @@ async def spawn_agent_with_tool_preference(
 
 **Implementation Status**: COMPLETE (as of 2025-10-13)
 
-GiljoAI MCP v3.0 implements a comprehensive user API key management system that integrates seamlessly with AI tool configuration generation.
+GiljoAI MCP v3.0 implements a comprehensive user API key management system that integrates seamlessly with AI coding agent configuration generation.
 
 **Key Features**:
 - Per-user API key generation and management
@@ -738,7 +738,7 @@ async def create_api_key(
 
 ---
 
-### Automatic API Key Integration in AI Tools
+### Automatic API Key Integration in AI Coding Agents
 
 **AIToolSetup.vue Integration** (as of 2025-10-13):
 
@@ -752,7 +752,7 @@ When users generate MCP configurations, the system now automatically:
 // Frontend: components/AIToolSetup.vue
 async generateConfigWithApiKey() {
   try {
-    // Step 1: Generate new API key for this AI tool
+    // Step 1: Generate new API key for this AI coding agent
     const keyName = `${this.selectedTool} - ${new Date().toLocaleDateString()}`
     const apiKeyResponse = await api.post('/api/auth/api-keys/', {
       name: keyName,
@@ -930,9 +930,9 @@ PATCH /api/auth/api-keys/{key_id}
 └───────────────────────────────────────────────────────┘
 ```
 
-**AI Tool Configuration Flow**:
+**AI Coding Agent Configuration Flow**:
 ```
-1. User selects AI tool (Claude Code, CODEX, Gemini)
+1. User selects AI coding agent (Claude Code, CODEX, Gemini)
 2. System automatically generates API key
 3. Key embedded in generated configuration
 4. Security warning displayed
@@ -1046,7 +1046,7 @@ fi
 
 ```python
 class TestAIToolsConfigGenerator:
-    """Test suite for AI tool configuration generation"""
+    """Test suite for AI coding agent configuration generation"""
     
     async def test_claude_config_generation(self):
         """Test Claude Code CLI configuration generation"""
@@ -1194,7 +1194,7 @@ describe('AIToolSetup Component', () => {
 ### Planned Features
 
 **Advanced Tool Detection**:
-- Automatic discovery of installed AI tools
+- Automatic discovery of installed AI coding agents
 - Version compatibility checking
 - Configuration validation
 
@@ -1244,9 +1244,9 @@ describe('AIToolSetup Component', () => {
 - **Integration**: Added to `UserSettings.vue` → "API and Integrations" tab
 - **Professional UI**: Data table with sorting, key preview, delete confirmations, loading states
 
-### AI Tools Integration Enhanced
+### AI Coding Agent Integration Enhanced
 - **`AIToolSetup.vue`** - Automatic API key generation during configuration
-- **Workflow**: When generating AI tool configs, automatically creates user API keys
+- **Workflow**: When generating AI coding agent configs, automatically creates user API keys
 - **Key Naming**: Auto-generates descriptive names (e.g., "Claude Code - 10/13/2025")
 - **Security**: One-time plaintext display, bcrypt hashing for storage
 
@@ -1283,7 +1283,7 @@ describe('AIToolSetup Component', () => {
 
 ### Features Delivered
 - ✅ **User API Key Generation**: Each user can generate personal API keys in Settings
-- ✅ **MCP Config Integration**: AI Tools setup uses user's API keys automatically
+- ✅ **MCP Config Integration**: AI coding agent setup uses user's API keys automatically
 - ✅ **Multi-Tenant Isolation**: Users only see their own keys and projects
 - ✅ **Authentication Fixed**: Resolved 401 errors with httpOnly cookie documentation
 - ✅ **Professional UI/UX**: Full-featured key management with security best practices
@@ -1314,4 +1314,4 @@ CREATE TABLE user_api_keys (
 
 ---
 
-*This document provides comprehensive coverage of GiljoAI MCP's AI tool configuration management as the single source of truth for the October 13, 2025 documentation harmonization.*
+*This document provides comprehensive coverage of GiljoAI MCP's AI coding agent configuration management as the single source of truth for the October 13, 2025 documentation harmonization.*

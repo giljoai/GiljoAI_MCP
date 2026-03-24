@@ -124,7 +124,7 @@ class TestBootstrapPromptTemplates:
         assert "gil-get-agents" in BOOTSTRAP_CODEX_CLI
 
     def test_all_bootstraps_mention_restart(self):
-        """All bootstrap prompts mention restarting the CLI tool."""
+        """All bootstrap prompts mention restarting the AI coding agent."""
         assert "restart" in BOOTSTRAP_CLAUDE_CODE.lower()
         assert "restart" in BOOTSTRAP_GEMINI_CLI.lower()
         assert "restart" in BOOTSTRAP_CODEX_CLI.lower()

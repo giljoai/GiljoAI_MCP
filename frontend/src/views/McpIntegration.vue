@@ -20,7 +20,7 @@
       <v-card-text>
         <p class="text-body-1 mb-4">
           Download a pre-configured installer script that automatically sets up GiljoAI MCP
-          integration in supported coding tools (Claude Code, Codex CLI, Gemini CLI, etc.). The script
+          integration in supported AI coding agents (Claude Code, Codex CLI, Gemini CLI, etc.). The script
           includes your API credentials and server connection details.
         </p>
 
@@ -55,7 +55,7 @@
             <ol class="mt-2 ml-4">
               <li>Run the downloaded script in your terminal</li>
               <li>The script will automatically configure your MCP tools</li>
-              <li>Restart your coding tool (Claude Code, Codex CLI, etc.)</li>
+              <li>Restart your AI coding agent (Claude Code, Codex CLI, etc.)</li>
               <li>GiljoAI MCP commands will be available immediately</li>
             </ol>
           </div>
@@ -173,7 +173,7 @@ macOS/Linux: {{ shareLinks.unix_url }}
 Installation is simple:
 1. Download the appropriate script for your OS
 2. Run it in your terminal
-3. Restart your coding tool
+3. Restart your AI coding agent
 4. You're ready to use GiljoAI MCP commands!
 
 These links expire on {{ formatExpiryDate(shareLinks.expires_at) }}.
@@ -353,7 +353,7 @@ Questions? Let me know!
             <v-expansion-panel-text>
               <p class="mb-3">Try these steps:</p>
               <ol class="ml-4 mb-3">
-                <li>Completely restart your coding tool (not just reload window)</li>
+                <li>Completely restart your AI coding agent (not just reload window)</li>
                 <li>Verify the API server is running (check System Settings)</li>
                 <li>Check network connectivity to the API endpoint</li>
                 <li>Verify your API key is correct (if in LAN mode)</li>
@@ -527,7 +527,7 @@ macOS/Linux: ${shareLinks.value.unix_url}
 Installation is simple:
 1. Download the appropriate script for your OS
 2. Run it in your terminal
-3. Restart your coding tool
+3. Restart your AI coding agent
 4. You're ready to use GiljoAI MCP commands!
 
 These links expire on ${formatExpiryDate(shareLinks.value.expires_at)}.

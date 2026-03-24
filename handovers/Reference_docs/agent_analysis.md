@@ -17,7 +17,7 @@ Two radio buttons on the staging interface:
 | `claude_code_cli` | Single play button next to orchestrator | Orchestrator prompt says "you have these agents, use Task tool to spawn them." Agent templates pre-installed in `.claude/agents/`. One terminal. |
 | `multi_terminal_generic` | Play/copy button per agent | Each agent gets its own terminal. User pastes prompt. Agent connects to MCP, fetches mission, works independently. CLI-agnostic. |
 
-The "mode" is really a **prompt framing strategy + UI behavior toggle**, not a different orchestration engine. In both modes, the GiljoAI MCP server is the brain. The CLI tool is just the runtime.
+The "mode" is really a **prompt framing strategy + UI behavior toggle**, not a different orchestration engine. In both modes, the GiljoAI MCP server is the brain. The AI coding agent is just the runtime.
 
 ### 1.2 Agent Template Structure (Claude Code Export)
 
@@ -141,13 +141,13 @@ following project coding standards with cross-platform compatibility.
 
 Plus a lightweight bootstrap section (~5 lines) telling the agent it's part of a GiljoAI MCP system and to call `get_agent_mission()` on startup.
 
-The agent can already see MCP tools in its tool list on CLI tool load. It doesn't need 90 lines explaining MCP tool usage, messaging prefixes, and context requesting protocols. Those come from `full_protocol` on turn 1.
+The agent can already see MCP tools in its tool list on AI coding agent load. It doesn't need 90 lines explaining MCP tool usage, messaging prefixes, and context requesting protocols. Those come from `full_protocol` on turn 1.
 
 ### Why Protocols Belong in the Fetch, Not the Template
 
 1. `protocol_builder._generate_agent_protocol()` already generates the complete 5-phase lifecycle -- having it also in the template is duplication
 2. Protocol updates propagate instantly without re-exporting templates
-3. Templates stay small and portable across CLI tools
+3. Templates stay small and portable across AI coding agents
 4. Users editing templates can't accidentally break the protocol contract
 5. The counter-argument ("system prompt = stronger behavioral influence") is valid but low-risk: the agent calls `get_agent_mission()` on turn 1, before any real work -- instructions received that early are followed with near-system-prompt fidelity
 
@@ -189,7 +189,7 @@ Two approaches for how much goes into the template file:
 
 **Recommendation: Thin Shell + Fetch** (with role baked in). This is actually what the thin prompt architecture already does -- `spawn_agent_job()` returns a minimal prompt saying "call `get_agent_mission()`". The `.md` template provides role identity, the fetch provides protocols and work order.
 
-### 4.4 Orchestrator Prompt Framing per CLI Tool
+### 4.4 Orchestrator Prompt Framing per AI Coding Agent
 
 The orchestrator needs different framing based on execution mode:
 
@@ -226,9 +226,9 @@ After Phase 1 validates with Claude Code:
 
 ### Phase 3: Orchestrator Framing
 
-1. Build orchestrator prompt framing variants per CLI tool
+1. Build orchestrator prompt framing variants per AI coding agent
 2. Wire mode selection to prompt generation in `thin_prompt_generator.py`
-3. Test end-to-end with each CLI tool
+3. Test end-to-end with each AI coding agent
 
 ---
 
@@ -237,7 +237,7 @@ After Phase 1 validates with Claude Code:
 1. **User base composition** -- How many early CE users will be Codex-primary vs Claude-primary vs Gemini-primary? Drives urgency.
 2. **CE launch timing** -- Should multi-CLI support be a CE launch differentiator or a post-launch sprint?
 3. **Codex CSV batch mode** -- Could the orchestrator generate a CSV as an alternative execution path? (v2 consideration)
-4. **Export UI design** -- Tabs per CLI tool? Dropdown? Affects Integration page layout.
+4. **Export UI design** -- Tabs per AI coding agent? Dropdown? Affects Integration page layout.
 5. **Protocol fidelity testing** -- How well do Codex/Gemini subagents follow dense protocol instructions received via fetch vs baked-in? Needs empirical testing.
 
 ---

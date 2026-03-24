@@ -222,7 +222,7 @@ def _get_default_templates_v103() -> list[dict[str, Any]]:
     """
     Get default agent templates in Handover 0103 format.
 
-    Returns comprehensive, production-ready templates with CLI tool support,
+    Returns comprehensive, production-ready templates with AI coding agent support,
     background colors, and full system prompts.
 
     Returns:

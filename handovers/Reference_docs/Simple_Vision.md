@@ -11,13 +11,13 @@
 
 ### Product vision realized?
 
-This MCP server is intended to help developers using CLI coding tools terminal based in Windows or Linux or Mac such as claude codex and gemini. One of the major problems is the tracking of context the tracking of technology stack the tools the dependency and everything else when vibe and context coders are building products particularly as a singular developer where you have to track a lot of these things.
+This MCP server is intended to help developers using AI coding agents terminal based in Windows or Linux or Mac such as claude codex and gemini. One of the major problems is the tracking of context the tracking of technology stack the tools the dependency and everything else when vibe and context coders are building products particularly as a singular developer where you have to track a lot of these things.
 
 The purpose was to create a form and field based documentation of a product to make sure that all bases are covered but that the developer doesn't always have to remember them when they vibe and context code.
 
 So the very first thing that this product does is allows a developer to create a product under that product is project and then these projects get executed with some aggregation of context and preparation of agents and summarization of a mission etc I will go into more of those details later in this post/
 
-The other thing I'm trying to solve with this product is that while you're interacting with the agentic CLI coding tools ideas pop up and it's very easy to get sidetracked and distracted and in order to stay disciplined and not lose good ideas when they happen is to be able to quickly punt them over or flip them over into a task list to be addressed later. And that's where the task list comes in in this product.
+The other thing I'm trying to solve with this product is that while you're interacting with the AI coding agents ideas pop up and it's very easy to get sidetracked and distracted and in order to stay disciplined and not lose good ideas when they happen is to be able to quickly punt them over or flip them over into a task list to be addressed later. And that's where the task list comes in in this product.
 
 Much of this worked in my earlier MCP Lab Develop application and now I decided to build it more commercial friendly.
 
@@ -31,7 +31,7 @@ So I'm hoping that the foundations for all what I've described is there and now 
 
 For the product to support initial multi user functions as a server we created tenancies the tenancies are built around a user.  This I believe is going to serve as a foundation should we make a Saas application out of this.
 
-In the future I see expanding the product where multiple developers can use AI agentic coding tools and collaborate on the same product sharing projects for accelerated development.  But for right now we've isolated it to one developer with his or her multiple products.
+In the future I see expanding the product where multiple developers can use AI coding agents and collaborate on the same product sharing projects for accelerated development.  But for right now we've isolated it to one developer with his or her multiple products.
 
 From a hierarchy perspective a product is the top of the hierarchy and under that falls projects, also within the product are tasks. Once a product is activated all the projects created belong to that product and tasks that the developer flips into the task list also belong to that product. Tasks can be converted to **projects** at any time (Tasks cannot become products - they remain under the current active product).
 
@@ -99,7 +99,7 @@ The export process uses a token-based download system for security and efficienc
 3. **ZIP Generation**: Backend packages active agent templates into ZIP file with YAML frontmatter
 4. **Copy Command**: User copies CLI installation command with tokenized download URL
 5. **CLI Installation**: User pastes command into terminal (Claude Code, Codex CLI, or Gemini CLI)
-6. **Template Registration**: CLI tool downloads ZIP, extracts to `~/.claude/agents/`, registers in MCP
+6. **Template Registration**: AI coding agent downloads ZIP, extracts to `~/.claude/agents/`, registers in MCP
 
 **8-Role Cap**: Export enforces maximum 8 distinct agent roles (unlimited agents per role type).
 
@@ -130,7 +130,7 @@ This allows comprehensive product context without cramming everything into a sin
 
 # Projects 
 
-As mentioned earlier projects could be created from tasks, The tasks could flipped from an active chat in the Agentic CLI tool or be a human entry.  It is important when it's converted into a project that it keeps its name and the text and the text field becomes a description.
+As mentioned earlier projects could be created from tasks, The tasks could flipped from an active chat in the AI coding agent or be a human entry.  It is important when it's converted into a project that it keeps its name and the text and the text field becomes a description.
 
 Projects are also all human entered This is where the developer describes what they want to get done and gives it a title When the orchestrator first kicks off is when it merges all the context debth, Knowledge of the code the tech stack the formalities the dependencies etc and builds a mission and divides it up between agents.
 
@@ -231,7 +231,7 @@ When you click the **"Stage Project"** button (which technically calls `POST /ap
 
 **Technical Reference**: For detailed technical verification of the staging process, see `handovers/start_to_finish_agent_FLOW.md` (Phase 4: Project Orchestration).
 
-The orchestrator can be activated by clicking the copy prompt button and pasting it into the CLI tool to get working. The mission populates on-screen for the user to see and review, and agent cards appear as they get selected.
+The orchestrator can be activated by clicking the copy prompt button and pasting it into the AI coding agent to get working. The mission populates on-screen for the user to see and review, and agent cards appear as they get selected.
 
 Vision documents exceeding 25K tokens are automatically chunked to stay within Claude Code CLI's ingest limit.
 
@@ -292,14 +292,14 @@ This ensures projects don't just "end" - they close out properly with documentat
 
 # MCP Integration (Native Support - Handover 0069)
 
-We have native MCP integration for three major AI coding tools:
+We have native MCP integration for three major AI coding agents:
 - **Claude Code** - Full MCP support via `claude-code mcp add` command
 - **Codex CLI** - Native MCP support via `codex mcp add` command
 - **Gemini CLI** - Native MCP support via `gemini mcp add` command
 
 Users configure MCP in **My Settings → MCP Configuration** with one-click copy commands. The system provides both the command-line integration method (recommended) and manual configuration instructions.
 
-Agent templates include a `tool` field that specifies which CLI tool the agent is designed for (`claude`, `codex`, or `gemini`), allowing tool-specific optimizations and behaviors. Multi-tenant isolation is maintained through API keys, ensuring all MCP communications route to the correct tenant.
+Agent templates include a `tool` field that specifies which AI coding agent the agent is designed for (`claude`, `codex`, or `gemini`), allowing tool-specific optimizations and behaviors. Multi-tenant isolation is maintained through API keys, ensuring all MCP communications route to the correct tenant.
 
 # API key
 
@@ -380,7 +380,7 @@ The dev control panel has been a lifesaver and I'm not sure yet how to build tha
 let's go through an entire user journey with the product.
 The user creates an account and logs in
 Agent templates are populated in their user settings
-User finds their way to MCP integrations and copies the command for their agentic CLI tool of choice and that links and attaches itself to the MCP server
+User finds their way to MCP integrations and copies the command for their AI coding agent of choice and that links and attaches itself to the MCP server
 
 **Agent Export for Claude Code** (Manual Only):
 - Users export agent templates via **My Settings → Integrations → Export Agents** button
@@ -391,14 +391,14 @@ User finds their way to MCP integrations and copies the command for their agenti
 
 The user creates a product and defines it and uploads division slash product description
 The user now creates the first project perhaps Asking the tool to prepare the foundational layout for the overall product
-Perhaps in their agentic CLI tool discussing options with the AI and using the MCP task tools to add tasks directly from their conversation, or adding tasks via the dashboard task interface. Tasks can be created either way - through MCP tools during coding sessions or manually through the web interface
+Perhaps in their AI coding agent discussing options with the AI and using the MCP task tools to add tasks directly from their conversation, or adding tasks via the dashboard task interface. Tasks can be created either way - through MCP tools during coding sessions or manually through the web interface
  what decisions they want to make or how they want to use the things discussed what decisions they want to make or how they want to use the things discussed The user decides to activate the first project and gets a launch button
  This takes them to project launch dashboard or panel where they get a prompt for the orchestrator sees their handwritten project description and copy the prompt
- They paste the prompt in the CLI tool which has been started in the project folder and the orchestrator being the first agent begins building the mission by compiling the context and the project description
+ They paste the prompt in the AI coding agent which has been started in the project folder and the orchestrator being the first agent begins building the mission by compiling the context and the project description
  The Mission field in the Project launch window populates with the mission and Agent cards start showing up which the orchestrator has started selecting
  The user reviews everything and can choose to cancel or to proceed
  When they proceed they get to the jobs pain and in the jobs pain they will see a prompt for orchestrator for Claude code which they will copy and paste into cloud code For clawed code this will spawn subagents and they will match they already displayed agent cards on the screen which show various status and information If the orchestrator is now communicating with these agents that will start showing up in the message center
- If he's using other agentic coding tools like Codex or CLI not only does the orchestrator have a copy prompt but all the agent cards also have copy prompts and the user copies all of them individually to CLI windows to activate the agents and as the agents start working and if they are communicating that shows up in the message pane
+ If he's using other AI coding agents like Codex or Gemini CLI not only does the orchestrator have a copy prompt but all the agent cards also have copy prompts and the user copies all of them individually to CLI windows to activate the agents and as the agents start working and if they are communicating that shows up in the message pane
  The user can view the progress either in the terminal CLI windows or glance at the dashboard as it keeps updating while the agents are communicating and progressing with their work
  Should the user see messages in the message center that require attention or need to communicate with agents, the user can either broadcast a message to all agents using the message center or queue a message for a specific agent (especially the orchestrator). Naturally, the user can also just chat directly with the orchestrator in the terminal window. The benefit of routing communication through the MCP message center is that there's a complete audit trail and history log for the entire project
  At some point everybody will be finished and report in that they're finished and a user can choose to closeout the project which will follow a closeout protocol such as git commits git push documentation decommissioning agents etc
@@ -418,7 +418,7 @@ We need to determine what type of notifications we need in the notifications bar
 Password recovery is implemented via a 4-digit PIN system (Handover 0023). Users can generate recovery PINs with rate limiting and lockout protection (5 failed attempts = 15 minute lockout). The system includes PIN hash storage, expiration tracking, and secure validation. Email-based recovery could be a future enhancement for additional security options.
 
 ### clarification on slash commands and agent tempalte imports
-we have in our frontend allready one "copy command" button for slash commands, this is the one working now, it gives the a working token folder (even if 102 proposes cleaning up the code) and it properly installs the slash commands. we also in the front end have an existing "copy command" for what we call product agents (claude terminlolgy is project agents) these agents reside in %projectfolder%/.cladue/agents folder. we also have a "copy command" button that is for personal agents, these are global agent profiles residing in %userprofile%/.claude/agents  we need to reuse these buttons as I want the user to use our applicationinterface to simply copy the commands, paste them into the CLI agentic coding tool of choice, and it should know for all three scenarios to go to a token based URL, fetch zip, install files in right folder. with agent back up, but slash commands files can be overwritten.  we also have in each section a "manual downlaod link" both for slash commands and one aggregated one for the agents.  This file for slash commands downloads the zip (tempalted as nothing changes dynamically here and slash_instructions.md) , for agents the click first compiles a ZIP of the active agents, and attaches agent_instructions.md and the dev can self install. one enhancement that can be made is, that as a user interfaces with the agent template manager and toggles agents on and off, we can allready then payload the zip file.  likewise if an agent is updated via edit tools in the agent template manager we can also payload when the uer clicks save, but perhaps its easier done at time of
+we have in our frontend allready one "copy command" button for slash commands, this is the one working now, it gives the a working token folder (even if 102 proposes cleaning up the code) and it properly installs the slash commands. we also in the front end have an existing "copy command" for what we call product agents (claude terminlolgy is project agents) these agents reside in %projectfolder%/.cladue/agents folder. we also have a "copy command" button that is for personal agents, these are global agent profiles residing in %userprofile%/.claude/agents  we need to reuse these buttons as I want the user to use our applicationinterface to simply copy the commands, paste them into the AI coding agent of choice, and it should know for all three scenarios to go to a token based URL, fetch zip, install files in right folder. with agent back up, but slash commands files can be overwritten.  we also have in each section a "manual downlaod link" both for slash commands and one aggregated one for the agents.  This file for slash commands downloads the zip (tempalted as nothing changes dynamically here and slash_instructions.md) , for agents the click first compiles a ZIP of the active agents, and attaches agent_instructions.md and the dev can self install. one enhancement that can be made is, that as a user interfaces with the agent template manager and toggles agents on and off, we can allready then payload the zip file.  likewise if an agent is updated via edit tools in the agent template manager we can also payload when the uer clicks save, but perhaps its easier done at time of
 link click for eother "copy command" or "manual download" as a trigger.  what are your thoughts based on all   you ave red and this input
 
 
@@ -432,7 +432,7 @@ MCP integration
 MCP configurator is a button [CONFIGURATOR] that launches a wizard which creates a copiable MCP installation command for CLI, unique for claude code , codex and Gemeni
 
 Slash commands
-Slash commands will grow in the server as exposed meny items inside the CLI tool.  The intent for this is to downlaod the slash command files and install them in a proper folder.  We acheive this through two paths.  [COPY COMMAND] Button, this button copies an MCP and natural language instruction to the CLI tool (of choice) to fetch from a URL pointing at a token time limited folder (as of the press of the button) the ZIP file witht he commands and instructs the CLI agent to install them.  Finally it tells the end user to reboot the application.  As an option we also have manual download link which direclty downlaods the zip + slash_instructions.md
+Slash commands will grow in the server as exposed meny items inside the AI coding agent.  The intent for this is to downlaod the slash command files and install them in a proper folder.  We acheive this through two paths.  [COPY COMMAND] Button, this button copies an MCP and natural language instruction to the AI coding agent (of choice) to fetch from a URL pointing at a token time limited folder (as of the press of the button) the ZIP file witht he commands and instructs the AI coding agent to install them.  Finally it tells the end user to reboot the application.  As an option we also have manual download link which direclty downlaods the zip + slash_instructions.md
 
 Agent Export
 Agent export is where we simplify agent export and import into claude code (only supported at time of writing).  There are two ways to installa gents.  One is per project folder (we call it product agents becuase a project folder is for a product in our narrative), the other is personal, These go to the users profile folder on the OS and work globally accross all their project folder.  The user choses how to do it.
