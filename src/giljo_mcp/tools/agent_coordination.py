@@ -1,7 +1,7 @@
 """
 MCP Tools for Agent Coordination (Handover 0045).
 
-Provides universal coordination layer for Claude Code, Codex, and Gemini CLI agents.
+Provides universal coordination layer for Claude Code, Codex, and Gemini AI coding agents.
 All tools enforce multi-tenant isolation and integrate with AgentJobManager.
 
 Production-grade features:

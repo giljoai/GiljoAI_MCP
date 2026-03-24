@@ -119,7 +119,7 @@ class AgentJobManager:
             mission: Mission/instructions for the agent
             tenant_key: Tenant key for multi-tenant isolation
             agent_name: Optional human-readable name (template lookup key)
-            tool_type: AI coding tool assigned (claude-code, codex, gemini, universal)
+            tool_type: AI coding agent assigned (claude-code, codex, gemini, universal)
             spawned_by: Optional agent_id of parent agent that spawned this agent
             job_metadata: Optional metadata dict
 

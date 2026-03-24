@@ -165,7 +165,7 @@ The successor is now actively orchestrating your project.
 
 #### When to Use This
 
-Use the slash command when you want to hand over from within your AI coding tool:
+Use the slash command when you want to hand over from within your AI coding agent:
 - After 40-50 messages in a long conversation
 - Before major phase transitions in your project
 - When the conversation feels "long" or context-heavy
@@ -283,7 +283,7 @@ This historical view is valuable for:
 1. Verify MCP server is running: `python startup.py`
 2. Check server URL in My Settings → MCP Configuration
 3. Copy and paste each line individually if terminal doesn't support multi-line paste
-4. Ensure you're in the correct directory for your AI coding tool (Claude Code, Codex CLI, etc.)
+4. Ensure you're in the correct directory for your AI coding agent (Claude Code, Codex CLI, etc.)
 
 ### Problem: Context Usage Shows Red Before Succession
 
@@ -342,7 +342,7 @@ This historical view is valuable for:
 ### Q2: Can I manually trigger succession at any time?
 
 **A**: Yes, you can manually trigger succession via:
-- **Slash command**: Type `/gil_handover` in your AI coding tool (Claude Code, Codex, Gemini)
+- **Slash command**: Type `/gil_handover` in your AI coding agent (Claude Code, Codex, Gemini)
 - **UI Button**: Click the **"Hand Over"** button on the orchestrator card in the dashboard
 
 This is useful for:

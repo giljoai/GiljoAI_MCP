@@ -238,7 +238,7 @@ NOTE: These are not profiles, the product fundamentally should work with several
 
 -  Downloadable from git or Giljo.ai
 -  Simple script based, '.py' for installation
--  INstructions for script injection to configure Ai coding agent tools to connect to MCP
+-  Instructions for script injection to configure AI coding agents to connect to MCP
 -  Easy on off serena integration
 -  Admin configuration settings to change the servers evnironmentals
 
@@ -277,12 +277,12 @@ The private SaaS repo imports the Community repo as a dependency -- no forking, 
 Recognizing that developers have different preferences:
 
 - **Themeable Interface**: Dark mode, custom colors, layouts
-- **Choice of CLI based agent AI tools**: Add custom instructions for integration
+- **Choice of CLI-based AI coding agents**: Add custom instructions for integration
 
 #### AI-Agnostic Future
 
 
-- **Claude**: First integration, uses your own Claude Code CLI tool we provide MCP server injection instructions.
+- **Claude**: First integration, uses your own Claude Code CLI; we provide MCP server injection instructions.
 - **CODEX**: supported (native MCP commands)
 - **Gemini CLI**: supported (native MCP commands)
 - **Universal Protocol**: Any AI that speaks MCP
@@ -309,7 +309,7 @@ One codebase that scales from laptop to LAN?WAN  without rewrites, respecting th
 
 Live view dashboard with control over how the agents work.
 
-CLI slash "/" commands to quickly communicate fron from the AI agent tool CLI interface to GiljoMCP
+CLI slash "/" commands to quickly communicate from the AI coding agent CLI interface to GiljoMCP
 
 ### Installation and Packaging Strategy
 
@@ -347,8 +347,8 @@ CLI slash "/" commands to quickly communicate fron from the AI agent tool CLI in
    - Desktop shortcuts and launcher creation
    - user needs to change admin passwrod on first install
    - All users go to a setup screen where they get instructions on how to configure the MCP server via cut and paste actions
-   - Future is links to downloadable '.py' scripts to automate the injection into installed AI agent cli tools
-   - Built-in example agents and templates, and option to activate those agents and inject them into the Ai agent cli tool, such as subagents in Claude Code CLI.  Future CODEX.
+   - Future is links to downloadable '.py' scripts to automate the injection into installed AI coding agents
+   - Built-in example agents and templates, and option to activate those agents and inject them into the AI coding agent, such as subagents in Claude Code CLI.  Future CODEX.
    - Asks user to enable Serena durin setup
    - Immediate access to web dashboard to start documenting the first product.
 

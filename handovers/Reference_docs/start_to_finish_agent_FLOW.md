@@ -249,7 +249,7 @@ Note: Job is created directly in "waiting" status. There is NO "staged"
 #### Step 4: Orchestrator Execution - 5-Task Staging Workflow
 ```
 Terminal Process:
-  1. User pastes thin prompt into CLI tool
+  1. User pastes thin prompt into AI coding agent
   2. Thin prompt provides identity (orchestrator_id, tenant_key)
   3. Orchestrator executes 5-task staging workflow:
 
@@ -924,24 +924,24 @@ PHASE 2: AGENT TEMPLATE EXPORT
                                           └─► Format: /api/download/temp/{token}/{filename}
 
 
-PHASE 3: CLI TOOL INSTALLATION
+PHASE 3: AI CODING AGENT INSTALLATION
 ═══════════════════════════════════════════════════════════════════════════════
 
     ┌──────────────────────────┐
-    │  User's AI Coding Tool   │  ← Claude Code / Codex CLI / Gemini CLI
+    │  User's AI Coding Agent  │  ← Claude Code / Codex CLI / Gemini CLI
     │  (Terminal)              │
     └─────────────┬────────────┘
                   │
                   ├──► [7] User Copies Installation Command
                   │         └─► Paste into terminal: claude-code mcp add http://x.x.x.x:7272/...
                   │
-                  ├──► [8] CLI Tool Downloads Templates
+                  ├──► [8] AI Coding Agent Downloads Templates
                   │         └─► HTTP GET /api/download/temp/{token}/agents.zip
                   │         └─► Token validated (status=ready, not expired)
                   │         └─► ZIP downloaded and extracted to ~/.claude/agents/
                   │
                   └──► [9] MCP Configuration
-                            └─► CLI tool updates config (~/.claude/config.json)
+                            └─► AI coding agent updates config (~/.claude/config.json)
                             └─► Adds GiljoAI MCP server entry
                             └─► Agents now available in MCP registry
 
@@ -985,7 +985,7 @@ PHASE 4: PROJECT STAGING & ORCHESTRATION
                   │                │
                   │                ├──► [B] User Copies & Pastes Orchestrator Prompt
                   │                │      └─► User copies thin prompt from orchestrator card
-                  │                │      └─► User pastes into AI coding tool terminal
+                  │                │      └─► User pastes into AI coding agent terminal
                   │                │      └─► Orchestrator 5-task staging workflow:
                   │                │           ├─► Task 1: Verify MCP via health_check()
                   │                │           │    └─► REQUIRED first step, verifies server connectivity
@@ -1154,7 +1154,7 @@ PHASE 6: PROJECT CLOSEOUT & MEMORY UPDATE (360 Memory Management)
 │                         SYSTEM ARCHITECTURE OVERVIEW                         │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-LAYER 1: CLIENT LAYER (AI Coding Tools)
+LAYER 1: CLIENT LAYER (AI Coding Agents)
 ═══════════════════════════════════════════════════════════════════════════════
 
     ┌────────────────┐    ┌────────────────┐    ┌────────────────┐
@@ -1355,7 +1355,7 @@ DATA FLOW EXAMPLE: Agent Acknowledges Job
 
 ╔═══════════════════════════════════════╦═══════════════════════════════════════╗
 ║   CLAUDE CODE CLI MODE (Toggle ON)    ║  MULTI-TERMINAL MODE (Toggle OFF)     ║
-║           Native Subagents            ║         General CLI Tools             ║
+║           Native Subagents            ║       General AI Coding Agents        ║
 ╠═══════════════════════════════════════╬═══════════════════════════════════════╣
 ║                                       ║                                       ║
 ║  UI BEHAVIOR:                         ║  UI BEHAVIOR:                         ║
@@ -1409,7 +1409,7 @@ DATA FLOW EXAMPLE: Agent Acknowledges Job
 ║           subagents                   ║      └─► Direct control per agent     ║
 ║                                       ║                                       ║
 ║  ADVANTAGES:                          ║  ADVANTAGES:                          ║
-║  ✅ Single terminal (simpler)         ║  ✅ Works with any CLI tool           ║
+║  ✅ Single terminal (simpler)         ║  ✅ Works with any AI coding agent    ║
 ║  ✅ Native Claude integration         ║  ✅ Full agent visibility             ║
 ║  ✅ Automatic context sharing         ║  ✅ Fine-grained control              ║
 ║  ✅ Streamlined workflow              ║  ✅ Parallel execution                ║
@@ -1517,7 +1517,7 @@ CLAUDE CODE MODE:                    MULTI-TERMINAL MODE:
 ✅ **Multi-Tenant Isolation**: Enforced at 6 layers (Database, MCP Tools, API, Job Manager, Message Queue, WebSocket)
 ✅ **SQL Injection Prevention**: Migration 6adac1467121 security-hardened (2025-11-05)
 ✅ **Token-Based Security**: 15-minute TTL, one-time use for agent templates
-✅ **Authentication**: JWT + API key support for CLI tools
+✅ **Authentication**: JWT + API key support for AI coding agents
 ✅ **Cross-Tenant Leakage**: Zero risk verified
 
 ### Performance Metrics
@@ -1815,13 +1815,13 @@ unzip -l agents.zip
 
 ---
 
-### PHASE 3: MCP TO CLI TOOL SETUP
+### PHASE 3: MCP TO AI CODING AGENT SETUP
 
 #### Code Implementation
 - **MCP Configuration**: My Settings → Integrations → MCP Setup (frontend)
 - **API Key Generation**: `api/endpoints/auth/api_keys.py`
 - **Bearer Key Generation**: `api/endpoints/auth/bearer_keys.py`
-- **CLI Tools Supported**: Claude Code, Codex CLI, Gemini CLI
+- **AI Coding Agents Supported**: Claude Code, Codex CLI, Gemini CLI
 
 #### Authentication Methods
 
@@ -1883,7 +1883,7 @@ mcp:
 #### Error Scenarios
 
 **MCP Connection Failures**:
-- **Symptom**: CLI tool cannot reach MCP server
+- **Symptom**: AI coding agent cannot reach MCP server
 - **Check**: `curl http://x.x.x.x:7272/mcp -H "X-API-Key: YOUR_KEY"`
 - **Common Causes**:
   - Server not running (`python startup.py` not executed)
@@ -2730,10 +2730,10 @@ Use this checklist to verify complete system functionality:
 #### Template Export & CLI Setup
 - [ ] Export generates ZIP with 6 agent templates
 - [ ] Download token created with 15min TTL
-- [ ] CLI tool successfully downloads ZIP
+- [ ] AI coding agent successfully downloads ZIP
 - [ ] Agent templates extracted to `~/.claude/agents/`
 - [ ] MCP connection established (health check passes)
-- [ ] Agent templates registered in CLI tool
+- [ ] Agent templates registered in AI coding agent
 
 #### Project Staging
 - [ ] Project activation creates orchestrator job
