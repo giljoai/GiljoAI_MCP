@@ -210,7 +210,7 @@ HIDDEN_FROM_SCHEMA_TOOLS: set[str] = set()
 # ============================================================================
 _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
     # Project Management
-    "create_project": {"name", "description", "tenant_key"},
+    "create_project": {"name", "description", "project_type", "tenant_key"},
     "update_project_mission": {"project_id", "mission"},
     "update_agent_mission": {"job_id", "tenant_key", "mission"},
     # Orchestrator Tools
@@ -323,6 +323,10 @@ def _build_project_tools() -> list[dict[str, Any]]:
                     "description": {
                         "type": "string",
                         "description": "Project description - what needs to be done",
+                    },
+                    "project_type": {
+                        "type": "string",
+                        "description": "Optional project type label (e.g. 'Frontend', 'Backend'). Resolved to type ID internally.",
                     },
                     "tenant_key": {
                         "type": "string",

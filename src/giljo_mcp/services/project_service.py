@@ -41,7 +41,7 @@ from src.giljo_mcp.exceptions import (
 # Import Pattern: Use modular imports from models package (Post-0128a)
 # See models/__init__.py for migration guidance
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.projects import Project, ProjectType
 from src.giljo_mcp.models.tasks import Message, Task
 from src.giljo_mcp.schemas.service_responses import (
     ActiveProjectDetail,
@@ -301,6 +301,25 @@ class ProjectService:
             raise BaseGiljoError(
                 message=f"Failed to create project: {e!s}", context={"name": name, "tenant_key": tenant_key}
             ) from e
+
+    async def get_project_type_by_label(self, label: str, tenant_key: str) -> ProjectType | None:
+        """Resolve a project type by its human-readable label (case-insensitive).
+
+        Args:
+            label: Human-readable type label (e.g. 'Frontend', 'backend')
+            tenant_key: Tenant key for multi-tenant isolation
+
+        Returns:
+            ProjectType if found, None otherwise
+        """
+        async with self._get_session() as session:
+            result = await session.execute(
+                select(ProjectType).where(
+                    ProjectType.tenant_key == tenant_key,
+                    func.lower(ProjectType.label) == label.lower(),
+                )
+            )
+            return result.scalar_one_or_none()
 
     async def get_project(self, project_id: str, tenant_key: str) -> ProjectDetail:
         """
