@@ -1,0 +1,79 @@
+{
+  "handover": "0837",
+  "title": "Project Creation Taxonomy Fix — MCP & Multi-Tenant Safety",
+  "edition_scope": "CE",
+  "branch": "feature/0837-taxonomy-fix",
+  "base_branch": "master",
+  "priority": "critical",
+  "started": "2026-03-23",
+  "status": "in_progress",
+  "sub_handovers": {
+    "0837a": {
+      "title": "Auto-Assign Series Number (Root cause fix)",
+      "status": "complete",
+      "completed_at": "2026-03-23",
+      "summary": "When series_number is not provided, auto-assign MAX(series_number)+1 scoped to tenant_key + project_type_id. Uses two-step locking: SELECT FOR UPDATE on matching rows first, then aggregate query for next number. Includes soft-deleted rows since uq_project_taxonomy constraint does not exclude them.",
+      "files_modified": [
+        {
+          "path": "src/giljo_mcp/services/project_service.py",
+          "change": "Added auto-assign block at lines 211-245 in create_project(). When series_number is None: lock rows with FOR UPDATE, compute COALESCE(MAX(series_number),0)+1, assign result. Existing duplicate check for explicit series_number moved to else branch.",
+          "lines": "211-245"
+        }
+      ],
+      "files_created": [
+        {
+          "path": "tests/services/test_project_service_auto_series.py",
+          "change": "7 integration tests covering: sequential assignment, multi-project creation, explicit taxonomy preserved, per-type independence, soft-delete accounting, cross-tenant independence."
+        }
+      ],
+      "test_results": {
+        "new_tests": 7,
+        "new_tests_passing": 7,
+        "regression_tests_run": 21,
+        "regression_tests_passing": 21,
+        "test_files_run": [
+          "tests/services/test_project_service_auto_series.py",
+          "tests/services/test_project_service_exceptions.py",
+          "tests/services/test_project_tenant_isolation_regression.py"
+        ]
+      },
+      "lint_clean": true,
+      "key_decisions": [
+        "FOR UPDATE cannot be combined with aggregate functions in PostgreSQL — split into lock query + separate MAX query.",
+        "Must include soft-deleted rows in MAX calculation because uq_project_taxonomy constraint has no WHERE clause excluding deleted_at IS NOT NULL.",
+        "No database migration needed — fix is application-level auto-assignment of values that satisfy the existing constraint."
+      ]
+    },
+    "0837b": {
+      "title": "Type Resolution by Label + MCP Schema",
+      "status": "not_started",
+      "scope": "tool_accessor.py, project_service.py (new method), mcp_http.py",
+      "description": "Add optional type parameter to create_project MCP tool. Resolve human-readable label to project_type_id via case-insensitive lookup. If type not found, create without type."
+    },
+    "0837c": {
+      "title": "Slash Command Template Updates",
+      "status": "not_started",
+      "scope": "slash_command_templates.py",
+      "description": "Update /gil_add templates to pass type when user specifies a category for projects."
+    },
+    "0837d": {
+      "title": "Multi-Tenant Constraint Audit",
+      "status": "not_started",
+      "scope": "All models in src/giljo_mcp/models/",
+      "description": "Audit every UniqueConstraint and unique=True column for lockout patterns similar to the uq_project_taxonomy bug."
+    }
+  },
+  "root_cause": {
+    "constraint": "uq_project_taxonomy",
+    "table": "projects",
+    "columns": ["tenant_key", "project_type_id", "series_number", "subseries"],
+    "problem": "NULLS NOT DISTINCT means (tenant_key, NULL, NULL, NULL) can only exist once. MCP create_project never passes taxonomy fields, so the second project per tenant always fails.",
+    "fix_approach": "Auto-assign series_number at application level when not provided. No constraint or migration change needed."
+  },
+  "installation_impact": "None. No migration needed. Fix is application-level only.",
+  "cascading_analysis": {
+    "downstream": "Projects created via MCP now always have series_number populated. Taxonomy alias display works for typed projects. Untyped projects show series number or name.",
+    "upstream": "No product or organization changes.",
+    "sibling": "Tasks unaffected. Other projects unaffected. FOR UPDATE lock scoped to specific type+tenant combo."
+  }
+}
