@@ -8,11 +8,16 @@
             alt="GiljoAI MCP"
           />
         </v-avatar>
-        <h3 class="text-h6 mb-0">GiljoAI MCP Integration</h3>
+        <h3 class="text-h6 mb-0 mr-2">GiljoAI MCP Integration</h3>
+        <v-tooltip location="top" max-width="400">
+          <template #activator="{ props }">
+            <v-icon v-bind="props" size="small" color="medium-emphasis">mdi-help-circle-outline</v-icon>
+          </template>
+          <span>Connect your AI coding tool to GiljoAI orchestration. Supports Claude Code, Codex CLI, and Gemini CLI. Creates MCP integration CLI command for your coding agent of choice.</span>
+        </v-tooltip>
       </div>
       <p class="text-body-2 text-medium-emphasis mb-4">
-        Connect your AI coding tool to GiljoAI orchestration. Supports Claude Code, Codex CLI, and
-        Gemini CLI.
+        Attach GiljoAI MCP to your AI coding agents.
       </p>
 
       <!-- MCP Configuration Tool -->
@@ -21,9 +26,6 @@
           <div class="d-flex align-center justify-between">
             <div class="flex-grow-1">
               <div class="text-subtitle-2 font-weight-medium">MCP Configuration Tool</div>
-              <div class="text-body-2 text-medium-emphasis">
-                Creates MCP integration CLI command for your coding agent of choice
-              </div>
             </div>
             <AiToolConfigWizard />
           </div>

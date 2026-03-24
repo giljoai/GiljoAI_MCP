@@ -28,15 +28,10 @@
               </div>
             </v-tooltip>
           </div>
-          <p class="text-caption text-medium-emphasis mb-0">
-            Intelligent codebase understanding and navigation
-          </p>
         </div>
       </div>
-
-      <p class="text-body-2 text-medium-emphasis mb-3">
-        Enabling adds Serena tool instructions to agent prompts. Disabling removes them from agent
-        tool startup.
+      <p class="text-body-2 text-medium-emphasis mb-4">
+        Add Serena MCP tool instructions to agent prompts.
       </p>
 
       <div class="d-flex align-center mb-3">
