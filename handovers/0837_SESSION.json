@@ -30,7 +30,7 @@
     "agent": "Type Resolution by Label + MCP Schema",
     "status": "complete",
     "depends_on": "0837a",
-    "commit": "pending_user_commit",
+    "commit": "cd2d43d9",
     "files_changed": [
       "src/giljo_mcp/services/project_service.py",
       "src/giljo_mcp/tools/tool_accessor.py",
@@ -77,13 +77,219 @@
 
   "0837d": {
     "agent": "Multi-Tenant Constraint Audit",
-    "status": "not_started",
+    "status": "complete",
     "depends_on": null,
     "commit": null,
     "files_changed": [],
-    "audit_results": [],
-    "notes": null
+    "audit_results": [
+      {
+        "constraint": "uq_project_taxonomy",
+        "table": "projects",
+        "columns": ["tenant_key", "project_type_id", "series_number", "subseries"],
+        "has_nulls_not_distinct": true,
+        "verdict": "BUG — CONFIRMED",
+        "detail": "NULLS NOT DISTINCT causes lockout when MCP creates 2+ projects without taxonomy. Fixed by 0837a (auto-assign series_number)."
+      },
+      {
+        "constraint": "uq_project_type_abbr",
+        "table": "project_types",
+        "columns": ["tenant_key", "abbreviation"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "abbreviation is Column(String(10), nullable=False). Both columns always provided. Tenant-scoped. No NULL lockout risk."
+      },
+      {
+        "constraint": "uq_template_product_name_version",
+        "table": "agent_templates",
+        "columns": ["product_id", "name", "version"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "name is nullable=False. version defaults to '1.0.0' (never NULL). product_id is nullable but standard PG treats NULLs as distinct in unique constraints by default (no NULLS NOT DISTINCT). Two templates with NULL product_id and same name+version would NOT collide."
+      },
+      {
+        "constraint": "uq_vision_doc_product_name",
+        "table": "vision_documents",
+        "columns": ["product_id", "document_name"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "document_name is always provided on creation. product_id is FK, always set. No NULL risk."
+      },
+      {
+        "constraint": "uq_config_tenant_key",
+        "table": "config",
+        "columns": ["tenant_key", "key"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "Both columns nullable=False. Tenant-scoped. No lockout risk."
+      },
+      {
+        "constraint": "uq_settings_tenant_category",
+        "table": "settings",
+        "columns": ["tenant_key", "category"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "Both columns nullable=False. Tenant-scoped. No lockout risk."
+      },
+      {
+        "constraint": "uq_product_sequence",
+        "table": "product_memory",
+        "columns": ["product_id", "sequence"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "sequence is Column(Integer, nullable=False). Auto-assigned. product_id always provided. No NULL lockout risk."
+      },
+      {
+        "constraint": "idx_product_single_active_per_tenant",
+        "table": "products",
+        "columns": ["tenant_key"],
+        "condition": "WHERE is_active = true",
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE (by design)",
+        "detail": "Partial unique index enforces exactly one active product per tenant. This is intentional business logic — not a lockout bug. tenant_key is nullable=False."
+      },
+      {
+        "constraint": "idx_project_single_active_per_product",
+        "table": "projects",
+        "columns": ["product_id"],
+        "condition": "WHERE status = 'active'",
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE (by design)",
+        "detail": "Partial unique index enforces one active project per product. Intentional business logic. product_id always set."
+      },
+      {
+        "constraint": "uq_org_user",
+        "table": "org_memberships",
+        "columns": ["org_id", "user_id"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "Both are FK columns, nullable=False. Always provided. No NULL lockout risk."
+      },
+      {
+        "constraint": "uq_api_key_ip",
+        "table": "api_key_ips",
+        "columns": ["api_key_id", "ip_address"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "Both columns always provided (FK + IP string). No NULL risk."
+      },
+      {
+        "constraint": "uq_discovery_path",
+        "table": "discovery_paths",
+        "columns": ["project_id", "path_key"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "project_id is FK, path_key is always provided. No NULL lockout risk."
+      },
+      {
+        "constraint": "unique=True on commit_hash",
+        "table": "git_commits",
+        "columns": ["commit_hash"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "commit_hash is nullable=False. Globally unique by nature (SHA). No tenant scoping needed — git hashes are globally unique."
+      },
+      {
+        "constraint": "unique=True on tenant_key (SetupState)",
+        "table": "setup_state",
+        "columns": ["tenant_key"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE (by design)",
+        "detail": "One setup state row per tenant. Intentional — tracks installation state. nullable=False."
+      },
+      {
+        "constraint": "unique=True on token (CsrfToken)",
+        "table": "csrf_tokens",
+        "columns": ["token"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "Token is generated via UUID default, nullable=False. No lockout risk."
+      },
+      {
+        "constraint": "unique=True on tenant_key (ApiMetrics)",
+        "table": "api_metrics",
+        "columns": ["tenant_key"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE (by design)",
+        "detail": "One cumulative metrics row per tenant (aggregate counters). Intentional singleton pattern. nullable=False."
+      },
+      {
+        "constraint": "unique=True on code (OAuthAuthorizationCode)",
+        "table": "oauth_authorization_codes",
+        "columns": ["code"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "Authorization code is always generated, nullable=False. No lockout risk."
+      },
+      {
+        "constraint": "unique=True on chunk_id (ContextChunk)",
+        "table": "context_chunks",
+        "columns": ["chunk_id"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "Generated via UUID default, nullable=False. Globally unique by nature."
+      },
+      {
+        "constraint": "unique=True on slug (Organization)",
+        "table": "organizations",
+        "columns": ["slug"],
+        "has_nulls_not_distinct": false,
+        "verdict": "NOTE — not tenant-scoped",
+        "detail": "slug is unique globally, not per-tenant. This is likely by design (slugs used in URLs), but means two tenants cannot have orgs with the same slug. Low risk in CE (single tenant), potential SaaS consideration."
+      },
+      {
+        "constraint": "unique=True on username (User)",
+        "table": "users",
+        "columns": ["username"],
+        "has_nulls_not_distinct": false,
+        "verdict": "NOTE — not tenant-scoped",
+        "detail": "username is globally unique, not per-tenant. By design for auth (login by username). Low risk in CE. SaaS may need tenant-scoped usernames if multi-org."
+      },
+      {
+        "constraint": "unique=True on email (User)",
+        "table": "users",
+        "columns": ["email"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "email is nullable=True, unique=True. Standard PG allows multiple NULLs in unique columns (NULLS DISTINCT by default). Users without email don't collide."
+      },
+      {
+        "constraint": "unique=True on key_hash (APIKey)",
+        "table": "api_keys",
+        "columns": ["key_hash"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "key_hash is nullable=False, generated from bcrypt. Globally unique by nature."
+      },
+      {
+        "constraint": "unique=True on session_id (McpSession)",
+        "table": "mcp_sessions",
+        "columns": ["session_id"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "Generated via UUID default, nullable=False. No lockout risk."
+      },
+      {
+        "constraint": "unique=True on alias (Project)",
+        "table": "projects",
+        "columns": ["alias"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE",
+        "detail": "alias is nullable=False, generated via generate_project_alias() (random 6-char). Not tenant-scoped but collision probability is negligible (36^6 = 2.1B combinations). No NULL risk."
+      },
+      {
+        "constraint": "uq_git_config_product",
+        "table": "git_config",
+        "columns": ["product_id"],
+        "has_nulls_not_distinct": false,
+        "verdict": "SAFE (by design)",
+        "detail": "One git config per product. Intentional singleton pattern. product_id is FK, always set."
+      }
+    ],
+    "notes": "Audited 24 unique constraints/indexes across all models. Only uq_project_taxonomy has the NULLS NOT DISTINCT lockout bug (fixed by 0837a). Two constraints (Organization.slug, User.username) are globally unique rather than tenant-scoped — this is by design for CE but flagged as SaaS considerations. No other constraints have NULL lockout risk. No missing tenant_key scoping issues beyond the noted global identifiers."
   },
 
-  "cross_cutting_findings": {}
+  "cross_cutting_findings": {
+    "org_slug_global_uniqueness": "Organization.slug is unique globally, not per-tenant. Fine for CE but SaaS multi-tenant may need tenant-scoped slugs. Low priority — not a lockout bug.",
+    "user_username_global_uniqueness": "User.username is unique globally, not per-tenant. Standard for single-tenant auth but SaaS with multiple orgs may need scoping. Low priority."
+  }
 }
