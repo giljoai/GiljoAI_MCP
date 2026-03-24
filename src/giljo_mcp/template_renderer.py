@@ -262,7 +262,7 @@ def render_gemini_agent(template: AgentTemplate) -> str:
         "name": template.name,
         "description": description,
         "kind": "local",
-        "model": "gemini-2.5-pro",
+        "model": "inherit",
         "max_turns": 50,
         "tools": [
             "run_shell_command",
@@ -272,7 +272,7 @@ def render_gemini_agent(template: AgentTemplate) -> str:
             "grep_search",
             "list_directory",
             "read_many_files",
-            "mcp_*",
+            "mcp_giljo-mcp_*",
         ],
     }
 
