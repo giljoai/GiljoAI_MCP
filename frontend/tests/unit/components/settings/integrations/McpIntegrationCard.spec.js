@@ -57,7 +57,7 @@ describe('McpIntegrationCard.vue', () => {
 
     it('displays description about MCP configuration', () => {
       const text = wrapper.text()
-      expect(text).toContain('Connect your AI coding tool to GiljoAI orchestration')
+      expect(text).toContain('Connect your AI coding agent to GiljoAI orchestration')
     })
 
     it('displays supported tools in description', () => {
@@ -145,7 +145,7 @@ describe('McpIntegrationCard.vue', () => {
     it('description uses text-body-2 class', () => {
       const paragraphs = wrapper.findAll('p')
       const descriptionP = paragraphs.find(p =>
-        p.text().includes('Connect your AI coding tool')
+        p.text().includes('Connect your AI coding agent')
       )
       expect(descriptionP).toBeDefined()
       if (descriptionP) {
@@ -156,7 +156,7 @@ describe('McpIntegrationCard.vue', () => {
     it('description uses text-medium-emphasis class', () => {
       const paragraphs = wrapper.findAll('p')
       const descriptionP = paragraphs.find(p =>
-        p.text().includes('Connect your AI coding tool')
+        p.text().includes('Connect your AI coding agent')
       )
       if (descriptionP) {
         expect(descriptionP.classes()).toContain('text-medium-emphasis')
@@ -236,7 +236,7 @@ describe('McpIntegrationCard.vue', () => {
       expect(text).toContain('GiljoAI MCP Integration')
 
       // Description
-      expect(text).toContain('Connect your AI coding tool to GiljoAI orchestration')
+      expect(text).toContain('Connect your AI coding agent to GiljoAI orchestration')
       expect(text).toContain('Supports Claude Code, Codex CLI, and Gemini CLI')
 
       // Configuration tool section
@@ -256,7 +256,7 @@ describe('McpIntegrationCard.vue', () => {
     it('description has correct bottom margin (mb-4)', () => {
       const paragraphs = wrapper.findAll('p')
       const descriptionP = paragraphs.find(p =>
-        p.text().includes('Connect your AI coding tool')
+        p.text().includes('Connect your AI coding agent')
       )
       if (descriptionP) {
         expect(descriptionP.classes()).toContain('mb-4')

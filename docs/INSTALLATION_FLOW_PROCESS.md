@@ -875,7 +875,7 @@ def display_installation_summary():
    1. Browser redirects to /welcome → /first-login
    2. Create first admin account (username, password, recovery PIN)
    3. Login and access dashboard
-   4. Configure AI tools via Avatar → My Settings → API & Integrations
+   4. Configure AI coding agents via Avatar → My Settings → API & Integrations
    5. Configure firewall if needed for network access
 
 🔒 Security Features:
@@ -1456,7 +1456,7 @@ After successful installation, the browser opens to the /welcome page:
 
 2. **Complete Setup Wizard**: 3-step setup (Welcome, MCP Config, Serena)
 
-3. **Configure AI Tool Integration**: Avatar → My Settings → API & Integrations
+3. **Configure AI Coding Agent Integration**: Avatar → My Settings → API & Integrations
    - Set up Claude Code, CODEX, or Gemini integration
    - Generate Personal API Key for MCP-over-HTTP access
 

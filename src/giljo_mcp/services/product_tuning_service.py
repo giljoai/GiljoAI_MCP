@@ -5,7 +5,7 @@ Assembles comparison prompts from current product context vs 360 memory history,
 stores agent-submitted tuning proposals, and manages the review lifecycle.
 
 Design: User-initiated, not automatic. GiljoAI assembles context and generates
-the comparison prompt. The user's CLI tool does the reasoning.
+the comparison prompt. The user's AI coding agent does the reasoning.
 """
 
 import logging
@@ -260,7 +260,7 @@ class ProductTuningService:
         sections: list[str],
     ) -> dict[str, Any]:
         """
-        Assemble a comparison prompt for the user to paste into their CLI tool.
+        Assemble a comparison prompt for the user to paste into their AI coding agent.
 
         Args:
             product_id: Target product ID

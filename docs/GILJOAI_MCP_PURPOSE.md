@@ -475,12 +475,12 @@ context:
 
 **Core Features**:
 - **Personal API keys**: Each user generates their own keys for MCP tools
-- **Automatic integration**: AI Tools config generator creates keys automatically
+- **Automatic integration**: AI coding agent config generator creates keys automatically
 - **Tenant-scoped security**: All API keys filtered by tenant_key
 - **Bcrypt hashing**: Secure storage with one-time plaintext display
 - **Full lifecycle management**: Generate, list, revoke, audit
 
-**AI Tool Integration**:
+**AI Coding Agent Integration**:
 - **One-click configuration**: Generate Claude Code, CODEX, Gemini configs
 - **Embedded API keys**: User keys automatically included in configs
 - **Tenant isolation**: Each user's keys only access their projects
@@ -594,7 +594,7 @@ context:
 **UserSettings.vue Enhancements**:
 - **API Key Management**: Industry-standard masking (sk-...xyz format)
 - **Serena Integration**: Toggle for Serena MCP optimization
-- **AI Tool Instructions**: Configuration help for Claude Code, etc.
+- **AI Coding Agent Instructions**: Configuration help for Claude Code, etc.
 - **WCAG 2.1 AA Compliant**: Full accessibility standards
 
 **Standalone Users Page** (Handover 0029):
@@ -607,11 +607,11 @@ context:
 **Quality**: 100% test pass rate, zero critical/major/minor bugs, WCAG 2.1 AA compliant
 **Performance**: Frontend build 3.12s, Frontend tests 3.30s, Backend tests 2.92s
 
-### AI Coding Tool Integration
+### AI Coding Agent Integration
 
 **Seamless Claude Code Integration**:
 - **One-click configuration**: Generate MCP config with embedded API keys
-- **AI Tools Config Generator**: Professional 266-line component
+- **AI Coding Agent Config Generator**: Professional 266-line component
 - **Automatic key injection**: User API keys embedded in generated configs
 - **Multi-tool support**: Claude Code, CODEX, Gemini CLI
 
@@ -624,7 +624,7 @@ context:
 1. **Installation**: `python install.py` (cross-platform unified installer)
 2. **Setup Wizard**: Create first admin account (no defaults, secure by design)
 3. **API Key Generation**: User Settings → API Keys → Generate for MCP tools
-4. **AI Tool Configuration**: Admin Settings → Integrations → Generate configs
+4. **AI Coding Agent Configuration**: Admin Settings → Integrations → Generate configs
 5. **Project Setup**: Create new project or import existing codebase
 6. **Agent Configuration**: Select desired agent specializations
 7. **First Orchestration**: Start with a simple feature implementation

@@ -23,7 +23,7 @@
                   significantly improving performance and reducing token usage.
                 </p>
                 <p class="mt-2 mb-0 text-caption">
-                  <strong>Note:</strong> Serena must be installed separately in your AI coding tool.
+                  <strong>Note:</strong> Serena must be installed separately in your AI coding agent.
                 </p>
               </div>
             </v-tooltip>

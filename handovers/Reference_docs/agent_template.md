@@ -219,7 +219,7 @@ SEED → CUSTOMIZE → EXPORT → STAGE → EXECUTE
   │         (YAML)  (TOML)  (YAML)
 ```
 
-Templates are defined once in the UI. At export time, they are rendered into the target CLI's native format. At staging time, the mode radio button determines how agents are spawned. At execution time, `get_agent_mission()` delivers protocols and work order regardless of CLI tool.
+Templates are defined once in the UI. At export time, they are rendered into the target CLI's native format. At staging time, the mode radio button determines how agents are spawned. At execution time, `get_agent_mission()` delivers protocols and work order regardless of AI coding agent.
 
 ### Export UX: Two Approaches
 
@@ -234,7 +234,7 @@ Templates are defined once in the UI. At export time, they are rendered into the
 
 Current: `/gil_get_claude_agents` — hardcoded to Claude export path.
 
-Future: `/gil_get_agents` — prompts the agent "Which CLI tool are you using?" or reads from the orchestrator's execution mode. Routes to the appropriate renderer:
+Future: `/gil_get_agents` — prompts the agent "Which AI coding agent are you using?" or reads from the orchestrator's execution mode. Routes to the appropriate renderer:
 - Claude → `render_claude_agent()` (exists)
 - Codex → `render_codex_agent()` (to build — produces `config.toml` + per-role `.toml`)
 - Gemini → `render_gemini_agent()` (to build — produces `.gemini/agents/*.md` with Gemini-specific YAML frontmatter)

@@ -115,7 +115,7 @@ describe('ApiKeyManager.vue - Handover 0028 Simplified Interface', () => {
         }
       })
 
-      expect(wrapper.text()).toContain('View and revoke API keys used by AI tool integrations')
+      expect(wrapper.text()).toContain('View and revoke API keys used by AI coding agent integrations')
     })
   })
 

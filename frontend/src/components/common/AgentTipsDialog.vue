@@ -108,7 +108,7 @@
 
                 <!-- Tool selector -->
                 <div class="tool-selector mb-3">
-                  <div class="tip-subtitle">CLI tool:</div>
+                  <div class="tip-subtitle">AI coding agent:</div>
                   <v-chip-group v-model="selectedTool" mandatory selected-class="tool-chip-active">
                     <v-chip size="small" value="claude" variant="outlined">Claude Code</v-chip>
                     <v-chip size="small" value="codex" variant="outlined">Codex</v-chip>

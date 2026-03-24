@@ -115,7 +115,7 @@
               density="compact"
               class="mb-3"
             >
-              <strong>HTTPS with self-signed certificates:</strong> Node.js-based CLI tools require a one-time setup step.
+              <strong>HTTPS with self-signed certificates:</strong> Node.js-based AI coding agents require a one-time setup step.
               <template v-if="certPlatform === 'windows'">
                 <code class="d-block mt-1 text-body-2">[System.Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', (mkcert -CAROOT) + '\rootCA.pem', 'User')</code>
                 <span class="text-caption">Then restart your terminal. This is a one-time setup.</span>
@@ -211,7 +211,7 @@ const toolLogos = {
 }
 
 const selectedToolName = computed(
-  () => aiTools.find((t) => t.value === selectedTool.value)?.name || 'AI Tool',
+  () => aiTools.find((t) => t.value === selectedTool.value)?.name || 'AI Agent',
 )
 
 const isHttps = computed(() => window.location.protocol === 'https:')
@@ -237,7 +237,7 @@ function makeKeyName(tool) {
     gemini: 'Gemini',
     openclaw: 'OpenClaw',
   }
-  return `${map[tool] || 'AI Tool'} prompt key`
+  return `${map[tool] || 'AI Agent'} prompt key`
 }
 
 async function generateApiKey() {

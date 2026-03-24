@@ -402,7 +402,7 @@ export const EVENT_MAP = {
       notificationStore.addNotification({
         type: 'context_tuning',
         title: 'Tuning Proposals Ready',
-        message: 'Your CLI tool has submitted context tuning proposals. Review them in the product details.',
+        message: 'Your AI coding agent has submitted context tuning proposals. Review them in the product details.',
         metadata: {
           product_id: payload.product_id,
           product_name: payload.product_name,

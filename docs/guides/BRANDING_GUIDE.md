@@ -45,9 +45,9 @@ Agent job status indicators use the following color scheme:
 
 ---
 
-## AI Tool Colors
+## AI Coding Agent Colors
 
-Colors for AI coding tool integrations:
+Colors for AI coding agent integrations:
 
 | Tool | Color | RGB | Usage |
 |------|-------|-----|-------|

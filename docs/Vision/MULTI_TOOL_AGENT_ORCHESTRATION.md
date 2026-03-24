@@ -15,7 +15,7 @@
 - **[Simple_Vision.md](../../handovers/Simple_Vision.md)** - User journey & product vision
 - **[start_to_finish_agent_FLOW.md](../../handovers/start_to_finish_agent_FLOW.md)** - Technical verification
 
-**Supported AI Tools**:
+**Supported AI Coding Agents**:
 - Claude Code (native MCP support)
 - Codex CLI (native MCP support)
 - Gemini CLI (native MCP support)
@@ -50,16 +50,16 @@ GiljoAI MCP introduces the **world's first multi-tool AI agent orchestration sys
 - **Load balance** across AI subscriptions (e.g., Claude Pro for complex tasks, Codex Free for routine work)
 - **Capability match** agents to tools (e.g., Claude for UI design, Gemini for backend logic)
 - **Subscription rotate** when hitting rate limits or budget constraints
-- **Team coordinate** where different developers use different AI tools
+- **Team coordinate** where different developers use different AI coding agents
 - **Cost optimize** by routing expensive operations to cheaper tiers
 
-**Industry Status**: No existing system coordinates multiple AI coding tools in a single project. Current solutions lock users into one tool ecosystem (GitHub Copilot, Cursor, Claude Code, etc.) with no interoperability.
+**Industry Status**: No existing system coordinates multiple AI coding agents in a single project. Current solutions lock users into one tool ecosystem (GitHub Copilot, Cursor, Claude Code, etc.) with no interoperability.
 
-**Innovation**: MCP (Model Context Protocol) as a **universal coordination layer** that makes AI tool choice irrelevant to the orchestration logic.
+**Innovation**: MCP (Model Context Protocol) as a **universal coordination layer** that makes AI coding agent choice irrelevant to the orchestration logic.
 
 ---
 
-## The Problem: AI Tool Lock-In
+## The Problem: AI Coding Agent Lock-In
 
 ### Current Industry State
 
@@ -98,7 +98,7 @@ Project C → Cursor only
 
 ### Core Concept
 
-**One unified agent template database serving multiple AI tools through intelligent routing:**
+**One unified agent template database serving multiple AI coding agents through intelligent routing:**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -412,7 +412,7 @@ Orchestrator coordinates via message queue
 
 **Key Features**:
 - ✅ Full manual control
-- ✅ Works with ANY AI tool (not just Codex/Gemini)
+- ✅ Works with ANY AI coding agent (not just Codex/Gemini)
 - ✅ MCP coordination prevents conflicts
 - ✅ Multi-tenant isolation
 - ✅ Proven architecture (pre-subagent era)
@@ -470,13 +470,13 @@ Project continues WITHOUT INTERRUPTION
 
 **The breakthrough**: MCP (Model Context Protocol) is tool-agnostic.
 
-**Any AI tool that supports MCP can participate**:
+**Any AI coding agent that supports MCP can participate**:
 - Claude Code ✅ (native MCP support)
 - Codex ✅ (via MCP server config)
 - Gemini CLI ✅ (via MCP integration)
 - Future tools ✅ (if they adopt MCP)
 
-**Implication**: As industry adopts MCP, GiljoAI becomes the **orchestration platform** for all AI coding tools.
+**Implication**: As industry adopts MCP, GiljoAI becomes the **orchestration platform** for all AI coding agents.
 
 ---
 
@@ -497,13 +497,13 @@ Project continues WITHOUT INTERRUPTION
 - Routine code → Codex Free (zero cost)
 - Test generation → Gemini Pro (good at tests)
 
-**Savings**: Potentially 40-60% reduction in AI tool costs while maintaining quality.
+**Savings**: Potentially 40-60% reduction in AI coding agent costs while maintaining quality.
 
 ---
 
 ### 4. Capability Matching
 
-**Different AI tools have different strengths**:
+**Different AI coding agents have different strengths**:
 
 | Tool | Strength | Weakness |
 |------|----------|----------|
@@ -573,7 +573,7 @@ documenter      → codex   (free tier, docs)
 
 ### Use Case 3: Team Collaboration
 
-**Scenario**: Team with mixed AI tool subscriptions
+**Scenario**: Team with mixed AI coding agent subscriptions
 
 **Team Members**:
 - Alice: Claude Pro subscription
@@ -943,7 +943,7 @@ async def get_pending_jobs(agent_type: str, tenant_key: str):
 **Multi-Tool Agent Orchestration represents a paradigm shift** in AI-assisted software development:
 
 ### Before GiljoAI
-- Users locked into single AI tool
+- Users locked into single AI coding agent
 - Budget exhaustion = project stalls
 - Rate limits = productivity blocked
 - No capability matching
@@ -958,7 +958,7 @@ async def get_pending_jobs(agent_type: str, tenant_key: str):
 
 ### The Breakthrough
 
-**MCP as universal coordination protocol** makes this possible. As the industry adopts MCP, GiljoAI becomes the **orchestration platform for all AI coding tools**.
+**MCP as universal coordination protocol** makes this possible. As the industry adopts MCP, GiljoAI becomes the **orchestration platform for all AI coding agents**.
 
 **Revolutionary**: Industry-first architecture with no competitors.
 
@@ -981,9 +981,9 @@ async def get_pending_jobs(agent_type: str, tenant_key: str):
 **Key Difference**: Existing MAS assumes uniform agent capabilities. GiljoAI embraces tool diversity as strategic advantage.
 
 **Potential Publications**:
-- "MCP as Universal AI Tool Coordination Protocol"
+- "MCP as Universal AI Coding Agent Coordination Protocol"
 - "Heterogeneous Multi-Tool Agent Orchestration in Software Development"
-- "Economic Optimization via Strategic AI Tool Routing"
+- "Economic Optimization via Strategic AI Coding Agent Routing"
 
 ---
 
@@ -1006,7 +1006,7 @@ async def get_pending_jobs(agent_type: str, tenant_key: str):
 
 **Potentially Patentable**:
 - Multi-tool agent routing based on template configuration
-- MCP-based universal coordination protocol for heterogeneous AI tools
+- MCP-based universal coordination protocol for heterogeneous AI coding agents
 - Dynamic tool switching with context preservation
 - Economic optimization via strategic task routing
 
