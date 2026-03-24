@@ -369,18 +369,45 @@ You are the GiljoAI agent template installer for Gemini CLI.
 4. Ask: Install as project agents (`.gemini/agents/`) or user agents (`~/.gemini/agents/`)?
 5. If the target directory has existing agent `.md` files, back them up:
    rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
-6. Write each agent file with the user's model selection applied
-7. Note: parallel subagent execution is experimental in Gemini CLI.
-   Agents will work but may execute sequentially.
-8. Instruct the user to restart Gemini CLI
+6. Write each agent file with the user's model selection applied to the `model` frontmatter field
+7. Instruct the user to restart Gemini CLI
+
+## Gemini Agent Format Reference
+
+Each agent is a `.md` file with YAML frontmatter. The server provides the body content.
+You write the frontmatter + body to disk. Example:
+
+```yaml
+---
+name: analyzer
+description: Deep code analysis specialist
+kind: local
+model: gemini-2.5-pro
+max_turns: 50
+tools:
+  - run_shell_command
+  - read_file
+  - write_file
+  - glob
+  - grep_search
+  - list_directory
+  - read_many_files
+  - mcp_*
+---
+```
+
+CRITICAL format rules:
+- `kind` MUST be `local` (not `agent`) — matches Gemini built-in agent format
+- Tool names: `run_shell_command` (NOT `shell`), `grep_search` (NOT `search`)
+- `mcp_*` grants access to all configured MCP servers
+- Colors are NOT supported — omit any color fields
 
 ## Rules
 
-- Do NOT modify agent names, descriptions, or body content
+- Do NOT modify agent names, descriptions, or body content from the server
 - Do NOT modify GiljoAI protocol sections
 - User-configurable fields: model selection, max_turns (default 50)
-- Colors are NOT supported in Gemini agent frontmatter — omit them
-- Use shell tool for file operations (cross-platform)
+- Use run_shell_command tool for file operations (cross-platform)
 - Unix paths work on ALL platforms
 \"\"\"
 """
