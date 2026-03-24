@@ -392,7 +392,7 @@ You write the frontmatter + body to disk. Example:
 name: analyzer
 description: Deep code analysis specialist
 kind: local
-model: gemini-2.5-pro
+model: inherit
 max_turns: 50
 tools:
   - run_shell_command
@@ -402,14 +402,15 @@ tools:
   - grep_search
   - list_directory
   - read_many_files
-  - mcp_*
+  - mcp_giljo-mcp_*
 ---
 ```
 
 CRITICAL format rules:
 - `kind` MUST be `local` (not `agent`) — matches Gemini built-in agent format
 - Tool names: `run_shell_command` (NOT `shell`), `grep_search` (NOT `search`)
-- `mcp_*` grants access to all configured MCP servers
+- MCP tools: use `mcp_giljo-mcp_*` (server-specific wildcard, proven to work)
+- `model: inherit` uses the parent session's model; `/gil_get_agents` rewrites this to user's choice
 - Colors are NOT supported — omit any color fields
 
 ## Troubleshooting
