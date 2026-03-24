@@ -1,0 +1,88 @@
+{
+  "handover": "0837",
+  "title": "Project Creation Taxonomy Fix — MCP & Multi-Tenant Safety",
+  "branch": "feature/0837-taxonomy-fix",
+  "base_branch": "master",
+
+  "instructions": {
+    "for_agents": "Read handovers/HANDOVER_INSTRUCTIONS.md first. Then read handovers/0837_PROJECT_CREATION_TAXONOMY_FIX.md for full technical scope. Work on your assigned sub-handover. When done, update YOUR section below with: status, commit hashes, files changed, tests passing, and any issues found. Do NOT modify other agents' sections.",
+    "kickoff": {
+      "0837a": "You are on branch feature/0837-taxonomy-fix. Implement auto-assign series_number in project_service.py create_project(). When series_number is None, query MAX(series_number)+1 with FOR UPDATE lock scoped to tenant+type. This is the critical blocker — MCP create_project fails for any tenant with 1+ projects due to uq_project_taxonomy NULLS NOT DISTINCT. Write tests: multiple projects without taxonomy, concurrent creation, explicit taxonomy still works, soft-deleted project reuse. Read the 0837 handover for code snippets.",
+      "0837b": "You are on branch feature/0837-taxonomy-fix. Depends on 0837a being complete. Add optional 'type' parameter to create_project MCP tool. Accept human-readable label ('Frontend' not UUID). Add get_project_type_by_label() to project_service.py (case-insensitive lookup). Update MCP schema in mcp_http.py. If type not found, create without type (no error). Read the 0837 handover for code snippets and test requirements.",
+      "0837c": "You are on branch feature/0837-taxonomy-fix. Depends on 0837b being complete. Update /gil_add slash command templates in slash_command_templates.py (GIL_ADD_MD, GIL_ADD_GEMINI_TOML, GIL_ADD_CODEX_SKILL_MD) to pass the 'type' parameter when creating projects. The project creation section of each template should ask users for an optional project type. Read the 0837 handover for scope.",
+      "0837d": "You are on branch feature/0837-taxonomy-fix. Can run in parallel with 0837a-c. Audit ALL UniqueConstraints in src/giljo_mcp/models/ for multi-tenant lockout patterns. Check: NULL columns in constrained fields, missing tenant_key scoping, race conditions under concurrent writes. The 0837 handover has a table of 12 constraints to verify. Deliverable: audit report in this JSON confirming each is safe or flagging fixes needed."
+    },
+    "closeout": "When your sub-handover is complete: set status to 'complete', list all commit hashes, list files changed, confirm tests passing count and lint status. If you found issues in other agents' scope, note them in cross_cutting_findings."
+  },
+
+  "0837a": {
+    "agent": "Auto-Assign Series Number (root cause fix)",
+    "status": "not_started",
+    "commit": null,
+    "files_changed": [],
+    "tests_passing": null,
+    "lint": null,
+    "fixes": [],
+    "notes": null
+  },
+
+  "0837b": {
+    "agent": "Type Resolution by Label + MCP Schema",
+    "status": "complete",
+    "depends_on": "0837a",
+    "commit": "pending_user_commit",
+    "files_changed": [
+      "src/giljo_mcp/services/project_service.py",
+      "src/giljo_mcp/tools/tool_accessor.py",
+      "api/endpoints/mcp_http.py",
+      "tests/unit/test_tool_accessor_create_project_type_resolution.py",
+      "tests/services/test_project_service_type_label_lookup.py"
+    ],
+    "tests_passing": 30,
+    "lint": "clean",
+    "fixes": [
+      "Added get_project_type_by_label() to ProjectService (case-insensitive lookup by tenant)",
+      "Added project_type parameter to ToolAccessor.create_project() — resolves label to project_type_id",
+      "Added project_type to MCP schema inputSchema and _TOOL_SCHEMA_PARAMS allowlist",
+      "Used 'project_type' instead of 'type' to avoid shadowing Python builtin (ruff A002)"
+    ],
+    "notes": "MCP schema uses 'project_type' (not 'type') as the property name to avoid Python builtin shadow. 0837c templates should use project_type as the parameter name. Non-existent type labels silently create without type (no error). 4 unit tests + 5 integration tests added."
+  },
+
+  "0837c": {
+    "agent": "Slash Command Template Updates",
+    "status": "complete",
+    "depends_on": "0837b",
+    "commit": "pending_user_commit",
+    "files_changed": [
+      "src/giljo_mcp/tools/slash_command_templates.py",
+      "tests/test_slash_command_templates.py"
+    ],
+    "tests_passing": 56,
+    "lint": "clean (1 pre-existing Q000 in test file, not from this change)",
+    "fixes": [
+      "Added --type flag to project flags in GIL_ADD_MD (Claude Code template)",
+      "Added --type flag to project flags in GIL_ADD_GEMINI_TOML (Gemini CLI template)",
+      "Added --type flag to project flags in GIL_ADD_CODEX_SKILL_MD (Codex CLI template)",
+      "Updated Direct Project Mode in all 3 templates to pass project_type to create_project MCP tool",
+      "Updated Interactive Mode project path in Claude template to ask for optional project type",
+      "Updated Interactive Mode in Gemini and Codex templates to include project type prompt",
+      "Added graceful fallback note: unrecognized type labels create project without type (no error)",
+      "Updated MCP Tool Parameters note in Claude template to document project_type param",
+      "Added Important Notes about project_type param in Gemini and Codex templates"
+    ],
+    "notes": "Uses 'project_type' as MCP parameter name per 0837b (avoids Python builtin shadow). All 3 templates (Claude, Gemini, Codex) consistently support --type flag for project creation. 7 new tests added to TestProjectTypeParameter class covering all platforms."
+  },
+
+  "0837d": {
+    "agent": "Multi-Tenant Constraint Audit",
+    "status": "not_started",
+    "depends_on": null,
+    "commit": null,
+    "files_changed": [],
+    "audit_results": [],
+    "notes": null
+  },
+
+  "cross_cutting_findings": {}
+}

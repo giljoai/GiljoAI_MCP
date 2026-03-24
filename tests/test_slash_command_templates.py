@@ -110,6 +110,45 @@ class TestCodexTemplates:
         assert "Interactive Mode" in GIL_ADD_CODEX_SKILL_MD
 
 
+class TestProjectTypeParameter:
+    """Tests for project_type parameter support in /gil_add templates (0837c)."""
+
+    def test_claude_gil_add_has_type_flag(self):
+        """Claude /gil_add template documents --type flag for projects."""
+        assert "--type" in GIL_ADD_MD
+
+    def test_claude_gil_add_has_project_type_mcp_param(self):
+        """Claude /gil_add template references project_type MCP parameter."""
+        assert "project_type" in GIL_ADD_MD
+
+    def test_gemini_gil_add_has_type_flag(self):
+        """Gemini /gil_add template documents --type flag for projects."""
+        assert "--type" in GIL_ADD_GEMINI_TOML
+
+    def test_gemini_gil_add_has_project_type_mcp_param(self):
+        """Gemini /gil_add template references project_type MCP parameter."""
+        assert "project_type" in GIL_ADD_GEMINI_TOML
+
+    def test_codex_gil_add_has_type_flag(self):
+        """Codex /gil_add template documents --type flag for projects."""
+        assert "--type" in GIL_ADD_CODEX_SKILL_MD
+
+    def test_codex_gil_add_has_project_type_mcp_param(self):
+        """Codex /gil_add template references project_type MCP parameter."""
+        assert "project_type" in GIL_ADD_CODEX_SKILL_MD
+
+    def test_all_templates_mention_graceful_type_fallback(self):
+        """All templates note that unrecognized type labels don't cause errors."""
+        for name, template in [
+            ("Claude", GIL_ADD_MD),
+            ("Gemini", GIL_ADD_GEMINI_TOML),
+            ("Codex", GIL_ADD_CODEX_SKILL_MD),
+        ]:
+            assert "no error" in template.lower(), (
+                f"{name} template should mention graceful fallback for unknown type labels"
+            )
+
+
 class TestBootstrapTemplates:
     """Tests for bootstrap template constants."""
 
