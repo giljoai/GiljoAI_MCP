@@ -247,20 +247,33 @@ def render_gemini_agent(template: AgentTemplate) -> str:
     """Render a single AgentTemplate to Gemini CLI-compatible Markdown.
 
     Gemini CLI uses YAML frontmatter with different schema than Claude Code:
-    - name, description, kind (always 'agent'), model, max_turns, tools
+    - name, description, kind, model, max_turns, tools
+    - kind must be 'local' (not 'agent') — matches built-in agent format
+    - Tool names differ from Claude Code (run_shell_command not shell)
     - No color support (Gemini doesn't support agent colors)
 
     Handover 0836a: Multi-platform agent export.
+    Handover 0836d: Fixed kind (local), tool names (run_shell_command), added
+    file/search tools per Gemini CLI documentation.
     """
     description = template.description or (f"Subagent for {template.role}" if template.role else "Subagent")
 
     frontmatter: dict[str, object] = {
         "name": template.name,
         "description": description,
-        "kind": "agent",
+        "kind": "local",
         "model": "gemini-2.5-pro",
         "max_turns": 50,
-        "tools": ["shell", "read_file", "write_file", "mcp_*"],
+        "tools": [
+            "run_shell_command",
+            "read_file",
+            "write_file",
+            "glob",
+            "grep_search",
+            "list_directory",
+            "read_many_files",
+            "mcp_*",
+        ],
     }
 
     yaml_header = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False).strip()
