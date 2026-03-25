@@ -6,6 +6,30 @@
     >
 
     <v-card-text>
+      <v-alert type="info" variant="tonal" class="mb-6">
+        <p class="mb-3">
+          GiljoAI MCP ships pre-packaged prompts so you don't have to write lengthy instructions for
+          every request. They reduce errors, ensure consistency, and give your agents precise operating
+          instructions out of the box.
+        </p>
+        <p class="mb-3">
+          Behind the scenes, the MCP server applies dynamic protocol layers to these prompts based on
+          your product definition, enabled integrations, and context depth settings. These protocol
+          layers are not editable; they've been calibrated to ensure agents interact correctly with the
+          server and with each other.
+        </p>
+        <p class="mb-3">
+          The general orchestrator prompt below <strong>is</strong> editable, though we don't recommend
+          modifying it unless you have a specific reason. We believe in putting control in your hands,
+          so we expose it here for transparency. The protocol layers remain hidden and will continue to
+          adapt based on the context you've already defined.
+        </p>
+        <p class="mb-0">
+          <strong>The philosophy is simple: define your product once, and every agent works from that
+          shared understanding, no tedious per-request prompt tuning required.</strong>
+        </p>
+      </v-alert>
+
       <v-alert type="warning" variant="tonal" class="mb-4">
         <v-icon start>mdi-alert</v-icon>
         Editing this prompt can break orchestrator coordination. Only proceed if you understand the
