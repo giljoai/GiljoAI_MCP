@@ -116,6 +116,9 @@ from .product_memory_entry import (
 # Product models
 from .products import (
     Product,
+    ProductArchitecture,
+    ProductTechStack,
+    ProductTestConfig,
     VisionDocument,
 )
 
@@ -179,8 +182,11 @@ __all__ = [
     "Organization",
     # Products
     "Product",
+    "ProductArchitecture",
     # Product Memory (Handover 0390a)
     "ProductMemoryEntry",
+    "ProductTechStack",
+    "ProductTestConfig",
     # Projects
     "Project",
     "ProjectType",

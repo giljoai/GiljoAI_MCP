@@ -60,7 +60,7 @@ def mock_websocket_manager():
 
 @pytest.fixture
 def sample_product():
-    """Create a mock product with realistic context data."""
+    """Create a mock product with realistic context data (0840c: normalized relations)."""
     product = Mock()
     product.id = PRODUCT_ID
     product.tenant_key = TENANT_KEY
@@ -68,17 +68,33 @@ def sample_product():
     product.description = "An AI agent orchestration platform"
     product.quality_standards = "80% test coverage, all endpoints tested"
     product.target_platforms = ["windows", "linux"]
-    product.config_data = {
-        "tech_stack": "Python 3.12, FastAPI, Vue 3, PostgreSQL",
-        "architecture": "Monolithic backend with REST API",
-        "features": {
-            "core": "Agent orchestration, project management, 360 memory",
-        },
-        "codebase_structure": "src/giljo_mcp for backend, frontend/src for Vue",
-        "database_type": "PostgreSQL 18",
-        "backend_framework": "FastAPI with SQLAlchemy 2.0",
-        "frontend_framework": "Vue 3 with Vuetify 3",
-    }
+    product.core_features = "Agent orchestration, project management, 360 memory"
+    product.deleted_at = None
+
+    # Normalized config relations (0840c)
+    tech_stack = Mock()
+    tech_stack.programming_languages = "Python 3.12"
+    tech_stack.frontend_frameworks = "Vue 3"
+    tech_stack.backend_frameworks = "FastAPI"
+    tech_stack.databases_storage = "PostgreSQL"
+    tech_stack.infrastructure = ""
+    tech_stack.dev_tools = ""
+    product.tech_stack = tech_stack
+
+    architecture = Mock()
+    architecture.primary_pattern = "Monolithic backend with REST API"
+    architecture.design_patterns = "Repository, Service"
+    architecture.api_style = "REST"
+    architecture.architecture_notes = ""
+    product.architecture = architecture
+
+    test_config = Mock()
+    test_config.quality_standards = "80% test coverage, all endpoints tested"
+    test_config.test_strategy = "TDD"
+    test_config.coverage_target = 80
+    test_config.testing_frameworks = "pytest"
+    product.test_config = test_config
+
     product.product_memory = {
         "github": {},
         "context": {},
@@ -766,18 +782,18 @@ class TestApplyProposal:
         new_description = "Updated AI orchestration platform with Redis caching"
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="description",
+            action="accept",
             value=new_description,
         )
 
         assert product.description == new_description
 
     @pytest.mark.asyncio
-    async def test_apply_tech_stack_updates_config_data(
+    async def test_apply_tech_stack_updates_relation(
         self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
     ):
-        """Section 'tech_stack' should update Product.config_data['tech_stack']."""
+        """Section 'tech_stack' should update ProductTechStack relation fields."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -792,18 +808,19 @@ class TestApplyProposal:
         new_value = "Python 3.12, FastAPI, Vue 3, PostgreSQL, Redis"
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="tech_stack",
+            action="accept",
             value=new_value,
         )
 
-        assert product.config_data["tech_stack"] == new_value
+        # String value should be broadcast to all tech_stack relation fields
+        assert product.tech_stack.programming_languages == new_value
 
     @pytest.mark.asyncio
-    async def test_apply_architecture_updates_config_data(
+    async def test_apply_architecture_updates_relation(
         self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
     ):
-        """Section 'architecture' should update Product.config_data['architecture']."""
+        """Section 'architecture' should update ProductArchitecture relation fields."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -818,18 +835,18 @@ class TestApplyProposal:
         new_value = "Microservices with event-driven architecture"
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="architecture",
+            action="accept",
             value=new_value,
         )
 
-        assert product.config_data["architecture"] == new_value
+        assert product.architecture.primary_pattern == new_value
 
     @pytest.mark.asyncio
-    async def test_apply_core_features_updates_nested_config(
+    async def test_apply_core_features_updates_direct_field(
         self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
     ):
-        """Section 'core_features' should update Product.config_data['features']['core']."""
+        """Section 'core_features' should update Product.core_features directly."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -844,122 +861,18 @@ class TestApplyProposal:
         new_value = "Agent orchestration, project management, 360 memory, context tuning"
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="core_features",
+            action="accept",
             value=new_value,
         )
 
-        assert product.config_data["features"]["core"] == new_value
+        assert product.core_features == new_value
 
     @pytest.mark.asyncio
-    async def test_apply_codebase_structure_updates_config_data(
+    async def test_apply_quality_standards_updates_test_config_relation(
         self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
     ):
-        """Section 'codebase_structure' should update Product.config_data['codebase_structure']."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "src/giljo_mcp for backend, frontend/src for Vue, saas/ for SaaS"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            section="codebase_structure",
-            value=new_value,
-        )
-
-        assert product.config_data["codebase_structure"] == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_database_type_updates_config_data(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'database_type' should update Product.config_data['database_type']."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "PostgreSQL 18 with Redis cache"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            section="database_type",
-            value=new_value,
-        )
-
-        assert product.config_data["database_type"] == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_backend_framework_updates_config_data(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'backend_framework' should update Product.config_data['backend_framework']."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "FastAPI with SQLAlchemy 2.0 and Alembic"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            section="backend_framework",
-            value=new_value,
-        )
-
-        assert product.config_data["backend_framework"] == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_frontend_framework_updates_config_data(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'frontend_framework' should update Product.config_data['frontend_framework']."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "Vue 3 with Vuetify 3 and Pinia"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            section="frontend_framework",
-            value=new_value,
-        )
-
-        assert product.config_data["frontend_framework"] == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_quality_standards_updates_product_field(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'quality_standards' should update Product.quality_standards."""
+        """Section 'quality_standards' should update ProductTestConfig.quality_standards via relation."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -974,12 +887,12 @@ class TestApplyProposal:
         new_value = "90% test coverage, all endpoints tested, type annotations required"
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="quality_standards",
+            action="accept",
             value=new_value,
         )
 
-        assert product.quality_standards == new_value
+        assert product.test_config.quality_standards == new_value
 
     @pytest.mark.asyncio
     async def test_apply_target_platforms_updates_product_field(
@@ -1000,8 +913,8 @@ class TestApplyProposal:
         new_value = ["windows", "linux", "macos"]
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="target_platforms",
+            action="accept",
             value=new_value,
         )
 
@@ -1028,8 +941,8 @@ class TestApplyProposal:
 
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="tech_stack",
+            action="accept",
             value="Python 3.12, FastAPI, Vue 3, PostgreSQL, Redis",
         )
 
@@ -1055,8 +968,8 @@ class TestApplyProposal:
         with pytest.raises(ResourceNotFoundError):
             await service.apply_proposal(
                 product_id="nonexistent-id",
-                tenant_key=TENANT_KEY,
                 section="description",
+                action="accept",
                 value="new value",
             )
 
@@ -1067,7 +980,7 @@ class TestApplyProposal:
 
 
 class TestDismissProposal:
-    """Test that dismiss_proposal removes specific proposals without side effects."""
+    """Test that apply_proposal with action='dismiss' removes specific proposals without side effects."""
 
     @pytest.mark.asyncio
     async def test_removes_specific_section_from_pending(
@@ -1085,10 +998,10 @@ class TestDismissProposal:
         )
         session.commit = AsyncMock()
 
-        await service.dismiss_proposal(
+        await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="tech_stack",
+            action="dismiss",
         )
 
         remaining = product.tuning_state["pending_proposals"]["proposals"]
@@ -1111,10 +1024,10 @@ class TestDismissProposal:
         )
         session.commit = AsyncMock()
 
-        await service.dismiss_proposal(
+        await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="tech_stack",
+            action="dismiss",
         )
 
         remaining = product.tuning_state["pending_proposals"]["proposals"]
@@ -1136,10 +1049,10 @@ class TestDismissProposal:
         )
 
         with pytest.raises(ResourceNotFoundError):
-            await service.dismiss_proposal(
+            await service.apply_proposal(
                 product_id="nonexistent-id",
-                tenant_key=TENANT_KEY,
                 section="tech_stack",
+                action="dismiss",
             )
 
 
@@ -1169,7 +1082,6 @@ class TestClearReview:
 
         await service.clear_review(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
         )
 
         assert product.tuning_state.get("pending_proposals") is None
@@ -1193,7 +1105,6 @@ class TestClearReview:
         before = datetime.now(timezone.utc)
         await service.clear_review(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
         )
 
         last_tuned = product.tuning_state.get("last_tuned_at")
@@ -1218,7 +1129,6 @@ class TestClearReview:
         with patch.object(service, "_get_current_sequence", new_callable=AsyncMock, return_value=15):
             await service.clear_review(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
             )
 
         assert product.tuning_state.get("last_tuned_at_sequence") is not None
@@ -1240,7 +1150,6 @@ class TestClearReview:
         with pytest.raises(ResourceNotFoundError):
             await service.clear_review(
                 product_id="nonexistent-id",
-                tenant_key=TENANT_KEY,
             )
 
 
