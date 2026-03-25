@@ -18,7 +18,6 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.config.defaults import (
-    DEFAULT_DEPTH_CONFIG,
     DEFAULT_FIELD_PRIORITY,
     TUNING_SECTION_TOGGLE_MAP,
 )
@@ -166,15 +165,44 @@ class ProductTuningService:
         return product
 
     async def _get_user_configs(self, session: AsyncSession, user_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
-        """Get user's toggle and depth configurations."""
+        """Get user's toggle and depth configurations from normalized tables/columns."""
+        from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
+        from src.giljo_mcp.models.auth import UserFieldPriority
+
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        toggle_config = user.field_priority_config or DEFAULT_FIELD_PRIORITY
-        depth_config = user.depth_config or DEFAULT_DEPTH_CONFIG.get("depths", {})
+        # Build toggle_config from user_field_priorities table
+        prio_result = await session.execute(
+            select(UserFieldPriority).where(
+                and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == self.tenant_key)
+            )
+        )
+        rows = prio_result.scalars().all()
+
+        if rows:
+            toggles = dict(DEFAULT_CATEGORY_TOGGLES)
+            for row in rows:
+                toggles[row.category] = row.enabled
+            priorities = {"product_core": {"toggle": True}, "project_description": {"toggle": True}}
+            for cat, enabled in toggles.items():
+                priorities[cat] = {"toggle": enabled}
+            toggle_config = {"version": "4.0", "priorities": priorities}
+        else:
+            toggle_config = DEFAULT_FIELD_PRIORITY
+
+        # Build depth_config from columns
+        depth_config = {
+            "vision_documents": user.depth_vision_documents,
+            "memory_last_n_projects": user.depth_memory_last_n,
+            "git_commits": user.depth_git_commits,
+            "agent_templates": user.depth_agent_templates,
+            "tech_stack_sections": user.depth_tech_stack_sections,
+            "architecture_depth": user.depth_architecture,
+        }
 
         return toggle_config, depth_config
 

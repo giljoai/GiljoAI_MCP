@@ -22,6 +22,7 @@ from sqlalchemy import and_, select
 if TYPE_CHECKING:
     from src.giljo_mcp.models import AgentExecution
 
+from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
 from src.giljo_mcp.config.defaults import DEFAULT_DEPTH_CONFIG as _DEFAULT_DEPTH_CONFIG
 from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY as _DEFAULT_FIELD_PRIORITY
 
@@ -490,10 +491,11 @@ If your mission references undefined entities, has unclear dependencies, or ambi
 # ============================================================================
 
 # Extract inner structure for backward compatibility with existing code
-# defaults.py uses versioned structure: {"version": "3.0", "priorities": {...}}
+# defaults.py uses versioned structure: {"version": "4.0", "priorities": {...}}
 # This code expects flat structure: {"field": {"toggle": True}}
 DEFAULT_FIELD_PRIORITIES = _DEFAULT_FIELD_PRIORITY["priorities"]
-DEFAULT_DEPTH_CONFIG = _DEFAULT_DEPTH_CONFIG["depths"]
+# Handover 0840d: DEFAULT_DEPTH_CONFIG is now a flat dict (no "depths" wrapper)
+DEFAULT_DEPTH_CONFIG = _DEFAULT_DEPTH_CONFIG
 
 
 def _normalize_field_toggles(field_config: dict[str, Any]) -> dict[str, bool]:
@@ -531,7 +533,9 @@ async def _get_user_config(
     session: Any,  # AsyncSession type hint would create circular import
 ) -> dict[str, Any]:
     """
-    Fetch user's field toggle config and depth_config from database.
+    Fetch user's field toggle config and depth config from normalized tables/columns.
+
+    Handover 0840d: Reads from user_field_priorities table and depth columns on users.
 
     Args:
         user_id: User UUID
@@ -540,17 +544,10 @@ async def _get_user_config(
 
     Returns:
         dict with 'field_toggles' and 'depth_config' keys
-
-    Behavior:
-        - Returns user's custom config if exists
-        - Falls back to DEFAULT_FIELD_PRIORITIES and DEFAULT_DEPTH_CONFIG if None
-        - Ensures multi-tenant isolation (user must belong to tenant_key)
-        - Normalizes depth_config keys from UI format to internal format
     """
-    from src.giljo_mcp.models.auth import User
+    from src.giljo_mcp.models.auth import User, UserFieldPriority
 
     try:
-        # Query user with tenant isolation
         result = await session.execute(
             select(User).where(and_(User.id == user_id, User.tenant_key == tenant_key, User.is_active))
         )
@@ -564,53 +561,55 @@ async def _get_user_config(
             normalized_defaults = _normalize_field_toggles(DEFAULT_FIELD_PRIORITIES.copy())
             return {"field_toggles": normalized_defaults, "depth_config": DEFAULT_DEPTH_CONFIG.copy()}
 
-        # Get user's custom configs or fall back to defaults
-        raw_field_config = user.field_priority_config
-        if raw_field_config is not None:
-            if isinstance(raw_field_config, dict) and "priorities" in raw_field_config:
-                field_config = raw_field_config["priorities"]
-            else:
-                field_config = raw_field_config
-        else:
-            field_config = DEFAULT_FIELD_PRIORITIES.copy()
-
-        field_toggles = _normalize_field_toggles(field_config)
-
-        # Get depth config and normalize keys from UI format to internal format
-        raw_depth_config = user.depth_config
-        if raw_depth_config is not None:
-            key_mapping = {
-                "memory_last_n_projects": "memory_360",
-                "git_commits": "git_history",
-                "agent_templates": "agent_templates",
-                "vision_documents": "vision_documents",
-            }
-
-            depth_config = {}
-            for db_key, value in raw_depth_config.items():
-                internal_key = key_mapping.get(db_key, db_key)
-                depth_config[internal_key] = value
-
-            if depth_config.get("vision_documents") == "optional":
-                depth_config["vision_documents"] = "light"
-                logger.debug(
-                    "[USER_CONFIG] Normalized vision_documents 'optional' -> 'light'", extra={"user_id": user_id}
-                )
-
-            logger.debug(
-                "[USER_CONFIG] Normalized depth_config keys",
-                extra={"raw_keys": list(raw_depth_config.keys()), "normalized_keys": list(depth_config.keys())},
+        # Build field toggles from user_field_priorities table
+        prio_result = await session.execute(
+            select(UserFieldPriority).where(
+                and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == tenant_key)
             )
+        )
+        rows = prio_result.scalars().all()
+
+        if rows:
+            # Start with defaults, override with user rows
+            field_toggles = dict(DEFAULT_CATEGORY_TOGGLES)
+            for row in rows:
+                field_toggles[row.category] = row.enabled
+            # Always-on categories
+            field_toggles["product_core"] = True
+            field_toggles["project_description"] = True
         else:
-            depth_config = DEFAULT_DEPTH_CONFIG.copy()
+            field_toggles = _normalize_field_toggles(DEFAULT_FIELD_PRIORITIES.copy())
+
+        # Build depth config from columns (normalize keys for internal use)
+        key_mapping = {
+            "memory_last_n_projects": "memory_360",
+            "git_commits": "git_history",
+            "agent_templates": "agent_templates",
+            "vision_documents": "vision_documents",
+        }
+
+        raw_depth = {
+            "vision_documents": user.depth_vision_documents,
+            "memory_last_n_projects": user.depth_memory_last_n,
+            "git_commits": user.depth_git_commits,
+            "agent_templates": user.depth_agent_templates,
+            "tech_stack_sections": user.depth_tech_stack_sections,
+            "architecture_depth": user.depth_architecture,
+        }
+
+        depth_config = {}
+        for db_key, value in raw_depth.items():
+            internal_key = key_mapping.get(db_key, db_key)
+            depth_config[internal_key] = value
+
+        if depth_config.get("vision_documents") == "optional":
+            depth_config["vision_documents"] = "light"
 
         logger.info(
             "[USER_CONFIG] Fetched user configuration",
             extra={
                 "user_id": user_id,
                 "tenant_key": tenant_key,
-                "has_custom_field_config": user.field_priority_config is not None,
-                "has_custom_depth_config": user.depth_config is not None,
                 "depth_config": depth_config,
             },
         )
@@ -620,11 +619,7 @@ async def _get_user_config(
     except (OSError, ValueError, KeyError) as e:
         logger.error(
             "user_config_fetch_failed",
-            extra={
-                "user_id": user_id,
-                "tenant_key": tenant_key,
-                "error_message": str(e),
-            },
+            extra={"user_id": user_id, "tenant_key": tenant_key, "error_message": str(e)},
             exc_info=True,
         )
         normalized_defaults = _normalize_field_toggles(DEFAULT_FIELD_PRIORITIES.copy())

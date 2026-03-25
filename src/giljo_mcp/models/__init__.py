@@ -72,6 +72,7 @@ from .auth import (
     ApiKeyIpLog,
     MCPSession,
     User,
+    UserFieldPriority,
 )
 from .base import (
     Base,
@@ -199,6 +200,7 @@ __all__ = [
     "TemplateUsageStats",
     # Auth
     "User",
+    "UserFieldPriority",
     "VisionDocument",
     "generate_project_alias",
     "generate_uuid",
