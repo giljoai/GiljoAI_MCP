@@ -654,28 +654,24 @@ class ThinClientPromptGenerator:
             if project.mission:
                 mission_parts.append(f"## Mission\n{project.mission}")
 
-            # Tech stack (from product config_data)
-            if field_toggles.get("tech_stack", True) and product and product.config_data:
-                tech_stack = product.config_data.get("tech_stack", {})
-                if tech_stack:
-                    tech_parts = []
-                    if isinstance(tech_stack, dict):
-                        if tech_stack.get("languages"):
-                            tech_parts.append(f"Languages: {', '.join(tech_stack['languages'])}")
-                        if tech_stack.get("frameworks"):
-                            tech_parts.append(f"Frameworks: {', '.join(tech_stack['frameworks'])}")
-                    elif isinstance(tech_stack, list):
-                        tech_parts.append(f"Stack: {', '.join(tech_stack)}")
-                    elif isinstance(tech_stack, str):
-                        tech_parts.append(f"Stack: {tech_stack}")
-                    if tech_parts:
-                        mission_parts.append(f"## Tech Stack\n{chr(10).join(tech_parts)}")
+            # Tech stack (from product_tech_stacks table, Handover 0840c)
+            if field_toggles.get("tech_stack", True) and product and product.tech_stack:
+                ts = product.tech_stack
+                tech_parts = []
+                if ts.programming_languages:
+                    tech_parts.append(f"Languages: {ts.programming_languages}")
+                if ts.frontend_frameworks:
+                    tech_parts.append(f"Frontend: {ts.frontend_frameworks}")
+                if ts.backend_frameworks:
+                    tech_parts.append(f"Backend: {ts.backend_frameworks}")
+                if tech_parts:
+                    mission_parts.append(f"## Tech Stack\n{chr(10).join(tech_parts)}")
 
-            # Architecture (from product config_data)
-            if field_toggles.get("architecture", True) and product and product.config_data:
-                architecture = product.config_data.get("architecture", {})
-                if architecture and architecture.get("patterns"):
-                    mission_parts.append(f"## Architecture\n{', '.join(architecture['patterns'])}")
+            # Architecture (from product_architectures table, Handover 0840c)
+            if field_toggles.get("architecture", True) and product and product.architecture:
+                arch = product.architecture
+                if arch.primary_pattern:
+                    mission_parts.append(f"## Architecture\n{arch.primary_pattern}")
 
             # Join all parts
             if mission_parts:

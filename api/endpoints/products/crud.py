@@ -42,6 +42,7 @@ def _build_product_response(product, stats=None) -> ProductResponse:
     Build a ProductResponse from a Product ORM model and optional ProductStatistics.
 
     Centralizes the ORM-to-response mapping so every endpoint uses the same logic.
+    Handover 0840c: Reconstructs config_data dict from normalized tables for API compat.
 
     Args:
         product: Product ORM model
@@ -50,8 +51,42 @@ def _build_product_response(product, stats=None) -> ProductResponse:
     Returns:
         ProductResponse Pydantic model
     """
-    # Normalize empty config_data to None for API contract consistency
-    config_data = product.config_data or None
+    # Handover 0840c: Reconstruct config_data from normalized tables
+    config_data = {}
+
+    ts = product.tech_stack
+    if ts:
+        config_data["tech_stack"] = {
+            "languages": ts.programming_languages or "",
+            "frontend": ts.frontend_frameworks or "",
+            "backend": ts.backend_frameworks or "",
+            "database": ts.databases_storage or "",
+            "infrastructure": ts.infrastructure or "",
+            "dev_tools": ts.dev_tools or "",
+        }
+
+    arch = product.architecture
+    if arch:
+        config_data["architecture"] = {
+            "pattern": arch.primary_pattern or "",
+            "design_patterns": arch.design_patterns or "",
+            "api_style": arch.api_style or "",
+            "notes": arch.architecture_notes or "",
+        }
+
+    if product.core_features:
+        config_data["features"] = {"core": product.core_features}
+
+    tc = product.test_config
+    if tc:
+        config_data["test_config"] = {
+            "strategy": tc.test_strategy or "",
+            "coverage_target": tc.coverage_target or 80,
+            "frameworks": tc.testing_frameworks or "",
+            "quality_standards": tc.quality_standards or "",
+        }
+
+    config_data = config_data or None
     has_config_data = bool(config_data)
 
     # Handover 0412: Ensure product_memory is never None
