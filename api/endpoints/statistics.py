@@ -112,12 +112,12 @@ startup_time = datetime.now(timezone.utc)
 class DashboardStatsResponse(BaseModel):
     """Response model for the consolidated dashboard analytics endpoint (Handover 0839)."""
 
-    project_status_distribution: dict[str, int]
-    taxonomy_distribution: list[dict]
-    agent_role_distribution: dict[str, int]
+    project_status_dist: dict[str, int]
+    taxonomy_dist: list[dict]
+    agent_role_dist: dict[str, int]
     recent_projects: list[dict]
     recent_memories: list[dict]
-    task_status_distribution: dict[str, int]
+    task_status_dist: dict[str, int]
     products: list[dict]
 
 
@@ -184,12 +184,12 @@ async def get_dashboard_stats(
         )
 
     return DashboardStatsResponse(
-        project_status_distribution=project_status_dist,
-        taxonomy_distribution=taxonomy_dist,
-        agent_role_distribution=agent_role_dist,
+        project_status_dist=project_status_dist,
+        taxonomy_dist=taxonomy_dist,
+        agent_role_dist=agent_role_dist,
         recent_projects=recent_projects,
         recent_memories=recent_memories,
-        task_status_distribution=task_status_dist,
+        task_status_dist=task_status_dist,
         products=products,
     )
 

@@ -142,21 +142,34 @@
       </v-col>
     </v-row>
 
-    <!-- Recent Activity Lists -->
-    <v-row>
-      <v-col cols="12" md="6">
-        <v-card variant="flat" class="activity-card pa-4">
-          <div class="text-caption text-medium-emphasis mb-2">Recent Projects</div>
-          <RecentProjectsList :projects="dashboardData.recent_projects" />
-        </v-card>
-      </v-col>
-      <v-col cols="12" md="6">
-        <v-card variant="flat" class="activity-card pa-4">
-          <div class="text-caption text-medium-emphasis mb-2">Recent 360 Memories</div>
-          <RecentMemoriesList :memories="dashboardData.recent_memories" />
-        </v-card>
-      </v-col>
-    </v-row>
+    <!-- Recent Activity Lists (stacked) -->
+    <v-card variant="flat" class="activity-card pa-4 mb-4">
+      <div class="text-caption text-medium-emphasis mb-2">Recently Completed Projects</div>
+      <RecentProjectsList :projects="dashboardData.recent_projects" />
+    </v-card>
+
+    <v-card variant="flat" class="activity-card pa-4 mb-4">
+      <div class="text-caption text-medium-emphasis mb-2">Recent 360 Memories</div>
+      <RecentMemoriesList :memories="dashboardData.recent_memories" />
+    </v-card>
+
+    <v-card variant="flat" class="activity-card pa-4">
+      <div class="text-caption text-medium-emphasis mb-2">Recent Git Commits (from 360 Memory)</div>
+      <div v-if="recentCommits.length === 0" class="text-caption text-medium-emphasis pa-2">No commits captured in 360 memory yet</div>
+      <v-list v-else density="compact" class="bg-transparent recent-list">
+        <v-list-item v-for="(c, i) in recentCommits" :key="i" class="px-0">
+          <template #prepend>
+            <v-icon size="16" color="yellow-darken-2" class="mr-2">mdi-source-commit</v-icon>
+          </template>
+          <v-list-item-title class="text-body-2">{{ c.message }}</v-list-item-title>
+          <v-list-item-subtitle class="text-caption">
+            <span style="font-family: monospace; color: #FFD700">{{ c.sha?.substring(0, 8) }}</span>
+            <span v-if="c.author" class="mx-2">|</span>
+            <span v-if="c.author">{{ c.author }}</span>
+          </v-list-item-subtitle>
+        </v-list-item>
+      </v-list>
+    </v-card>
 
   </v-container>
 </template>
@@ -209,6 +222,7 @@ const dashboardData = ref({
 const apiCallCount = ref(0)
 const mcpCallCount = ref(0)
 const agentsSpawned = ref(0)
+const recentCommits = ref([])
 
 // Status chart colors
 const statusColors = {
@@ -338,6 +352,14 @@ const fetchDashboardData = async () => {
         recent_memories: response.data.recent_memories || [],
         task_status_dist: response.data.task_status_dist || {},
       }
+      // Extract git commits from 360 memory entries
+      const commits = []
+      for (const mem of (response.data.recent_memories || [])) {
+        if (mem.git_commits && Array.isArray(mem.git_commits)) {
+          commits.push(...mem.git_commits)
+        }
+      }
+      recentCommits.value = commits.slice(0, 10)
     }
   } catch (error) {
     console.error('Failed to fetch dashboard data:', error)
@@ -510,12 +532,12 @@ onMounted(async () => {
     fetchCallCounts()
     fetchSystemStats()
   }, 5000)
+})
 
-  onUnmounted(() => {
-    if (fetchInterval) {
-      clearInterval(fetchInterval)
-    }
-  })
+onUnmounted(() => {
+  if (fetchInterval) {
+    clearInterval(fetchInterval)
+  }
 })
 </script>
 
@@ -527,16 +549,16 @@ onMounted(async () => {
 }
 
 .stats-wrapper {
-  background: #0d1117 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0e1c2d !important;
+  border: 1px solid #315074;
   border-radius: 12px !important;
 }
 
 .stat-card {
   flex: 0 0 auto;
   border-radius: 8px !important;
-  background: #161b22 !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: #182739 !important;
+  border-color: #315074 !important;
 }
 
 .stat-card-inner {
@@ -578,8 +600,8 @@ onMounted(async () => {
 }
 
 .chart-card {
-  background: #0d1117 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #182739 !important;
+  border: 1px solid #315074;
   border-radius: 12px !important;
   display: flex;
   align-items: center;
@@ -588,8 +610,8 @@ onMounted(async () => {
 }
 
 .activity-card {
-  background: #0d1117 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #182739 !important;
+  border: 1px solid #315074;
   border-radius: 12px !important;
 }
 </style>

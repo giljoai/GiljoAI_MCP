@@ -816,7 +816,7 @@ class StatisticsRepository:
         limit: int = 10,
     ) -> list[dict]:
         """
-        Get the most recently created projects.
+        Get the most recently completed projects.
 
         Args:
             session: Async database session
@@ -841,10 +841,12 @@ class StatisticsRepository:
                 Project.subseries,
                 ProjectType.abbreviation.label("type_abbreviation"),
                 ProjectType.color.label("project_type_color"),
+                Product.name.label("product_name"),
             )
             .outerjoin(ProjectType, Project.project_type_id == ProjectType.id)
-            .where(Project.tenant_key == tenant_key)
-            .order_by(Project.created_at.desc())
+            .outerjoin(Product, Project.product_id == Product.id)
+            .where(Project.tenant_key == tenant_key, Project.status == "completed", Project.completed_at.isnot(None))
+            .order_by(Project.completed_at.desc())
             .limit(limit)
         )
         if product_id:
@@ -876,6 +878,7 @@ class StatisticsRepository:
                     "completed_at": row.completed_at.isoformat() if row.completed_at else None,
                     "taxonomy_alias": taxonomy_alias,
                     "project_type_color": row.project_type_color,
+                    "product_name": row.product_name,
                 }
             )
 
@@ -906,7 +909,10 @@ class StatisticsRepository:
                 ProductMemoryEntry.summary,
                 ProductMemoryEntry.timestamp,
                 ProductMemoryEntry.entry_type,
+                ProductMemoryEntry.git_commits,
+                Product.name.label("product_name"),
             )
+            .outerjoin(Product, ProductMemoryEntry.product_id == Product.id)
             .where(ProductMemoryEntry.tenant_key == tenant_key)
             .order_by(ProductMemoryEntry.timestamp.desc())
             .limit(limit)
@@ -921,6 +927,8 @@ class StatisticsRepository:
                 "summary": (row.summary[:200] if row.summary else None),
                 "timestamp": row.timestamp.isoformat() if row.timestamp else None,
                 "entry_type": row.entry_type,
+                "git_commits": row.git_commits or [],
+                "product_name": row.product_name,
             }
             for row in result.all()
         ]
