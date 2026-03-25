@@ -437,6 +437,128 @@ async def download_install_script(
 # ============================================================================
 
 
+@router.get("/bootstrap-prompt")
+async def get_bootstrap_prompt(
+    request: Request,
+    platform: str = Query(
+        ...,
+        pattern="^(claude_code|gemini_cli|codex_cli)$",
+        description="Target CLI platform: claude_code, gemini_cli, or codex_cli",
+    ),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """
+    Get a fully-rendered bootstrap prompt for the given platform.
+
+    Returns a ready-to-paste prompt with a real one-time download URL
+    already substituted into the template. This consolidates the
+    template rendering that was previously duplicated across frontend
+    and backend.
+
+    **Authentication**: Required - JWT cookie or API key header
+
+    Args:
+        request: FastAPI request object
+        platform: Target CLI platform (claude_code, gemini_cli, codex_cli)
+        db: Database session
+
+    Returns:
+        {
+            "prompt": "<ready-to-paste bootstrap text with download URL>",
+            "expires_at": "2026-03-24T10:45:00Z",
+            "platform": "claude_code"
+        }
+
+    Raises:
+        HTTPException 401: Not authenticated
+        HTTPException 500: Token generation or staging failed
+
+    Example:
+        curl http://localhost:7272/api/download/bootstrap-prompt?platform=claude_code \\
+             -H "X-API-Key: $GILJO_API_KEY"
+    """
+    from src.giljo_mcp.auth.dependencies import get_current_user
+    from src.giljo_mcp.tools.slash_command_templates import (
+        BOOTSTRAP_CLAUDE_CODE,
+        BOOTSTRAP_CODEX_CLI,
+        BOOTSTRAP_GEMINI_CLI,
+    )
+
+    bootstrap_templates = {
+        "claude_code": BOOTSTRAP_CLAUDE_CODE,
+        "gemini_cli": BOOTSTRAP_GEMINI_CLI,
+        "codex_cli": BOOTSTRAP_CODEX_CLI,
+    }
+
+    # Authenticate (same pattern as generate_download_token)
+    try:
+        access_token = request.cookies.get("access_token")
+        x_api_key = request.headers.get("x-api-key")
+        authorization = request.headers.get("authorization")
+        current_user = await get_current_user(request, access_token, x_api_key, authorization, db)
+    except HTTPException as e:
+        logger.warning("Bootstrap prompt failed: Authentication required")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to generate bootstrap prompt",
+        ) from e
+
+    logger.info(
+        f"Generating bootstrap prompt for user: {current_user.username} "
+        f"(tenant: {current_user.tenant_key}, platform: {platform})"
+    )
+
+    # Generate token and stage slash_commands ZIP (reuse generate-token logic)
+    from src.giljo_mcp.downloads.token_manager import TokenManager
+    from src.giljo_mcp.file_staging import FileStaging
+
+    tenant_key = current_user.tenant_key
+    token_manager = TokenManager(db_session=db)
+
+    # 1) Generate token
+    filename = "slash_commands.zip"
+    token = await token_manager.generate_token(
+        tenant_key=tenant_key,
+        download_type="slash_commands",
+        metadata={"filename": filename, "requested_by": current_user.username},
+    )
+
+    # 2) Stage slash commands ZIP
+    staging = FileStaging(db_session=db)
+    staging_path = await staging.create_staging_directory(tenant_key, token)
+    zip_path, message = await staging.stage_slash_commands(staging_path, platform=platform)
+
+    if not zip_path:
+        await token_manager.mark_failed(token, message)
+        logger.error(f"Failed to stage slash commands for bootstrap prompt: {message}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=message)
+
+    # 3) Mark ready
+    await token_manager.mark_ready(token)
+
+    # 4) Build download URL
+    server_url = get_server_url(request)
+    download_url = f"{server_url}/api/download/temp/{token}/{filename}"
+
+    # 5) Render the template with the download URL
+    template = bootstrap_templates[platform]
+    if platform == "codex_cli":
+        prompt = template.replace("{SKILLS_URL}", download_url)
+    else:
+        prompt = template.replace("{SLASH_COMMANDS_URL}", download_url)
+
+    # 6) Get expiry info
+    token_data = await token_manager.get_token_info(token, tenant_key)
+    expires_at = token_data["expires_at"] if token_data else None
+
+    logger.info(f"Bootstrap prompt generated: platform={platform}, token={token}")
+    return {
+        "prompt": prompt,
+        "expires_at": expires_at,
+        "platform": platform,
+    }
+
+
 @router.post("/generate-token", status_code=status.HTTP_201_CREATED)
 async def generate_download_token(
     request: Request,
