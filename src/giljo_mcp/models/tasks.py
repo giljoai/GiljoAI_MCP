@@ -79,7 +79,6 @@ class Task(Base):
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     due_date = Column(DateTime(timezone=True), nullable=True)
-    meta_data = Column(JSONB, default=dict)
 
     # Relationships
     product = relationship("Product", back_populates="tasks", foreign_keys=[product_id])
