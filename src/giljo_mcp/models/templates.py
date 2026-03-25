@@ -186,8 +186,6 @@ class TemplateArchive(Base):
     restored_at = Column(DateTime(timezone=True), nullable=True)
     restored_by = Column(String(100), nullable=True)
 
-    meta_data = Column(JSON, default=dict)
-
     # Relationships
     template = relationship("AgentTemplate", back_populates="archives")
 
