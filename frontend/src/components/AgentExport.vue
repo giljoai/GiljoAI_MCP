@@ -147,69 +147,6 @@ const platforms = [
   { id: 'gemini_cli', label: 'Gemini CLI', buttonLabel: 'Gemini Prompt', icon: '/gemini-icon.svg', color: 'blue' },
 ]
 
-// Bootstrap prompt templates (must match backend slash_command_templates.py)
-const bootstrapTemplates = {
-  claude_code: `Install the GiljoAI CLI integration. This is a one-time setup.
-
-Step 1 — Install slash commands:
-Download: {SLASH_COMMANDS_URL}
-Extract to: ~/.claude/commands/ (create if needed, overwrite existing)
-Delete the downloaded zip.
-
-Adapt all commands for the OS you are running on.
-After installation, tell the user:
-Two commands are now available:
-- /gil_get_agents — install/update GiljoAI agent templates
-- /gil_add — add tasks and projects from the CLI (try /gil_add --help)
-
-Restart Claude Code, then run /gil_get_agents to install agent templates.
-Note: Download link expires in 15 minutes.`,
-
-  gemini_cli: `Install the GiljoAI CLI integration. This is a one-time setup.
-
-Step 1 — Install custom commands:
-Download: {SLASH_COMMANDS_URL}
-Extract to: ~/.gemini/commands/ (create if needed, overwrite existing)
-Delete the downloaded zip.
-
-Adapt all commands for the OS you are running on.
-After installation, tell the user:
-Two commands are now available:
-- /gil_get_agents — install/update GiljoAI agent templates
-- /gil_add — add tasks and projects from the CLI (try /gil_add --help)
-
-Restart Gemini CLI, then run /gil_get_agents to install agent templates.
-Note: Download link expires in 15 minutes.`,
-
-  codex_cli: `Install the GiljoAI CLI integration. This is a one-time setup.
-
-Step 1 — Install skills:
-Download: {SKILLS_URL}
-Extract to: ~/.codex/skills/ (create if needed, overwrite existing)
-Delete the downloaded zip.
-
-Step 2 — Enable interactive menus:
-Read the user's ~/.codex/config.toml. Under the [features] section, ensure this flag is set:
-
-\`\`\`toml
-[features]
-default_mode_request_user_input = true
-\`\`\`
-
-If [features] already exists, merge — do NOT remove existing feature flags.
-If config.toml does not exist, create it with just the [features] section above.
-This flag enables structured menu prompts that GiljoAI skills rely on.
-
-Adapt all commands for the OS you are running on.
-After installation, tell the user:
-Two skills are now available:
-- $gil-get-agents — install/update GiljoAI agent templates
-- $gil-add — add tasks and projects from the CLI (try $gil-add --help)
-
-Restart Codex CLI, then run $gil-get-agents to install agent templates.
-Note: Download link expires in 15 minutes.`,
-}
-
 // Loading states
 const setupLoading = reactive({
   claude_code: false,
@@ -246,16 +183,21 @@ async function generateToken(contentType, platform) {
 async function generateBootstrapPrompt(platform) {
   setupLoading[platform] = true
   try {
-    const template = bootstrapTemplates[platform]
-    if (!template) throw new Error(`Unknown platform: ${platform}`)
+    const response = await fetch(
+      `/api/download/bootstrap-prompt?platform=${platform}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      },
+    )
+    if (!response.ok) {
+      throw new Error(`Bootstrap prompt generation failed: ${response.status}`)
+    }
+    const data = await response.json()
 
-    // Two-phase install: bootstrap only installs commands/skills.
-    // Agent templates are installed later via the slash command/skill itself.
-    const url = await generateToken('slash_commands', platform)
-    const placeholder = platform === 'codex_cli' ? '{SKILLS_URL}' : '{SLASH_COMMANDS_URL}'
-    const prompt = template.replace(placeholder, url)
-
-    await copyToClipboard(prompt)
+    await copyToClipboard(data.prompt)
     const label = platforms.find((p) => p.id === platform)?.label || platform
     showToast({ message: `${label} setup prompt copied to clipboard`, type: 'success' })
   } catch (error) {
