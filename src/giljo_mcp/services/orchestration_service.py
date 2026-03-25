@@ -2800,16 +2800,41 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
         """Build execution-mode-specific response fields (CLI rules or phase assignment)."""
         fields: dict[str, Any] = {}
 
-        if execution_mode == "claude_code_cli":
+        cli_modes = ("claude_code_cli", "codex_cli", "gemini_cli")
+
+        if execution_mode in cli_modes:
             allowed_agent_names = [t.name for t in templates]
 
             # Handover 0389: Build dynamic example from actual allowed agent names
             example_agents = allowed_agent_names[:2] if len(allowed_agent_names) >= 2 else allowed_agent_names
             example_str = ", ".join(f"'{n}'" for n in example_agents) if example_agents else "'implementer'"
 
+            # Platform-specific spawning syntax
+            if execution_mode == "codex_cli":
+                task_tool_mapping = (
+                    "spawn_agent(agent='gil-{agent_name}') where agent_name comes from spawn_agent_job. "
+                    "CRITICAL: prepend 'gil-' to every agent_name when using Codex CLI."
+                )
+                template_locations = [
+                    "~/.codex/agents/",
+                    "{project}/.codex/agents/",
+                ]
+            elif execution_mode == "gemini_cli":
+                task_tool_mapping = "@{agent_name} or /agent {agent_name} — agent_name is used as-is (no prefix)."
+                template_locations = [
+                    "~/.gemini/agents/",
+                    "{project}/.gemini/agents/",
+                ]
+            else:
+                task_tool_mapping = "Task(subagent_type=X) where X = agent_name from spawn_agent_job."
+                template_locations = [
+                    "{project}/.claude/agents/",
+                    "~/.claude/agents/",
+                ]
+
             fields["cli_mode_rules"] = {
                 "agent_name_usage": (
-                    "SINGLE SOURCE OF TRUTH - binds DB record, Task tool, and template filename. "
+                    "SINGLE SOURCE OF TRUTH - binds DB record, spawning tool, and template filename. "
                     f"MUST match template filename exactly (e.g., {example_str})."
                 ),
                 "agent_display_name_usage": (
@@ -2821,12 +2846,9 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     "agent_1": {"agent_name": "implementer", "agent_display_name": "api-implementer"},
                     "agent_2": {"agent_name": "implementer", "agent_display_name": "ui-implementer"},
                 },
-                "task_tool_mapping": "Task(subagent_type=X) where X = agent_name from spawn_agent_job.",
+                "task_tool_mapping": task_tool_mapping,
                 "validation": "soft",
-                "template_locations": [
-                    "{project}/.claude/agents/",
-                    "~/.claude/agents/",
-                ],
+                "template_locations": template_locations,
             }
 
             logger.info(
@@ -3086,7 +3108,15 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
 
                 # Handover 0415: Add chapter-based orchestrator protocol
                 # Handover 0420d: Exclude CH5 during staging to save tokens
-                cli_mode = execution_mode == "claude_code_cli"
+                cli_execution_modes = ("claude_code_cli", "codex_cli", "gemini_cli")
+                cli_mode = execution_mode in cli_execution_modes
+                # Map execution_mode to tool identifier for platform-specific protocol
+                execution_mode_to_tool = {
+                    "claude_code_cli": "claude-code",
+                    "codex_cli": "codex",
+                    "gemini_cli": "gemini",
+                }
+                protocol_tool = execution_mode_to_tool.get(execution_mode, "claude-code")
                 # Staging phase (waiting status) does not need CH5 implementation reference
                 is_staging = execution.status == "waiting"
                 orchestrator_protocol = _build_orchestrator_protocol(
@@ -3098,6 +3128,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                     field_toggles=field_toggles,
                     depth_config=depth_config,
                     product_id=str(product.id) if product else None,
+                    tool=protocol_tool,
                 )
                 response["orchestrator_protocol"] = orchestrator_protocol
 

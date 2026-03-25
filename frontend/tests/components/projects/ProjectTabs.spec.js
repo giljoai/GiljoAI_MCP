@@ -250,7 +250,7 @@ describe('ProjectTabs - Action Buttons', () => {
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
-      // Default: usingClaudeCodeSubagents is null, executionModeSelected is false
+      // Default: executionPlatform is null, executionModeSelected is false
       expect(stageButton.attributes('disabled')).toBeDefined()
     })
 
@@ -260,7 +260,7 @@ describe('ProjectTabs - Action Buttons', () => {
 
       // Directly set the execution mode on the component instance
       // (radio stubs don't support v-model binding, so we set it programmatically)
-      wrapper.vm.usingClaudeCodeSubagents = false
+      wrapper.vm.executionPlatform = 'multi_terminal'
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
@@ -276,7 +276,7 @@ describe('ProjectTabs - Action Buttons', () => {
       stateStore.setStagingComplete('project-123', true)
 
       // Select execution mode
-      wrapper.vm.usingClaudeCodeSubagents = false
+      wrapper.vm.executionPlatform = 'multi_terminal'
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
@@ -288,7 +288,7 @@ describe('ProjectTabs - Action Buttons', () => {
       await flushPromises()
 
       // Select execution mode
-      wrapper.vm.usingClaudeCodeSubagents = false
+      wrapper.vm.executionPlatform = 'multi_terminal'
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
@@ -306,7 +306,7 @@ describe('ProjectTabs - Action Buttons', () => {
       await flushPromises()
 
       // Select execution mode
-      wrapper.vm.usingClaudeCodeSubagents = false
+      wrapper.vm.executionPlatform = 'multi_terminal'
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
@@ -321,7 +321,7 @@ describe('ProjectTabs - Action Buttons', () => {
       await flushPromises()
 
       // Select execution mode
-      wrapper.vm.usingClaudeCodeSubagents = false
+      wrapper.vm.executionPlatform = 'multi_terminal'
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
@@ -355,7 +355,7 @@ describe('ProjectTabs - Action Buttons', () => {
       stateStore.setStagingComplete('project-123', true)
 
       // Select execution mode
-      wrapper.vm.usingClaudeCodeSubagents = false
+      wrapper.vm.executionPlatform = 'multi_terminal'
       await flushPromises()
 
       const launchButton = wrapper.find('[data-testid="launch-jobs-btn"]')
@@ -370,7 +370,7 @@ describe('ProjectTabs - Action Buttons', () => {
       const stateStore = useProjectStateStore()
       stateStore.setStagingComplete('project-123', true)
 
-      wrapper.vm.usingClaudeCodeSubagents = false
+      wrapper.vm.executionPlatform = 'multi_terminal'
       await flushPromises()
 
       const launchButton = wrapper.find('[data-testid="launch-jobs-btn"]')
@@ -390,7 +390,7 @@ describe('ProjectTabs - Action Buttons', () => {
       const stateStore = useProjectStateStore()
       stateStore.setStagingComplete('project-123', true)
 
-      wrapper.vm.usingClaudeCodeSubagents = false
+      wrapper.vm.executionPlatform = 'multi_terminal'
       await flushPromises()
 
       const launchButton = wrapper.find('[data-testid="launch-jobs-btn"]')
@@ -549,7 +549,7 @@ describe('ProjectTabs - Action Buttons', () => {
       await flushPromises()
 
       // Select execution mode
-      wrapper.vm.usingClaudeCodeSubagents = false
+      wrapper.vm.executionPlatform = 'multi_terminal'
       await flushPromises()
 
       const stageButton = wrapper.find('[data-testid="stage-project-btn"]')
@@ -571,7 +571,7 @@ describe('ProjectTabs - Action Buttons', () => {
       const stateStore = useProjectStateStore()
       stateStore.setStagingComplete('project-123', true)
 
-      wrapper.vm.usingClaudeCodeSubagents = false
+      wrapper.vm.executionPlatform = 'multi_terminal'
       await flushPromises()
 
       const launchButton = wrapper.find('[data-testid="launch-jobs-btn"]')
