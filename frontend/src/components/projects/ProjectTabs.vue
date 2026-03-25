@@ -49,7 +49,7 @@
         <div class="execution-mode-radio" :class="{ 'mode-locked': isExecutionModeLocked }">
           <span class="mode-label">Execution Mode:</span>
           <v-radio-group
-            v-model="usingClaudeCodeSubagents"
+            v-model="executionPlatform"
             inline
             hide-details
             density="compact"
@@ -57,14 +57,26 @@
             class="mode-radios"
             @update:model-value="handleExecutionModeChange"
           >
-            <v-radio :value="false" label="Multi-Terminal" data-testid="radio-multi-terminal" />
-            <v-radio :value="true" label="Claude Code CLI" data-testid="radio-claude-cli" />
+            <v-radio value="multi_terminal" label="Multi-Terminal" data-testid="radio-multi-terminal" />
+            <v-radio value="claude_code_cli" label="Subagent: Claude" data-testid="radio-claude-cli" />
+            <v-radio value="codex_cli" data-testid="radio-codex-cli">
+              <template #label>
+                <span>Subagent: Codex</span>
+                <v-icon size="x-small" color="warning" class="ml-1" title="Experimental — limited testing">mdi-alert</v-icon>
+              </template>
+            </v-radio>
+            <v-radio value="gemini_cli" data-testid="radio-gemini-cli">
+              <template #label>
+                <span>Subagent: Gemini</span>
+                <v-icon size="x-small" color="warning" class="ml-1" title="Experimental — limited testing">mdi-alert</v-icon>
+              </template>
+            </v-radio>
           </v-radio-group>
           <v-tooltip location="bottom">
             <template v-slot:activator="{ props: tooltipProps }">
               <v-icon v-bind="tooltipProps" size="small" class="help-icon" aria-label="Execution mode help">mdi-help-circle-outline</v-icon>
             </template>
-            <span>Multi-Terminal: Manually launch each agent in separate terminals. Claude Code CLI: Orchestrator spawns specialists via Task tool.</span>
+            <span>Multi-Terminal: Manually launch each agent in separate terminals. Subagent modes: Orchestrator spawns specialists automatically. Codex and Gemini are experimental.</span>
           </v-tooltip>
           <v-icon v-if="isExecutionModeLocked" size="small" class="lock-icon" aria-label="Execution mode locked">mdi-lock</v-icon>
         </div>
@@ -254,12 +266,12 @@ const projectId = computed(() => props.project?.project_id || props.project?.id 
  * Execution Mode Toggle (Handover 0428: Moved from LaunchTab)
  * Default to null (unchecked) - user must select before staging
  */
-const usingClaudeCodeSubagents = ref(null)
+const executionPlatform = ref(null)
 
 /**
  * Check if user has selected an execution mode
  */
-const executionModeSelected = computed(() => usingClaudeCodeSubagents.value !== null)
+const executionModeSelected = computed(() => executionPlatform.value !== null)
 
 /**
  * Mission text from project state store (needed for lock check)
@@ -420,7 +432,7 @@ watch(
     // Only sync if project has been staged (has mission) - fresh projects should have no selection
     // Backend defaults execution_mode to 'multi_terminal', so we can't rely on newMode alone
     if (newMode && missionText.value) {
-      usingClaudeCodeSubagents.value = newMode === 'claude_code_cli'
+      executionPlatform.value = newMode
     }
   },
   { immediate: true },
@@ -430,11 +442,11 @@ watch(
 watch(
   missionText,
   (newMission) => {
-    if (newMission && usingClaudeCodeSubagents.value === null) {
+    if (newMission && executionPlatform.value === null) {
       // Project was previously staged, restore execution mode selection
       const mode = props.project?.execution_mode
       if (mode) {
-        usingClaudeCodeSubagents.value = mode === 'claude_code_cli'
+        executionPlatform.value = mode
       }
     }
   },
@@ -566,25 +578,28 @@ async function copyPromptToClipboard(text) {
  * Handle execution mode change from radio buttons (Handover 0428)
  */
 async function handleExecutionModeChange(newValue) {
-  const newMode = newValue ? 'claude_code_cli' : 'multi_terminal'
+  const _modeLabels = {
+    multi_terminal: 'Multi-Terminal mode enabled',
+    claude_code_cli: 'Subagent: Claude mode enabled',
+    codex_cli: 'Subagent: Codex mode enabled (experimental)',
+    gemini_cli: 'Subagent: Gemini mode enabled (experimental)',
+  }
 
   try {
     // Persist to backend
-    await api.projects.update(projectId.value, { execution_mode: newMode })
+    await api.projects.update(projectId.value, { execution_mode: newValue })
 
     // Update local executionMode ref for handleStageProject
-    executionMode.value = newMode
+    executionMode.value = newValue
 
     showToast({
-      message: newValue
-        ? 'Claude Code CLI mode enabled'
-        : 'Multi-Terminal mode enabled',
+      message: _modeLabels[newValue] || 'Execution mode updated',
       type: 'info',
       timeout: 3000
     })
   } catch (error) {
     // Revert on failure
-    usingClaudeCodeSubagents.value = !newValue
+    executionPlatform.value = executionMode.value || null
     console.error('Failed to update execution mode:', error)
     showToast({
       message: 'Failed to save execution mode',
@@ -611,9 +626,16 @@ async function handleStageProject() {
       throw new Error('Project missing ID')
     }
 
+    const _platformToTool = {
+      multi_terminal: 'claude-code',
+      claude_code_cli: 'claude-code',
+      codex_cli: 'codex',
+      gemini_cli: 'gemini',
+    }
+    const currentMode = executionMode.value || 'multi_terminal'
     const response = await api.prompts.staging(pid, {
-      tool: 'claude-code',
-      execution_mode: executionMode.value || 'multi_terminal',
+      tool: _platformToTool[currentMode] || 'claude-code',
+      execution_mode: currentMode,
     })
 
     if (!response.data?.prompt) {
