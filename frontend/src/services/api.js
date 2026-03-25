@@ -524,6 +524,7 @@ export const api = {
   stats: {
     getSystem: () => apiClient.get('/api/v1/stats/system'),
     getCallCounts: () => apiClient.get('/api/v1/stats/call-counts'),
+    getDashboard: (productId) => apiClient.get('/api/v1/stats/dashboard', { params: { product_id: productId } }),
   },
 }
 
