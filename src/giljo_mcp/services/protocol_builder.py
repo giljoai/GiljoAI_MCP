@@ -936,9 +936,56 @@ When you receive this directive, your session is DONE. Stop immediately.
 """
 
 
-def _build_ch3_spawning_rules(cli_mode: bool) -> str:
-    """Build CH3: AGENT SPAWNING RULES section (~200 tokens)."""
-    if cli_mode:
+def _build_ch3_spawning_rules(tool: str = "claude-code") -> str:
+    """Build CH3: AGENT SPAWNING RULES section (~200 tokens).
+
+    Args:
+        tool: Platform identifier — 'claude-code', 'codex', or 'gemini'.
+              Defaults to 'claude-code' for backward compatibility.
+    """
+    cli_mode = tool in ("claude-code", "codex", "gemini")
+
+    if tool == "codex":
+        cli_mode_block = """── CODEX CLI MODE ───────────────────────────────────────────────────────────
+spawn_agent tool syntax (IMPLEMENTATION PHASE ONLY - not during staging):
+  spawn_agent(agent='gil-{agent_name}', instructions='...')
+
+CRITICAL: ALL GiljoAI agents use the 'gil-' prefix in Codex CLI.
+The server returns agent_name WITHOUT the prefix. You MUST prepend 'gil-'.
+
+Example:
+  spawn_agent_job(agent_name='tdd-implementor',
+                  agent_display_name='implementer', ...)
+
+  Later in implementation:
+  spawn_agent(agent='gil-tdd-implementor', ...)  # note: gil- prefix!
+
+Built-in Codex roles shadow unprefixed names — always use gil- prefix.
+DO NOT invoke spawn_agent() during staging - this is planning reference only
+"""
+        multi_terminal_mode_block = ""
+    elif tool == "gemini":
+        cli_mode_block = """── GEMINI CLI MODE ───────────────────────────────────────────────────────────
+Subagent invocation syntax (IMPLEMENTATION PHASE ONLY - not during staging):
+  @{agent_name} followed by instructions
+
+Or use the /agent command:
+  /agent {agent_name}
+  <instructions>
+
+CRITICAL: agent_name is used as-is (no prefix required).
+
+Example:
+  spawn_agent_job(agent_name='tdd-implementor',
+                  agent_display_name='implementer', ...)
+
+  Later in implementation:
+  @tdd-implementor <your instructions here>
+
+DO NOT invoke subagents during staging - this is planning reference only
+"""
+        multi_terminal_mode_block = ""
+    elif cli_mode:
         cli_mode_block = """── CLAUDE CODE CLI MODE ────────────────────────────────────────────────────
 Task tool syntax (IMPLEMENTATION PHASE ONLY - not during staging):
   Task(subagent_type='{agent_name}', instructions='...')
@@ -1184,6 +1231,7 @@ def _build_orchestrator_protocol(
     field_toggles: dict[str, bool] | None = None,
     depth_config: dict[str, Any] | None = None,
     product_id: str | None = None,
+    tool: str = "claude-code",
 ) -> dict:
     """
     Build chapter-based orchestrator protocol.
@@ -1192,7 +1240,7 @@ def _build_orchestrator_protocol(
     Solves the "rotation problem" where content gets buried.
 
     Args:
-        cli_mode: True if execution_mode is "claude_code_cli"
+        cli_mode: True if execution_mode is any CLI subagent mode
         project_id: Project UUID for parameter substitution
         orchestrator_id: Job ID for parameter substitution
         tenant_key: Tenant key for parameter substitution
@@ -1200,6 +1248,7 @@ def _build_orchestrator_protocol(
         field_toggles: Category toggles for inline fetch injection (Handover 0823)
         depth_config: Depth settings per category (Handover 0823)
         product_id: Product UUID for fetch calls (Handover 0823)
+        tool: Platform identifier for platform-specific spawning rules (Handover 0838)
 
     Returns:
         Dict with chapter keys and navigation_hint
@@ -1213,7 +1262,7 @@ def _build_orchestrator_protocol(
         product_id=product_id,
         tenant_key=tenant_key,
     )
-    ch3 = _build_ch3_spawning_rules(cli_mode)
+    ch3 = _build_ch3_spawning_rules(tool if cli_mode else "multi_terminal")
     ch4 = _build_ch4_error_handling()
     ch5 = _build_ch5_reference(project_id, orchestrator_id) if include_implementation_reference else ""
 

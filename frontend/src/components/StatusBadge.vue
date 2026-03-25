@@ -1,13 +1,13 @@
 <template>
   <v-chip
     :color="statusColor"
-    :prepend-icon="statusIcon"
+    :text-color="statusTextColor"
     variant="flat"
     size="small"
     class="status-badge-chip"
     :aria-label="`Project status: ${statusLabel}`"
   >
-    <span class="text-caption font-weight-medium">{{ statusLabel }}</span>
+    <span class="text-caption font-weight-bold" :style="statusTextColor ? { color: statusTextColor } : {}">{{ statusLabel }}</span>
   </v-chip>
 </template>
 
@@ -33,6 +33,7 @@ const statusConfig = {
   inactive: {
     label: 'Inactive',
     color: 'grey',
+    textColor: '#1a237e',
     icon: 'mdi-stop-circle-outline',
   },
   completed: {
@@ -60,6 +61,7 @@ const statusConfig = {
 // Computed
 const statusLabel = computed(() => statusConfig[props.status]?.label || props.status)
 const statusColor = computed(() => statusConfig[props.status]?.color || 'grey')
+const statusTextColor = computed(() => statusConfig[props.status]?.textColor || undefined)
 const statusIcon = computed(() => statusConfig[props.status]?.icon || 'mdi-circle')
 </script>
 
