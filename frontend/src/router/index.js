@@ -256,7 +256,7 @@ const router = createRouter({
 // Navigation guard (Handover 0034 - simplified fresh install detection)
 router.beforeEach(async (to, from, next) => {
   // Set page title
-  document.title = `${to.meta.title || 'GiljoAI'} - MCP Orchestrator`
+  document.title = `${to.meta.title || 'GiljoAI'} - GiljoAI MCP`
 
   // PRIORITY 1: Fresh install detection (check BEFORE auth for all routes except /welcome)
   if (to.path !== '/welcome' && to.path !== '/login') {

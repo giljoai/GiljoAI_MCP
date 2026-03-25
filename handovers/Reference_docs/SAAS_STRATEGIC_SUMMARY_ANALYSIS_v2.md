@@ -17,7 +17,7 @@
 
 ## 1. Executive Summary
 
-GiljoAI MCP Coding Orchestrator is a production-grade multi-tenant AI agent orchestration platform with a clear two-edition commercialization strategy. The codebase is substantially complete (209 endpoints, 33 models, 90 Vue components, 8.35/10 code quality score) and the Community Edition launch is blocked by only 24–35 hours of packaging and polish work — not structural debt.
+GiljoAI MCP is a production-grade multi-tenant AI agent orchestration platform with a clear two-edition commercialization strategy. The codebase is substantially complete (209 endpoints, 33 models, 90 Vue components, 8.35/10 code quality score) and the Community Edition launch is blocked by only 24–35 hours of packaging and polish work — not structural debt.
 
 The strategic approach — ship Community Edition first, fork to SaaS later, with the private repo importing the public repo as a dependency — is architecturally sound. Approximately 40% of the SaaS infrastructure already exists in the codebase (tenant isolation, org model, user management, PostgresNotifyBroker, API key system, CI/CD).
 
