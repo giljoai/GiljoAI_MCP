@@ -131,6 +131,9 @@ from .settings import Settings
 # Task and message models
 from .tasks import (
     Message,
+    MessageAcknowledgment,
+    MessageCompletion,
+    MessageRecipient,
     Task,
 )
 
@@ -164,6 +167,9 @@ __all__ = [
     "MCPContextIndex",
     "MCPSession",
     "Message",
+    "MessageAcknowledgment",
+    "MessageCompletion",
+    "MessageRecipient",
     # OAuth
     "OAuthAuthorizationCode",
     "OptimizationMetric",
