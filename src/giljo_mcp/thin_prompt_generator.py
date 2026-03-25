@@ -411,24 +411,42 @@ class ThinClientPromptGenerator:
         # Fetch product for context injection
         product = await self._fetch_product(project_id)
 
-        # Handover 0315: Fetch user toggle and depth config if user_id provided
+        # Handover 0840d: Fetch user toggle and depth config from normalized tables/columns
         if user_id and (not field_toggles or not depth_config):
-            from src.giljo_mcp.models.auth import User
+            from src.giljo_mcp.models.auth import User, UserFieldPriority
 
             user_stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
             user_result = await self.db.execute(user_stmt)
             user = user_result.scalar_one_or_none()
 
             if user:
-                # Use user config if not provided
-                if not field_toggles and user.field_priority_config:
-                    raw_config = user.field_priority_config.get("priorities", {})
-                    field_toggles = {
-                        k: v.get("toggle", True) if isinstance(v, dict) else bool(v) for k, v in raw_config.items()
-                    }
+                # Build field_toggles from user_field_priorities table
+                if not field_toggles:
+                    prio_result = await self.db.execute(
+                        select(UserFieldPriority).where(
+                            and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == self.tenant_key)
+                        )
+                    )
+                    rows = prio_result.scalars().all()
+                    if rows:
+                        from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
 
-                if not depth_config and user.depth_config:
-                    depth_config = user.depth_config
+                        field_toggles = dict(DEFAULT_CATEGORY_TOGGLES)
+                        for row in rows:
+                            field_toggles[row.category] = row.enabled
+                        field_toggles["product_core"] = True
+                        field_toggles["project_description"] = True
+
+                # Build depth_config from columns
+                if not depth_config:
+                    depth_config = {
+                        "vision_documents": user.depth_vision_documents,
+                        "memory_last_n_projects": user.depth_memory_last_n,
+                        "git_commits": user.depth_git_commits,
+                        "agent_templates": user.depth_agent_templates,
+                        "tech_stack_sections": user.depth_tech_stack_sections,
+                        "architecture_depth": user.depth_architecture,
+                    }
 
         # Apply defaults for depth_config if still not set
         if not depth_config:

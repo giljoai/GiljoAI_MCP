@@ -28,6 +28,20 @@ from sqlalchemy.sql import func
 from .base import Base, generate_uuid
 
 
+# Valid categories for user_field_priorities (no product_info — always on)
+TOGGLEABLE_CATEGORIES = frozenset(
+    {
+        "tech_stack",
+        "architecture",
+        "testing",
+        "vision_documents",
+        "memory_360",
+        "git_history",
+        "agent_templates",
+    }
+)
+
+
 class User(Base):
     """
     User model - user accounts for authentication (LAN/WAN modes).
@@ -111,11 +125,6 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
 
-    # User Preferences (Handover 0048)
-    field_priority_config = Column(
-        JSONB, nullable=True, default=None, comment="User-customizable field priority for agent mission generation"
-    )
-
     # Notification Preferences (Handover 0831)
     notification_preferences = Column(
         JSONB,
@@ -124,24 +133,18 @@ class User(Base):
         comment="User notification preferences: tuning reminders, thresholds",
     )
 
-    # Depth Configuration (Handover 0314)
-    depth_config = Column(
-        JSONB,
-        nullable=False,
-        default=lambda: {
-            "vision_documents": "medium",
-            "memory_last_n_projects": 3,
-            "git_commits": 25,
-            "agent_templates": "type_only",
-            "tech_stack_sections": "all",
-            "architecture_depth": "overview",
-            "execution_mode": "claude_code",
-        },
-        comment="User depth configuration for context granularity (Handover 0314)",
-    )
+    # Depth columns (Handover 0840d — replaces depth_config JSONB)
+    depth_vision_documents = Column(String(20), nullable=False, default="medium", server_default="medium")
+    depth_memory_last_n = Column(Integer, nullable=False, default=3, server_default="3")
+    depth_git_commits = Column(Integer, nullable=False, default=25, server_default="25")
+    depth_agent_templates = Column(String(20), nullable=False, default="type_only", server_default="type_only")
+    depth_tech_stack_sections = Column(String(20), nullable=False, default="all", server_default="all")
+    depth_architecture = Column(String(20), nullable=False, default="overview", server_default="overview")
+    execution_mode = Column(String(20), nullable=False, default="claude_code", server_default="claude_code")
 
     # Relationships
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
+    field_priorities = relationship("UserFieldPriority", back_populates="user", cascade="all, delete-orphan")
 
     # Organization relationship (Handover 0424f)
     organization = relationship("Organization", back_populates="users", foreign_keys="User.org_id")
@@ -163,6 +166,40 @@ class User(Base):
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, username={self.username}, role={self.role})>"
+
+
+class UserFieldPriority(Base):
+    """
+    User field priority toggle — one row per toggleable category per user.
+
+    Handover 0840d: Replaces User.field_priority_config JSONB.
+    Categories not present in this table are treated as enabled by default.
+    product_info and project_description are always on (no rows stored).
+    """
+
+    __tablename__ = "user_field_priorities"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    tenant_key = Column(String(255), nullable=False)
+    category = Column(String(50), nullable=False)
+    enabled = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    user = relationship("User", back_populates="field_priorities")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "category", name="uq_user_field_priority"),
+        Index("idx_user_field_priorities_user", "user_id", "tenant_key"),
+        CheckConstraint(
+            f"category IN ({', '.join(repr(c) for c in sorted(TOGGLEABLE_CATEGORIES))})",
+            name="ck_user_field_priority_category",
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<UserFieldPriority(user_id={self.user_id}, category={self.category}, enabled={self.enabled})>"
 
 
 class APIKey(Base):
