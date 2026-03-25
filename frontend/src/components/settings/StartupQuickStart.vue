@@ -200,7 +200,7 @@ const setupSteps = [
     title: 'Pick your AI coding agent(s)',
     subtitle: 'Claude Code or multi-terminal mode',
     body:
-      'Giljo MCP works with Claude Code CLI (tightly integrated subagents) and also with "multi-terminal mode" (Codex + others) where multiple tools share one MCP server over HTTP.',
+      'GiljoAI MCP works with Claude Code CLI (tightly integrated subagents) and also with "multi-terminal mode" (Codex + others) where multiple tools share one MCP server over HTTP.',
     actions: [
       {
         id: 'open-integrations',

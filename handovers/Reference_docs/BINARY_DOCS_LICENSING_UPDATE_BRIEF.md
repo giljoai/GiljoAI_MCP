@@ -14,7 +14,7 @@ The GiljoAI MCP project previously used the MIT License. As of 2026-03-07, it no
 - **This is NOT an open-source (OSI-approved) license** -- do not use terms like "MIT", "open source", or "open core"
 
 The correct terminology is:
-- **Product name**: GiljoAI MCP Coding Orchestrator
+- **Product name**: GiljoAI MCP
 - **Edition**: Community Edition
 - **License**: GiljoAI Community License v1.0
 - **Strategy**: Community Edition (free, single-user) now. SaaS Edition (multi-user, subscription) later.
@@ -86,7 +86,7 @@ The product is being developed in a single repository with two long-lived branch
 ## Branding Reference
 
 If you need the correct branding:
-- **Product**: GiljoAI MCP Coding Orchestrator
+- **Product**: GiljoAI MCP
 - **Tagline**: "Break through AI context limits. Orchestrate teams of specialized AI agents."
 - **Edition label**: "Community Edition"
 - **License text** (short form): "GiljoAI Community License v1.0 -- Free for single-user use"

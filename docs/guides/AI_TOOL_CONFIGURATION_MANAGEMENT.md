@@ -12,7 +12,7 @@ GiljoAI MCP v3.0 implements **AI-agnostic integration** that supports multiple A
 
 ### Quick MCP Commands (0069)
 
-Use native CLI commands to register the Giljo MCP server over HTTP:
+Use native CLI commands to register the GiljoAI MCP server over HTTP:
 
 ```bash
 # Codex CLI (Bearer token)

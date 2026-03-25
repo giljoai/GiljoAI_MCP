@@ -1,4 +1,4 @@
-# Contributing to GiljoAI MCP Coding Orchestrator
+# Contributing to GiljoAI MCP
 
 Thank you for your interest in GiljoAI MCP.
 

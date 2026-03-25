@@ -6,7 +6,7 @@ workflows with real-time WebSocket progress tracking.
 ## Overview
 
 The `OrchestratorLaunchButton` component provides a complete user interface for
-launching the GiljoAI orchestrator, including:
+launching the GiljoAI MCP orchestrator, including:
 
 - Intelligent button state management (enabled/disabled based on product status)
 - Real-time progress tracking via WebSocket events

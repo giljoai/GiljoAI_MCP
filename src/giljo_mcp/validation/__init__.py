@@ -1,5 +1,5 @@
 """
-Template validation system for GiljoAI MCP Coding Orchestrator.
+Template validation system for GiljoAI MCP.
 
 Provides runtime validation of agent templates with Redis caching
 for sub-millisecond performance on cache hits.
