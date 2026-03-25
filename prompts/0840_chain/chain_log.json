@@ -1,0 +1,151 @@
+{
+  "chain_id": "0840",
+  "chain_name": "JSONB Normalization Series",
+  "created_at": "2026-03-25",
+  "total_sessions": 6,
+  "orchestrator_notes": "Orchestrator is monitoring every 15 minutes. Check this file for additional instructions before starting work. If orchestrator_instructions is non-null, follow those instructions.",
+  "orchestrator_instructions": null,
+  "sessions": [
+    {
+      "session_id": "0840a",
+      "title": "Dead Column Cleanup",
+      "color": "#4CAF50",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Drop 7 dead meta_data columns (TemplateArchive, Product, Task, GitConfig, GitCommit, SetupState, OptimizationMetric)",
+        "Remove 6 ghost config keys from context_manager.py ROLE_CONFIG_FILTERS",
+        "Clean up code references (get_product_context.py, state_manager.py, SetupState.to_dict)",
+        "Create Alembic migration with idempotency guards",
+        "Verify all tests pass"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0840b",
+      "title": "Message Table Normalization",
+      "color": "#2196F3",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Add from_agent_id, from_display_name, auto_generated columns to messages",
+        "Create message_recipients junction table",
+        "Create message_acknowledgments junction table",
+        "Create message_completions junction table",
+        "Backfill data from JSONB to new columns/tables",
+        "Rewrite message_service.py (send, receive, list, acknowledge, complete)",
+        "Update statistics_repository.py",
+        "Update orchestration_service.py",
+        "Drop old JSONB columns (to_agents, acknowledged_by, completed_by, meta_data)",
+        "Rewrite 7 test files (~49 tests), update 13 test files (~86 tests)"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0840c",
+      "title": "Product Config Normalization",
+      "color": "#9C27B0",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Create product_tech_stacks table (with 6 target platform booleans)",
+        "Create product_architectures table",
+        "Create product_test_configs table",
+        "Move core_features to products table",
+        "Backfill data from config_data JSONB",
+        "Drop config_data column",
+        "Rename Basic Info tab to Product Info in frontend",
+        "Add Android + iOS platform toggles to frontend form",
+        "Rewrite context tools (get_tech_stack, get_architecture, get_testing, get_product_context)",
+        "Rewrite context_manager.py, thin_prompt_generator.py, product_tuning_service.py",
+        "Assess product_memory and tuning_state JSONB columns",
+        "Rewrite 6 test files (~93 tests), update 12 test files (~53 tests)"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0840d",
+      "title": "User Settings Normalization",
+      "color": "#FF9800",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Create user_field_priorities table (7 categories, no product_info/project_description)",
+        "Add 7 depth columns to users table",
+        "Backfill from field_priority_config and depth_config JSONB",
+        "Drop field_priority_config and depth_config columns",
+        "Lock Product Info as always-on in frontend",
+        "Rewrite user_service.py, protocol_builder.py, thin_prompt_generator.py",
+        "Update ContextPriorityConfig.vue",
+        "Rewrite 3 test files (~38 tests), update 5 test files (~41 tests)"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0840e",
+      "title": "Project Meta + Minor Cleanups",
+      "color": "#FF5722",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Add cancellation_reason and deactivation_reason columns to projects",
+        "Drop projects.meta_data after backfill",
+        "Add filename column to download_tokens, drop meta_data",
+        "JSON to JSONB bulk migration (~20 columns)",
+        "Remove ghost reads (path, git_branch, test_coverage)",
+        "Update project_service.py, project_closeout.py, response schemas",
+        "Update tests"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    },
+    {
+      "session_id": "0840f",
+      "title": "Validation + Schema Enforcement",
+      "color": "#F44336",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "planned_tasks": [
+        "Create Pydantic validation models for all remaining JSONB columns",
+        "Wire validators into write paths",
+        "Fix any schema drift remaining from 0840c-d",
+        "Run comprehensive full test suite",
+        "Assess baseline squash need",
+        "Update handover catalogue",
+        "Final server verification (start, create product, send message, view stats)"
+      ],
+      "tasks_completed": [],
+      "deviations": [],
+      "blockers_encountered": [],
+      "notes_for_next": null,
+      "summary": null
+    }
+  ],
+  "chain_summary": null,
+  "final_status": "in_progress"
+}
