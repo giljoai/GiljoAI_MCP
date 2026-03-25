@@ -16,62 +16,6 @@
       No active product selected. Please activate a product to view and manage its projects.
     </v-alert>
 
-    <!-- Stats Cards -->
-    <v-row v-if="activeProduct" class="mb-4">
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon size="32" color="primary" class="mr-3">mdi-folder-multiple</v-icon>
-              <div>
-                <div class="text-caption">Total Projects</div>
-                <div class="text-h5">{{ filteredProjects.length }}</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon size="32" color="info" class="mr-3">mdi-clipboard-check</v-icon>
-              <div>
-                <div class="text-caption">Completed</div>
-                <div class="text-h5">{{ statusCounts.completed }}</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon size="32" color="warning" class="mr-3">mdi-progress-clock</v-icon>
-              <div>
-                <div class="text-caption">Staged</div>
-                <div class="text-h5">{{ statusCounts.staged }}</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="d-flex align-center">
-              <v-icon size="32" color="error" class="mr-3">mdi-cancel</v-icon>
-              <div>
-                <div class="text-caption">Cancelled</div>
-                <div class="text-h5">{{ statusCounts.cancelled }}</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
     <!-- Filters & Search Section -->
     <v-card v-if="activeProduct" class="mb-4">
       <v-card-text class="pb-2">
@@ -223,10 +167,7 @@
                 >
                   {{ item.taxonomy_alias }}
                 </v-chip>
-                <span
-                  class="font-weight-bold text-body-2 project-name-link"
-                  @click.stop="editProject(item)"
-                >
+                <span class="font-weight-bold text-body-2" style="color: rgb(var(--v-theme-primary))">
                   {{ item.name }}
                 </span>
               </div>
@@ -1156,10 +1097,17 @@ async function activateAndLaunch(projectId) {
   router.push({ name: 'ProjectLaunch', params: { projectId }, query: { via: 'jobs' } })
 }
 
-// Handle row click to navigate to project
-function handleRowClick(event, item) {
-  if (item && item.id) {
-    router.push({ name: 'ProjectLaunch', params: { projectId: item.id }, query: { via: 'jobs' } })
+// Handle row click — completed projects open review summary, others open edit modal
+function handleRowClick(event, row) {
+  const item = row?.item
+  if (!item?.id) return
+  const status = normalizeStatus(item.status)
+  if (status === 'completed') {
+    reviewProjectId.value = item.id
+    reviewProductId.value = item.product_id
+    showReviewModal.value = true
+  } else {
+    editProject(item)
   }
 }
 
@@ -1483,14 +1431,9 @@ onBeforeUnmount(() => {
   border-radius: 4px;
 }
 
-/* Clickable project name */
-.project-name-link {
+/* Clickable rows — entire row opens edit/review */
+:deep(.v-data-table__tr) {
   cursor: pointer;
-  color: rgb(var(--v-theme-primary));
-}
-
-.project-name-link:hover {
-  text-decoration: underline;
 }
 
 /* Scrollable project list container */
@@ -1518,9 +1461,9 @@ onBeforeUnmount(() => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 215, 0, 0.7);
+  border: 2px solid rgb(255, 215, 0);
   background: transparent;
-  color: rgba(255, 215, 0, 0.9);
+  color: rgb(255, 215, 0);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -1530,11 +1473,11 @@ onBeforeUnmount(() => {
 }
 
 .play-circle-btn :deep(.v-icon) {
-  color: rgba(255, 215, 0, 0.9);
+  color: rgb(255, 215, 0);
 }
 
 .play-circle-btn:hover {
   background: rgba(255, 215, 0, 0.15);
-  border-color: rgba(255, 215, 0, 1);
+  border-color: rgb(255, 215, 0);
 }
 </style>

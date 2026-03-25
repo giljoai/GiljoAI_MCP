@@ -1115,9 +1115,9 @@ async function copyToClipboard(text) {
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            border: 2px solid rgba(255, 215, 0, 0.7);
+            border: 2px solid rgb(255, 215, 0);
             background: transparent;
-            color: rgba(255, 215, 0, 0.9);
+            color: rgb(255, 215, 0);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -1126,7 +1126,7 @@ async function copyToClipboard(text) {
             transition: all 0.2s ease;
 
             .v-icon {
-              color: rgba(255, 215, 0, 0.9);
+              color: rgb(255, 215, 0);
             }
 
             &:hover:not(:disabled) {
