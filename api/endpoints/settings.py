@@ -177,7 +177,7 @@ async def get_product_info(current_user: User = Depends(get_current_active_user)
     logger.debug(f"User {current_user.username} retrieving product info")
 
     return ProductInfoResponse(
-        product="GiljoAI MCP Coding Orchestrator",
+        product="GiljoAI MCP",
         version="1.0.0",
         build="production",
         python_version="3.12+",

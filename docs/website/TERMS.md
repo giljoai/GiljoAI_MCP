@@ -15,7 +15,7 @@ By installing, accessing, or using GiljoAI MCP, you agree to these Terms. If you
 
 ## 2. Product Description
 
-GiljoAI MCP is a **passive orchestration platform** for AI-assisted software development. It manages context, generates structured prompts, and coordinates agent workflows.
+GiljoAI MCP is a **context engineering platform** for AI-assisted software development. It manages context, generates structured prompts, and coordinates agent workflows.
 
 **GiljoAI MCP does not include:**
 - AI model access or inference capabilities

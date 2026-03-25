@@ -7,7 +7,7 @@
 
 ## What You Need Before You Start
 
-GiljoAI MCP is a **passive orchestrator** — it manages context, generates structured prompts, and coordinates agent workflows. It does not include AI model access or token credits.
+GiljoAI MCP is a **context engineering platform** — it manages context, generates structured prompts, and coordinates agent workflows. It does not include AI model access or token credits.
 
 **You will need:**
 
@@ -225,7 +225,7 @@ Your AI Coding Agent (Claude Code / Codex / Gemini)
         |
         | MCP-over-HTTP (API key auth, JSON-RPC 2.0)
         v
-  GiljoAI MCP Coding Orchestrator (port 7272)
+  GiljoAI MCP (port 7272)
   +--> REST API (products, projects, tasks, agents, messages)
   +--> MCP Endpoint (30+ tools for AI agent coordination)
   +--> WebSocket (real-time dashboard updates)

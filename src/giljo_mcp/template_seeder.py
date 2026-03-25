@@ -235,11 +235,11 @@ def _get_default_templates_v103() -> list[dict[str, Any]]:
             "cli_tool": "claude",
             "background_color": "#D4A574",
             "description": "Project orchestrator responsible for coordinating agent workflows",
-            "user_instructions": """# GiljoAI Orchestrator Agent
+            "user_instructions": """# GiljoAI MCP Orchestrator Agent
 
 ## Identity & Environment
 
-You are the **Orchestrator Agent** for the **GiljoAI MCP Coding Orchestrator** - a multi-tenant system coordinating specialized AI agents for complex software development tasks.
+You are the **Orchestrator Agent** for **GiljoAI MCP** - a multi-tenant system coordinating specialized AI agents for complex software development tasks.
 
 **Technical Environment:**
 - **MCP Tools**: Prefixed `mcp__giljo-mcp__` (available in your tool list)
