@@ -3,6 +3,8 @@ Statistics repository for aggregated metrics and monitoring.
 
 Handover 1011: Migrates all statistics queries from api/endpoints/statistics.py
 to follow the repository pattern with CRITICAL tenant isolation.
+
+Handover 0839: Dashboard analytics methods (distributions, recent activity, product counts).
 """
 
 from datetime import datetime
@@ -13,6 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.models import Message, Project, Task
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.config import ApiMetrics
+from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+from src.giljo_mcp.models.products import Product
+from src.giljo_mcp.models.projects import ProjectType
 
 
 class StatisticsRepository:
@@ -96,6 +101,20 @@ class StatisticsRepository:
         """
         result = await session.scalar(
             select(func.count(Project.id)).where(Project.tenant_key == tenant_key, Project.status == status)
+        )
+        return result or 0
+
+    async def count_projects_staged(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+    ) -> int:
+        """Count projects with staging_status in ('staged', 'staging_complete') for tenant."""
+        result = await session.scalar(
+            select(func.count(Project.id)).where(
+                Project.tenant_key == tenant_key,
+                Project.staging_status.in_(("staged", "staging_complete")),
+            )
         )
         return result or 0
 
@@ -665,3 +684,302 @@ class StatisticsRepository:
             return True
         except (RuntimeError, OSError):
             return False
+
+    # ============================================================================
+    # DASHBOARD ANALYTICS DOMAIN (Handover 0839)
+    # ============================================================================
+
+    async def get_project_status_distribution(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str | None = None,
+    ) -> dict[str, int]:
+        """
+        Get project count grouped by status.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation
+            product_id: Optional product filter
+
+        Returns:
+            Dict mapping status to count, e.g. {"active": 5, "completed": 12}
+        """
+        stmt = (
+            select(Project.status, func.count(Project.id))
+            .where(Project.tenant_key == tenant_key)
+            .group_by(Project.status)
+        )
+        if product_id:
+            stmt = stmt.where(Project.product_id == product_id)
+        result = await session.execute(stmt)
+        return dict(result.all())
+
+    async def get_project_taxonomy_distribution(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str | None = None,
+    ) -> list[dict]:
+        """
+        Get project count grouped by project type (taxonomy).
+
+        Includes an "Untyped" entry for projects with no project_type_id.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation
+            product_id: Optional product filter
+
+        Returns:
+            List of dicts with keys: label, color, count
+        """
+        # Typed projects: join ProjectType, group by label + color
+        typed_stmt = (
+            select(
+                ProjectType.label,
+                ProjectType.color,
+                func.count(Project.id).label("count"),
+            )
+            .join(ProjectType, Project.project_type_id == ProjectType.id)
+            .where(
+                Project.tenant_key == tenant_key,
+                Project.project_type_id.is_not(None),
+            )
+            .group_by(ProjectType.label, ProjectType.color)
+        )
+        if product_id:
+            typed_stmt = typed_stmt.where(Project.product_id == product_id)
+        typed_result = await session.execute(typed_stmt)
+        rows = [{"label": row.label, "color": row.color, "count": row.count} for row in typed_result.all()]
+
+        # Untyped projects count
+        untyped_stmt = select(func.count(Project.id)).where(
+            Project.tenant_key == tenant_key,
+            Project.project_type_id.is_(None),
+        )
+        if product_id:
+            untyped_stmt = untyped_stmt.where(Project.product_id == product_id)
+        untyped_count = await session.scalar(untyped_stmt) or 0
+
+        if untyped_count > 0:
+            rows.append({"label": "Untyped", "color": "#9E9E9E", "count": untyped_count})
+
+        return rows
+
+    async def get_agent_role_distribution(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str | None = None,
+    ) -> dict[str, int]:
+        """
+        Get agent execution count grouped by agent_display_name (role).
+
+        When product_id is provided, filters via AgentJob -> Project -> product_id.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation
+            product_id: Optional product filter
+
+        Returns:
+            Dict mapping display name to count, e.g. {"Orchestrator": 3, "Implementer": 8}
+        """
+        stmt = (
+            select(
+                AgentExecution.agent_display_name,
+                func.count(AgentExecution.id),
+            )
+            .where(AgentExecution.tenant_key == tenant_key)
+            .group_by(AgentExecution.agent_display_name)
+        )
+        if product_id:
+            stmt = (
+                stmt.join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+                .join(Project, AgentJob.project_id == Project.id)
+                .where(
+                    AgentJob.tenant_key == tenant_key,
+                    Project.tenant_key == tenant_key,
+                    Project.product_id == product_id,
+                )
+            )
+        result = await session.execute(stmt)
+        return dict(result.all())
+
+    async def get_recent_projects(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str | None = None,
+        limit: int = 10,
+    ) -> list[dict]:
+        """
+        Get the most recently created projects.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation
+            product_id: Optional product filter
+            limit: Maximum number of results
+
+        Returns:
+            List of dicts with keys: id, name, status, created_at, completed_at,
+            taxonomy_alias, project_type_color
+        """
+        stmt = (
+            select(
+                Project.id,
+                Project.name,
+                Project.status,
+                Project.created_at,
+                Project.completed_at,
+                Project.alias,
+                Project.project_type_id,
+                Project.series_number,
+                Project.subseries,
+                ProjectType.abbreviation.label("type_abbreviation"),
+                ProjectType.color.label("project_type_color"),
+            )
+            .outerjoin(ProjectType, Project.project_type_id == ProjectType.id)
+            .where(Project.tenant_key == tenant_key)
+            .order_by(Project.created_at.desc())
+            .limit(limit)
+        )
+        if product_id:
+            stmt = stmt.where(Project.product_id == product_id)
+
+        result = await session.execute(stmt)
+        rows = result.all()
+
+        projects = []
+        for row in rows:
+            # Build taxonomy_alias from fields (mirrors Project.taxonomy_alias property)
+            parts = []
+            if row.project_type_id and row.type_abbreviation:
+                parts.append(row.type_abbreviation)
+            if row.series_number:
+                if parts:
+                    parts.append("-")
+                parts.append(f"{row.series_number:04d}")
+                if row.subseries:
+                    parts.append(row.subseries)
+            taxonomy_alias = "".join(parts) if parts else row.alias
+
+            projects.append(
+                {
+                    "id": row.id,
+                    "name": row.name,
+                    "status": row.status,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                    "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+                    "taxonomy_alias": taxonomy_alias,
+                    "project_type_color": row.project_type_color,
+                }
+            )
+
+        return projects
+
+    async def get_recent_memory_entries(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str | None = None,
+        limit: int = 10,
+    ) -> list[dict]:
+        """
+        Get the most recent 360 memory entries.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation
+            product_id: Optional product filter
+            limit: Maximum number of results
+
+        Returns:
+            List of dicts with keys: project_name, summary, timestamp, entry_type
+        """
+        stmt = (
+            select(
+                ProductMemoryEntry.project_name,
+                ProductMemoryEntry.summary,
+                ProductMemoryEntry.timestamp,
+                ProductMemoryEntry.entry_type,
+            )
+            .where(ProductMemoryEntry.tenant_key == tenant_key)
+            .order_by(ProductMemoryEntry.timestamp.desc())
+            .limit(limit)
+        )
+        if product_id:
+            stmt = stmt.where(ProductMemoryEntry.product_id == product_id)
+
+        result = await session.execute(stmt)
+        return [
+            {
+                "project_name": row.project_name,
+                "summary": (row.summary[:200] if row.summary else None),
+                "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+                "entry_type": row.entry_type,
+            }
+            for row in result.all()
+        ]
+
+    async def get_task_status_distribution(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str | None = None,
+    ) -> dict[str, int]:
+        """
+        Get task count grouped by status.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation
+            product_id: Optional product filter
+
+        Returns:
+            Dict mapping status to count, e.g. {"pending": 3, "completed": 10}
+        """
+        stmt = select(Task.status, func.count(Task.id)).where(Task.tenant_key == tenant_key).group_by(Task.status)
+        if product_id:
+            stmt = stmt.where(Task.product_id == product_id)
+        result = await session.execute(stmt)
+        return dict(result.all())
+
+    async def get_product_project_counts(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+    ) -> list[dict]:
+        """
+        Get project count per product (for product selector badges).
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation
+
+        Returns:
+            List of dicts with keys: product_id, product_name, project_count
+        """
+        stmt = (
+            select(
+                Product.id.label("product_id"),
+                Product.name.label("product_name"),
+                func.count(Project.id).label("project_count"),
+            )
+            .outerjoin(Project, Product.id == Project.product_id)
+            .where(Product.tenant_key == tenant_key)
+            .group_by(Product.id, Product.name)
+            .order_by(Product.name)
+        )
+        result = await session.execute(stmt)
+        return [
+            {
+                "product_id": row.product_id,
+                "product_name": row.product_name,
+                "project_count": row.project_count,
+            }
+            for row in result.all()
+        ]

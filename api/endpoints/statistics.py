@@ -40,6 +40,8 @@ class SystemStatsResponse(BaseModel):
     total_agents_spawned: int
     total_jobs_completed: int
     projects_finished: int
+    projects_staged: int
+    projects_cancelled: int
 
 
 class ProjectStatsResponse(BaseModel):
@@ -107,6 +109,91 @@ class DetailedHealthResponse(BaseModel):
 startup_time = datetime.now(timezone.utc)
 
 
+class DashboardStatsResponse(BaseModel):
+    """Response model for the consolidated dashboard analytics endpoint (Handover 0839)."""
+
+    project_status_distribution: dict[str, int]
+    taxonomy_distribution: list[dict]
+    agent_role_distribution: dict[str, int]
+    recent_projects: list[dict]
+    recent_memories: list[dict]
+    task_status_distribution: dict[str, int]
+    products: list[dict]
+
+
+@router.get("/dashboard", response_model=DashboardStatsResponse)
+async def get_dashboard_stats(
+    request: Request,
+    product_id: Optional[str] = Query(None, description="Filter by product (None = all products)"),
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Consolidated dashboard analytics endpoint (Handover 0839).
+
+    Returns project status distribution, taxonomy distribution, agent role
+    distribution, recent projects, recent 360 memories, task status distribution,
+    and per-product project counts -- all in a single request.
+
+    All data is filtered by tenant_key for isolation. Optional product_id
+    narrows results to a specific product.
+    """
+    from api.app import state
+
+    tenant_key = getattr(request.state, "tenant_key", None)
+    if not tenant_key:
+        raise HTTPException(status_code=400, detail="Tenant key not found in request state")
+
+    if not state.db_manager:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    stats_repo = StatisticsRepository(state.db_manager)
+    async with state.db_manager.get_session_async() as session:
+        project_status_dist = await stats_repo.get_project_status_distribution(
+            session,
+            tenant_key,
+            product_id=product_id,
+        )
+        taxonomy_dist = await stats_repo.get_project_taxonomy_distribution(
+            session,
+            tenant_key,
+            product_id=product_id,
+        )
+        agent_role_dist = await stats_repo.get_agent_role_distribution(
+            session,
+            tenant_key,
+            product_id=product_id,
+        )
+        recent_projects = await stats_repo.get_recent_projects(
+            session,
+            tenant_key,
+            product_id=product_id,
+        )
+        recent_memories = await stats_repo.get_recent_memory_entries(
+            session,
+            tenant_key,
+            product_id=product_id,
+        )
+        task_status_dist = await stats_repo.get_task_status_distribution(
+            session,
+            tenant_key,
+            product_id=product_id,
+        )
+        products = await stats_repo.get_product_project_counts(
+            session,
+            tenant_key,
+        )
+
+    return DashboardStatsResponse(
+        project_status_distribution=project_status_dist,
+        taxonomy_distribution=taxonomy_dist,
+        agent_role_distribution=agent_role_dist,
+        recent_projects=recent_projects,
+        recent_memories=recent_memories,
+        task_status_distribution=task_status_dist,
+        products=products,
+    )
+
+
 @router.get("/call-counts", response_model=CallCountsResponse)
 async def get_call_counts(request: Request, current_user: User = Depends(get_current_active_user)):
     """Get total API and MCP call counts."""
@@ -168,11 +255,16 @@ async def get_system_statistics(request: Request, current_user: User = Depends(g
 
         total_jobs_completed = await stats_repo.count_completed_agents(session, tenant_key)
 
+        projects_staged = await stats_repo.count_projects_staged(session, tenant_key)
+        projects_cancelled = await stats_repo.count_projects_by_status(session, tenant_key, "cancelled")
+
         return SystemStatsResponse(
             total_projects=total_projects,
             active_projects=active_projects,
             completed_projects=completed_projects,
             projects_finished=completed_projects,
+            projects_staged=projects_staged,
+            projects_cancelled=projects_cancelled,
             total_agents=total_agents,
             active_agents=active_agents,
             total_messages=total_messages,
