@@ -188,6 +188,18 @@ Download: {SKILLS_URL}
 Extract to: ~/.codex/skills/ (create if needed, overwrite existing)
 Delete the downloaded zip.
 
+Step 2 — Enable interactive menus:
+Read the user's ~/.codex/config.toml. Under the [features] section, ensure this flag is set:
+
+\`\`\`toml
+[features]
+default_mode_request_user_input = true
+\`\`\`
+
+If [features] already exists, merge — do NOT remove existing feature flags.
+If config.toml does not exist, create it with just the [features] section above.
+This flag enables structured menu prompts that GiljoAI skills rely on.
+
 Adapt all commands for the OS you are running on.
 After installation, tell the user:
 Two skills are now available:
