@@ -1,8 +1,65 @@
 # GiljoAI MCP Branding Guide
 
-**Version**: 3.1.0
-**Last Updated**: 2025-01-02
-**Purpose**: Standardized color palette and branding guidelines for GiljoAI MCP product
+**Version**: 4.0.0
+**Last Updated**: 2026-03-24
+**Purpose**: Naming conventions, terminology standards, and visual branding guidelines for GiljoAI MCP
+
+---
+
+## Product Naming
+
+| Context | Use this | Example |
+|---|---|---|
+| Product name (all contexts) | **GiljoAI MCP** | "GiljoAI MCP gives your AI coding agents a shared memory." |
+| Company/brand | **GiljoAI** | "© 2026 GiljoAI LLC" |
+| Trademark | **GILJO™** | "GILJO™ is a trademark of GiljoAI LLC." |
+| LICENSE file only | **GiljoAI MCP Coding Orchestrator** | Keep as-is — legal specificity required |
+| Informal shorthand (after first mention) | **the MCP server** (lowercase) | "The MCP server runs on your machine." |
+
+### Retired product name forms — do not use:
+
+- ~~GiljoAI MCP Coding Orchestrator~~ (except LICENSE)
+- ~~GiljoAI Orchestrator~~
+- ~~Giljo MCP~~
+- ~~MCP Orchestrator~~
+- ~~GiljoAI MCP Server~~ (as a product name — "the MCP server" as shorthand is fine)
+
+---
+
+## Functional Descriptions
+
+| Term | When to use |
+|---|---|
+| **context engineering platform** | Primary functional descriptor. Use in headlines, one-liners, README first paragraph, meta tags. |
+| **passive orchestrator** | Technical clarification only. Use where the "no AI inference" distinction matters (architecture docs, BYOAI disclaimers). |
+
+### Retired functional descriptions — do not use:
+
+- ~~passive orchestration platform~~
+- ~~persistent context layer~~
+
+---
+
+## Terminology Standards
+
+When referring to Claude Code, Codex CLI, Gemini CLI, or similar tools, always use **"AI coding agents"** (plural) or **"AI coding agent"** (singular).
+
+### Retired terminology — do not use:
+
+- ~~CLI tool / CLI tools~~
+- ~~coding tool / coding tools~~
+- ~~AI tool / AI tools~~
+- ~~CLI agent / CLI agents~~
+- ~~agentic CLI tools~~
+- ~~AI coding tool / AI coding tools~~
+
+---
+
+## Footer Standard
+
+All pages must use this footer text:
+
+> © 2026 GiljoAI LLC. GILJO™ is a trademark of GiljoAI LLC. Source-available under GiljoAI Community License.
 
 ---
 
@@ -197,6 +254,7 @@ All color combinations meet **WCAG 2.1 AA standards** for contrast:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 4.0.0 | 2026-03-24 | Added product naming, terminology standards, footer standard, retired forms |
 | 3.1.0 | 2025-01-02 | Initial branding guide with standardized agent colors |
 
 ---
