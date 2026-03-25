@@ -1,7 +1,7 @@
 <template>
   <div class="recent-projects-list">
     <div v-if="projects.length === 0" class="text-caption text-disabled pa-3 text-center">
-      No recent projects
+      No completed projects yet
     </div>
     <v-list
       v-else
@@ -21,26 +21,20 @@
             variant="flat"
             :color="project.project_type_color || '#9e9e9e'"
             class="mr-2 taxonomy-chip"
-            :aria-label="`Taxonomy: ${project.taxonomy_alias}`"
           >
             {{ project.taxonomy_alias }}
           </v-chip>
         </template>
 
-        <v-list-item-title class="text-body-2 project-name">
+        <v-list-item-title class="text-body-2">
           {{ project.name }}
+          <span v-if="project.product_name" class="text-caption text-medium-emphasis ml-2">({{ project.product_name }})</span>
         </v-list-item-title>
 
         <template v-slot:append>
-          <div class="d-flex align-center ga-2">
-            <StatusBadge :status="project.status" />
-            <span
-              v-if="durationText(project)"
-              class="text-caption text-medium-emphasis duration-text"
-            >
-              {{ durationText(project) }}
-            </span>
-          </div>
+          <span class="text-caption text-medium-emphasis completion-date">
+            {{ formatDate(project.completed_at) }}
+          </span>
         </template>
       </v-list-item>
     </v-list>
@@ -48,8 +42,6 @@
 </template>
 
 <script setup>
-import StatusBadge from '@/components/StatusBadge.vue'
-
 defineProps({
   projects: {
     type: Array,
@@ -57,22 +49,11 @@ defineProps({
   },
 })
 
-function durationText(project) {
-  if (!project.completed_at || !project.created_at) return null
-  const start = new Date(project.created_at)
-  const end = new Date(project.completed_at)
-  const diffMs = end - start
-  if (diffMs < 0) return null
-
-  const totalMinutes = Math.floor(diffMs / 60000)
-  const totalHours = Math.floor(totalMinutes / 60)
-  const totalDays = Math.floor(totalHours / 24)
-
-  if (totalMinutes < 60) return '< 1h'
-  if (totalHours < 24) return `${totalHours}h`
-  const remainingHours = totalHours % 24
-  if (remainingHours === 0) return `${totalDays}d`
-  return `${totalDays}d ${remainingHours}h`
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 }
 </script>
 
@@ -91,13 +72,6 @@ function durationText(project) {
   border-bottom: none;
 }
 
-.project-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 220px;
-}
-
 .taxonomy-chip {
   font-size: 0.65rem;
   font-weight: 600;
@@ -105,9 +79,7 @@ function durationText(project) {
   justify-content: center;
 }
 
-.duration-text {
+.completion-date {
   white-space: nowrap;
-  min-width: 40px;
-  text-align: right;
 }
 </style>
