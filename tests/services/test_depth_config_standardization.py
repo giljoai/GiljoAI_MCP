@@ -41,20 +41,14 @@ class TestDepthConfigFieldStandardization:
         with pytest.raises(ValidationError):
             DepthConfig(vision_documents="invalid_level")
 
-    def test_user_model_default_depth_config_uses_vision_documents(self):
-        """Verify User model default depth config uses 'vision_documents' key."""
+    def test_user_model_has_depth_vision_documents_column(self):
+        """Verify User model has depth_vision_documents column with correct default."""
         from src.giljo_mcp.models.auth import User
 
-        # Get default depth config from User model
-        default_depth_config = User.__table__.columns["depth_config"].default.arg
-
-        assert "vision_documents" in default_depth_config, (
-            "User.depth_config default must contain 'vision_documents' key"
-        )
-        assert "vision_chunking" not in default_depth_config, (
-            "User.depth_config default must NOT contain deprecated 'vision_chunking' key"
-        )
-        assert default_depth_config["vision_documents"] == "medium", "Default vision_documents level should be 'medium'"
+        # Handover 0840d: depth_config JSONB replaced by individual columns
+        col = User.__table__.columns["depth_vision_documents"]
+        assert col is not None, "User must have 'depth_vision_documents' column"
+        assert col.server_default.arg == "medium", "Default depth_vision_documents should be 'medium'"
 
     def test_user_service_get_depth_config_uses_vision_documents(self):
         """Verify UserService get_depth_config uses 'vision_documents' key in default."""
