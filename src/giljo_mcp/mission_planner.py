@@ -1,5 +1,5 @@
 """
-Mission Planner for GiljoAI MCP Coding Orchestrator.
+Mission Planner for GiljoAI MCP.
 
 Provides toggle-based context instructions for orchestrator agents.
 The orchestrator calls fetch_context() on-demand using these instructions,

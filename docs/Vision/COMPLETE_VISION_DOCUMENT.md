@@ -1,5 +1,5 @@
 # GiljoAI MCP - Complete Vision Document
-**Product Name**: GiljoAI MCP Coding Orchestrator
+**Product Name**: GiljoAI MCP
 **Short Name**: GiljoAI_MCP
 **Last Updated**: 2025-01-05
 **Status**: Living Document
