@@ -78,47 +78,77 @@ class TestProductStatisticsIntegration:
 
 @pytest.mark.asyncio
 class TestConfigDataPersistence:
-    """Integration tests for config_data field persistence"""
+    """Integration tests for normalized config table persistence (0840c)"""
 
-    async def test_config_data_survives_updates(self, db_manager):
-        """Test that config_data persists correctly through updates"""
+    async def test_config_data_creates_normalized_relations(self, db_manager):
+        """Test that config_data dict is split into normalized relations on create"""
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create product with config_data (0731b: returns Product ORM model)
-        initial_config = {"api_key": "test-key-123", "settings": {"debug": True, "timeout": 30}}
-        create_result = await service.create_product(name="Config Test Product", config_data=initial_config)
+        config = {
+            "tech_stack": {
+                "programming_languages": "Python 3.12",
+                "backend_frameworks": "FastAPI",
+            },
+            "architecture": {
+                "primary_pattern": "Layered",
+                "api_style": "REST",
+            },
+            "core_features": "Agent orchestration",
+        }
+        create_result = await service.create_product(name="Config Test Product", config_data=config)
         product_id = str(create_result.id)
 
-        # Update product (without changing config_data)
+        # Verify normalized relations created
+        get_result = await service.get_product(product_id)
+        assert get_result.tech_stack is not None
+        assert get_result.tech_stack.programming_languages == "Python 3.12"
+        assert get_result.architecture is not None
+        assert get_result.architecture.primary_pattern == "Layered"
+        assert get_result.core_features == "Agent orchestration"
+
+    async def test_config_data_survives_non_config_updates(self, db_manager):
+        """Test that normalized config persists through unrelated updates"""
+        tenant_key = str(uuid4())
+        service = ProductService(db_manager, tenant_key)
+
+        config = {
+            "tech_stack": {"programming_languages": "Python 3.12"},
+        }
+        create_result = await service.create_product(name="Config Persist Product", config_data=config)
+        product_id = str(create_result.id)
+
+        # Update product (without changing config)
         await service.update_product(product_id=product_id, description="Updated description")
 
-        # Verify config_data preserved (0731b: returns Product ORM model)
+        # Verify tech_stack preserved
         get_result = await service.get_product(product_id)
-        assert get_result.config_data["api_key"] == "test-key-123"
-        assert get_result.config_data["settings"]["debug"] is True
+        assert get_result.tech_stack is not None
+        assert get_result.tech_stack.programming_languages == "Python 3.12"
 
-    async def test_config_data_update_merging(self, db_manager):
-        """Test updating config_data merges correctly"""
+    async def test_config_data_update_modifies_relations(self, db_manager):
+        """Test updating config_data updates normalized relations"""
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        # Create product with initial config (0731b: returns Product ORM model)
-        create_result = await service.create_product(
-            name="Config Merge Product", config_data={"field1": "value1", "field2": "value2"}
-        )
+        # Create product with initial config
+        initial_config = {
+            "tech_stack": {"programming_languages": "Python 3.11"},
+        }
+        create_result = await service.create_product(name="Config Update Product", config_data=initial_config)
         product_id = str(create_result.id)
 
-        # Update with new config_data (0731b: returns Product ORM model)
-        new_config = {"field2": "updated", "field3": "new"}
+        # Update with new config_data
+        new_config = {
+            "tech_stack": {"programming_languages": "Python 3.12", "backend_frameworks": "FastAPI"},
+        }
         update_result = await service.update_product(product_id=product_id, config_data=new_config)
         assert isinstance(update_result, Product)
 
-        # Verify config updated (0731b: returns Product ORM model)
+        # Verify config updated
         get_result = await service.get_product(product_id)
-        config = get_result.config_data
-        assert config["field2"] == "updated"
-        assert config["field3"] == "new"
+        assert get_result.tech_stack.programming_languages == "Python 3.12"
+        assert get_result.tech_stack.backend_frameworks == "FastAPI"
 
 
 @pytest.mark.asyncio

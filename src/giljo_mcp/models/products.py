@@ -99,13 +99,8 @@ class Product(Base):
         comment="Active product for token estimation and mission planning (one per tenant)",
     )
 
-    # Rich configuration data (JSONB for PostgreSQL performance)
-    config_data = Column(
-        JSONB,
-        nullable=True,
-        default=dict,
-        comment="Rich project configuration: architecture, tech_stack, features, etc.",
-    )
+    # Core features (extracted from config_data in 0840c)
+    core_features = Column(Text, nullable=True, comment="Core product features (was config_data->'features'->>'core')")
 
     # 360 Memory Management storage (Handover 0135, updated 0700c)
     # Note: sequential_history removed in 0700c - use product_memory_entries table
@@ -161,11 +156,19 @@ class Product(Base):
     # Handover 0390a: 360 Memory Entries
     memory_entries = relationship("ProductMemoryEntry", back_populates="product", cascade="all, delete-orphan")
 
+    # Handover 0840c: Normalized config tables (1:1)
+    tech_stack = relationship("ProductTechStack", back_populates="product", uselist=False, cascade="all, delete-orphan")
+    architecture = relationship(
+        "ProductArchitecture", back_populates="product", uselist=False, cascade="all, delete-orphan"
+    )
+    test_config = relationship(
+        "ProductTestConfig", back_populates="product", uselist=False, cascade="all, delete-orphan"
+    )
+
     __table_args__ = (
         Index("idx_product_tenant", "tenant_key"),
         Index("idx_product_org_id", "org_id"),
         Index("idx_product_name", "name"),
-        Index("idx_product_config_data_gin", "config_data", postgresql_using="gin"),  # GIN index for JSONB
         Index(
             "idx_product_memory_gin", "product_memory", postgresql_using="gin"
         ),  # Handover 0135: GIN index for product_memory
@@ -176,7 +179,7 @@ class Product(Base):
         # Handover 0128e: Removed CheckConstraint for deprecated vision_type field
         # Handover 0425: Validate target_platforms field
         CheckConstraint(
-            "target_platforms <@ ARRAY['windows', 'linux', 'macos', 'all']::VARCHAR[]",
+            "target_platforms <@ ARRAY['windows', 'linux', 'macos', 'android', 'ios', 'all']::VARCHAR[]",
             name="ck_product_target_platforms_valid",
         ),
         CheckConstraint(
@@ -191,33 +194,8 @@ class Product(Base):
 
     @property
     def has_config_data(self) -> bool:
-        """Check if product has config_data populated"""
-        return bool(self.config_data and len(self.config_data) > 0)
-
-    def get_config_field(self, field_path: str, default: Any = None) -> Any:
-        """
-        Get config field using dot notation (e.g., 'tech_stack.python')
-
-        Args:
-            field_path: Dot-separated path (e.g., 'architecture' or 'test_config.coverage')
-            default: Default value if field not found
-
-        Returns:
-            Field value or default
-        """
-        if not self.config_data:
-            return default
-
-        keys = field_path.split(".")
-        value = self.config_data
-
-        for key in keys:
-            if isinstance(value, dict) and key in value:
-                value = value[key]
-            else:
-                return default
-
-        return value
+        """Check if product has config data in any of the normalized tables."""
+        return bool(self.tech_stack or self.architecture or self.test_config or self.core_features)
 
     # Handover 0135: Product Memory helper methods
     @property
@@ -357,6 +335,92 @@ class Product(Base):
 
     def __repr__(self) -> str:
         return f"<Product(id={self.id}, name='{self.name}', tenant_key='{self.tenant_key}')>"
+
+
+class ProductTechStack(Base):
+    """Product tech stack configuration (1:1 with Product). Handover 0840c."""
+
+    __tablename__ = "product_tech_stacks"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=False, unique=True)
+    tenant_key = Column(String(255), nullable=False)
+    programming_languages = Column(Text, nullable=True)
+    frontend_frameworks = Column(Text, nullable=True)
+    backend_frameworks = Column(Text, nullable=True)
+    databases_storage = Column(Text, nullable=True)
+    infrastructure = Column(Text, nullable=True)
+    dev_tools = Column(Text, nullable=True)
+    target_windows = Column(Boolean, server_default=text("false"))
+    target_linux = Column(Boolean, server_default=text("false"))
+    target_macos = Column(Boolean, server_default=text("false"))
+    target_android = Column(Boolean, server_default=text("false"))
+    target_ios = Column(Boolean, server_default=text("false"))
+    target_cross_platform = Column(Boolean, server_default=text("false"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    product = relationship("Product", back_populates="tech_stack")
+
+    __table_args__ = (
+        Index("idx_product_tech_stacks_product", "product_id"),
+        Index("idx_product_tech_stacks_tenant", "tenant_key"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ProductTechStack(product_id={self.product_id})>"
+
+
+class ProductArchitecture(Base):
+    """Product architecture configuration (1:1 with Product). Handover 0840c."""
+
+    __tablename__ = "product_architectures"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=False, unique=True)
+    tenant_key = Column(String(255), nullable=False)
+    primary_pattern = Column(Text, nullable=True)
+    design_patterns = Column(Text, nullable=True)
+    api_style = Column(Text, nullable=True)
+    architecture_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    product = relationship("Product", back_populates="architecture")
+
+    __table_args__ = (
+        Index("idx_product_architectures_product", "product_id"),
+        Index("idx_product_architectures_tenant", "tenant_key"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ProductArchitecture(product_id={self.product_id})>"
+
+
+class ProductTestConfig(Base):
+    """Product test configuration (1:1 with Product). Handover 0840c."""
+
+    __tablename__ = "product_test_configs"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=False, unique=True)
+    tenant_key = Column(String(255), nullable=False)
+    quality_standards = Column(Text, nullable=True)
+    test_strategy = Column(String(50), nullable=True)
+    coverage_target = Column(Integer, server_default=text("80"))
+    testing_frameworks = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    product = relationship("Product", back_populates="test_config")
+
+    __table_args__ = (
+        Index("idx_product_test_configs_product", "product_id"),
+        Index("idx_product_test_configs_tenant", "tenant_key"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ProductTestConfig(product_id={self.product_id})>"
 
 
 class VisionDocument(Base):

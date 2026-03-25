@@ -45,7 +45,42 @@ def _build_product_response(product, stats=None, override_active=None) -> Produc
     Returns:
         ProductResponse Pydantic model
     """
-    config_data = product.config_data or None
+    # Handover 0840c: Reconstruct config_data from normalized tables
+    config_data = {}
+
+    ts = product.tech_stack
+    if ts:
+        config_data["tech_stack"] = {
+            "languages": ts.programming_languages or "",
+            "frontend": ts.frontend_frameworks or "",
+            "backend": ts.backend_frameworks or "",
+            "database": ts.databases_storage or "",
+            "infrastructure": ts.infrastructure or "",
+            "dev_tools": ts.dev_tools or "",
+        }
+
+    arch = product.architecture
+    if arch:
+        config_data["architecture"] = {
+            "pattern": arch.primary_pattern or "",
+            "design_patterns": arch.design_patterns or "",
+            "api_style": arch.api_style or "",
+            "notes": arch.architecture_notes or "",
+        }
+
+    if product.core_features:
+        config_data["features"] = {"core": product.core_features}
+
+    tc = product.test_config
+    if tc:
+        config_data["test_config"] = {
+            "strategy": tc.test_strategy or "",
+            "coverage_target": tc.coverage_target or 80,
+            "frameworks": tc.testing_frameworks or "",
+            "quality_standards": tc.quality_standards or "",
+        }
+
+    config_data = config_data or None
     has_config_data = bool(config_data)
 
     # Handover 0412: Ensure product_memory is never None
