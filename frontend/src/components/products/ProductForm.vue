@@ -73,7 +73,7 @@
         >
           <v-btn value="basic">
             <v-icon start size="small">mdi-information-outline</v-icon>
-            Basic Info
+            Product Info
           </v-btn>
           <v-btn value="vision">
             <v-icon start size="small">mdi-file-document-outline</v-icon>
@@ -96,7 +96,7 @@
         <div class="bordered-tabs-content">
           <v-form ref="formRef" v-model="formValid">
             <v-window v-model="dialogTab" class="global-tabs-window">
-            <!-- Basic Info Tab -->
+            <!-- Product Info Tab -->
             <v-window-item value="basic">
               <div class="text-subtitle-1 mb-1">Product Information</div>
               <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
@@ -476,6 +476,24 @@
                     v-model="productForm.targetPlatforms"
                     value="macos"
                     label="macOS"
+                    hide-details
+                    density="comfortable"
+                    :disabled="isAllPlatformSelected"
+                    @update:model-value="handlePlatformChange"
+                  />
+                  <v-checkbox
+                    v-model="productForm.targetPlatforms"
+                    value="android"
+                    label="Android"
+                    hide-details
+                    density="comfortable"
+                    :disabled="isAllPlatformSelected"
+                    @update:model-value="handlePlatformChange"
+                  />
+                  <v-checkbox
+                    v-model="productForm.targetPlatforms"
+                    value="ios"
+                    label="iOS"
                     hide-details
                     density="comfortable"
                     :disabled="isAllPlatformSelected"
