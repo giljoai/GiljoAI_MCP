@@ -80,7 +80,7 @@ const chartOptions = computed(() => ({
       },
     },
     tooltip: {
-      backgroundColor: '#1e1e1e',
+      backgroundColor: '#1e3147',
       titleColor: '#FFD700',
       bodyColor: 'rgba(255, 255, 255, 0.9)',
       borderColor: 'rgba(255, 215, 0, 0.3)',

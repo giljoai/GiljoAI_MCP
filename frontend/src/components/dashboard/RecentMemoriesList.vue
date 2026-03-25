@@ -15,9 +15,10 @@
         class="px-2 py-1 memory-row"
       >
         <div class="d-flex align-center ga-2 mb-1">
-          <span class="text-body-2 font-weight-bold memory-project-name">
+          <span class="text-body-2 font-weight-bold">
             {{ memory.project_name }}
           </span>
+          <span v-if="memory.product_name" class="text-caption text-medium-emphasis">({{ memory.product_name }})</span>
           <v-chip
             v-if="memory.entry_type"
             size="x-small"
@@ -87,13 +88,6 @@ function relativeTime(timestamp) {
 
 .memory-row:last-child {
   border-bottom: none;
-}
-
-.memory-project-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 180px;
 }
 
 .entry-type-chip {
