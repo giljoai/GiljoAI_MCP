@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0828+0829+0830+0831+0832+0833+0834+0835+0836(a-e) COMPLETE. 0837(a-d)+0838 ACTIVE. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0828+0829+0830+0831+0832+0833+0834+0835+0836(a-e) COMPLETE. 0837(a-d)+0838+0839 ACTIVE. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -35,6 +35,7 @@
 | 0837c | Slash Command Template Updates | Not Started | Medium | Update /gil_add templates to pass type param for projects across all 3 platforms. |
 | 0837d | Multi-Tenant Constraint Audit | Not Started | High | Audit all UniqueConstraints for similar lockout patterns. 12 constraints to verify. |
 | 0838 | Multi-Platform Subagent Mode (Codex + Gemini) | Not Started | High | Extend staging page to support Codex CLI and Gemini CLI subagent modes. Platform-specific spawning syntax in CH3 + implementation prompts. Codex uses gil- prefix, Gemini uses native subagent names. |
+| 0839 | Dashboard Analytics Redesign | Not Started | High | Product-aware dashboard with product selector, categorized stat rows (Projects/Tasks/Server), 3 donut charts (status/taxonomy/agent roles) with spin-up animation, recent projects + 360 memories lists. chart.js + vue-chartjs. |
 
 ### Deferred (Still in Root Folder)
 
