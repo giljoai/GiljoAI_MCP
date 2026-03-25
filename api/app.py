@@ -684,7 +684,7 @@ def create_app() -> FastAPI:
     """Create and configure FastAPI application"""
 
     app = FastAPI(
-        title="GiljoAI MCP Orchestrator API v1.0.0 - Community Edition",
+        title="GiljoAI MCP Orchestrator API Beta 1.0.0 - Community Edition",
         description="""
         ## Multi-Agent Orchestration System REST API
 

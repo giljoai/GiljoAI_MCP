@@ -131,11 +131,18 @@
             />
             <v-card-text class="pa-5 text-body-2">
               <div class="font-weight-bold mb-3">GiljoAI MCP</div>
-              Version 1.0.0<br />
+              Beta 1.0.0<br />
               Community Edition<br />
               License: {{ licenseStatus }}<br /><br />
               GiljoAI Community License v1.1<br />
-              Free for single-user use. Multi-user deployments require a Commercial License.<br /><br />
+              Free for single-user use. Multi-user deployments require a Commercial License.
+              Commercial Licenses may be obtained at no cost at GiljoAI LLC's discretion.<br /><br />
+              <a
+                href="https://www.giljo.ai"
+                target="_blank"
+                class="about-link"
+              >giljo.ai</a>
+              &nbsp;&middot;&nbsp;
               <a
                 href="https://github.com/patrik-giljoai/GiljoAI_MCP/blob/master/LICENSE"
                 target="_blank"
