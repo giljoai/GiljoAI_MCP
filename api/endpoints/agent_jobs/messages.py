@@ -11,10 +11,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import status as http_status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from src.giljo_mcp.models import Message, User
 from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.tasks import MessageRecipient
 
 
 logger = logging.getLogger(__name__)
@@ -112,21 +114,21 @@ async def get_job_messages(
             agent_lookup[agent.agent_name] = display_name
 
     # Query messages where agent is sender or recipient
-    # Note: from_agent is stored in meta_data["_from_agent"], not as a column
-    # Note: to_agents is JSONB array, use PostgreSQL array containment
     msg_stmt = (
         select(Message)
+        .outerjoin(MessageRecipient)
         .where(
             Message.tenant_key == current_user.tenant_key,
             or_(
-                Message.meta_data.op("->>")("_from_agent") == execution.agent_id,
-                Message.to_agents.contains([execution.agent_id]),  # PostgreSQL array containment
+                Message.from_agent_id == execution.agent_id,
+                MessageRecipient.agent_id == execution.agent_id,
             ),
         )
+        .options(selectinload(Message.recipients))
         .order_by(Message.created_at.desc())
         .limit(limit)
     )
-    messages = (await session.execute(msg_stmt)).scalars().all()
+    messages = (await session.execute(msg_stmt)).scalars().unique().all()
 
     logger.info(
         f"Retrieved {len(messages)} messages for job {job_id} "
@@ -136,12 +138,13 @@ async def get_job_messages(
     # Build response with resolved sender names
     message_list = []
     for m in messages:
-        raw_from_agent = m.meta_data.get("_from_agent", "unknown") if m.meta_data else "unknown"
+        raw_from_agent = m.from_agent_id or "unknown"
         resolved_from = _resolve_sender_display_name(raw_from_agent, agent_lookup)
         is_outbound = raw_from_agent == execution.agent_id
 
         # Resolve recipient display name (Handover 0410)
-        to_agent_id = m.to_agents[0] if m.to_agents else None
+        recipient_ids = [r.agent_id for r in m.recipients] if m.recipients else []
+        to_agent_id = recipient_ids[0] if recipient_ids else None
         if m.message_type == "broadcast":
             resolved_to = "All Agents"
         elif to_agent_id and to_agent_id in agent_lookup:
@@ -152,13 +155,13 @@ async def get_job_messages(
         message_list.append(
             {
                 "id": str(m.id),
-                "from": resolved_from,  # Human-readable display name
-                "from_agent": raw_from_agent,  # Raw value for backward compat
-                "from_agent_id": raw_from_agent if raw_from_agent in agent_lookup else None,  # UUID if it's an agent
-                "to_agents": m.to_agents,
+                "from": resolved_from,
+                "from_agent": raw_from_agent,
+                "from_agent_id": raw_from_agent if raw_from_agent in agent_lookup else None,
+                "to_agents": recipient_ids,
                 "to": resolved_to,
                 "to_agent_id": to_agent_id,
-                "content": m.content[:500] if m.content else "",  # Truncate for preview
+                "content": m.content[:500] if m.content else "",
                 "status": m.status,
                 "created_at": m.created_at.isoformat(),
                 "direction": "outbound" if is_outbound else "inbound",

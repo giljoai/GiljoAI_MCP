@@ -10,6 +10,7 @@ import pytest
 
 from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.tasks import MessageRecipient
 
 
 # ============================================================================
@@ -74,8 +75,6 @@ class TestTenantIsolation:
             id="msg_tenant1",
             tenant_key=test_tenant_key,
             project_id=test_project_with_data.id,
-            # NOTE: from_agent removed in Handover 0116
-            to_agents=["agent2"],
             content="Tenant 1 message",
             message_type="direct",
             status="pending",
@@ -84,13 +83,18 @@ class TestTenantIsolation:
             id="msg_tenant2",
             tenant_key="tenant_2",
             project_id=test_project_with_data.id,  # Same project ID, different tenant
-            # NOTE: from_agent removed in Handover 0116
-            to_agents=["agent4"],
             content="Tenant 2 message",
             message_type="direct",
             status="pending",
         )
         db_session.add_all([msg1, msg2])
+        await db_session.flush()
+        db_session.add(MessageRecipient(
+            message_id=msg1.id, agent_id="agent2", tenant_key=test_tenant_key,
+        ))
+        db_session.add(MessageRecipient(
+            message_id=msg2.id, agent_id="agent4", tenant_key="tenant_2",
+        ))
         await db_session.commit()
 
         # Verify tenant isolation
