@@ -325,8 +325,8 @@ async def generate_staging_prompt(
     tool: str = Query("claude-code", pattern="^(claude-code|codex|gemini)$"),
     execution_mode: str = Query(
         "multi_terminal",
-        pattern="^(multi_terminal|claude_code_cli)$",
-        description="Execution mode: 'multi_terminal' (manual) or 'claude_code_cli' (single terminal with Task tool)",
+        pattern="^(multi_terminal|claude_code_cli|codex_cli|gemini_cli)$",
+        description="Execution mode: 'multi_terminal', 'claude_code_cli', 'codex_cli', or 'gemini_cli'",
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
@@ -514,8 +514,9 @@ async def get_implementation_prompt(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found or not accessible"
         )
 
-    # 2. Validate execution mode (0497c: support both CLI and multi-terminal)
-    if project.execution_mode not in ("claude_code_cli", "multi_terminal"):
+    # 2. Validate execution mode (0497c: support all modes; 0838: added codex_cli, gemini_cli)
+    supported_execution_modes = ("claude_code_cli", "multi_terminal", "codex_cli", "gemini_cli")
+    if project.execution_mode not in supported_execution_modes:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported execution mode: {project.execution_mode}",
@@ -602,10 +603,14 @@ async def get_implementation_prompt(
         git_history_enabled = git_toggle.get("toggle", False) if isinstance(git_toggle, dict) else bool(git_toggle)
         git_enabled = git_config.get("enabled", False) and git_history_enabled
 
-    # Branch prompt generation by execution mode (0497c)
-    prompt_type = (
-        "multi_terminal_orchestrator" if project.execution_mode == "multi_terminal" else "claude_code_execution"
-    )
+    # Branch prompt generation by execution mode (0497c, 0838: added codex/gemini)
+    _prompt_type_map = {
+        "multi_terminal": "multi_terminal_orchestrator",
+        "claude_code_cli": "claude_code_execution",
+        "codex_cli": "codex_execution",
+        "gemini_cli": "gemini_execution",
+    }
+    prompt_type = _prompt_type_map.get(project.execution_mode, "claude_code_execution")
     prompt = generator.generate_implementation_prompt(
         prompt_type=prompt_type,
         orchestrator_id=orchestrator_execution.job_id,

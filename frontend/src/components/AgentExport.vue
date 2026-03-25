@@ -34,6 +34,12 @@
                 >
                   {{ p.buttonLabel }}
                 </v-btn>
+                <v-tooltip v-if="p.experimental" location="top">
+                  <template #activator="{ props: ttProps }">
+                    <v-icon v-bind="ttProps" size="small" color="warning">mdi-alert</v-icon>
+                  </template>
+                  <span>Experimental — limited testing. Use with caution.</span>
+                </v-tooltip>
               </div>
             </div>
           </v-card-text>
@@ -142,9 +148,9 @@ async function copyToClipboard(text) {
 
 // Platform definitions
 const platforms = [
-  { id: 'claude_code', label: 'Claude Code', buttonLabel: 'Claude Prompt', icon: '/claude_pix.svg', color: 'deep-orange' },
-  { id: 'codex_cli', label: 'Codex CLI', buttonLabel: 'Codex Prompt', icon: '/codex_logo.svg', color: 'green' },
-  { id: 'gemini_cli', label: 'Gemini CLI', buttonLabel: 'Gemini Prompt', icon: '/gemini-icon.svg', color: 'blue' },
+  { id: 'claude_code', label: 'Claude Code', buttonLabel: 'Claude Prompt', icon: '/claude_pix.svg', color: 'deep-orange', experimental: false },
+  { id: 'codex_cli', label: 'Codex CLI', buttonLabel: 'Codex Prompt', icon: '/codex_logo.svg', color: 'green', experimental: true },
+  { id: 'gemini_cli', label: 'Gemini CLI', buttonLabel: 'Gemini Prompt', icon: '/gemini-icon.svg', color: 'blue', experimental: true },
 ]
 
 // Loading states

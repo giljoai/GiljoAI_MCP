@@ -236,18 +236,21 @@
             </div>
           </template>
 
-          <!-- Quick Action Column (no header) -->
+          <!-- Quick Action Column — play button to activate + launch -->
           <template v-slot:item.quick_action="{ item }">
-            <v-chip
-              v-if="normalizeStatus(item.status) === 'inactive'"
-              color="success"
-              variant="tonal"
-              size="small"
-              class="cursor-pointer"
-              @click.stop="activateAndLaunch(item.id)"
-            >
-              Activate
-            </v-chip>
+            <v-tooltip v-if="normalizeStatus(item.status) === 'inactive'" text="Activate & launch">
+              <template #activator="{ props: ttProps }">
+                <button
+                  v-bind="ttProps"
+                  type="button"
+                  class="play-circle-btn"
+                  aria-label="Activate project"
+                  @click.stop="activateAndLaunch(item.id)"
+                >
+                  <v-icon size="18">mdi-play</v-icon>
+                </button>
+              </template>
+            </v-tooltip>
           </template>
 
           <!-- Staged Column -->
@@ -815,12 +818,12 @@ const statusFilterOptions = computed(() => [
 // Table headers
 const headers = [
   { title: 'Name', key: 'name', sortable: true, width: '33%' },
-  { title: '', key: 'quick_action', sortable: false, width: '7%', align: 'center' },
+  { title: 'Status', key: 'status', sortable: true, width: '15%', align: 'center' },
   { title: 'Staged', key: 'staging_status', sortable: true, width: '9%' },
   { title: 'Created', key: 'created_at', sortable: true, width: '13%' },
   { title: 'Completed', key: 'completed_at', sortable: true, width: '13%', align: 'center' },
-  { title: 'Status', key: 'status', sortable: true, width: '15%', align: 'center' },
-  { title: 'Actions', key: 'menu', sortable: false, width: '5%', align: 'center' },
+  { title: 'Actions', key: 'quick_action', sortable: false, width: '5%', align: 'center' },
+  { title: '', key: 'menu', sortable: false, width: '3%', align: 'center' },
 ]
 
 // --- Inline taxonomy state and logic (Handover 0440c) ---
@@ -1508,5 +1511,30 @@ onBeforeUnmount(() => {
 /* Remove default table wrapper overflow to allow container scroll */
 .project-list-container :deep(.v-table__wrapper) {
   overflow: visible;
+}
+
+/* Play-circle activate button — matches JobsTab styling */
+.play-circle-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 215, 0, 0.7);
+  background: transparent;
+  color: rgba(255, 215, 0, 0.9);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.play-circle-btn :deep(.v-icon) {
+  color: rgba(255, 215, 0, 0.9);
+}
+
+.play-circle-btn:hover {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: rgba(255, 215, 0, 1);
 }
 </style>
