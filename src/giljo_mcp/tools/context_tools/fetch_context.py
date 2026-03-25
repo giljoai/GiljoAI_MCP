@@ -57,15 +57,16 @@ CATEGORY_TOOLS = {
 }
 
 # Derive from canonical source (defaults.py) - single source of truth (Handover 0823)
-_CANONICAL_DEPTHS = _RAW_DEPTH_CONFIG["depths"]
+# Handover 0840d: DEFAULT_DEPTH_CONFIG is now a flat dict (no "depths" wrapper)
+_CANONICAL_DEPTHS = _RAW_DEPTH_CONFIG
 DEFAULT_DEPTHS = {
     "product_core": None,
     "vision_documents": _CANONICAL_DEPTHS.get("vision_documents", "medium"),
     "tech_stack": None,
     "architecture": None,
     "testing": None,
-    "memory_360": _CANONICAL_DEPTHS.get("memory_360", 3),
-    "git_history": _CANONICAL_DEPTHS.get("git_history", 25),
+    "memory_360": _CANONICAL_DEPTHS.get("memory_last_n_projects", 3),
+    "git_history": _CANONICAL_DEPTHS.get("git_commits", 25),
     "agent_templates": _CANONICAL_DEPTHS.get("agent_templates", "type_only"),
     "project": None,
     "self_identity": None,
@@ -119,17 +120,26 @@ async def _load_user_depth_config(
             )
             user = result.scalar_one_or_none()
 
-            if not user or user.depth_config is None:
+            if not user:
                 logger.debug(
                     "depth_config_not_found",
                     tenant_key=tenant_key,
-                    user_found=user is not None,
+                    user_found=False,
                 )
                 return None
 
-            # Normalize keys from DB format to internal format
+            # Handover 0840d: Read depth from columns, normalize keys to internal format
+            raw_depth = {
+                "vision_documents": user.depth_vision_documents,
+                "memory_last_n_projects": user.depth_memory_last_n,
+                "git_commits": user.depth_git_commits,
+                "agent_templates": user.depth_agent_templates,
+                "tech_stack_sections": user.depth_tech_stack_sections,
+                "architecture_depth": user.depth_architecture,
+            }
+
             normalized: dict[str, Any] = {}
-            for db_key, value in user.depth_config.items():
+            for db_key, value in raw_depth.items():
                 internal_key = _DEPTH_KEY_MAPPING.get(db_key, db_key)
                 normalized[internal_key] = value
 

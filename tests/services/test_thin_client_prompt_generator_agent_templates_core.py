@@ -15,6 +15,7 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import AgentTemplate, Product, Project, User
+from src.giljo_mcp.models.auth import UserFieldPriority
 from src.giljo_mcp.thin_prompt_generator import ThinClientPromptGenerator
 
 from tests.services.conftest import create_test_org
@@ -45,26 +46,26 @@ async def test_thin_prompt_contains_core_structure(db_session: AsyncSession):
         id=str(uuid4()),
         name=f"Test Product {unique_id}",
         tenant_key=tenant_key,
-        config_data={},
     )
     db_session.add(product)
 
-    # Create user with field priority config
+    # Create user (0840d: field_priority_config replaced by user_field_priorities table)
     user = User(
         id=str(uuid4()),
         username=f"testuser_{unique_id}",
         tenant_key=tenant_key,
         org_id=org.id,  # 0424j: User.org_id NOT NULL
-        field_priority_config={
-            "priorities": {
-                "agent_templates": {"toggle": True},
-                "tech_stack": {"toggle": True},
-                "product_core": {"toggle": True},
-            },
-            "version": "3.0",
-        },
     )
     db_session.add(user)
+
+    # Insert field priority rows (0840d: replaces field_priority_config JSONB)
+    for category in ["agent_templates", "tech_stack"]:
+        db_session.add(UserFieldPriority(
+            user_id=user.id,
+            tenant_key=tenant_key,
+            category=category,
+            enabled=True,
+        ))
 
     # Create project
     project = Project(
@@ -129,9 +130,7 @@ async def test_thin_prompt_contains_core_structure(db_session: AsyncSession):
 
     # ACT
     generator = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_key)
-    raw_config = user.field_priority_config or {}
-    raw_toggles = raw_config.get("priorities", raw_config)
-    field_toggles = {k: (v.get("toggle", True) if isinstance(v, dict) else bool(v)) for k, v in raw_toggles.items()}
+    field_toggles = {"agent_templates": True, "tech_stack": True}
     result = await generator.generate(
         project_id=project.id, user_id=user.id, field_toggles=field_toggles
     )
@@ -183,17 +182,15 @@ async def test_thin_prompt_is_concise(db_session: AsyncSession):
         id=str(uuid4()),
         name=f"Priority Test Product {unique_id}",
         tenant_key=tenant_key,
-        config_data={},
     )
     db_session.add(product)
 
-    # Create user (will update field_priority_config for each test case)
+    # Create user (0840d: field_priority_config removed)
     user = User(
         id=str(uuid4()),
         username=f"priorityuser_{unique_id}",
         tenant_key=tenant_key,
         org_id=org.id,
-        field_priority_config={},
     )
     db_session.add(user)
 
@@ -231,12 +228,16 @@ async def test_thin_prompt_is_concise(db_session: AsyncSession):
 
     # TEST: Thin prompt should be concise regardless of toggle settings
     # (Agent templates NOT embedded inline - fetched via MCP tools)
-    user.field_priority_config = {"priorities": {"agent_templates": {"toggle": True}}, "version": "3.0"}
+    # 0840d: Insert field priority row instead of setting JSONB
+    db_session.add(UserFieldPriority(
+        user_id=user.id,
+        tenant_key=tenant_key,
+        category="agent_templates",
+        enabled=True,
+    ))
     await db_session.commit()
 
-    raw_config = user.field_priority_config or {}
-    raw_toggles = raw_config.get("priorities", raw_config)
-    field_toggles_p1 = {k: (v.get("toggle", True) if isinstance(v, dict) else bool(v)) for k, v in raw_toggles.items()}
+    field_toggles_p1 = {"agent_templates": True}
     result_p1 = await generator.generate(
         project_id=project.id, user_id=user.id, field_toggles=field_toggles_p1
     )
