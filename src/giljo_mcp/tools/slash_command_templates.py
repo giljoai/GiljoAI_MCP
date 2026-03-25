@@ -406,16 +406,60 @@ You are the GiljoAI agent template installer for Gemini CLI.
 ## Your Job
 
 1. Call the GiljoAI MCP tool `get_agent_templates_for_export` with `platform="gemini_cli"`
-2. Show a summary table of all agents (role, name, description)
-3. Ask the user which model they prefer per agent (default: gemini-2.5-pro)
-   The user can set one model for all or pick per-agent.
-4. Ask: Install as project agents (`.gemini/agents/`) or user agents (`~/.gemini/agents/`)?
-   NOTE: Project agents require folder trust. If the user picks project agents,
-   remind them to run `/permissions trust` in Gemini CLI for the project folder.
-5. If the target directory has existing agent `.md` files, back them up:
+2. The response includes structured agent data for each active agent template.
+3. Show a summary table of all agents (role, name, description).
+4. Ask the user how they want to assign models using `ask_user` with numbered options:
+
+   ```
+   How would you like to assign models to agents?
+   1. Use the default model (gemini-2.5-pro) for all agents
+   2. Choose a model for each agent individually
+   ```
+
+   **If the user picks 1 (default for all):**
+   Proceed using `gemini-2.5-pro` as the model for every agent.
+
+   **If the user picks 2 (per-agent selection):**
+   First, discover the models available to the user by reading their Gemini settings file.
+   The file location is platform-dependent:
+   - **Windows:** `C:\\Users\\<username>\\.gemini\\settings.json`
+   - **Linux:** `~/.gemini/settings.json`
+   - **macOS:** `~/.gemini/settings.json`
+
+   Read `~/.gemini/settings.json` (the `~` path works cross-platform in Gemini CLI).
+   Extract the available model identifiers from the settings.
+
+   Present the discovered models as a numbered list using `ask_user`, e.g.:
+   ```
+   Available models:
+   1. gemini-2.5-pro
+   2. gemini-2.5-flash
+   3. gemini-2.0-flash
+   ...
+   ```
+
+   Then walk through each agent one at a time. For each agent, use `ask_user` with numbered
+   options showing the agent role/name and the model list. Let the user click/type just a number.
+   Continue until every agent has a model assigned.
+
+   If the settings file cannot be read or contains no model list, fall back to presenting
+   these common models: gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash.
+
+5. Ask install location using `ask_user` with numbered options:
+
+   ```
+   Where should agents be installed?
+   1. User agents (~/.gemini/agents/) — available everywhere (recommended)
+   2. Project agents (.gemini/agents/) — this project only
+   ```
+
+   NOTE: If the user picks project agents, remind them to run `/permissions trust` in
+   Gemini CLI for the project folder.
+
+6. If the target directory has existing agent `.md` files, back them up:
    rename `*.md` to `*.md.bak.YYYYMMDD_HHMMSS`
-6. Write each agent file with the user's model selection applied to the `model` frontmatter field
-7. **Enable experimental agents flag** (MANDATORY):
+7. Write each agent file with the user's model selection applied to the `model` frontmatter field
+8. **Enable experimental agents flag** (MANDATORY):
    Read the user's `.gemini/settings.json` (project-level or `~/.gemini/settings.json` for user-level).
    If `experimental.enableAgents` is not already set to `true`, add it:
    ```json
@@ -423,7 +467,13 @@ You are the GiljoAI agent template installer for Gemini CLI.
    ```
    Merge with existing settings — do NOT overwrite MCP server configs or other settings.
    Show the diff before writing. This flag is required for custom agents to load.
-8. Instruct the user to restart Gemini CLI
+9. Instruct the user to restart Gemini CLI
+
+## IMPORTANT: Use `ask_user` for All User Choices
+
+Gemini CLI supports the `ask_user` tool which presents structured options the user can select
+by clicking or typing a number. You MUST use `ask_user` for every user choice (model assignment,
+install location, confirmations). Never ask open-ended questions — always present numbered menus.
 
 ## Gemini Agent Format Reference
 
@@ -570,14 +620,106 @@ You are the GiljoAI agent template installer for Codex CLI.
 
 1. Call the GiljoAI MCP tool `get_agent_templates_for_export` with platform="codex_cli"
 2. The response includes structured agent data for each active agent template.
-3. For each agent, ask the user which model to use (default: gpt-5.2-codex)
-   and reasoning effort (low/medium/high, default: medium).
-   Show a summary table of all agents first. The user can set one model for all or pick per-agent.
-4. Read the user's existing ~/.codex/config.toml to understand current state
-5. For each agent, create a .toml file in ~/.codex/agents/ using the EXACT format below
-6. Merge [agents.*] entries into config.toml — show a diff before writing
-7. Ensure [features] section has multi_agent = true
-8. Instruct the user to restart Codex CLI
+3. Show a summary table of all agents (role, name, description).
+4. Use `request_user_input` to ask how models should be assigned:
+
+   ```json
+   {
+     "questions": [{
+       "header": "Model Assignment",
+       "id": "model_mode",
+       "question": "How would you like to assign models to your GiljoAI agents?",
+       "options": [
+         {
+           "label": "Default model for all agents (Recommended)",
+           "description": "Use gpt-5.2-codex for every agent — fastest setup."
+         },
+         {
+           "label": "Choose a model per agent",
+           "description": "Pick from your available models for each agent individually."
+         }
+       ]
+     }]
+   }
+   ```
+
+   **If the user picks "Default model for all agents":**
+   Proceed using `gpt-5.2-codex` for every agent. Use `request_user_input` to ask reasoning effort:
+
+   ```json
+   {
+     "questions": [{
+       "header": "Reasoning Effort",
+       "id": "reasoning_effort",
+       "question": "What reasoning effort level for all agents?",
+       "options": [
+         {"label": "Low", "description": "Fastest responses, less thorough."},
+         {"label": "Medium (Recommended)", "description": "Balanced speed and quality."},
+         {"label": "High", "description": "Most thorough, slower responses."}
+       ]
+     }]
+   }
+   ```
+
+   **If the user picks "Choose a model per agent":**
+   First, discover available models by running this command:
+   ```powershell
+   (Get-Content -Raw "$HOME\\.codex\\models_cache.json" | ConvertFrom-Json).models | Where-Object visibility -eq 'list' | Select-Object -ExpandProperty slug
+   ```
+   Collect the returned model slugs. Then for EACH agent, use `request_user_input` with
+   the available models as options. You can batch up to 3 questions per call (Codex limit).
+   For example, for the first 2 agents:
+
+   ```json
+   {
+     "questions": [
+       {
+         "header": "gil-analyzer — Model",
+         "id": "model_analyzer",
+         "question": "Which model for the Analyzer agent?",
+         "options": [
+           {"label": "gpt-5.2-codex", "description": "Default Codex model"},
+           {"label": "o3", "description": "Reasoning-optimized model"},
+           {"label": "gpt-5.4", "description": "Latest GPT model"}
+         ]
+       },
+       {
+         "header": "gil-implementer — Model",
+         "id": "model_implementer",
+         "question": "Which model for the Implementer agent?",
+         "options": [
+           {"label": "gpt-5.2-codex", "description": "Default Codex model"},
+           {"label": "o3", "description": "Reasoning-optimized model"},
+           {"label": "gpt-5.4", "description": "Latest GPT model"}
+         ]
+       }
+     ]
+   }
+   ```
+
+   Build the options dynamically from the models_cache.json output. Show up to 3 models as
+   options (the client auto-adds an "Other" free-text option for unlisted models).
+   After model selection, ask reasoning effort per agent using the same batched pattern.
+
+5. Read the user's existing ~/.codex/config.toml to understand current state
+6. For each agent, create a .toml file in ~/.codex/agents/ using the EXACT format below
+7. Merge [agents.*] entries into config.toml — show a diff before writing
+8. Ensure [features] section has multi_agent = true AND default_mode_request_user_input = true
+9. Instruct the user to restart Codex CLI
+
+## IMPORTANT: Use `request_user_input` for All User Choices
+
+This skill requires the `request_user_input` tool for structured menus. The bootstrap
+installer enables `default_mode_request_user_input = true` in config.toml before the user
+runs this skill. If `request_user_input` is unavailable, tell the user to add
+`default_mode_request_user_input = true` under `[features]` in `~/.codex/config.toml`
+and restart Codex CLI.
+
+Rules for `request_user_input`:
+- Send 1 to 3 questions per call (Codex limit)
+- Each question needs: header, id, question, and options (2-3 options)
+- The client auto-adds an "Other" free-text option — do NOT add one yourself
+- NEVER ask choices via plain text — always use `request_user_input`
 
 ## CRITICAL: Agent Naming Convention
 
@@ -808,6 +950,18 @@ Step 1 — Install skills:
 Download: {SKILLS_URL}
 Extract to: ~/.codex/skills/ (create if needed, overwrite existing)
 Delete the downloaded zip.
+
+Step 2 — Enable interactive menus:
+Read the user's ~/.codex/config.toml. Under the [features] section, ensure this flag is set:
+
+```toml
+[features]
+default_mode_request_user_input = true
+```
+
+If [features] already exists, merge — do NOT remove existing feature flags.
+If config.toml does not exist, create it with just the [features] section above.
+This flag enables structured menu prompts that GiljoAI skills rely on.
 
 Adapt all commands for the OS you are running on.
 After installation, tell the user:
