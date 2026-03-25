@@ -21,31 +21,32 @@ class TestDepthDefaultsConsolidation:
         """DEFAULT_DEPTHS in fetch_context.py must derive from DEFAULT_DEPTH_CONFIG in defaults.py."""
         from src.giljo_mcp.tools.context_tools.fetch_context import DEFAULT_DEPTHS
 
-        canonical = RAW_DEPTH_CONFIG["depths"]
+        # Handover 0840d: DEFAULT_DEPTH_CONFIG is now a flat dict with column-style keys
+        canonical = RAW_DEPTH_CONFIG
 
-        # memory_360: canonical says 3
-        assert DEFAULT_DEPTHS["memory_360"] == canonical["memory_360"], (
+        # memory_360 in DEFAULT_DEPTHS maps to memory_last_n_projects in canonical
+        assert DEFAULT_DEPTHS["memory_360"] == canonical["memory_last_n_projects"], (
             f"memory_360 mismatch: fetch_context={DEFAULT_DEPTHS['memory_360']}, "
-            f"defaults.py={canonical['memory_360']}"
+            f"defaults.py={canonical['memory_last_n_projects']}"
         )
 
-        # git_history: canonical says 25 (per handover decision)
-        assert DEFAULT_DEPTHS["git_history"] == canonical["git_history"], (
+        # git_history in DEFAULT_DEPTHS maps to git_commits in canonical
+        assert DEFAULT_DEPTHS["git_history"] == canonical["git_commits"], (
             f"git_history mismatch: fetch_context={DEFAULT_DEPTHS['git_history']}, "
-            f"defaults.py={canonical['git_history']}"
+            f"defaults.py={canonical['git_commits']}"
         )
 
-        # vision_documents
+        # vision_documents - same key
         assert DEFAULT_DEPTHS["vision_documents"] == canonical["vision_documents"]
 
-        # agent_templates
+        # agent_templates - same key
         assert DEFAULT_DEPTHS["agent_templates"] == canonical["agent_templates"]
 
     def test_canonical_defaults_have_expected_values(self):
         """Verify canonical defaults match handover 0823 decision."""
-        canonical = RAW_DEPTH_CONFIG["depths"]
-        assert canonical["memory_360"] == 3
-        assert canonical["git_history"] == 25
+        canonical = RAW_DEPTH_CONFIG
+        assert canonical["memory_last_n_projects"] == 3
+        assert canonical["git_commits"] == 25
         assert canonical["vision_documents"] == "medium"
         assert canonical["agent_templates"] == "type_only"
 
@@ -299,30 +300,34 @@ class TestFetchContextDepthFromDB:
     """Phase 4 (Handover 0823b): Verify fetch_context reads depth from DB at runtime."""
 
     @staticmethod
-    def _make_mock_user(depth_config=None):
-        """Create a mock User object with depth_config."""
+    def _make_mock_user(**depth_kwargs):
+        """Create a mock User object with depth columns (Handover 0840d)."""
         from unittest.mock import MagicMock
         user = MagicMock()
-        user.depth_config = depth_config
         user.is_active = True
         user.tenant_key = "tk_test"
+        # Set depth column defaults
+        user.depth_vision_documents = depth_kwargs.get("vision_documents", "medium")
+        user.depth_memory_last_n = depth_kwargs.get("memory_last_n_projects", 3)
+        user.depth_git_commits = depth_kwargs.get("git_commits", 25)
+        user.depth_agent_templates = depth_kwargs.get("agent_templates", "type_only")
+        user.depth_tech_stack_sections = depth_kwargs.get("tech_stack_sections", "all")
+        user.depth_architecture = depth_kwargs.get("architecture_depth", "overview")
         return user
 
     def test_load_user_depth_config_normalizes_keys(self):
         """_load_user_depth_config must map DB keys to internal keys."""
         import asyncio
-        from unittest.mock import AsyncMock, MagicMock, patch
+        from unittest.mock import AsyncMock, MagicMock
 
         from src.giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
 
-        db_depth = {
-            "memory_last_n_projects": 5,
-            "git_commits": 50,
-            "vision_documents": "full",
-            "agent_templates": "full",
-        }
-
-        mock_user = self._make_mock_user(depth_config=db_depth)
+        mock_user = self._make_mock_user(
+            memory_last_n_projects=5,
+            git_commits=50,
+            vision_documents="full",
+            agent_templates="full",
+        )
 
         # Mock the DB session and query
         mock_result = MagicMock()
@@ -370,14 +375,14 @@ class TestFetchContextDepthFromDB:
 
         assert result is None
 
-    def test_load_user_depth_config_returns_none_when_no_depth_config(self):
-        """_load_user_depth_config returns None when user has no depth_config."""
+    def test_load_user_depth_config_returns_defaults_when_columns_have_defaults(self):
+        """_load_user_depth_config returns column defaults when user has default depth values."""
         import asyncio
         from unittest.mock import AsyncMock, MagicMock
 
         from src.giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
 
-        mock_user = self._make_mock_user(depth_config=None)
+        mock_user = self._make_mock_user()  # Uses column defaults
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_user
@@ -394,7 +399,10 @@ class TestFetchContextDepthFromDB:
             _load_user_depth_config("tk_test", mock_db)
         )
 
-        assert result is None
+        # Handover 0840d: columns always have defaults, so result is never None when user exists
+        assert result is not None
+        assert result["memory_360"] == 3  # default
+        assert result["vision_documents"] == "medium"  # default
 
     def test_load_user_depth_config_normalizes_vision_optional(self):
         """_load_user_depth_config maps vision_documents 'optional' to 'light'."""
@@ -403,8 +411,7 @@ class TestFetchContextDepthFromDB:
 
         from src.giljo_mcp.tools.context_tools.fetch_context import _load_user_depth_config
 
-        db_depth = {"vision_documents": "optional"}
-        mock_user = self._make_mock_user(depth_config=db_depth)
+        mock_user = self._make_mock_user(vision_documents="optional")
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_user

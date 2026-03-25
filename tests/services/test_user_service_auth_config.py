@@ -18,7 +18,6 @@ from src.giljo_mcp.exceptions import (
     AuthenticationError,
     ValidationError,
 )
-from src.giljo_mcp.models.auth import User
 
 
 # ============================================================================
@@ -161,28 +160,39 @@ async def test_verify_password_incorrect(user_service, test_user):
 
 @pytest.mark.asyncio
 async def test_get_field_priority_config_custom(user_service, test_user, db_session):
-    """Test that get_field_priority_config returns custom config"""
-    custom_config = {
-        "version": "2.0",
-        "priorities": {"product_core": 1, "vision_documents": 2, "agent_templates": 3, "project_description": 4},
-    }
-    test_user.field_priority_config = custom_config
+    """Test that get_field_priority_config returns custom toggles from user_field_priorities table"""
+    from src.giljo_mcp.models.auth import UserFieldPriority
+
+    # Insert custom toggle rows
+    for cat, enabled in [("tech_stack", True), ("git_history", True), ("testing", False)]:
+        db_session.add(UserFieldPriority(
+            user_id=test_user.id, tenant_key=test_user.tenant_key,
+            category=cat, enabled=enabled,
+        ))
     await db_session.commit()
 
     config = await user_service.get_field_priority_config(test_user.id)
 
     assert isinstance(config, dict)
-    assert config == custom_config
+    assert config["version"] == "4.0"
+    assert config["priorities"]["tech_stack"]["toggle"] is True
+    assert config["priorities"]["git_history"]["toggle"] is True
+    assert config["priorities"]["testing"]["toggle"] is False
+    # Always-on categories
+    assert config["priorities"]["product_core"]["toggle"] is True
+    assert config["priorities"]["project_description"]["toggle"] is True
 
 
 @pytest.mark.asyncio
 async def test_get_field_priority_config_defaults(user_service, test_user):
-    """Test that get_field_priority_config returns defaults when no custom config"""
+    """Test that get_field_priority_config returns defaults when no custom rows"""
     config = await user_service.get_field_priority_config(test_user.id)
 
     assert isinstance(config, dict)
-    assert config["version"] in ["2.0", "2.1", "3.0"]  # Version may vary
+    assert config["version"] in ["3.0", "4.0"]
     assert "priorities" in config
+    # git_history should be False by default
+    assert config["priorities"]["git_history"]["toggle"] is False
 
 
 # ============================================================================
@@ -192,28 +202,33 @@ async def test_get_field_priority_config_defaults(user_service, test_user):
 
 @pytest.mark.asyncio
 async def test_update_field_priority_config_success(user_service, test_user, db_session):
-    """Test successful field priority config update"""
+    """Test successful field priority config update via user_field_priorities table"""
     new_config = {
-        "version": "3.0",
-        "priorities": {"product_core": True, "vision_documents": True, "agent_templates": False, "project_description": True},
+        "version": "4.0",
+        "priorities": {
+            "vision_documents": {"toggle": True},
+            "agent_templates": {"toggle": False},
+            "git_history": {"toggle": True},
+        },
     }
 
     result = await user_service.update_field_priority_config(user_id=test_user.id, config=new_config)
-
-    # Verify method completes without error (void return)
     assert result is None
 
-    await db_session.refresh(test_user)
-    assert test_user.field_priority_config == new_config
+    # Verify rows created in DB
+    config = await user_service.get_field_priority_config(test_user.id)
+    assert config["priorities"]["vision_documents"]["toggle"] is True
+    assert config["priorities"]["agent_templates"]["toggle"] is False
+    assert config["priorities"]["git_history"]["toggle"] is True
 
 
 @pytest.mark.asyncio
 async def test_update_field_priority_config_validation(user_service, test_user):
-    """Test that update_field_priority_config validates config"""
+    """Test that update_field_priority_config validates toggle values"""
     invalid_config = {
-        "version": "2.0",
+        "version": "4.0",
         "priorities": {
-            "product_core": 5  # Invalid priority
+            "tech_stack": 5  # Invalid: not bool or dict with toggle
         },
     }
 
@@ -230,18 +245,19 @@ async def test_update_field_priority_config_validation(user_service, test_user):
 
 @pytest.mark.asyncio
 async def test_reset_field_priority_config_clears_custom(user_service, test_user, db_session):
-    """Test that reset_field_priority_config clears custom config"""
-    # Set custom config
-    test_user.field_priority_config = {"version": "2.0", "priorities": {"product_core": 1}}
-    await db_session.commit()
+    """Test that reset_field_priority_config deletes all toggle rows"""
+    # First set some custom toggles
+    await user_service.update_field_priority_config(test_user.id, {
+        "version": "4.0",
+        "priorities": {"tech_stack": {"toggle": False}, "git_history": {"toggle": True}},
+    })
 
     result = await user_service.reset_field_priority_config(test_user.id)
-
-    # Verify method completes without error (void return)
     assert result is None
 
-    await db_session.refresh(test_user)
-    assert test_user.field_priority_config is None
+    # After reset, should get defaults (git_history False)
+    config = await user_service.get_field_priority_config(test_user.id)
+    assert config["priorities"]["git_history"]["toggle"] is False
 
 
 # ============================================================================
@@ -251,24 +267,30 @@ async def test_reset_field_priority_config_clears_custom(user_service, test_user
 
 @pytest.mark.asyncio
 async def test_get_depth_config_custom(user_service, test_user, db_session):
-    """Test that get_depth_config returns custom config"""
-    custom_depth = {"vision_chunking": "full", "memory_last_n_projects": 5, "git_commits": 50}
-    test_user.depth_config = custom_depth
+    """Test that get_depth_config returns values from user columns"""
+    test_user.depth_vision_documents = "full"
+    test_user.depth_memory_last_n = 5
+    test_user.depth_git_commits = 50
     await db_session.commit()
 
     config = await user_service.get_depth_config(test_user.id)
 
     assert isinstance(config, dict)
-    assert config == custom_depth
+    assert config["vision_documents"] == "full"
+    assert config["memory_last_n_projects"] == 5
+    assert config["git_commits"] == 50
 
 
 @pytest.mark.asyncio
 async def test_get_depth_config_defaults(user_service, test_user):
-    """Test that get_depth_config returns defaults when no custom config"""
+    """Test that get_depth_config returns column defaults"""
     config = await user_service.get_depth_config(test_user.id)
 
     assert isinstance(config, dict)
-    assert "vision_documents" in config
+    assert config["vision_documents"] == "medium"
+    assert config["memory_last_n_projects"] == 3
+    assert config["git_commits"] == 25
+    assert config["agent_templates"] == "type_only"
 
 
 # ============================================================================
@@ -278,20 +300,18 @@ async def test_get_depth_config_defaults(user_service, test_user):
 
 @pytest.mark.asyncio
 async def test_update_depth_config_success(user_service, test_user, db_session):
-    """Test successful depth config update"""
+    """Test successful depth config update via columns"""
     new_depth = {"vision_documents": "full", "memory_last_n_projects": 10, "git_commits": 100}
 
     result = await user_service.update_depth_config(user_id=test_user.id, config=new_depth)
-
-    # Verify method completes without error (void return)
     assert result is None
 
     await db_session.refresh(test_user)
-    # Merge behavior: updated keys reflect new values, unmentioned keys preserved
-    for key, value in new_depth.items():
-        assert test_user.depth_config[key] == value
+    assert test_user.depth_vision_documents == "full"
+    assert test_user.depth_memory_last_n == 10
+    assert test_user.depth_git_commits == 100
     # execution_mode must survive a depth-only update
-    assert "execution_mode" in test_user.depth_config
+    assert test_user.execution_mode == "claude_code"
 
 
 @pytest.mark.asyncio
@@ -322,17 +342,18 @@ async def test_get_execution_mode_default(user_service, test_user):
 
 @pytest.mark.asyncio
 async def test_update_execution_mode_persists(user_service, test_user, db_session):
-    """Execution mode updates persist in depth_config and are retrievable."""
+    """Execution mode updates persist in users.execution_mode column."""
     result = await user_service.update_execution_mode(
         user_id=test_user.id,
         execution_mode="multi_terminal",
     )
-
-    # Verify method completes without error (void return)
     assert result is None
 
     read_back = await user_service.get_execution_mode(test_user.id)
     assert read_back == "multi_terminal"
+
+    await db_session.refresh(test_user)
+    assert test_user.execution_mode == "multi_terminal"
 
 
 @pytest.mark.asyncio

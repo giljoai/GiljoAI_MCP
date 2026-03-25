@@ -139,9 +139,9 @@
       "session_id": "0840d",
       "title": "User Settings Normalization",
       "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-25T05:00:00Z",
+      "completed_at": "2026-03-25T06:30:00Z",
       "planned_tasks": [
         "Create user_field_priorities table (7 categories, no product_info/project_description)",
         "Add 7 depth columns to users table",
@@ -152,11 +152,38 @@
         "Update ContextPriorityConfig.vue",
         "Rewrite 3 test files (~38 tests), update 5 test files (~41 tests)"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Created Alembic migration 0840d_user_norm with idempotency guards, backfill from JSONB, downgrade support",
+        "Created UserFieldPriority model (user_field_priorities table) with 7 toggleable categories",
+        "Added 7 depth columns to User model: depth_vision_documents, depth_memory_last_n, depth_git_commits, depth_agent_templates, depth_tech_stack_sections, depth_architecture, execution_mode",
+        "Removed field_priority_config and depth_config JSONB columns from User model",
+        "Rewrote user_service.py: get/update/reset field_priority_config now query/upsert user_field_priorities table, get/update depth_config now read/write depth columns, execution_mode now uses dedicated column",
+        "Updated protocol_builder.py: _get_user_config reads from user_field_priorities table and depth columns instead of JSONB",
+        "Updated thin_prompt_generator.py: generate() fetches toggles from user_field_priorities table and depth from columns",
+        "Updated project_service.py: launch_project reads toggles from user_field_priorities table and depth from columns",
+        "Updated product_tuning_service.py: _get_user_configs reads from normalized tables/columns",
+        "Updated fetch_context.py: _load_user_depth_config reads from depth columns, DEFAULT_DEPTHS uses correct canonical keys",
+        "Updated api/endpoints/prompts.py: removed direct field_priority_config reads, git_history toggle now queries user_field_priorities",
+        "Updated api/endpoints/agent_jobs/simple_handover.py: git_history toggle now queries user_field_priorities",
+        "Updated defaults.py: DEFAULT_DEPTH_CONFIG is now flat dict (no 'depths' wrapper), added DEFAULT_CATEGORY_TOGGLES",
+        "Frontend: Added locked 'Product Info' row to ContextPriorityConfig.vue, removed product_description from toggleable list",
+        "Rewrote test_user_service_auth_config.py (23 tests pass)",
+        "Rewrote test_user_field_priorities.py (7 tests pass)",
+        "Updated test_depth_config_standardization.py (9 tests pass)",
+        "Updated test_protocol_builder_ch2_fetch.py (24 tests pass)",
+        "Updated test_thin_client_prompt_generator_agent_templates_core.py (2 tests pass)",
+        "Updated test_thin_client_prompt_generator_agent_templates_context.py (4 tests pass)",
+        "Updated test_product_tuning_service.py (35 tests pass)",
+        "1038 tests pass (pre-existing failures: test_shutdown_*, test_orchestrator_todowrite_scoped_to_coordination)"
+      ],
+      "deviations": [
+        "Also updated api/endpoints/prompts.py and api/endpoints/agent_jobs/simple_handover.py which directly accessed field_priority_config on User model",
+        "Also updated src/giljo_mcp/tools/context_tools/fetch_context.py which read user.depth_config and DEFAULT_DEPTH_CONFIG['depths']",
+        "DEFAULT_DEPTH_CONFIG format changed from {version, depths: {...}} to flat dict matching column names — simpler and consistent with column-based storage"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "summary": null
+      "notes_for_next": "Migration 0840d_user_norm chains from 0840c_config_norm. DEFAULT_DEPTH_CONFIG is now a flat dict (keys: vision_documents, memory_last_n_projects, git_commits, agent_templates, tech_stack_sections, architecture_depth). Pre-existing test failures: test_shutdown_* (2 tests), test_orchestrator_todowrite_scoped_to_coordination (1 test). The FieldPriorityConfig Pydantic validator in api/endpoints/users.py still accepts product_core and project_description in the valid_categories set for backward compatibility, but these are never sent by the updated frontend.",
+      "summary": "Normalized user settings: replaced field_priority_config JSONB with user_field_priorities relational table (7 toggleable categories), replaced depth_config JSONB with 7 proper columns on users table (depth_vision_documents, depth_memory_last_n, depth_git_commits, depth_agent_templates, depth_tech_stack_sections, depth_architecture, execution_mode). Updated 12 source files + 1 migration + 7 test files. Frontend: Product Info + Project Description shown as locked 'Always On'. 1038/1041 tests pass."
     },
     {
       "session_id": "0840e",

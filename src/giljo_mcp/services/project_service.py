@@ -2061,12 +2061,12 @@ class ProjectService:
             if project.status != "active":
                 await self.activate_project(project_id, websocket_manager=websocket_manager)
 
-            # Fetch user field toggle config and depth_config if user_id provided
+            # Handover 0840d: Fetch user field toggles and depth from normalized tables/columns
             field_toggles = {}
             depth_config = None
 
             if user_id:
-                from src.giljo_mcp.models import User
+                from src.giljo_mcp.models.auth import User, UserFieldPriority
 
                 user_stmt = select(User).where(
                     and_(User.id == user_id, User.tenant_key == self.tenant_manager.get_current_tenant())
@@ -2075,17 +2075,34 @@ class ProjectService:
                 user = user_result.scalar_one_or_none()
 
                 if user:
-                    # Extract field_toggles from config structure and flatten to plain booleans
-                    if user.field_priority_config:
-                        raw_toggles = user.field_priority_config.get("priorities", {})
-                        field_toggles = {
-                            k: (v.get("toggle", True) if isinstance(v, dict) else bool(v))
-                            for k, v in raw_toggles.items()
-                        }
+                    # Build field_toggles from user_field_priorities table
+                    prio_result = await session.execute(
+                        select(UserFieldPriority).where(
+                            and_(
+                                UserFieldPriority.user_id == user_id,
+                                UserFieldPriority.tenant_key == self.tenant_manager.get_current_tenant(),
+                            )
+                        )
+                    )
+                    rows = prio_result.scalars().all()
+                    if rows:
+                        from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
 
-                    # Get depth_config
-                    if user.depth_config:
-                        depth_config = user.depth_config
+                        field_toggles = dict(DEFAULT_CATEGORY_TOGGLES)
+                        for row in rows:
+                            field_toggles[row.category] = row.enabled
+                        field_toggles["product_core"] = True
+                        field_toggles["project_description"] = True
+
+                    # Build depth_config from columns
+                    depth_config = {
+                        "vision_documents": user.depth_vision_documents,
+                        "memory_last_n_projects": user.depth_memory_last_n,
+                        "git_commits": user.depth_git_commits,
+                        "agent_templates": user.depth_agent_templates,
+                        "tech_stack_sections": user.depth_tech_stack_sections,
+                        "architecture_depth": user.depth_architecture,
+                    }
 
             # Apply defaults for depth_config if not set
             if not depth_config:
