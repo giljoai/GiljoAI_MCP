@@ -251,7 +251,7 @@ def main():
 
     # Log startup information with colored output
     print_highlight("=" * 60)
-    print_highlight("  GiljoAI MCP Orchestrator REST API v1.0.0")
+    print_highlight("  GiljoAI MCP Orchestrator REST API Beta 1.0.0")
     print_highlight("=" * 60)
 
     print_success(f"Server binding to {args.host}:{args.port}")
