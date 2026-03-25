@@ -205,10 +205,10 @@ class TestOrchestratorTodoWriteScoping:
     """Phase 1 Step 4 TodoWrite scope varies by job_type."""
 
     def test_orchestrator_todowrite_scoped_to_coordination(self):
-        """When job_type=orchestrator, TodoWrite is scoped to coordination tasks."""
+        """When job_type=orchestrator, protocol is the 3-phase coordination lifecycle."""
         protocol = _gen_protocol(job_type="orchestrator")
-        assert "Orchestration ONLY" in protocol
-        assert "NEVER include implementation" in protocol
+        assert "Orchestrator Coordination Protocol (3 Phases)" in protocol
+        assert "ORCHESTRATOR CONSTRAINTS" in protocol
 
     def test_agent_todowrite_unchanged(self):
         """Default job_type=agent produces original agent-scoped TodoWrite text."""
