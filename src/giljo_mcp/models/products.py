@@ -91,8 +91,6 @@ class Product(Base):
         nullable=True,
         comment="Timestamp when product was soft deleted (NULL for active products)",
     )
-    meta_data = Column(JSON, default=dict)
-
     # Product status (Handover 0049)
     is_active = Column(
         Boolean,

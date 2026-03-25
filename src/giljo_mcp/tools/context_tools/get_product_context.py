@@ -26,7 +26,7 @@ def estimate_tokens(data: Any) -> int:
 
 
 async def get_product_context(
-    product_id: str, tenant_key: str, include_metadata: bool = False, db_manager: DatabaseManager | None = None
+    product_id: str, tenant_key: str, db_manager: DatabaseManager | None = None
 ) -> dict[str, Any]:
     """
     Fetch general product information (Product Core).
@@ -36,7 +36,6 @@ async def get_product_context(
     Args:
         product_id: Product UUID
         tenant_key: Tenant isolation key
-        include_metadata: Include meta_data JSONB field (default: False)
         db_manager: Database manager instance
 
     Returns:
@@ -49,13 +48,11 @@ async def get_product_context(
                 "project_path": "/path/to/project",
                 "core_features": ["Feature 1", "Feature 2"],
                 "is_active": true,
-                "created_at": "2025-11-01T10:00:00",
-                "meta_data": {...}  # Only if include_metadata=True
+                "created_at": "2025-11-01T10:00:00"
             },
             "metadata": {
                 "product_id": "uuid",
-                "tenant_key": "...",
-                "estimated_tokens": 100
+                "tenant_key": "..."
             }
         }
 
@@ -65,13 +62,10 @@ async def get_product_context(
     Example:
         result = await get_product_context(
             product_id="123e4567-e89b-12d3-a456-426614174000",
-            tenant_key="tenant_abc",
-            include_metadata=False
+            tenant_key="tenant_abc"
         )
     """
-    logger.info(
-        "fetching_product_context", product_id=product_id, tenant_key=tenant_key, include_metadata=include_metadata
-    )
+    logger.info("fetching_product_context", product_id=product_id, tenant_key=tenant_key)
 
     if db_manager is None:
         logger.error("db_manager is required", operation="get_product_context")
@@ -108,10 +102,6 @@ async def get_product_context(
             "created_at": product.created_at.isoformat() if product.created_at else None,
         }
 
-        # Conditionally include metadata
-        if include_metadata:
-            data["meta_data"] = product.meta_data or {}
-
         # Calculate token estimate
         total_tokens = estimate_tokens(data)
 
@@ -120,7 +110,6 @@ async def get_product_context(
             product_id=product_id,
             tenant_key=tenant_key,
             has_core_features=len(core_features) > 0,
-            metadata_included=include_metadata,
             estimated_tokens=total_tokens,
         )
 
