@@ -30,6 +30,7 @@ from src.giljo_mcp.models import (
     Product,
     Project,
 )
+from src.giljo_mcp.models.tasks import MessageRecipient
 from src.giljo_mcp.schemas.service_responses import MessageListResult
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
@@ -417,13 +418,18 @@ class TestReceiveMessagesSelfHealingCounter:
             msg = Message(
                 tenant_key=tenant_key,
                 project_id=proj.id,
-                to_agents=[analyzer.agent_id],
                 content=f"Test message {i}",
                 message_type="directive",
                 status="pending",
-                meta_data={"_from_agent": str(orchestrator.agent_id)},
+                from_agent_id=str(orchestrator.agent_id),
             )
             db_session.add(msg)
+            await db_session.flush()
+            db_session.add(MessageRecipient(
+                message_id=msg.id,
+                agent_id=analyzer.agent_id,
+                tenant_key=tenant_key,
+            ))
 
         # Set waiting_count to 3 to reflect the 3 pending messages
         analyzer.messages_waiting_count = 3
@@ -466,13 +472,18 @@ class TestReceiveMessagesSelfHealingCounter:
             msg = Message(
                 tenant_key=tenant_key,
                 project_id=proj.id,
-                to_agents=[analyzer.agent_id],
                 content=f"Read count test message {i}",
                 message_type="directive",
                 status="pending",
-                meta_data={"_from_agent": str(orchestrator.agent_id)},
+                from_agent_id=str(orchestrator.agent_id),
             )
             db_session.add(msg)
+            await db_session.flush()
+            db_session.add(MessageRecipient(
+                message_id=msg.id,
+                agent_id=analyzer.agent_id,
+                tenant_key=tenant_key,
+            ))
 
         analyzer.messages_waiting_count = 2
         await db_session.commit()
@@ -519,13 +530,18 @@ class TestReceiveMessagesSelfHealingCounter:
             msg = Message(
                 tenant_key=tenant_key,
                 project_id=proj.id,
-                to_agents=[analyzer.agent_id],
                 content=f"Drift test message {i}",
                 message_type="directive",
                 status="pending",
-                meta_data={"_from_agent": str(orchestrator.agent_id)},
+                from_agent_id=str(orchestrator.agent_id),
             )
             db_session.add(msg)
+            await db_session.flush()
+            db_session.add(MessageRecipient(
+                message_id=msg.id,
+                agent_id=analyzer.agent_id,
+                tenant_key=tenant_key,
+            ))
 
         # Deliberately set a WRONG waiting_count to simulate drift
         # Actual pending = 3, but counter says 99 (drifted)
@@ -574,13 +590,18 @@ class TestReceiveMessagesSelfHealingCounter:
             msg = Message(
                 tenant_key=tenant_key,
                 project_id=proj.id,
-                to_agents=[analyzer.agent_id],
                 content=f"Zero drift test message {i}",
                 message_type="directive",
                 status="pending",
-                meta_data={"_from_agent": str(orchestrator.agent_id)},
+                from_agent_id=str(orchestrator.agent_id),
             )
             db_session.add(msg)
+            await db_session.flush()
+            db_session.add(MessageRecipient(
+                message_id=msg.id,
+                agent_id=analyzer.agent_id,
+                tenant_key=tenant_key,
+            ))
 
         # Counter is 0 but actually 2 pending (drifted down)
         analyzer.messages_waiting_count = 0
@@ -623,13 +644,18 @@ class TestReceiveMessagesSelfHealingCounter:
         msg = Message(
             tenant_key=tenant_key,
             project_id=proj.id,
-            to_agents=[analyzer.agent_id],
             content="Tenant A message",
             message_type="directive",
             status="pending",
-            meta_data={"_from_agent": str(orchestrator.agent_id)},
+            from_agent_id=str(orchestrator.agent_id),
         )
         db_session.add(msg)
+        await db_session.flush()
+        db_session.add(MessageRecipient(
+            message_id=msg.id,
+            agent_id=analyzer.agent_id,
+            tenant_key=tenant_key,
+        ))
 
         analyzer.messages_waiting_count = 1
 
@@ -698,13 +724,18 @@ class TestReceiveMessagesSelfHealingCounter:
             msg = Message(
                 tenant_key=tenant_key,
                 project_id=proj.id,
-                to_agents=[analyzer.agent_id],
                 content=f"Accumulation test message {i}",
                 message_type="directive",
                 status="pending",
-                meta_data={"_from_agent": str(orchestrator.agent_id)},
+                from_agent_id=str(orchestrator.agent_id),
             )
             db_session.add(msg)
+            await db_session.flush()
+            db_session.add(MessageRecipient(
+                message_id=msg.id,
+                agent_id=analyzer.agent_id,
+                tenant_key=tenant_key,
+            ))
 
         analyzer.messages_waiting_count = 4
         await db_session.commit()

@@ -40,6 +40,7 @@ def mock_websocket_manager():
     mock.broadcast_message_acknowledged = AsyncMock()
     mock.broadcast_job_message = AsyncMock()
     mock.broadcast_job_status_change = AsyncMock()
+    mock.broadcast_job_status_update = AsyncMock()
     return mock
 
 

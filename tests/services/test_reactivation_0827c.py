@@ -18,15 +18,14 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import ProjectStateError, ResourceNotFoundError
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
-from src.giljo_mcp.models.tasks import Message
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
+from src.giljo_mcp.models.tasks import Message, MessageRecipient
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
@@ -563,11 +562,17 @@ class TestReactivationGuidance:
             message_type="direct",
             priority="normal",
             status="pending",
-            to_agents=[agent.agent_id],
-            meta_data={"_from_agent": sender_id, "_from_display_name": "File-Creator"},
+            from_agent_id=sender_id,
+            from_display_name="File-Creator",
             created_at=datetime.now(timezone.utc),
         )
         db_session.add(msg)
+        await db_session.flush()
+        db_session.add(MessageRecipient(
+            message_id=msg.id,
+            agent_id=agent.agent_id,
+            tenant_key=test_tenant_key,
+        ))
         await db_session.commit()
 
         result = await message_service.receive_messages(
@@ -607,11 +612,16 @@ class TestReactivationGuidance:
             message_type="direct",
             priority="normal",
             status="pending",
-            to_agents=[agent.agent_id],
-            meta_data={"_from_agent": str(uuid4())},
+            from_agent_id=str(uuid4()),
             created_at=datetime.now(timezone.utc),
         )
         db_session.add(msg)
+        await db_session.flush()
+        db_session.add(MessageRecipient(
+            message_id=msg.id,
+            agent_id=agent.agent_id,
+            tenant_key=test_tenant_key,
+        ))
         await db_session.commit()
 
         result = await message_service.receive_messages(
