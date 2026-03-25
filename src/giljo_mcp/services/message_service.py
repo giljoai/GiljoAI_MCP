@@ -25,8 +25,9 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import and_, func, select, update
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
@@ -38,6 +39,7 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.tasks import MessageAcknowledgment, MessageCompletion, MessageRecipient
 from src.giljo_mcp.repositories.message_repository import MessageRepository
 from src.giljo_mcp.schemas.service_responses import (
     BroadcastResult,
@@ -253,21 +255,24 @@ class MessageService:
                         message = Message(
                             project_id=project.id,
                             tenant_key=project.tenant_key,
-                            to_agents=[recipient_id],  # Single recipient per message (fan-out)
                             content=content,
                             message_type="broadcast" if is_broadcast_fanout else message_type,
                             priority=priority,
                             status="pending",
-                            # Store project_id as job_id for WebSocket consumers that key off job_id/project_id.
-                            meta_data={
-                                "_from_agent": from_agent or "orchestrator",
-                                "_from_display_name": sender_display_name,
-                                "job_id": project.id,
-                            },
+                            from_agent_id=from_agent or "orchestrator",
+                            from_display_name=sender_display_name,
                         )
                         session.add(message)
+                        await session.flush()  # Flush to assign message.id before creating recipient
+                        session.add(
+                            MessageRecipient(
+                                message_id=message.id,
+                                agent_id=recipient_id,
+                                tenant_key=project.tenant_key,
+                            )
+                        )
                         messages.append(message)
-                    await session.flush()  # Flush to assign IDs before commit
+                    await session.flush()  # Flush all recipients
                     message_ids = [str(msg.id) for msg in messages]
                     await session.commit()
                     message_id = message_ids[0] if message_ids else None
@@ -288,7 +293,7 @@ class MessageService:
 
                 # Update message counters (sent/waiting) with deadlock retry
                 sender_execution = await self._handle_send_message_side_effects(
-                    session, messages, project, from_agent, project_id
+                    session, messages, project, from_agent, project_id, resolved_to_agents
                 )
 
                 # Handover 0827b: Auto-block completed agents that receive direct messages
@@ -435,6 +440,7 @@ class MessageService:
         project: Any,
         from_agent: Optional[str],
         project_id: str,
+        recipient_ids: Optional[list[str]] = None,
     ) -> Any:
         """Update message counters (sent/waiting) with deadlock retry.
 
@@ -442,6 +448,10 @@ class MessageService:
         Handover 0821: Replaced N+1 per-row UPDATEs with a single batch UPDATE
         using CASE expressions. One SQL statement = PostgreSQL handles all lock
         acquisition internally = no cross-statement deadlock.
+
+        Args:
+            recipient_ids: Pre-resolved recipient agent_ids (one per message, same order).
+                Handover 0840b: Avoids lazy-loading recipients relationship in async context.
 
         Returns:
             The sender's AgentExecution record, or None if not found.
@@ -478,10 +488,12 @@ class MessageService:
             if sender_execution:
                 sent_increments[sender_execution.agent_id] = 1
 
-            for msg in messages:
-                recipient_id = msg.to_agents[0] if msg.to_agents else None
-                if recipient_id:
-                    waiting_increments[recipient_id] = waiting_increments.get(recipient_id, 0) + 1
+            # Handover 0840b: Use pre-resolved recipient_ids to avoid async lazy-load
+            resolved = recipient_ids or []
+            for idx, _msg in enumerate(messages):
+                rid = resolved[idx] if idx < len(resolved) else None
+                if rid:
+                    waiting_increments[rid] = waiting_increments.get(rid, 0) + 1
 
             # Step 3: Single batch UPDATE (Handover 0821 - deadlock fix)
             if sent_increments or waiting_increments:
@@ -952,7 +964,18 @@ class MessageService:
 
             async with self._get_session() as session:
                 # TENANT ISOLATION: Always filter by tenant_key
-                query = select(Message).where(and_(Message.status == status, Message.tenant_key == tenant_key))
+                # Handover 0840b: JOIN on MessageRecipient instead of JSONB containment
+                query = (
+                    select(Message)
+                    .join(MessageRecipient)
+                    .where(
+                        and_(
+                            Message.status == status,
+                            Message.tenant_key == tenant_key,
+                            MessageRecipient.agent_id == agent_name,
+                        )
+                    )
+                )
 
                 if project_id:
                     query = query.where(Message.project_id == project_id)
@@ -960,18 +983,17 @@ class MessageService:
                 result = await session.execute(query)
                 messages = result.scalars().all()
 
-                # Filter messages for this agent
+                # Build message dicts
                 agent_messages = [
                     {
                         "id": str(msg.id),
-                        "from": msg.meta_data.get("_from_agent", "unknown"),
+                        "from": msg.from_agent_id or "unknown",
                         "content": msg.content,
                         "type": msg.message_type,
                         "priority": msg.priority,
                         "created": msg.created_at.isoformat() if msg.created_at else None,
                     }
                     for msg in messages
-                    if agent_name in msg.to_agents or not msg.to_agents
                 ]
 
                 # Handover 0731c: Return MessageListResult typed model
@@ -1062,23 +1084,21 @@ class MessageService:
                     )
 
                 # Query messages using native SQLAlchemy queries
-                # Handover 0387: Simplified query - fan-out at write means no 'all' broadcast matching needed
-                # Each message now has to_agents=[single_agent_id] after fan-out expansion
-                # Build query conditions (Handover 0387: Simplified - direct agent_id match only)
+                # Handover 0840b: JOIN on MessageRecipient instead of JSONB containment
+                # Handover 0387: fan-out at write means no 'all' broadcast matching needed
                 conditions = [
                     Message.tenant_key == tenant_key,
                     Message.project_id == job.project_id,
                     Message.status == "pending",  # Only unread messages
-                    # Direct match: JSONB array contains agent_id (no broadcast OR clause needed)
-                    func.cast(Message.to_agents, JSONB).op("@>")(func.cast([agent_id], JSONB)),
+                    MessageRecipient.agent_id == agent_id,
                 ]
 
                 # HANDOVER 0372: Apply filtering conditions from 0366b
 
                 # Filter: exclude_self - Filter out messages from the same agent
                 if exclude_self:
-                    # Meta_data._from_agent should not equal current agent_id
-                    conditions.append(func.coalesce(Message.meta_data.op("->>")("_from_agent"), "") != agent_id)
+                    # Handover 0840b: from_agent_id is now a proper column
+                    conditions.append(func.coalesce(Message.from_agent_id, "") != agent_id)
 
                 # Filter: exclude_progress - Filter out progress-type messages
                 if exclude_progress:
@@ -1093,7 +1113,13 @@ class MessageService:
                         # Only allow specified message types
                         conditions.append(Message.message_type.in_(message_types))
 
-                query = select(Message).where(and_(*conditions)).order_by(Message.created_at)
+                query = (
+                    select(Message)
+                    .join(MessageRecipient)
+                    .options(selectinload(Message.acknowledgments))
+                    .where(and_(*conditions))
+                    .order_by(Message.created_at)
+                )
 
                 # Apply limit
                 if isinstance(limit, int) and limit > 0:
@@ -1105,16 +1131,20 @@ class MessageService:
                 # AUTO-ACKNOWLEDGE: Bulk update all retrieved messages to acknowledged status (Handover 0326)
                 # This happens immediately when agent retrieves messages
                 if messages:
-                    from datetime import datetime, timezone
-
                     for msg in messages:
                         msg.status = "acknowledged"
                         msg.acknowledged_at = datetime.now(timezone.utc)
-                        # Maintain acknowledged_by as a list (JSONB array in database)
-                        if not msg.acknowledged_by:
-                            msg.acknowledged_by = []
-                        if agent_id not in msg.acknowledged_by:
-                            msg.acknowledged_by.append(agent_id)
+                        # Handover 0840b: INSERT into junction table instead of JSONB append
+                        ack_stmt = (
+                            pg_insert(MessageAcknowledgment)
+                            .values(
+                                message_id=str(msg.id),
+                                agent_id=agent_id,
+                                tenant_key=tenant_key,
+                            )
+                            .on_conflict_do_nothing(constraint="uq_msg_ack")
+                        )
+                        await session.execute(ack_stmt)
 
                     await session.commit()
                     self._logger.info(f"Auto-acknowledged {len(messages)} messages for agent {agent_id}")
@@ -1123,14 +1153,16 @@ class MessageService:
                     # instead of blindly decrementing (prevents permanent counter drift)
                     async def _acknowledge_counters():
                         # Count actual remaining pending messages for this agent
+                        # Handover 0840b: JOIN on MessageRecipient instead of JSONB containment
                         pending_stmt = (
                             select(func.count())
                             .select_from(Message)
+                            .join(MessageRecipient)
                             .where(
                                 Message.tenant_key == tenant_key,
                                 Message.project_id == job.project_id,
                                 Message.status == "pending",
-                                func.cast(Message.to_agents, JSONB).op("@>")(func.cast([agent_id], JSONB)),
+                                MessageRecipient.agent_id == agent_id,
                             )
                         )
                         pending_result = await session.execute(pending_stmt)
@@ -1195,11 +1227,8 @@ class MessageService:
                             self._logger.warning(f"Failed to emit WebSocket for acknowledged messages: {e}")
 
                 # Handover 0827a: Batch-resolve sender display names for old messages (fallback)
-                sender_ids = {
-                    msg.meta_data.get("_from_agent")
-                    for msg in messages
-                    if msg.meta_data and not msg.meta_data.get("_from_display_name")
-                }
+                # Handover 0840b: Use from_agent_id / from_display_name columns
+                sender_ids = {msg.from_agent_id for msg in messages if msg.from_agent_id and not msg.from_display_name}
                 uuid_ids = [s for s in sender_ids if s and "-" in s and len(s) == 36]
                 sender_name_map: dict[str, str] = {}
                 if uuid_ids:
@@ -1219,10 +1248,9 @@ class MessageService:
                     priority_int = priority_reverse_map.get(msg.priority, 1)
 
                     # Handover 0827a: Prefer display name over raw UUID
-                    from_agent_raw = msg.meta_data.get("_from_agent", "") if msg.meta_data else ""
-                    from_display = (
-                        msg.meta_data.get("_from_display_name", "") if msg.meta_data else ""
-                    ) or sender_name_map.get(from_agent_raw, "")
+                    # Handover 0840b: Use from_agent_id / from_display_name columns
+                    from_agent_raw = msg.from_agent_id or ""
+                    from_display = msg.from_display_name or sender_name_map.get(from_agent_raw, "")
 
                     messages_list.append(
                         {
@@ -1234,9 +1262,9 @@ class MessageService:
                             "priority": priority_int,
                             "acknowledged": msg.status in ["acknowledged", "completed"],
                             "acknowledged_at": msg.acknowledged_at.isoformat() if msg.acknowledged_at else None,
-                            "acknowledged_by": msg.acknowledged_by[0] if msg.acknowledged_by else None,
+                            "acknowledged_by": msg.acknowledgments[0].agent_id if msg.acknowledgments else None,
                             "timestamp": msg.created_at.isoformat(),
-                            "metadata": msg.meta_data or {},
+                            "metadata": {},
                         }
                     )
 
@@ -1333,21 +1361,15 @@ class MessageService:
                         )
 
                     # Query messages for this agent using native queries
-                    from sqlalchemy import or_
-
+                    # Handover 0840b: JOIN on MessageRecipient instead of JSONB containment
                     query = (
                         select(Message)
+                        .join(MessageRecipient)
                         .where(
                             and_(
                                 Message.tenant_key == job.tenant_key,
                                 Message.project_id == job.project_id,
-                                or_(
-                                    # Direct message: JSONB array contains agent_id
-                                    # Cast both sides to JSONB to avoid type mismatch
-                                    func.cast(Message.to_agents, JSONB).op("@>")(func.cast([agent_id], JSONB)),
-                                    # Broadcast: JSONB array contains 'all'
-                                    func.cast(Message.to_agents, JSONB).op("@>")(func.cast(["all"], JSONB)),
-                                ),
+                                MessageRecipient.agent_id == agent_id,
                             )
                         )
                         .order_by(Message.created_at)
@@ -1361,18 +1383,17 @@ class MessageService:
                     messages = result.scalars().all()
 
                     # Convert to standard format (not AgentMessageQueue format)
+                    # Handover 0840b: Use from_agent_id column; agent_id known from filter
                     message_list = []
                     for msg in messages:
-                        from_agent = msg.meta_data.get("_from_agent", "unknown") if msg.meta_data else "unknown"
-                        to_agents = msg.to_agents if msg.to_agents else []
-                        to_agent = to_agents[0] if to_agents else None
+                        from_agent = msg.from_agent_id or "unknown"
 
                         message_list.append(
                             {
                                 "id": str(msg.id),
                                 "from_agent": from_agent,
-                                "to_agent": to_agent,
-                                "to_agents": to_agents,
+                                "to_agent": agent_id,
+                                "to_agents": [agent_id],
                                 "type": msg.message_type,
                                 "content": msg.content,
                                 "status": msg.status,
@@ -1387,8 +1408,10 @@ class MessageService:
                 # Otherwise, list by project
                 if project_id:
                     # TENANT ISOLATION: Always filter by tenant_key (Phase D audit fix)
-                    query = select(Message).where(
-                        and_(Message.project_id == project_id, Message.tenant_key == tenant_key)
+                    query = (
+                        select(Message)
+                        .options(selectinload(Message.recipients))
+                        .where(and_(Message.project_id == project_id, Message.tenant_key == tenant_key))
                     )
                 else:
                     # Find project by tenant key
@@ -1415,7 +1438,11 @@ class MessageService:
                         return MessageListResult(messages=[], count=0)
 
                     # TENANT ISOLATION: Always filter by tenant_key (Phase D audit fix)
-                    query = select(Message).where(Message.project_id == project.id, Message.tenant_key == tenant_key)
+                    query = (
+                        select(Message)
+                        .options(selectinload(Message.recipients))
+                        .where(Message.project_id == project.id, Message.tenant_key == tenant_key)
+                    )
 
                 # Apply status filter
                 if status:
@@ -1430,13 +1457,9 @@ class MessageService:
 
                 message_list = []
                 for msg in messages:
-                    # Extract from_agent from meta_data (stored as _from_agent)
-                    from_agent = msg.meta_data.get("_from_agent", "unknown") if msg.meta_data else "unknown"
-
-                    # to_agents is already a list in the database
-                    to_agents = msg.to_agents if msg.to_agents else []
-
-                    # For backward compatibility, provide to_agent as first recipient
+                    # Handover 0840b: Use from_agent_id column and recipients relationship
+                    from_agent = msg.from_agent_id or "unknown"
+                    to_agents = [r.agent_id for r in msg.recipients] if msg.recipients else []
                     to_agent = to_agents[0] if to_agents else None
 
                     message_list.append(
@@ -1520,8 +1543,19 @@ class MessageService:
                 # Update message
                 message.status = "completed"
                 message.result = result
-                message.completed_by = agent_name
                 message.completed_at = datetime.now(timezone.utc)
+
+                # Handover 0840b: INSERT into junction table instead of JSONB field
+                completion_stmt = (
+                    pg_insert(MessageCompletion)
+                    .values(
+                        message_id=str(message.id),
+                        agent_id=agent_name,
+                        tenant_key=tenant_key,
+                    )
+                    .on_conflict_do_nothing(constraint="uq_msg_completion")
+                )
+                await session.execute(completion_stmt)
 
                 await session.commit()
 

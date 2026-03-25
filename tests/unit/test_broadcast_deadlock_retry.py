@@ -20,6 +20,7 @@ from sqlalchemy.exc import OperationalError
 from src.giljo_mcp.exceptions import RetryExhaustedError
 from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution
+from src.giljo_mcp.models.tasks import MessageRecipient
 from src.giljo_mcp.repositories.message_repository import MessageRepository
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.utils.db_retry import with_deadlock_retry
@@ -81,11 +82,14 @@ class TestBroadcastRecipientSorting:
         mock_scalars_fanout.all.return_value = [agent_c, agent_a, agent_b]
 
         added_messages = []
+        added_recipients = []
         original_add = session.add
 
         def track_add(obj):
             if isinstance(obj, Message):
                 added_messages.append(obj)
+            elif isinstance(obj, MessageRecipient):
+                added_recipients.append(obj)
             original_add(obj)
 
         session.add = track_add
@@ -118,7 +122,12 @@ class TestBroadcastRecipientSorting:
         )
 
         assert len(added_messages) == 3
-        recipient_ids = [msg.to_agents[0] for msg in added_messages]
+        # Handover 0840b: Recipients stored in MessageRecipient junction table.
+        # Verify recipients were created in sorted order (deadlock prevention).
+        assert len(added_recipients) == 3, (
+            f"Expected 3 MessageRecipient rows, got {len(added_recipients)}"
+        )
+        recipient_ids = [r.agent_id for r in added_recipients]
         assert recipient_ids == sorted(recipient_ids), (
             f"Recipients must be sorted for deadlock prevention: {recipient_ids}"
         )
@@ -200,23 +209,37 @@ class TestSendPathDeadlockRetry:
         agent_a = _make_execution(str(uuid4()), "agent-a")
         deadlock_err = _make_deadlock_error()
 
-        call_count = {"n": 0}
+        # Track when counter-update phase starts so we only deadlock there.
+        counter_phase = {"started": False}
 
         async def mock_execute(*args, **kwargs):
-            call_count["n"] += 1
             result = Mock()
 
-            if call_count["n"] == 1:
-                result.scalar_one_or_none = Mock(return_value=mock_project)
-            elif call_count["n"] == 2:
-                result.scalar_one_or_none = Mock(return_value=agent_a)
-            else:
+            if counter_phase["started"]:
+                # Inside counter-update retry loop — simulate persistent deadlock
                 raise deadlock_err
+
+            # Pre-counter queries: return project for first call, safe mocks for rest
+            result.scalar_one_or_none = Mock(return_value=mock_project)
+            result.scalars = Mock(return_value=Mock(all=Mock(return_value=[])))
+            result.scalar = Mock(return_value=None)
+            result.rowcount = 0
             return result
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
         service = MessageService(db_manager, mock_tenant_manager)
+
+        # Wrap _handle_send_message_side_effects to mark counter phase entry
+        original_side_effects = service._handle_send_message_side_effects
+
+        async def patched_side_effects(*args, **kwargs):
+            counter_phase["started"] = True
+            return await original_side_effects(*args, **kwargs)
+
+        service._handle_send_message_side_effects = patched_side_effects
+        # Skip auto-block — it queries the DB and this test only validates counter deadlock
+        service._auto_block_completed_recipients = AsyncMock(return_value=[])
 
         with patch(_SLEEP_PATCH_TARGET, new_callable=AsyncMock):
             # Should NOT raise -- RetryExhaustedError is caught on send path
@@ -588,15 +611,15 @@ class TestSendPathBatchIntegration:
         service = MessageService(db_manager, mock_tenant_manager)
 
         msg1 = Mock(spec=Message)
-        msg1.to_agents = ["recipient-1"]
         msg2 = Mock(spec=Message)
-        msg2.to_agents = ["recipient-2"]
 
         with patch.object(
             service._repo, "batch_update_counters", new_callable=AsyncMock, return_value=3
         ) as mock_batch:
+            # Handover 0840b: Pass recipient_ids explicitly instead of reading from to_agents
             await service._handle_send_message_side_effects(
-                session, [msg1, msg2], mock_project, "orchestrator", project_id
+                session, [msg1, msg2], mock_project, "orchestrator", project_id,
+                recipient_ids=["recipient-1", "recipient-2"],
             )
 
             mock_batch.assert_awaited_once()

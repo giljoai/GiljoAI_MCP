@@ -6,6 +6,7 @@ Tasks track work items across sessions, while messages handle agent communicatio
 """
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Float,
@@ -14,8 +15,8 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -112,6 +113,10 @@ class Message(Base):
     """
     Message model - inter-agent communication with acknowledgment tracking.
     Supports broadcast, direct, and priority messages.
+
+    Handover 0840b: Normalized — JSONB arrays replaced by junction tables
+    (MessageRecipient, MessageAcknowledgment, MessageCompletion) and
+    meta_data fields extracted to proper columns.
     """
 
     __tablename__ = "messages"
@@ -119,21 +124,22 @@ class Message(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     tenant_key = Column(String(36), nullable=False)
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
-    to_agents = Column(JSONB, default=list)  # List of agent names
     message_type = Column(String(50), default="direct")  # direct, broadcast, system
     subject = Column(String(255), nullable=True)
     content = Column(Text, nullable=False)
     priority = Column(String(20), default="normal")  # low, normal, high, critical
     status = Column(String(50), default="pending")  # pending, acknowledged, completed, failed
-    acknowledged_by = Column(JSONB, default=list)  # Array of agent names that acknowledged
-    completed_by = Column(JSONB, default=list)  # Array of agent names that completed
     result = Column(Text, nullable=True)  # Completion result for completed messages
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     acknowledged_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    meta_data = Column(JSONB, default=dict)
 
-    # New fields for MessageQueue system
+    # 0840b: Extracted from meta_data JSONB
+    from_agent_id = Column(String(36), nullable=True)
+    from_display_name = Column(String(255), nullable=True)
+    auto_generated = Column(Boolean, server_default="false", nullable=False)
+
+    # MessageQueue system fields
     processing_started_at = Column(DateTime(timezone=True), nullable=True)
     retry_count = Column(Integer, default=0)
     max_retries = Column(Integer, default=3)
@@ -142,7 +148,9 @@ class Message(Base):
 
     # Relationships
     project = relationship("Project", back_populates="messages")
-    # sender relationship removed (Handover 0116) - Agent model eliminated
+    recipients = relationship("MessageRecipient", back_populates="message", cascade="all, delete-orphan")
+    acknowledgments = relationship("MessageAcknowledgment", back_populates="message", cascade="all, delete-orphan")
+    completions = relationship("MessageCompletion", back_populates="message", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_message_tenant", "tenant_key"),
@@ -154,3 +162,63 @@ class Message(Base):
 
     def __repr__(self) -> str:
         return f"<Message(id={self.id}, subject='{self.subject}', status='{self.status}')>"
+
+
+class MessageRecipient(Base):
+    """Junction table: message -> recipient agents (replaces to_agents JSONB array)."""
+
+    __tablename__ = "message_recipients"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    message_id = Column(String(36), ForeignKey("messages.id", ondelete="CASCADE"), nullable=False)
+    agent_id = Column(String(36), nullable=False)
+    tenant_key = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    message = relationship("Message", back_populates="recipients")
+
+    __table_args__ = (
+        UniqueConstraint("message_id", "agent_id", name="uq_msg_recipient"),
+        Index("idx_message_recipients_agent", "agent_id", "tenant_key"),
+        Index("idx_message_recipients_message", "message_id"),
+    )
+
+
+class MessageAcknowledgment(Base):
+    """Junction table: message -> acknowledging agents (replaces acknowledged_by JSONB array)."""
+
+    __tablename__ = "message_acknowledgments"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    message_id = Column(String(36), ForeignKey("messages.id", ondelete="CASCADE"), nullable=False)
+    agent_id = Column(String(36), nullable=False)
+    tenant_key = Column(String(255), nullable=False)
+    acknowledged_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    message = relationship("Message", back_populates="acknowledgments")
+
+    __table_args__ = (
+        UniqueConstraint("message_id", "agent_id", name="uq_msg_ack"),
+        Index("idx_message_acks_agent", "agent_id", "tenant_key"),
+        Index("idx_message_acks_message", "message_id"),
+    )
+
+
+class MessageCompletion(Base):
+    """Junction table: message -> completing agents (replaces completed_by JSONB array)."""
+
+    __tablename__ = "message_completions"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    message_id = Column(String(36), ForeignKey("messages.id", ondelete="CASCADE"), nullable=False)
+    agent_id = Column(String(36), nullable=False)
+    tenant_key = Column(String(255), nullable=False)
+    completed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    message = relationship("Message", back_populates="completions")
+
+    __table_args__ = (
+        UniqueConstraint("message_id", "agent_id", name="uq_msg_completion"),
+        Index("idx_message_completions_agent", "agent_id", "tenant_key"),
+        Index("idx_message_completions_message", "message_id"),
+    )
