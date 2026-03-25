@@ -5,10 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-04 (First Public Release)
+## [Beta 1.0.0] - 2026-04 (First Public Beta)
 
 ### Changed
-- Version alignment: all public-facing version numbers unified to 1.0.0
+- Version alignment: all public-facing version numbers unified to Beta 1.0.0
 - Release packaging updates (0732): CHANGELOG brought current, convention violations fixed
 
 ---
