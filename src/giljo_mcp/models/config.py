@@ -142,8 +142,6 @@ class GitConfig(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     verified_at = Column(DateTime(timezone=True), nullable=True)  # Last successful auth verification
 
-    meta_data = Column(JSON, default=dict)
-
     __table_args__ = (
         UniqueConstraint("product_id", name="uq_git_config_product"),
         Index("idx_git_config_tenant", "tenant_key"),
@@ -213,8 +211,6 @@ class GitCommit(Base):
     committed_at = Column(DateTime(timezone=True), nullable=False)
     pushed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    meta_data = Column(JSON, default=dict)
 
     # Relationships
     project = relationship("Project", backref="git_commits")
@@ -311,9 +307,6 @@ class SetupState(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Additional metadata
-    meta_data = Column(JSONB, default=dict)
-
     __table_args__ = (
         # Version format constraint (semantic versioning)
         CheckConstraint(
@@ -396,7 +389,6 @@ class SetupState(Base):
             "install_path": self.install_path,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "meta_data": self.meta_data,
         }
 
     @classmethod
@@ -563,9 +555,6 @@ class OptimizationMetric(Base):
 
     # Token calculations
     tokens_saved = Column(Integer, nullable=False, default=0)
-
-    # Metadata
-    meta_data = Column(JSON, default=dict)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

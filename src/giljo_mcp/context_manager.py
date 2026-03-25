@@ -19,26 +19,23 @@ ROLE_CONFIG_FILTERS = {
         "architecture",
         "tech_stack",
         "codebase_structure",
-        "critical_features",
         "database_type",
         "backend_framework",
         "frontend_framework",
-        "deployment_modes",
     ],
     "developer": [  # Alias for implementer
         "architecture",
         "tech_stack",
         "codebase_structure",
-        "critical_features",
         "database_type",
         "backend_framework",
         "frontend_framework",
     ],
-    "tester": ["test_commands", "test_config", "critical_features", "known_issues", "tech_stack"],
-    "qa": ["test_commands", "test_config", "critical_features", "known_issues"],  # Alias for tester
-    "documenter": ["api_docs", "documentation_style", "architecture", "critical_features", "codebase_structure"],
-    "analyzer": ["architecture", "tech_stack", "codebase_structure", "critical_features", "known_issues"],
-    "reviewer": ["architecture", "tech_stack", "critical_features", "documentation_style"],
+    "tester": ["test_config", "tech_stack"],
+    "qa": ["test_config"],  # Alias for tester
+    "documenter": ["architecture", "codebase_structure"],
+    "analyzer": ["architecture", "tech_stack", "codebase_structure"],
+    "reviewer": ["architecture", "tech_stack"],
 }
 
 
@@ -162,12 +159,6 @@ def validate_config_data(config: dict[str, Any]) -> tuple[bool, list[str]]:
     # Type validation
     if "tech_stack" in config and not isinstance(config["tech_stack"], list):
         errors.append("tech_stack must be an array")
-
-    if "test_commands" in config and not isinstance(config["test_commands"], list):
-        errors.append("test_commands must be an array")
-
-    if "critical_features" in config and not isinstance(config["critical_features"], list):
-        errors.append("critical_features must be an array")
 
     if "codebase_structure" in config and not isinstance(config["codebase_structure"], dict):
         errors.append("codebase_structure must be an object")
