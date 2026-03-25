@@ -1,4 +1,4 @@
-# GiljoAI MCP Coding Orchestrator Mode Testing Strategy
+# GiljoAI MCP Mode Testing Strategy
 
 **Document Version:** 1.0
 **Date:** 2025-10-04

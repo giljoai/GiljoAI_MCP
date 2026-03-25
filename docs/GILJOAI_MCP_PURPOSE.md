@@ -18,7 +18,7 @@
 
 ## What is GiljoAI MCP?
 
-GiljoAI MCP Coding Orchestrator is a **production-ready multi-agent orchestration system** that transforms AI coding assistants into coordinated development teams through intelligent context management. It breaks through context limits by orchestrating multiple specialized agents that work together on complex tasks with focused, role-specific context.
+GiljoAI MCP is a **production-ready multi-agent orchestration system** that transforms AI coding assistants into coordinated development teams through intelligent context management. It breaks through context limits by orchestrating multiple specialized agents that work together on complex tasks with focused, role-specific context.
 
 **The Magic**: The orchestrator reads your full project context ONCE and creates condensed, focused missions for each specialized agent. Database experts only get database context, frontend specialists only get UI patterns, and they all coordinate via lightweight JSONB message queues instead of duplicating context. The system automatically manages job lifecycles (pending → active → completed), tracks dependencies through parent-child hierarchies, and handles agent-to-agent communication with sub-100ms performance.
 

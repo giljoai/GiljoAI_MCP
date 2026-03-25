@@ -130,7 +130,7 @@
               @click="aboutDialog = false"
             />
             <v-card-text class="pa-5 text-body-2">
-              <div class="font-weight-bold mb-3">GiljoAI MCP Orchestrator</div>
+              <div class="font-weight-bold mb-3">GiljoAI MCP</div>
               Version 1.0.0<br />
               Community Edition<br />
               License: {{ licenseStatus }}<br /><br />
