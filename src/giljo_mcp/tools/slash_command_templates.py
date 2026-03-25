@@ -400,7 +400,7 @@ Execute the appropriate mode based on the presence of flags in `$ARGUMENTS`.
 
 GIL_GET_AGENTS_GEMINI_TOML = """description = "Download and install GiljoAI agent templates from the MCP server"
 
-prompt = \"\"\"
+prompt = '''
 You are the GiljoAI agent template installer for Gemini CLI.
 
 ## Your Job
@@ -522,12 +522,12 @@ If agents don't appear after restart:
 - ALWAYS ensure experimental.enableAgents is set in settings.json
 - Use run_shell_command tool for file operations (cross-platform)
 - Unix paths work on ALL platforms
-\"\"\"
+'''
 """
 
 GIL_ADD_GEMINI_TOML = """description = "Add a task or project to the GiljoAI dashboard"
 
-prompt = \"\"\"
+prompt = '''
 You are executing the gil_add command to create either a task or a project in the GiljoAI MCP server's dashboard.
 
 Tasks are technical debt, TODOs, small fixes, "do this later" items, and scope creep punts.
@@ -602,7 +602,7 @@ FLAGS: --task/--name (task title), --project (project name), --priority (low/med
 - Both tasks and projects require an active product (server-side enforced)
 - Projects are created as inactive — user activates via dashboard
 - The create_project MCP tool accepts an optional project_type parameter (human-readable label like "Frontend")
-\"\"\"
+'''
 """
 
 # =============================================================================
