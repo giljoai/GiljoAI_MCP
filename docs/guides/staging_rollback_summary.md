@@ -1,6 +1,6 @@
 # Staging Rollback Implementation Summary
 
-Database rollback solution for staging cancellation in GiljoAI MCP Coding Orchestrator.
+Database rollback solution for staging cancellation in GiljoAI MCP.
 
 ## Problem Statement
 

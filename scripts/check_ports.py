@@ -14,7 +14,7 @@ import yaml
 # Port assignments for v0.2 Beta architecture
 PORT_ASSIGNMENTS = {
     # Primary service - unified HTTP server
-    "GiljoAI Orchestrator": 7272,  # Main server (API + MCP + WebSocket) - changed from 8000
+    "GiljoAI MCP": 7272,  # Main server (API + MCP + WebSocket) - changed from 8000
     # Optional services
     "Frontend Dev Server": 6000,  # Vite dev server (development only)
     "PostgreSQL": 5432,  # PostgreSQL database server
@@ -71,7 +71,7 @@ def get_configured_ports(config: dict) -> list[tuple[str, int]]:
 
     # Main orchestrator server
     server_port = config.get("server", {}).get("port", 7272)  # Changed default
-    ports.append(("GiljoAI Orchestrator", server_port))
+    ports.append(("GiljoAI MCP", server_port))
 
     # Frontend dev server (optional)
     if config.get("features", {}).get("frontend_dev", False):

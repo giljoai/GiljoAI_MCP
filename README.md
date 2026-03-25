@@ -1,4 +1,4 @@
-# GiljoAI MCP Coding Orchestrator
+# GiljoAI MCP
 
 <div align="center">
 

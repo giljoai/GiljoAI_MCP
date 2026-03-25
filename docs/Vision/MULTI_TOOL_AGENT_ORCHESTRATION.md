@@ -393,7 +393,7 @@ User can inject feedback via send_message()
 
 **Architecture**:
 ```
-GiljoAI Orchestrator (in Claude Code or Codex)
+GiljoAI MCP (in Claude Code or Codex)
     ↓
 Creates jobs in MCP server via create_job()
     ↓

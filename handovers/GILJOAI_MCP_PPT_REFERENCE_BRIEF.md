@@ -9,7 +9,7 @@
 ## 1. BRANDING & LICENSING (Non-Negotiable)
 
 ### Identity
-- **Product name:** GiljoAI MCP Coding Orchestrator
+- **Product name:** GiljoAI MCP
 - **Product tagline:** "Break through AI context limits. Orchestrate teams of specialized AI agents."
 - **Edition:** Community Edition (CE) — free, single-user, self-hosted
 - **License:** GiljoAI Community License v1.1
@@ -284,8 +284,8 @@ When reviewing/updating any slide, check for:
 - [ ] "MIT" or "open source" or "open core" → replace per branding rules
 - [ ] "v1.0" license references → "v1.1"
 - [ ] "giljoai.com" → "giljo.ai"
-- [ ] "GiljoAI MCP Server" → "GiljoAI MCP Coding Orchestrator"
-- [ ] "Agent Orchestration MCP Server" → "GiljoAI MCP Coding Orchestrator"
+- [ ] "GiljoAI MCP Server" → "GiljoAI MCP"
+- [ ] "Agent Orchestration MCP Server" → "GiljoAI MCP"
 - [ ] Three editions shown → must be two (CE + SaaS; Enterprise = deployment mode of SaaS)
 - [ ] Active orchestration language → passive orchestrator language
 - [ ] "licensing@giljoai.com" → "sales@giljo.ai"

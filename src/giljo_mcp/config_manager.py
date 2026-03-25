@@ -248,7 +248,7 @@ class ConfigManager:
         self.features = FeatureFlags()
 
         # Application metadata (restored from cleanup)
-        self.app_name = "GiljoAI MCP Coding Orchestrator"
+        self.app_name = "GiljoAI MCP"
         self.app_version = "1.0.0"
 
         # Raw config dict cache (populated by _load_from_file, used by get_nested)

@@ -11,7 +11,7 @@
 
 ## The Core Idea
 
-GiljoAI MCP Coding Orchestrator is a single product developed in a single repository today. Before public release, it will split into two editions shipped from two repos:
+GiljoAI MCP is a single product developed in a single repository today. Before public release, it will split into two editions shipped from two repos:
 
 1. **Community Edition** (public repo) — Free for single-user use under the GiljoAI Community License v1.0
 2. **SaaS Edition** (private repo) — Multi-user, subscription-based, commercial license
@@ -95,7 +95,7 @@ The Community Edition runs as a single-user local install with one tenant. But t
 
 | Field | Value |
 |-------|-------|
-| Product name | GiljoAI MCP Coding Orchestrator |
+| Product name | GiljoAI MCP |
 | Tagline | "Break through AI context limits. Orchestrate teams of specialized AI agents." |
 | Community Edition label | Community Edition |
 | License | GiljoAI Community License v1.0 |

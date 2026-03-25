@@ -1,7 +1,7 @@
 {
   "name": "giljo-mcp-frontend",
   "version": "1.0.0",
-  "description": "GiljoAI MCP Coding Orchestrator - Dashboard UI",
+  "description": "GiljoAI MCP - Dashboard UI",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
