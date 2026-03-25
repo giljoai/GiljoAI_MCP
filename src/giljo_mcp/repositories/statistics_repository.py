@@ -18,6 +18,7 @@ from src.giljo_mcp.models.config import ApiMetrics
 from src.giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import ProjectType
+from src.giljo_mcp.models.tasks import MessageRecipient
 
 
 class StatisticsRepository:
@@ -435,11 +436,8 @@ class StatisticsRepository:
         Returns:
             Message count sent by agent
         """
-        # Note: from_agent is stored in meta_data["_from_agent"], not as a column
         result = await session.scalar(
-            select(func.count(Message.id)).where(
-                Message.meta_data.op("->>")("_from_agent") == agent_name, Message.tenant_key == tenant_key
-            )
+            select(func.count(Message.id)).where(Message.from_agent_id == agent_name, Message.tenant_key == tenant_key)
         )
         return result or 0
 
@@ -461,9 +459,9 @@ class StatisticsRepository:
             Message count received by agent
         """
         result = await session.scalar(
-            select(func.count(Message.id)).where(
-                Message.to_agents.contains([agent_name]), Message.tenant_key == tenant_key
-            )
+            select(func.count(Message.id))
+            .join(MessageRecipient)
+            .where(MessageRecipient.agent_id == agent_name, Message.tenant_key == tenant_key)
         )
         return result or 0
 
@@ -484,10 +482,9 @@ class StatisticsRepository:
         Returns:
             Timestamp of last message or None if no messages
         """
-        # Note: from_agent is stored in meta_data["_from_agent"], not as a column
         result = await session.scalar(
             select(func.max(Message.created_at)).where(
-                Message.meta_data.op("->>")("_from_agent") == agent_name, Message.tenant_key == tenant_key
+                Message.from_agent_id == agent_name, Message.tenant_key == tenant_key
             )
         )
         return result

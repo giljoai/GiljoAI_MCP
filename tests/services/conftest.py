@@ -10,19 +10,18 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+import bcrypt
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import pytest_asyncio
-import bcrypt
-
-from src.giljo_mcp.models.auth import User
-from src.giljo_mcp.models import AgentTemplate, Message
-from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.database import DatabaseManager
+from src.giljo_mcp.models import AgentTemplate, Message
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models.organizations import Organization
 from src.giljo_mcp.models.products import Product, VisionDocument
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.tasks import Task
+from src.giljo_mcp.models.tasks import MessageRecipient, Task
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.services.task_service import TaskService
 from src.giljo_mcp.tenant import TenantManager
@@ -48,7 +47,7 @@ async def test_user(db_session, test_tenant_key):
         id=str(uuid4()),
         username=f"testuser_{uuid4().hex[:6]}",
         email=f"test_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hashpw("TestPassword123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        password_hash=bcrypt.hashpw(b"TestPassword123", bcrypt.gensalt()).decode("utf-8"),
         full_name="Test User",
         role="developer",
         tenant_key=test_tenant_key,
@@ -68,7 +67,7 @@ async def admin_user(db_session, test_tenant_key):
         id=str(uuid4()),
         username=f"admin_{uuid4().hex[:6]}",
         email=f"admin_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hashpw("AdminPassword123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        password_hash=bcrypt.hashpw(b"AdminPassword123", bcrypt.gensalt()).decode("utf-8"),
         full_name="Admin User",
         role="admin",
         tenant_key=test_tenant_key,
@@ -111,7 +110,7 @@ async def other_tenant_user(db_session, other_tenant_key):
         id=str(uuid4()),
         username=f"otheruser_{uuid4().hex[:6]}",
         email=f"other_{uuid4().hex[:6]}@example.com",
-        password_hash=bcrypt.hashpw("OtherPassword123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        password_hash=bcrypt.hashpw(b"OtherPassword123", bcrypt.gensalt()).decode("utf-8"),
         full_name="Other Tenant User",
         role="developer",
         tenant_key=other_tenant_key,
@@ -347,26 +346,31 @@ async def two_tenant_messages(db_session, db_manager):
         id=str(uuid4()),
         project_id=project_a.id,
         tenant_key=tenant_a,
-        to_agents=["worker-a"],
         content="Message for tenant A agent",
         message_type="direct",
         priority="normal",
         status="pending",
-        meta_data={"_from_agent": "orchestrator"},
+        from_agent_id="orchestrator",
     )
     message_b = Message(
         id=str(uuid4()),
         project_id=project_b.id,
         tenant_key=tenant_b,
-        to_agents=["worker-b"],
         content="Message for tenant B agent",
         message_type="direct",
         priority="normal",
         status="pending",
-        meta_data={"_from_agent": "orchestrator"},
+        from_agent_id="orchestrator",
     )
     db_session.add(message_a)
     db_session.add(message_b)
+    await db_session.flush()
+    db_session.add(MessageRecipient(
+        message_id=message_a.id, agent_id="worker-a", tenant_key=tenant_a,
+    ))
+    db_session.add(MessageRecipient(
+        message_id=message_b.id, agent_id="worker-b", tenant_key=tenant_b,
+    ))
     await db_session.commit()
 
     for obj in [message_a, message_b]:
