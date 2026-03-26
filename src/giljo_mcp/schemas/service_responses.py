@@ -685,7 +685,9 @@ class ProjectDetail(BaseModel):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     completed_at: Optional[str] = None
-    meta_data: dict = Field(default_factory=dict)
+    cancellation_reason: Optional[str] = None
+    deactivation_reason: Optional[str] = None
+    early_termination: bool = False
     agents: list[dict] = Field(default_factory=list)
     agent_count: int = 0
     message_count: int = 0
@@ -805,7 +807,9 @@ class ProjectData(BaseModel):
     mission: Optional[str] = None
     description: Optional[str] = None
     execution_mode: Optional[str] = None
-    meta_data: dict = Field(default_factory=dict)
+    cancellation_reason: Optional[str] = None
+    deactivation_reason: Optional[str] = None
+    early_termination: bool = False
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     activated_at: Optional[str] = None

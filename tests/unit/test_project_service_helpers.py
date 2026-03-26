@@ -34,7 +34,9 @@ def mock_project():
     project.mission = None
     project.description = "Original Description"
     project.execution_mode = "orchestrated"
-    project.meta_data = {"key": "value"}
+    project.cancellation_reason = None
+    project.deactivation_reason = None
+    project.early_termination = False
     project.created_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     project.updated_at = datetime(2026, 1, 2, 12, 0, 0, tzinfo=timezone.utc)
     project.activated_at = datetime(2026, 1, 1, 13, 0, 0, tzinfo=timezone.utc)
@@ -190,17 +192,33 @@ class TestBuildProjectData:
         assert result.activated_at is None
         assert result.completed_at is None
 
-    def test_meta_data_defaults_to_empty_dict_when_none(self, mock_project):
-        """meta_data is {} when the project has None meta_data."""
-        mock_project.meta_data = None
+    def test_cancellation_reason_defaults_to_none(self, mock_project):
+        """cancellation_reason is None by default."""
         result = ProjectService._build_project_data(mock_project)
-        assert result.meta_data == {}
+        assert result.cancellation_reason is None
 
-    def test_meta_data_preserved_when_present(self, mock_project):
-        """meta_data is passed through when the project has non-None meta_data."""
-        mock_project.meta_data = {"foo": "bar"}
+    def test_cancellation_reason_preserved_when_set(self, mock_project):
+        """cancellation_reason is passed through when set on the project."""
+        mock_project.cancellation_reason = "Budget exceeded"
         result = ProjectService._build_project_data(mock_project)
-        assert result.meta_data == {"foo": "bar"}
+        assert result.cancellation_reason == "Budget exceeded"
+
+    def test_deactivation_reason_preserved_when_set(self, mock_project):
+        """deactivation_reason is passed through when set on the project."""
+        mock_project.deactivation_reason = "User requested"
+        result = ProjectService._build_project_data(mock_project)
+        assert result.deactivation_reason == "User requested"
+
+    def test_early_termination_defaults_to_false(self, mock_project):
+        """early_termination defaults to False."""
+        result = ProjectService._build_project_data(mock_project)
+        assert result.early_termination is False
+
+    def test_early_termination_preserved_when_true(self, mock_project):
+        """early_termination is passed through when True."""
+        mock_project.early_termination = True
+        result = ProjectService._build_project_data(mock_project)
+        assert result.early_termination is True
 
     def test_project_type_object_passed_through(self, mock_project):
         """project_type relationship object is passed through."""

@@ -84,8 +84,8 @@ async def generate_orchestrator_prompt(
     agent_count_result = await db.execute(agent_count_stmt)
     agent_count = agent_count_result.scalar() or 0
 
-    # Determine project path (default to current directory if not set)
-    project_path = project.meta_data.get("path", ".") if project.meta_data else "."
+    # Default project path
+    project_path = "."
 
     # Generate prompt based on tool type
     if tool == "claude-code":
@@ -646,8 +646,6 @@ async def get_termination_prompt(
     Raises:
         HTTPException 404: Project not found or no working orchestrator
     """
-    from sqlalchemy.orm.attributes import flag_modified
-
     # 1. Fetch project with tenant isolation
     project_stmt = select(Project).where(
         Project.id == project_id,
@@ -705,11 +703,8 @@ async def get_termination_prompt(
     agent_result = await db.execute(agent_stmt)
     agents = agent_result.scalars().all()
 
-    # 4. Set early_termination flag on project metadata
-    meta = project.meta_data or {}
-    meta["early_termination"] = True
-    project.meta_data = meta
-    flag_modified(project, "meta_data")
+    # 4. Set early_termination flag on project
+    project.early_termination = True
     await db.commit()
 
     # 5. Build agent list for prompt
