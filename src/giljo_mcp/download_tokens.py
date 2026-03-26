@@ -18,7 +18,7 @@ Usage:
     token = await manager.generate_token(
         tenant_key="abc123",
         download_type="slash_commands",
-        metadata={"filename": "slash_commands.zip"}
+        filename="slash_commands.zip",
     )
 
     # Validate token
