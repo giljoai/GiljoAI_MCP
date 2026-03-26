@@ -524,7 +524,7 @@ watch(missionText, (next, previous) => {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
+      color: $color-background-primary;
       font-weight: $typography-font-weight-bold;
       font-size: 13px;
       flex-shrink: 0;
