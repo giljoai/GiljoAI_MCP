@@ -236,12 +236,12 @@ const statusColors = {
 
 // Agent role colors
 const agentRoleColors = {
-  orchestrator: '#FFD700',
-  implementer: '#4caf50',
-  tester: '#2196f3',
-  analyzer: '#9c27b0',
-  documenter: '#ff9800',
-  reviewer: '#00bcd4',
+  orchestrator: '#D4A574',
+  implementer: '#3498DB',
+  tester: '#FFC300',
+  analyzer: '#E74C3C',
+  documenter: '#27AE60',
+  reviewer: '#9B59B6',
 }
 
 // Fallback palette for unknown roles
@@ -288,7 +288,7 @@ const statusChartData = computed(() => {
   const colors = []
 
   for (const [status, count] of Object.entries(dist)) {
-    if (count > 0) {
+    if (count > 0 && status !== 'deleted') {
       labels.push(status.charAt(0).toUpperCase() + status.slice(1))
       values.push(count)
       colors.push(statusColors[status] || '#9e9e9e')
