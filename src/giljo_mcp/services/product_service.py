@@ -323,7 +323,15 @@ class ProductService:
                     self._create_config_relations(session, product_id, config_parts)
 
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=[
+                        "tech_stack",
+                        "architecture",
+                        "test_config",
+                        "vision_documents",
+                    ],
+                )
 
                 self._logger.info(f"Created product {product.id} for tenant {self.tenant_key}")
 
@@ -548,7 +556,10 @@ class ProductService:
                 product.updated_at = datetime.now(timezone.utc)
 
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 self._logger.info(f"Updated product {product_id}")
 
@@ -655,7 +666,10 @@ class ProductService:
                 product.updated_at = datetime.now(timezone.utc)
 
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 self._logger.info(f"Activated product {product_id} (deactivated {len(products_to_deactivate)} others)")
 
@@ -706,7 +720,10 @@ class ProductService:
                 product.updated_at = datetime.now(timezone.utc)
 
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 self._logger.info(f"Deactivated product {product_id}")
 
@@ -815,7 +832,10 @@ class ProductService:
                 # Note: Don't auto-activate on restore, let user explicitly activate
 
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 self._logger.info(f"Restored product {product_id}")
 
@@ -1144,7 +1164,10 @@ class ProductService:
                     pass
 
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 self._logger.info(f"Updated git integration for product {product_id}: enabled={enabled}")
 
