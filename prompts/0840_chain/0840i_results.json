@@ -1,0 +1,56 @@
+{
+  "handover": "0840i",
+  "title": "Remove All Backward Compatibility Layers",
+  "status": "completed",
+  "timestamp": "2026-03-25T22:30:00Z",
+  "branch": "feature/0840-jsonb-normalization",
+  "edition_scope": "CE",
+  "summary": "Removed ALL backward compatibility / legacy reconstruction code from the 0840 JSONB normalization series. ONE clean path only — no config_data dict, no legacy field name mappings, no dual systems.",
+  "changes": {
+    "files_modified": 12,
+    "lines_removed_approx": 448,
+    "lines_added_approx": 328
+  },
+  "part_1_product_config_data": {
+    "status": "completed",
+    "details": [
+      "api/endpoints/products/models.py: Added TechStackSchema, ArchitectureSchema, TestConfigSchema. Replaced config_data/has_config_data with typed fields in ProductCreate, ProductUpdate, ProductResponse.",
+      "api/endpoints/products/crud.py: Replaced _build_product_response() to expose normalized fields via typed schemas. Added override_active parameter. Updated create/update endpoints.",
+      "api/endpoints/products/lifecycle.py: Removed duplicate _build_product_response() (77 lines). Now imports from crud.py.",
+      "src/giljo_mcp/services/product_service.py: Removed ALL legacy field name fallbacks from _create_config_relations and _update_config_relations. Changed create_product/update_product to accept tech_stack, architecture, test_config, core_features as separate params.",
+      "frontend/src/components/products/ProductForm.vue: Replaced configData wrapper with flat techStack, architecture, testConfig, coreFeatures. Renamed all short field names to canonical column names. Updated saveProduct() and loadProductData().",
+      "frontend/src/components/products/ProductDetailsDialog.vue: Replaced all product.config_data.* references with direct field access. Updated display labels to canonical names.",
+      "frontend/src/services/api.js: Updated products.create() and products.update() to send normalized fields.",
+      "frontend/src/views/ProductsView.vue: Simplified saveProduct() and productForm to remove stale configData structure."
+    ]
+  },
+  "part_2_message_compat": {
+    "status": "completed",
+    "details": [
+      "api/endpoints/messages.py: Removed to_agent compat field from MessageResponse. Updated list_messages to use to_agents list instead of to_agent single value.",
+      "frontend/src/types/message.ts: Removed to_agent backward compat alias."
+    ]
+  },
+  "part_3_field_name_harmonization": {
+    "status": "completed",
+    "details": [
+      "All legacy short-name mappings removed (languages->programming_languages, frontend->frontend_frameworks, backend->backend_frameworks, database->databases_storage, pattern->primary_pattern, notes->architecture_notes, strategy->test_strategy, frameworks->testing_frameworks).",
+      "Frontend form bindings use canonical column names directly.",
+      "Service layer accepts canonical names only — no fallbacks."
+    ]
+  },
+  "tests": {
+    "total_passed": 1816,
+    "total_failed": 0,
+    "product_tests_passed": 17,
+    "ruff_clean": true
+  },
+  "success_criteria": {
+    "no_config_data_in_api": true,
+    "no_to_agent_compat": true,
+    "no_legacy_field_mappings": true,
+    "frontend_normalized": true,
+    "all_tests_pass": true,
+    "ruff_clean": true
+  }
+}

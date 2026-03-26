@@ -18,6 +18,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import ProductService
 
+from .crud import _build_product_response
 from .dependencies import get_product_service
 from .models import (
     ActiveProductRefreshResponse,
@@ -31,85 +32,6 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-def _build_product_response(product, stats=None, override_active=None) -> ProductResponse:
-    """
-    Build a ProductResponse from a Product ORM model and optional ProductStatistics.
-
-    Args:
-        product: Product ORM model
-        stats: Optional ProductStatistics for metrics fields
-        override_active: Optional bool to override product.is_active in response
-
-    Returns:
-        ProductResponse Pydantic model
-    """
-    # Handover 0840c: Reconstruct config_data from normalized tables
-    config_data = {}
-
-    ts = product.tech_stack
-    if ts:
-        config_data["tech_stack"] = {
-            "languages": ts.programming_languages or "",
-            "frontend": ts.frontend_frameworks or "",
-            "backend": ts.backend_frameworks or "",
-            "database": ts.databases_storage or "",
-            "infrastructure": ts.infrastructure or "",
-            "dev_tools": ts.dev_tools or "",
-        }
-
-    arch = product.architecture
-    if arch:
-        config_data["architecture"] = {
-            "pattern": arch.primary_pattern or "",
-            "design_patterns": arch.design_patterns or "",
-            "api_style": arch.api_style or "",
-            "notes": arch.architecture_notes or "",
-        }
-
-    if product.core_features:
-        config_data["features"] = {"core": product.core_features}
-
-    tc = product.test_config
-    if tc:
-        config_data["test_config"] = {
-            "strategy": tc.test_strategy or "",
-            "coverage_target": tc.coverage_target or 80,
-            "frameworks": tc.testing_frameworks or "",
-            "quality_standards": tc.quality_standards or "",
-        }
-
-    config_data = config_data or None
-    has_config_data = bool(config_data)
-
-    # Handover 0412: Ensure product_memory is never None
-    pm = product.product_memory
-    if pm is None:
-        pm = {"github": {}, "sequential_history": [], "context": {}}
-
-    is_active = override_active if override_active is not None else product.is_active
-
-    return ProductResponse(
-        id=str(product.id),
-        name=product.name,
-        description=product.description,
-        vision_path=None,
-        project_path=product.project_path,
-        created_at=product.created_at,
-        updated_at=product.updated_at,
-        project_count=stats.project_count if stats else 0,
-        task_count=stats.task_count if stats else 0,
-        has_vision=stats.has_vision if stats else False,
-        unresolved_tasks=stats.unresolved_tasks if stats else 0,
-        unfinished_projects=stats.unfinished_projects if stats else 0,
-        vision_documents_count=stats.vision_documents_count if stats else 0,
-        config_data=config_data,
-        has_config_data=has_config_data,
-        is_active=is_active,
-        product_memory=pm,
-        target_platforms=product.target_platforms or ["all"],
-    )
 
 
 @router.post("/{product_id}/activate", response_model=ProductActivationResponse)

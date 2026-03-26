@@ -139,16 +139,16 @@ class ProductService:
         return True, None
 
     def _create_config_relations(self, session: AsyncSession, product_id: str, config_data: dict) -> None:
-        """Create normalized config table rows from a config_data dict. Handover 0840c/0840f."""
+        """Create normalized config table rows from config data. Handover 0840i: canonical names only."""
         tech_stack = config_data.get("tech_stack")
         if tech_stack and isinstance(tech_stack, dict):
             ts = ProductTechStack(
                 product_id=product_id,
                 tenant_key=self.tenant_key,
-                programming_languages=tech_stack.get("programming_languages") or tech_stack.get("languages", ""),
-                frontend_frameworks=tech_stack.get("frontend_frameworks") or tech_stack.get("frontend", ""),
-                backend_frameworks=tech_stack.get("backend_frameworks") or tech_stack.get("backend", ""),
-                databases_storage=tech_stack.get("databases_storage") or tech_stack.get("database", ""),
+                programming_languages=tech_stack.get("programming_languages", ""),
+                frontend_frameworks=tech_stack.get("frontend_frameworks", ""),
+                backend_frameworks=tech_stack.get("backend_frameworks", ""),
+                databases_storage=tech_stack.get("databases_storage", ""),
                 infrastructure=tech_stack.get("infrastructure", ""),
                 dev_tools=tech_stack.get("dev_tools", ""),
             )
@@ -159,10 +159,10 @@ class ProductService:
             arch = ProductArchitecture(
                 product_id=product_id,
                 tenant_key=self.tenant_key,
-                primary_pattern=architecture.get("primary_pattern") or architecture.get("pattern", ""),
+                primary_pattern=architecture.get("primary_pattern", ""),
                 design_patterns=architecture.get("design_patterns", ""),
                 api_style=architecture.get("api_style", ""),
-                architecture_notes=architecture.get("architecture_notes") or architecture.get("notes", ""),
+                architecture_notes=architecture.get("architecture_notes", ""),
             )
             session.add(arch)
 
@@ -172,14 +172,14 @@ class ProductService:
                 product_id=product_id,
                 tenant_key=self.tenant_key,
                 quality_standards=test_config.get("quality_standards", ""),
-                test_strategy=test_config.get("test_strategy") or test_config.get("strategy", ""),
+                test_strategy=test_config.get("test_strategy", ""),
                 coverage_target=test_config.get("coverage_target", 80),
-                testing_frameworks=test_config.get("testing_frameworks") or test_config.get("frameworks", ""),
+                testing_frameworks=test_config.get("testing_frameworks", ""),
             )
             session.add(tc)
 
     async def _update_config_relations(self, session: AsyncSession, product: Product, config_data: dict) -> None:
-        """Update normalized config table rows from a config_data dict. Handover 0840c/0840f."""
+        """Update normalized config table rows. Handover 0840i: canonical names only."""
         tech_stack = config_data.get("tech_stack")
         if tech_stack and isinstance(tech_stack, dict):
             ts = product.tech_stack
@@ -187,10 +187,10 @@ class ProductService:
                 ts = ProductTechStack(product_id=product.id, tenant_key=self.tenant_key)
                 session.add(ts)
                 product.tech_stack = ts
-            ts.programming_languages = tech_stack.get("programming_languages") or tech_stack.get("languages", "")
-            ts.frontend_frameworks = tech_stack.get("frontend_frameworks") or tech_stack.get("frontend", "")
-            ts.backend_frameworks = tech_stack.get("backend_frameworks") or tech_stack.get("backend", "")
-            ts.databases_storage = tech_stack.get("databases_storage") or tech_stack.get("database", "")
+            ts.programming_languages = tech_stack.get("programming_languages", "")
+            ts.frontend_frameworks = tech_stack.get("frontend_frameworks", "")
+            ts.backend_frameworks = tech_stack.get("backend_frameworks", "")
+            ts.databases_storage = tech_stack.get("databases_storage", "")
             ts.infrastructure = tech_stack.get("infrastructure", "")
             ts.dev_tools = tech_stack.get("dev_tools", "")
 
@@ -201,10 +201,10 @@ class ProductService:
                 arch = ProductArchitecture(product_id=product.id, tenant_key=self.tenant_key)
                 session.add(arch)
                 product.architecture = arch
-            arch.primary_pattern = architecture.get("primary_pattern") or architecture.get("pattern", "")
+            arch.primary_pattern = architecture.get("primary_pattern", "")
             arch.design_patterns = architecture.get("design_patterns", "")
             arch.api_style = architecture.get("api_style", "")
-            arch.architecture_notes = architecture.get("architecture_notes") or architecture.get("notes", "")
+            arch.architecture_notes = architecture.get("architecture_notes", "")
 
         test_config = config_data.get("test_config")
         if test_config and isinstance(test_config, dict):
@@ -214,9 +214,9 @@ class ProductService:
                 session.add(tc)
                 product.test_config = tc
             tc.quality_standards = test_config.get("quality_standards", "")
-            tc.test_strategy = test_config.get("test_strategy") or test_config.get("strategy", "")
+            tc.test_strategy = test_config.get("test_strategy", "")
             tc.coverage_target = test_config.get("coverage_target", 80)
-            tc.testing_frameworks = test_config.get("testing_frameworks") or test_config.get("frameworks", "")
+            tc.testing_frameworks = test_config.get("testing_frameworks", "")
 
     # ============================================================================
     # CRUD Operations
@@ -227,18 +227,26 @@ class ProductService:
         name: str,
         description: str | None = None,
         project_path: str | None = None,
-        config_data: dict[str, Any | None] = None,
-        product_memory: dict[str, Any | None] = None,  # Handover 0135
-        target_platforms: list[str | None] = None,  # Handover 0425
+        tech_stack: dict[str, Any] | None = None,
+        architecture: dict[str, Any] | None = None,
+        test_config: dict[str, Any] | None = None,
+        core_features: str | None = None,
+        product_memory: dict[str, Any] | None = None,  # Handover 0135
+        target_platforms: list[str] | None = None,  # Handover 0425
     ) -> Product:
         """
         Create a new product.
+
+        Handover 0840i: Accepts normalized config fields directly instead of config_data dict.
 
         Args:
             name: Product name (required)
             description: Product description
             project_path: File system path to product folder
-            config_data: Rich configuration data (architecture, tech_stack, etc.)
+            tech_stack: Tech stack configuration dict
+            architecture: Architecture configuration dict
+            test_config: Test configuration dict
+            core_features: Core product features string
             product_memory: 360 Memory data (GitHub, sequential_history, context) - Handover 0135
             target_platforms: Target OS platforms (windows, linux, macos, or all) - Handover 0425
 
@@ -254,6 +262,7 @@ class ProductService:
             ...     name="MyApp",
             ...     description="Mobile application",
             ...     project_path="/projects/myapp",
+            ...     tech_stack={"programming_languages": "Python 3.12"},
             ...     target_platforms=["windows", "linux"]
             ... )
             >>> print(product.id)
@@ -285,12 +294,6 @@ class ProductService:
                 }
 
                 product_id = str(uuid4())
-                # Handover 0840c: Extract core_features from config_data if present
-                core_features = None
-                if config_data and "features" in config_data:
-                    core_features = config_data["features"].get("core")
-                elif config_data and "core_features" in config_data:
-                    core_features = config_data["core_features"]
 
                 validated_memory = validate_product_memory(product_memory) or default_memory
                 product = Product(
@@ -308,9 +311,16 @@ class ProductService:
 
                 session.add(product)
 
-                # Handover 0840c: Create normalized config table rows
-                if config_data:
-                    self._create_config_relations(session, product_id, config_data)
+                # Handover 0840i: Create normalized config table rows from typed fields
+                config_parts = {}
+                if tech_stack:
+                    config_parts["tech_stack"] = tech_stack
+                if architecture:
+                    config_parts["architecture"] = architecture
+                if test_config:
+                    config_parts["test_config"] = test_config
+                if config_parts:
+                    self._create_config_relations(session, product_id, config_parts)
 
                 await session.commit()
                 await session.refresh(product)
@@ -460,7 +470,8 @@ class ProductService:
 
         Args:
             product_id: Product UUID
-            **updates: Fields to update (name, description, project_path, config_data, product_memory, target_platforms, etc.)
+            **updates: Fields to update (name, description, project_path, tech_stack, architecture,
+                test_config, core_features, product_memory, target_platforms, etc.)
 
         Returns:
             Product ORM model after commit and refresh
@@ -474,7 +485,7 @@ class ProductService:
             >>> product = await service.update_product(
             ...     "abc-123",
             ...     description="Updated description",
-            ...     config_data={"tech_stack": {"python": "3.11"}},
+            ...     tech_stack={"programming_languages": "Python 3.12"},
             ...     product_memory={"github": {"enabled": True}},  # Handover 0135
             ...     target_platforms=["windows", "linux"]  # Handover 0425
             ... )
@@ -510,15 +521,24 @@ class ProductService:
                         message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
-                # Handover 0840c: Handle config_data → normalized tables
-                config_data = updates.pop("config_data", None)
-                if config_data and isinstance(config_data, dict):
-                    # Extract core_features
-                    if "features" in config_data:
-                        product.core_features = config_data["features"].get("core")
-                    elif "core_features" in config_data:
-                        product.core_features = config_data["core_features"]
-                    await self._update_config_relations(session, product, config_data)
+                # Handover 0840i: Handle normalized config fields
+                tech_stack = updates.pop("tech_stack", None)
+                architecture_data = updates.pop("architecture", None)
+                test_config = updates.pop("test_config", None)
+                core_features = updates.pop("core_features", None)
+
+                if core_features is not None:
+                    product.core_features = core_features
+
+                config_parts = {}
+                if tech_stack and isinstance(tech_stack, dict):
+                    config_parts["tech_stack"] = tech_stack
+                if architecture_data and isinstance(architecture_data, dict):
+                    config_parts["architecture"] = architecture_data
+                if test_config and isinstance(test_config, dict):
+                    config_parts["test_config"] = test_config
+                if config_parts:
+                    await self._update_config_relations(session, product, config_parts)
 
                 # Apply remaining updates
                 for field, value in updates.items():
