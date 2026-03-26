@@ -40,6 +40,7 @@ from src.giljo_mcp.exceptions import (
 )
 from src.giljo_mcp.models import Product, Project, Task, VisionDocument
 from src.giljo_mcp.models.products import ProductArchitecture, ProductTechStack, ProductTestConfig
+from src.giljo_mcp.schemas.jsonb_validators import validate_product_memory
 from src.giljo_mcp.schemas.service_responses import (
     CascadeImpact,
     DeleteResult,
@@ -138,16 +139,16 @@ class ProductService:
         return True, None
 
     def _create_config_relations(self, session: AsyncSession, product_id: str, config_data: dict) -> None:
-        """Create normalized config table rows from a config_data dict. Handover 0840c."""
+        """Create normalized config table rows from a config_data dict. Handover 0840c/0840f."""
         tech_stack = config_data.get("tech_stack")
         if tech_stack and isinstance(tech_stack, dict):
             ts = ProductTechStack(
                 product_id=product_id,
                 tenant_key=self.tenant_key,
-                programming_languages=tech_stack.get("languages", ""),
-                frontend_frameworks=tech_stack.get("frontend", ""),
-                backend_frameworks=tech_stack.get("backend", ""),
-                databases_storage=tech_stack.get("database", ""),
+                programming_languages=tech_stack.get("programming_languages") or tech_stack.get("languages", ""),
+                frontend_frameworks=tech_stack.get("frontend_frameworks") or tech_stack.get("frontend", ""),
+                backend_frameworks=tech_stack.get("backend_frameworks") or tech_stack.get("backend", ""),
+                databases_storage=tech_stack.get("databases_storage") or tech_stack.get("database", ""),
                 infrastructure=tech_stack.get("infrastructure", ""),
                 dev_tools=tech_stack.get("dev_tools", ""),
             )
@@ -158,10 +159,10 @@ class ProductService:
             arch = ProductArchitecture(
                 product_id=product_id,
                 tenant_key=self.tenant_key,
-                primary_pattern=architecture.get("pattern", ""),
+                primary_pattern=architecture.get("primary_pattern") or architecture.get("pattern", ""),
                 design_patterns=architecture.get("design_patterns", ""),
                 api_style=architecture.get("api_style", ""),
-                architecture_notes=architecture.get("notes", ""),
+                architecture_notes=architecture.get("architecture_notes") or architecture.get("notes", ""),
             )
             session.add(arch)
 
@@ -171,14 +172,14 @@ class ProductService:
                 product_id=product_id,
                 tenant_key=self.tenant_key,
                 quality_standards=test_config.get("quality_standards", ""),
-                test_strategy=test_config.get("strategy", ""),
+                test_strategy=test_config.get("test_strategy") or test_config.get("strategy", ""),
                 coverage_target=test_config.get("coverage_target", 80),
-                testing_frameworks=test_config.get("frameworks", ""),
+                testing_frameworks=test_config.get("testing_frameworks") or test_config.get("frameworks", ""),
             )
             session.add(tc)
 
     async def _update_config_relations(self, session: AsyncSession, product: Product, config_data: dict) -> None:
-        """Update normalized config table rows from a config_data dict. Handover 0840c."""
+        """Update normalized config table rows from a config_data dict. Handover 0840c/0840f."""
         tech_stack = config_data.get("tech_stack")
         if tech_stack and isinstance(tech_stack, dict):
             ts = product.tech_stack
@@ -186,10 +187,10 @@ class ProductService:
                 ts = ProductTechStack(product_id=product.id, tenant_key=self.tenant_key)
                 session.add(ts)
                 product.tech_stack = ts
-            ts.programming_languages = tech_stack.get("languages", "")
-            ts.frontend_frameworks = tech_stack.get("frontend", "")
-            ts.backend_frameworks = tech_stack.get("backend", "")
-            ts.databases_storage = tech_stack.get("database", "")
+            ts.programming_languages = tech_stack.get("programming_languages") or tech_stack.get("languages", "")
+            ts.frontend_frameworks = tech_stack.get("frontend_frameworks") or tech_stack.get("frontend", "")
+            ts.backend_frameworks = tech_stack.get("backend_frameworks") or tech_stack.get("backend", "")
+            ts.databases_storage = tech_stack.get("databases_storage") or tech_stack.get("database", "")
             ts.infrastructure = tech_stack.get("infrastructure", "")
             ts.dev_tools = tech_stack.get("dev_tools", "")
 
@@ -200,10 +201,10 @@ class ProductService:
                 arch = ProductArchitecture(product_id=product.id, tenant_key=self.tenant_key)
                 session.add(arch)
                 product.architecture = arch
-            arch.primary_pattern = architecture.get("pattern", "")
+            arch.primary_pattern = architecture.get("primary_pattern") or architecture.get("pattern", "")
             arch.design_patterns = architecture.get("design_patterns", "")
             arch.api_style = architecture.get("api_style", "")
-            arch.architecture_notes = architecture.get("notes", "")
+            arch.architecture_notes = architecture.get("architecture_notes") or architecture.get("notes", "")
 
         test_config = config_data.get("test_config")
         if test_config and isinstance(test_config, dict):
@@ -213,9 +214,9 @@ class ProductService:
                 session.add(tc)
                 product.test_config = tc
             tc.quality_standards = test_config.get("quality_standards", "")
-            tc.test_strategy = test_config.get("strategy", "")
+            tc.test_strategy = test_config.get("test_strategy") or test_config.get("strategy", "")
             tc.coverage_target = test_config.get("coverage_target", 80)
-            tc.testing_frameworks = test_config.get("frameworks", "")
+            tc.testing_frameworks = test_config.get("testing_frameworks") or test_config.get("frameworks", "")
 
     # ============================================================================
     # CRUD Operations
@@ -291,6 +292,7 @@ class ProductService:
                 elif config_data and "core_features" in config_data:
                     core_features = config_data["core_features"]
 
+                validated_memory = validate_product_memory(product_memory) or default_memory
                 product = Product(
                     id=product_id,
                     tenant_key=self.tenant_key,
@@ -298,7 +300,7 @@ class ProductService:
                     description=description,
                     project_path=project_path,
                     core_features=core_features,
-                    product_memory=product_memory or default_memory,  # Handover 0135
+                    product_memory=validated_memory,  # Handover 0135
                     target_platforms=target_platforms or ["all"],  # Handover 0425
                     is_active=False,  # Products start inactive
                     created_at=datetime.now(timezone.utc),
@@ -1102,6 +1104,9 @@ class ProductService:
                     product.product_memory["git_integration"] = {
                         "enabled": False,
                     }
+
+                # Validate the full product_memory after mutation
+                product.product_memory = validate_product_memory(product.product_memory)
 
                 product.updated_at = datetime.now(timezone.utc)
 
