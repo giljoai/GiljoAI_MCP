@@ -296,7 +296,11 @@
       v-model="showDeletedProductsDialog"
       :deleted-products="deletedProducts"
       :restoring-product-id="restoringProductId"
+      :purging-product-id="purgingProductId"
+      :purging-all="purgingAllProducts"
       @restore="restoreProduct"
+      @purge="purgeDeletedProduct"
+      @purge-all="purgeAllDeletedProducts"
     />
 
     <!-- Handover 0050: Activation Warning Dialog -->
@@ -356,6 +360,8 @@ const currentActiveProduct = ref(null)
 const showDeletedProductsDialog = ref(false)
 const deletedProducts = ref([])
 const restoringProductId = ref(null)
+const purgingProductId = ref(null)
+const purgingAllProducts = ref(false)
 
 const productForm = ref({
   name: '',
@@ -926,15 +932,16 @@ async function loadDeletedProducts() {
   }
 }
 
-async function restoreProduct(product) {
+async function restoreProduct(productId) {
   if (restoringProductId.value) return // Prevent double-click
 
-  restoringProductId.value = product.id
+  const product = deletedProducts.value.find((p) => p.id === productId)
+  restoringProductId.value = productId
   try {
-    await api.products.restoreProduct(product.id)
+    await api.products.restoreProduct(productId)
 
     showToast({
-      message: `${product.name} restored successfully`,
+      message: `${product?.name || 'Product'} restored successfully`,
       type: 'success',
       duration: 3000,
     })
@@ -956,6 +963,69 @@ async function restoreProduct(product) {
     })
   } finally {
     restoringProductId.value = null
+  }
+}
+
+async function purgeDeletedProduct(productId) {
+  if (purgingProductId.value) return
+
+  const product = deletedProducts.value.find((p) => p.id === productId)
+  purgingProductId.value = productId
+  try {
+    await api.products.purge(productId)
+
+    showToast({
+      message: `${product?.name || 'Product'} permanently deleted.`,
+      type: 'warning',
+      duration: 3000,
+    })
+
+    await loadProducts()
+    await loadDeletedProducts()
+
+    if (deletedProducts.value.length === 0) {
+      showDeletedProductsDialog.value = false
+    }
+  } catch (error) {
+    console.error('Failed to purge product:', error)
+    showToast({
+      message: 'Failed to permanently delete product',
+      type: 'error',
+      duration: 5000,
+    })
+  } finally {
+    purgingProductId.value = null
+  }
+}
+
+async function purgeAllDeletedProducts() {
+  if (purgingAllProducts.value) return
+
+  purgingAllProducts.value = true
+  try {
+    const ids = deletedProducts.value.map((p) => p.id)
+    for (const id of ids) {
+      await api.products.purge(id)
+    }
+
+    showToast({
+      message: `${ids.length} product(s) permanently deleted.`,
+      type: 'warning',
+      duration: 3000,
+    })
+
+    await loadProducts()
+    await loadDeletedProducts()
+    showDeletedProductsDialog.value = false
+  } catch (error) {
+    console.error('Failed to purge all products:', error)
+    showToast({
+      message: 'Failed to delete all products',
+      type: 'error',
+      duration: 5000,
+    })
+  } finally {
+    purgingAllProducts.value = false
   }
 }
 
