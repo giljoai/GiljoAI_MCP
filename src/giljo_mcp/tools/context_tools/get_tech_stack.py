@@ -1,9 +1,6 @@
 """MCP tool for fetching tech stack information.
 
-Reuses logic from:
-- mission_planner._format_tech_stack() (lines 927-999)
-- Product model tech stack fields
-
+Handover 0840c: Reads from ProductTechStack table (normalized from config_data JSONB).
 Always returns ALL tech stack fields (no truncation).
 """
 
@@ -11,16 +8,17 @@ from typing import Any
 
 import structlog
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 from src.giljo_mcp.database import DatabaseManager
-from src.giljo_mcp.models import Product
+from src.giljo_mcp.models.products import Product
 
 
 logger = structlog.get_logger(__name__)
 
 
 def estimate_tokens(data: Any) -> int:
-    """Rough token estimation (1 token ≈ 4 chars)."""
+    """Rough token estimation (1 token ~ 4 chars)."""
     import json
 
     text = json.dumps(data) if not isinstance(data, str) else data
@@ -33,8 +31,7 @@ async def get_tech_stack(
     """
     Fetch tech stack information for given product.
 
-    Handover 0316: Reads from Product.config_data.tech_stack JSONB object (not direct columns).
-    Handover 0351: Removed sections parameter - always returns ALL fields.
+    Handover 0840c: Reads from product_tech_stacks table (normalized).
 
     Args:
         product_id: Product UUID
@@ -42,38 +39,12 @@ async def get_tech_stack(
         offset: Skip first N items (reserved for future pagination)
         limit: Max items to return (reserved for future pagination)
         db_manager: Database manager instance
-    Pagination (Future):
-        offset and limit parameters are reserved for future implementation.
-        Currently ignored - full implementation deferred to future handover.
 
     Returns:
-        Dict with tech stack from config_data.tech_stack:
-        {
-            "source": "tech_stack",
-            "data": {
-                "programming_languages": ["Python", "TypeScript"],
-                "frontend_frameworks": ["Vue 3"],
-                "backend_frameworks": ["FastAPI"],
-                "databases": ["PostgreSQL"],
-                "infrastructure": ["Docker"],
-                "dev_tools": ["Git"],
-                "target_platforms": ["windows", "linux"]  # Handover 0425
-            },
-            "metadata": {
-                "product_id": "uuid",
-                "tenant_key": "...",
-                "estimated_tokens": 400
-            }
-        }
+        Dict with tech stack data from product_tech_stacks table.
 
     Multi-Tenant Isolation:
         All queries filter by tenant_key and product_id.
-
-    Example:
-        result = await get_tech_stack(
-            product_id="123e4567-e89b-12d3-a456-426614174000",
-            tenant_key="tenant_abc"
-        )
     """
     logger.info("fetching_tech_stack_context", product_id=product_id, tenant_key=tenant_key)
 
@@ -82,10 +53,13 @@ async def get_tech_stack(
         raise ValueError("db_manager parameter is required")
 
     async with db_manager.get_session_async() as session:
-        # Fetch product tech stack fields
-        stmt = select(Product).where(Product.id == product_id, Product.tenant_key == tenant_key)
+        stmt = (
+            select(Product)
+            .options(joinedload(Product.tech_stack))
+            .where(Product.id == product_id, Product.tenant_key == tenant_key)
+        )
         result = await session.execute(stmt)
-        product = result.scalar_one_or_none()
+        product = result.unique().scalar_one_or_none()
 
         if not product:
             logger.warning(
@@ -97,31 +71,33 @@ async def get_tech_stack(
                 "metadata": {"product_id": product_id, "tenant_key": tenant_key, "error": "product_not_found"},
             }
 
-        # Handover 0316: Access config_data JSONB (not direct columns)
-        # Handover 0351: Removed sections parameter - always returns ALL fields
-        config_data = product.config_data or {}
-        tech_stack = config_data.get("tech_stack", {})
-
-        # Handover 0425: Include target_platforms from Product model
+        ts = product.tech_stack
         data = {
-            "programming_languages": tech_stack.get("languages", []),
-            "frontend_frameworks": tech_stack.get("frontend", []),
-            "backend_frameworks": tech_stack.get("backend", []),
-            "databases": tech_stack.get("database", []),
-            "infrastructure": tech_stack.get("infrastructure", []),
-            "dev_tools": tech_stack.get("dev_tools", []),
+            "programming_languages": (ts.programming_languages if ts else "") or "",
+            "frontend_frameworks": (ts.frontend_frameworks if ts else "") or "",
+            "backend_frameworks": (ts.backend_frameworks if ts else "") or "",
+            "databases": (ts.databases_storage if ts else "") or "",
+            "infrastructure": (ts.infrastructure if ts else "") or "",
+            "dev_tools": (ts.dev_tools if ts else "") or "",
             "target_platforms": product.target_platforms or ["all"],
         }
 
-        # Calculate token estimate
+        # Include platform booleans if tech stack exists
+        if ts:
+            data["target_windows"] = ts.target_windows
+            data["target_linux"] = ts.target_linux
+            data["target_macos"] = ts.target_macos
+            data["target_android"] = ts.target_android
+            data["target_ios"] = ts.target_ios
+            data["target_cross_platform"] = ts.target_cross_platform
+
         total_tokens = estimate_tokens(data)
 
         logger.info(
-            "tech_stack_fetched_from_config_data",
+            "tech_stack_fetched",
             product_id=product_id,
             tenant_key=tenant_key,
-            has_config_data=bool(product.config_data),
-            has_tech_stack=bool(config_data.get("tech_stack")),
+            has_tech_stack=ts is not None,
             estimated_tokens=total_tokens,
         )
 
@@ -131,6 +107,6 @@ async def get_tech_stack(
             "metadata": {
                 "product_id": product_id,
                 "tenant_key": tenant_key,
-                "pagination_supported": False,  # Reserved for future implementation
+                "pagination_supported": False,
             },
         }

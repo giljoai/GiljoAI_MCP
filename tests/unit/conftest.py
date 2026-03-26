@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from src.giljo_mcp.models import AgentTemplate, Product
+from src.giljo_mcp.models.products import ProductArchitecture, ProductTechStack, ProductTestConfig
 
 
 @pytest.fixture
@@ -120,45 +121,60 @@ def create_test_template(
 
 @pytest.fixture
 def sample_product():
-    """Create sample product with config_data"""
+    """Create sample product with normalized config relations (0840c)"""
     product = Product(
         id="test-product-1",
         tenant_key="test-tenant",
         name="Test Product",
-        config_data={
-            "architecture": "FastAPI + PostgreSQL",
-            "tech_stack": ["Python 3.11", "PostgreSQL 18"],
-            "codebase_structure": {"api": "REST endpoints", "core": "Orchestration"},
-            "critical_features": ["Multi-tenant", "Agent coordination"],
-            "test_commands": ["pytest tests/"],
-            "test_config": {"coverage_threshold": 80},
-            "api_docs": "/docs/api.md",
-            "documentation_style": "Markdown",
-            "serena_mcp_enabled": True,
-            "database_type": "postgresql",
-            "frontend_framework": "Vue 3",
-            "backend_framework": "FastAPI",
-        },
+    )
+    product.core_features = "Multi-tenant, Agent coordination"
+    product.tech_stack = ProductTechStack(
+        product_id="test-product-1",
+        tenant_key="test-tenant",
+        programming_languages="Python 3.11",
+        frontend_frameworks="Vue 3",
+        backend_frameworks="FastAPI",
+        databases_storage="PostgreSQL 18",
+    )
+    product.architecture = ProductArchitecture(
+        product_id="test-product-1",
+        tenant_key="test-tenant",
+        primary_pattern="FastAPI + PostgreSQL",
+        design_patterns="Repository, Service",
+        api_style="REST",
+        architecture_notes="Multi-tenant orchestration system",
+    )
+    product.test_config = ProductTestConfig(
+        product_id="test-product-1",
+        tenant_key="test-tenant",
+        quality_standards="80% coverage",
+        test_strategy="TDD",
+        coverage_target=80,
+        testing_frameworks="pytest",
     )
     return product
 
 
 @pytest.fixture
 def minimal_product():
-    """Create product with minimal config_data"""
+    """Create product with minimal config (only architecture)"""
     product = Product(
         id="test-product-minimal",
         tenant_key="test-tenant",
         name="Minimal Product",
-        config_data={"architecture": "Simple App", "serena_mcp_enabled": False},
+    )
+    product.architecture = ProductArchitecture(
+        product_id="test-product-minimal",
+        tenant_key="test-tenant",
+        primary_pattern="Simple App",
     )
     return product
 
 
 @pytest.fixture
 def empty_product():
-    """Create product with no config_data"""
-    product = Product(id="test-product-empty", tenant_key="test-tenant", name="Empty Product", config_data={})
+    """Create product with no config data"""
+    product = Product(id="test-product-empty", tenant_key="test-tenant", name="Empty Product")
     return product
 
 
