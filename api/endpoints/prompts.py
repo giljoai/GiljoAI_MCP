@@ -586,6 +586,7 @@ async def get_implementation_prompt(
         prio_result = await db.execute(
             select(UserFieldPriority).where(
                 UserFieldPriority.user_id == current_user.id,
+                UserFieldPriority.tenant_key == current_user.tenant_key,
                 UserFieldPriority.category == "git_history",
             )
         )
