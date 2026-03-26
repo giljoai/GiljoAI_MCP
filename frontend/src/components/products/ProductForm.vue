@@ -168,32 +168,10 @@
               <div class="text-subtitle-1 mb-1">Vision Documents</div>
               <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
 
-              <!-- Project path hint for file navigation -->
-              <v-alert
-                v-if="productForm.projectPath"
-                type="info"
-                variant="tonal"
-                density="compact"
-                class="mb-4"
-              >
-                <div class="d-flex align-center justify-space-between">
-                  <div>
-                    <strong>Project path:</strong>
-                    <code class="ml-2">{{ productForm.projectPath }}</code>
-                  </div>
-                  <v-btn
-                    size="small"
-                    variant="text"
-                    :icon="pathCopied ? 'mdi-check' : 'mdi-content-copy'"
-                    :color="pathCopied ? 'success' : 'default'"
-                    :title="pathCopied ? 'Copied!' : 'Copy path to clipboard'"
-                    @click="copyProjectPath"
-                  />
-                </div>
-                <div class="text-caption mt-1">
-                  Navigate to this folder when browsing for vision documents
-                </div>
-              </v-alert>
+              <!-- Project path display -->
+              <div v-if="productForm.projectPath" class="text-caption text-medium-emphasis mb-4">
+                Your configured project path: <code>{{ productForm.projectPath }}</code>
+              </div>
 
               <!-- Upload error alert -->
               <v-alert
@@ -819,7 +797,6 @@ const formValid = ref(false)
 const formRef = ref(null)
 const dialogTab = ref('basic')
 const visionFiles = ref([])
-const pathCopied = ref(false)
 
 // Product form data
 const productForm = ref({
@@ -977,18 +954,7 @@ function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString()
 }
 
-async function copyProjectPath() {
-  if (!productForm.value.projectPath) return
-  try {
-    await navigator.clipboard.writeText(productForm.value.projectPath)
-    pathCopied.value = true
-    setTimeout(() => {
-      pathCopied.value = false
-    }, 2000)
-  } catch (err) {
-    console.error('Failed to copy path:', err)
-  }
-}
+
 
 // Handover 0425: Platform selection handlers
 function handleAllPlatformChange(value) {
@@ -1098,7 +1064,6 @@ watch(
       dialogTab.value = 'basic'
       visionFiles.value = []
       saving.value = false
-      pathCopied.value = false
       loadProductData()
     }
   },
