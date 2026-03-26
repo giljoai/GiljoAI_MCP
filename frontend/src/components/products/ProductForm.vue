@@ -99,7 +99,10 @@
             <!-- Product Info Tab -->
             <v-window-item value="basic">
               <div class="text-subtitle-1 mb-1">Product Information</div>
-              <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
+              <div class="text-caption text-warning mb-4">
+                Used as context source by orchestrator.
+                <v-chip size="x-small" color="info" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
+              </div>
 
               <!-- Product Name -->
               <v-text-field
@@ -151,14 +154,6 @@
               >
                 <template #label>
                   <span>Core Product Features</span>
-                  <v-chip
-                    v-if="hasFieldPriority('core_features')"
-                    :color="getPriorityColor(getPriorityForField('core_features'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('core_features')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
             </v-window-item>
@@ -166,7 +161,10 @@
             <!-- Vision Documents Tab -->
             <v-window-item value="vision">
               <div class="text-subtitle-1 mb-1">Vision Documents</div>
-              <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
+              <div class="text-caption text-warning mb-4">
+                Used as context source by orchestrator.
+                <v-chip size="x-small" color="info" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
+              </div>
 
               <!-- Project path display -->
               <div v-if="productForm.projectPath" class="project-path-hint mb-4">
@@ -302,7 +300,10 @@
             <!-- Tech Stack Tab -->
             <v-window-item value="tech">
               <div class="text-subtitle-1 mb-1">Technology Stack Configuration</div>
-              <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
+              <div class="text-caption text-warning mb-4">
+                Used as context source by orchestrator.
+                <v-chip size="x-small" color="info" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
+              </div>
 
               <v-textarea
                 v-model="productForm.techStack.programming_languages"
@@ -317,14 +318,6 @@
               >
                 <template #label>
                   <span>Programming Languages</span>
-                  <v-chip
-                    v-if="hasFieldPriority('tech_stack.programming_languages')"
-                    :color="getPriorityColor(getPriorityForField('tech_stack.programming_languages'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('tech_stack.programming_languages')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
 
@@ -341,14 +334,6 @@
               >
                 <template #label>
                   <span>Frontend Frameworks & Libraries</span>
-                  <v-chip
-                    v-if="hasFieldPriority('tech_stack.frontend_frameworks')"
-                    :color="getPriorityColor(getPriorityForField('tech_stack.frontend_frameworks'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('tech_stack.frontend_frameworks')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
 
@@ -365,14 +350,6 @@
               >
                 <template #label>
                   <span>Backend Frameworks & Services</span>
-                  <v-chip
-                    v-if="hasFieldPriority('tech_stack.backend_frameworks')"
-                    :color="getPriorityColor(getPriorityForField('tech_stack.backend_frameworks'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('tech_stack.backend_frameworks')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
 
@@ -389,14 +366,6 @@
               >
                 <template #label>
                   <span>Databases & Data Storage</span>
-                  <v-chip
-                    v-if="hasFieldPriority('tech_stack.databases_storage')"
-                    :color="getPriorityColor(getPriorityForField('tech_stack.databases_storage'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('tech_stack.databases_storage')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
 
@@ -413,14 +382,6 @@
               >
                 <template #label>
                   <span>Infrastructure & DevOps</span>
-                  <v-chip
-                    v-if="hasFieldPriority('tech_stack.infrastructure')"
-                    :color="getPriorityColor(getPriorityForField('tech_stack.infrastructure'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('tech_stack.infrastructure')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
 
@@ -497,7 +458,10 @@
             <!-- Architecture Tab -->
             <v-window-item value="arch">
               <div class="text-subtitle-1 mb-1">Architecture & Design Patterns</div>
-              <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
+              <div class="text-caption text-warning mb-4">
+                Used as context source by orchestrator.
+                <v-chip size="x-small" color="info" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
+              </div>
 
               <v-textarea
                 v-model="productForm.architecture.primary_pattern"
@@ -512,14 +476,6 @@
               >
                 <template #label>
                   <span>Primary Architecture Pattern</span>
-                  <v-chip
-                    v-if="hasFieldPriority('architecture.primary_pattern')"
-                    :color="getPriorityColor(getPriorityForField('architecture.primary_pattern'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('architecture.primary_pattern')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
 
@@ -536,14 +492,6 @@
               >
                 <template #label>
                   <span>Design Patterns & Principles</span>
-                  <v-chip
-                    v-if="hasFieldPriority('architecture.design_patterns')"
-                    :color="getPriorityColor(getPriorityForField('architecture.design_patterns'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('architecture.design_patterns')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
 
@@ -560,14 +508,6 @@
               >
                 <template #label>
                   <span>API Style & Communication</span>
-                  <v-chip
-                    v-if="hasFieldPriority('architecture.api_style')"
-                    :color="getPriorityColor(getPriorityForField('architecture.api_style'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('architecture.api_style')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
 
@@ -583,14 +523,6 @@
               >
                 <template #label>
                   <span>Architecture Notes</span>
-                  <v-chip
-                    v-if="hasFieldPriority('architecture.architecture_notes')"
-                    :color="getPriorityColor(getPriorityForField('architecture.architecture_notes'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('architecture.architecture_notes')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
             </v-window-item>
@@ -598,7 +530,10 @@
             <!-- Testing Tab -->
             <v-window-item value="features">
               <div class="text-subtitle-1 mb-1">Quality Standards & Testing Configuration</div>
-              <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
+              <div class="text-caption text-warning mb-4">
+                Used as context source by orchestrator.
+                <v-chip size="x-small" color="info" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
+              </div>
 
               <!-- Quality Standards -->
               <v-textarea
@@ -614,14 +549,6 @@
               >
                 <template #label>
                   <span>Quality Standards</span>
-                  <v-chip
-                    v-if="hasFieldPriority('test_config.quality_standards')"
-                    :color="getPriorityColor(getPriorityForField('test_config.quality_standards'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('test_config.quality_standards')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
 
@@ -639,14 +566,6 @@
               >
                 <template #label>
                   <span>Testing Strategy & Approach</span>
-                  <v-chip
-                    v-if="hasFieldPriority('test_config.test_strategy')"
-                    :color="getPriorityColor(getPriorityForField('test_config.test_strategy'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('test_config.test_strategy')) }}
-                  </v-chip>
                 </template>
 
                 <!-- Enhanced dropdown items with icons and subtitles -->
@@ -673,14 +592,6 @@
               <div class="mb-4">
                 <label class="text-caption text-medium-emphasis">
                   Test Coverage Target: {{ productForm.testConfig.coverage_target }}%
-                  <v-chip
-                    v-if="hasFieldPriority('test_config.coverage_target')"
-                    :color="getPriorityColor(getPriorityForField('test_config.coverage_target'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('test_config.coverage_target')) }}
-                  </v-chip>
                 </label>
                 <v-slider
                   v-model="productForm.testConfig.coverage_target"
@@ -706,14 +617,6 @@
               >
                 <template #label>
                   <span>Testing Frameworks & Tools</span>
-                  <v-chip
-                    v-if="hasFieldPriority('test_config.testing_frameworks')"
-                    :color="getPriorityColor(getPriorityForField('test_config.testing_frameworks'))"
-                    size="x-small"
-                    class="ml-2"
-                  >
-                    {{ getPriorityLabel(getPriorityForField('test_config.testing_frameworks')) }}
-                  </v-chip>
                 </template>
               </v-textarea>
             </v-window-item>
@@ -743,7 +646,6 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useFieldPriority } from '@/composables/useFieldPriority'
 
 const props = defineProps({
   modelValue: {
@@ -781,15 +683,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'remove-vision', 'clear-upload-error'])
-
-// Field priority composable
-const { getPriorityForField, getPriorityLabel, getPriorityColor } = useFieldPriority()
-
-// Helper function to check if field has priority
-const hasFieldPriority = (fieldName) => {
-  const priority = getPriorityForField(fieldName)
-  return priority !== undefined && priority !== null
-}
 
 // State
 const saving = ref(false)
