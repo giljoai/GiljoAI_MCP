@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0828+0829+0830+0831+0832+0833+0834+0835+0836(a-e) COMPLETE. 0837(a-d)+0838+0839 ACTIVE. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0828+0829+0830+0831+0832+0833+0834+0835+0836(a-e)+0840(a-f) COMPLETE. 0837(a-d)+0838+0839 ACTIVE. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -48,6 +48,13 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0840a | Dead Column Cleanup (JSONB Normalization 1/6) | 2026-03-25 | COMPLETE — Dropped 7 dead meta_data columns, removed 6 ghost config keys, 1 migration. |
+| 0840b | Message Table Normalization (JSONB 2/6) | 2026-03-25 | COMPLETE — JSONB arrays → 3 junction tables (recipients, acknowledgments, completions) + 3 columns. 19 files updated. |
+| 0840c | Product Config Normalization (JSONB 3/6) | 2026-03-25 | COMPLETE — config_data JSONB → 3 relational tables (tech_stacks, architectures, test_configs) + core_features column. |
+| 0840d | User Settings Normalization (JSONB 4/6) | 2026-03-25 | COMPLETE — field_priority_config → user_field_priorities table, depth_config → 7 depth columns on users. |
+| 0840e | Project Meta + JSON→JSONB (JSONB 5/6) | 2026-03-25 | COMPLETE — Project meta_data → typed columns, download_tokens filename column, 20 JSON→JSONB conversions. |
+| 0840f | Validation & Schema Enforcement (JSONB 6/6) | 2026-03-25 | COMPLETE — Pydantic validators for all remaining JSONB columns, schema drift fix, write-time validation wired in. |
+| 0840g | Pre-existing Test Fixes | 2026-03-25 | COMPLETE — Fixed 2 pre-existing test failures unrelated to 0840 normalization. |
 | 0828 | OAuth 2.1 PKCE Flow for MCP Client Authorization | 2026-03-23 | COMPLETE — OAuth endpoints, OAuthService with PKCE S256, OAuthAuthorizationCode model, frontend consent page, MCP JWT auth, 33 tests. 7 commits (Mar 19-21). |
 | 0831 | Product Context Tuning — Scope Drift Detection & Review | 2026-03-23 | COMPLETE — ProductTuningService, submit_tuning_review MCP tool #24, 5 tuning endpoints, 2 Vue components, 39 tests, staleness notification hook. |
 | 0836 | Multi-Platform Agent Template Export (all sub-handovers) | 2026-03-23 | COMPLETE — 0836a-e: assembler+MCP, slash commands, frontend UI, two-phase install, Codex skill rewrite, Gemini format fix. All 3 platforms verified working. |
