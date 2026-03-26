@@ -10,6 +10,35 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 
+class TechStackSchema(BaseModel):
+    """Typed schema for product tech stack configuration. Handover 0840i."""
+
+    programming_languages: Optional[str] = None
+    frontend_frameworks: Optional[str] = None
+    backend_frameworks: Optional[str] = None
+    databases_storage: Optional[str] = None
+    infrastructure: Optional[str] = None
+    dev_tools: Optional[str] = None
+
+
+class ArchitectureSchema(BaseModel):
+    """Typed schema for product architecture configuration. Handover 0840i."""
+
+    primary_pattern: Optional[str] = None
+    design_patterns: Optional[str] = None
+    api_style: Optional[str] = None
+    architecture_notes: Optional[str] = None
+
+
+class TestConfigSchema(BaseModel):
+    """Typed schema for product test configuration. Handover 0840i."""
+
+    quality_standards: Optional[str] = None
+    test_strategy: Optional[str] = None
+    coverage_target: int = 80
+    testing_frameworks: Optional[str] = None
+
+
 class ProductCreate(BaseModel):
     """Request model for creating a product"""
 
@@ -18,7 +47,10 @@ class ProductCreate(BaseModel):
     project_path: Optional[str] = Field(
         None, description="File system path to product folder (required for agent export)"
     )
-    config_data: Optional[dict[str, Any]] = Field(None, description="Rich configuration data (JSONB)")
+    tech_stack: Optional[TechStackSchema] = Field(None, description="Tech stack configuration - Handover 0840i")
+    architecture: Optional[ArchitectureSchema] = Field(None, description="Architecture configuration - Handover 0840i")
+    test_config: Optional[TestConfigSchema] = Field(None, description="Test configuration - Handover 0840i")
+    core_features: Optional[str] = Field(None, description="Core product features - Handover 0840i")
     product_memory: Optional[dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
@@ -33,7 +65,10 @@ class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     project_path: Optional[str] = None
-    config_data: Optional[dict[str, Any]] = Field(None, description="Rich configuration data (JSONB)")
+    tech_stack: Optional[TechStackSchema] = Field(None, description="Tech stack configuration - Handover 0840i")
+    architecture: Optional[ArchitectureSchema] = Field(None, description="Architecture configuration - Handover 0840i")
+    test_config: Optional[TestConfigSchema] = Field(None, description="Test configuration - Handover 0840i")
+    core_features: Optional[str] = Field(None, description="Core product features - Handover 0840i")
     product_memory: Optional[dict[str, Any]] = Field(
         None, description="360 Memory storage (GitHub, learnings, context) - Handover 0135"
     )
@@ -57,8 +92,10 @@ class ProductResponse(BaseModel):
     unresolved_tasks: int = 0
     unfinished_projects: int = 0
     vision_documents_count: int = 0
-    config_data: Optional[dict] = Field(None, description="Rich configuration data")
-    has_config_data: bool = Field(default=False, description="Whether product has config_data populated")
+    tech_stack: Optional[TechStackSchema] = Field(None, description="Tech stack configuration - Handover 0840i")
+    architecture: Optional[ArchitectureSchema] = Field(None, description="Architecture configuration - Handover 0840i")
+    test_config: Optional[TestConfigSchema] = Field(None, description="Test configuration - Handover 0840i")
+    core_features: Optional[str] = Field(None, description="Core product features - Handover 0840i")
     is_active: bool = Field(default=False, description="Whether this product is currently active")
     project_path: Optional[str] = Field(
         None, description="File system path to product folder (required for agent export)"
