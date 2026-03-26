@@ -9,7 +9,6 @@ from typing import Any
 
 from sqlalchemy import (
     ARRAY,
-    JSON,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -514,7 +513,7 @@ class VisionDocument(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Additional metadata
-    meta_data = Column(JSON, default=dict, comment="Additional metadata: author, tags, source_url, etc.")
+    meta_data = Column(JSONB, default=dict, comment="Additional metadata: author, tags, source_url, etc.")
 
     # Relationships
     product = relationship("Product", back_populates="vision_documents")

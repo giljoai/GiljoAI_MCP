@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import (
-    JSON,
     Boolean,
     CheckConstraint,
     Column,
@@ -43,7 +42,7 @@ class Configuration(Base):
     tenant_key = Column(String(36), nullable=True)  # Null for global config
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=True)
     key = Column(String(255), nullable=False)
-    value = Column(JSON, nullable=False)
+    value = Column(JSONB, nullable=False)
     category = Column(String(100), default="general")
     description = Column(Text, nullable=True)
     is_secret = Column(Boolean, default=False)
@@ -75,7 +74,7 @@ class DiscoveryConfig(Base):
     path_value = Column(Text, nullable=False)  # Resolved path
     priority = Column(Integer, default=0)  # Higher priority overrides lower
     enabled = Column(Boolean, default=True)
-    settings = Column(JSON, default=dict)  # Additional settings (renamed from metadata)
+    settings = Column(JSONB, default=dict)  # Additional settings (renamed from metadata)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -125,11 +124,11 @@ class GitConfig(Base):
     # CI/CD webhook configuration
     webhook_url = Column(String(500), nullable=True)  # Webhook URL for CI/CD triggers
     webhook_secret = Column(String(255), nullable=True)  # Webhook secret for verification
-    webhook_events = Column(JSON, default=list)  # List of events to trigger webhook
+    webhook_events = Column(JSONB, default=list)  # List of events to trigger webhook
 
     # Git ignore and repository settings
-    ignore_patterns = Column(JSON, default=list)  # Additional .gitignore patterns
-    git_config_options = Column(JSON, default=dict)  # Custom git config options
+    ignore_patterns = Column(JSONB, default=list)  # Additional .gitignore patterns
+    git_config_options = Column(JSONB, default=dict)  # Custom git config options
 
     # Status and metadata
     is_active = Column(Boolean, default=True)
@@ -193,7 +192,7 @@ class GitCommit(Base):
     branch_name = Column(String(100), nullable=False)
 
     # Files and changes
-    files_changed = Column(JSON, default=list)  # List of file paths
+    files_changed = Column(JSONB, default=list)  # List of file paths
     insertions = Column(Integer, default=0)  # Lines added
     deletions = Column(Integer, default=0)  # Lines deleted
 
@@ -205,7 +204,7 @@ class GitCommit(Base):
     push_status = Column(String(20), default="pending")  # 'pending', 'pushed', 'failed'
     push_error = Column(Text, nullable=True)
     webhook_triggered = Column(Boolean, default=False)
-    webhook_response = Column(JSON, nullable=True)
+    webhook_response = Column(JSONB, nullable=True)
 
     # Timestamps
     committed_at = Column(DateTime(timezone=True), nullable=False)
@@ -614,9 +613,7 @@ class DownloadToken(Base):
 
     # Download metadata
     download_type = Column(String(50), nullable=False, comment="Type of download: 'slash_commands', 'agent_templates'")
-    meta_data = Column(
-        JSONB, default=dict, nullable=False, comment="Additional metadata (filename, file_count, file_size, etc.)"
-    )
+    filename = Column(String(255), nullable=True, comment="Original filename for the download")
 
     # Staging lifecycle and metrics (Handover 0102)
     staging_status = Column(

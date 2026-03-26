@@ -296,7 +296,7 @@ class TestCloseoutGateIntegration:
         mock_project.product_id = product_id
         mock_project.created_at = datetime.now(timezone.utc)
         mock_project.completed_at = None
-        mock_project.meta_data = {}
+
         mock_project.name = "Test Project"
 
         mock_product = MagicMock(spec=Product)
@@ -474,7 +474,7 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_project.product_id = product_id
         mock_project.created_at = datetime.now(timezone.utc)
         mock_project.completed_at = None
-        mock_project.meta_data = {}
+
         mock_project.name = "Test Project"
 
         mock_product = MagicMock(spec=Product)
@@ -570,7 +570,7 @@ class TestOrchestratorSelfDecommissionGuard:
         mock_project.product_id = product_id
         mock_project.created_at = datetime.now(timezone.utc)
         mock_project.completed_at = None
-        mock_project.meta_data = {}
+
         mock_project.name = "Test Project"
 
         mock_product = MagicMock(spec=Product)
