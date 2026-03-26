@@ -99,10 +99,7 @@
             <!-- Product Info Tab -->
             <v-window-item value="basic">
               <div class="text-subtitle-1 mb-1">Product Information</div>
-              <div class="text-caption text-warning mb-4">
-                Used as context source by orchestrator.
-                <v-chip size="x-small" color="info" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
-              </div>
+              <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
 
               <!-- Product Name -->
               <v-text-field
@@ -163,7 +160,7 @@
               <div class="text-subtitle-1 mb-1">Vision Documents</div>
               <div class="text-caption text-warning mb-4">
                 Used as context source by orchestrator.
-                <v-chip size="x-small" color="info" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
+                <v-chip size="x-small" color="success" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
               </div>
 
               <!-- Project path display -->
@@ -302,7 +299,7 @@
               <div class="text-subtitle-1 mb-1">Technology Stack Configuration</div>
               <div class="text-caption text-warning mb-4">
                 Used as context source by orchestrator.
-                <v-chip size="x-small" color="info" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
+                <v-chip size="x-small" color="success" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
               </div>
 
               <v-textarea
@@ -460,7 +457,7 @@
               <div class="text-subtitle-1 mb-1">Architecture & Design Patterns</div>
               <div class="text-caption text-warning mb-4">
                 Used as context source by orchestrator.
-                <v-chip size="x-small" color="info" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
+                <v-chip size="x-small" color="success" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
               </div>
 
               <v-textarea
@@ -532,7 +529,7 @@
               <div class="text-subtitle-1 mb-1">Quality Standards & Testing Configuration</div>
               <div class="text-caption text-warning mb-4">
                 Used as context source by orchestrator.
-                <v-chip size="x-small" color="info" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
+                <v-chip size="x-small" color="success" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
               </div>
 
               <!-- Quality Standards -->
