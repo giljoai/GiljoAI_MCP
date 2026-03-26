@@ -167,7 +167,7 @@
         <!-- Launch Tab -->
         <v-window-item value="launch">
           <LaunchTab
-            :project="project"
+            :project="projectWithUpdatedMode"
             :orchestrator="orchestrator"
             :is-staging="loadingStageProject"
             :git-enabled="gitEnabled"
@@ -580,9 +580,9 @@ async function copyPromptToClipboard(text) {
 async function handleExecutionModeChange(newValue) {
   const _modeLabels = {
     multi_terminal: 'Multi-Terminal mode enabled',
-    claude_code_cli: 'Subagent: Claude mode enabled',
-    codex_cli: 'Subagent: Codex mode enabled (experimental)',
-    gemini_cli: 'Subagent: Gemini mode enabled (experimental)',
+    claude_code_cli: 'Paste into Claude Code CLI',
+    codex_cli: 'Paste into Codex CLI (experimental)',
+    gemini_cli: 'Paste into Gemini CLI (experimental)',
   }
 
   try {
