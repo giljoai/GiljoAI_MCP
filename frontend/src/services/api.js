@@ -223,6 +223,7 @@ export const api = {
       return apiClient.put(`/api/v1/products/${id}`, payload)
     },
     delete: (id) => apiClient.delete(`/api/v1/products/${id}`),
+    purge: (id) => apiClient.delete(`/api/v1/products/${id}/purge`),
     getCascadeImpact: (id) => apiClient.get(`/api/v1/products/${id}/cascade-impact`),
 
     // Product activation endpoints (Handover 0049)
