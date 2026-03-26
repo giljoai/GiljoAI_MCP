@@ -396,7 +396,7 @@ class ToolAccessor:
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type=content_type,
-                    metadata={"filename": filename},
+                    filename=filename,
                 )
 
                 # Stage files
