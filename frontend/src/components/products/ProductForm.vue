@@ -169,8 +169,8 @@
               <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
 
               <!-- Project path display -->
-              <div v-if="productForm.projectPath" class="text-caption text-medium-emphasis mb-4">
-                Your configured project path: <code>{{ productForm.projectPath }}</code>
+              <div v-if="productForm.projectPath" class="project-path-hint mb-4">
+                Your configured project path: <code class="text-warning">{{ productForm.projectPath }}</code>
               </div>
 
               <!-- Upload error alert -->
@@ -1082,6 +1082,11 @@ watch(
 </script>
 
 <style scoped>
+.project-path-hint {
+  font-size: 1.125rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
 /* Card uses darker background color for layered effect */
 /* Header and footer inherit this dark background, content area is lighter */
 .product-form-card {
