@@ -31,7 +31,6 @@ class MessageResponse(BaseModel):
     id: str
     from_agent: str = Field(..., serialization_alias="from")
     to_agents: list[str]
-    to_agent: Optional[str] = None  # Single recipient for frontend compatibility
     content: str
     message_type: str = Field(..., serialization_alias="type")
     priority: str
@@ -164,7 +163,8 @@ async def list_messages(
 
     for msg in messages_data.messages:
         # Apply agent_name filter if provided
-        if agent_name and msg.get("from_agent") != agent_name and msg.get("to_agent") != agent_name:
+        to_agents_val = msg.get("to_agents", [])
+        if agent_name and msg.get("from_agent") != agent_name and agent_name not in to_agents_val:
             continue
 
         # Parse created_at
@@ -177,13 +177,11 @@ async def list_messages(
         else:
             created_at = datetime.now(timezone.utc)
 
-        to_agent_val = msg.get("to_agent")
         messages.append(
             MessageResponse(
                 id=msg.get("id", str(uuid4())),
                 from_agent=msg.get("from_agent", "developer"),
-                to_agents=[to_agent_val] if to_agent_val else [],
-                to_agent=to_agent_val,
+                to_agents=to_agents_val,
                 content=msg.get("content", ""),
                 message_type=msg.get("type", "direct"),
                 priority=msg.get("priority", "normal"),

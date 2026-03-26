@@ -81,22 +81,22 @@ class TestConfigDataPersistence:
     """Integration tests for normalized config table persistence (0840c)"""
 
     async def test_config_data_creates_normalized_relations(self, db_manager):
-        """Test that config_data dict is split into normalized relations on create"""
+        """Test that typed config fields create normalized relations on create"""
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        config = {
-            "tech_stack": {
+        create_result = await service.create_product(
+            name="Config Test Product",
+            tech_stack={
                 "programming_languages": "Python 3.12",
                 "backend_frameworks": "FastAPI",
             },
-            "architecture": {
+            architecture={
                 "primary_pattern": "Layered",
                 "api_style": "REST",
             },
-            "core_features": "Agent orchestration",
-        }
-        create_result = await service.create_product(name="Config Test Product", config_data=config)
+            core_features="Agent orchestration",
+        )
         product_id = str(create_result.id)
 
         # Verify normalized relations created
@@ -112,10 +112,10 @@ class TestConfigDataPersistence:
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
-        config = {
-            "tech_stack": {"programming_languages": "Python 3.12"},
-        }
-        create_result = await service.create_product(name="Config Persist Product", config_data=config)
+        create_result = await service.create_product(
+            name="Config Persist Product",
+            tech_stack={"programming_languages": "Python 3.12"},
+        )
         product_id = str(create_result.id)
 
         # Update product (without changing config)
@@ -127,22 +127,22 @@ class TestConfigDataPersistence:
         assert get_result.tech_stack.programming_languages == "Python 3.12"
 
     async def test_config_data_update_modifies_relations(self, db_manager):
-        """Test updating config_data updates normalized relations"""
+        """Test updating typed config fields updates normalized relations"""
         tenant_key = str(uuid4())
         service = ProductService(db_manager, tenant_key)
 
         # Create product with initial config
-        initial_config = {
-            "tech_stack": {"programming_languages": "Python 3.11"},
-        }
-        create_result = await service.create_product(name="Config Update Product", config_data=initial_config)
+        create_result = await service.create_product(
+            name="Config Update Product",
+            tech_stack={"programming_languages": "Python 3.11"},
+        )
         product_id = str(create_result.id)
 
-        # Update with new config_data
-        new_config = {
-            "tech_stack": {"programming_languages": "Python 3.12", "backend_frameworks": "FastAPI"},
-        }
-        update_result = await service.update_product(product_id=product_id, config_data=new_config)
+        # Update with new typed config fields
+        update_result = await service.update_product(
+            product_id=product_id,
+            tech_stack={"programming_languages": "Python 3.12", "backend_frameworks": "FastAPI"},
+        )
         assert isinstance(update_result, Product)
 
         # Verify config updated
