@@ -221,33 +221,33 @@
         </div>
 
         <!-- Configuration Data Display -->
-        <div v-if="product.has_config_data" class="mt-4">
+        <div v-if="product.tech_stack || product.architecture || product.test_config || product.core_features" class="mt-4">
           <v-divider class="mb-3"></v-divider>
           <div class="text-subtitle-2 mb-2">Configuration Data</div>
 
           <v-expansion-panels variant="accordion">
             <!-- Tech Stack -->
-            <v-expansion-panel v-if="product.config_data?.tech_stack">
+            <v-expansion-panel v-if="product.tech_stack">
               <v-expansion-panel-title>
                 <v-icon start>mdi-code-tags</v-icon>
                 Tech Stack
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <div v-if="product.config_data.tech_stack.languages" class="mb-2">
-                  <div class="text-caption font-weight-bold">Languages:</div>
-                  <div class="text-body-2">{{ product.config_data.tech_stack.languages }}</div>
+                <div v-if="product.tech_stack.programming_languages" class="mb-2">
+                  <div class="text-caption font-weight-bold">Programming Languages:</div>
+                  <div class="text-body-2">{{ product.tech_stack.programming_languages }}</div>
                 </div>
-                <div v-if="product.config_data.tech_stack.frontend" class="mb-2">
-                  <div class="text-caption font-weight-bold">Frontend:</div>
-                  <div class="text-body-2">{{ product.config_data.tech_stack.frontend }}</div>
+                <div v-if="product.tech_stack.frontend_frameworks" class="mb-2">
+                  <div class="text-caption font-weight-bold">Frontend Frameworks:</div>
+                  <div class="text-body-2">{{ product.tech_stack.frontend_frameworks }}</div>
                 </div>
-                <div v-if="product.config_data.tech_stack.backend" class="mb-2">
-                  <div class="text-caption font-weight-bold">Backend:</div>
-                  <div class="text-body-2">{{ product.config_data.tech_stack.backend }}</div>
+                <div v-if="product.tech_stack.backend_frameworks" class="mb-2">
+                  <div class="text-caption font-weight-bold">Backend Frameworks:</div>
+                  <div class="text-body-2">{{ product.tech_stack.backend_frameworks }}</div>
                 </div>
-                <div v-if="product.config_data.tech_stack.database" class="mb-2">
-                  <div class="text-caption font-weight-bold">Databases:</div>
-                  <div class="text-body-2">{{ product.config_data.tech_stack.database }}</div>
+                <div v-if="product.tech_stack.databases_storage" class="mb-2">
+                  <div class="text-caption font-weight-bold">Databases & Storage:</div>
+                  <div class="text-body-2">{{ product.tech_stack.databases_storage }}</div>
                 </div>
                 <div v-if="product.target_platforms && product.target_platforms.length">
                   <div class="text-caption font-weight-bold">Target Platforms:</div>
@@ -257,24 +257,24 @@
             </v-expansion-panel>
 
             <!-- Architecture -->
-            <v-expansion-panel v-if="product.config_data?.architecture">
+            <v-expansion-panel v-if="product.architecture">
               <v-expansion-panel-title>
                 <v-icon start>mdi-sitemap</v-icon>
                 Architecture
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <div v-if="product.config_data.architecture.pattern" class="mb-2">
-                  <div class="text-caption font-weight-bold">Pattern:</div>
-                  <div class="text-body-2">{{ product.config_data.architecture.pattern }}</div>
+                <div v-if="product.architecture.primary_pattern" class="mb-2">
+                  <div class="text-caption font-weight-bold">Primary Pattern:</div>
+                  <div class="text-body-2">{{ product.architecture.primary_pattern }}</div>
                 </div>
-                <div v-if="product.config_data.architecture.api_style" class="mb-2">
+                <div v-if="product.architecture.api_style" class="mb-2">
                   <div class="text-caption font-weight-bold">API Style:</div>
-                  <div class="text-body-2">{{ product.config_data.architecture.api_style }}</div>
+                  <div class="text-body-2">{{ product.architecture.api_style }}</div>
                 </div>
-                <div v-if="product.config_data.architecture.design_patterns">
+                <div v-if="product.architecture.design_patterns">
                   <div class="text-caption font-weight-bold">Design Patterns:</div>
                   <div class="text-body-2">
-                    {{ product.config_data.architecture.design_patterns }}
+                    {{ product.architecture.design_patterns }}
                   </div>
                 </div>
               </v-expansion-panel-text>
@@ -282,25 +282,25 @@
 
             <!-- Features & Testing -->
             <v-expansion-panel
-              v-if="product.config_data?.features || product.config_data?.test_config"
+              v-if="product.core_features || product.test_config"
             >
               <v-expansion-panel-title>
                 <v-icon start>mdi-star-outline</v-icon>
                 Features & Testing
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <div v-if="product.config_data.features?.core" class="mb-2">
+                <div v-if="product.core_features" class="mb-2">
                   <div class="text-caption font-weight-bold">Core Features:</div>
-                  <div class="text-body-2">{{ product.config_data.features.core }}</div>
+                  <div class="text-body-2">{{ product.core_features }}</div>
                 </div>
-                <div v-if="product.config_data.test_config?.strategy" class="mb-2">
-                  <div class="text-caption font-weight-bold">Testing Strategy:</div>
-                  <div class="text-body-2">{{ product.config_data.test_config.strategy }}</div>
+                <div v-if="product.test_config?.test_strategy" class="mb-2">
+                  <div class="text-caption font-weight-bold">Test Strategy:</div>
+                  <div class="text-body-2">{{ product.test_config.test_strategy }}</div>
                 </div>
-                <div v-if="product.config_data.test_config?.coverage_target">
+                <div v-if="product.test_config?.coverage_target">
                   <div class="text-caption font-weight-bold">Coverage Target:</div>
                   <div class="text-body-2">
-                    {{ product.config_data.test_config.coverage_target }}%
+                    {{ product.test_config.coverage_target }}%
                   </div>
                 </div>
               </v-expansion-panel-text>
