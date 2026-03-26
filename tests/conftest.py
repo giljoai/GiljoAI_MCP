@@ -184,7 +184,10 @@ async def test_product(db_session, test_tenant_key):
 
     db_session.add(product)
     await db_session.commit()
-    await db_session.refresh(product)
+    await db_session.refresh(
+        product,
+        attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+    )
 
     return product
 
