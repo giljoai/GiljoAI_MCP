@@ -410,6 +410,26 @@ export const EVENT_MAP = {
       })
     },
   },
+
+  // =========================
+  // Tasks (MCP tool creates — frontend needs refresh)
+  // =========================
+  'task:created': {
+    handler: async () => {
+      const taskStore = useTaskStore()
+      await taskStore.fetchTasks()
+    },
+  },
+
+  // =========================
+  // Projects (MCP tool creates — frontend needs refresh)
+  // =========================
+  'project:created': {
+    handler: async () => {
+      const projectStore = useProjectStore()
+      await projectStore.fetchProjects()
+    },
+  },
 }
 
 /**
