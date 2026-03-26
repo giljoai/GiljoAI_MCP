@@ -172,8 +172,23 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Handle 403 Forbidden
-    if (error.response?.status === 403) {
+    // Handle 403 Forbidden — auto-retry on CSRF token mismatch
+    if (error.response?.status === 403 && !originalRequest?._csrfRetry) {
+      const detail = error.response?.data?.detail || ''
+      if (detail.includes('CSRF')) {
+        // CSRF token expired or missing — fetch a fresh one via GET then retry
+        originalRequest._csrfRetry = true
+        try {
+          await apiClient.get('/api/setup/status') // lightweight GET to receive new csrf_token cookie
+          const newToken = getCsrfToken()
+          if (newToken) {
+            originalRequest.headers['X-CSRF-Token'] = newToken
+          }
+          return apiClient(originalRequest)
+        } catch {
+          // GET failed too — fall through to normal 403 handling
+        }
+      }
       console.error('[API] Access forbidden:', {
         message: parsedError.message,
         context: parsedError.context,
