@@ -85,6 +85,57 @@ _DEPTH_KEY_MAPPING: dict[str, str] = {
 }
 
 
+async def _is_category_enabled(
+    category: str,
+    tenant_key: str,
+    db_manager: DatabaseManager,
+) -> bool:
+    """
+    Check if a category is enabled in the user's field priority toggles.
+
+    Categories without a toggle row (product_core, project, self_identity,
+    agent_templates) are always enabled.
+
+    Returns:
+        True if enabled or no toggle exists, False if explicitly disabled.
+    """
+    # Categories that are always on (no toggle)
+    always_on = {"product_core", "project", "self_identity", "agent_templates"}
+    if category in always_on:
+        return True
+
+    from sqlalchemy import and_, select
+
+    from src.giljo_mcp.models.auth import User, UserFieldPriority
+
+    try:
+        async with db_manager.get_session_async() as session:
+            # Get user for this tenant
+            user_result = await session.execute(
+                select(User.id).where(and_(User.tenant_key == tenant_key, User.is_active)).limit(1)
+            )
+            user_id = user_result.scalar_one_or_none()
+            if not user_id:
+                return True  # No user found, allow by default
+
+            # Check toggle
+            prio_result = await session.execute(
+                select(UserFieldPriority.enabled).where(
+                    and_(
+                        UserFieldPriority.user_id == user_id,
+                        UserFieldPriority.tenant_key == tenant_key,
+                        UserFieldPriority.category == category,
+                    )
+                )
+            )
+            enabled = prio_result.scalar_one_or_none()
+            # No row means default enabled
+            return enabled if enabled is not None else True
+    except Exception:
+        logger.error("category_toggle_check_failed", category=category, tenant_key=tenant_key, exc_info=True)
+        return True  # Fail open — don't block context on toggle errors
+
+
 async def _load_user_depth_config(
     tenant_key: str,
     db_manager: DatabaseManager,
@@ -298,6 +349,17 @@ async def fetch_context(
     if category not in CATEGORY_TOOLS:
         logger.warning("invalid_category", invalid_category=category, valid_categories=ALL_CATEGORIES)
         raise ValidationError(f"Invalid category: {category}. Valid categories: {ALL_CATEGORIES}")
+
+    # Enforce user field priority toggles — block disabled categories
+    if db_manager:
+        enabled = await _is_category_enabled(category, tenant_key, db_manager)
+        if not enabled:
+            logger.info("fetch_context_category_disabled", category=category, tenant_key=tenant_key)
+            return {
+                "category": category,
+                "data": [],
+                "metadata": {"toggled_off": True, "message": f"Category '{category}' is disabled in user settings."},
+            }
 
     # Resolve effective depth settings (Handover 0823b)
     effective_depths = DEFAULT_DEPTHS.copy()
