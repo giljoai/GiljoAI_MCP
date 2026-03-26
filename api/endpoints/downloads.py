@@ -520,7 +520,7 @@ async def get_bootstrap_prompt(
     token = await token_manager.generate_token(
         tenant_key=tenant_key,
         download_type="slash_commands",
-        metadata={"filename": filename, "requested_by": current_user.username},
+        filename=filename,
     )
 
     # 2) Stage slash commands ZIP
@@ -652,7 +652,7 @@ async def generate_download_token(
     token = await token_manager.generate_token(
         tenant_key=tenant_key,
         download_type=content_type,
-        metadata={"filename": filename, "requested_by": current_user.username},
+        filename=filename,
     )
 
     # 2) Stage files at temp/{tenant_key}/{token}/
@@ -767,8 +767,8 @@ async def download_temp_file(
             )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token invalid or not ready")
 
-        # Check if filename matches metadata
-        expected_filename = token_info.get("metadata", {}).get("filename", "")
+        # Check if filename matches token record
+        expected_filename = token_info.get("filename", "")
         if expected_filename != filename:
             logger.warning(f"Token validation failed: token={token}, reason=filename_mismatch")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")

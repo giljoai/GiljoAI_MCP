@@ -134,9 +134,20 @@ async def simple_handover(
     if project and project.product and getattr(project.product, "product_memory", None):
         git_config = project.product.product_memory.get("git_integration", {})
         # Require BOTH: git integration enabled AND git_history toggle enabled
-        toggles = (getattr(current_user, "field_priority_config", None) or {}).get("priorities", {})
-        git_toggle = toggles.get("git_history", {})
-        git_history_enabled = git_toggle.get("toggle", False) if isinstance(git_toggle, dict) else bool(git_toggle)
+        # Handover 0840d: Check git_history toggle from user_field_priorities table
+        from sqlalchemy import select as sa_select
+
+        from src.giljo_mcp.models.auth import UserFieldPriority
+
+        prio_result = await db.execute(
+            sa_select(UserFieldPriority).where(
+                UserFieldPriority.user_id == current_user.id,
+                UserFieldPriority.tenant_key == current_user.tenant_key,
+                UserFieldPriority.category == "git_history",
+            )
+        )
+        prio_row = prio_result.scalar_one_or_none()
+        git_history_enabled = prio_row.enabled if prio_row else False
         git_enabled = git_config.get("enabled", False) and git_history_enabled
         project_taxonomy = project.taxonomy_alias
 

@@ -43,11 +43,26 @@
           Toggle fields on/off to include or exclude from context.
         </v-alert>
 
+        <!-- Locked Product Info -->
+        <div class="context-row locked-row d-flex justify-space-between align-center py-2">
+          <div class="d-flex align-center flex-grow-1">
+            <span class="text-body-2 context-label">Product Info</span>
+            <v-tooltip text="Product Info is always included" location="bottom">
+              <template #activator="{ props }">
+                <v-icon v-bind="props" size="small" color="primary" class="ml-2">mdi-lock</v-icon>
+              </template>
+            </v-tooltip>
+          </div>
+          <v-chip size="small" color="primary" variant="flat" style="width: 140px; text-align: center; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 0.75rem; font-weight: 600; line-height: 1; position: relative; top: 1px;">ALWAYS ON</span>
+          </v-chip>
+        </div>
+
         <!-- Locked Project Description -->
-        <div class="context-row d-flex justify-space-between align-center py-2">
+        <div class="context-row locked-row d-flex justify-space-between align-center py-2">
           <div class="d-flex align-center flex-grow-1">
             <span class="text-body-2 context-label">Project Description</span>
-            <v-tooltip text="Project Description is required" location="bottom">
+            <v-tooltip text="Project Description is always included" location="bottom">
               <template #activator="{ props }">
                 <v-icon v-bind="props" size="small" color="primary" class="ml-2">mdi-lock</v-icon>
               </template>
@@ -182,9 +197,8 @@ const props = defineProps({
   },
 })
 
-// Context definitions
+// Context definitions (product_info + project_description locked as "Always On" above)
 const contexts = [
-  { key: 'product_description', label: 'Product Description' },
   { key: 'tech_stack', label: 'Tech Stack' },
   { key: 'architecture', label: 'Architecture' },
   { key: 'testing', label: 'Testing' },
@@ -214,8 +228,8 @@ const contexts = [
 ]
 
 // Map UI categories to backend categories for API requests
+// product_core and project_description are always on (not sent)
 const UI_TO_BACKEND_CATEGORY_MAP: Record<string, string> = {
-  product_description: 'product_core',
   tech_stack: 'tech_stack',
   architecture: 'architecture',
   testing: 'testing',
@@ -227,7 +241,6 @@ const UI_TO_BACKEND_CATEGORY_MAP: Record<string, string> = {
 
 // Reverse mapping: backend keys to frontend keys
 const BACKEND_TO_UI_CATEGORY_MAP: Record<string, string[]> = {
-  product_core: ['product_description'],
   tech_stack: ['tech_stack'],
   architecture: ['architecture'],
   testing: ['testing'],
@@ -264,7 +277,6 @@ interface ContextConfig {
 }
 
 const config = ref<Record<string, ContextConfig>>({
-  product_description: { enabled: true },
   tech_stack: { enabled: true },
   architecture: { enabled: true },
   testing: { enabled: true },
@@ -505,7 +517,6 @@ async function saveConfig() {
 
 function resetToDefaults() {
   config.value = {
-    product_description: { enabled: true },
     tech_stack: { enabled: true },
     architecture: { enabled: true },
     testing: { enabled: true },
@@ -529,9 +540,6 @@ function convertToBackendFormat(localConfig: Record<string, ContextConfig>): Rec
     const backendKey = UI_TO_BACKEND_CATEGORY_MAP[uiKey] || uiKey
     backendToggles[backendKey] = { toggle: value.enabled }
   })
-
-  // Project description is always enabled
-  backendToggles.project_description = { toggle: true }
 
   return backendToggles
 }
