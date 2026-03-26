@@ -26,6 +26,7 @@ from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from src.giljo_mcp.schemas.jsonb_validators import validate_tuning_state
 
 
 logger = logging.getLogger(__name__)
@@ -415,7 +416,7 @@ class ProductTuningService:
                 "overall_summary": overall_summary,
                 "proposals": proposals,
             }
-            product.tuning_state = tuning_state
+            product.tuning_state = validate_tuning_state(tuning_state)
             product.updated_at = datetime.now(timezone.utc)
 
             await session.commit()
@@ -501,7 +502,7 @@ class ProductTuningService:
                 tuning_state["pending_proposals"] = None
                 tuning_state["last_tuned_at"] = datetime.now(timezone.utc).isoformat()
 
-            product.tuning_state = tuning_state
+            product.tuning_state = validate_tuning_state(tuning_state)
             product.updated_at = datetime.now(timezone.utc)
             await session.commit()
 
@@ -558,7 +559,7 @@ class ProductTuningService:
             tuning_state["last_tuned_at"] = datetime.now(timezone.utc).isoformat()
             tuning_state["last_tuned_at_sequence"] = max(current_sequence, 0)
 
-            product.tuning_state = tuning_state
+            product.tuning_state = validate_tuning_state(tuning_state)
             product.updated_at = datetime.now(timezone.utc)
             await session.commit()
 
