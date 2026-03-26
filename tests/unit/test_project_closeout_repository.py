@@ -102,7 +102,9 @@ def mock_project(sample_project_id, sample_product_id, tenant_key):
     project.created_at = datetime(2025, 11, 1, 10, 0, 0, tzinfo=timezone.utc)
     project.completed_at = datetime(2025, 11, 16, 10, 0, 0, tzinfo=timezone.utc)
     project.updated_at = datetime(2025, 11, 16, 10, 0, 0, tzinfo=timezone.utc)
-    project.meta_data = {"test_coverage": 85.5}
+    project.cancellation_reason = None
+    project.deactivation_reason = None
+    project.early_termination = False
     return project
 
 
@@ -329,7 +331,7 @@ class TestRepositoryIntegration:
                 # Check metrics
                 assert "commits" in call_kwargs["metrics"]
                 assert call_kwargs["metrics"]["commits"] == 1
-                assert call_kwargs["metrics"]["test_coverage"] == 85.5
+                assert call_kwargs["metrics"]["test_coverage"] == 0.0
 
                 # Check priority (should be 2 for key_outcomes present)
                 assert call_kwargs["priority"] == 2
