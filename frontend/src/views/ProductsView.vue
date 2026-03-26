@@ -296,7 +296,11 @@
       v-model="showDeletedProductsDialog"
       :deleted-products="deletedProducts"
       :restoring-product-id="restoringProductId"
+      :purging-product-id="purgingProductId"
+      :purging-all="purgingAllProducts"
       @restore="restoreProduct"
+      @purge="purgeDeletedProduct"
+      @purge-all="purgeAllDeletedProducts"
     />
 
     <!-- Handover 0050: Activation Warning Dialog -->
@@ -356,37 +360,13 @@ const currentActiveProduct = ref(null)
 const showDeletedProductsDialog = ref(false)
 const deletedProducts = ref([])
 const restoringProductId = ref(null)
+const purgingProductId = ref(null)
+const purgingAllProducts = ref(false)
 
 const productForm = ref({
   name: '',
   description: '',
-  visionPath: '',
-  projectPath: '', // Handover 0084: Project path for agent export
-  // Handover 0042: Rich configuration data
-  configData: {
-    tech_stack: {
-      languages: '',
-      frontend: '',
-      backend: '',
-      database: '',
-      infrastructure: '',
-    },
-    architecture: {
-      pattern: '',
-      design_patterns: '',
-      api_style: '',
-      notes: '',
-    },
-    features: {
-      core: '',
-    },
-    test_config: {
-      strategy: 'TDD',
-      coverage_target: 80,
-      frameworks: '',
-      quality_standards: '', // Handover 0316: New field
-    },
-  },
+  projectPath: '',
 })
 
 // Sort options
@@ -669,39 +649,10 @@ async function showProductDetails(product) {
 async function editProduct(product) {
   editingProduct.value = product
 
-  // Handover 0042: Default config structure
-  const defaultConfig = {
-    tech_stack: {
-      languages: '',
-      frontend: '',
-      backend: '',
-      database: '',
-      infrastructure: '',
-    },
-    architecture: {
-      pattern: '',
-      design_patterns: '',
-      api_style: '',
-      notes: '',
-    },
-    features: {
-      core: '',
-    },
-    test_config: {
-      strategy: 'TDD',
-      coverage_target: 80,
-      frameworks: '',
-      quality_standards: '', // Handover 0316: New field
-    },
-  }
-
   productForm.value = {
     name: product.name,
     description: product.description || '',
-    visionPath: product.vision_path || '',
-    projectPath: product.project_path || '', // Handover 0084: Project path for agent export
-    // Handover 0042: Merge with existing config_data
-    configData: product.config_data ? { ...defaultConfig, ...product.config_data } : defaultConfig,
+    projectPath: product.project_path || '',
   }
 
   // Fetch existing vision documents
@@ -758,19 +709,9 @@ async function saveProduct(payload) {
     // Step 1: Create/Update product
     let product
     if (editingProduct.value) {
-      product = await productStore.updateProduct(editingProduct.value.id, {
-        name: productData.name,
-        description: productData.description,
-        projectPath: productData.project_path, // Handover 0084: Project path for agent export
-        configData: productData.config_data, // Handover 0042
-      })
+      product = await productStore.updateProduct(editingProduct.value.id, productData)
     } else {
-      product = await productStore.createProduct({
-        name: productData.name,
-        description: productData.description,
-        projectPath: productData.project_path, // Handover 0084: Project path for agent export
-        configData: productData.config_data, // Handover 0042
-      })
+      product = await productStore.createProduct(productData)
     }
 
     // Step 2: Upload vision files (if any) - Handover 0508: Enhanced error handling
@@ -962,33 +903,7 @@ function closeDialog() {
   productForm.value = {
     name: '',
     description: '',
-    visionPath: '',
-    projectPath: '', // Handover 0084: Project path for agent export
-    // Handover 0042: Reset config_data
-    configData: {
-      tech_stack: {
-        languages: '',
-        frontend: '',
-        backend: '',
-        database: '',
-        infrastructure: '',
-      },
-      architecture: {
-        pattern: '',
-        design_patterns: '',
-        api_style: '',
-        notes: '',
-      },
-      features: {
-        core: '',
-      },
-      test_config: {
-        strategy: 'TDD',
-        coverage_target: 80,
-        frameworks: '',
-        quality_standards: '', // Handover 0316: New field
-      },
-    },
+    projectPath: '',
   }
 }
 
@@ -1017,15 +932,16 @@ async function loadDeletedProducts() {
   }
 }
 
-async function restoreProduct(product) {
+async function restoreProduct(productId) {
   if (restoringProductId.value) return // Prevent double-click
 
-  restoringProductId.value = product.id
+  const product = deletedProducts.value.find((p) => p.id === productId)
+  restoringProductId.value = productId
   try {
-    await api.products.restoreProduct(product.id)
+    await api.products.restoreProduct(productId)
 
     showToast({
-      message: `${product.name} restored successfully`,
+      message: `${product?.name || 'Product'} restored successfully`,
       type: 'success',
       duration: 3000,
     })
@@ -1047,6 +963,69 @@ async function restoreProduct(product) {
     })
   } finally {
     restoringProductId.value = null
+  }
+}
+
+async function purgeDeletedProduct(productId) {
+  if (purgingProductId.value) return
+
+  const product = deletedProducts.value.find((p) => p.id === productId)
+  purgingProductId.value = productId
+  try {
+    await api.products.purge(productId)
+
+    showToast({
+      message: `${product?.name || 'Product'} permanently deleted.`,
+      type: 'warning',
+      duration: 3000,
+    })
+
+    await loadProducts()
+    await loadDeletedProducts()
+
+    if (deletedProducts.value.length === 0) {
+      showDeletedProductsDialog.value = false
+    }
+  } catch (error) {
+    console.error('Failed to purge product:', error)
+    showToast({
+      message: 'Failed to permanently delete product',
+      type: 'error',
+      duration: 5000,
+    })
+  } finally {
+    purgingProductId.value = null
+  }
+}
+
+async function purgeAllDeletedProducts() {
+  if (purgingAllProducts.value) return
+
+  purgingAllProducts.value = true
+  try {
+    const ids = deletedProducts.value.map((p) => p.id)
+    for (const id of ids) {
+      await api.products.purge(id)
+    }
+
+    showToast({
+      message: `${ids.length} product(s) permanently deleted.`,
+      type: 'warning',
+      duration: 3000,
+    })
+
+    await loadProducts()
+    await loadDeletedProducts()
+    showDeletedProductsDialog.value = false
+  } catch (error) {
+    console.error('Failed to purge all products:', error)
+    showToast({
+      message: 'Failed to delete all products',
+      type: 'error',
+      duration: 5000,
+    })
+  } finally {
+    purgingAllProducts.value = false
   }
 }
 
@@ -1072,8 +1051,7 @@ watch(showDialog, (isOpen) => {
       // Updated policy:
       // - Editing existing product: DO NOT restore cached drafts at all. Always
       //   trust the latest values loaded from the backend to avoid wiping valid
-      //   config_data (architecture, features, test_config) when only tech stack
-      //   was edited previously.
+      //   product fields when only one section was edited previously.
       // - New product: still do not auto-restore (clean slate).
       autoSave.value.clearCache()
     }

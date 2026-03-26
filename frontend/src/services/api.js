@@ -172,8 +172,23 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Handle 403 Forbidden
-    if (error.response?.status === 403) {
+    // Handle 403 Forbidden — auto-retry on CSRF token mismatch
+    if (error.response?.status === 403 && !originalRequest?._csrfRetry) {
+      const detail = error.response?.data?.detail || ''
+      if (detail.includes('CSRF')) {
+        // CSRF token expired or missing — fetch a fresh one via GET then retry
+        originalRequest._csrfRetry = true
+        try {
+          await apiClient.get('/api/setup/status') // lightweight GET to receive new csrf_token cookie
+          const newToken = getCsrfToken()
+          if (newToken) {
+            originalRequest.headers['X-CSRF-Token'] = newToken
+          }
+          return apiClient(originalRequest)
+        } catch {
+          // GET failed too — fall through to normal 403 handling
+        }
+      }
       console.error('[API] Access forbidden:', {
         message: parsedError.message,
         context: parsedError.context,
@@ -197,30 +212,33 @@ export const api = {
     get: (id) => apiClient.get(`/api/v1/products/${id}`),
     getActive: () => apiClient.get('/api/v1/products/refresh-active'),
     create: (data) => {
-      // Handover 0507: Send JSON to match backend ProductCreate schema
-      // Backend expects: { name, description, project_path, config_data, target_platforms }
       const payload = {
         name: data.name,
         description: data.description || null,
-        project_path: data.projectPath || null,
-        config_data: data.configData || null, // FIX: Add config_data (Handover 0507)
-        target_platforms: data.target_platforms || ['all'], // Handover 0425 Phase 2
+        project_path: data.project_path || null,
+        target_platforms: data.target_platforms || ['all'],
+        tech_stack: data.tech_stack || null,
+        architecture: data.architecture || null,
+        test_config: data.test_config || null,
+        core_features: data.core_features || null,
       }
       return apiClient.post('/api/v1/products/', payload)
     },
     update: (id, data) => {
-      // Handover 0507: Send JSON to match backend ProductUpdate schema
-      // Backend expects: { name?, description?, project_path?, config_data?, target_platforms?, is_active? }
       const payload = {}
       if (data.name !== undefined) payload.name = data.name
       if (data.description !== undefined) payload.description = data.description
-      if (data.projectPath !== undefined) payload.project_path = data.projectPath
-      if (data.configData !== undefined) payload.config_data = data.configData // FIX: Add config_data (Handover 0507)
-      if (data.target_platforms !== undefined) payload.target_platforms = data.target_platforms // Handover 0425 Phase 2
+      if (data.project_path !== undefined) payload.project_path = data.project_path
+      if (data.target_platforms !== undefined) payload.target_platforms = data.target_platforms
+      if (data.tech_stack !== undefined) payload.tech_stack = data.tech_stack
+      if (data.architecture !== undefined) payload.architecture = data.architecture
+      if (data.test_config !== undefined) payload.test_config = data.test_config
+      if (data.core_features !== undefined) payload.core_features = data.core_features
       if (data.isActive !== undefined) payload.is_active = data.isActive
       return apiClient.put(`/api/v1/products/${id}`, payload)
     },
     delete: (id) => apiClient.delete(`/api/v1/products/${id}`),
+    purge: (id) => apiClient.delete(`/api/v1/products/${id}/purge`),
     getCascadeImpact: (id) => apiClient.get(`/api/v1/products/${id}/cascade-impact`),
 
     // Product activation endpoints (Handover 0049)

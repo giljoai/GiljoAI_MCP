@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import BaseGiljoError, ResourceNotFoundError
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from src.giljo_mcp.schemas.jsonb_validators import validate_job_metadata
 from src.giljo_mcp.tenant import TenantManager
 
 
@@ -141,6 +142,7 @@ class AgentJobManager:
         try:
             async with self._get_session() as session:
                 # Create job (work order)
+                validated_metadata = validate_job_metadata(job_metadata) or {}
                 job = AgentJob(
                     job_id=str(uuid4()),
                     tenant_key=tenant_key,
@@ -148,7 +150,7 @@ class AgentJobManager:
                     mission=mission,
                     job_type=agent_display_name,
                     status="active",
-                    job_metadata=job_metadata or {},
+                    job_metadata=validated_metadata,
                 )
 
                 # Create execution (first executor)

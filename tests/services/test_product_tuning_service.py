@@ -60,7 +60,7 @@ def mock_websocket_manager():
 
 @pytest.fixture
 def sample_product():
-    """Create a mock product with realistic context data."""
+    """Create a mock product with realistic context data (0840c: normalized relations)."""
     product = Mock()
     product.id = PRODUCT_ID
     product.tenant_key = TENANT_KEY
@@ -68,17 +68,33 @@ def sample_product():
     product.description = "An AI agent orchestration platform"
     product.quality_standards = "80% test coverage, all endpoints tested"
     product.target_platforms = ["windows", "linux"]
-    product.config_data = {
-        "tech_stack": "Python 3.12, FastAPI, Vue 3, PostgreSQL",
-        "architecture": "Monolithic backend with REST API",
-        "features": {
-            "core": "Agent orchestration, project management, 360 memory",
-        },
-        "codebase_structure": "src/giljo_mcp for backend, frontend/src for Vue",
-        "database_type": "PostgreSQL 18",
-        "backend_framework": "FastAPI with SQLAlchemy 2.0",
-        "frontend_framework": "Vue 3 with Vuetify 3",
-    }
+    product.core_features = "Agent orchestration, project management, 360 memory"
+    product.deleted_at = None
+
+    # Normalized config relations (0840c)
+    tech_stack = Mock()
+    tech_stack.programming_languages = "Python 3.12"
+    tech_stack.frontend_frameworks = "Vue 3"
+    tech_stack.backend_frameworks = "FastAPI"
+    tech_stack.databases_storage = "PostgreSQL"
+    tech_stack.infrastructure = ""
+    tech_stack.dev_tools = ""
+    product.tech_stack = tech_stack
+
+    architecture = Mock()
+    architecture.primary_pattern = "Monolithic backend with REST API"
+    architecture.design_patterns = "Repository, Service"
+    architecture.api_style = "REST"
+    architecture.architecture_notes = ""
+    product.architecture = architecture
+
+    test_config = Mock()
+    test_config.quality_standards = "80% test coverage, all endpoints tested"
+    test_config.test_strategy = "TDD"
+    test_config.coverage_target = 80
+    test_config.testing_frameworks = "pytest"
+    product.test_config = test_config
+
     product.product_memory = {
         "github": {},
         "context": {},
@@ -107,53 +123,58 @@ def sample_product_no_git(sample_product):
 
 @pytest.fixture
 def sample_memory_entries():
-    """Create sample 360 memory entries for prompt assembly tests."""
+    """Create sample 360 memory entries for prompt assembly tests.
+
+    0840d: Service methods use entry.get() (dict access), not attribute access.
+    """
     entries = []
     for i in range(3):
-        entry = Mock()
-        entry.sequence = i + 1
-        entry.summary = f"Project {i + 1} summary: implemented feature {chr(65 + i)}"
-        entry.key_outcomes = [f"Outcome {i + 1}.1", f"Outcome {i + 1}.2"]
-        entry.decisions_made = [f"Decision {i + 1}: chose approach {chr(65 + i)}"]
-        entry.deliverables = [f"deliverable_{i + 1}.py"]
-        entry.git_commits = [
-            {"hash": f"abc{i}", "message": f"feat: feature {chr(65 + i)}", "date": f"2026-03-{15 + i}"}
-        ]
-        entry.tags = ["closeout"]
-        entry.project_name = f"Project {i + 1}"
-        entry.timestamp = datetime(2026, 3, 15 + i, tzinfo=timezone.utc)
+        entry = {
+            "sequence": i + 1,
+            "summary": f"Project {i + 1} summary: implemented feature {chr(65 + i)}",
+            "key_outcomes": [f"Outcome {i + 1}.1", f"Outcome {i + 1}.2"],
+            "decisions_made": [f"Decision {i + 1}: chose approach {chr(65 + i)}"],
+            "deliverables": [f"deliverable_{i + 1}.py"],
+            "git_commits": [
+                {"sha": f"abc{i}", "message": f"feat: feature {chr(65 + i)}", "date": f"2026-03-{15 + i}"}
+            ],
+            "tags": ["closeout"],
+            "project_name": f"Project {i + 1}",
+            "timestamp": datetime(2026, 3, 15 + i, tzinfo=timezone.utc).isoformat(),
+        }
         entries.append(entry)
     return entries
 
 
 @pytest.fixture
 def sample_user_settings():
-    """User context settings with toggles and depth config."""
-    return {
-        "field_priority_config": {
-            "version": "3.0",
-            "priorities": {
-                "product_core": {"toggle": True},
-                "project_description": {"toggle": True},
-                "memory_360": {"toggle": True},
-                "tech_stack": {"toggle": True},
-                "testing": {"toggle": True},
-                "vision_documents": {"toggle": True},
-                "architecture": {"toggle": True},
-                "agent_templates": {"toggle": True},
-                "git_history": {"toggle": False},
-            },
-        },
-        "depth_config": {
-            "version": "1.0",
-            "depths": {
-                "vision_documents": "medium",
-                "memory_360": 3,
-                "git_history": 25,
-                "agent_templates": "type_only",
-            },
+    """User context settings as (toggle_config, depth_config) tuple.
+
+    0840d: _get_user_settings replaced by _get_user_configs which returns a tuple.
+    """
+    toggle_config = {
+        "version": "4.0",
+        "priorities": {
+            "product_core": {"toggle": True},
+            "project_description": {"toggle": True},
+            "memory_360": {"toggle": True},
+            "tech_stack": {"toggle": True},
+            "testing": {"toggle": True},
+            "vision_documents": {"toggle": True},
+            "architecture": {"toggle": True},
+            "agent_templates": {"toggle": True},
+            "git_history": {"toggle": False},
         },
     }
+    depth_config = {
+        "vision_documents": "medium",
+        "memory_last_n_projects": 3,
+        "git_commits": 25,
+        "agent_templates": "type_only",
+        "tech_stack_sections": "all",
+        "architecture_depth": "overview",
+    }
+    return toggle_config, depth_config
 
 
 @pytest.fixture
@@ -178,6 +199,42 @@ def sample_proposals_data():
                 "proposed_value": "Monolithic backend with REST API",
                 "confidence": "high",
                 "reasoning": "Architecture description remains accurate",
+            },
+            {
+                "section": "description",
+                "drift_detected": True,
+                "current_summary": "An AI agent orchestration platform",
+                "evidence": "Redis caching added",
+                "proposed_value": "Updated AI orchestration platform with Redis caching",
+                "confidence": "medium",
+                "reasoning": "Description should reflect caching addition",
+            },
+            {
+                "section": "core_features",
+                "drift_detected": True,
+                "current_summary": "Agent orchestration, project management, 360 memory",
+                "evidence": "Caching layer added",
+                "proposed_value": "Agent orchestration, project management, 360 memory, caching",
+                "confidence": "medium",
+                "reasoning": "Core features expanded",
+            },
+            {
+                "section": "quality_standards",
+                "drift_detected": True,
+                "current_summary": "80% test coverage, all endpoints tested",
+                "evidence": "Coverage target increased",
+                "proposed_value": "90% test coverage, all endpoints tested, performance benchmarks",
+                "confidence": "high",
+                "reasoning": "Quality bar raised",
+            },
+            {
+                "section": "target_platforms",
+                "drift_detected": True,
+                "current_summary": "windows, linux",
+                "evidence": "macOS support added",
+                "proposed_value": "windows, linux, macos",
+                "confidence": "high",
+                "reasoning": "macOS now supported",
             },
         ],
         "overall_summary": "Minor drift detected in tech stack only.",
@@ -221,11 +278,10 @@ class TestAssembleTuningPromptSections:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["tech_stack", "description"],
             )
@@ -248,11 +304,10 @@ class TestAssembleTuningPromptSections:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["description"],
             )
@@ -274,11 +329,10 @@ class TestAssembleTuningPromptSections:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["tech_stack"],
             )
@@ -309,9 +363,10 @@ class TestAssembleTuningPromptToggles:
         )
 
         # Architecture toggle OFF means architecture, core_features, codebase_structure excluded
-        settings_arch_off = {
-            "field_priority_config": {
-                "version": "3.0",
+        # 0840d: tuple format (toggle_config, depth_config) for _get_user_configs
+        settings_arch_off = (
+            {
+                "version": "4.0",
                 "priorities": {
                     "product_core": {"toggle": True},
                     "tech_stack": {"toggle": True},
@@ -324,14 +379,13 @@ class TestAssembleTuningPromptToggles:
                     "project_description": {"toggle": True},
                 },
             },
-            "depth_config": {"version": "1.0", "depths": {"memory_360": 3, "git_history": 25}},
-        }
+            {"memory_last_n_projects": 3, "git_commits": 25},
+        )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=settings_arch_off):
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=settings_arch_off):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["architecture", "core_features", "tech_stack"],
             )
@@ -354,9 +408,10 @@ class TestAssembleTuningPromptToggles:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        all_off = {
-            "field_priority_config": {
-                "version": "3.0",
+        # 0840d: tuple format (toggle_config, depth_config) for _get_user_configs
+        all_off = (
+            {
+                "version": "4.0",
                 "priorities": {
                     "product_core": {"toggle": False},
                     "tech_stack": {"toggle": False},
@@ -369,19 +424,17 @@ class TestAssembleTuningPromptToggles:
                     "project_description": {"toggle": False},
                 },
             },
-            "depth_config": {"version": "1.0", "depths": {"memory_360": 3}},
-        }
+            {"memory_last_n_projects": 3},
+        )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=[]), \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=all_off):
-            result = await service.assemble_tuning_prompt(
-                product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
-                user_id=USER_ID,
-                sections=["description", "tech_stack", "architecture"],
-            )
-
-        assert result["sections_included"] == []
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=[]), \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=all_off):
+            with pytest.raises(ValidationError):
+                await service.assemble_tuning_prompt(
+                    product_id=PRODUCT_ID,
+                    user_id=USER_ID,
+                    sections=["description", "tech_stack", "architecture"],
+                )
 
 
 # ============================================================================
@@ -406,11 +459,10 @@ class TestAssembleTuningPromptMemoryAndGit:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=sample_memory_entries) as mock_get_mem, \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries) as mock_get_mem, \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["description"],
             )
@@ -433,11 +485,10 @@ class TestAssembleTuningPromptMemoryAndGit:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["tech_stack"],
             )
@@ -458,11 +509,10 @@ class TestAssembleTuningPromptMemoryAndGit:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product_no_git))
         )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["tech_stack"],
             )
@@ -483,11 +533,10 @@ class TestAssembleTuningPromptMemoryAndGit:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=[]), \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=[]), \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["description"],
             )
@@ -509,11 +558,10 @@ class TestAssembleTuningPromptMemoryAndGit:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["description", "tech_stack"],
             )
@@ -549,7 +597,6 @@ class TestAssembleTuningPromptErrors:
         with pytest.raises(ResourceNotFoundError):
             await service.assemble_tuning_prompt(
                 product_id="nonexistent-id",
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["description"],
             )
@@ -568,11 +615,10 @@ class TestAssembleTuningPromptErrors:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             with pytest.raises(ValidationError):
                 await service.assemble_tuning_prompt(
                     product_id=PRODUCT_ID,
-                    tenant_key=TENANT_KEY,
                     user_id=USER_ID,
                     sections=[],
                 )
@@ -591,11 +637,10 @@ class TestAssembleTuningPromptErrors:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             result = await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["description"],
             )
@@ -628,8 +673,8 @@ class TestStoreProposals:
 
         result = await service.store_proposals(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            proposals_data=sample_proposals_data,
+            proposals=sample_proposals_data["proposals"],
+            overall_summary=sample_proposals_data.get("overall_summary"),
         )
 
         assert result["success"] is True
@@ -655,8 +700,8 @@ class TestStoreProposals:
 
         result = await service.store_proposals(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            proposals_data=sample_proposals_data,
+            proposals=sample_proposals_data["proposals"],
+            overall_summary=sample_proposals_data.get("overall_summary"),
         )
 
         # Should be a valid UUID
@@ -680,16 +725,14 @@ class TestStoreProposals:
 
         await service.store_proposals(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            proposals_data=sample_proposals_data,
+            proposals=sample_proposals_data["proposals"],
+            overall_summary=sample_proposals_data.get("overall_summary"),
         )
 
         mock_websocket_manager.broadcast_to_tenant.assert_called_once()
-        call_args = mock_websocket_manager.broadcast_to_tenant.call_args
-        assert call_args[0][0] == TENANT_KEY
-        event_data = call_args[0][1]
-        assert event_data.get("type") == "product:tuning:proposals_ready" or \
-               "product:tuning:proposals_ready" in str(call_args)
+        call_kwargs = mock_websocket_manager.broadcast_to_tenant.call_args.kwargs
+        assert call_kwargs["tenant_key"] == TENANT_KEY
+        assert call_kwargs["event_type"] == "product:tuning:proposals_ready"
 
     @pytest.mark.asyncio
     async def test_returns_success_structure(
@@ -708,8 +751,8 @@ class TestStoreProposals:
 
         result = await service.store_proposals(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            proposals_data=sample_proposals_data,
+            proposals=sample_proposals_data["proposals"],
+            overall_summary=sample_proposals_data.get("overall_summary"),
         )
 
         assert "success" in result
@@ -734,8 +777,8 @@ class TestStoreProposals:
         with pytest.raises(ResourceNotFoundError):
             await service.store_proposals(
                 product_id="nonexistent-id",
-                tenant_key=TENANT_KEY,
-                proposals_data=sample_proposals_data,
+                proposals=sample_proposals_data["proposals"],
+                overall_summary=sample_proposals_data.get("overall_summary"),
             )
 
 
@@ -766,18 +809,18 @@ class TestApplyProposal:
         new_description = "Updated AI orchestration platform with Redis caching"
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="description",
+            action="edit",
             value=new_description,
         )
 
         assert product.description == new_description
 
     @pytest.mark.asyncio
-    async def test_apply_tech_stack_updates_config_data(
+    async def test_apply_tech_stack_updates_relation(
         self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
     ):
-        """Section 'tech_stack' should update Product.config_data['tech_stack']."""
+        """Section 'tech_stack' should update ProductTechStack relation fields."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -792,18 +835,19 @@ class TestApplyProposal:
         new_value = "Python 3.12, FastAPI, Vue 3, PostgreSQL, Redis"
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="tech_stack",
+            action="accept",
             value=new_value,
         )
 
-        assert product.config_data["tech_stack"] == new_value
+        # String value should be broadcast to all tech_stack relation fields
+        assert product.tech_stack.programming_languages == new_value
 
     @pytest.mark.asyncio
-    async def test_apply_architecture_updates_config_data(
+    async def test_apply_architecture_updates_relation(
         self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
     ):
-        """Section 'architecture' should update Product.config_data['architecture']."""
+        """Section 'architecture' should update ProductArchitecture relation fields."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -818,18 +862,18 @@ class TestApplyProposal:
         new_value = "Microservices with event-driven architecture"
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="architecture",
+            action="edit",
             value=new_value,
         )
 
-        assert product.config_data["architecture"] == new_value
+        assert product.architecture.primary_pattern == new_value
 
     @pytest.mark.asyncio
-    async def test_apply_core_features_updates_nested_config(
+    async def test_apply_core_features_updates_direct_field(
         self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
     ):
-        """Section 'core_features' should update Product.config_data['features']['core']."""
+        """Section 'core_features' should update Product.core_features directly."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -844,122 +888,18 @@ class TestApplyProposal:
         new_value = "Agent orchestration, project management, 360 memory, context tuning"
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="core_features",
+            action="edit",
             value=new_value,
         )
 
-        assert product.config_data["features"]["core"] == new_value
+        assert product.core_features == new_value
 
     @pytest.mark.asyncio
-    async def test_apply_codebase_structure_updates_config_data(
+    async def test_apply_quality_standards_updates_test_config_relation(
         self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
     ):
-        """Section 'codebase_structure' should update Product.config_data['codebase_structure']."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "src/giljo_mcp for backend, frontend/src for Vue, saas/ for SaaS"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            section="codebase_structure",
-            value=new_value,
-        )
-
-        assert product.config_data["codebase_structure"] == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_database_type_updates_config_data(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'database_type' should update Product.config_data['database_type']."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "PostgreSQL 18 with Redis cache"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            section="database_type",
-            value=new_value,
-        )
-
-        assert product.config_data["database_type"] == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_backend_framework_updates_config_data(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'backend_framework' should update Product.config_data['backend_framework']."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "FastAPI with SQLAlchemy 2.0 and Alembic"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            section="backend_framework",
-            value=new_value,
-        )
-
-        assert product.config_data["backend_framework"] == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_frontend_framework_updates_config_data(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'frontend_framework' should update Product.config_data['frontend_framework']."""
-        from src.giljo_mcp.services.product_tuning_service import ProductTuningService
-
-        db_manager, session = mock_db_manager
-        product, _ = product_with_pending_proposals
-        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
-
-        session.execute = AsyncMock(
-            return_value=Mock(scalar_one_or_none=Mock(return_value=product))
-        )
-        session.commit = AsyncMock()
-
-        new_value = "Vue 3 with Vuetify 3 and Pinia"
-        await service.apply_proposal(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            section="frontend_framework",
-            value=new_value,
-        )
-
-        assert product.config_data["frontend_framework"] == new_value
-
-    @pytest.mark.asyncio
-    async def test_apply_quality_standards_updates_product_field(
-        self, mock_db_manager, mock_websocket_manager, product_with_pending_proposals
-    ):
-        """Section 'quality_standards' should update Product.quality_standards."""
+        """Section 'quality_standards' should update ProductTestConfig.quality_standards via relation."""
         from src.giljo_mcp.services.product_tuning_service import ProductTuningService
 
         db_manager, session = mock_db_manager
@@ -974,12 +914,12 @@ class TestApplyProposal:
         new_value = "90% test coverage, all endpoints tested, type annotations required"
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="quality_standards",
+            action="edit",
             value=new_value,
         )
 
-        assert product.quality_standards == new_value
+        assert product.test_config.quality_standards == new_value
 
     @pytest.mark.asyncio
     async def test_apply_target_platforms_updates_product_field(
@@ -1000,8 +940,8 @@ class TestApplyProposal:
         new_value = ["windows", "linux", "macos"]
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="target_platforms",
+            action="edit",
             value=new_value,
         )
 
@@ -1028,8 +968,8 @@ class TestApplyProposal:
 
         await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="tech_stack",
+            action="accept",
             value="Python 3.12, FastAPI, Vue 3, PostgreSQL, Redis",
         )
 
@@ -1055,8 +995,8 @@ class TestApplyProposal:
         with pytest.raises(ResourceNotFoundError):
             await service.apply_proposal(
                 product_id="nonexistent-id",
-                tenant_key=TENANT_KEY,
                 section="description",
+                action="accept",
                 value="new value",
             )
 
@@ -1067,7 +1007,7 @@ class TestApplyProposal:
 
 
 class TestDismissProposal:
-    """Test that dismiss_proposal removes specific proposals without side effects."""
+    """Test that apply_proposal with action='dismiss' removes specific proposals without side effects."""
 
     @pytest.mark.asyncio
     async def test_removes_specific_section_from_pending(
@@ -1085,10 +1025,10 @@ class TestDismissProposal:
         )
         session.commit = AsyncMock()
 
-        await service.dismiss_proposal(
+        await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="tech_stack",
+            action="dismiss",
         )
 
         remaining = product.tuning_state["pending_proposals"]["proposals"]
@@ -1111,10 +1051,10 @@ class TestDismissProposal:
         )
         session.commit = AsyncMock()
 
-        await service.dismiss_proposal(
+        await service.apply_proposal(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
             section="tech_stack",
+            action="dismiss",
         )
 
         remaining = product.tuning_state["pending_proposals"]["proposals"]
@@ -1136,10 +1076,10 @@ class TestDismissProposal:
         )
 
         with pytest.raises(ResourceNotFoundError):
-            await service.dismiss_proposal(
+            await service.apply_proposal(
                 product_id="nonexistent-id",
-                tenant_key=TENANT_KEY,
                 section="tech_stack",
+                action="dismiss",
             )
 
 
@@ -1167,10 +1107,10 @@ class TestClearReview:
         )
         session.commit = AsyncMock()
 
-        await service.clear_review(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-        )
+        with patch.object(service._memory_repo, "get_next_sequence", new_callable=AsyncMock, return_value=4):
+            await service.clear_review(
+                product_id=PRODUCT_ID,
+            )
 
         assert product.tuning_state.get("pending_proposals") is None
 
@@ -1191,10 +1131,10 @@ class TestClearReview:
         session.commit = AsyncMock()
 
         before = datetime.now(timezone.utc)
-        await service.clear_review(
-            product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-        )
+        with patch.object(service._memory_repo, "get_next_sequence", new_callable=AsyncMock, return_value=4):
+            await service.clear_review(
+                product_id=PRODUCT_ID,
+            )
 
         last_tuned = product.tuning_state.get("last_tuned_at")
         assert last_tuned is not None
@@ -1215,10 +1155,9 @@ class TestClearReview:
         )
         session.commit = AsyncMock()
 
-        with patch.object(service, "_get_current_sequence", new_callable=AsyncMock, return_value=15):
+        with patch.object(service._memory_repo, "get_next_sequence", new_callable=AsyncMock, return_value=16):
             await service.clear_review(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
             )
 
         assert product.tuning_state.get("last_tuned_at_sequence") is not None
@@ -1240,7 +1179,6 @@ class TestClearReview:
         with pytest.raises(ResourceNotFoundError):
             await service.clear_review(
                 product_id="nonexistent-id",
-                tenant_key=TENANT_KEY,
             )
 
 
@@ -1266,11 +1204,10 @@ class TestTenantIsolation:
             return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product))
         )
 
-        with patch.object(service, "_get_memory_entries", new_callable=AsyncMock, return_value=sample_memory_entries), \
-             patch.object(service, "_get_user_settings", new_callable=AsyncMock, return_value=sample_user_settings):
+        with patch.object(service._memory_repo, "get_entries_for_context", new_callable=AsyncMock, return_value=sample_memory_entries), \
+             patch.object(service, "_get_user_configs", new_callable=AsyncMock, return_value=sample_user_settings):
             await service.assemble_tuning_prompt(
                 product_id=PRODUCT_ID,
-                tenant_key=TENANT_KEY,
                 user_id=USER_ID,
                 sections=["description"],
             )
@@ -1295,8 +1232,8 @@ class TestTenantIsolation:
 
         await service.store_proposals(
             product_id=PRODUCT_ID,
-            tenant_key=TENANT_KEY,
-            proposals_data=sample_proposals_data,
+            proposals=sample_proposals_data["proposals"],
+            overall_summary=sample_proposals_data.get("overall_summary"),
         )
 
         session.execute.assert_called_once()

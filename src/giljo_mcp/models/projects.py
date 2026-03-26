@@ -7,7 +7,7 @@ taxonomy categories (e.g., Backend, Frontend, API) for structured project naming
 """
 
 from sqlalchemy import (
-    JSON,
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -141,7 +141,15 @@ class Project(Base):
         nullable=True,
         comment="Timestamp when project was soft deleted (NULL for active projects)",
     )
-    meta_data = Column(JSON, default=dict)
+    cancellation_reason = Column(Text, nullable=True, comment="Reason for project cancellation")
+    deactivation_reason = Column(Text, nullable=True, comment="Reason for project deactivation")
+    early_termination = Column(
+        Boolean,
+        nullable=True,
+        default=False,
+        server_default=text("false"),
+        comment="Whether project was terminated early via termination prompt",
+    )
 
     # Handover 0073: Orchestrator closeout support
     orchestrator_summary = Column(

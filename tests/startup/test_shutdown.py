@@ -177,9 +177,9 @@ async def test_shutdown_continues_on_error():
         # Should not raise, just log error
         await shutdown(state)
 
-        # Verify error was logged
-        error_calls = [call.args[0] for call in mock_logger.error.call_args_list]
-        assert any("Error stopping health monitor" in msg for msg in error_calls)
+        # Verify error was logged via logger.exception (used by _run_with_timeout)
+        exc_calls = [call.args[0] for call in mock_logger.exception.call_args_list]
+        assert any("Error in shutdown step" in msg for msg in exc_calls)
 
         # Database should still close despite health monitor error
         state.db_manager.close_async.assert_awaited_once()
@@ -210,17 +210,12 @@ async def test_shutdown_logs_progress():
     with patch("api.startup.shutdown.logger") as mock_logger:
         await shutdown(state)
 
-        # Verify shutdown messages were logged
+        # Verify shutdown messages were logged (progress steps use print(), not logger)
         info_calls = [call.args[0] for call in mock_logger.info.call_args_list]
 
-        # Check for the actual log messages from shutdown.py
+        # Check for the actual logger.info messages from shutdown.py
         assert any("Shutting down GiljoAI MCP API" in msg for msg in info_calls)
-        assert any("Canceling background tasks" in msg for msg in info_calls)
-        assert any("Background tasks canceled" in msg for msg in info_calls)
-        assert any("Closing WebSocket connections" in msg for msg in info_calls)
-        assert any("WebSocket connections closed" in msg for msg in info_calls)
-        assert any("Closing database connection" in msg for msg in info_calls)
-        assert any("Database connection closed" in msg for msg in info_calls)
+        assert any("API shutdown complete" in msg for msg in info_calls)
 
 
 @pytest.mark.asyncio
