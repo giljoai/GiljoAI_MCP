@@ -852,6 +852,53 @@ class ProductService:
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
+    async def purge_product(self, product_id: str) -> dict:
+        """
+        Permanently delete a product and ALL related data (hard delete).
+
+        Cascades via FK ondelete=CASCADE to: projects, tasks, tech_stacks,
+        architectures, test_configs, vision_documents, product_memory_entries,
+        context chunks.
+
+        Args:
+            product_id: Product UUID to permanently delete
+
+        Returns:
+            dict with product_name and message
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoError: If database operation fails
+        """
+        try:
+            async with self._get_session() as session:
+                stmt = select(Product).where(and_(Product.id == product_id, Product.tenant_key == self.tenant_key))
+                result = await session.execute(stmt)
+                product = result.scalar_one_or_none()
+
+                if not product:
+                    raise ResourceNotFoundError(
+                        message="Product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key},
+                    )
+
+                product_name = product.name
+                await session.delete(product)
+                await session.commit()
+
+                self._logger.info(f"Permanently deleted product {product_id} ({product_name})")
+
+                return {"product_name": product_name, "message": f"Product '{product_name}' permanently deleted"}
+
+        except ResourceNotFoundError:
+            raise
+        except Exception as e:
+            self._logger.exception("Failed to purge product")
+            raise BaseGiljoError(
+                message=f"Failed to permanently delete product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
+            ) from e
+
     async def list_deleted_products(self) -> list[Product]:
         """
         List soft-deleted products.
