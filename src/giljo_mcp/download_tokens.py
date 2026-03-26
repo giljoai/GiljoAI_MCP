@@ -18,7 +18,7 @@ Usage:
     token = await manager.generate_token(
         tenant_key="abc123",
         download_type="slash_commands",
-        metadata={"filename": "slash_commands.zip"}
+        filename="slash_commands.zip",
     )
 
     # Validate token
@@ -61,11 +61,11 @@ class TokenManager:
         """
         self.db_session = db_session
 
-    async def generate_token(self, tenant_key: str, download_type: str, metadata: dict) -> str:
+    async def generate_token(self, tenant_key: str, download_type: str, filename: str | None = None) -> str:
         """
         Generate a new download token.
 
-        Creates a UUID v4 token with 15-minute expiry and stores metadata
+        Creates a UUID v4 token with 15-minute expiry and stores the filename
         in the database. Token is ready for immediate use.
 
         If no database session is configured, only returns a UUID without
@@ -74,7 +74,7 @@ class TokenManager:
         Args:
             tenant_key: Tenant identifier for multi-tenant isolation
             download_type: Type of download ('slash_commands' or 'agent_templates')
-            metadata: Additional metadata (filename, file_count, etc.)
+            filename: Optional filename for the download
 
         Returns:
             str: UUID token string
@@ -96,7 +96,7 @@ class TokenManager:
 
         # Create token record
         token_record = DownloadToken(
-            tenant_key=tenant_key, download_type=download_type, meta_data=metadata, expires_at=expires_at
+            tenant_key=tenant_key, download_type=download_type, filename=filename, expires_at=expires_at
         )
 
         try:
@@ -208,7 +208,7 @@ class TokenManager:
                 "token": token_record.token,
                 "tenant_key": token_record.tenant_key,
                 "download_type": token_record.download_type,
-                "metadata": token_record.meta_data,
+                "filename": token_record.filename,
                 "is_expired": token_record.is_expired,
                 "staging_status": token_record.staging_status,
                 "staging_error": token_record.staging_error,
@@ -247,7 +247,7 @@ class TokenManager:
                 "token": token_record.token,
                 "tenant_key": token_record.tenant_key,
                 "download_type": token_record.download_type,
-                "metadata": token_record.meta_data,
+                "filename": token_record.filename,
                 "is_expired": token_record.is_expired,
                 "staging_status": token_record.staging_status,
                 "staging_error": token_record.staging_error,

@@ -18,7 +18,6 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.config.defaults import (
-    DEFAULT_DEPTH_CONFIG,
     DEFAULT_FIELD_PRIORITY,
     TUNING_SECTION_TOGGLE_MAP,
 )
@@ -27,21 +26,39 @@ from src.giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.models.auth import User
 from src.giljo_mcp.repositories.product_memory_repository import ProductMemoryRepository
+from src.giljo_mcp.schemas.jsonb_validators import validate_tuning_state
 
 
 logger = logging.getLogger(__name__)
 
 # Maps section keys to product fields for applying proposals
+# Handover 0840c: Rewritten for normalized tables
 SECTION_FIELD_MAP: dict[str, dict[str, str]] = {
     "description": {"type": "direct", "field": "description"},
-    "tech_stack": {"type": "config_data", "path": "tech_stack"},
-    "architecture": {"type": "config_data", "path": "architecture"},
-    "core_features": {"type": "config_data", "path": "features.core"},
-    "codebase_structure": {"type": "config_data", "path": "codebase_structure"},
-    "database_type": {"type": "config_data", "path": "database_type"},
-    "backend_framework": {"type": "config_data", "path": "backend_framework"},
-    "frontend_framework": {"type": "config_data", "path": "frontend_framework"},
-    "quality_standards": {"type": "direct", "field": "quality_standards"},
+    "tech_stack": {
+        "type": "relation",
+        "relation": "tech_stack",
+        "fields": {
+            "programming_languages": "programming_languages",
+            "frontend_frameworks": "frontend_frameworks",
+            "backend_frameworks": "backend_frameworks",
+            "databases_storage": "databases_storage",
+            "infrastructure": "infrastructure",
+            "dev_tools": "dev_tools",
+        },
+    },
+    "architecture": {
+        "type": "relation",
+        "relation": "architecture",
+        "fields": {
+            "primary_pattern": "primary_pattern",
+            "design_patterns": "design_patterns",
+            "api_style": "api_style",
+            "architecture_notes": "architecture_notes",
+        },
+    },
+    "core_features": {"type": "direct", "field": "core_features"},
+    "quality_standards": {"type": "relation_field", "relation": "test_config", "field": "quality_standards"},
     "target_platforms": {"type": "direct", "field": "target_platforms"},
 }
 
@@ -149,15 +166,44 @@ class ProductTuningService:
         return product
 
     async def _get_user_configs(self, session: AsyncSession, user_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
-        """Get user's toggle and depth configurations."""
+        """Get user's toggle and depth configurations from normalized tables/columns."""
+        from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
+        from src.giljo_mcp.models.auth import UserFieldPriority
+
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        toggle_config = user.field_priority_config or DEFAULT_FIELD_PRIORITY
-        depth_config = user.depth_config or DEFAULT_DEPTH_CONFIG.get("depths", {})
+        # Build toggle_config from user_field_priorities table
+        prio_result = await session.execute(
+            select(UserFieldPriority).where(
+                and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == self.tenant_key)
+            )
+        )
+        rows = prio_result.scalars().all()
+
+        if rows:
+            toggles = dict(DEFAULT_CATEGORY_TOGGLES)
+            for row in rows:
+                toggles[row.category] = row.enabled
+            priorities = {"product_core": {"toggle": True}, "project_description": {"toggle": True}}
+            for cat, enabled in toggles.items():
+                priorities[cat] = {"toggle": enabled}
+            toggle_config = {"version": "4.0", "priorities": priorities}
+        else:
+            toggle_config = DEFAULT_FIELD_PRIORITY
+
+        # Build depth_config from columns
+        depth_config = {
+            "vision_documents": user.depth_vision_documents,
+            "memory_last_n_projects": user.depth_memory_last_n,
+            "git_commits": user.depth_git_commits,
+            "agent_templates": user.depth_agent_templates,
+            "tech_stack_sections": user.depth_tech_stack_sections,
+            "architecture_depth": user.depth_architecture,
+        }
 
         return toggle_config, depth_config
 
@@ -179,21 +225,31 @@ class ProductTuningService:
             if not mapping:
                 continue
 
+            label = section.replace("_", " ").title()
+
             if mapping["type"] == "direct":
                 value = getattr(product, mapping["field"], None)
-            elif mapping["type"] == "config_data":
-                value = product.get_config_field(mapping["path"]) if product.has_config_data else None
+            elif mapping["type"] == "relation":
+                rel_obj = getattr(product, mapping["relation"], None)
+                if rel_obj:
+                    items = []
+                    for field_name in mapping["fields"]:
+                        v = getattr(rel_obj, field_name, None)
+                        if v:
+                            items.append(f"- {field_name}: {v}")
+                    value = "\n".join(items) if items else None
+                else:
+                    value = None
+            elif mapping["type"] == "relation_field":
+                rel_obj = getattr(product, mapping["relation"], None)
+                value = getattr(rel_obj, mapping["field"], None) if rel_obj else None
             else:
                 continue
 
-            label = section.replace("_", " ").title()
             if value is None:
                 parts.append(f"### {label}\n(not set)")
             elif isinstance(value, list):
                 parts.append(f"### {label}\n{', '.join(str(v) for v in value)}")
-            elif isinstance(value, dict):
-                items = "\n".join(f"- {k}: {v}" for k, v in value.items())
-                parts.append(f"### {label}\n{items}")
             else:
                 parts.append(f"### {label}\n{value}")
 
@@ -360,7 +416,7 @@ class ProductTuningService:
                 "overall_summary": overall_summary,
                 "proposals": proposals,
             }
-            product.tuning_state = tuning_state
+            product.tuning_state = validate_tuning_state(tuning_state)
             product.updated_at = datetime.now(timezone.utc)
 
             await session.commit()
@@ -446,7 +502,7 @@ class ProductTuningService:
                 tuning_state["pending_proposals"] = None
                 tuning_state["last_tuned_at"] = datetime.now(timezone.utc).isoformat()
 
-            product.tuning_state = tuning_state
+            product.tuning_state = validate_tuning_state(tuning_state)
             product.updated_at = datetime.now(timezone.utc)
             await session.commit()
 
@@ -454,23 +510,41 @@ class ProductTuningService:
 
     def _apply_value_to_product(self, product: Product, section: str, value: Any) -> None:
         """Apply a tuning value to the correct product field."""
+        from src.giljo_mcp.models.products import ProductArchitecture, ProductTechStack
+
         mapping = SECTION_FIELD_MAP.get(section)
         if not mapping:
             raise ValidationError(message=f"Unknown section: {section}", context={"section": section})
 
         if mapping["type"] == "direct":
             setattr(product, mapping["field"], value)
-        elif mapping["type"] == "config_data":
-            config = dict(product.config_data or {})
-            path = mapping["path"]
-            parts = path.split(".")
-            if len(parts) == 1:
-                config[parts[0]] = value
-            elif len(parts) == 2:
-                if parts[0] not in config:
-                    config[parts[0]] = {}
-                config[parts[0]][parts[1]] = value
-            product.config_data = config
+        elif mapping["type"] == "relation":
+            rel_obj = getattr(product, mapping["relation"], None)
+            if rel_obj is None:
+                # Create the related object if it doesn't exist
+                if mapping["relation"] == "tech_stack":
+                    rel_obj = ProductTechStack(product_id=product.id, tenant_key=product.tenant_key)
+                    product.tech_stack = rel_obj
+                elif mapping["relation"] == "architecture":
+                    rel_obj = ProductArchitecture(product_id=product.id, tenant_key=product.tenant_key)
+                    product.architecture = rel_obj
+            # Value could be a dict of fields or a string
+            if isinstance(value, dict):
+                for field_name, field_value in value.items():
+                    if hasattr(rel_obj, field_name):
+                        setattr(rel_obj, field_name, field_value)
+            elif isinstance(value, str):
+                # For string values, set all text fields to the value
+                for field_name in mapping["fields"]:
+                    setattr(rel_obj, field_name, value)
+        elif mapping["type"] == "relation_field":
+            from src.giljo_mcp.models.products import ProductTestConfig
+
+            rel_obj = getattr(product, mapping["relation"], None)
+            if rel_obj is None:
+                rel_obj = ProductTestConfig(product_id=product.id, tenant_key=product.tenant_key)
+                product.test_config = rel_obj
+            setattr(rel_obj, mapping["field"], value)
 
     async def clear_review(self, product_id: str) -> dict[str, Any]:
         """Clear all pending proposals and update last_tuned_at."""
@@ -485,7 +559,7 @@ class ProductTuningService:
             tuning_state["last_tuned_at"] = datetime.now(timezone.utc).isoformat()
             tuning_state["last_tuned_at_sequence"] = max(current_sequence, 0)
 
-            product.tuning_state = tuning_state
+            product.tuning_state = validate_tuning_state(tuning_state)
             product.updated_at = datetime.now(timezone.utc)
             await session.commit()
 

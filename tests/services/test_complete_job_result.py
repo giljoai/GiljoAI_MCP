@@ -19,7 +19,8 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 
-from src.giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Message, Project
+from src.giljo_mcp.models import AgentExecution, AgentTemplate, Message, Project
+from src.giljo_mcp.models.tasks import MessageRecipient
 from src.giljo_mcp.services.orchestration_service import OrchestrationService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -189,15 +190,21 @@ class TestCompleteJobAutoMessage:
         assert len(messages) == 1, f"Expected 1 completion_report message, got {len(messages)}"
 
         msg = messages[0]
-        assert orch_spawn.agent_id in msg.to_agents
+        # Handover 0840b: Recipients stored in MessageRecipient junction table
+        recip_result = await db_session.execute(
+            select(MessageRecipient).where(MessageRecipient.message_id == msg.id)
+        )
+        recipients = recip_result.scalars().all()
+        assert any(r.agent_id == orch_spawn.agent_id for r in recipients), (
+            f"Expected orchestrator {orch_spawn.agent_id} in recipients"
+        )
         assert "COMPLETION REPORT" in msg.content
         assert "specialist" in msg.content
         assert "Refactored the auth module" in msg.content
         assert msg.status == "pending"
 
-        # Verify sender stored in meta_data (Message has no from_agent column)
-        assert msg.meta_data is not None
-        assert msg.meta_data.get("_from_agent") == str(spec_spawn.agent_id)
+        # Handover 0840b: from_agent_id is now a proper column
+        assert msg.from_agent_id == str(spec_spawn.agent_id)
 
 
 # ============================================================================

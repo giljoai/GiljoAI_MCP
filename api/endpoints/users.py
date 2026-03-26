@@ -653,15 +653,6 @@ async def get_field_priority_config(
 
     config = await user_service.get_field_priority_config(str(current_user.id))
 
-    # Normalize legacy v2.0 data (integer priorities) to v3.0 toggle format
-    # before Pydantic validation, which rejects raw integers
-    if "priorities" in config:
-        from src.giljo_mcp.services.protocol_builder import _normalize_field_toggles
-
-        normalized = _normalize_field_toggles(config["priorities"])
-        config["priorities"] = {k: {"toggle": v} for k, v in normalized.items()}
-        config["version"] = "3.0"
-
     logger.debug(f"Returning field toggle config for user {current_user.username}")
     return FieldPriorityConfig(**config)
 
@@ -765,9 +756,9 @@ async def reset_field_priority_config(
 
     logger.info(f"Reset field toggle config to defaults for user: {current_user.username}")
 
-    from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
-
-    return FieldPriorityConfig(**DEFAULT_FIELD_PRIORITY)
+    # Return defaults by re-reading from service (which returns defaults when no rows exist)
+    config = await user_service.get_field_priority_config(str(current_user.id))
+    return FieldPriorityConfig(**config)
 
 
 # Depth Configuration Endpoints (Handover 0314)

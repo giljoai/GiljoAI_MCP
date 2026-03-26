@@ -171,6 +171,17 @@ class ToolAccessor:
             product_id,
         )
 
+        # Broadcast WebSocket event so frontend refreshes
+        if self._websocket_manager:
+            try:
+                await self._websocket_manager.broadcast_to_tenant(
+                    tenant_key=effective_tenant_key,
+                    event_type="project:created",
+                    data={"project_id": str(project.id), "name": project.name, "product_id": product_id},
+                )
+            except (RuntimeError, ValueError, OSError) as e:
+                logger.warning(f"Failed to broadcast project:created event: {e}")
+
         return {
             "success": True,
             "project_id": project.id,
@@ -351,6 +362,17 @@ class ToolAccessor:
             product_id,
         )
 
+        # Broadcast WebSocket event so frontend refreshes
+        if self._websocket_manager:
+            try:
+                await self._websocket_manager.broadcast_to_tenant(
+                    tenant_key=effective_tenant_key,
+                    event_type="task:created",
+                    data={"task_id": task_id, "title": title, "product_id": product_id},
+                )
+            except (RuntimeError, ValueError, OSError) as e:
+                logger.warning(f"Failed to broadcast task:created event: {e}")
+
         return {
             "success": True,
             "task_id": task_id,
@@ -396,7 +418,7 @@ class ToolAccessor:
                 token = await token_manager.generate_token(
                     tenant_key=tenant_key,
                     download_type=content_type,
-                    metadata={"filename": filename},
+                    filename=filename,
                 )
 
                 # Stage files

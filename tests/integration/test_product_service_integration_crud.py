@@ -36,7 +36,7 @@ class TestProductCRUDWorkflows:
             name="Lifecycle Product",
             description="Testing full lifecycle",
             project_path="/projects/lifecycle",
-            config_data={"version": "1.0"},
+            tech_stack={"programming_languages": "Python"},
         )
         assert isinstance(create_result, Product)
         product_id = str(create_result.id)
@@ -45,7 +45,7 @@ class TestProductCRUDWorkflows:
         update_result = await service.update_product(
             product_id=product_id,
             description="Updated description",
-            config_data={"version": "2.0", "feature": "enabled"},
+            tech_stack={"programming_languages": "Python 3.12", "backend_frameworks": "FastAPI"},
         )
         assert update_result.description == "Updated description"
 

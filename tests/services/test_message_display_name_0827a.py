@@ -21,7 +21,7 @@ from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
-from src.giljo_mcp.models.tasks import Message
+from src.giljo_mcp.models.tasks import Message, MessageRecipient
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.tenant import TenantManager
 
@@ -40,6 +40,7 @@ def mock_websocket_manager():
     mock.broadcast_message_acknowledged = AsyncMock()
     mock.broadcast_job_message = AsyncMock()
     mock.broadcast_job_status_change = AsyncMock()
+    mock.broadcast_job_status_update = AsyncMock()
     return mock
 
 
@@ -180,16 +181,15 @@ class TestDisplayNameAtSendTime:
 
         assert result.message_id is not None
 
-        # Verify the stored message has _from_display_name in metadata
+        # Verify the stored message has from_display_name column (Handover 0840b)
         from sqlalchemy import select
 
         msg_result = await db_session.execute(
             select(Message).where(Message.id == result.message_id)
         )
         msg = msg_result.scalar_one()
-        assert msg.meta_data is not None
-        assert "_from_display_name" in msg.meta_data
-        assert msg.meta_data["_from_display_name"] == "Orchestrator Agent"
+        assert msg.from_display_name == "Orchestrator Agent"
+        assert msg.from_agent_id == orchestrator.agent_id
 
     @pytest.mark.asyncio
     async def test_send_message_from_orchestrator_string_stores_display_name(
@@ -221,7 +221,8 @@ class TestDisplayNameAtSendTime:
             select(Message).where(Message.id == result.message_id)
         )
         msg = msg_result.scalar_one()
-        assert msg.meta_data["_from_display_name"] == "orchestrator"
+        # Handover 0840b: from_display_name is now a column
+        assert msg.from_display_name == "orchestrator"
 
 
 class TestDisplayNameAtReceiveTime:
@@ -279,18 +280,24 @@ class TestDisplayNameAtReceiveTime:
         orchestrator = agents[0]  # "Orchestrator Agent"
         analyzer = agents[1]  # "Code Analyzer"
 
-        # Manually create a "legacy" message without _from_display_name
+        # Manually create a "legacy" message without from_display_name
+        # Handover 0840b: Use new columns and MessageRecipient junction table
         legacy_msg = Message(
             project_id=project.id,
             tenant_key=test_tenant_key,
-            to_agents=[analyzer.agent_id],
             content="Legacy message without display name",
             message_type="direct",
             priority="normal",
             status="pending",
-            meta_data={"_from_agent": orchestrator.agent_id, "job_id": project.id},
+            from_agent_id=orchestrator.agent_id,
         )
         db_session.add(legacy_msg)
+        await db_session.flush()
+        db_session.add(MessageRecipient(
+            message_id=legacy_msg.id,
+            agent_id=analyzer.agent_id,
+            tenant_key=test_tenant_key,
+        ))
         await db_session.commit()
 
         # Receive messages as the analyzer

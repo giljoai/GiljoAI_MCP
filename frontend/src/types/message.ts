@@ -8,7 +8,6 @@ export interface Message {
   from: string // Sender (agent job_id, 'user', 'system', 'orchestrator')
   from_agent?: string // Alias for backend compatibility
   to_agents: string[] // Recipient list
-  to_agent?: string // Single recipient (backend compatibility)
   content: string
   type: MessageType // 'direct' | 'broadcast' | 'system' | 'info' | 'error' | 'success'
   message_type?: MessageType // Alias for backend compatibility
