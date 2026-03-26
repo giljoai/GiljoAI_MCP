@@ -142,6 +142,7 @@ async def simple_handover(
         prio_result = await db.execute(
             sa_select(UserFieldPriority).where(
                 UserFieldPriority.user_id == current_user.id,
+                UserFieldPriority.tenant_key == current_user.tenant_key,
                 UserFieldPriority.category == "git_history",
             )
         )
