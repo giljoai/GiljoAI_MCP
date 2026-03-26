@@ -5,7 +5,6 @@ Stores chunked vision documents for agentic RAG with PostgreSQL full-text search
 """
 
 from sqlalchemy import (
-    JSON,
     Column,
     DateTime,
     ForeignKey,
@@ -14,7 +13,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -47,7 +46,7 @@ class MCPContextIndex(Base):
     )
     content = Column(Text, nullable=False)
     summary = Column(Text, nullable=True, comment="Optional LLM-generated summary (NULL for Phase 1 non-LLM chunking)")
-    keywords = Column(JSON, default=list, comment="Array of keyword strings extracted via regex or LLM")
+    keywords = Column(JSONB, default=list, comment="Array of keyword strings extracted via regex or LLM")
     token_count = Column(Integer, nullable=True)
     chunk_order = Column(Integer, nullable=True, comment="Sequential chunk number for maintaining document order")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
