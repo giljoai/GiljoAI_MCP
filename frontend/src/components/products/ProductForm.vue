@@ -140,7 +140,7 @@
 
               <!-- Core Features -->
               <v-textarea
-                v-model="productForm.configData.features.core"
+                v-model="productForm.coreFeatures"
                 hint="Main functionality and capabilities of this product"
                 persistent-hint
                 variant="outlined"
@@ -152,12 +152,12 @@
                 <template #label>
                   <span>Core Product Features</span>
                   <v-chip
-                    v-if="hasFieldPriority('features.core')"
-                    :color="getPriorityColor(getPriorityForField('features.core'))"
+                    v-if="hasFieldPriority('core_features')"
+                    :color="getPriorityColor(getPriorityForField('core_features'))"
                     size="x-small"
                     class="ml-2"
                   >
-                    {{ getPriorityLabel(getPriorityForField('features.core')) }}
+                    {{ getPriorityLabel(getPriorityForField('core_features')) }}
                   </v-chip>
                 </template>
               </v-textarea>
@@ -327,7 +327,7 @@
               <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
 
               <v-textarea
-                v-model="productForm.configData.tech_stack.languages"
+                v-model="productForm.techStack.programming_languages"
                 placeholder="Python 3.11, JavaScript ES2023, TypeScript 5.2"
                 hint="List all programming languages used (comma-separated or line-by-line)"
                 persistent-hint
@@ -340,18 +340,18 @@
                 <template #label>
                   <span>Programming Languages</span>
                   <v-chip
-                    v-if="hasFieldPriority('tech_stack.languages')"
-                    :color="getPriorityColor(getPriorityForField('tech_stack.languages'))"
+                    v-if="hasFieldPriority('tech_stack.programming_languages')"
+                    :color="getPriorityColor(getPriorityForField('tech_stack.programming_languages'))"
                     size="x-small"
                     class="ml-2"
                   >
-                    {{ getPriorityLabel(getPriorityForField('tech_stack.languages')) }}
+                    {{ getPriorityLabel(getPriorityForField('tech_stack.programming_languages')) }}
                   </v-chip>
                 </template>
               </v-textarea>
 
               <v-textarea
-                v-model="productForm.configData.tech_stack.frontend"
+                v-model="productForm.techStack.frontend_frameworks"
                 placeholder="Vue 3, Vuetify 3, Pinia, Vue Router"
                 hint="List frontend technologies (frameworks, libraries, tools)"
                 persistent-hint
@@ -364,18 +364,18 @@
                 <template #label>
                   <span>Frontend Frameworks & Libraries</span>
                   <v-chip
-                    v-if="hasFieldPriority('tech_stack.frontend')"
-                    :color="getPriorityColor(getPriorityForField('tech_stack.frontend'))"
+                    v-if="hasFieldPriority('tech_stack.frontend_frameworks')"
+                    :color="getPriorityColor(getPriorityForField('tech_stack.frontend_frameworks'))"
                     size="x-small"
                     class="ml-2"
                   >
-                    {{ getPriorityLabel(getPriorityForField('tech_stack.frontend')) }}
+                    {{ getPriorityLabel(getPriorityForField('tech_stack.frontend_frameworks')) }}
                   </v-chip>
                 </template>
               </v-textarea>
 
               <v-textarea
-                v-model="productForm.configData.tech_stack.backend"
+                v-model="productForm.techStack.backend_frameworks"
                 placeholder="FastAPI 0.104, SQLAlchemy 2.0, Alembic, asyncio"
                 hint="List backend technologies (frameworks, ORMs, services)"
                 persistent-hint
@@ -388,18 +388,18 @@
                 <template #label>
                   <span>Backend Frameworks & Services</span>
                   <v-chip
-                    v-if="hasFieldPriority('tech_stack.backend')"
-                    :color="getPriorityColor(getPriorityForField('tech_stack.backend'))"
+                    v-if="hasFieldPriority('tech_stack.backend_frameworks')"
+                    :color="getPriorityColor(getPriorityForField('tech_stack.backend_frameworks'))"
                     size="x-small"
                     class="ml-2"
                   >
-                    {{ getPriorityLabel(getPriorityForField('tech_stack.backend')) }}
+                    {{ getPriorityLabel(getPriorityForField('tech_stack.backend_frameworks')) }}
                   </v-chip>
                 </template>
               </v-textarea>
 
               <v-textarea
-                v-model="productForm.configData.tech_stack.database"
+                v-model="productForm.techStack.databases_storage"
                 placeholder="PostgreSQL 16, Redis 7, Vector embeddings (pgvector)"
                 hint="List databases and data storage solutions"
                 persistent-hint
@@ -412,18 +412,18 @@
                 <template #label>
                   <span>Databases & Data Storage</span>
                   <v-chip
-                    v-if="hasFieldPriority('tech_stack.database')"
-                    :color="getPriorityColor(getPriorityForField('tech_stack.database'))"
+                    v-if="hasFieldPriority('tech_stack.databases_storage')"
+                    :color="getPriorityColor(getPriorityForField('tech_stack.databases_storage'))"
                     size="x-small"
                     class="ml-2"
                   >
-                    {{ getPriorityLabel(getPriorityForField('tech_stack.database')) }}
+                    {{ getPriorityLabel(getPriorityForField('tech_stack.databases_storage')) }}
                   </v-chip>
                 </template>
               </v-textarea>
 
               <v-textarea
-                v-model="productForm.configData.tech_stack.infrastructure"
+                v-model="productForm.techStack.infrastructure"
                 placeholder="Docker, Kubernetes, GitHub Actions CI/CD, AWS (EC2, S3, RDS)"
                 hint="List infrastructure and deployment tools"
                 persistent-hint
@@ -522,7 +522,7 @@
               <div class="text-caption text-warning mb-4">Used as context source by orchestrator.</div>
 
               <v-textarea
-                v-model="productForm.configData.architecture.pattern"
+                v-model="productForm.architecture.primary_pattern"
                 placeholder="Modular Monolith with Event-Driven components, CQRS for high-traffic modules"
                 hint="Describe the overall system architecture approach"
                 persistent-hint
@@ -535,18 +535,18 @@
                 <template #label>
                   <span>Primary Architecture Pattern</span>
                   <v-chip
-                    v-if="hasFieldPriority('architecture.pattern')"
-                    :color="getPriorityColor(getPriorityForField('architecture.pattern'))"
+                    v-if="hasFieldPriority('architecture.primary_pattern')"
+                    :color="getPriorityColor(getPriorityForField('architecture.primary_pattern'))"
                     size="x-small"
                     class="ml-2"
                   >
-                    {{ getPriorityLabel(getPriorityForField('architecture.pattern')) }}
+                    {{ getPriorityLabel(getPriorityForField('architecture.primary_pattern')) }}
                   </v-chip>
                 </template>
               </v-textarea>
 
               <v-textarea
-                v-model="productForm.configData.architecture.design_patterns"
+                v-model="productForm.architecture.design_patterns"
                 placeholder="Repository Pattern, Dependency Injection, Factory Pattern, SOLID principles"
                 hint="List design patterns and architectural principles used"
                 persistent-hint
@@ -570,7 +570,7 @@
               </v-textarea>
 
               <v-textarea
-                v-model="productForm.configData.architecture.api_style"
+                v-model="productForm.architecture.api_style"
                 placeholder="REST API (OpenAPI 3.0), WebSocket for real-time updates, GraphQL for complex queries"
                 hint="Describe API communication patterns and protocols"
                 persistent-hint
@@ -594,7 +594,7 @@
               </v-textarea>
 
               <v-textarea
-                v-model="productForm.configData.architecture.notes"
+                v-model="productForm.architecture.architecture_notes"
                 hint="Additional architectural decisions, constraints, or context"
                 persistent-hint
                 variant="outlined"
@@ -606,12 +606,12 @@
                 <template #label>
                   <span>Architecture Notes</span>
                   <v-chip
-                    v-if="hasFieldPriority('architecture.notes')"
-                    :color="getPriorityColor(getPriorityForField('architecture.notes'))"
+                    v-if="hasFieldPriority('architecture.architecture_notes')"
+                    :color="getPriorityColor(getPriorityForField('architecture.architecture_notes'))"
                     size="x-small"
                     class="ml-2"
                   >
-                    {{ getPriorityLabel(getPriorityForField('architecture.notes')) }}
+                    {{ getPriorityLabel(getPriorityForField('architecture.architecture_notes')) }}
                   </v-chip>
                 </template>
               </v-textarea>
@@ -624,7 +624,7 @@
 
               <!-- Quality Standards -->
               <v-textarea
-                v-model="productForm.configData.test_config.quality_standards"
+                v-model="productForm.testConfig.quality_standards"
                 placeholder="e.g., Code review required, 80% coverage, zero critical bugs, all tests passing before merge"
                 hint="Define your quality expectations for testing and development"
                 persistent-hint
@@ -649,7 +649,7 @@
 
               <!-- Testing Strategy Dropdown -->
               <v-select
-                v-model="productForm.configData.test_config.strategy"
+                v-model="productForm.testConfig.test_strategy"
                 :items="testingStrategies"
                 item-title="title"
                 item-value="value"
@@ -662,12 +662,12 @@
                 <template #label>
                   <span>Testing Strategy & Approach</span>
                   <v-chip
-                    v-if="hasFieldPriority('test_config.strategy')"
-                    :color="getPriorityColor(getPriorityForField('test_config.strategy'))"
+                    v-if="hasFieldPriority('test_config.test_strategy')"
+                    :color="getPriorityColor(getPriorityForField('test_config.test_strategy'))"
                     size="x-small"
                     class="ml-2"
                   >
-                    {{ getPriorityLabel(getPriorityForField('test_config.strategy')) }}
+                    {{ getPriorityLabel(getPriorityForField('test_config.test_strategy')) }}
                   </v-chip>
                 </template>
 
@@ -694,7 +694,7 @@
               <!-- Coverage Target Slider -->
               <div class="mb-4">
                 <label class="text-caption text-medium-emphasis">
-                  Test Coverage Target: {{ productForm.configData.test_config.coverage_target }}%
+                  Test Coverage Target: {{ productForm.testConfig.coverage_target }}%
                   <v-chip
                     v-if="hasFieldPriority('test_config.coverage_target')"
                     :color="getPriorityColor(getPriorityForField('test_config.coverage_target'))"
@@ -705,7 +705,7 @@
                   </v-chip>
                 </label>
                 <v-slider
-                  v-model="productForm.configData.test_config.coverage_target"
+                  v-model="productForm.testConfig.coverage_target"
                   min="0"
                   max="100"
                   step="5"
@@ -716,7 +716,7 @@
 
               <!-- Testing Frameworks -->
               <v-textarea
-                v-model="productForm.configData.test_config.frameworks"
+                v-model="productForm.testConfig.testing_frameworks"
                 placeholder="pytest, pytest-asyncio, Playwright, coverage.py"
                 hint="List testing frameworks and quality assurance tools"
                 persistent-hint
@@ -729,12 +729,12 @@
                 <template #label>
                   <span>Testing Frameworks & Tools</span>
                   <v-chip
-                    v-if="hasFieldPriority('test_config.frameworks')"
-                    :color="getPriorityColor(getPriorityForField('test_config.frameworks'))"
+                    v-if="hasFieldPriority('test_config.testing_frameworks')"
+                    :color="getPriorityColor(getPriorityForField('test_config.testing_frameworks'))"
                     size="x-small"
                     class="ml-2"
                   >
-                    {{ getPriorityLabel(getPriorityForField('test_config.frameworks')) }}
+                    {{ getPriorityLabel(getPriorityForField('test_config.testing_frameworks')) }}
                   </v-chip>
                 </template>
               </v-textarea>
@@ -826,30 +826,27 @@ const productForm = ref({
   name: '',
   description: '',
   projectPath: '',
-  targetPlatforms: ['all'], // Handover 0425: Default to cross-platform
-  configData: {
-    tech_stack: {
-      languages: '',
-      frontend: '',
-      backend: '',
-      database: '',
-      infrastructure: '',
-    },
-    architecture: {
-      pattern: '',
-      design_patterns: '',
-      api_style: '',
-      notes: '',
-    },
-    features: {
-      core: '',
-    },
-    test_config: {
-      strategy: 'TDD',
-      coverage_target: 80,
-      frameworks: '',
-      quality_standards: '',
-    },
+  targetPlatforms: ['all'],
+  techStack: {
+    programming_languages: '',
+    frontend_frameworks: '',
+    backend_frameworks: '',
+    databases_storage: '',
+    infrastructure: '',
+    dev_tools: '',
+  },
+  architecture: {
+    primary_pattern: '',
+    design_patterns: '',
+    api_style: '',
+    architecture_notes: '',
+  },
+  coreFeatures: '',
+  testConfig: {
+    quality_standards: '',
+    test_strategy: 'TDD',
+    coverage_target: 80,
+    testing_frameworks: '',
   },
 })
 
@@ -942,8 +939,11 @@ function saveProduct() {
     name: productForm.value.name,
     description: productForm.value.description,
     project_path: productForm.value.projectPath,
-    target_platforms: productForm.value.targetPlatforms, // Handover 0425
-    config_data: productForm.value.configData,
+    target_platforms: productForm.value.targetPlatforms,
+    tech_stack: productForm.value.techStack,
+    architecture: productForm.value.architecture,
+    test_config: productForm.value.testConfig,
+    core_features: productForm.value.coreFeatures,
   }
 
   // Include visionFiles in save payload for parent to handle uploads
@@ -1029,66 +1029,61 @@ function loadProductData() {
     productForm.value.description = props.product.description || ''
     productForm.value.projectPath = props.product.project_path || ''
 
-    // Handover 0425: Load target platforms (defaults to ['all'] if not set)
     productForm.value.targetPlatforms = props.product.target_platforms || ['all']
 
-    // Load config data with defaults
-    const configData = props.product.config_data || {}
+    const ts = props.product.tech_stack || {}
+    productForm.value.techStack = {
+      programming_languages: ts.programming_languages || '',
+      frontend_frameworks: ts.frontend_frameworks || '',
+      backend_frameworks: ts.backend_frameworks || '',
+      databases_storage: ts.databases_storage || '',
+      infrastructure: ts.infrastructure || '',
+      dev_tools: ts.dev_tools || '',
+    }
 
-    productForm.value.configData = {
-      tech_stack: {
-        languages: configData.tech_stack?.languages || '',
-        frontend: configData.tech_stack?.frontend || '',
-        backend: configData.tech_stack?.backend || '',
-        database: configData.tech_stack?.database || '',
-        infrastructure: configData.tech_stack?.infrastructure || '',
-      },
-      architecture: {
-        pattern: configData.architecture?.pattern || '',
-        design_patterns: configData.architecture?.design_patterns || '',
-        api_style: configData.architecture?.api_style || '',
-        notes: configData.architecture?.notes || '',
-      },
-      features: {
-        core: configData.features?.core || '',
-      },
-      test_config: {
-        strategy: configData.test_config?.strategy || 'TDD',
-        coverage_target: configData.test_config?.coverage_target || 80,
-        frameworks: configData.test_config?.frameworks || '',
-        quality_standards: configData.test_config?.quality_standards || '',
-      },
+    const arch = props.product.architecture || {}
+    productForm.value.architecture = {
+      primary_pattern: arch.primary_pattern || '',
+      design_patterns: arch.design_patterns || '',
+      api_style: arch.api_style || '',
+      architecture_notes: arch.architecture_notes || '',
+    }
+
+    productForm.value.coreFeatures = props.product.core_features || ''
+
+    const tc = props.product.test_config || {}
+    productForm.value.testConfig = {
+      quality_standards: tc.quality_standards || '',
+      test_strategy: tc.test_strategy || 'TDD',
+      coverage_target: tc.coverage_target || 80,
+      testing_frameworks: tc.testing_frameworks || '',
     }
   } else {
-    // Reset form for new product
     productForm.value = {
       name: '',
       description: '',
       projectPath: '',
-      targetPlatforms: ['all'], // Handover 0425: Default to cross-platform
-      configData: {
-        tech_stack: {
-          languages: '',
-          frontend: '',
-          backend: '',
-          database: '',
-          infrastructure: '',
-        },
-        architecture: {
-          pattern: '',
-          design_patterns: '',
-          api_style: '',
-          notes: '',
-        },
-        features: {
-          core: '',
-        },
-        test_config: {
-          strategy: 'TDD',
-          coverage_target: 80,
-          frameworks: '',
-          quality_standards: '',
-        },
+      targetPlatforms: ['all'],
+      techStack: {
+        programming_languages: '',
+        frontend_frameworks: '',
+        backend_frameworks: '',
+        databases_storage: '',
+        infrastructure: '',
+        dev_tools: '',
+      },
+      architecture: {
+        primary_pattern: '',
+        design_patterns: '',
+        api_style: '',
+        architecture_notes: '',
+      },
+      coreFeatures: '',
+      testConfig: {
+        quality_standards: '',
+        test_strategy: 'TDD',
+        coverage_target: 80,
+        testing_frameworks: '',
       },
     }
   }

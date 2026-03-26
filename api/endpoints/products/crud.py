@@ -37,62 +37,67 @@ router = APIRouter()
 _PURGE_RETENTION_DAYS = 10
 
 
-def _build_product_response(product, stats=None) -> ProductResponse:
+def _build_product_response(product, stats=None, override_active=None) -> ProductResponse:
     """
     Build a ProductResponse from a Product ORM model and optional ProductStatistics.
 
     Centralizes the ORM-to-response mapping so every endpoint uses the same logic.
-    Handover 0840c: Reconstructs config_data dict from normalized tables for API compat.
+    Handover 0840i: Exposes normalized fields directly (no config_data reconstruction).
 
     Args:
         product: Product ORM model
         stats: Optional ProductStatistics for metrics fields
+        override_active: Optional bool to override product.is_active in response
 
     Returns:
         ProductResponse Pydantic model
     """
-    # Handover 0840c: Reconstruct config_data from normalized tables
-    config_data = {}
+    from .models import ArchitectureSchema, TechStackSchema, TestConfigSchema
 
     ts = product.tech_stack
-    if ts:
-        config_data["tech_stack"] = {
-            "languages": ts.programming_languages or "",
-            "frontend": ts.frontend_frameworks or "",
-            "backend": ts.backend_frameworks or "",
-            "database": ts.databases_storage or "",
-            "infrastructure": ts.infrastructure or "",
-            "dev_tools": ts.dev_tools or "",
-        }
+    tech_stack = (
+        TechStackSchema(
+            programming_languages=ts.programming_languages,
+            frontend_frameworks=ts.frontend_frameworks,
+            backend_frameworks=ts.backend_frameworks,
+            databases_storage=ts.databases_storage,
+            infrastructure=ts.infrastructure,
+            dev_tools=ts.dev_tools,
+        )
+        if ts
+        else None
+    )
 
     arch = product.architecture
-    if arch:
-        config_data["architecture"] = {
-            "pattern": arch.primary_pattern or "",
-            "design_patterns": arch.design_patterns or "",
-            "api_style": arch.api_style or "",
-            "notes": arch.architecture_notes or "",
-        }
-
-    if product.core_features:
-        config_data["features"] = {"core": product.core_features}
+    architecture = (
+        ArchitectureSchema(
+            primary_pattern=arch.primary_pattern,
+            design_patterns=arch.design_patterns,
+            api_style=arch.api_style,
+            architecture_notes=arch.architecture_notes,
+        )
+        if arch
+        else None
+    )
 
     tc = product.test_config
-    if tc:
-        config_data["test_config"] = {
-            "strategy": tc.test_strategy or "",
-            "coverage_target": tc.coverage_target or 80,
-            "frameworks": tc.testing_frameworks or "",
-            "quality_standards": tc.quality_standards or "",
-        }
-
-    config_data = config_data or None
-    has_config_data = bool(config_data)
+    test_config = (
+        TestConfigSchema(
+            quality_standards=tc.quality_standards,
+            test_strategy=tc.test_strategy,
+            coverage_target=tc.coverage_target or 80,
+            testing_frameworks=tc.testing_frameworks,
+        )
+        if tc
+        else None
+    )
 
     # Handover 0412: Ensure product_memory is never None
     pm = product.product_memory
     if pm is None:
         pm = {"github": {}, "sequential_history": [], "context": {}}
+
+    is_active = override_active if override_active is not None else product.is_active
 
     return ProductResponse(
         id=str(product.id),
@@ -108,9 +113,11 @@ def _build_product_response(product, stats=None) -> ProductResponse:
         unresolved_tasks=stats.unresolved_tasks if stats else 0,
         unfinished_projects=stats.unfinished_projects if stats else 0,
         vision_documents_count=stats.vision_documents_count if stats else 0,
-        config_data=config_data,
-        has_config_data=has_config_data,
-        is_active=product.is_active,
+        tech_stack=tech_stack,
+        architecture=architecture,
+        test_config=test_config,
+        core_features=product.core_features,
+        is_active=is_active,
         product_memory=pm,
         target_platforms=product.target_platforms or ["all"],
     )
@@ -131,7 +138,10 @@ async def create_product(
         name=request.name,
         description=request.description,
         project_path=request.project_path,
-        config_data=request.config_data,
+        tech_stack=request.tech_stack.model_dump() if request.tech_stack else None,
+        architecture=request.architecture.model_dump() if request.architecture else None,
+        test_config=request.test_config.model_dump() if request.test_config else None,
+        core_features=request.core_features,
         target_platforms=request.target_platforms,  # Handover 0425 Phase 2
     )
 
@@ -248,6 +258,7 @@ async def update_product(
     Uses ProductService.update_product() for database operations.
     """
     # Convert Pydantic model to dict, excluding unset fields
+    # model_dump already converts nested Pydantic models to dicts
     update_data = updates.model_dump(exclude_unset=True)
 
     product = await service.update_product(product_id, **update_data)
