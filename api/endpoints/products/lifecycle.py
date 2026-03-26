@@ -167,6 +167,24 @@ async def delete_product(
     )
 
 
+@router.delete("/{product_id}/purge")
+async def purge_product(
+    product_id: str,
+    current_user: User = Depends(get_current_active_user),
+    service: ProductService = Depends(get_product_service),
+):
+    """
+    Permanently delete a product and ALL related data.
+
+    This is the nuclear option — no recovery possible.
+    Cascades to: projects, tasks, vision documents, memory entries, context chunks,
+    tech_stack, architecture, test_config.
+    """
+    logger.info(f"User {current_user.username} permanently deleting product {product_id}")
+    result = await service.purge_product(product_id)
+    return {"success": True, **result}
+
+
 @router.post("/{product_id}/restore", response_model=ProductResponse)
 async def restore_product(
     product_id: str,
