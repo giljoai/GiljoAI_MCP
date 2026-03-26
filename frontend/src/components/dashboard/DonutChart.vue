@@ -50,7 +50,7 @@ const formattedData = computed(() => ({
       backgroundColor: props.chartData.colors || [],
       borderColor: 'rgba(0, 0, 0, 0.3)',
       borderWidth: 1,
-      hoverBorderColor: '#FFD700',
+      hoverBorderColor: '#FFFFFF',
       hoverBorderWidth: 2,
     },
   ],
@@ -81,9 +81,9 @@ const chartOptions = computed(() => ({
     },
     tooltip: {
       backgroundColor: '#1e3147',
-      titleColor: '#FFD700',
+      titleColor: '#FFFFFF',
       bodyColor: 'rgba(255, 255, 255, 0.9)',
-      borderColor: 'rgba(255, 215, 0, 0.3)',
+      borderColor: 'rgba(255, 255, 255, 0.3)',
       borderWidth: 1,
       padding: 10,
       callbacks: {

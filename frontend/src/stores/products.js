@@ -306,42 +306,11 @@ export const useProductStore = defineStore('products', () => {
   }
 
   /**
-   * Handle product:learning:added event
-   * Appends new learning to sequential_history
+   * Handle product:learning:added event (no-op since 0700c migration to product_memory_entries table)
    */
   function handleProductLearningAdded(payload) {
-    if (!payload?.product_id) {
-      console.warn('[PRODUCTS] product:learning:added missing product_id', payload)
-      return
-    }
-
-    const product = products.value.find((p) => p.id === payload.product_id)
-    const learning = payload.learning || payload.data?.learning
-
-    if (product && learning) {
-      // Initialize sequential_history if missing
-      if (!product.product_memory) {
-        product.product_memory = {}
-      }
-      if (!product.product_memory.sequential_history) {
-        product.product_memory.sequential_history = []
-      }
-
-      // Append new learning
-      product.product_memory.sequential_history.push(learning)
-
-      // Also update currentProduct if it matches
-      if (currentProduct.value?.id === payload.product_id) {
-        if (!currentProduct.value.product_memory) {
-          currentProduct.value.product_memory = {}
-        }
-        if (!currentProduct.value.product_memory.sequential_history) {
-          currentProduct.value.product_memory.sequential_history = []
-        }
-        currentProduct.value.product_memory.sequential_history.push(learning)
-      }
-
-    }
+    // sequential_history migrated to product_memory_entries table (0700c)
+    // This handler is kept for WebSocket event compat but does nothing
   }
 
   /**

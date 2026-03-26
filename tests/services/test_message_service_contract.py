@@ -29,7 +29,7 @@ from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 
 # Import models using modular imports (Post-Handover 0128a)
-from src.giljo_mcp.models.tasks import Message
+from src.giljo_mcp.models.tasks import Message, MessageAcknowledgment, MessageRecipient
 from src.giljo_mcp.schemas.service_responses import (
     CompleteMessageResult,
     MessageListResult,
@@ -227,8 +227,13 @@ class TestMessageCreationAndCounterUpdates:
         assert db_message is not None, "Message should exist in database"
         assert db_message.project_id == project.id
         assert db_message.tenant_key == project.tenant_key
-        # Handover 0372: Message stores resolved agent_ids (executor), not job_ids
-        assert db_message.to_agents == [recipient.agent_id]
+        # Handover 0840b: Recipients stored in MessageRecipient junction table
+        recip_result = await db_session.execute(
+            select(MessageRecipient).where(MessageRecipient.message_id == message_id)
+        )
+        recipients = recip_result.scalars().all()
+        assert len(recipients) == 1
+        assert recipients[0].agent_id == recipient.agent_id
         assert db_message.content == "Analyze the codebase for patterns"
         assert db_message.message_type == "direct"
         assert db_message.priority == "high"
@@ -263,8 +268,8 @@ class TestMessageCompletion:
         CRITICAL CONTRACT TEST: Verify that complete_message():
         1. Sets Message.status = "completed"
         2. Sets Message.result with completion result
-        3. Preserves Message.acknowledged_by array
-        4. Sets Message.completed_by
+        3. Preserves MessageAcknowledgment rows (0840b: junction table)
+        4. Creates MessageCompletion row (0840b: junction table)
         5. Sets Message.completed_at timestamp
         """
         project, agents = test_project_with_agents
@@ -310,12 +315,25 @@ class TestMessageCompletion:
         assert db_message is not None
         assert db_message.status == "completed"
         assert db_message.result == "Feature X implemented successfully with 95% test coverage"
-        assert db_message.completed_by == recipient.agent_display_name
         assert db_message.completed_at is not None
 
-        # Assert: acknowledged_by is PRESERVED (not overwritten)
-        assert recipient.agent_id in db_message.acknowledged_by, (
-            f"Acknowledgment should be preserved after completion. Expected {recipient.agent_id} in {db_message.acknowledged_by}"
+        # Handover 0840b: Check completions via MessageCompletion junction table
+        from src.giljo_mcp.models.tasks import MessageCompletion
+        comp_result = await db_session.execute(
+            select(MessageCompletion).where(MessageCompletion.message_id == message_id)
+        )
+        completions = comp_result.scalars().all()
+        assert any(c.agent_id == recipient.agent_display_name for c in completions), (
+            f"Expected completion by {recipient.agent_display_name} in completions"
+        )
+
+        # Handover 0840b: Verify acknowledgments preserved via MessageAcknowledgment junction table
+        ack_result = await db_session.execute(
+            select(MessageAcknowledgment).where(MessageAcknowledgment.message_id == message_id)
+        )
+        acks = ack_result.scalars().all()
+        assert any(a.agent_id == recipient.agent_id for a in acks), (
+            f"Acknowledgment should be preserved after completion. Expected {recipient.agent_id} in acknowledgments"
         )
 
 

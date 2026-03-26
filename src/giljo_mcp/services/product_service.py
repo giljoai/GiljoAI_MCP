@@ -39,6 +39,8 @@ from src.giljo_mcp.exceptions import (
     ValidationError,
 )
 from src.giljo_mcp.models import Product, Project, Task, VisionDocument
+from src.giljo_mcp.models.products import ProductArchitecture, ProductTechStack, ProductTestConfig
+from src.giljo_mcp.schemas.jsonb_validators import validate_product_memory
 from src.giljo_mcp.schemas.service_responses import (
     CascadeImpact,
     DeleteResult,
@@ -125,7 +127,7 @@ class ProductService:
         if not target_platforms:
             return False, "target_platforms cannot be empty"
 
-        valid_platforms = {"windows", "linux", "macos", "all"}
+        valid_platforms = {"windows", "linux", "macos", "android", "ios", "all"}
         invalid_platforms = set(target_platforms) - valid_platforms
 
         if invalid_platforms:
@@ -136,6 +138,86 @@ class ProductService:
 
         return True, None
 
+    def _create_config_relations(self, session: AsyncSession, product_id: str, config_data: dict) -> None:
+        """Create normalized config table rows from config data. Handover 0840i: canonical names only."""
+        tech_stack = config_data.get("tech_stack")
+        if tech_stack and isinstance(tech_stack, dict):
+            ts = ProductTechStack(
+                product_id=product_id,
+                tenant_key=self.tenant_key,
+                programming_languages=tech_stack.get("programming_languages", ""),
+                frontend_frameworks=tech_stack.get("frontend_frameworks", ""),
+                backend_frameworks=tech_stack.get("backend_frameworks", ""),
+                databases_storage=tech_stack.get("databases_storage", ""),
+                infrastructure=tech_stack.get("infrastructure", ""),
+                dev_tools=tech_stack.get("dev_tools", ""),
+            )
+            session.add(ts)
+
+        architecture = config_data.get("architecture")
+        if architecture and isinstance(architecture, dict):
+            arch = ProductArchitecture(
+                product_id=product_id,
+                tenant_key=self.tenant_key,
+                primary_pattern=architecture.get("primary_pattern", ""),
+                design_patterns=architecture.get("design_patterns", ""),
+                api_style=architecture.get("api_style", ""),
+                architecture_notes=architecture.get("architecture_notes", ""),
+            )
+            session.add(arch)
+
+        test_config = config_data.get("test_config")
+        if test_config and isinstance(test_config, dict):
+            tc = ProductTestConfig(
+                product_id=product_id,
+                tenant_key=self.tenant_key,
+                quality_standards=test_config.get("quality_standards", ""),
+                test_strategy=test_config.get("test_strategy", ""),
+                coverage_target=test_config.get("coverage_target", 80),
+                testing_frameworks=test_config.get("testing_frameworks", ""),
+            )
+            session.add(tc)
+
+    async def _update_config_relations(self, session: AsyncSession, product: Product, config_data: dict) -> None:
+        """Update normalized config table rows. Handover 0840i: canonical names only."""
+        tech_stack = config_data.get("tech_stack")
+        if tech_stack and isinstance(tech_stack, dict):
+            ts = product.tech_stack
+            if ts is None:
+                ts = ProductTechStack(product_id=product.id, tenant_key=self.tenant_key)
+                session.add(ts)
+                product.tech_stack = ts
+            ts.programming_languages = tech_stack.get("programming_languages", "")
+            ts.frontend_frameworks = tech_stack.get("frontend_frameworks", "")
+            ts.backend_frameworks = tech_stack.get("backend_frameworks", "")
+            ts.databases_storage = tech_stack.get("databases_storage", "")
+            ts.infrastructure = tech_stack.get("infrastructure", "")
+            ts.dev_tools = tech_stack.get("dev_tools", "")
+
+        architecture = config_data.get("architecture")
+        if architecture and isinstance(architecture, dict):
+            arch = product.architecture
+            if arch is None:
+                arch = ProductArchitecture(product_id=product.id, tenant_key=self.tenant_key)
+                session.add(arch)
+                product.architecture = arch
+            arch.primary_pattern = architecture.get("primary_pattern", "")
+            arch.design_patterns = architecture.get("design_patterns", "")
+            arch.api_style = architecture.get("api_style", "")
+            arch.architecture_notes = architecture.get("architecture_notes", "")
+
+        test_config = config_data.get("test_config")
+        if test_config and isinstance(test_config, dict):
+            tc = product.test_config
+            if tc is None:
+                tc = ProductTestConfig(product_id=product.id, tenant_key=self.tenant_key)
+                session.add(tc)
+                product.test_config = tc
+            tc.quality_standards = test_config.get("quality_standards", "")
+            tc.test_strategy = test_config.get("test_strategy", "")
+            tc.coverage_target = test_config.get("coverage_target", 80)
+            tc.testing_frameworks = test_config.get("testing_frameworks", "")
+
     # ============================================================================
     # CRUD Operations
     # ============================================================================
@@ -145,18 +227,26 @@ class ProductService:
         name: str,
         description: str | None = None,
         project_path: str | None = None,
-        config_data: dict[str, Any | None] = None,
-        product_memory: dict[str, Any | None] = None,  # Handover 0135
-        target_platforms: list[str | None] = None,  # Handover 0425
+        tech_stack: dict[str, Any] | None = None,
+        architecture: dict[str, Any] | None = None,
+        test_config: dict[str, Any] | None = None,
+        core_features: str | None = None,
+        product_memory: dict[str, Any] | None = None,  # Handover 0135
+        target_platforms: list[str] | None = None,  # Handover 0425
     ) -> Product:
         """
         Create a new product.
+
+        Handover 0840i: Accepts normalized config fields directly instead of config_data dict.
 
         Args:
             name: Product name (required)
             description: Product description
             project_path: File system path to product folder
-            config_data: Rich configuration data (architecture, tech_stack, etc.)
+            tech_stack: Tech stack configuration dict
+            architecture: Architecture configuration dict
+            test_config: Test configuration dict
+            core_features: Core product features string
             product_memory: 360 Memory data (GitHub, sequential_history, context) - Handover 0135
             target_platforms: Target OS platforms (windows, linux, macos, or all) - Handover 0425
 
@@ -172,6 +262,7 @@ class ProductService:
             ...     name="MyApp",
             ...     description="Mobile application",
             ...     project_path="/projects/myapp",
+            ...     tech_stack={"programming_languages": "Python 3.12"},
             ...     target_platforms=["windows", "linux"]
             ... )
             >>> print(product.id)
@@ -202,22 +293,45 @@ class ProductService:
                     "context": {},
                 }
 
+                product_id = str(uuid4())
+
+                validated_memory = validate_product_memory(product_memory) or default_memory
                 product = Product(
-                    id=str(uuid4()),
+                    id=product_id,
                     tenant_key=self.tenant_key,
                     name=name,
                     description=description,
                     project_path=project_path,
-                    config_data=config_data or {},
-                    product_memory=product_memory or default_memory,  # Handover 0135
+                    core_features=core_features,
+                    product_memory=validated_memory,  # Handover 0135
                     target_platforms=target_platforms or ["all"],  # Handover 0425
                     is_active=False,  # Products start inactive
                     created_at=datetime.now(timezone.utc),
                 )
 
                 session.add(product)
+
+                # Handover 0840i: Create normalized config table rows from typed fields
+                config_parts = {}
+                if tech_stack:
+                    config_parts["tech_stack"] = tech_stack
+                if architecture:
+                    config_parts["architecture"] = architecture
+                if test_config:
+                    config_parts["test_config"] = test_config
+                if config_parts:
+                    self._create_config_relations(session, product_id, config_parts)
+
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=[
+                        "tech_stack",
+                        "architecture",
+                        "test_config",
+                        "vision_documents",
+                    ],
+                )
 
                 self._logger.info(f"Created product {product.id} for tenant {self.tenant_key}")
 
@@ -254,10 +368,15 @@ class ProductService:
         """
         try:
             async with self._get_session() as session:
-                # Eagerly load vision_documents to prevent lazy-loading issues
+                # Eagerly load vision_documents and config tables to prevent lazy-loading
                 stmt = (
                     select(Product)
-                    .options(selectinload(Product.vision_documents))
+                    .options(
+                        selectinload(Product.vision_documents),
+                        selectinload(Product.tech_stack),
+                        selectinload(Product.architecture),
+                        selectinload(Product.test_config),
+                    )
                     .where(
                         and_(
                             Product.id == product_id,
@@ -278,7 +397,11 @@ class ProductService:
                 await self._ensure_product_memory_initialized(session, product)
 
                 # Handover 0412: Force refresh to ensure we have latest DB data
-                await session.refresh(product)
+                # Handover 0840h: Include relationships so refresh doesn't discard eager loads
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 # Handover 0731b: Return Product ORM model directly
                 return product
@@ -323,7 +446,12 @@ class ProductService:
                 stmt = (
                     select(Product)
                     .where(and_(*conditions))
-                    .options(selectinload(Product.vision_documents))
+                    .options(
+                        selectinload(Product.vision_documents),
+                        selectinload(Product.tech_stack),
+                        selectinload(Product.architecture),
+                        selectinload(Product.test_config),
+                    )
                     .order_by(Product.is_active.desc(), Product.created_at.desc())
                 )
                 result = await session.execute(stmt)
@@ -350,7 +478,8 @@ class ProductService:
 
         Args:
             product_id: Product UUID
-            **updates: Fields to update (name, description, project_path, config_data, product_memory, target_platforms, etc.)
+            **updates: Fields to update (name, description, project_path, tech_stack, architecture,
+                test_config, core_features, product_memory, target_platforms, etc.)
 
         Returns:
             Product ORM model after commit and refresh
@@ -364,7 +493,7 @@ class ProductService:
             >>> product = await service.update_product(
             ...     "abc-123",
             ...     description="Updated description",
-            ...     config_data={"tech_stack": {"python": "3.11"}},
+            ...     tech_stack={"programming_languages": "Python 3.12"},
             ...     product_memory={"github": {"enabled": True}},  # Handover 0135
             ...     target_platforms=["windows", "linux"]  # Handover 0425
             ... )
@@ -377,8 +506,20 @@ class ProductService:
                     raise ValidationError(message=error_msg, context={"target_platforms": updates["target_platforms"]})
 
             async with self._get_session() as session:
-                stmt = select(Product).where(
-                    and_(Product.id == product_id, Product.tenant_key == self.tenant_key, Product.deleted_at.is_(None))
+                stmt = (
+                    select(Product)
+                    .options(
+                        selectinload(Product.tech_stack),
+                        selectinload(Product.architecture),
+                        selectinload(Product.test_config),
+                    )
+                    .where(
+                        and_(
+                            Product.id == product_id,
+                            Product.tenant_key == self.tenant_key,
+                            Product.deleted_at.is_(None),
+                        )
+                    )
                 )
                 result = await session.execute(stmt)
                 product = result.scalar_one_or_none()
@@ -388,7 +529,26 @@ class ProductService:
                         message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
                     )
 
-                # Apply updates
+                # Handover 0840i: Handle normalized config fields
+                tech_stack = updates.pop("tech_stack", None)
+                architecture_data = updates.pop("architecture", None)
+                test_config = updates.pop("test_config", None)
+                core_features = updates.pop("core_features", None)
+
+                if core_features is not None:
+                    product.core_features = core_features
+
+                config_parts = {}
+                if tech_stack and isinstance(tech_stack, dict):
+                    config_parts["tech_stack"] = tech_stack
+                if architecture_data and isinstance(architecture_data, dict):
+                    config_parts["architecture"] = architecture_data
+                if test_config and isinstance(test_config, dict):
+                    config_parts["test_config"] = test_config
+                if config_parts:
+                    await self._update_config_relations(session, product, config_parts)
+
+                # Apply remaining updates
                 for field, value in updates.items():
                     if hasattr(product, field):
                         setattr(product, field, value)
@@ -396,7 +556,10 @@ class ProductService:
                 product.updated_at = datetime.now(timezone.utc)
 
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 self._logger.info(f"Updated product {product_id}")
 
@@ -503,7 +666,10 @@ class ProductService:
                 product.updated_at = datetime.now(timezone.utc)
 
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 self._logger.info(f"Activated product {product_id} (deactivated {len(products_to_deactivate)} others)")
 
@@ -554,7 +720,10 @@ class ProductService:
                 product.updated_at = datetime.now(timezone.utc)
 
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 self._logger.info(f"Deactivated product {product_id}")
 
@@ -663,7 +832,10 @@ class ProductService:
                 # Note: Don't auto-activate on restore, let user explicitly activate
 
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 self._logger.info(f"Restored product {product_id}")
 
@@ -677,6 +849,53 @@ class ProductService:
             self._logger.exception("Failed to restore product")
             raise BaseGiljoError(
                 message=f"Failed to restore product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
+            ) from e
+
+    async def purge_product(self, product_id: str) -> dict:
+        """
+        Permanently delete a product and ALL related data (hard delete).
+
+        Cascades via FK ondelete=CASCADE to: projects, tasks, tech_stacks,
+        architectures, test_configs, vision_documents, product_memory_entries,
+        context chunks.
+
+        Args:
+            product_id: Product UUID to permanently delete
+
+        Returns:
+            dict with product_name and message
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoError: If database operation fails
+        """
+        try:
+            async with self._get_session() as session:
+                stmt = select(Product).where(and_(Product.id == product_id, Product.tenant_key == self.tenant_key))
+                result = await session.execute(stmt)
+                product = result.scalar_one_or_none()
+
+                if not product:
+                    raise ResourceNotFoundError(
+                        message="Product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key},
+                    )
+
+                product_name = product.name
+                await session.delete(product)
+                await session.commit()
+
+                self._logger.info(f"Permanently deleted product {product_id} ({product_name})")
+
+                return {"product_name": product_name, "message": f"Product '{product_name}' permanently deleted"}
+
+        except ResourceNotFoundError:
+            raise
+        except Exception as e:
+            self._logger.exception("Failed to purge product")
+            raise BaseGiljoError(
+                message=f"Failed to permanently delete product: {e!s}",
                 context={"product_id": product_id, "tenant_key": self.tenant_key},
             ) from e
 
@@ -739,7 +958,12 @@ class ProductService:
             async with self._get_session() as session:
                 stmt = (
                     select(Product)
-                    .options(selectinload(Product.vision_documents))
+                    .options(
+                        selectinload(Product.vision_documents),
+                        selectinload(Product.tech_stack),
+                        selectinload(Product.architecture),
+                        selectinload(Product.test_config),
+                    )
                     .where(
                         and_(
                             Product.tenant_key == self.tenant_key,
@@ -972,6 +1196,9 @@ class ProductService:
                         "enabled": False,
                     }
 
+                # Validate the full product_memory after mutation
+                product.product_memory = validate_product_memory(product.product_memory)
+
                 product.updated_at = datetime.now(timezone.utc)
 
                 # Force SQLAlchemy to detect JSONB change
@@ -984,7 +1211,10 @@ class ProductService:
                     pass
 
                 await session.commit()
-                await session.refresh(product)
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 self._logger.info(f"Updated git integration for product {product_id}: enabled={enabled}")
 
@@ -1374,7 +1604,11 @@ class ProductService:
         if needs_update:
             product.updated_at = datetime.now(timezone.utc)
             await session.commit()
-            await session.refresh(product)
+            # Handover 0840h: Include relationships so refresh doesn't discard eager loads
+            await session.refresh(
+                product,
+                attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+            )
             self._logger.info(f"Product {product.id}: Updated product_memory structure")
 
     async def _get_product_metrics(self, session: AsyncSession, product_id: str) -> dict[str, Any]:

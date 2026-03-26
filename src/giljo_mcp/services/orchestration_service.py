@@ -51,6 +51,7 @@ from src.giljo_mcp.models import (
     ProductMemoryEntry,
     Project,
 )
+from src.giljo_mcp.models.tasks import MessageRecipient
 from src.giljo_mcp.schemas.service_responses import (
     AgentTodoCounts,
     AgentWorkflowDetail,
@@ -1866,12 +1867,16 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                         )
 
                     # Validate completion requirements (unread messages and incomplete TODOs)
-                    unread_query = select(Message).where(
-                        and_(
-                            Message.tenant_key == tenant_key,
-                            Message.project_id == job.project_id,
-                            Message.status == "pending",
-                            Message.to_agents.contains([execution.agent_id]),
+                    unread_query = (
+                        select(Message)
+                        .join(MessageRecipient)
+                        .where(
+                            and_(
+                                Message.tenant_key == tenant_key,
+                                Message.project_id == job.project_id,
+                                Message.status == "pending",
+                                MessageRecipient.agent_id == execution.agent_id,
+                            )
                         )
                     )
                     unread_res = await session.execute(unread_query)
@@ -2003,13 +2008,22 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
                             auto_message = Message(
                                 tenant_key=tenant_key,
                                 project_id=str(job.project_id),
-                                meta_data={"_from_agent": str(execution.agent_id), "auto_generated": True},
-                                to_agents=[orch_exec.agent_id],
+                                from_agent_id=str(execution.agent_id),
+                                from_display_name=execution.agent_display_name,
+                                auto_generated=True,
                                 content=f"COMPLETION REPORT from {execution.agent_display_name}: {summary}",
                                 message_type="completion_report",
                                 status="pending",
                             )
                             session.add(auto_message)
+                            await session.flush()
+                            session.add(
+                                MessageRecipient(
+                                    message_id=auto_message.id,
+                                    agent_id=orch_exec.agent_id,
+                                    tenant_key=tenant_key,
+                                )
+                            )
                             # Handover 0821: Single batch UPDATE for completion report counters
                             # prevents cross-statement deadlock with concurrent broadcasts
                             from src.giljo_mcp.repositories.message_repository import MessageRepository

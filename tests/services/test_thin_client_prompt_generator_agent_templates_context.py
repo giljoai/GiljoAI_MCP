@@ -47,17 +47,15 @@ async def test_thin_prompt_token_estimation(db_session: AsyncSession):
         id=str(uuid4()),
         name=f"Token Test Product {unique_id}",
         tenant_key=tenant_key,
-        config_data={},
     )
     db_session.add(product)
 
-    # Create user
+    # Create user (0840d: field_priority_config removed)
     user = User(
         id=str(uuid4()),
         username=f"tokenuser_{unique_id}",
         tenant_key=tenant_key,
         org_id=org.id,
-        field_priority_config={},
     )
     db_session.add(user)
 
@@ -138,7 +136,6 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
         id=str(uuid4()),
         name=f"Tenant A Product {unique_id_a}",
         tenant_key=tenant_a_key,
-        config_data={},
     )
     db_session.add(product_a)
 
@@ -147,7 +144,6 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
         username=f"tenant_a_user_{unique_id_a}",
         tenant_key=tenant_a_key,
         org_id=org_a.id,
-        field_priority_config={"agent_templates": 2},
     )
     db_session.add(user_a)
 
@@ -181,7 +177,6 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
         id=str(uuid4()),
         name=f"Tenant B Product {unique_id_b}",
         tenant_key=tenant_b_key,
-        config_data={},
     )
     db_session.add(product_b)
 
@@ -203,7 +198,7 @@ async def test_thin_prompt_includes_project_context(db_session: AsyncSession):
     # ACT - Generate thin prompt for Tenant A
     generator_a = ThinClientPromptGenerator(db=db_session, tenant_key=tenant_a_key)
     result_a = await generator_a.generate(
-        project_id=project_a.id, user_id=user_a.id, field_toggles=user_a.field_priority_config
+        project_id=project_a.id, user_id=user_a.id, field_toggles={"agent_templates": True}
     )
     thin_prompt = result_a["thin_prompt"]
 
@@ -243,17 +238,16 @@ async def test_thin_prompt_works_without_field_toggles(db_session: AsyncSession)
         id=str(uuid4()),
         name=f"Default Priority Product {unique_id}",
         tenant_key=tenant_key,
-        config_data={},
     )
     db_session.add(product)
 
-    # Create user with NO field_priority_config (should use defaults)
+    # Create user with no field priority rows (should use defaults)
+    # 0840d: field_priority_config column removed; absence of rows = defaults
     user = User(
         id=str(uuid4()),
         username=f"defaultuser_{unique_id}",
         tenant_key=tenant_key,
         org_id=org.id,  # 0424j: User.org_id NOT NULL
-        field_priority_config=None,  # No custom config
     )
     db_session.add(user)
 
@@ -340,17 +334,15 @@ async def test_project_description_not_notes_in_context_string(db_session: Async
         id=str(uuid4()),
         name=f"Notes Bug Test Product {unique_id}",
         tenant_key=tenant_key,
-        config_data={},
     )
     db_session.add(product)
 
-    # Create user
+    # Create user (0840d: field_priority_config removed)
     user = User(
         id=str(uuid4()),
         username=f"notesbuguser_{unique_id}",
         tenant_key=tenant_key,
         org_id=org.id,
-        field_priority_config={},
     )
     db_session.add(user)
 

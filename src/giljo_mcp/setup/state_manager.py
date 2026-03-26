@@ -187,7 +187,6 @@ class SetupStateManager:
             "installer_version": None,
             "install_mode": None,
             "install_path": None,
-            "meta_data": {},
         }
 
     def update_state(self, **kwargs) -> None:

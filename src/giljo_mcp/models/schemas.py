@@ -9,7 +9,7 @@ Created: Handover 0501
 """
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -108,9 +108,10 @@ class ProjectResponse(BaseModel):
     mission: Optional[str] = Field(None, description="Project mission")
     description: Optional[str] = Field(None, description="Project description")
 
-    # Metadata
-    config_data: Optional[dict[str, Any]] = Field(None, description="Project configuration data")
-    meta_data: Optional[dict[str, Any]] = Field(None, description="Project metadata")
+    # Structured fields (Handover 0840e: replaced meta_data JSONB)
+    cancellation_reason: Optional[str] = Field(None, description="Reason for cancellation")
+    deactivation_reason: Optional[str] = Field(None, description="Reason for deactivation")
+    early_termination: bool = Field(default=False, description="Whether project was terminated early")
 
     # Timestamps
     created_at: datetime = Field(..., description="Creation timestamp")
@@ -130,8 +131,9 @@ class ProjectResponse(BaseModel):
                 "status": "active",
                 "mission": "Implement user authentication",
                 "description": "Complete authentication system",
-                "config_data": {},
-                "meta_data": {},
+                "cancellation_reason": None,
+                "deactivation_reason": None,
+                "early_termination": False,
                 "created_at": "2025-01-10T10:00:00Z",
                 "updated_at": "2025-01-13T14:22:00Z",
                 "activated_at": "2025-01-10T10:30:00Z",

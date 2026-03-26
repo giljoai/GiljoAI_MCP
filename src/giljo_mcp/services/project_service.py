@@ -403,7 +403,9 @@ class ProjectService:
                     product_id=project.product_id,
                     tenant_key=project.tenant_key,
                     execution_mode=project.execution_mode,
-                    meta_data=project.meta_data or {},
+                    cancellation_reason=project.cancellation_reason,
+                    deactivation_reason=project.deactivation_reason,
+                    early_termination=project.early_termination,
                     created_at=project.created_at.isoformat() if project.created_at else None,
                     updated_at=project.updated_at.isoformat() if project.updated_at else None,
                     completed_at=project.completed_at.isoformat() if project.completed_at else None,
@@ -797,15 +799,6 @@ class ProjectService:
         project.closeout_executed_at = now
         project.orchestrator_summary = summary
 
-        # Store closeout metadata for audit trail
-        project.meta_data = project.meta_data or {}
-        project.meta_data["closeout"] = {
-            "summary": summary,
-            "key_outcomes": key_outcomes or [],
-            "decisions_made": decisions_made or [],
-            "completed_at": now.isoformat(),
-        }
-
         # Invoke MCP tool to write 360 Memory entry
         from giljo_mcp.tools.project_closeout import close_project_and_update_memory
 
@@ -878,9 +871,9 @@ class ProjectService:
                     "updated_at": datetime.now(timezone.utc),
                 }
 
-                # Add reason to meta_data if provided
+                # Add cancellation reason if provided
                 if reason:
-                    update_values["meta_data"] = {"cancellation_reason": reason}
+                    update_values["cancellation_reason"] = reason
 
                 result = await session.execute(
                     update(Project)
@@ -1355,7 +1348,7 @@ class ProjectService:
         Args:
             project_id: Project UUID
             tenant_key: Optional tenant key (uses current tenant if not provided)
-            reason: Optional reason for deactivation (stored in meta_data)
+            reason: Optional reason for deactivation (stored in deactivation_reason column)
             websocket_manager: Optional WebSocket manager for real-time updates
 
         Returns:
@@ -1399,9 +1392,7 @@ class ProjectService:
 
             # Store reason if provided
             if reason:
-                if not project.meta_data:
-                    project.meta_data = {}
-                project.meta_data["deactivation_reason"] = reason
+                project.deactivation_reason = reason
 
             await session.commit()
             await session.refresh(project)
@@ -1491,7 +1482,9 @@ class ProjectService:
                 status=project.status,
                 mission=project.mission,
                 description=project.description,
-                meta_data=project.meta_data or {},
+                cancellation_reason=project.cancellation_reason,
+                deactivation_reason=project.deactivation_reason,
+                early_termination=project.early_termination,
                 created_at=project.created_at.isoformat() if project.created_at else None,
                 updated_at=project.updated_at.isoformat() if project.updated_at else None,
                 activated_at=project.activated_at.isoformat() if project.activated_at else None,
@@ -1786,9 +1779,6 @@ class ProjectService:
 
         repo_path = "."
         branch = "main"
-        if project.meta_data:
-            repo_path = project.meta_data.get("path", ".") or "."
-            branch = project.meta_data.get("git_branch", branch) or branch
 
         prompt = (
             "#!/bin/bash\n"
@@ -1917,7 +1907,9 @@ class ProjectService:
             mission=project.mission,
             description=project.description,
             execution_mode=project.execution_mode,
-            meta_data=project.meta_data or {},
+            cancellation_reason=project.cancellation_reason,
+            deactivation_reason=project.deactivation_reason,
+            early_termination=project.early_termination,
             created_at=project.created_at.isoformat() if project.created_at else None,
             updated_at=project.updated_at.isoformat() if project.updated_at else None,
             activated_at=project.activated_at.isoformat() if project.activated_at else None,
@@ -2061,12 +2053,12 @@ class ProjectService:
             if project.status != "active":
                 await self.activate_project(project_id, websocket_manager=websocket_manager)
 
-            # Fetch user field toggle config and depth_config if user_id provided
+            # Handover 0840d: Fetch user field toggles and depth from normalized tables/columns
             field_toggles = {}
             depth_config = None
 
             if user_id:
-                from src.giljo_mcp.models import User
+                from src.giljo_mcp.models.auth import User, UserFieldPriority
 
                 user_stmt = select(User).where(
                     and_(User.id == user_id, User.tenant_key == self.tenant_manager.get_current_tenant())
@@ -2075,17 +2067,34 @@ class ProjectService:
                 user = user_result.scalar_one_or_none()
 
                 if user:
-                    # Extract field_toggles from config structure and flatten to plain booleans
-                    if user.field_priority_config:
-                        raw_toggles = user.field_priority_config.get("priorities", {})
-                        field_toggles = {
-                            k: (v.get("toggle", True) if isinstance(v, dict) else bool(v))
-                            for k, v in raw_toggles.items()
-                        }
+                    # Build field_toggles from user_field_priorities table
+                    prio_result = await session.execute(
+                        select(UserFieldPriority).where(
+                            and_(
+                                UserFieldPriority.user_id == user_id,
+                                UserFieldPriority.tenant_key == self.tenant_manager.get_current_tenant(),
+                            )
+                        )
+                    )
+                    rows = prio_result.scalars().all()
+                    if rows:
+                        from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
 
-                    # Get depth_config
-                    if user.depth_config:
-                        depth_config = user.depth_config
+                        field_toggles = dict(DEFAULT_CATEGORY_TOGGLES)
+                        for row in rows:
+                            field_toggles[row.category] = row.enabled
+                        field_toggles["product_core"] = True
+                        field_toggles["project_description"] = True
+
+                    # Build depth_config from columns
+                    depth_config = {
+                        "vision_documents": user.depth_vision_documents,
+                        "memory_last_n_projects": user.depth_memory_last_n,
+                        "git_commits": user.depth_git_commits,
+                        "agent_templates": user.depth_agent_templates,
+                        "tech_stack_sections": user.depth_tech_stack_sections,
+                        "architecture_depth": user.depth_architecture,
+                    }
 
             # Apply defaults for depth_config if not set
             if not depth_config:

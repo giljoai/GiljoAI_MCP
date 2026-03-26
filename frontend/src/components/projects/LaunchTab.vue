@@ -49,7 +49,7 @@
                   <v-icon
                     v-bind="tooltipProps"
                     :class="{ 'icon-disabled': !gitEnabled }"
-                    size="48"
+                    size="36"
                     color="white"
                     data-testid="github-status-icon"
                     style="cursor: pointer;"
@@ -68,8 +68,8 @@
                   <v-img
                     v-bind="tooltipProps"
                     src="/Serena.png"
-                    width="48"
-                    height="48"
+                    width="36"
+                    height="36"
                     :class="{ 'icon-disabled': !serenaEnabled }"
                     data-testid="serena-status-icon"
                     style="cursor: pointer;"
@@ -80,6 +80,36 @@
                 </template>
                 <span v-if="serenaEnabled">Serena MCP enabled. Agents will use semantic code navigation.</span>
                 <span v-else>Serena MCP disabled. Click to enable in Settings.</span>
+              </v-tooltip>
+              <!-- Agentic Tool Badge -->
+              <v-tooltip v-if="agenticTool" location="bottom" max-width="300">
+                <template #activator="{ props: tooltipProps }">
+                  <v-icon
+                    v-if="agenticTool.type === 'icon'"
+                    v-bind="tooltipProps"
+                    size="36"
+                    color="primary"
+                    data-testid="agentic-tool-icon"
+                    style="cursor: pointer;"
+                    :aria-label="agenticTool.alt"
+                    @click="goToIntegrations"
+                  >
+                    {{ agenticTool.icon }}
+                  </v-icon>
+                  <v-img
+                    v-else
+                    v-bind="tooltipProps"
+                    :src="agenticTool.src"
+                    width="36"
+                    height="36"
+                    data-testid="agentic-tool-icon"
+                    style="cursor: pointer;"
+                    :alt="agenticTool.alt"
+                    :aria-label="agenticTool.alt"
+                    @click="goToIntegrations"
+                  />
+                </template>
+                <span>{{ agenticTool.label }} mode active.</span>
               </v-tooltip>
             </div>
           </div>
@@ -231,6 +261,18 @@ const projectId = computed(() => {
     throw new Error('Invalid project: missing ID')
   }
   return id
+})
+
+/**
+ * Active agentic tool based on project execution_mode
+ */
+const agenticTool = computed(() => {
+  const mode = props.project?.execution_mode
+  if (mode === 'claude_code_cli') return { type: 'img', src: '/claude_pix.svg', label: 'Claude Code', alt: 'Claude Code subagent active' }
+  if (mode === 'codex_cli') return { type: 'img', src: '/codex_logo.svg', label: 'Codex CLI', alt: 'Codex CLI subagent active' }
+  if (mode === 'gemini_cli') return { type: 'img', src: '/gemini-icon.svg', label: 'Gemini CLI', alt: 'Gemini CLI subagent active' }
+  if (mode === 'multi_terminal') return { type: 'icon', icon: 'mdi-monitor-multiple', label: 'Multi Terminal', alt: 'Multi terminal mode active' }
+  return null
 })
 
 /**
@@ -402,14 +444,12 @@ watch(missionText, (next, previous) => {
             margin-left: auto;
 
             .v-icon, .v-img {
-              opacity: 0.8;
+              opacity: 1;
               transition: opacity 0.2s ease;
-              border: 2px solid white;
-              border-radius: 50%;
-              padding: 4px;
+              object-fit: contain;
 
               &:hover {
-                opacity: 1;
+                opacity: 0.8;
               }
 
               &.icon-disabled {
@@ -524,7 +564,7 @@ watch(missionText, (next, previous) => {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
+      color: $color-background-primary;
       font-weight: $typography-font-weight-bold;
       font-size: 13px;
       flex-shrink: 0;

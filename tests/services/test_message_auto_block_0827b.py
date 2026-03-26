@@ -40,6 +40,7 @@ def mock_websocket_manager():
     mock.broadcast_message_acknowledged = AsyncMock()
     mock.broadcast_job_message = AsyncMock()
     mock.broadcast_job_status_change = AsyncMock()
+    mock.broadcast_job_status_update = AsyncMock()
     return mock
 
 
@@ -236,8 +237,8 @@ class TestAutoBlockCompletedRecipient:
             tenant_key=test_tenant_key,
         )
 
-        mock_websocket_manager.broadcast_job_status_change.assert_called_once()
-        call_kwargs = mock_websocket_manager.broadcast_job_status_change.call_args
+        mock_websocket_manager.broadcast_job_status_update.assert_called_once()
+        call_kwargs = mock_websocket_manager.broadcast_job_status_update.call_args
         assert call_kwargs.kwargs["old_status"] == "complete"
         assert call_kwargs.kwargs["new_status"] == "blocked"
 

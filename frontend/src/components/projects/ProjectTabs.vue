@@ -167,7 +167,7 @@
         <!-- Launch Tab -->
         <v-window-item value="launch">
           <LaunchTab
-            :project="project"
+            :project="projectWithUpdatedMode"
             :orchestrator="orchestrator"
             :is-staging="loadingStageProject"
             :git-enabled="gitEnabled"
@@ -580,9 +580,9 @@ async function copyPromptToClipboard(text) {
 async function handleExecutionModeChange(newValue) {
   const _modeLabels = {
     multi_terminal: 'Multi-Terminal mode enabled',
-    claude_code_cli: 'Subagent: Claude mode enabled',
-    codex_cli: 'Subagent: Codex mode enabled (experimental)',
-    gemini_cli: 'Subagent: Gemini mode enabled (experimental)',
+    claude_code_cli: 'Claude Code CLI selected',
+    codex_cli: 'Codex CLI selected (experimental)',
+    gemini_cli: 'Gemini CLI selected (experimental)',
   }
 
   try {
@@ -648,7 +648,13 @@ async function handleStageProject() {
     const copied = await copyPromptToClipboard(prompt)
 
     if (copied) {
-      showToast({ message: 'Orchestrator prompt copied - paste into ANY terminal (fresh or existing)', type: 'success' })
+      const _pasteLabels = {
+        multi_terminal: 'Orchestrator prompt copied - paste into ANY terminal (fresh or existing)',
+        claude_code_cli: 'Orchestrator prompt copied - paste into Claude Code CLI',
+        codex_cli: 'Orchestrator prompt copied - paste into Codex CLI',
+        gemini_cli: 'Orchestrator prompt copied - paste into Gemini CLI',
+      }
+      showToast({ message: _pasteLabels[currentMode] || _pasteLabels.multi_terminal, type: 'success' })
     } else {
       alert(`Please manually copy this prompt:\n\n${prompt}`)
     }

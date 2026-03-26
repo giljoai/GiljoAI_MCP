@@ -11,6 +11,7 @@ import pytest_asyncio
 from src.giljo_mcp.models import Message, Project
 from src.giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from src.giljo_mcp.models.config import ApiMetrics
+from src.giljo_mcp.models.tasks import MessageRecipient
 from src.giljo_mcp.repositories.statistics_repository import StatisticsRepository
 
 
@@ -61,15 +62,19 @@ async def test_messages(db_session, test_tenant_key, test_project_with_data):
             id=f"msg_{i:03d}",
             tenant_key=test_tenant_key,
             project_id=test_project_with_data.id,
-            # NOTE: from_agent removed in Handover 0116 - Agent model eliminated
-            # Original statistics.py code references from_agent but model doesn't have it (BUG!)
-            to_agents=["test_agent_2"],
+            from_agent_id="test_agent_1",
             content=f"Test message {i}",
             message_type="direct",
             status=status,
             created_at=datetime.now(timezone.utc) - timedelta(hours=i),
         )
         db_session.add(msg)
+        await db_session.flush()
+        db_session.add(MessageRecipient(
+            message_id=msg.id,
+            agent_id="test_agent_2",
+            tenant_key=test_tenant_key,
+        ))
         messages.append(msg)
     await db_session.commit()
     return messages

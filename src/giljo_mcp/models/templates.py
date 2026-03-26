@@ -7,7 +7,6 @@ and version control for agent missions.
 """
 
 from sqlalchemy import (
-    JSON,
     Boolean,
     Column,
     DateTime,
@@ -19,6 +18,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -69,9 +69,9 @@ class AgentTemplate(Base):
         nullable=True,
         comment="User-customizable role-specific guidance (editable)",
     )
-    variables = Column(JSON, default=list)  # List of required variables
-    behavioral_rules = Column(JSON, default=list)  # Role-specific rules
-    success_criteria = Column(JSON, default=list)  # Success metrics
+    variables = Column(JSONB, default=list)  # List of required variables
+    behavioral_rules = Column(JSONB, default=list)  # Role-specific rules
+    success_criteria = Column(JSONB, default=list)  # Success metrics
 
     # Tool assignment (Handover 0045 - Multi-Tool Agent Orchestration)
     tool = Column(String(50), nullable=False, default="claude", index=True)  # AI tool: claude, codex, gemini
@@ -95,8 +95,8 @@ class AgentTemplate(Base):
     version = Column(String(20), default="1.0.0")
     is_active = Column(Boolean, default=True)
     is_default = Column(Boolean, default=False)  # One default per role
-    tags = Column(JSON, default=list)
-    meta_data = Column(JSON, default=dict)
+    tags = Column(JSONB, default=list)
+    meta_data = Column(JSONB, default=dict)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -166,9 +166,9 @@ class TemplateArchive(Base):
     # Full system+user instructions snapshot for v3.1 dual-field support
     system_instructions = Column(Text, nullable=True)
     user_instructions = Column(Text, nullable=True)
-    variables = Column(JSON, default=list)
-    behavioral_rules = Column(JSON, default=list)
-    success_criteria = Column(JSON, default=list)
+    variables = Column(JSONB, default=list)
+    behavioral_rules = Column(JSONB, default=list)
+    success_criteria = Column(JSONB, default=list)
 
     # Archive metadata
     version = Column(String(20), nullable=False)
@@ -185,8 +185,6 @@ class TemplateArchive(Base):
     is_restorable = Column(Boolean, default=True)
     restored_at = Column(DateTime(timezone=True), nullable=True)
     restored_by = Column(String(100), nullable=True)
-
-    meta_data = Column(JSON, default=dict)
 
     # Relationships
     template = relationship("AgentTemplate", back_populates="archives")
@@ -219,8 +217,8 @@ class TemplateUsageStats(Base):
     # Usage details
     used_at = Column(DateTime(timezone=True), server_default=func.now())
     generation_ms = Column(Integer, nullable=True)  # Time to generate
-    variables_used = Column(JSON, default=dict)  # Actual variables substituted
-    augmentations_applied = Column(JSON, default=list)  # List of augmentation IDs
+    variables_used = Column(JSONB, default=dict)  # Actual variables substituted
+    augmentations_applied = Column(JSONB, default=list)  # List of augmentation IDs
 
     # Outcome tracking
     agent_completed = Column(Boolean, nullable=True)

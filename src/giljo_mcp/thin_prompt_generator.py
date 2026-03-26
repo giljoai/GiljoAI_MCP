@@ -411,24 +411,42 @@ class ThinClientPromptGenerator:
         # Fetch product for context injection
         product = await self._fetch_product(project_id)
 
-        # Handover 0315: Fetch user toggle and depth config if user_id provided
+        # Handover 0840d: Fetch user toggle and depth config from normalized tables/columns
         if user_id and (not field_toggles or not depth_config):
-            from src.giljo_mcp.models.auth import User
+            from src.giljo_mcp.models.auth import User, UserFieldPriority
 
             user_stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
             user_result = await self.db.execute(user_stmt)
             user = user_result.scalar_one_or_none()
 
             if user:
-                # Use user config if not provided
-                if not field_toggles and user.field_priority_config:
-                    raw_config = user.field_priority_config.get("priorities", {})
-                    field_toggles = {
-                        k: v.get("toggle", True) if isinstance(v, dict) else bool(v) for k, v in raw_config.items()
-                    }
+                # Build field_toggles from user_field_priorities table
+                if not field_toggles:
+                    prio_result = await self.db.execute(
+                        select(UserFieldPriority).where(
+                            and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == self.tenant_key)
+                        )
+                    )
+                    rows = prio_result.scalars().all()
+                    if rows:
+                        from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES
 
-                if not depth_config and user.depth_config:
-                    depth_config = user.depth_config
+                        field_toggles = dict(DEFAULT_CATEGORY_TOGGLES)
+                        for row in rows:
+                            field_toggles[row.category] = row.enabled
+                        field_toggles["product_core"] = True
+                        field_toggles["project_description"] = True
+
+                # Build depth_config from columns
+                if not depth_config:
+                    depth_config = {
+                        "vision_documents": user.depth_vision_documents,
+                        "memory_last_n_projects": user.depth_memory_last_n,
+                        "git_commits": user.depth_git_commits,
+                        "agent_templates": user.depth_agent_templates,
+                        "tech_stack_sections": user.depth_tech_stack_sections,
+                        "architecture_depth": user.depth_architecture,
+                    }
 
         # Apply defaults for depth_config if still not set
         if not depth_config:
@@ -654,28 +672,24 @@ class ThinClientPromptGenerator:
             if project.mission:
                 mission_parts.append(f"## Mission\n{project.mission}")
 
-            # Tech stack (from product config_data)
-            if field_toggles.get("tech_stack", True) and product and product.config_data:
-                tech_stack = product.config_data.get("tech_stack", {})
-                if tech_stack:
-                    tech_parts = []
-                    if isinstance(tech_stack, dict):
-                        if tech_stack.get("languages"):
-                            tech_parts.append(f"Languages: {', '.join(tech_stack['languages'])}")
-                        if tech_stack.get("frameworks"):
-                            tech_parts.append(f"Frameworks: {', '.join(tech_stack['frameworks'])}")
-                    elif isinstance(tech_stack, list):
-                        tech_parts.append(f"Stack: {', '.join(tech_stack)}")
-                    elif isinstance(tech_stack, str):
-                        tech_parts.append(f"Stack: {tech_stack}")
-                    if tech_parts:
-                        mission_parts.append(f"## Tech Stack\n{chr(10).join(tech_parts)}")
+            # Tech stack (from product_tech_stacks table, Handover 0840c)
+            if field_toggles.get("tech_stack", True) and product and product.tech_stack:
+                ts = product.tech_stack
+                tech_parts = []
+                if ts.programming_languages:
+                    tech_parts.append(f"Languages: {ts.programming_languages}")
+                if ts.frontend_frameworks:
+                    tech_parts.append(f"Frontend: {ts.frontend_frameworks}")
+                if ts.backend_frameworks:
+                    tech_parts.append(f"Backend: {ts.backend_frameworks}")
+                if tech_parts:
+                    mission_parts.append(f"## Tech Stack\n{chr(10).join(tech_parts)}")
 
-            # Architecture (from product config_data)
-            if field_toggles.get("architecture", True) and product and product.config_data:
-                architecture = product.config_data.get("architecture", {})
-                if architecture and architecture.get("patterns"):
-                    mission_parts.append(f"## Architecture\n{', '.join(architecture['patterns'])}")
+            # Architecture (from product_architectures table, Handover 0840c)
+            if field_toggles.get("architecture", True) and product and product.architecture:
+                arch = product.architecture
+                if arch.primary_pattern:
+                    mission_parts.append(f"## Architecture\n{arch.primary_pattern}")
 
             # Join all parts
             if mission_parts:

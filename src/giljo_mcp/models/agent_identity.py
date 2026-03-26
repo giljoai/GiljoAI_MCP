@@ -18,7 +18,6 @@ Data Normalization:
 """
 
 from sqlalchemy import (
-    JSON,
     CheckConstraint,
     Column,
     DateTime,
@@ -261,7 +260,7 @@ class AgentExecution(Base):
 
     # Completion result (0497b)
     result = Column(
-        JSON,
+        JSONB,
         nullable=True,
         comment="Structured completion result from agent (summary, artifacts, commits)",
     )
