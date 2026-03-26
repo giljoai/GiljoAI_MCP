@@ -28,7 +28,6 @@ from uuid import uuid4
 import bcrypt
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import flag_modified
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import (
@@ -38,7 +37,7 @@ from src.giljo_mcp.exceptions import (
     ResourceNotFoundError,
     ValidationError,
 )
-from src.giljo_mcp.models.auth import User
+from src.giljo_mcp.models.auth import TOGGLEABLE_CATEGORIES, User, UserFieldPriority
 
 
 logger = logging.getLogger(__name__)
@@ -729,25 +728,15 @@ class UserService:
     # ============================================================================
 
     async def get_field_priority_config(self, user_id: str) -> dict[str, Any]:
-        """
-        Get user's field toggle configuration or defaults.
+        """Get user's field toggle configuration from user_field_priorities table.
 
-        Args:
-            user_id: User UUID
-
-        Returns:
-            Field toggle configuration dictionary
-
-        Raises:
-            ResourceNotFoundError: User not found
-            BaseGiljoError: Database operation failed
+        Returns backward-compatible dict with version + priorities keys.
         """
         try:
             async with self._get_session() as session:
                 return await self._get_field_priority_config_impl(session, user_id)
-
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
-            raise  # Re-raise without wrapping
+            raise
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to get field priority config")
             raise BaseGiljoError(
@@ -755,49 +744,48 @@ class UserService:
             ) from e
 
     async def _get_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
-        """Implementation that uses provided session
+        """Query user_field_priorities table and build backward-compatible response."""
+        from src.giljo_mcp.config.defaults import DEFAULT_CATEGORY_TOGGLES, DEFAULT_FIELD_PRIORITY
 
-        Returns:
-            Field priority configuration dictionary
-
-        Raises:
-            ResourceNotFoundError: User not found
-        """
+        # Verify user exists
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
-
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        # Return custom config if set, otherwise defaults
-        if user.field_priority_config:
-            return user.field_priority_config
+        # Query user's toggle rows
+        prio_stmt = select(UserFieldPriority).where(
+            and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == self.tenant_key)
+        )
+        prio_result = await session.execute(prio_stmt)
+        rows = prio_result.scalars().all()
 
-        # Return system defaults
-        from src.giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY
+        if not rows:
+            return DEFAULT_FIELD_PRIORITY
 
-        return DEFAULT_FIELD_PRIORITY
+        # Build priorities dict from rows, merging with defaults for missing categories
+        toggles = dict(DEFAULT_CATEGORY_TOGGLES)
+        for row in rows:
+            toggles[row.category] = row.enabled
+
+        # Build backward-compatible response (always-on categories included)
+        priorities = {
+            "product_core": {"toggle": True},
+            "project_description": {"toggle": True},
+        }
+        for cat, enabled in toggles.items():
+            priorities[cat] = {"toggle": enabled}
+
+        return {"version": "4.0", "priorities": priorities}
 
     async def update_field_priority_config(self, user_id: str, config: dict[str, Any]) -> None:
-        """
-        Update user's field toggle configuration.
-
-        Args:
-            user_id: User UUID
-            config: New field toggle configuration
-
-        Raises:
-            ValidationError: Invalid config structure or toggles
-            ResourceNotFoundError: User not found
-            BaseGiljoError: Database operation failed
-        """
+        """Update user's field toggle config by upserting user_field_priorities rows."""
         try:
             async with self._get_session() as session:
                 return await self._update_field_priority_config_impl(session, user_id, config)
-
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
-            raise  # Re-raise without wrapping
+            raise
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to update field priority config")
             raise BaseGiljoError(
@@ -807,21 +795,11 @@ class UserService:
     async def _update_field_priority_config_impl(
         self, session: AsyncSession, user_id: str, config: dict[str, Any]
     ) -> None:
-        """Implementation that uses provided session (void return)
+        """Upsert toggleable categories into user_field_priorities table."""
+        priorities = config.get("priorities", config)
 
-        Raises:
-            ValidationError: Invalid config structure or toggles
-            ResourceNotFoundError: User not found
-        """
-        # Validate config structure
-        if "version" not in config or "priorities" not in config:
-            raise ValidationError(
-                message="Invalid config structure. Must contain 'version' and 'priorities'",
-                context={"config_keys": list(config.keys())},
-            )
-
-        # Validate toggles (must be dicts with boolean toggle key, or booleans directly)
-        for category, value in config["priorities"].items():
+        # Validate toggles
+        for category, value in priorities.items():
             if isinstance(value, dict):
                 if "toggle" not in value or not isinstance(value["toggle"], bool):
                     raise ValidationError(
@@ -837,39 +815,55 @@ class UserService:
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
-
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        # Update config
-        user.field_priority_config = config
-        await session.commit()
+        # Get existing priority rows
+        prio_stmt = select(UserFieldPriority).where(
+            and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == self.tenant_key)
+        )
+        prio_result = await session.execute(prio_stmt)
+        existing = {row.category: row for row in prio_result.scalars().all()}
 
+        # Upsert toggleable categories
+        now = datetime.now(timezone.utc)
+        for category, value in priorities.items():
+            if category not in TOGGLEABLE_CATEGORIES:
+                continue  # Skip always-on categories
+
+            enabled = value["toggle"] if isinstance(value, dict) else value
+
+            if category in existing:
+                existing[category].enabled = enabled
+                existing[category].updated_at = now
+            else:
+                session.add(
+                    UserFieldPriority(
+                        id=str(uuid4()),
+                        user_id=user_id,
+                        tenant_key=self.tenant_key,
+                        category=category,
+                        enabled=enabled,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+
+        await session.commit()
         self._logger.info(f"Updated field toggle config for user {user.username}")
 
-        # Emit WebSocket event if manager available
         await self._emit_websocket_event(
             event_type="toggle_config_updated",
-            data={"user_id": user_id, "toggles": config["priorities"], "version": config["version"]},
+            data={"user_id": user_id, "toggles": priorities, "version": config.get("version", "4.0")},
         )
 
     async def reset_field_priority_config(self, user_id: str) -> None:
-        """
-        Reset field priority configuration to system defaults.
-
-        Args:
-            user_id: User UUID
-
-        Raises:
-            ResourceNotFoundError: User not found
-            BaseGiljoError: Database operation failed
-        """
+        """Reset field priority configuration by deleting all user_field_priorities rows."""
         try:
             async with self._get_session() as session:
                 return await self._reset_field_priority_config_impl(session, user_id)
-
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
-            raise  # Re-raise without wrapping
+            raise
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to reset field priority config")
             raise BaseGiljoError(
@@ -877,95 +871,60 @@ class UserService:
             ) from e
 
     async def _reset_field_priority_config_impl(self, session: AsyncSession, user_id: str) -> None:
-        """Implementation that uses provided session (void return)
-
-        Raises:
-            ResourceNotFoundError: User not found
-        """
+        """Delete all user_field_priorities rows for user (reverts to defaults)."""
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
-
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        # Clear custom config
-        user.field_priority_config = None
-        await session.commit()
+        # Delete all priority rows
+        prio_stmt = select(UserFieldPriority).where(
+            and_(UserFieldPriority.user_id == user_id, UserFieldPriority.tenant_key == self.tenant_key)
+        )
+        prio_result = await session.execute(prio_stmt)
+        for row in prio_result.scalars().all():
+            await session.delete(row)
 
+        await session.commit()
         self._logger.info(f"Reset field priority config for user {user.username}")
 
     async def get_depth_config(self, user_id: str) -> dict[str, Any]:
-        """
-        Get user's depth configuration or defaults.
-
-        Args:
-            user_id: User UUID
-
-        Returns:
-            Depth configuration dictionary
-
-        Raises:
-            ResourceNotFoundError: User not found
-            BaseGiljoError: Database operation failed
-        """
+        """Get user's depth configuration from columns on users table."""
         try:
             async with self._get_session() as session:
                 return await self._get_depth_config_impl(session, user_id)
-
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
-            raise  # Re-raise without wrapping
+            raise
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to get depth config")
             raise BaseGiljoError(message=str(e), context={"operation": "get_depth_config", "user_id": user_id}) from e
 
     async def _get_depth_config_impl(self, session: AsyncSession, user_id: str) -> dict[str, Any]:
-        """Implementation that uses provided session
-
-        Returns:
-            Depth configuration dictionary
-
-        Raises:
-            ResourceNotFoundError: User not found
-        """
+        """Read depth columns from users table, return as dict."""
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
-
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        # Return depth config (from user or defaults)
-        depth_config = user.depth_config or {
-            "vision_documents": "medium",
-            "memory_last_n_projects": 3,
-            "git_commits": 25,
-            "agent_templates": "type_only",
-            "tech_stack_sections": "all",
-            "architecture_depth": "overview",
+        return {
+            "vision_documents": user.depth_vision_documents,
+            "memory_last_n_projects": user.depth_memory_last_n,
+            "git_commits": user.depth_git_commits,
+            "agent_templates": user.depth_agent_templates,
+            "tech_stack_sections": user.depth_tech_stack_sections,
+            "architecture_depth": user.depth_architecture,
+            "execution_mode": user.execution_mode,
         }
 
-        return depth_config
-
     async def update_depth_config(self, user_id: str, config: dict[str, Any]) -> None:
-        """
-        Update user's depth configuration.
-
-        Args:
-            user_id: User UUID
-            config: New depth configuration
-
-        Raises:
-            ValidationError: Invalid config values
-            ResourceNotFoundError: User not found
-            BaseGiljoError: Database operation failed
-        """
+        """Update user's depth columns on users table."""
         try:
             async with self._get_session() as session:
                 return await self._update_depth_config_impl(session, user_id, config)
-
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
-            raise  # Re-raise without wrapping
+            raise
         except (RuntimeError, ValueError) as e:
             self._logger.exception("Failed to update depth config")
             raise BaseGiljoError(
@@ -973,15 +932,8 @@ class UserService:
             ) from e
 
     async def _update_depth_config_impl(self, session: AsyncSession, user_id: str, config: dict[str, Any]) -> None:
-        """Implementation that uses provided session (void return)
-
-        Raises:
-            ValidationError: Invalid config values
-            ResourceNotFoundError: User not found
-        """
-        # Validate config values
+        """Update depth columns on users table from config dict."""
         valid_vision = ["none", "optional", "light", "medium", "full"]
-
         if "vision_documents" in config and config["vision_documents"] not in valid_vision:
             raise ValidationError(
                 message=f"Invalid vision_documents. Must be one of: {', '.join(valid_vision)}",
@@ -991,113 +943,82 @@ class UserService:
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
-
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        # Merge into existing config to preserve keys not in the update (e.g. execution_mode)
-        depth_config = dict(
-            user.depth_config
-            or {
-                "vision_documents": "medium",
-                "memory_last_n_projects": 3,
-                "git_commits": 25,
-                "agent_templates": "type_only",
-                "tech_stack_sections": "all",
-                "architecture_depth": "overview",
-                "execution_mode": "claude_code",
-            }
-        )
-        depth_config.update(config)
-        user.depth_config = depth_config
-        flag_modified(user, "depth_config")
+        # Map config dict keys to column names
+        column_map = {
+            "vision_documents": "depth_vision_documents",
+            "memory_last_n_projects": "depth_memory_last_n",
+            "git_commits": "depth_git_commits",
+            "agent_templates": "depth_agent_templates",
+            "tech_stack_sections": "depth_tech_stack_sections",
+            "architecture_depth": "depth_architecture",
+            "execution_mode": "execution_mode",
+        }
+
+        for key, value in config.items():
+            col_name = column_map.get(key)
+            if col_name:
+                setattr(user, col_name, value)
+
         await session.commit()
         await session.refresh(user)
 
         self._logger.info(f"Updated depth config for user {user.username}")
 
-        # Emit WebSocket event if manager available
+        depth_config = {
+            "vision_documents": user.depth_vision_documents,
+            "memory_last_n_projects": user.depth_memory_last_n,
+            "git_commits": user.depth_git_commits,
+            "agent_templates": user.depth_agent_templates,
+            "tech_stack_sections": user.depth_tech_stack_sections,
+            "architecture_depth": user.depth_architecture,
+            "execution_mode": user.execution_mode,
+        }
         await self._emit_websocket_event(
             event_type="depth_config_updated", data={"user_id": user_id, "depth_config": depth_config}
         )
 
     # ------------------------------------------------------------------
-    # Execution mode (stored in depth_config.execution_mode)
+    # Execution mode (stored as column on users table)
     # ------------------------------------------------------------------
 
     async def get_execution_mode(self, user_id: str) -> str:
-        """Get user's execution mode or default.
-
-        Args:
-            user_id: User UUID
-
-        Returns:
-            Execution mode string ("claude_code" or "multi_terminal")
-
-        Raises:
-            ResourceNotFoundError: User not found
-            BaseGiljoError: Database operation failed
-        """
+        """Get user's execution mode from column on users table."""
         try:
             async with self._get_session() as session:
                 return await self._get_execution_mode_impl(session, user_id)
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
-            raise  # Re-raise without wrapping
+            raise
         except (RuntimeError, ValueError) as e:
-            logger.exception("Failed to get execution mode for user {user_id}")
+            logger.exception("Failed to get execution mode for user %s", user_id)
             raise BaseGiljoError(message=str(e), context={"operation": "get_execution_mode", "user_id": user_id}) from e
 
     async def _get_execution_mode_impl(self, session: AsyncSession, user_id: str) -> str:
-        """Implementation that uses provided session
-
-        Returns:
-            Execution mode string ("claude_code" or "multi_terminal")
-
-        Raises:
-            ResourceNotFoundError: User not found
-        """
+        """Read execution_mode column from users table."""
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
-
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
-
-        depth_config = user.depth_config or {}
-        mode = depth_config.get("execution_mode", "claude_code")
-
-        return mode
+        return user.execution_mode or "claude_code"
 
     async def update_execution_mode(self, user_id: str, execution_mode: str) -> None:
-        """Update user's execution mode with validation.
-
-        Args:
-            user_id: User UUID
-            execution_mode: New execution mode ("claude_code" or "multi_terminal")
-
-        Raises:
-            ValidationError: Invalid execution mode
-            ResourceNotFoundError: User not found
-            BaseGiljoError: Database operation failed
-        """
+        """Update user's execution_mode column."""
         try:
             async with self._get_session() as session:
                 return await self._update_execution_mode_impl(session, user_id, execution_mode)
         except (ResourceNotFoundError, ValidationError, AuthenticationError, AuthorizationError, BaseGiljoError):
-            raise  # Re-raise without wrapping
+            raise
         except (RuntimeError, ValueError) as e:
-            logger.exception("Failed to update execution mode for user {user_id}")
+            logger.exception("Failed to update execution mode for user %s", user_id)
             raise BaseGiljoError(
                 message=str(e), context={"operation": "update_execution_mode", "user_id": user_id}
             ) from e
 
     async def _update_execution_mode_impl(self, session: AsyncSession, user_id: str, execution_mode: str) -> None:
-        """Implementation that uses provided session (void return)
-
-        Raises:
-            ValidationError: Invalid execution mode
-            ResourceNotFoundError: User not found
-        """
+        """Set execution_mode column on users table."""
         valid_modes = {"claude_code", "multi_terminal"}
         if execution_mode not in valid_modes:
             raise ValidationError(
@@ -1108,33 +1029,16 @@ class UserService:
         stmt = select(User).where(and_(User.id == user_id, User.tenant_key == self.tenant_key))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
-
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        depth_config = user.depth_config or {
-            "vision_documents": "medium",
-            "memory_last_n_projects": 3,
-            "git_commits": 25,
-            "agent_templates": "type_only",
-            "tech_stack_sections": "all",
-            "architecture_depth": "overview",
-        }
-        depth_config = dict(depth_config)
-        depth_config["execution_mode"] = execution_mode
-
-        # Reuse depth config update path for consistency
-        user.depth_config = depth_config
-        flag_modified(user, "depth_config")
+        user.execution_mode = execution_mode
         await session.commit()
         await session.refresh(user)
 
         await self._emit_websocket_event(
             event_type="execution_mode_updated",
-            data={
-                "user_id": user_id,
-                "execution_mode": execution_mode,
-            },
+            data={"user_id": user_id, "execution_mode": execution_mode},
         )
 
         self._logger.info(

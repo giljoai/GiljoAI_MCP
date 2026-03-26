@@ -72,6 +72,7 @@ from .auth import (
     ApiKeyIpLog,
     MCPSession,
     User,
+    UserFieldPriority,
 )
 from .base import (
     Base,
@@ -116,6 +117,9 @@ from .product_memory_entry import (
 # Product models
 from .products import (
     Product,
+    ProductArchitecture,
+    ProductTechStack,
+    ProductTestConfig,
     VisionDocument,
 )
 
@@ -131,6 +135,9 @@ from .settings import Settings
 # Task and message models
 from .tasks import (
     Message,
+    MessageAcknowledgment,
+    MessageCompletion,
+    MessageRecipient,
     Task,
 )
 
@@ -164,6 +171,9 @@ __all__ = [
     "MCPContextIndex",
     "MCPSession",
     "Message",
+    "MessageAcknowledgment",
+    "MessageCompletion",
+    "MessageRecipient",
     # OAuth
     "OAuthAuthorizationCode",
     "OptimizationMetric",
@@ -173,8 +183,11 @@ __all__ = [
     "Organization",
     # Products
     "Product",
+    "ProductArchitecture",
     # Product Memory (Handover 0390a)
     "ProductMemoryEntry",
+    "ProductTechStack",
+    "ProductTestConfig",
     # Projects
     "Project",
     "ProjectType",
@@ -187,6 +200,7 @@ __all__ = [
     "TemplateUsageStats",
     # Auth
     "User",
+    "UserFieldPriority",
     "VisionDocument",
     "generate_project_alias",
     "generate_uuid",

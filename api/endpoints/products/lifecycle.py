@@ -18,6 +18,7 @@ from src.giljo_mcp.auth.dependencies import get_current_active_user, get_db_sess
 from src.giljo_mcp.models import User
 from src.giljo_mcp.services import ProductService
 
+from .crud import _build_product_response
 from .dependencies import get_product_service
 from .models import (
     ActiveProductRefreshResponse,
@@ -31,50 +32,6 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-def _build_product_response(product, stats=None, override_active=None) -> ProductResponse:
-    """
-    Build a ProductResponse from a Product ORM model and optional ProductStatistics.
-
-    Args:
-        product: Product ORM model
-        stats: Optional ProductStatistics for metrics fields
-        override_active: Optional bool to override product.is_active in response
-
-    Returns:
-        ProductResponse Pydantic model
-    """
-    config_data = product.config_data or None
-    has_config_data = bool(config_data)
-
-    # Handover 0412: Ensure product_memory is never None
-    pm = product.product_memory
-    if pm is None:
-        pm = {"github": {}, "sequential_history": [], "context": {}}
-
-    is_active = override_active if override_active is not None else product.is_active
-
-    return ProductResponse(
-        id=str(product.id),
-        name=product.name,
-        description=product.description,
-        vision_path=None,
-        project_path=product.project_path,
-        created_at=product.created_at,
-        updated_at=product.updated_at,
-        project_count=stats.project_count if stats else 0,
-        task_count=stats.task_count if stats else 0,
-        has_vision=stats.has_vision if stats else False,
-        unresolved_tasks=stats.unresolved_tasks if stats else 0,
-        unfinished_projects=stats.unfinished_projects if stats else 0,
-        vision_documents_count=stats.vision_documents_count if stats else 0,
-        config_data=config_data,
-        has_config_data=has_config_data,
-        is_active=is_active,
-        product_memory=pm,
-        target_platforms=product.target_platforms or ["all"],
-    )
 
 
 @router.post("/{product_id}/activate", response_model=ProductActivationResponse)
@@ -208,6 +165,24 @@ async def delete_product(
         remaining_products_count=remaining_count,
         new_active_product=None,  # Could auto-activate another product if needed
     )
+
+
+@router.delete("/{product_id}/purge")
+async def purge_product(
+    product_id: str,
+    current_user: User = Depends(get_current_active_user),
+    service: ProductService = Depends(get_product_service),
+):
+    """
+    Permanently delete a product and ALL related data.
+
+    This is the nuclear option — no recovery possible.
+    Cascades to: projects, tasks, vision documents, memory entries, context chunks,
+    tech_stack, architecture, test_config.
+    """
+    logger.info(f"User {current_user.username} permanently deleting product {product_id}")
+    result = await service.purge_product(product_id)
+    return {"success": True, **result}
 
 
 @router.post("/{product_id}/restore", response_model=ProductResponse)

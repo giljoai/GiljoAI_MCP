@@ -84,8 +84,8 @@ async def generate_orchestrator_prompt(
     agent_count_result = await db.execute(agent_count_stmt)
     agent_count = agent_count_result.scalar() or 0
 
-    # Determine project path (default to current directory if not set)
-    project_path = project.meta_data.get("path", ".") if project.meta_data else "."
+    # Default project path
+    project_path = "."
 
     # Generate prompt based on tool type
     if tool == "claude-code":
@@ -172,20 +172,11 @@ async def generate_orchestrator_prompt_thin(
         # Create thin prompt generator
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
-        # Extract toggle config from user's field_priority_config JSONB column
-        user_field_config = current_user.field_priority_config or {}
-        field_toggles = user_field_config.get("priorities", {})
-        # Flatten nested toggle dicts to plain booleans (v3.0 stores {"toggle": bool})
-        field_toggles = {
-            k: (v.get("toggle", True) if isinstance(v, dict) else bool(v)) for k, v in field_toggles.items()
-        }
-
-        # Generate thin prompt with user field toggles
+        # Handover 0840d: Let generate() fetch toggles from user_field_priorities table
         result = await generator.generate(
             project_id=project_id,
             user_id=str(current_user.id),
             tool=tool,
-            field_toggles=field_toggles,
         )
 
         # Broadcast WebSocket event for real-time UI update
@@ -381,20 +372,11 @@ async def generate_staging_prompt(
         # Initialize thin client generator
         generator = ThinClientPromptGenerator(db, current_user.tenant_key)
 
-        # Extract toggle config from user's field_priority_config JSONB column
-        user_field_config = current_user.field_priority_config or {}
-        field_toggles = user_field_config.get("priorities", {})
-        # Flatten nested toggle dicts to plain booleans (v3.0 stores {"toggle": bool})
-        field_toggles = {
-            k: (v.get("toggle", True) if isinstance(v, dict) else bool(v)) for k, v in field_toggles.items()
-        }
-
-        # Generate thin prompt with user field toggles
+        # Handover 0840d: Let generate() fetch toggles from user_field_priorities table
         result = await generator.generate(
             project_id=project_id,
             user_id=str(current_user.id),
             tool=tool,
-            field_toggles=field_toggles,
         )
 
         # Use generate_staging_prompt for mode-specific content
@@ -598,9 +580,18 @@ async def get_implementation_prompt(
     git_enabled = False
     if project.product and getattr(project.product, "product_memory", None):
         git_config = project.product.product_memory.get("git_integration", {})
-        toggles = (getattr(current_user, "field_priority_config", None) or {}).get("priorities", {})
-        git_toggle = toggles.get("git_history", {})
-        git_history_enabled = git_toggle.get("toggle", False) if isinstance(git_toggle, dict) else bool(git_toggle)
+        # Handover 0840d: Check git_history toggle from user_field_priorities table
+        from src.giljo_mcp.models.auth import UserFieldPriority
+
+        prio_result = await db.execute(
+            select(UserFieldPriority).where(
+                UserFieldPriority.user_id == current_user.id,
+                UserFieldPriority.tenant_key == current_user.tenant_key,
+                UserFieldPriority.category == "git_history",
+            )
+        )
+        prio_row = prio_result.scalar_one_or_none()
+        git_history_enabled = prio_row.enabled if prio_row else False
         git_enabled = git_config.get("enabled", False) and git_history_enabled
 
     # Branch prompt generation by execution mode (0497c, 0838: added codex/gemini)
@@ -656,8 +647,6 @@ async def get_termination_prompt(
     Raises:
         HTTPException 404: Project not found or no working orchestrator
     """
-    from sqlalchemy.orm.attributes import flag_modified
-
     # 1. Fetch project with tenant isolation
     project_stmt = select(Project).where(
         Project.id == project_id,
@@ -715,11 +704,8 @@ async def get_termination_prompt(
     agent_result = await db.execute(agent_stmt)
     agents = agent_result.scalars().all()
 
-    # 4. Set early_termination flag on project metadata
-    meta = project.meta_data or {}
-    meta["early_termination"] = True
-    project.meta_data = meta
-    flag_modified(project, "meta_data")
+    # 4. Set early_termination flag on project
+    project.early_termination = True
     await db.commit()
 
     # 5. Build agent list for prompt

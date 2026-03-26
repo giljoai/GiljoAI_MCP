@@ -25,7 +25,7 @@ from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 
 # Import models using modular imports
-from src.giljo_mcp.models.tasks import Message
+from src.giljo_mcp.models.tasks import Message, MessageRecipient
 from src.giljo_mcp.schemas.service_responses import SendMessageResult
 from src.giljo_mcp.services.message_service import MessageService
 from src.giljo_mcp.tenant import TenantManager
@@ -229,7 +229,14 @@ async def test_broadcast_excludes_sender(
     assert len(messages) == 2, f"Expected 2 messages (Agent A excluded), got {len(messages)}"
 
     # Verify message recipients are Agent B and Agent C (not Agent A)
-    recipient_ids = {msg.to_agents[0] for msg in messages if msg.to_agents}
+    # Handover 0840b: Recipients stored in MessageRecipient junction table
+    recip_result = await db_session.execute(
+        select(MessageRecipient).where(
+            MessageRecipient.message_id.in_([msg.id for msg in messages])
+        )
+    )
+    all_recipients = recip_result.scalars().all()
+    recipient_ids = {r.agent_id for r in all_recipients}
     assert agent_a.agent_id not in recipient_ids, "Agent A should not be in recipient list"
     assert agent_b.agent_id in recipient_ids, "Agent B should be in recipient list"
     assert agent_c.agent_id in recipient_ids, "Agent C should be in recipient list"

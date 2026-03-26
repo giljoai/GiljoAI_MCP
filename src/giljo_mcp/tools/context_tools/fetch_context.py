@@ -57,15 +57,16 @@ CATEGORY_TOOLS = {
 }
 
 # Derive from canonical source (defaults.py) - single source of truth (Handover 0823)
-_CANONICAL_DEPTHS = _RAW_DEPTH_CONFIG["depths"]
+# Handover 0840d: DEFAULT_DEPTH_CONFIG is now a flat dict (no "depths" wrapper)
+_CANONICAL_DEPTHS = _RAW_DEPTH_CONFIG
 DEFAULT_DEPTHS = {
     "product_core": None,
     "vision_documents": _CANONICAL_DEPTHS.get("vision_documents", "medium"),
     "tech_stack": None,
     "architecture": None,
     "testing": None,
-    "memory_360": _CANONICAL_DEPTHS.get("memory_360", 3),
-    "git_history": _CANONICAL_DEPTHS.get("git_history", 25),
+    "memory_360": _CANONICAL_DEPTHS.get("memory_last_n_projects", 3),
+    "git_history": _CANONICAL_DEPTHS.get("git_commits", 25),
     "agent_templates": _CANONICAL_DEPTHS.get("agent_templates", "type_only"),
     "project": None,
     "self_identity": None,
@@ -82,6 +83,57 @@ _DEPTH_KEY_MAPPING: dict[str, str] = {
     "agent_templates": "agent_templates",
     "vision_documents": "vision_documents",
 }
+
+
+async def _is_category_enabled(
+    category: str,
+    tenant_key: str,
+    db_manager: DatabaseManager,
+) -> bool:
+    """
+    Check if a category is enabled in the user's field priority toggles.
+
+    Categories without a toggle row (product_core, project, self_identity,
+    agent_templates) are always enabled.
+
+    Returns:
+        True if enabled or no toggle exists, False if explicitly disabled.
+    """
+    # Categories that are always on (no toggle)
+    always_on = {"product_core", "project", "self_identity", "agent_templates"}
+    if category in always_on:
+        return True
+
+    from sqlalchemy import and_, select
+
+    from src.giljo_mcp.models.auth import User, UserFieldPriority
+
+    try:
+        async with db_manager.get_session_async() as session:
+            # Get user for this tenant
+            user_result = await session.execute(
+                select(User.id).where(and_(User.tenant_key == tenant_key, User.is_active)).limit(1)
+            )
+            user_id = user_result.scalar_one_or_none()
+            if not user_id:
+                return True  # No user found, allow by default
+
+            # Check toggle
+            prio_result = await session.execute(
+                select(UserFieldPriority.enabled).where(
+                    and_(
+                        UserFieldPriority.user_id == user_id,
+                        UserFieldPriority.tenant_key == tenant_key,
+                        UserFieldPriority.category == category,
+                    )
+                )
+            )
+            enabled = prio_result.scalar_one_or_none()
+            # No row means default enabled
+            return enabled if enabled is not None else True
+    except Exception:
+        logger.error("category_toggle_check_failed", category=category, tenant_key=tenant_key, exc_info=True)
+        return True  # Fail open — don't block context on toggle errors
 
 
 async def _load_user_depth_config(
@@ -119,17 +171,26 @@ async def _load_user_depth_config(
             )
             user = result.scalar_one_or_none()
 
-            if not user or user.depth_config is None:
+            if not user:
                 logger.debug(
                     "depth_config_not_found",
                     tenant_key=tenant_key,
-                    user_found=user is not None,
+                    user_found=False,
                 )
                 return None
 
-            # Normalize keys from DB format to internal format
+            # Handover 0840d: Read depth from columns, normalize keys to internal format
+            raw_depth = {
+                "vision_documents": user.depth_vision_documents,
+                "memory_last_n_projects": user.depth_memory_last_n,
+                "git_commits": user.depth_git_commits,
+                "agent_templates": user.depth_agent_templates,
+                "tech_stack_sections": user.depth_tech_stack_sections,
+                "architecture_depth": user.depth_architecture,
+            }
+
             normalized: dict[str, Any] = {}
-            for db_key, value in user.depth_config.items():
+            for db_key, value in raw_depth.items():
                 internal_key = _DEPTH_KEY_MAPPING.get(db_key, db_key)
                 normalized[internal_key] = value
 
@@ -288,6 +349,17 @@ async def fetch_context(
     if category not in CATEGORY_TOOLS:
         logger.warning("invalid_category", invalid_category=category, valid_categories=ALL_CATEGORIES)
         raise ValidationError(f"Invalid category: {category}. Valid categories: {ALL_CATEGORIES}")
+
+    # Enforce user field priority toggles — block disabled categories
+    if db_manager:
+        enabled = await _is_category_enabled(category, tenant_key, db_manager)
+        if not enabled:
+            logger.info("fetch_context_category_disabled", category=category, tenant_key=tenant_key)
+            return {
+                "category": category,
+                "data": [],
+                "metadata": {"toggled_off": True, "message": f"Category '{category}' is disabled in user settings."},
+            }
 
     # Resolve effective depth settings (Handover 0823b)
     effective_depths = DEFAULT_DEPTHS.copy()

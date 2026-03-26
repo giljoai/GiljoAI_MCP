@@ -25,7 +25,7 @@ from src.giljo_mcp.models.products import Product
 from src.giljo_mcp.models.projects import Project
 
 # Import models using modular imports
-from src.giljo_mcp.models.tasks import Message
+from src.giljo_mcp.models.tasks import Message, MessageRecipient
 from src.giljo_mcp.schemas.service_responses import (
     BroadcastResult,
     MessageListResult,
@@ -48,6 +48,7 @@ def mock_websocket_manager():
     mock.broadcast_message_received = AsyncMock()
     mock.broadcast_message_acknowledged = AsyncMock()
     mock.broadcast_job_message = AsyncMock()
+    mock.broadcast_job_status_update = AsyncMock()
     return mock
 
 
@@ -205,9 +206,13 @@ class TestMessageService0372AgentIDRouting:
         assert db_message is not None
 
         # Assert: Message routes to agent_id (not job_id)
-        # The resolved agent should be the agent_id from AgentExecution
-        assert recipient.agent_id in db_message.to_agents, (
-            f"Expected agent_id {recipient.agent_id} in to_agents, got {db_message.to_agents}"
+        # Handover 0840b: Recipients stored in MessageRecipient junction table
+        recip_result = await db_session.execute(
+            select(MessageRecipient).where(MessageRecipient.message_id == message_id)
+        )
+        recipients = recip_result.scalars().all()
+        assert any(r.agent_id == recipient.agent_id for r in recipients), (
+            f"Expected agent_id {recipient.agent_id} in recipients, got {[r.agent_id for r in recipients]}"
         )
 
     @pytest.mark.asyncio
@@ -228,6 +233,8 @@ class TestMessageService0372AgentIDRouting:
         """
         project, agents = test_project_with_agents
         old_orchestrator = agents[0]
+        # Ensure old orchestrator has an earlier started_at so DESC ordering works
+        old_orchestrator.started_at = datetime(2020, 1, 1, tzinfo=timezone.utc)
 
         # Create new orchestrator instance (simulating succession)
         new_orchestrator = AgentExecution(
@@ -236,6 +243,7 @@ class TestMessageService0372AgentIDRouting:
             tenant_key=project.tenant_key,
             agent_display_name="orchestrator",
             status="working",  # Higher instance number (old was 1)
+            started_at=datetime.now(timezone.utc),  # Must be latest for ORDER BY started_at DESC
             messages_sent_count=0,
             messages_waiting_count=0,
             messages_read_count=0,
@@ -265,8 +273,13 @@ class TestMessageService0372AgentIDRouting:
         msg_result = await db_session.execute(select(Message).where(Message.id == message_id))
         db_message = msg_result.scalar_one_or_none()
         assert db_message is not None
-        assert new_orchestrator.agent_id in db_message.to_agents, (
-            f"Message should route to NEW orchestrator agent_id {new_orchestrator.agent_id}, got {db_message.to_agents}"
+        # Handover 0840b: Recipients stored in MessageRecipient junction table
+        recip_result = await db_session.execute(
+            select(MessageRecipient).where(MessageRecipient.message_id == message_id)
+        )
+        recipients = recip_result.scalars().all()
+        assert any(r.agent_id == new_orchestrator.agent_id for r in recipients), (
+            f"Message should route to NEW orchestrator agent_id {new_orchestrator.agent_id}, got {[r.agent_id for r in recipients]}"
         )
 
 
@@ -319,10 +332,11 @@ class TestMessageService0372Filtering:
         messages = result.messages
 
         # Assert: Orchestrator should NOT see their own broadcast
+        # Handover 0840b: from_agent_id is now a top-level key in the response dict
         for msg in messages:
-            from_agent = msg.get("metadata", {}).get("_from_agent", "")
-            assert from_agent != orchestrator.agent_id, (
-                f"exclude_self should filter out own messages, but found message from {from_agent}"
+            from_agent_id = msg.get("from_agent_id", "")
+            assert from_agent_id != orchestrator.agent_id, (
+                f"exclude_self should filter out own messages, but found message from {from_agent_id}"
             )
 
     @pytest.mark.asyncio

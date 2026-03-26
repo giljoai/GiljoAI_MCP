@@ -206,7 +206,7 @@ async def close_project_and_update_memory(
             priority = _derive_priority(project, summary, key_outcomes)
             significance_score = _calculate_significance(project, key_outcomes, git_commits)
             token_estimate = _estimate_tokens(summary, key_outcomes, decisions_made)
-            metrics = _build_metrics(git_commits, project.meta_data or {})
+            metrics = _build_metrics(git_commits)
 
             # Create entry in product_memory_entries table
             entry = await repo.create_entry(
@@ -484,11 +484,9 @@ def _count_lines_added(git_commits: list[dict[str, Any]]) -> int:
     return total
 
 
-def _build_metrics(git_commits: list[dict[str, Any]], meta_data: dict[str, Any]) -> dict[str, Any]:
+def _build_metrics(git_commits: list[dict[str, Any]]) -> dict[str, Any]:
     """Build metrics block for history entry."""
     test_coverage = 0.0
-    if isinstance(meta_data, dict):
-        test_coverage = float(meta_data.get("test_coverage", 0.0) or 0.0)
 
     if git_commits:
         return {

@@ -1,63 +1,44 @@
 """
-Default Toggle and Depth Configuration for Context Management v3.0
+Default Toggle and Depth Configuration for Context Management v4.0
 
-This module defines the default toggle settings and depth controls for context
-categories used in AI agent orchestration. Toggles control whether a category
-is included (on/off). Depth controls determine how much detail is extracted.
+Handover 0840d: Normalized to relational tables and columns.
+- Toggles stored in user_field_priorities table (one row per category)
+- Depth stored as columns on users table
+- product_core and project_description are always on (no toggle rows)
 
 Toggle System:
-    Each context category has a boolean toggle:
-    - True: Category is included in orchestrator instructions
-    - False: Category is excluded from orchestrator instructions
+    7 toggleable categories stored in user_field_priorities table:
+    - tech_stack, architecture, testing, vision_documents,
+      memory_360, git_history, agent_templates
 
-    Categories:
-        - product_core: Product name, description, core features
-        - project_description: Current project metadata
-        - memory_360: Cumulative project history (sequential closeouts)
-        - tech_stack: Tech stack configuration (languages, frameworks, databases)
-        - testing: Quality standards, testing strategy, frameworks
-        - vision_documents: Chunked vision document uploads (paginated)
-        - architecture: Architecture patterns, API style, design patterns
-        - agent_templates: Agent template library (for task assignment)
-        - git_history: Recent commits from git integration (toggle OFF by default)
+    2 always-on categories (no rows stored):
+    - product_core, project_description
 
 Depth Controls:
-    Each category's depth is controlled independently via depth_config JSONB column.
-    Depth determines how much content is extracted (full vs abbreviated vs summary).
-
-    Default Depth Settings:
-        - vision_documents: "medium" (66% summary)
-        - memory_360: 3 (last 3 projects)
-        - git_history: 5 (last 5 commits, toggle OFF by default)
-        - agent_templates: "type_only" (~250 tokens)
-
-Usage:
-    from giljo_mcp.config.defaults import DEFAULT_FIELD_PRIORITY, DEFAULT_DEPTH_CONFIG
-
-    user.field_priority_config = DEFAULT_FIELD_PRIORITY
-    user.depth_config = DEFAULT_DEPTH_CONFIG
-
-    is_enabled = get_toggle_for_category('tech_stack')  # True
-
-Version History:
-    1.0-2.1: Legacy priority system (removed in Handover 0820)
-    3.0 (2026-03-15): Toggle-only system (Handover 0820)
-        - Removed priority integers (1/2/3/4) and labels (CRITICAL/IMPORTANT/REFERENCE)
-        - Simplified to boolean toggles per category
-        - Depth controls unchanged
+    Stored as individual columns on the users table:
+    - depth_vision_documents: "medium" (66% summary)
+    - depth_memory_last_n: 3 (last 3 projects)
+    - depth_git_commits: 25
+    - depth_agent_templates: "type_only" (~250 tokens)
+    - depth_tech_stack_sections: "all"
+    - depth_architecture: "overview"
+    - execution_mode: "claude_code"
 
 Related:
+    - Handover 0840d: User Settings Normalization
     - Handover 0820: Remove Context Priority Framing
     - Handover 0314: Depth Controls Implementation
     - api/endpoints/users.py: Toggle configuration endpoints
-    - src/giljo_mcp/models/auth.py: User.field_priority_config column
+    - src/giljo_mcp/models/auth.py: UserFieldPriority model + User depth columns
 """
 
 from typing import Any
 
 
+# Default toggle states for all categories (including always-on)
+# Used for backward-compatible API responses and protocol builder defaults
 DEFAULT_FIELD_PRIORITY: dict[str, Any] = {
-    "version": "3.0",
+    "version": "4.0",
     "priorities": {
         "product_core": {"toggle": True},
         "project_description": {"toggle": True},
@@ -71,14 +52,25 @@ DEFAULT_FIELD_PRIORITY: dict[str, Any] = {
     },
 }
 
+# Default toggleable category states (only categories stored in user_field_priorities)
+DEFAULT_CATEGORY_TOGGLES: dict[str, bool] = {
+    "tech_stack": True,
+    "architecture": True,
+    "testing": True,
+    "vision_documents": True,
+    "memory_360": True,
+    "git_history": False,  # OFF by default
+    "agent_templates": True,
+}
+
+# Default depth values matching users table column defaults
 DEFAULT_DEPTH_CONFIG: dict[str, Any] = {
-    "version": "1.0",
-    "depths": {
-        "vision_documents": "medium",
-        "memory_360": 3,
-        "git_history": 25,
-        "agent_templates": "type_only",
-    },
+    "vision_documents": "medium",
+    "memory_last_n_projects": 3,
+    "git_commits": 25,
+    "agent_templates": "type_only",
+    "tech_stack_sections": "all",
+    "architecture_depth": "overview",
 }
 
 
@@ -105,7 +97,7 @@ TUNING_SECTION_TOGGLE_MAP: dict[str, str] = {
 
 def get_toggle_for_category(category: str) -> bool:
     """
-    Get the toggle status for a specific category.
+    Get the default toggle status for a specific category.
 
     Args:
         category: Category name (e.g., 'product_core', 'git_history')
@@ -121,7 +113,7 @@ def get_toggle_for_category(category: str) -> bool:
 
 def get_depth_for_category(category: str) -> Any:
     """
-    Get the depth configuration for a specific category.
+    Get the default depth configuration for a specific category.
 
     Args:
         category: Category name (e.g., 'vision_documents', 'memory_360')
@@ -129,32 +121,4 @@ def get_depth_for_category(category: str) -> Any:
     Returns:
         Depth value (string or int depending on category), or None if not configured
     """
-    return DEFAULT_DEPTH_CONFIG["depths"].get(category)
-
-
-def validate_toggle_config() -> bool:
-    """
-    Validate that all toggle values are boolean.
-
-    Returns:
-        True if all toggles are valid
-
-    Raises:
-        TypeError: If any toggle is not boolean
-        ValueError: If category config is malformed
-    """
-    for category, config in DEFAULT_FIELD_PRIORITY["priorities"].items():
-        if not isinstance(config, dict):
-            raise TypeError(f"Category '{category}' must be a dict with 'toggle' key")
-
-        if "toggle" not in config:
-            raise ValueError(f"Category '{category}' missing required key: 'toggle'")
-
-        if not isinstance(config["toggle"], bool):
-            raise TypeError(f"Invalid toggle value for category '{category}'. Must be boolean (True/False)")
-
-    return True
-
-
-# Validate on module import to catch configuration errors early
-validate_toggle_config()
+    return DEFAULT_DEPTH_CONFIG.get(category)
