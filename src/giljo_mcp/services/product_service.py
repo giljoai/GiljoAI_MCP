@@ -379,7 +379,11 @@ class ProductService:
                 await self._ensure_product_memory_initialized(session, product)
 
                 # Handover 0412: Force refresh to ensure we have latest DB data
-                await session.refresh(product)
+                # Handover 0840h: Include relationships so refresh doesn't discard eager loads
+                await session.refresh(
+                    product,
+                    attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+                )
 
                 # Handover 0731b: Return Product ORM model directly
                 return product
@@ -1510,7 +1514,11 @@ class ProductService:
         if needs_update:
             product.updated_at = datetime.now(timezone.utc)
             await session.commit()
-            await session.refresh(product)
+            # Handover 0840h: Include relationships so refresh doesn't discard eager loads
+            await session.refresh(
+                product,
+                attribute_names=["tech_stack", "architecture", "test_config", "vision_documents"],
+            )
             self._logger.info(f"Product {product.id}: Updated product_memory structure")
 
     async def _get_product_metrics(self, session: AsyncSession, product_id: str) -> dict[str, Any]:
