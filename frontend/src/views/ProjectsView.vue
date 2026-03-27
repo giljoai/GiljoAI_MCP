@@ -197,9 +197,9 @@
           <!-- Staged Column -->
           <template v-slot:item.staging_status="{ item }">
             <v-chip
-              :color="isProjectStaged(item) ? 'success' : 'default'"
+              :color="isProjectStaged(item) ? 'success' : 'grey'"
               size="small"
-              :variant="isProjectStaged(item) ? 'flat' : 'tonal'"
+              variant="flat"
             >
               {{ isProjectStaged(item) ? 'Yes' : 'No' }}
             </v-chip>
