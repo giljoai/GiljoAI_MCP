@@ -86,6 +86,36 @@ body {
   user-select: none;
 }
 
+// =========================================================================
+// Smooth Border Utilities (box-shadow inset)
+// =========================================================================
+// Use these instead of CSS `border` on rounded elements. Box-shadow inset
+// renders anti-aliased curves on all zoom levels and display scaling,
+// avoiding the pixelated staircase effect of thin CSS borders on Windows.
+//
+// Usage:
+//   <v-card class="smooth-border">           — default theme border
+//   <v-chip class="smooth-border-accent">    — brand yellow border
+//   <div class="smooth-border" style="--smooth-border-color: #f00"> — custom
+//
+// All classes set `border: none` to prevent double borders when applied
+// to Vuetify components that have their own borders.
+// =========================================================================
+.smooth-border {
+  border: none !important;
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, $med-blue);
+}
+
+.smooth-border-2 {
+  border: none !important;
+  box-shadow: inset 0 0 0 2px var(--smooth-border-color, $med-blue);
+}
+
+.smooth-border-accent {
+  border: none !important;
+  box-shadow: inset 0 0 0 2px var(--smooth-border-color, $yellow);
+}
+
 // Custom card styles
 .stats-card {
   background: linear-gradient(135deg, $almost-dark-blue 0%, $lighter-dark-blue 100%);
