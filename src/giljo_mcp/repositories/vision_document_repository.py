@@ -9,14 +9,15 @@ All operations enforce tenant_key filtering for security (zero cross-tenant leak
 
 import hashlib
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import case, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import ResourceNotFoundError
-from src.giljo_mcp.models import MCPContextIndex, Product, VisionDocument
+from src.giljo_mcp.models import MCPContextIndex, Product, VisionDocument, VisionDocumentSummary
 
 from .base import BaseRepository
 
@@ -305,3 +306,171 @@ class VisionDocumentRepository:
 
         result = await session.execute(stmt)
         return result.scalar()
+
+    # -------------------------------------------------------------------------
+    # VisionDocumentSummary methods (Handover 0842a)
+    # -------------------------------------------------------------------------
+
+    async def create_summary(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        document_id: str,
+        product_id: str,
+        source: str,
+        ratio: Decimal,
+        summary: str,
+        tokens_original: int,
+        tokens_summary: int,
+    ) -> VisionDocumentSummary:
+        """
+        Create or replace a vision document summary (upsert pattern).
+
+        Deletes any existing row for the same document_id + source + ratio
+        within the tenant, then inserts a fresh row.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation (CRITICAL)
+            document_id: Vision document ID
+            product_id: Product ID
+            source: Summary source ('sumy' or 'ai')
+            ratio: Compression ratio (0.33 light, 0.66 medium)
+            summary: Summary text
+            tokens_original: Original document token count
+            tokens_summary: Summary token count
+
+        Returns:
+            Created VisionDocumentSummary instance
+        """
+        # Delete existing rows for this document+source+ratio (upsert)
+        stmt = delete(VisionDocumentSummary).where(
+            VisionDocumentSummary.tenant_key == tenant_key,
+            VisionDocumentSummary.document_id == document_id,
+            VisionDocumentSummary.source == source,
+            VisionDocumentSummary.ratio == ratio,
+        )
+        await session.execute(stmt)
+
+        row = VisionDocumentSummary(
+            tenant_key=tenant_key,
+            document_id=document_id,
+            product_id=product_id,
+            source=source,
+            ratio=ratio,
+            summary=summary,
+            tokens_original=tokens_original,
+            tokens_summary=tokens_summary,
+        )
+        session.add(row)
+        await session.flush()
+        return row
+
+    async def get_summaries(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        document_id: str,
+    ) -> list[VisionDocumentSummary]:
+        """
+        Return all summaries for a document, ordered by ratio then source.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation (CRITICAL)
+            document_id: Vision document ID
+
+        Returns:
+            List of VisionDocumentSummary instances
+        """
+        stmt = (
+            select(VisionDocumentSummary)
+            .where(
+                VisionDocumentSummary.tenant_key == tenant_key,
+                VisionDocumentSummary.document_id == document_id,
+            )
+            .order_by(VisionDocumentSummary.ratio, VisionDocumentSummary.source)
+        )
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_best_summary(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        document_id: str,
+        ratio: Decimal,
+    ) -> VisionDocumentSummary | None:
+        """
+        Return the best summary for a document at a given ratio.
+
+        AI summaries are preferred over Sumy. Among same-source summaries,
+        the most recently created one wins.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation (CRITICAL)
+            document_id: Vision document ID
+            ratio: Compression ratio to match (e.g. 0.33 or 0.66)
+
+        Returns:
+            Best VisionDocumentSummary or None
+        """
+        ai_preference = case(
+            (VisionDocumentSummary.source == "ai", 1),
+            else_=0,
+        )
+        stmt = (
+            select(VisionDocumentSummary)
+            .where(
+                VisionDocumentSummary.tenant_key == tenant_key,
+                VisionDocumentSummary.document_id == document_id,
+                VisionDocumentSummary.ratio == ratio,
+            )
+            .order_by(ai_preference.desc(), VisionDocumentSummary.created_at.desc())
+            .limit(1)
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_product_summaries(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str,
+        ratio: Decimal,
+    ) -> list[VisionDocumentSummary]:
+        """
+        Return all summaries for a product at a given ratio.
+
+        Results are ordered by document_id then AI-preferred source,
+        enabling callers to pick the best per-document summary.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation (CRITICAL)
+            product_id: Product ID
+            ratio: Compression ratio to match (e.g. 0.33 or 0.66)
+
+        Returns:
+            List of VisionDocumentSummary instances
+        """
+        ai_preference = case(
+            (VisionDocumentSummary.source == "ai", 1),
+            else_=0,
+        )
+        stmt = (
+            select(VisionDocumentSummary)
+            .where(
+                VisionDocumentSummary.tenant_key == tenant_key,
+                VisionDocumentSummary.product_id == product_id,
+                VisionDocumentSummary.ratio == ratio,
+            )
+            .order_by(
+                VisionDocumentSummary.document_id,
+                ai_preference.desc(),
+                VisionDocumentSummary.created_at.desc(),
+            )
+        )
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
