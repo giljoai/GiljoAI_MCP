@@ -12,7 +12,7 @@
     <v-card>
       <!-- Header -->
       <v-card-title id="review-modal-title" class="d-flex align-center">
-        <span>Project Review: {{ projectData?.name }}</span>
+        <span>Project Review: <span class="review-project-name">{{ projectData?.name }}</span></span>
         <v-spacer />
         <v-btn icon="mdi-close" variant="text" aria-label="Close dialog" @click="$emit('close')" />
       </v-card-title>
@@ -350,6 +350,10 @@ function truncate(text, maxLen) {
 </script>
 
 <style scoped>
+.review-project-name {
+  color: #FFC300;
+  font-weight: 600;
+}
 .review-project-id {
   font-family: monospace;
   cursor: pointer;
