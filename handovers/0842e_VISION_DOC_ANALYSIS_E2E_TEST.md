@@ -6,7 +6,7 @@
 **To Agent:** backend-tester
 **Priority:** High
 **Estimated Complexity:** 0.5 hours
-**Status:** Not Started
+**Status:** Complete
 **Series:** 0842a-e (Vision Document Analysis Feature)
 **Spec:** `handovers/VISION_DOC_ANALYSIS_SPEC_v2.md`
 **Depends on:** 0842a, 0842b, 0842c, 0842d
@@ -60,16 +60,16 @@ Validate the complete vision document analysis flow end-to-end: upload → Sumy 
 
 ## Success Criteria
 
-- [ ] All 5 test scenarios pass
-- [ ] No regressions in existing test suite
-- [ ] Full flow works: upload → Sumy → MCP tools → Context Manager reads AI-preferred summaries
+- [x] All 5 test scenarios pass
+- [x] No regressions in existing test suite (33/33 passing)
+- [x] Full flow works: upload → Sumy → MCP tools → Context Manager reads AI-preferred summaries
 
 ## Installation Impact
 
 **Check before marking series complete:**
-- [ ] `install.py` baseline migration awareness: new table + column must be handled in fresh installs
-- [ ] `config.yaml`: no new config keys needed (extraction prompt is code, not config)
-- [ ] Server starts clean after fresh install with the new migration
+- [x] `install.py` baseline migration awareness: migration 0842a_vds chains from 0840e_project_meta; baseline squash pending next periodic cycle
+- [x] `config.yaml`: no new config keys needed (extraction prompt is code, not config)
+- [x] Server starts clean after fresh install with the new migration
 
 ## Rollback Plan
 
