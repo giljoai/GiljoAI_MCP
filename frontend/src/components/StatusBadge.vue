@@ -38,7 +38,8 @@ const statusConfig = {
   },
   completed: {
     label: 'Completed',
-    color: 'info',
+    color: '#fff',
+    textColor: '#333',
     icon: 'mdi-check-circle',
   },
   cancelled: {

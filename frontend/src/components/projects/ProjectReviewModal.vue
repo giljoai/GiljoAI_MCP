@@ -43,7 +43,7 @@
           <!-- Section 1: Project Overview -->
           <div class="mb-6">
             <h3 class="text-h6 mb-2">Overview</h3>
-            <v-chip :color="statusColor" variant="flat" size="small" class="mr-2">{{ projectData.status }}</v-chip>
+            <v-chip :color="statusColor" :style="statusTextStyle" variant="flat" size="small" class="mr-2">{{ projectData.status }}</v-chip>
             <span class="text-caption text-medium-emphasis">
               Created {{ formatDate(projectData.created_at) }}
               <template v-if="projectData.completed_at"> | Completed {{ formatDate(projectData.completed_at) }}</template>
@@ -323,10 +323,15 @@ const missionText = computed(() => {
 
 const statusColor = computed(() => {
   const s = projectData.value?.status
-  if (s === 'completed') return 'success'
+  if (s === 'completed') return '#fff'
   if (s === 'terminated') return 'warning'
   if (s === 'cancelled') return 'grey'
   return 'primary'
+})
+
+const statusTextStyle = computed(() => {
+  if (projectData.value?.status === 'completed') return { color: '#333' }
+  return {}
 })
 
 function agentStatusColor(status) {
