@@ -179,7 +179,7 @@
 
           <!-- Quick Action Column — play button to activate + launch -->
           <template v-slot:item.quick_action="{ item }">
-            <v-tooltip v-if="normalizeStatus(item.status) === 'inactive'" text="Activate & launch">
+            <v-tooltip v-if="normalizeStatus(item.status) === 'inactive'" :text="isProjectStaged(item) ? 'Activate & resume' : 'Activate & launch'">
               <template #activator="{ props: ttProps }">
                 <button
                   v-bind="ttProps"
@@ -1094,7 +1094,9 @@ function getStatusActions(item) {
 // Activate project and navigate to its jobs page
 async function activateAndLaunch(projectId) {
   await projectStore.activateProject(projectId)
-  router.push({ name: 'ProjectLaunch', params: { projectId }, query: { via: 'jobs' } })
+  const project = projectStore.projects.find((p) => p.id === projectId)
+  const staged = project && isProjectStaged(project)
+  router.push({ name: 'ProjectLaunch', params: { projectId }, query: { via: 'jobs', ...(staged ? { tab: 'jobs' } : {}) } })
 }
 
 // Handle row click — completed projects open review summary, others open edit modal
