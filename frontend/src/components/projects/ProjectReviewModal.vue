@@ -11,12 +11,12 @@
   >
     <v-card>
       <!-- Header -->
-      <v-card-title id="review-modal-title" class="bg-primary text-white pa-4">
+      <v-card-title id="review-modal-title" class="review-header pa-4">
         <div class="d-flex align-center justify-space-between">
           <div>
             <div class="d-flex align-center">
-              <v-icon icon="mdi-eye" size="large" class="mr-2" />
-              <span class="text-h6">Project Review: {{ projectData?.name }}</span>
+              <v-icon icon="mdi-eye" size="large" class="mr-2" color="white" />
+              <span class="text-h6 font-weight-bold">Project Review: <span class="review-project-name">{{ projectData?.name }}</span></span>
             </div>
             <div class="d-flex align-center mt-1 ml-9">
               <v-tooltip location="bottom">
@@ -82,7 +82,15 @@
               <tbody>
                 <tr v-for="agent in agents" :key="agent.id">
                   <td>{{ agent.agent_display_name }}</td>
-                  <td>{{ agent.agent_name || '-' }}</td>
+                  <td>
+                    <v-chip
+                      v-if="agent.agent_name"
+                      size="x-small"
+                      variant="flat"
+                      :style="{ backgroundColor: agentTypeColor(agent.agent_name), color: '#fff' }"
+                    >{{ agent.agent_name }}</v-chip>
+                    <span v-else class="text-medium-emphasis">-</span>
+                  </td>
                   <td><v-chip :color="agentStatusColor(agent.status)" size="x-small" variant="flat">{{ agent.status }}</v-chip></td>
                 </tr>
               </tbody>
@@ -101,6 +109,13 @@
               >
                 <v-expansion-panel-title>
                   <div class="d-flex align-center w-100">
+                    <v-avatar
+                      size="24"
+                      class="mr-2"
+                      :style="{ backgroundColor: agentTypeColor(agent.agent_name) }"
+                    >
+                      <span class="text-white" style="font-size: 0.6rem; font-weight: 700;">{{ agentTypeBadge(agent.agent_name) }}</span>
+                    </v-avatar>
                     <span class="font-weight-medium">{{ agent.agent_display_name }}</span>
                     <v-spacer />
                     <v-chip :color="agentStatusColor(agent.status)" size="x-small" variant="flat" class="mr-2">{{ agent.status }}</v-chip>
@@ -204,6 +219,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useClipboard } from '@/composables/useClipboard'
+import { getAgentColor } from '@/config/agentColors'
 import api from '@/services/api'
 
 const props = defineProps({
@@ -228,6 +244,14 @@ const expandedAgentPanels = ref([])
 
 function copyProjectId() {
   if (props.projectId) clipboardCopy(props.projectId)
+}
+
+function agentTypeColor(agentName) {
+  return getAgentColor(agentName).hex
+}
+
+function agentTypeBadge(agentName) {
+  return getAgentColor(agentName).badge
 }
 
 watch(() => props.show, (open) => {
@@ -334,20 +358,27 @@ function truncate(text, maxLen) {
 </script>
 
 <style scoped>
+.review-header {
+  background-color: #1565C0;
+  color: #fff;
+}
+.review-project-name {
+  color: #FFD54F;
+}
 .review-project-id {
   font-family: monospace;
   font-size: 0.75rem;
-  opacity: 0.7;
+  font-weight: 700;
+  color: #fff;
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.15);
   user-select: all;
-  transition: opacity 0.15s ease;
+  transition: background 0.15s ease;
 }
 .review-project-id:hover,
 .review-project-id:focus-visible {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.3);
 }
 </style>
