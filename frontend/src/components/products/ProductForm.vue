@@ -292,6 +292,57 @@
                   Files will be auto-chunked for context (25K token limit)
                 </v-alert>
               </div>
+
+              <!-- Vision Analysis Prompt Banner (Handover 0842d) -->
+              <v-alert
+                v-if="isEdit && existingVisionDocuments.length > 0 && !analysisBannerDismissed"
+                type="info"
+                variant="tonal"
+                class="mt-4 mb-4"
+                :icon="false"
+              >
+                <div class="d-flex align-center mb-2">
+                  <v-icon class="mr-2">mdi-robot</v-icon>
+                  <span class="text-subtitle-2">Want AI to analyze this document?</span>
+                </div>
+                <div class="text-body-2 mb-3">
+                  Your AI coding agent will read the document and populate your product configuration fields
+                  (tech stack, architecture, testing, etc.) plus generate improved summaries.
+                </div>
+                <div class="d-flex ga-2 mb-2">
+                  <v-btn
+                    color="primary"
+                    variant="flat"
+                    size="small"
+                    :prepend-icon="analysisPromptCopied ? 'mdi-check' : 'mdi-content-copy'"
+                    @click="stageAnalysis"
+                  >
+                    {{ analysisPromptCopied ? 'Prompt Copied!' : 'Stage Analysis' }}
+                  </v-btn>
+                  <v-btn
+                    variant="text"
+                    size="small"
+                    @click="analysisBannerDismissed = true"
+                  >
+                    No Thanks
+                  </v-btn>
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  Requires a connected AI coding agent (Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool).
+                </div>
+              </v-alert>
+
+              <!-- Custom Extraction Instructions (Handover 0842d) -->
+              <v-textarea
+                v-model="productForm.extractionCustomInstructions"
+                label="Custom extraction instructions"
+                placeholder="Optional. Add domain-specific instructions for AI document analysis (e.g., 'This is a mobile-first app targeting iOS 17+')"
+                variant="outlined"
+                rows="3"
+                auto-grow
+                class="mt-4"
+                persistent-placeholder
+              ></v-textarea>
             </v-window-item>
 
             <!-- Tech Stack Tab -->
@@ -688,6 +739,10 @@ const formRef = ref(null)
 const dialogTab = ref('basic')
 const visionFiles = ref([])
 
+// Vision analysis prompt state (Handover 0842d)
+const analysisBannerDismissed = ref(false)
+const analysisPromptCopied = ref(false)
+
 // Product form data
 const productForm = ref({
   name: '',
@@ -715,6 +770,7 @@ const productForm = ref({
     coverage_target: 80,
     testing_frameworks: '',
   },
+  extractionCustomInstructions: '',
 })
 
 // Testing strategies
@@ -811,6 +867,7 @@ function saveProduct() {
     architecture: productForm.value.architecture,
     test_config: productForm.value.testConfig,
     core_features: productForm.value.coreFeatures,
+    extraction_custom_instructions: productForm.value.extractionCustomInstructions,
   }
 
   // Include visionFiles in save payload for parent to handle uploads
@@ -844,7 +901,21 @@ function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString()
 }
 
+// Vision analysis prompt (Handover 0842d)
+async function stageAnalysis() {
+  const productName = productForm.value.name || 'this product'
+  const productId = props.product?.id || ''
+  const prompt = `Analyze the vision document for product "${productName}" and populate its configuration.\nUse the gil_get_vision_doc tool with product_id "${productId}" to read the document and extraction instructions, then call gil_write_product with the extracted fields.`
 
+  try {
+    await navigator.clipboard.writeText(prompt)
+    analysisPromptCopied.value = true
+    setTimeout(() => { analysisPromptCopied.value = false }, 3000)
+  } catch {
+    // Fallback: clipboard API unavailable in insecure contexts
+    analysisPromptCopied.value = false
+  }
+}
 
 // Handover 0425: Platform selection handlers
 function handleAllPlatformChange(value) {
@@ -906,6 +977,7 @@ function loadProductData() {
     }
 
     productForm.value.coreFeatures = props.product.core_features || ''
+    productForm.value.extractionCustomInstructions = props.product.extraction_custom_instructions || ''
 
     const tc = props.product.test_config || {}
     productForm.value.testConfig = {
@@ -941,6 +1013,7 @@ function loadProductData() {
         coverage_target: 80,
         testing_frameworks: '',
       },
+      extractionCustomInstructions: '',
     }
   }
 }
@@ -954,6 +1027,7 @@ watch(
       dialogTab.value = 'basic'
       visionFiles.value = []
       saving.value = false
+      analysisBannerDismissed.value = false
       loadProductData()
     }
   },
