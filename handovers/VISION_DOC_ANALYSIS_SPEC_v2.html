@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GiljoAI — Vision Document Analysis: Lean Implementation Spec</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent-gold: #f0c040;
+    --accent-blue: #58a6ff;
+    --accent-green: #3fb950;
+    --accent-purple: #bc8cff;
+    --accent-orange: #f78166;
+    --accent-red: #f85149;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.7;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.5px;
+  }
+  h1 span { color: var(--text-muted); font-weight: 400; font-size: 1rem; display: block; margin-top: 4px; }
+
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent-blue);
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  p { margin-bottom: 1rem; }
+  .muted { color: var(--text-muted); }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--surface-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--accent-orange);
+  }
+
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    overflow-x: auto;
+    margin: 1rem 0 1.5rem 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .diagram-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+
+  .diagram-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+  }
+
+  .ascii-flow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    white-space: pre;
+    color: var(--text);
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0 1.5rem 0;
+    font-size: 0.9rem;
+  }
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--accent-gold);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  td {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  tr:nth-child(even) td { background: rgba(22,27,34,0.5); }
+
+  .callout {
+    border-left: 3px solid var(--accent-gold);
+    background: rgba(240,192,64,0.06);
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .callout-blue {
+    border-left-color: var(--accent-blue);
+    background: rgba(88,166,255,0.06);
+  }
+  .callout-green {
+    border-left-color: var(--accent-green);
+    background: rgba(63,185,80,0.06);
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .tag-ce { background: rgba(63,185,80,0.2); color: var(--accent-green); }
+  .tag-saas { background: rgba(240,192,64,0.2); color: var(--accent-gold); }
+
+  hr {
+    border: none;
+    border-top: 1px dashed var(--border);
+    margin: 3rem 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>Vision Document Analysis
+  <span>GiljoAI MCP — Lean Implementation Spec v2.0</span>
+</h1>
+<p class="muted">
+  MCP-native field extraction + Sumy fallback. No provider architecture. No proposal workflow.<br>
+  Target: CE launch, end of April 2026. Estimated effort: ~8 agent-hours.
+</p>
+
+<div class="callout-green callout">
+  <strong>Design principle:</strong> GiljoAI is a passive orchestrator. It stores the document, provides the extraction prompt, and exposes an MCP write tool. The user's AI coding tool does the reasoning. GiljoAI never runs inference.
+</div>
+
+<!-- ============================================================ -->
+<h2>1. User Journey — The Fork at Upload</h2>
+
+<div class="diagram-container">
+  <div class="diagram-title">Complete User Flow</div>
+  <div class="ascii-flow">
+                     USER UPLOADS VISION DOCUMENT
+                     (.md or .txt, any structure)
+                              │
+                              ▼
+               ┌──────────────────────────────┐
+               │  GiljoAI stores document      │
+               │  Chunks to 20K if needed      │
+               │  Runs Sumy immediately        │
+               │  (33% + 66% extractive)       │
+               └──────────────┬───────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────────────┐
+        │                                             │
+        │  "Would you like AI to analyze this         │
+        │   document and populate your product        │
+        │   configuration fields?"                    │
+        │                                             │
+        │       [ YES, ANALYZE ]    [ NO THANKS ]     │
+        │                                             │
+        └───────┬───────────────────────┬─────────────┘
+                │                       │
+                ▼                       ▼
+     ┌─────────────────────┐  ┌─────────────────────────┐
+     │                     │  │                         │
+     │   AI PATH           │  │   MANUAL PATH           │
+     │                     │  │                         │
+     │   Prompt staged     │  │   Sumy summaries ready  │
+     │   for user's CLI    │  │   (already ran above)   │
+     │   tool.             │  │                         │
+     │                     │  │   User fills product    │
+     │   Agent reads doc   │  │   fields by hand in     │
+     │   via MCP.          │  │   the setup wizard.     │
+     │                     │  │                         │
+     │   Agent calls       │  │   Done.                 │
+     │   /gil_write_product│  │                         │
+     │   with all fields.  │  │                         │
+     │                     │  │                         │
+     │   Agent writes      │  │                         │
+     │   33% + 66%         │  │                         │
+     │   summaries too.    │  │                         │
+     │                     │  │                         │
+     └──────────┬──────────┘  └────────────┬────────────┘
+                │                          │
+                ▼                          ▼
+     ┌───────────────────────────────────────────────────┐
+     │                                                   │
+     │   SAME RESULT REGARDLESS OF PATH                  │
+     │                                                   │
+     │   Product fields populated (by AI or by hand)     │
+     │   Summaries stored (AI or Sumy)                   │
+     │   User can edit any field anytime in web UI       │
+     │                                                   │
+     │   Context Manager depth toggles work the same:    │
+     │   ┌──────────────────────────────────────────┐    │
+     │   │  full  = original uploaded document       │    │
+     │   │  66%   = 66% summary (AI or Sumy)        │    │
+     │   │  33%   = 33% summary (AI or Sumy)        │    │
+     │   └──────────────────────────────────────────┘    │
+     │                                                   │
+     └───────────────────────────────────────────────────┘
+</div>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>2. The AI Path — What Happens Step by Step</h2>
+
+<div class="diagram-container">
+  <div class="diagram-title">AI Analysis Sequence</div>
+  <div class="ascii-flow">
+  WEB UI                           USER'S CLI TOOL                    GiljoAI MCP SERVER
+  ──────                           ───────────────                    ──────────────────
+    │                                    │                                    │
+    │  User clicks                       │                                    │
+    │  [YES, ANALYZE]                    │                                    │
+    │         │                          │                                    │
+    │         ▼                          │                                    │
+    │  UI stages prompt:                 │                                    │
+    │  "Analyze the vision               │                                    │
+    │   document for product             │                                    │
+    │   {name} and populate              │                                    │
+    │   its configuration."              │                                    │
+    │         │                          │                                    │
+    │         │  User copies prompt      │                                    │
+    │         │  or UI pushes to         │                                    │
+    │         │  staging clipboard       │                                    │
+    │         └─────────────────────────▶│                                    │
+    │                                    │                                    │
+    │                                    │  Agent calls:                      │
+    │                                    │  /gil_get_vision_doc(product_id)   │
+    │                                    │──────────────────────────────────▶│
+    │                                    │                                    │
+    │                                    │  Returns: document content         │
+    │                                    │  + baked extraction prompt         │
+    │                                    │◀──────────────────────────────────│
+    │                                    │                                    │
+    │                                    │  Agent's LLM reads doc,            │
+    │                                    │  extracts fields,                  │
+    │                                    │  generates summaries.              │
+    │                                    │  (Sonnet/Opus/Ollama/             │
+    │                                    │   whatever user has)               │
+    │                                    │                                    │
+    │                                    │  Agent calls:                      │
+    │                                    │  /gil_write_product(               │
+    │                                    │    product_id,                     │
+    │                                    │    product_description: "...",     │
+    │                                    │    core_features: "...",           │
+    │                                    │    programming_languages: "...",   │
+    │                                    │    ...,                            │
+    │                                    │    summary_33: "...",              │
+    │                                    │    summary_66: "..."              │
+    │                                    │  )                                │
+    │                                    │──────────────────────────────────▶│
+    │                                    │                                    │
+    │                                    │                    Writes fields   │
+    │                                    │                    to product.     │
+    │                                    │                    Stores summaries│
+    │                                    │                    in summaries    │
+    │                                    │                    table.          │
+    │                                    │                                    │
+    │                                    │  Returns: success + field count    │
+    │                                    │◀──────────────────────────────────│
+    │                                    │                                    │
+    │  WebSocket notification:           │                                    │
+    │  "AI analysis complete.            │                                    │
+    │   14 fields populated.             │                                    │
+    │   Review your product              │                                    │
+    │   configuration."                  │                                    │
+    │◀───────────────────────────────────────────────────────────────────────│
+    │                                    │                                    │
+    │  User reviews fields               │                                    │
+    │  in setup wizard tabs.             │                                    │
+    │  Edits as needed.                  │                                    │
+    │  Normal product editing.           │                                    │
+    │                                    │                                    │
+</div>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>3. MCP Tools — Two Tools Total</h2>
+
+<h3>3.1 /gil_get_vision_doc</h3>
+<p>Returns the vision document content with the baked extraction prompt. The agent's LLM uses this to understand what fields to extract.</p>
+
+<pre>
+# MCP Tool Definition
+{
+  "name": "gil_get_vision_doc",
+  "description": "Retrieve a product's vision document with extraction instructions.
+    Use this when asked to analyze a vision document and populate product fields.
+    The response includes the document content and a structured extraction prompt
+    that tells you exactly what fields to extract and how to format them.",
+  "parameters": {
+    "product_id": {
+      "type": "string",
+      "required": true,
+      "description": "The product ID to retrieve the vision document for."
+    }
+  }
+}
+
+# Server-side: returns
+{
+  "document_content": "... full document text or chunked ...",
+  "document_tokens": 18500,
+  "extraction_instructions": "... the baked prompt (see Section 4) ...",
+  "write_tool": "gil_write_product",
+  "product_id": "abc-123",
+  "product_name": "TinyContacts"
+}
+</pre>
+
+<div class="callout callout-blue">
+  <strong>Key design:</strong> The extraction prompt is baked into the tool response, not into the agent's system prompt. This means GiljoAI controls the prompt. The user's agent just follows the instructions it receives. If you improve the prompt later, every user gets the upgrade automatically.
+</div>
+
+<h3>3.2 /gil_write_product</h3>
+<p>One flat tool. Every product field is an optional parameter. Only fields present in the call get written. Includes summary fields.</p>
+
+<pre>
+# MCP Tool Definition
+{
+  "name": "gil_write_product",
+  "description": "Write product configuration fields and vision document summaries.
+    Call this after analyzing a vision document to populate the product setup.
+    Only include fields you were able to extract from the document.
+    Omit any field you could not determine — do not guess.",
+  "parameters": {
+    "product_id":             { "type": "string",  "required": true },
+
+    # ── Tab 1: Product Info ──
+    "product_name":           { "type": "string",  "required": false },
+    "product_description":    { "type": "string",  "required": false,
+                                "description": "2-3 sentence factual description" },
+    "core_features":          { "type": "string",  "required": false,
+                                "description": "Main features, one per line" },
+
+    # ── Tab 3: Tech Stack ──
+    "programming_languages":  { "type": "string",  "required": false },
+    "frontend_frameworks":    { "type": "string",  "required": false },
+    "backend_frameworks":     { "type": "string",  "required": false },
+    "databases":              { "type": "string",  "required": false },
+    "infrastructure":         { "type": "string",  "required": false },
+    "target_platforms":       { "type": "array",   "required": false,
+                                "items": { "type": "string" },
+                                "description": "e.g. ['windows','linux','macos','all']" },
+
+    # ── Tab 4: Architecture ──
+    "architecture_pattern":   { "type": "string",  "required": false },
+    "design_patterns":        { "type": "string",  "required": false },
+    "api_style":              { "type": "string",  "required": false },
+    "architecture_notes":     { "type": "string",  "required": false,
+                                "description": "Key constraints and decisions" },
+
+    # ── Tab 5: Testing ──
+    "quality_standards":      { "type": "string",  "required": false },
+    "testing_strategy":       { "type": "string",  "required": false,
+                                "description": "TDD|BDD|integration-first|manual|mixed" },
+    "testing_frameworks":     { "type": "string",  "required": false },
+    "test_coverage_target":   { "type": "integer", "required": false,
+                                "description": "0-100 percentage" },
+
+    # ── Summaries ──
+    "summary_33":             { "type": "string",  "required": false,
+                                "description": "~33% executive summary of vision doc" },
+    "summary_66":             { "type": "string",  "required": false,
+                                "description": "~66% technical summary of vision doc" }
+  }
+}
+
+# Server-side behavior:
+# 1. Validate product_id exists and belongs to tenant
+# 2. For each field present in the call:
+#    - Write to the appropriate column in the products table
+#    - Track which fields were written (for WebSocket notification)
+# 3. For summary_33 / summary_66:
+#    - Write to vision_document_summaries table
+#    - source = "ai" (vs "sumy" for Sumy-generated)
+# 4. Return: { "success": true, "fields_written": 14, "fields": [...list...] }
+# 5. Push WebSocket notification to UI
+</pre>
+
+
+<!-- ============================================================ -->
+<h2>4. The Baked Extraction Prompt</h2>
+
+<div class="callout">
+  <strong>This prompt ships with GiljoAI.</strong> It is returned by <code>/gil_get_vision_doc</code> as part of the response, not stored in the agent's config. Users can tune it via a "Custom Instructions" text field in product settings (appended, not replaced).
+</div>
+
+<pre>
+# src/giljo_mcp/prompts/vision_extraction.py
+
+VISION_EXTRACTION_PROMPT = """You are analyzing a product vision document for a software
+development orchestration platform. Extract structured information and generate summaries.
+
+RULES:
+- Extract ONLY information explicitly stated in the document
+- If a field cannot be determined from the document, OMIT it entirely
+- Do NOT guess, invent, or infer information not present
+- Keep descriptions concise and factual, not promotional
+- product_description should be 2-3 sentences maximum
+- For summaries: preserve technical specs, architecture decisions, and constraints
+- For summaries: remove marketing prose, user personas, and storytelling
+
+After reading the document, call the gil_write_product tool with all fields you were
+able to extract. Include summary_33 (concise ~33% executive summary focusing on what
+a developer needs to build this) and summary_66 (thorough ~66% technical summary
+preserving decisions, architecture, and feature descriptions).
+
+{custom_instructions}
+
+Here is the document to analyze:
+
+{document_content}"""
+</pre>
+
+<p>The prompt instructs the agent to call <code>gil_write_product</code> directly. The agent's LLM reads the document, reasons about it, and makes the tool call. GiljoAI never touches the document content with its own inference — the user's AI tool does all the reasoning.</p>
+
+<h3>4.1 Custom Instructions (user-configurable, per product)</h3>
+<pre>
+# Stored in products table or product_settings
+# Injected into {custom_instructions} placeholder
+#
+# Examples:
+# "Also extract any compliance or regulatory requirements."
+# "Our products always use PostgreSQL — assume this if no DB mentioned."
+# "Ignore mobile references, we are desktop-only."
+# "Extract branding details if present: colors, fonts, design language."
+#
+# UI: text area in product settings, labeled:
+# "Custom extraction instructions (optional)"
+# "These instructions are included when AI analyzes your vision documents."
+</pre>
+
+
+<!-- ============================================================ -->
+<h2>5. Database Changes</h2>
+
+<h3>5.1 Summaries Table (new)</h3>
+<pre>
+CREATE TABLE vision_document_summaries (
+    id VARCHAR(36) PRIMARY KEY,
+    tenant_key VARCHAR(255) NOT NULL,
+    document_id VARCHAR(36) NOT NULL,       -- FK to vision_documents
+    product_id VARCHAR(36) NOT NULL,        -- FK to products
+    source VARCHAR(20) NOT NULL,            -- "sumy" | "ai"
+    ratio DECIMAL(3,2) NOT NULL,            -- 0.33 | 0.66
+    summary TEXT NOT NULL,
+    tokens_original INTEGER NOT NULL,
+    tokens_summary INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    INDEX idx_vds_lookup (tenant_key, document_id, source, ratio),
+    FOREIGN KEY (document_id) REFERENCES vision_documents(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+</pre>
+
+<h3>5.2 Product Settings Addition</h3>
+<pre>
+-- Add to existing product settings or product table:
+-- extraction_custom_instructions TEXT  (nullable, user's custom prompt additions)
+
+-- No new tables for proposals. No status tracking.
+-- Fields are just product fields. Summaries are just summaries.
+</pre>
+
+<h3>5.3 Context Manager Integration</h3>
+<pre>
+-- Context Manager reads summaries for depth_config:
+--
+-- depth_config: { "vision_documents": "full" }
+--   → serve original document from vision_documents table
+--
+-- depth_config: { "vision_documents": "medium" }
+--   → SELECT summary FROM vision_document_summaries
+--     WHERE ratio = 0.66
+--     ORDER BY source = 'ai' DESC, created_at DESC  -- prefer AI over Sumy
+--     LIMIT 1
+--
+-- depth_config: { "vision_documents": "light" }
+--   → same query but ratio = 0.33
+--
+-- If no AI summary exists, Sumy summary is served (always available).
+</pre>
+
+
+<!-- ============================================================ -->
+<h2>6. Upload UI Changes</h2>
+
+<div class="diagram-container">
+  <div class="diagram-title">Vision Docs Tab — After Upload</div>
+  <div class="ascii-flow">
+  ┌─ Tab 2: VISION DOCS ─────────────────────────────────────────────────┐
+  │                                                                       │
+  │  Vision Documents                                                     │
+  │  Optionally included as context source by orchestrator.               │
+  │                                                                       │
+  │  ┌───────────────────────────────────────────────────────────────┐    │
+  │  │  📄 product_vision_v2.md                          ✕ Remove   │    │
+  │  │     18,450 tokens · Uploaded just now                         │    │
+  │  │     Sumy summaries: ✅ 33% (6,089 tokens) · ✅ 66% (12,177)  │    │
+  │  └───────────────────────────────────────────────────────────────┘    │
+  │                                                                       │
+  │  ┌───────────────────────────────────────────────────────────────┐    │
+  │  │                                                               │    │
+  │  │  🤖  Want AI to analyze this document?                        │    │
+  │  │                                                               │    │
+  │  │  Your AI coding tool will read the document and               │    │
+  │  │  populate your product configuration fields                   │    │
+  │  │  (tech stack, architecture, testing, etc.)                    │    │
+  │  │  plus generate improved summaries.                            │    │
+  │  │                                                               │    │
+  │  │  [ STAGE ANALYSIS ]           [ NO THANKS ]                   │    │
+  │  │                                                               │    │
+  │  │  Requires a connected AI coding tool (Claude Code,            │    │
+  │  │  Codex CLI, Gemini CLI, or any MCP-compatible tool).          │    │
+  │  │                                                               │    │
+  │  └───────────────────────────────────────────────────────────────┘    │
+  │                                                                       │
+  │  Upload more: [Choose files] (.md, .txt)                             │
+  │                                                                       │
+  └───────────────────────────────────────────────────────────────────────┘
+
+
+  After AI analysis completes (WebSocket notification):
+
+  ┌───────────────────────────────────────────────────────────────┐
+  │  📄 product_vision_v2.md                          ✕ Remove   │
+  │     18,450 tokens · Uploaded 5 min ago                       │
+  │     Sumy summaries: ✅ 33% · ✅ 66%                           │
+  │     AI summaries:   ✅ 33% (4,200 tokens) · ✅ 66% (10,800)  │
+  │     AI populated 14 product fields — review in Product Info  │
+  └───────────────────────────────────────────────────────────────┘
+</div>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>7. What Does NOT Change</h2>
+
+<table>
+  <tr><th>Component</th><th>Status</th></tr>
+  <tr><td>Vision document upload + storage</td><td>Unchanged — existing feature</td></tr>
+  <tr><td>20K token chunking</td><td>Unchanged — existing feature</td></tr>
+  <tr><td>Sumy 33% / 66% extractive summaries</td><td>Unchanged — still runs on every upload</td></tr>
+  <tr><td>Context Manager depth_config toggles</td><td>Unchanged — just reads from summaries table now</td></tr>
+  <tr><td>Product fields and setup wizard UI</td><td>Unchanged — fields are fields regardless of who wrote them</td></tr>
+  <tr><td>All other MCP tools</td><td>Unchanged</td></tr>
+</table>
+
+
+<!-- ============================================================ -->
+<h2>8. Build Sequence</h2>
+
+<div class="diagram-container">
+  <div class="diagram-title">Implementation Order — ~8 Agent-Hours</div>
+  <div class="ascii-flow">
+STEP  TASK                                               HOURS   DEPENDS ON
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1   DB migration: vision_document_summaries table       0.5    nothing
+      + extraction_custom_instructions on products
+
+  2   Wire Sumy output into summaries table               1      step 1
+      (currently Sumy results may be stored differently
+       — normalize to the new table)
+
+  3   Context Manager: read summaries from new table      1      step 2
+      Prefer AI source over Sumy source.
+      depth_config light/medium/full unchanged.
+
+  4   MCP tool: /gil_get_vision_doc                       1      step 1
+      Returns document content + baked extraction prompt.
+
+  5   MCP tool: /gil_write_product                        1.5    step 1
+      Flat field list, writes to products table
+      + summaries table. WebSocket notification on complete.
+
+  6   Baked extraction prompt                             0.5    nothing
+      (mostly written — finalize and store in codebase)
+
+  7   Upload UI: "Stage Analysis" prompt + notification   1.5    steps 4,5
+      Banner after upload. Stage button generates prompt.
+      WebSocket listener for "analysis complete" notification.
+
+  8   Product settings: custom instructions field         0.5    nothing
+      Simple text area, stored on products table.
+
+  9   Test end-to-end with Claude Code                    0.5    all above
+                                                         ────
+                                                   TOTAL: ~8 hrs
+</div>
+</div>
+
+<div class="callout callout-blue">
+  <strong>Compare to the previous spec: ~14 agent-hours.</strong> We cut the estimate nearly in half by eliminating: the provider interface (3 implementations), the proposal workflow (table + status + accept API), and the Ollama HTTP integration. What remains is two MCP tools, one DB table, one prompt, and minor UI changes.
+</div>
+
+
+<!-- ============================================================ -->
+<h2>9. SaaS Upgrade Path (Future)</h2>
+
+<div class="diagram-container">
+  <div class="diagram-title">CE vs SaaS — What Changes</div>
+  <div class="ascii-flow">
+  CE (ships April 2026):
+  ━━━━━━━━━━━━━━━━━━━━━
+
+    Upload doc → Sumy instant → "Stage Analysis" → user's CLI tool does reasoning
+                                                    (costs user's tokens)
+
+    User needs: a connected MCP-compatible CLI tool with an AI model
+
+
+  SaaS (future):
+  ━━━━━━━━━━━━━━
+
+    Upload doc → Sumy instant → [ ANALYZE WITH HAIKU ] → server-side Haiku call
+                                                          (included in subscription)
+                                                          (no CLI tool needed)
+
+    What changes technically:
+    - One new endpoint: POST /api/products/{id}/vision/analyze
+    - Calls Claude Haiku API server-side with same extraction prompt
+    - Calls same internal product update logic as /gil_write_product
+    - Token cost absorbed by SaaS subscription
+
+    The upsell is honest:
+    "CE: your AI tool analyzes your docs (your tokens).
+     SaaS: we analyze them for you (included). No CLI needed."
+</div>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>10. Edge Cases</h2>
+
+<h3>No CLI tool connected yet</h3>
+<p>"Stage Analysis" button shows but with helper text: <em>"Requires a connected AI coding tool. <a href="#">Set up MCP connection →</a>"</em>. Sumy summaries are always available regardless. User can fill fields manually and connect their tool later.</p>
+
+<h3>Document exceeds 20K tokens</h3>
+<p>Existing chunker splits the document. <code>/gil_get_vision_doc</code> returns all chunks. The agent's LLM processes them. If the agent's context window can't handle all chunks, the agent is responsible for its own chunking strategy — GiljoAI provides the content, the agent decides how to consume it. This is consistent with how every other MCP context delivery works.</p>
+
+<h3>Agent writes bad data</h3>
+<p>The user reviews and edits in the web UI. Same as if they typed bad data themselves. No special handling needed. The instruction in the prompt ("OMIT fields you can't determine, do NOT guess") reduces this risk, but ultimately HITL is the safety net and it's the existing edit form.</p>
+
+<h3>User re-uploads a new version</h3>
+<p>New document replaces old. Sumy reruns. If user clicks "Stage Analysis" again, agent overwrites fields with new extraction. Previous summaries are replaced. This is the expected behavior — the user uploaded a new doc, they want fresh analysis.</p>
+
+<hr>
+
+<p style="margin-top: 2rem; color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+  GiljoAI MCP Coding Orchestrator — Vision Document Analysis Spec v2.0<br>
+  Generated March 27, 2026 — Agent-ready implementation reference<br>
+  <strong>Supersedes v1.0 (provider architecture version)</strong>
+</p>
+
+</body>
+</html>
