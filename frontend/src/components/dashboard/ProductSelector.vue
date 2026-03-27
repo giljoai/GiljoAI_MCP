@@ -1,7 +1,7 @@
 <template>
   <div class="product-selector d-flex justify-center flex-wrap ga-2 py-2">
     <v-chip
-      color="yellow-darken-2"
+      :color="selectedProductId === null ? 'yellow-darken-2' : undefined"
       variant="flat"
       size="default"
       :class="['product-chip', { 'product-chip--inactive': selectedProductId !== null }]"
@@ -15,7 +15,7 @@
     <v-chip
       v-for="product in products"
       :key="product.id"
-      color="yellow-darken-2"
+      :color="selectedProductId === product.id ? 'yellow-darken-2' : undefined"
       variant="flat"
       size="default"
       :class="['product-chip', { 'product-chip--inactive': selectedProductId !== product.id }]"
