@@ -162,6 +162,48 @@
               </v-expansion-panel-text>
             </v-expansion-panel>
 
+            <!-- Chapter 3: Chain Strategy Template -->
+            <v-expansion-panel>
+              <v-expansion-panel-title>
+                <v-icon size="18" class="mr-2">mdi-file-tree</v-icon>
+                Chain Strategy Template
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <p class="mb-3">
+                  For complex features, break work into sequenced phases with a shared
+                  communication file. Download this template, customize it for your project,
+                  and point your agents to it.
+                </p>
+
+                <div class="tip-section mb-3">
+                  <div class="tip-subtitle">What the template covers:</div>
+                  <ul class="tip-list">
+                    <li>Pre-chain setup checklist</li>
+                    <li>Chain log JSON schema with field descriptions</li>
+                    <li>Orchestrator-gated workflow and dynamic sleep heuristics</li>
+                    <li>Phase planning table and agent handover template</li>
+                    <li>Orchestrator review checklist between phases</li>
+                    <li>Common pitfalls and lessons learned</li>
+                  </ul>
+                </div>
+
+                <v-btn
+                  color="primary"
+                  variant="tonal"
+                  size="small"
+                  prepend-icon="mdi-download"
+                  class="mb-3"
+                  @click="downloadTemplate"
+                >
+                  Download Template (.md)
+                </v-btn>
+
+                <p class="text-caption text-medium-emphasis mb-0">
+                  Works with any MCP-compatible AI coding tool (Claude Code, Codex CLI, Gemini CLI).
+                </p>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+
           </v-expansion-panels>
         </v-card-text>
       </v-card>
@@ -186,6 +228,15 @@ async function copyText(text) {
   if (success) {
     showToast({ message: 'Copied to clipboard', type: 'success' })
   }
+}
+
+function downloadTemplate() {
+  const link = document.createElement('a')
+  link.href = '/templates/chain_strategy_template.md'
+  link.download = 'chain_strategy_template.md'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 </script>
 
