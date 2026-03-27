@@ -155,6 +155,7 @@
                 <template v-slot:selection="{ item: statusItem }">
                   <v-chip
                     :color="getStatusColor(statusItem.value)"
+                    :style="getStatusTextStyle(statusItem.value)"
                     size="small"
                     variant="flat"
                     class="status-chip"
@@ -635,11 +636,16 @@ const completedTasks = computed(() => tasks.value.filter((t) => t.status === 'co
 function getStatusColor(status) {
   const colors = {
     pending: 'warning',
-    in_progress: 'info',
+    in_progress: '#fff',
     completed: 'success',
     cancelled: '#c6298c',
   }
   return colors[status] || 'grey'
+}
+
+function getStatusTextStyle(status) {
+  if (status === 'in_progress') return { color: '#333' }
+  return {}
 }
 
 function getStatusIcon(status) {
