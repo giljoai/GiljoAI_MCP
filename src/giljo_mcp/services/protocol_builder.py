@@ -330,17 +330,21 @@ tell me and I'll use /gil_add to save it to your dashboard."
     protocol_framing = "These are your lifecycle operating procedures. Follow them from startup through completion.\n\n"
     return (
         protocol_framing
-        + f"""## Agent Lifecycle Protocol (5 Phases)
+        + rf"""## Agent Lifecycle Protocol (5 Phases)
 
 ### Phase 1: STARTUP (BEFORE ANY WORK)
 0. **ENVIRONMENT DETECTION**:
-   Detect your OS before executing tasks:
-   Call: `python -c "import platform; print(platform.system())"`
-   Returns: "Windows", "Linux", or "Darwin" (macOS) — this is sufficient for all command adaptation.
-   Adapt commands to the detected OS:
-   - Sleep: Windows `Start-Sleep -Seconds N` | Linux/macOS `sleep N`
-   - Clear: Windows `cls` | Linux/macOS `clear`
-   - Path separator: Windows `\\` | Linux/macOS `/` (but `/` works in most Windows shells)
+   Detect your shell environment before executing tasks:
+   Call: `python -c "import os; print(os.environ.get('SHELL', os.environ.get('COMSPEC', 'unknown')))"`
+   This detects the **actual shell** (bash, zsh, powershell, cmd), not just the OS.
+   Adapt commands to the detected shell:
+   - If shell contains "bash" or "zsh" (includes Git Bash on Windows):
+     Sleep: `sleep N` | Clear: `clear` | Paths: use `/`
+   - If shell contains "powershell" or "pwsh":
+     Sleep: `Start-Sleep -Seconds N` | Clear: `cls` | Paths: use `\` or `/`
+   - If shell contains "cmd":
+     Sleep: `timeout /t N /nobreak >nul` | Clear: `cls` | Paths: use `\`
+   - Default (unknown): use `sleep N` (works in most environments)
 
    **CONTEXT AWARENESS**: Your mission contains authoritative values including `project_path`.
    When creating files or referencing directories, use context-provided paths.
@@ -423,7 +427,7 @@ If you call `complete_job()` without meeting these requirements:
 2. Send message to orchestrator explaining what you need (use orchestrator's agent_id UUID from YOUR TEAM table):
    - `mcp__giljo-mcp__send_message(to_agents=["<orchestrator-agent-id-uuid>"], content="BLOCKER: <details>", from_agent="{executor_id}", project_id="...", message_type="direct")`
    - ALWAYS use the orchestrator's agent_id UUID, NEVER the display name "orchestrator"
-3. STOP work and poll for response:
+3. STOP work and poll for response (use longer intervals while blocked — 15-20 seconds between polls, up to 5 attempts):
    - `mcp__giljo-mcp__receive_messages(agent_id="{executor_id}", tenant_key="{tenant_key}")`
 
 **To resume from BLOCKED**:
@@ -831,13 +835,17 @@ Read this protocol via orchestrator_protocol field."""
 Follow these steps IN ORDER (Steps 0-7 for staging):
 
 ── STEP 0: Detect Environment ──────────────────────────────────────────────
-Detect your OS before planning:
-Call: `python -c "import platform; print(platform.system())"`
-Returns: "Windows", "Linux", or "Darwin" (macOS) — this is sufficient for all command adaptation.
-Adapt commands for agent missions to match the detected OS:
-- Sleep: Windows `Start-Sleep -Seconds N` | Linux/macOS `sleep N`
-- Clear: Windows `cls` | Linux/macOS `clear`
-- Path separator: Windows `\\` | Linux/macOS `/` (but `/` works in most Windows shells)
+Detect your shell environment before planning:
+Call: `python -c "import os; print(os.environ.get('SHELL', os.environ.get('COMSPEC', 'unknown')))"`
+This detects the **actual shell** (bash, zsh, powershell, cmd), not just the OS.
+Adapt commands for agent missions to match the detected shell:
+- If shell contains "bash" or "zsh" (includes Git Bash on Windows):
+  Sleep: `sleep N` | Clear: `clear` | Paths: use `/`
+- If shell contains "powershell" or "pwsh":
+  Sleep: `Start-Sleep -Seconds N` | Clear: `cls` | Paths: use `\\` or `/`
+- If shell contains "cmd":
+  Sleep: `timeout /t N /nobreak >nul` | Clear: `cls` | Paths: use `\\`
+- Default (unknown): use `sleep N` (works in most environments)
 
 ── STEP 1: Verify MCP ──────────────────────────────────────────────────────
 Call: health_check()
