@@ -33,6 +33,12 @@ logger = logging.getLogger(__name__)
 
 # Maps section keys to product fields for applying proposals
 # Handover 0840c: Rewritten for normalized tables
+# CROSS-REFERENCE: Two independent code paths write to these product fields.
+# If you modify fields here, you MUST also check the vision analysis writer:
+#   gil_write_product() + FIELD_MAP in
+#   src/giljo_mcp/tools/vision_analysis.py (FIELD_MAP, line ~57)
+# The vision path writes in bulk with merge semantics.
+# This path writes one field at a time (per-section accept).
 SECTION_FIELD_MAP: dict[str, dict[str, str]] = {
     "description": {"type": "direct", "field": "description"},
     "tech_stack": {
@@ -510,6 +516,7 @@ class ProductTuningService:
 
     def _apply_value_to_product(self, product: Product, section: str, value: Any) -> None:
         """Apply a tuning value to the correct product field."""
+        # See CROSS-REFERENCE note on SECTION_FIELD_MAP — vision analysis also writes these fields.
         from src.giljo_mcp.models.products import ProductArchitecture, ProductTechStack
 
         mapping = SECTION_FIELD_MAP.get(section)

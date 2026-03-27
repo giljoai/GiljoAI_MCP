@@ -54,6 +54,12 @@ Here is the document to analyze:
 {document_content}"""
 
 
+# CROSS-REFERENCE: Two independent code paths write to these product fields.
+# If you modify fields here, you MUST also check the tuning writer:
+#   ProductTuningService._apply_value_to_product() in
+#   src/giljo_mcp/services/product_tuning_service.py (SECTION_FIELD_MAP, line ~36)
+# The tuning path writes one field at a time (per-section accept).
+# This path writes in bulk with merge semantics.
 FIELD_MAP = {
     "product_name": ("products", "name"),
     "product_description": ("products", "description"),
@@ -261,6 +267,7 @@ def _write_product_fields(
     fields_written: list[str],
 ) -> None:
     """Apply direct product fields (name, description, core_features, target_platforms)."""
+    # See CROSS-REFERENCE note on FIELD_MAP — tuning also writes these fields.
     for field_name in _PRODUCT_FIELDS:
         if field_name not in fields:
             continue
@@ -277,6 +284,7 @@ def _write_tech_stack_fields(
     fields_written: list[str],
 ) -> None:
     """Get-or-create ProductTechStack and merge-update only provided fields."""
+    # See CROSS-REFERENCE note on FIELD_MAP — tuning also writes these fields.
     provided = {k: fields[k] for k in _TECH_STACK_FIELDS if k in fields}
     if not provided:
         return
@@ -304,6 +312,7 @@ def _write_architecture_fields(
     fields_written: list[str],
 ) -> None:
     """Get-or-create ProductArchitecture and merge-update only provided fields."""
+    # See CROSS-REFERENCE note on FIELD_MAP — tuning also writes these fields.
     provided = {k: fields[k] for k in _ARCHITECTURE_FIELDS if k in fields}
     if not provided:
         return
@@ -331,6 +340,7 @@ def _write_test_config_fields(
     fields_written: list[str],
 ) -> None:
     """Get-or-create ProductTestConfig and merge-update only provided fields."""
+    # See CROSS-REFERENCE note on FIELD_MAP — tuning also writes these fields.
     provided = {k: fields[k] for k in _TEST_CONFIG_FIELDS if k in fields}
     if not provided:
         return
