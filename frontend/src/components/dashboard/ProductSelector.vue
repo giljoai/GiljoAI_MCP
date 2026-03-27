@@ -2,9 +2,9 @@
   <div class="product-selector d-flex justify-center flex-wrap ga-2 py-2">
     <v-chip
       color="yellow-darken-2"
-      :variant="selectedProductId === null ? 'flat' : 'outlined'"
+      variant="flat"
       size="default"
-      class="product-chip"
+      :class="['product-chip', { 'product-chip--inactive': selectedProductId !== null }]"
       role="radio"
       :aria-checked="selectedProductId === null"
       aria-label="All Products"
@@ -16,9 +16,9 @@
       v-for="product in products"
       :key="product.id"
       color="yellow-darken-2"
-      :variant="selectedProductId === product.id ? 'flat' : 'outlined'"
+      variant="flat"
       size="default"
-      class="product-chip"
+      :class="['product-chip', { 'product-chip--inactive': selectedProductId !== product.id }]"
       role="radio"
       :aria-checked="selectedProductId === product.id"
       :aria-label="product.name"
@@ -53,6 +53,11 @@ defineEmits(['select'])
   cursor: pointer;
   font-weight: 500;
   transition: all 0.2s ease;
+}
+
+.product-chip--inactive {
+  background: transparent !important;
+  box-shadow: inset 0 0 0 2px #f9a825;
 }
 
 .product-chip:hover {
