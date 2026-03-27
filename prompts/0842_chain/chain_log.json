@@ -122,8 +122,8 @@
       "title": "Frontend UI (Tuning Icon + Vision Analysis Banner)",
       "handover": "handovers/0842d_VISION_DOC_ANALYSIS_FRONTEND.md",
       "color": "#FF9800",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-27T15:00:00Z",
       "completed_at": null,
       "agent_types": ["ux-designer", "frontend-tester"],
       "planned_tasks": [
