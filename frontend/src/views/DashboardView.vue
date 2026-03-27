@@ -132,7 +132,7 @@
     <!-- Donut Charts -->
     <v-row class="mb-4">
       <v-col cols="12" md="4">
-        <v-card variant="flat" class="chart-card pa-4">
+        <v-card variant="flat" class="chart-card chart-card--shadow pa-4">
           <DonutChart
             title="Status Distribution"
             :chart-data="statusChartData"
@@ -618,6 +618,11 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   min-height: 300px;
+}
+
+.chart-card--shadow {
+  border: none;
+  box-shadow: inset 0 0 0 1px #315074;
 }
 
 .activity-card {
