@@ -109,15 +109,25 @@ class DetailedHealthResponse(BaseModel):
 startup_time = datetime.now(timezone.utc)
 
 
+class AgentRoleDistItem(BaseModel):
+    """Single entry in the agent role distribution chart."""
+
+    label: str
+    count: int
+    color: str
+    is_active: bool
+
+
 class DashboardStatsResponse(BaseModel):
     """Response model for the consolidated dashboard analytics endpoint (Handover 0839)."""
 
     project_status_dist: dict[str, int]
     taxonomy_dist: list[dict]
-    agent_role_dist: dict[str, int]
+    agent_role_dist: list[AgentRoleDistItem]
     recent_projects: list[dict]
     recent_memories: list[dict]
     task_status_dist: dict[str, int]
+    execution_mode_dist: dict[str, int]
     products: list[dict]
 
 
@@ -178,6 +188,11 @@ async def get_dashboard_stats(
             tenant_key,
             product_id=product_id,
         )
+        execution_mode_dist = await stats_repo.get_execution_mode_distribution(
+            session,
+            tenant_key,
+            product_id=product_id,
+        )
         products = await stats_repo.get_product_project_counts(
             session,
             tenant_key,
@@ -190,6 +205,7 @@ async def get_dashboard_stats(
         recent_projects=recent_projects,
         recent_memories=recent_memories,
         task_status_dist=task_status_dist,
+        execution_mode_dist=execution_mode_dist,
         products=products,
     )
 
