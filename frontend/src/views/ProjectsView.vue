@@ -198,6 +198,7 @@
           <template v-slot:item.staging_status="{ item }">
             <v-chip
               :color="isProjectStaged(item) ? 'success' : 'grey'"
+              :style="isProjectStaged(item) ? {} : { color: '#1a237e' }"
               size="small"
               variant="flat"
             >
