@@ -285,6 +285,18 @@ class AcknowledgeMessageResult(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class MessageStatusResult(BaseModel):
+    """Message delivery/read status result."""
+
+    message_id: str
+    status: str
+    acknowledged_by: list[str] = []
+    completed_by: list[str] = []
+    recipients_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ---------------------------------------------------------------------------
 # Orchestration Service Models
 # ---------------------------------------------------------------------------
@@ -457,6 +469,9 @@ class ErrorReportResult(BaseModel):
 
     job_id: str
     message: str = "Error reported"
+    status: str = "blocked"
+    block_reason: Optional[str] = None
+    guidance: str = "To resume, call report_progress() with updated todo_items."
 
     model_config = ConfigDict(from_attributes=True)
 

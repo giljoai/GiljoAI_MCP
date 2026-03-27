@@ -45,6 +45,7 @@ from src.giljo_mcp.schemas.service_responses import (
     BroadcastResult,
     CompleteMessageResult,
     MessageListResult,
+    MessageStatusResult,
     SendMessageResult,
     StagingDirective,
 )
@@ -1116,7 +1117,7 @@ class MessageService:
                 query = (
                     select(Message)
                     .join(MessageRecipient)
-                    .options(selectinload(Message.acknowledgments))
+                    .options(selectinload(Message.acknowledgments), selectinload(Message.recipients))
                     .where(and_(*conditions))
                     .order_by(Message.created_at)
                 )
@@ -1252,6 +1253,9 @@ class MessageService:
                     from_agent_raw = msg.from_agent_id or ""
                     from_display = msg.from_display_name or sender_name_map.get(from_agent_raw, "")
 
+                    # Build recipient context for broadcast awareness
+                    recipient_ids = [r.agent_id for r in msg.recipients] if msg.recipients else []
+
                     messages_list.append(
                         {
                             "id": str(msg.id),
@@ -1264,6 +1268,7 @@ class MessageService:
                             "acknowledged_at": msg.acknowledged_at.isoformat() if msg.acknowledged_at else None,
                             "acknowledged_by": msg.acknowledgments[0].agent_id if msg.acknowledgments else None,
                             "timestamp": msg.created_at.isoformat(),
+                            "recipients_count": len(recipient_ids),
                             "metadata": {},
                         }
                     )
@@ -1271,8 +1276,14 @@ class MessageService:
                 self._logger.info(f"Retrieved {len(messages_list)} messages for agent {agent_id}")
 
                 # Handover 0827c: Append reactivation guidance for auto-blocked agents
+                # Only show for post-completion auto-blocks (completed_at set),
+                # not for mid-work blocks via report_error()
                 reactivation_guidance = None
-                if execution and execution.status == "blocked" and messages_list:
+                is_post_completion_block = (
+                    execution and execution.status == "blocked" and execution.completed_at is not None
+                )
+                is_mid_work_block = execution and execution.status == "blocked" and execution.completed_at is None
+                if is_post_completion_block and messages_list:
                     reactivation_guidance = {
                         "your_status": "blocked",
                         "your_job_id": str(execution.job_id),
@@ -1283,6 +1294,19 @@ class MessageService:
                             'reason="brief reason")\n'
                             f'- If no action needed: call dismiss_reactivation(job_id="{execution.job_id}", '
                             'reason="informational only")'
+                        ),
+                    }
+                elif is_mid_work_block and messages_list:
+                    reactivation_guidance = {
+                        "your_status": "blocked",
+                        "your_job_id": str(execution.job_id),
+                        "block_reason": execution.block_reason or "unknown",
+                        "instruction": (
+                            "You are BLOCKED due to an error you reported. "
+                            "Review any message(s) above for guidance, then resume by calling:\n"
+                            f'report_progress(job_id="{execution.job_id}", '
+                            "todo_items=[...your updated tasks...])\n"
+                            "This will transition you back to WORKING status."
                         ),
                     }
 
@@ -1592,4 +1616,65 @@ class MessageService:
             self._logger.exception("Failed to complete message")
             raise BaseGiljoError(
                 message=str(e), context={"operation": "complete_message", "message_id": message_id}
+            ) from e
+
+    async def get_message_status(self, message_id: str, tenant_key: Optional[str] = None) -> MessageStatusResult:
+        """
+        Get delivery and read status for a specific message.
+
+        Allows senders to verify whether recipients consumed their message.
+
+        Args:
+            message_id: Message UUID
+            tenant_key: Tenant key for multi-tenant isolation
+
+        Returns:
+            MessageStatusResult with acknowledgment and completion details
+
+        Raises:
+            ValidationError: No tenant context available
+            ResourceNotFoundError: Message not found
+        """
+        try:
+            if not tenant_key:
+                tenant_key = self.tenant_manager.get_current_tenant()
+            if not tenant_key:
+                raise ValidationError(
+                    message="No tenant context available",
+                    context={"operation": "get_message_status", "message_id": message_id},
+                )
+
+            async with self._get_session() as session:
+                stmt = (
+                    select(Message)
+                    .options(
+                        selectinload(Message.acknowledgments),
+                        selectinload(Message.recipients),
+                        selectinload(Message.completions),
+                    )
+                    .where(and_(Message.id == message_id, Message.tenant_key == tenant_key))
+                )
+                result = await session.execute(stmt)
+                message = result.scalar_one_or_none()
+
+                if not message:
+                    raise ResourceNotFoundError(
+                        message="Message not found or access denied",
+                        context={"message_id": message_id, "tenant_key": tenant_key},
+                    )
+
+                return MessageStatusResult(
+                    message_id=message_id,
+                    status=message.status or "pending",
+                    acknowledged_by=[a.agent_id for a in message.acknowledgments],
+                    completed_by=[c.agent_id for c in message.completions] if message.completions else [],
+                    recipients_count=len(message.recipients) if message.recipients else 0,
+                )
+
+        except (ResourceNotFoundError, ValidationError, BaseGiljoError):
+            raise
+        except Exception as e:
+            self._logger.exception("Failed to get message status")
+            raise BaseGiljoError(
+                message=str(e), context={"operation": "get_message_status", "message_id": message_id}
             ) from e
