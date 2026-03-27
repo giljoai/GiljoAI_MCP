@@ -47,9 +47,9 @@
       "title": "Context Manager Summary Reads",
       "handover": "handovers/0842b_VISION_DOC_ANALYSIS_CONTEXT_MANAGER.md",
       "color": "#2196F3",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-27T11:00:00Z",
+      "completed_at": "2026-03-27T11:30:00Z",
       "agent_types": ["tdd-implementor"],
       "planned_tasks": [
         "Add get_product_summaries(product_id, ratio) repository method",
@@ -58,12 +58,27 @@
         "Fallback to Product.consolidated_vision_* columns",
         "TDD tests for AI-preference and fallback"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Skipped get_product_summaries repo method (already done by 0842a)",
+        "Updated _get_summary_response() to query vision_document_summaries table with AI preference via VisionDocumentRepository.get_product_summaries()",
+        "Added _build_aggregated_summary() for multi-doc concatenation with # DocName headers (single-doc returns plain text)",
+        "Added DEPTH_RATIO_MAP constant for light->0.33, medium->0.66 mapping",
+        "Fallback to Product.consolidated_vision_* columns when no rows in new table",
+        "Added session and db_manager params to _get_summary_response(), updated call sites",
+        "Refactored get_vision_document() with _test_session param for test isolation",
+        "6 TDD tests passing in test_0842b_context_manager_summaries.py",
+        "All 8 existing 0842a tests still pass (14 total)"
+      ],
+      "deviations": [
+        "Skipped Phase 1 (repo method) — already implemented by 0842a"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "_get_summary_response() now accepts session+db_manager params. get_vision_document() passes both from its async session context. The _test_session parameter on get_vision_document() allows tests to inject a session. _build_aggregated_summary() uses product.vision_documents to look up document names. Single-doc products get plain text (no header), multi-doc products get '# DocName\\n{summary}' concatenated with double newlines. Pagination behavior unchanged.",
+      "cascading_impacts": [
+        "0842c: When writing AI summaries via gil_write_product, use create_summary with source='ai'. The context manager will automatically prefer these over Sumy.",
+        "0842e: Integration tests should verify AI preference end-to-end (upload -> sumy written -> AI write -> context manager returns AI summary)"
+      ],
+      "summary": "Updated _get_summary_response() to read from vision_document_summaries table with AI-preferred source selection, falling back to Product.consolidated_vision_* columns when no summaries exist. Added _build_aggregated_summary() for multi-document header concatenation. 6 new TDD tests + 8 existing = 14 passing. Commit: 213cf204."
     },
     {
       "session_id": "0842c",
