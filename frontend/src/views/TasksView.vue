@@ -637,7 +637,7 @@ function getStatusColor(status) {
     pending: 'warning',
     in_progress: 'info',
     completed: 'success',
-    cancelled: 'grey',
+    cancelled: '#c6298c',
   }
   return colors[status] || 'grey'
 }
