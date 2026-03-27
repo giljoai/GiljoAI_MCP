@@ -191,6 +191,29 @@
                       </v-tooltip>
                       <v-tooltip location="top" content-class="branded-tooltip">
                         <template v-slot:activator="{ props }">
+                          <v-badge
+                            :model-value="getTuningState(product) !== 'normal'"
+                            dot
+                            :color="getTuningState(product) === 'proposals' ? 'warning' : 'info'"
+                            offset-x="-2"
+                            offset-y="-2"
+                          >
+                            <v-btn
+                              icon
+                              size="small"
+                              variant="text"
+                              v-bind="props"
+                              aria-label="Tune context"
+                              @click="showProductTuning(product)"
+                            >
+                              <v-icon>mdi-tune</v-icon>
+                            </v-btn>
+                          </v-badge>
+                        </template>
+                        <span>{{ getTuningState(product) === 'proposals' ? 'Tuning proposals ready for review' : getTuningState(product) === 'stale' ? 'Context tuning recommended' : 'Tune Context' }}</span>
+                      </v-tooltip>
+                      <v-tooltip location="top" content-class="branded-tooltip">
+                        <template v-slot:activator="{ props }">
                           <v-btn
                             icon
                             size="small"
@@ -278,6 +301,7 @@
       :product="selectedProduct"
       :vision-documents="detailsVisionDocuments"
       :stats="productStats"
+      :auto-expand-tuning="autoExpandTuning"
     />
 
     <!-- Delete Confirmation Dialog -->
@@ -318,6 +342,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useSettingsStore } from '@/stores/settings'
+import { useNotificationStore } from '@/stores/notifications'
 import { useToast } from '@/composables/useToast'
 import { useAutoSave } from '@/composables/useAutoSave'
 import api from '@/services/api'
@@ -329,6 +354,7 @@ import ProductForm from '@/components/products/ProductForm.vue'
 
 const productStore = useProductStore()
 const settingsStore = useSettingsStore()
+const notificationStore = useNotificationStore()
 const { showToast } = useToast()
 // State
 const loading = ref(false)
@@ -347,6 +373,7 @@ const uploadingVision = ref(false)
 const uploadProgress = ref(0)
 const visionUploadError = ref(null)
 const detailsVisionDocuments = ref([])
+const autoExpandTuning = ref(false)
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
 const autoSave = ref(null) // Handover 0051: Auto-save composable instance
@@ -631,10 +658,35 @@ function validateVisionFiles() {
   return true
 }
 
+function getTuningState(product) {
+  if (product.tuning_state?.pending_proposals) return 'proposals'
+  const hasUnread = notificationStore.notifications.some(
+    (n) => !n.read && n.type === 'context_tuning' && n.metadata?.product_id === product.id,
+  )
+  if (hasUnread) return 'stale'
+  return 'normal'
+}
+
 async function showProductDetails(product) {
   selectedProduct.value = product
+  autoExpandTuning.value = false
 
   // Fetch vision documents
+  try {
+    const response = await api.visionDocuments.listByProduct(product.id)
+    detailsVisionDocuments.value = response.data || []
+  } catch (error) {
+    console.error('Failed to load vision documents:', error)
+    detailsVisionDocuments.value = []
+  }
+
+  showDetailsDialog.value = true
+}
+
+async function showProductTuning(product) {
+  selectedProduct.value = product
+  autoExpandTuning.value = true
+
   try {
     const response = await api.visionDocuments.listByProduct(product.id)
     detailsVisionDocuments.value = response.data || []
