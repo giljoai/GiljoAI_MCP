@@ -13,8 +13,8 @@
       "title": "DB Migration & Sumy Wiring",
       "handover": "handovers/0842a_VISION_DOC_ANALYSIS_DB_MIGRATION.md",
       "color": "#4CAF50",
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2026-03-27T10:00:00Z",
       "completed_at": null,
       "agent_types": ["database-expert", "tdd-implementor"],
       "planned_tasks": [
