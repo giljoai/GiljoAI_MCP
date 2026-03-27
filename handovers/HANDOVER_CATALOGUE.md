@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-26 (0837+0838+0839+0840a-j archived, 0841 active only)
+**Last Updated:** 2026-03-27 (0842a-e Vision Document Analysis series added)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0828+0829+0830+0831+0832+0833+0834+0835+0836(a-e)+0837(a-d)+0838+0839+0840(a-j) ALL COMPLETE. 0841 NOT STARTED. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0828+0829+0830+0831+0832+0833+0834+0835+0836(a-e)+0837(a-d)+0838+0839+0840(a-j) ALL COMPLETE. 0841 NOT STARTED. **0842a-e Vision Document Analysis NOT STARTED.** 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -30,6 +30,11 @@
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0841 | Slash Command Optimization (/gil_add) | Not Started | Low | Rewrite /gil_add from 343 lines (~3,500 tokens) to ~40 lines (~500 tokens). Keep local, remove verbose templates. |
+| 0842a | Vision Doc Analysis — DB Migration & Sumy Wiring | Not Started | High | New `vision_document_summaries` table + `extraction_custom_instructions` column. Wire Sumy output to new table. |
+| 0842b | Vision Doc Analysis — Context Manager Summary Reads | Not Started | High | Context Manager reads from new summaries table, AI preferred over Sumy. Depends on 0842a. |
+| 0842c | Vision Doc Analysis — MCP Tools & Extraction Prompt | Not Started | High | `gil_get_vision_doc` + `gil_write_product` MCP tools + baked extraction prompt. Depends on 0842a. |
+| 0842d | Vision Doc Analysis — Frontend UI | Not Started | High | Analysis banner, Stage Analysis button, WebSocket notification, custom instructions textarea. Depends on 0842a+c. |
+| 0842e | Vision Doc Analysis — E2E Integration Test | Not Started | High | Full flow validation: upload → Sumy → MCP tools → Context Manager. Depends on 0842a-d. |
 
 ### Deferred (Still in Root Folder)
 
