@@ -62,7 +62,14 @@
 
           <!-- Section 3: Agent Roster -->
           <div class="mb-6">
-            <h3 class="text-h6 mb-2">Agents ({{ agents.length }})</h3>
+            <h3 class="text-h6 mb-2 d-flex align-center">
+              Agents ({{ agents.length }})
+              <v-chip v-if="executionModeLabel" size="small" variant="tonal" class="ml-3">
+                <img v-if="executionModeIcon.img" :src="executionModeIcon.img" :alt="executionModeLabel" style="width: 16px; height: 16px;" class="mr-1" />
+                <v-icon v-else size="small" class="mr-1">{{ executionModeIcon.icon }}</v-icon>
+                {{ executionModeLabel }}
+              </v-chip>
+            </h3>
             <p v-if="!agents.length" class="text-caption text-medium-emphasis">No data</p>
             <v-table v-else density="compact">
               <thead>
@@ -238,6 +245,23 @@ const expandedAgentPanels = ref([])
 function copyProjectId() {
   if (props.projectId) clipboardCopy(props.projectId)
 }
+
+const EXECUTION_MODE_MAP = {
+  multi_terminal: { label: 'Multi-Terminal', icon: 'mdi-monitor-multiple', img: null },
+  claude_code_cli: { label: 'Subagent: Claude', icon: null, img: '/claude_pix.svg' },
+  codex_cli: { label: 'Subagent: Codex', icon: null, img: '/codex_logo.svg' },
+  gemini_cli: { label: 'Subagent: Gemini', icon: null, img: '/gemini-icon.svg' },
+}
+
+const executionModeLabel = computed(() => {
+  const mode = projectData.value?.execution_mode
+  return EXECUTION_MODE_MAP[mode]?.label || ''
+})
+
+const executionModeIcon = computed(() => {
+  const mode = projectData.value?.execution_mode
+  return EXECUTION_MODE_MAP[mode] || { icon: 'mdi-help', img: null }
+})
 
 function agentTypeColor(agentName) {
   return getAgentColor(agentName).hex
