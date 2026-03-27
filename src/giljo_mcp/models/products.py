@@ -17,6 +17,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -137,6 +138,11 @@ class Product(Base):
     )
     consolidated_at = Column(
         DateTime(timezone=True), nullable=True, comment="Timestamp when consolidated summaries were last generated"
+    )
+
+    # Handover 0842a: Custom extraction instructions for vision document AI analysis
+    extraction_custom_instructions = Column(
+        Text, nullable=True, comment="Custom instructions appended to AI vision document extraction prompt"
     )
 
     # Relationships
@@ -648,3 +654,41 @@ class VisionDocument(Base):
 
     def __repr__(self) -> str:
         return f"<VisionDocument(id={self.id}, name='{self.document_name}', product_id='{self.product_id}')>"
+
+
+class VisionDocumentSummary(Base):
+    """
+    Stores individual vision document summaries with source tracking.
+
+    Enables AI-preferred summary selection: when both Sumy and AI summaries
+    exist for a document+ratio, the Context Manager prefers AI.
+
+    Handover 0842a: Vision Document Analysis feature foundation.
+    """
+
+    __tablename__ = "vision_document_summaries"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    tenant_key = Column(String(255), nullable=False)
+    document_id = Column(String(36), ForeignKey("vision_documents.id", ondelete="CASCADE"), nullable=False)
+    product_id = Column(String(36), ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    source = Column(String(20), nullable=False, comment="Summary source: 'sumy' or 'ai'")
+    ratio = Column(Numeric(3, 2), nullable=False, comment="Summary ratio: 0.33 (light) or 0.66 (medium)")
+    summary = Column(Text, nullable=False)
+    tokens_original = Column(Integer, nullable=False)
+    tokens_summary = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    document = relationship("VisionDocument")
+    product = relationship("Product")
+
+    __table_args__ = (
+        Index("idx_vds_lookup", "tenant_key", "document_id", "source", "ratio"),
+        Index("idx_vds_product", "tenant_key", "product_id"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<VisionDocumentSummary(id={self.id}, doc={self.document_id}, source='{self.source}', ratio={self.ratio})>"
+        )
