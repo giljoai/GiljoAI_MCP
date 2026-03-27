@@ -199,7 +199,7 @@
             <v-chip
               :color="isProjectStaged(item) ? 'success' : 'default'"
               size="small"
-              variant="tonal"
+              :variant="isProjectStaged(item) ? 'flat' : 'tonal'"
             >
               {{ isProjectStaged(item) ? 'Yes' : 'No' }}
             </v-chip>
