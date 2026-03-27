@@ -9,7 +9,7 @@ Handover 0839: Dashboard analytics methods (distributions, recent activity, prod
 
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.giljo_mcp.models import Message, Project, Task
@@ -770,11 +770,18 @@ class StatisticsRepository:
         session: AsyncSession,
         tenant_key: str,
         product_id: str | None = None,
-    ) -> dict[str, int]:
+    ) -> list[dict]:
         """
-        Get agent execution count grouped by agent_display_name (role).
+        Get all configured agent templates with actual execution counts.
 
-        When product_id is provided, filters via AgentJob -> Project -> product_id.
+        Uses a hybrid resolution strategy:
+        1. FK path (AgentJob.template_id) for multi-terminal executions.
+        2. Name match (AgentExecution.agent_name = AgentTemplate.name) as
+           fallback for single-terminal or legacy jobs without template_id.
+
+        Returns all configured templates (active and inactive) so the chart
+        always reflects the full agent roster. Executions that don't match
+        any template are excluded (they represent deleted/renamed templates).
 
         Args:
             session: Async database session
@@ -782,28 +789,104 @@ class StatisticsRepository:
             product_id: Optional product filter
 
         Returns:
-            Dict mapping display name to count, e.g. {"Orchestrator": 3, "Implementer": 8}
+            List of AgentRoleDistItem-shaped dicts, sorted by count descending.
         """
-        stmt = (
-            select(
-                AgentExecution.agent_display_name,
-                func.count(AgentExecution.id),
-            )
-            .where(AgentExecution.tenant_key == tenant_key)
-            .group_by(AgentExecution.agent_display_name)
-        )
+        from src.giljo_mcp.models.templates import AgentTemplate
+
+        # 1. Get all configured templates (scoped by product when filtered)
+        tmpl_stmt = select(
+            AgentTemplate.id,
+            AgentTemplate.name,
+            AgentTemplate.background_color,
+            AgentTemplate.is_active,
+        ).where(AgentTemplate.tenant_key == tenant_key)
         if product_id:
-            stmt = (
-                stmt.join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
-                .join(Project, AgentJob.project_id == Project.id)
-                .where(
-                    AgentJob.tenant_key == tenant_key,
-                    Project.tenant_key == tenant_key,
-                    Project.product_id == product_id,
+            tmpl_stmt = tmpl_stmt.where(
+                or_(
+                    AgentTemplate.product_id == product_id,
+                    AgentTemplate.product_id.is_(None),
                 )
             )
-        result = await session.execute(stmt)
-        return dict(result.all())
+        tmpl_result = await session.execute(tmpl_stmt)
+        templates = tmpl_result.all()
+
+        # Build lookup maps: id -> template, name -> template
+        tmpl_by_id = {t.id: t for t in templates}
+        tmpl_by_name = {t.name: t for t in templates}
+
+        # 2. Count executions via FK path (template_id on AgentJob)
+        fk_stmt = (
+            select(
+                AgentJob.template_id,
+                func.count(AgentExecution.id).label("cnt"),
+            )
+            .join(AgentExecution, AgentExecution.job_id == AgentJob.job_id)
+            .where(
+                AgentJob.tenant_key == tenant_key,
+                AgentJob.template_id.isnot(None),
+            )
+            .group_by(AgentJob.template_id)
+        )
+        if product_id:
+            fk_stmt = fk_stmt.join(Project, AgentJob.project_id == Project.id).where(
+                Project.tenant_key == tenant_key,
+                Project.product_id == product_id,
+            )
+        fk_result = await session.execute(fk_stmt)
+        fk_counts: dict[str, int] = dict(fk_result.all())
+
+        # 3. Count executions via name fallback (jobs without template_id)
+        name_stmt = (
+            select(
+                AgentExecution.agent_name,
+                func.count(AgentExecution.id).label("cnt"),
+            )
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .where(
+                AgentExecution.tenant_key == tenant_key,
+                AgentJob.template_id.is_(None),
+                AgentExecution.agent_name.isnot(None),
+            )
+            .group_by(AgentExecution.agent_name)
+        )
+        if product_id:
+            name_stmt = name_stmt.join(Project, AgentJob.project_id == Project.id).where(
+                Project.tenant_key == tenant_key,
+                Project.product_id == product_id,
+            )
+        name_result = await session.execute(name_stmt)
+        name_counts: dict[str, int] = dict(name_result.all())
+
+        # 4. Merge counts per template
+        counts_per_tmpl: dict[str, int] = {}
+        for tmpl_id, count in fk_counts.items():
+            if tmpl_id in tmpl_by_id:
+                name = tmpl_by_id[tmpl_id].name
+                counts_per_tmpl[name] = counts_per_tmpl.get(name, 0) + count
+
+        for agent_name, count in name_counts.items():
+            if agent_name in tmpl_by_name:
+                counts_per_tmpl[agent_name] = counts_per_tmpl.get(agent_name, 0) + count
+
+        # 5. Build result: one entry per unique template name
+        seen_names: set[str] = set()
+        result = []
+        for tmpl in templates:
+            if tmpl.name in seen_names:
+                continue
+            seen_names.add(tmpl.name)
+            label = tmpl.name.replace("-", " ").replace("_", " ").title()
+            result.append(
+                {
+                    "label": label,
+                    "count": counts_per_tmpl.get(tmpl.name, 0),
+                    "color": tmpl.background_color or "#9e9e9e",
+                    "is_active": tmpl.is_active,
+                }
+            )
+
+        result.sort(key=lambda x: x["count"], reverse=True)
+        return result
 
     async def get_recent_projects(
         self,
@@ -950,6 +1033,33 @@ class StatisticsRepository:
         stmt = select(Task.status, func.count(Task.id)).where(Task.tenant_key == tenant_key).group_by(Task.status)
         if product_id:
             stmt = stmt.where(Task.product_id == product_id)
+        result = await session.execute(stmt)
+        return dict(result.all())
+
+    async def get_execution_mode_distribution(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str | None = None,
+    ) -> dict[str, int]:
+        """
+        Get project count grouped by execution_mode.
+
+        Args:
+            session: Async database session
+            tenant_key: Tenant key for isolation
+            product_id: Optional product filter
+
+        Returns:
+            Dict mapping execution_mode to count, e.g. {"multi_terminal": 5, "claude_code_cli": 3}
+        """
+        stmt = (
+            select(Project.execution_mode, func.count(Project.id))
+            .where(Project.tenant_key == tenant_key)
+            .group_by(Project.execution_mode)
+        )
+        if product_id:
+            stmt = stmt.where(Project.product_id == product_id)
         result = await session.execute(stmt)
         return dict(result.all())
 

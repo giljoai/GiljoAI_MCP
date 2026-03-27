@@ -98,6 +98,21 @@
         </v-card>
       </div>
 
+      <!-- Execution Modes -->
+      <div class="text-caption text-medium-emphasis mb-2">Execution Modes</div>
+      <div class="stats-grid mb-4">
+        <v-card v-for="s in executionModeCards" :key="s.label" variant="outlined" class="stat-card">
+          <div class="stat-card-inner">
+            <div class="stat-icon-box">
+              <img v-if="s.img" :src="s.img" :alt="s.label" class="stat-custom-icon" />
+              <v-icon v-else size="20" color="yellow-darken-2">{{ s.icon }}</v-icon>
+            </div>
+            <span class="stat-label">{{ s.label }}</span>
+            <span class="stat-value">{{ s.value }}</span>
+          </div>
+        </v-card>
+      </div>
+
       <!-- Server (always global) -->
       <div class="text-caption text-medium-emphasis mb-2">Server</div>
       <div class="stats-grid">
@@ -212,10 +227,11 @@ const selectedProductId = ref(null)
 const dashboardData = ref({
   project_status_dist: {},
   taxonomy_dist: [],
-  agent_role_dist: {},
+  agent_role_dist: [],
   recent_projects: [],
   recent_memories: [],
   task_status_dist: {},
+  execution_mode_dist: {},
 })
 
 // Server stats (always global)
@@ -224,28 +240,18 @@ const mcpCallCount = ref(0)
 const agentsSpawned = ref(0)
 const recentCommits = ref([])
 
-// Status chart colors
+// Status chart colors — harmonized with StatusBadge.vue
 const statusColors = {
-  active: '#4caf50',
+  active: '#ffffff',
   inactive: '#9e9e9e',
-  completed: '#2196f3',
-  cancelled: '#ff9800',
+  completed: '#4caf50',
+  cancelled: '#c6298c',
   terminated: '#f44336',
   staged: '#ffc107',
 }
 
-// Agent role colors
-const agentRoleColors = {
-  orchestrator: '#D4A574',
-  implementer: '#3498DB',
-  tester: '#FFC300',
-  analyzer: '#E74C3C',
-  documenter: '#27AE60',
-  reviewer: '#9B59B6',
-}
-
-// Fallback palette for unknown roles
-const fallbackColors = ['#e91e63', '#795548', '#607d8b', '#8bc34a', '#ff5722', '#3f51b5']
+// Fallback color for agents without a configured background_color
+const defaultAgentColor = '#9e9e9e'
 
 // Computed stat cards
 const projectStatCards = computed(() => {
@@ -279,6 +285,16 @@ const serverStatCards = computed(() => [
   { img: '/logo-mcp.svg', label: 'MCP Calls', value: mcpCallCount.value },
   { img: '/giljo_YW_Face.svg', label: 'Agents Spawned', value: agentsSpawned.value },
 ])
+
+const executionModeCards = computed(() => {
+  const dist = dashboardData.value.execution_mode_dist || {}
+  return [
+    { icon: 'mdi-monitor-multiple', label: 'Multi-Terminal', value: dist.multi_terminal || 0 },
+    { img: '/claude_pix.svg', label: 'Claude Subagent', value: dist.claude_code_cli || 0 },
+    { img: '/codex_logo.svg', label: 'Codex Subagent', value: dist.codex_cli || 0 },
+    { img: '/gemini-icon.svg', label: 'Gemini Subagent', value: dist.gemini_cli || 0 },
+  ]
+})
 
 // Chart data computed properties
 const statusChartData = computed(() => {
@@ -316,24 +332,17 @@ const taxonomyChartData = computed(() => {
 })
 
 const agentRoleChartData = computed(() => {
-  const dist = dashboardData.value.agent_role_dist || {}
+  const dist = dashboardData.value.agent_role_dist || []
   const labels = []
   const values = []
   const colors = []
-  let fallbackIdx = 0
+  const allZero = dist.length > 0 && dist.every((item) => !item.count)
 
-  for (const [role, count] of Object.entries(dist)) {
-    if (count > 0) {
-      labels.push(role.charAt(0).toUpperCase() + role.slice(1))
-      values.push(count)
-      const knownColor = agentRoleColors[role.toLowerCase()]
-      if (knownColor) {
-        colors.push(knownColor)
-      } else {
-        colors.push(fallbackColors[fallbackIdx % fallbackColors.length])
-        fallbackIdx++
-      }
-    }
+  for (const item of dist) {
+    labels.push(item.label || 'Unknown')
+    // Show equal slices when no agent has been used yet
+    values.push(allZero ? 1 : item.count || 0)
+    colors.push(item.color || defaultAgentColor)
   }
 
   return { labels, values, colors }
@@ -347,10 +356,11 @@ const fetchDashboardData = async () => {
       dashboardData.value = {
         project_status_dist: response.data.project_status_dist || {},
         taxonomy_dist: response.data.taxonomy_dist || [],
-        agent_role_dist: response.data.agent_role_dist || {},
+        agent_role_dist: response.data.agent_role_dist || [],
         recent_projects: response.data.recent_projects || [],
         recent_memories: response.data.recent_memories || [],
         task_status_dist: response.data.task_status_dist || {},
+        execution_mode_dist: response.data.execution_mode_dist || {},
       }
       // Extract git commits from 360 memory entries
       const commits = []
