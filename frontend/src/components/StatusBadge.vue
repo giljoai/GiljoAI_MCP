@@ -27,7 +27,8 @@ const props = defineProps({
 const statusConfig = {
   active: {
     label: 'Active',
-    color: 'success',
+    color: '#fff',
+    textColor: '#333',
     icon: 'mdi-play-circle',
   },
   inactive: {
@@ -38,8 +39,7 @@ const statusConfig = {
   },
   completed: {
     label: 'Completed',
-    color: '#fff',
-    textColor: '#333',
+    color: 'success',
     icon: 'mdi-check-circle',
   },
   cancelled: {
