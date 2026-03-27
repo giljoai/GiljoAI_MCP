@@ -13,9 +13,26 @@
       <!-- Header -->
       <v-card-title id="review-modal-title" class="bg-primary text-white pa-4">
         <div class="d-flex align-center justify-space-between">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-eye" size="large" class="mr-2" />
-            <span class="text-h6">Project Review: {{ projectData?.name }}</span>
+          <div>
+            <div class="d-flex align-center">
+              <v-icon icon="mdi-eye" size="large" class="mr-2" />
+              <span class="text-h6">Project Review: {{ projectData?.name }}</span>
+            </div>
+            <div class="d-flex align-center mt-1 ml-9">
+              <v-tooltip location="bottom">
+                <template #activator="{ props: tp }">
+                  <code
+                    v-bind="tp"
+                    class="review-project-id"
+                    role="button"
+                    tabindex="0"
+                    @click="copyProjectId"
+                    @keydown.enter="copyProjectId"
+                  >{{ projectId }}</code>
+                </template>
+                <span>{{ copied ? 'Copied!' : 'Click to copy project ID' }}</span>
+              </v-tooltip>
+            </div>
           </div>
           <v-btn icon variant="text" color="white" aria-label="Close modal" @click="$emit('close')">
             <v-icon icon="mdi-close" />
@@ -58,14 +75,14 @@
               <thead>
                 <tr>
                   <th>Agent</th>
-                  <th>Role</th>
+                  <th>Type</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="agent in agents" :key="agent.id">
                   <td>{{ agent.agent_display_name }}</td>
-                  <td>{{ agent.agent_role || '-' }}</td>
+                  <td>{{ agent.agent_name || '-' }}</td>
                   <td><v-chip :color="agentStatusColor(agent.status)" size="x-small" variant="flat">{{ agent.status }}</v-chip></td>
                 </tr>
               </tbody>
@@ -91,6 +108,9 @@
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-progress-linear v-if="agentMessages[agent.id]?.loading" indeterminate />
+                  <v-alert v-else-if="agentMessages[agent.id]?.error" type="warning" density="compact" variant="tonal" class="mb-2">
+                    Failed to load messages
+                  </v-alert>
                   <div v-else-if="agentMessages[agent.id]?.messages?.length">
                     <div v-for="msg in agentMessages[agent.id].messages" :key="msg.id" class="mb-2 pa-2 rounded" style="background: rgba(var(--v-theme-on-surface), 0.03);">
                       <div class="d-flex justify-space-between align-center">
@@ -183,6 +203,7 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { useDisplay } from 'vuetify'
+import { useClipboard } from '@/composables/useClipboard'
 import api from '@/services/api'
 
 const props = defineProps({
@@ -195,6 +216,7 @@ defineEmits(['close'])
 
 const { mobile } = useDisplay()
 const isMobile = computed(() => mobile.value)
+const { copy: clipboardCopy, copied } = useClipboard()
 
 const loading = ref(false)
 const error = ref(null)
@@ -203,6 +225,10 @@ const agents = ref([])
 const memoryEntries = ref([])
 const agentMessages = reactive({})
 const expandedAgentPanels = ref([])
+
+function copyProjectId() {
+  if (props.projectId) clipboardCopy(props.projectId)
+}
 
 watch(() => props.show, (open) => {
   if (open && props.projectId) {
@@ -229,17 +255,13 @@ async function loadReviewData() {
     // Fetch project, jobs, and memory in parallel
     const [projectRes, jobsRes, memoryRes] = await Promise.all([
       api.projects.get(props.projectId),
-      // GET /api/agent-jobs/?project_id=projectId
       api.agentJobs.list(props.projectId),
-      // GET /api/v1/products/{productId}/memory-entries?project_id=projectId&limit=20
       props.productId
         ? api.products.getMemoryEntries(props.productId, { project_id: props.projectId, limit: 20 })
         : Promise.resolve({ data: { entries: [] } }),
     ])
     projectData.value = projectRes.data
-    // JobListResponse shape: { jobs: [...], total, limit, offset }
     agents.value = jobsRes.data?.jobs || []
-    // MemoryEntriesResponse shape: { success, entries: [...], total_count, filtered_count }
     memoryEntries.value = memoryRes.data?.entries || []
   } catch (err) {
     console.error('[ProjectReviewModal] Failed to load:', err)
@@ -250,17 +272,19 @@ async function loadReviewData() {
 }
 
 async function loadAgentMessages(agent) {
-  const jobId = agent.id
-  if (agentMessages[jobId]) return
-  agentMessages[jobId] = { loading: true, messages: [] }
+  const key = agent.id
+  if (agentMessages[key]) return
+  if (!agent.job_id) {
+    agentMessages[key] = { loading: false, messages: [], error: true }
+    return
+  }
+  agentMessages[key] = { loading: true, messages: [], error: false }
   try {
-    // GET /api/agent-jobs/{jobId}/messages
-    // Response shape: { job_id, agent_id, messages: [...] }
-    // Each message: { id, from, content, created_at, direction, message_type, ... }
-    const res = await api.agentJobs.messages(jobId)
-    agentMessages[jobId] = { loading: false, messages: (res.data?.messages || []).slice(0, 20) }
-  } catch {
-    agentMessages[jobId] = { loading: false, messages: [] }
+    const res = await api.agentJobs.messages(agent.job_id)
+    agentMessages[key] = { loading: false, messages: (res.data?.messages || []).slice(0, 20), error: false }
+  } catch (err) {
+    console.error(`[ProjectReviewModal] Failed to load messages for job ${agent.job_id}:`, err)
+    agentMessages[key] = { loading: false, messages: [], error: true }
   }
 }
 
@@ -308,3 +332,22 @@ function truncate(text, maxLen) {
   return text.length > maxLen ? `${text.slice(0, maxLen)}...` : text
 }
 </script>
+
+<style scoped>
+.review-project-id {
+  font-family: monospace;
+  font-size: 0.75rem;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  user-select: all;
+  transition: opacity 0.15s ease;
+}
+.review-project-id:hover,
+.review-project-id:focus-visible {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.25);
+}
+</style>
