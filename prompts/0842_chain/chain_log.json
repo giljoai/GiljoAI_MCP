@@ -13,9 +13,9 @@
       "title": "DB Migration & Sumy Wiring",
       "handover": "handovers/0842a_VISION_DOC_ANALYSIS_DB_MIGRATION.md",
       "color": "#4CAF50",
-      "status": "in_progress",
+      "status": "complete",
       "started_at": "2026-03-27T10:00:00Z",
-      "completed_at": null,
+      "completed_at": "2026-03-27T10:45:00Z",
       "agent_types": ["database-expert", "tdd-implementor"],
       "planned_tasks": [
         "Create vision_document_summaries table + migration",
@@ -26,12 +26,21 @@
         "Fix regenerate_summaries missing consolidation trigger",
         "TDD tests for all new code"
       ],
-      "tasks_completed": [],
+      "tasks_completed": [
+        "Created vision_document_summaries table via Alembic migration (0842a_vds)",
+        "Added extraction_custom_instructions TEXT column to products table",
+        "Added VisionDocumentSummary SQLAlchemy model to products.py",
+        "Registered VisionDocumentSummary in models/__init__.py",
+        "Added 4 repository methods: create_summary (upsert), get_summaries, get_best_summary, get_product_summaries",
+        "Wired _persist_sumy_summaries helper at all 3 injection points (create, update, regenerate)",
+        "Fixed regenerate_summaries missing consolidation trigger",
+        "8 TDD tests passing"
+      ],
       "deviations": [],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "Model class: VisionDocumentSummary (src/giljo_mcp/models/products.py:659). Repo methods on VisionDocumentRepository: create_summary(session, tenant_key, document_id, product_id, source, ratio, summary, tokens_original, tokens_summary), get_summaries(session, tenant_key, document_id), get_best_summary(session, tenant_key, document_id, ratio) -> AI preferred, get_product_summaries(session, tenant_key, product_id, ratio). Ratio uses Decimal('0.33') and Decimal('0.66'). Source values: 'sumy' and 'ai'. The extraction_custom_instructions column is on Product model. Old summary columns on VisionDocument still written (backward compat).",
+      "cascading_impacts": ["0842b needs to use get_best_summary and get_product_summaries for Context Manager reads", "0842c needs to write source='ai' summaries via create_summary when gil_write_product is called"],
+      "summary": "Created vision_document_summaries table, VisionDocumentSummary model, and 4 repository methods. Wired Sumy output to new table at all 3 endpoint injection points (create, update, regenerate). Fixed pre-existing gap where regenerate_summaries did not trigger consolidation. 8 TDD tests pass. Commit: 71868be1."
     },
     {
       "session_id": "0842b",
