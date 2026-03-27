@@ -158,7 +158,7 @@
     </v-row>
 
     <!-- Recent Activity Lists (stacked) -->
-    <v-card variant="flat" class="activity-card pa-4 mb-4">
+    <v-card variant="flat" class="activity-card activity-card--shadow pa-4 mb-4">
       <div class="text-caption text-medium-emphasis mb-2">Recently Completed Projects</div>
       <RecentProjectsList :projects="dashboardData.recent_projects" />
     </v-card>
@@ -629,5 +629,10 @@ onUnmounted(() => {
   background: #182739 !important;
   border: 1px solid #315074;
   border-radius: 12px !important;
+}
+
+.activity-card--shadow {
+  border: none;
+  box-shadow: inset 0 0 0 1px #315074;
 }
 </style>
