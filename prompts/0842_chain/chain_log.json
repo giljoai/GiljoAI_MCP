@@ -122,9 +122,9 @@
       "title": "Frontend UI (Tuning Icon + Vision Analysis Banner)",
       "handover": "handovers/0842d_VISION_DOC_ANALYSIS_FRONTEND.md",
       "color": "#FF9800",
-      "status": "in_progress",
+      "status": "complete",
       "started_at": "2026-03-27T15:00:00Z",
-      "completed_at": null,
+      "completed_at": "2026-03-27T15:45:00Z",
       "agent_types": ["ux-designer", "frontend-tester"],
       "planned_tasks": [
         "Add mdi-tune icon to product card action bar",
@@ -136,12 +136,28 @@
         "Custom instructions textarea in product settings",
         "Frontend tests"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Added mdi-tune icon with v-badge notification dot to product card action bar (3 states: normal/stale/proposals-pending)",
+        "Added getTuningState() helper using tuning_state.pending_proposals and notification store",
+        "Added showProductTuning() function with autoExpandTuning prop on ProductDetailsDialog",
+        "Vision analysis prompt banner in ProductForm Vision Docs tab (edit mode, dismissible)",
+        "Stage Analysis button copies prompt to clipboard with visual feedback",
+        "Custom extraction instructions v-textarea in Vision Docs tab, wired to save/load",
+        "WebSocket vision:analysis_complete real handler: refreshes products, adds notification, dispatches window event",
+        "AI analysis result success alert in ProductDetailsDialog via window event listener",
+        "NotificationDropdown: vision_analysis type with icon and color mapping"
+      ],
+      "deviations": [
+        "Skipped standalone frontend tests — no existing test framework setup found for Vue components. Delegated to 0842e for E2E coverage.",
+        "AI summary badges on individual documents deferred — would require API changes to include summary source data in vision document list response. Instead used a live notification approach via window events."
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "Frontend changes committed as 9269e129. The vision:analysis_complete WebSocket handler dispatches a 'vision-analysis-complete' CustomEvent on window. ProductDetailsDialog listens for this to show inline success alert. The extraction_custom_instructions field is wired end-to-end in ProductForm (load, edit, save). NotificationDropdown handles 'vision_analysis' type. The tune icon reads from product.tuning_state?.pending_proposals (warning dot) and notification store context_tuning entries (info dot). Vite build passes clean. ESLint 0 errors.",
+      "cascading_impacts": [
+        "0842e: E2E test should verify vision:analysis_complete WebSocket event triggers notification store entry",
+        "0842e: Verify extraction_custom_instructions round-trips via product update API"
+      ],
+      "summary": "Implemented all frontend UI for vision document analysis: tuning icon with 3-state notification dot on product cards, analysis prompt banner with clipboard copy, WebSocket handler for vision:analysis_complete, AI analysis result display in ProductDetailsDialog, and custom extraction instructions textarea. Build passes clean. Commit: 9269e129."
     },
     {
       "session_id": "0842e",
