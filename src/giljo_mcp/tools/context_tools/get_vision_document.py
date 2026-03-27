@@ -15,16 +15,25 @@ Backward Compatibility:
 - "heavy" maps to "medium"
 """
 
+from decimal import Decimal
 from typing import Any, Optional
 
 import structlog
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.models import Product
 from src.giljo_mcp.models.context import MCPContextIndex
+from src.giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from src.giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET, EnhancedChunker
+
+
+DEPTH_RATIO_MAP: dict[str, Decimal] = {
+    "light": Decimal("0.33"),
+    "medium": Decimal("0.66"),
+}
 
 
 logger = structlog.get_logger(__name__)
@@ -80,15 +89,62 @@ def get_max_chunks(chunking: str) -> int:
     return mapping.get(chunking, 100)
 
 
+async def _build_aggregated_summary(
+    product: Product,
+    summaries: list,
+) -> tuple[str, int]:
+    """
+    Build aggregated summary text from per-document summaries.
+
+    Picks the best summary per document_id (first one, since results are
+    ordered AI-first by the repository). For multiple documents, produces
+    markdown headers with document names.
+
+    Args:
+        product: Product instance (used to look up document names)
+        summaries: List of VisionDocumentSummary rows, ordered by
+                   document_id then AI-preferred source
+
+    Returns:
+        Tuple of (aggregated_summary_text, total_tokens)
+    """
+    doc_name_map: dict[str, str] = {str(doc.id): doc.document_name for doc in (product.vision_documents or [])}
+
+    best_per_doc: dict[str, tuple[str, int]] = {}
+    for s in summaries:
+        if s.document_id not in best_per_doc:
+            best_per_doc[s.document_id] = (s.summary, s.tokens_summary)
+
+    if len(best_per_doc) == 1:
+        doc_id = next(iter(best_per_doc))
+        text, tokens = best_per_doc[doc_id]
+        return text, tokens
+
+    parts: list[str] = []
+    total_tokens = 0
+    for doc_id, (text, tokens) in best_per_doc.items():
+        doc_name = doc_name_map.get(doc_id, doc_id)
+        parts.append(f"# {doc_name}\n{text}")
+        total_tokens += tokens
+
+    return "\n\n".join(parts), total_tokens
+
+
 async def _get_summary_response(
     product: Product,
     depth: str,
     product_id: str,
     tenant_key: str,
     offset: int = 0,
+    session: Optional[AsyncSession] = None,
+    db_manager: Optional[DatabaseManager] = None,
 ) -> dict[str, Any]:
     """
-    Helper function to retrieve CONSOLIDATED summary response (Handover 0377).
+    Retrieve summary response, preferring per-document summaries (Handover 0842b).
+
+    Priority:
+    1. Read from vision_document_summaries table (AI-preferred per document)
+    2. Fall back to Product.consolidated_vision_* columns (Handover 0377)
 
     Handover 0493: Adds pagination when summary exceeds VISION_DELIVERY_BUDGET.
     If the summary fits within budget, returns as single response (no regression).
@@ -99,20 +155,13 @@ async def _get_summary_response(
         product_id: Product UUID
         tenant_key: Tenant key
         offset: Character offset for pagination (0 = start)
+        session: Async database session (for querying summaries table)
+        db_manager: Database manager (used to create VisionDocumentRepository)
 
     Returns:
-        Dict with consolidated summary content, paginated if needed
+        Dict with summary content, paginated if needed
     """
-    # Handover 0377: Use Product's consolidated columns
-    if depth == "light":
-        summary_text = product.consolidated_vision_light
-        token_count = product.consolidated_vision_light_tokens
-        compression = "33%"
-    elif depth == "medium":
-        summary_text = product.consolidated_vision_medium
-        token_count = product.consolidated_vision_medium_tokens
-        compression = "66%"
-    else:
+    if depth not in DEPTH_RATIO_MAP:
         logger.warning(
             "invalid_depth_for_summary",
             product_id=product_id,
@@ -125,6 +174,41 @@ async def _get_summary_response(
             "data": {"error": "invalid_depth", "message": f"Invalid depth '{depth}' for summary response"},
             "pagination": None,
         }
+
+    compression = "33%" if depth == "light" else "66%"
+    ratio = DEPTH_RATIO_MAP[depth]
+
+    # ---- Handover 0842b: Try per-document summaries table first ----
+    summary_text: Optional[str] = None
+    summary_tokens: Optional[int] = None
+
+    if session is not None and db_manager is not None:
+        repo = VisionDocumentRepository(db_manager)
+        product_summaries = await repo.get_product_summaries(
+            session=session,
+            tenant_key=tenant_key,
+            product_id=product_id,
+            ratio=ratio,
+        )
+        if product_summaries:
+            summary_text, summary_tokens = await _build_aggregated_summary(product, product_summaries)
+            logger.info(
+                "per_document_summaries_fetched",
+                product_id=product_id,
+                depth=depth,
+                num_summaries=len(product_summaries),
+                tokens=summary_tokens,
+                compression=compression,
+            )
+
+    # ---- Fallback: Product consolidated columns (Handover 0377) ----
+    if summary_text is None:
+        if depth == "light":
+            summary_text = product.consolidated_vision_light
+            summary_tokens = product.consolidated_vision_light_tokens
+        else:
+            summary_text = product.consolidated_vision_medium
+            summary_tokens = product.consolidated_vision_medium_tokens
 
     if not summary_text:
         logger.warning(
@@ -145,15 +229,14 @@ async def _get_summary_response(
         }
 
     # Handover 0493: Check if summary exceeds delivery budget and paginate if needed
-    summary_tokens = token_count or estimate_tokens(summary_text)
+    token_count = summary_tokens or estimate_tokens(summary_text)
 
-    if summary_tokens <= VISION_DELIVERY_BUDGET:
-        # Fits within budget - return as single response (no regression)
+    if token_count <= VISION_DELIVERY_BUDGET:
         logger.info(
             "consolidated_vision_summary_fetched",
             product_id=product_id,
             depth=depth,
-            tokens=summary_tokens,
+            tokens=token_count,
             compression=compression,
             consolidated_at=str(product.consolidated_at) if product.consolidated_at else None,
             consolidated_hash=product.consolidated_vision_hash[:8] if product.consolidated_vision_hash else None,
@@ -163,7 +246,7 @@ async def _get_summary_response(
             "depth": depth,
             "data": {
                 "summary": summary_text,
-                "tokens": summary_tokens,
+                "tokens": token_count,
                 "compression": compression,
                 "consolidated_at": str(product.consolidated_at) if product.consolidated_at else None,
                 "source_hash": product.consolidated_vision_hash,
@@ -176,7 +259,6 @@ async def _get_summary_response(
     chunks = chunker.chunk_content(summary_text)
     total_chunks = len(chunks)
 
-    # Apply offset
     if offset >= total_chunks:
         return {
             "source": "vision_documents",
@@ -201,7 +283,7 @@ async def _get_summary_response(
         "consolidated_vision_summary_paginated",
         product_id=product_id,
         depth=depth,
-        total_tokens=summary_tokens,
+        total_tokens=token_count,
         chunk_tokens=chunk_tokens,
         chunk_index=offset,
         total_chunks=total_chunks,
@@ -236,6 +318,7 @@ async def get_vision_document(
     offset: int = 0,
     limit: Optional[int] = None,
     db_manager: Optional[DatabaseManager] = None,
+    _test_session: Optional[AsyncSession] = None,
 ) -> dict[str, Any]:
     """
     Fetch vision document with depth-based source selection (Handover 0352).
@@ -253,6 +336,7 @@ async def get_vision_document(
         offset: Number of chunks to skip (for pagination, full depth only)
         limit: Max chunks to return (for pagination, full depth only)
         db_manager: Database manager instance
+        _test_session: Injected session for test isolation (internal use only)
 
     Returns:
         For light/medium depth:
@@ -331,223 +415,278 @@ async def get_vision_document(
             },
         }
 
-    if db_manager is None:
+    if db_manager is None and _test_session is None:
         logger.error("db_manager is required", operation="get_vision_document")
         raise ValueError("db_manager parameter is required")
 
-    async with db_manager.get_session_async() as session:
-        # Fetch product to verify existence and get vision documents
-        stmt = (
-            select(Product)
-            .options(selectinload(Product.vision_documents))
-            .where(Product.id == product_id, Product.tenant_key == tenant_key)
-        )
-        result = await session.execute(stmt)
-        product = result.scalar_one_or_none()
+    return await _get_vision_document_with_session(
+        product_id=product_id,
+        tenant_key=tenant_key,
+        chunking=chunking,
+        offset=offset,
+        limit=limit,
+        db_manager=db_manager,
+        session=_test_session,
+    )
 
-        if not product:
-            logger.warning(
-                "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_vision_document"
-            )
-            return {
-                "source": "vision_documents",
-                "depth": chunking,
-                "data": [],
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_chunks": 0,
-                    "offset": offset,
-                    "limit": limit or 0,
-                    "returned_chunks": 0,
-                    "has_more": False,
-                    "next_offset": None,
-                    "error": "product_not_found",
-                },
-            }
 
-        # Check if product has vision documents
-        if not product.vision_documents:
-            logger.debug("no_vision_documents", product_id=product_id, operation="get_vision_document")
-            return {
-                "source": "vision_documents",
-                "depth": chunking,
-                "data": [],
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_chunks": 0,
-                    "offset": offset,
-                    "limit": limit or 0,
-                    "returned_chunks": 0,
-                    "has_more": False,
-                    "next_offset": None,
-                },
-            }
-
-        # Get active vision documents
-        active_docs = [doc for doc in product.vision_documents if doc.is_active]
-        if not active_docs:
-            logger.debug("no_active_vision_documents", product_id=product_id, operation="get_vision_document")
-            return {
-                "source": "vision_documents",
-                "depth": chunking,
-                "data": [],
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_chunks": 0,
-                    "offset": offset,
-                    "limit": limit or 0,
-                    "returned_chunks": 0,
-                    "has_more": False,
-                    "next_offset": None,
-                },
-            }
-
-        # Handover 0377/0493: Use Product's consolidated vision columns for light/medium depths
-        if chunking == "light":
-            return await _get_summary_response(
-                product=product,
-                depth="light",
-                product_id=product_id,
-                tenant_key=tenant_key,
-                offset=offset,
-            )
-
-        if chunking == "medium":
-            return await _get_summary_response(
-                product=product,
-                depth="medium",
-                product_id=product_id,
-                tenant_key=tenant_key,
-                offset=offset,
-            )
-
-        # For "full" depth, use chunk-based pagination (existing logic below)
-
-        # Get active chunked vision documents (reuse pattern from mission_planner)
-        chunked_docs = [
-            doc for doc in product.vision_documents if doc.is_active and doc.chunked and doc.chunk_count > 0
-        ]
-
-        if not chunked_docs:
-            logger.debug(
-                "no_chunked_documents",
-                product_id=product_id,
-                total_docs=len(product.vision_documents),
-                operation="get_vision_document",
-            )
-            return {
-                "source": "vision_documents",
-                "depth": chunking,
-                "data": [],
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_chunks": 0,
-                    "offset": offset,
-                    "limit": limit or 0,
-                    "returned_chunks": 0,
-                    "has_more": False,
-                    "next_offset": None,
-                },
-            }
-
-        # Get vision_document_ids for query
-        vision_doc_ids = [doc.id for doc in chunked_docs]
-
-        # Query chunks from mcp_context_index (reuse pattern from mission_planner)
-        chunk_stmt = (
-            select(MCPContextIndex)
-            .where(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.vision_document_id.in_(vision_doc_ids))
-            .order_by(MCPContextIndex.chunk_order)
-        )
-
-        chunk_result = await session.execute(chunk_stmt)
-        all_chunks = chunk_result.scalars().all()
-
-        if not all_chunks:
-            logger.warning(
-                "chunks_marked_but_not_found",
-                product_id=product_id,
-                vision_doc_ids=[str(vid) for vid in vision_doc_ids],
-                operation="get_vision_document",
-            )
-            return {
-                "source": "vision_documents",
-                "depth": chunking,
-                "data": [],
-                "metadata": {
-                    "product_id": product_id,
-                    "tenant_key": tenant_key,
-                    "total_chunks": 0,
-                    "offset": offset,
-                    "limit": limit or 0,
-                    "returned_chunks": 0,
-                    "has_more": False,
-                    "next_offset": None,
-                    "error": "chunks_not_found",
-                },
-            }
-
-        # Apply depth filtering with pagination (full depth only)
-        max_chunks = get_max_chunks(chunking) if limit is None else limit
-        max_tokens = get_max_tokens(chunking)
-        total_chunks = len(all_chunks)
-
-        # Apply pagination: skip offset chunks, take up to limit chunks
-        paginated_chunks = all_chunks[offset : offset + max_chunks] if offset < total_chunks else []
-
-        selected_chunks = []
-        total_tokens = 0
-
-        # Select chunks within budget
-        # Handover 0493: Use stored token_count (tiktoken) instead of chars/4 estimation
-        for chunk in paginated_chunks:
-            chunk_tokens = chunk.token_count if chunk.token_count else estimate_tokens(chunk.content)
-
-            if total_tokens + chunk_tokens > max_tokens:
-                logger.debug(
-                    "token_budget_reached",
-                    total_tokens=total_tokens,
-                    max_tokens=max_tokens,
-                    chunks_selected=len(selected_chunks),
-                    operation="get_vision_document",
-                )
-                break
-
-            selected_chunks.append({"content": chunk.content, "chunk_order": chunk.chunk_order, "tokens": chunk_tokens})
-            total_tokens += chunk_tokens
-
-        # Calculate pagination metadata
-        has_more = (offset + len(selected_chunks)) < total_chunks
-        next_offset = offset + len(selected_chunks) if has_more else None
-
-        logger.info(
-            "vision_chunks_fetched",
+async def _get_vision_document_with_session(
+    product_id: str,
+    tenant_key: str,
+    chunking: str,
+    offset: int,
+    limit: Optional[int],
+    db_manager: Optional[DatabaseManager],
+    session: Optional[AsyncSession] = None,
+) -> dict[str, Any]:
+    """Inner implementation that operates on a given or new session."""
+    if session is not None:
+        return await _execute_vision_query(
+            session=session,
             product_id=product_id,
             tenant_key=tenant_key,
-            depth=chunking,
+            chunking=chunking,
             offset=offset,
-            limit=max_chunks,
-            returned_chunks=len(selected_chunks),
-            total_chunks=total_chunks,
-            has_more=has_more,
-            total_tokens=total_tokens,
-            max_tokens=max_tokens,
+            limit=limit,
+            db_manager=db_manager,
         )
 
-        # Build response data (Handover 0352: consistent format)
+    async with db_manager.get_session_async() as new_session:
+        return await _execute_vision_query(
+            session=new_session,
+            product_id=product_id,
+            tenant_key=tenant_key,
+            chunking=chunking,
+            offset=offset,
+            limit=limit,
+            db_manager=db_manager,
+        )
+
+
+async def _execute_vision_query(
+    session: AsyncSession,
+    product_id: str,
+    tenant_key: str,
+    chunking: str,
+    offset: int,
+    limit: Optional[int],
+    db_manager: Optional[DatabaseManager],
+) -> dict[str, Any]:
+    """Execute the actual vision document query within a session context."""
+    # Fetch product to verify existence and get vision documents
+    stmt = (
+        select(Product)
+        .options(selectinload(Product.vision_documents))
+        .where(Product.id == product_id, Product.tenant_key == tenant_key)
+    )
+    result = await session.execute(stmt)
+    product = result.scalar_one_or_none()
+
+    if not product:
+        logger.warning(
+            "product_not_found", product_id=product_id, tenant_key=tenant_key, operation="get_vision_document"
+        )
         return {
             "source": "vision_documents",
             "depth": chunking,
-            "data": selected_chunks,
-            "pagination": {
-                "total_chunks": total_chunks,
+            "data": [],
+            "metadata": {
+                "product_id": product_id,
+                "tenant_key": tenant_key,
+                "total_chunks": 0,
                 "offset": offset,
-                "limit": max_chunks,
-                "has_more": has_more,
-                "next_offset": next_offset,
+                "limit": limit or 0,
+                "returned_chunks": 0,
+                "has_more": False,
+                "next_offset": None,
+                "error": "product_not_found",
             },
         }
+
+    # Check if product has vision documents
+    if not product.vision_documents:
+        logger.debug("no_vision_documents", product_id=product_id, operation="get_vision_document")
+        return {
+            "source": "vision_documents",
+            "depth": chunking,
+            "data": [],
+            "metadata": {
+                "product_id": product_id,
+                "tenant_key": tenant_key,
+                "total_chunks": 0,
+                "offset": offset,
+                "limit": limit or 0,
+                "returned_chunks": 0,
+                "has_more": False,
+                "next_offset": None,
+            },
+        }
+
+    # Get active vision documents
+    active_docs = [doc for doc in product.vision_documents if doc.is_active]
+    if not active_docs:
+        logger.debug("no_active_vision_documents", product_id=product_id, operation="get_vision_document")
+        return {
+            "source": "vision_documents",
+            "depth": chunking,
+            "data": [],
+            "metadata": {
+                "product_id": product_id,
+                "tenant_key": tenant_key,
+                "total_chunks": 0,
+                "offset": offset,
+                "limit": limit or 0,
+                "returned_chunks": 0,
+                "has_more": False,
+                "next_offset": None,
+            },
+        }
+
+    # Handover 0377/0493/0842b: Prefer per-document summaries, fall back to consolidated
+    if chunking == "light":
+        return await _get_summary_response(
+            product=product,
+            depth="light",
+            product_id=product_id,
+            tenant_key=tenant_key,
+            offset=offset,
+            session=session,
+            db_manager=db_manager,
+        )
+
+    if chunking == "medium":
+        return await _get_summary_response(
+            product=product,
+            depth="medium",
+            product_id=product_id,
+            tenant_key=tenant_key,
+            offset=offset,
+            session=session,
+            db_manager=db_manager,
+        )
+
+    # For "full" depth, use chunk-based pagination (existing logic below)
+
+    # Get active chunked vision documents (reuse pattern from mission_planner)
+    chunked_docs = [doc for doc in product.vision_documents if doc.is_active and doc.chunked and doc.chunk_count > 0]
+
+    if not chunked_docs:
+        logger.debug(
+            "no_chunked_documents",
+            product_id=product_id,
+            total_docs=len(product.vision_documents),
+            operation="get_vision_document",
+        )
+        return {
+            "source": "vision_documents",
+            "depth": chunking,
+            "data": [],
+            "metadata": {
+                "product_id": product_id,
+                "tenant_key": tenant_key,
+                "total_chunks": 0,
+                "offset": offset,
+                "limit": limit or 0,
+                "returned_chunks": 0,
+                "has_more": False,
+                "next_offset": None,
+            },
+        }
+
+    # Get vision_document_ids for query
+    vision_doc_ids = [doc.id for doc in chunked_docs]
+
+    # Query chunks from mcp_context_index (reuse pattern from mission_planner)
+    chunk_stmt = (
+        select(MCPContextIndex)
+        .where(MCPContextIndex.tenant_key == tenant_key, MCPContextIndex.vision_document_id.in_(vision_doc_ids))
+        .order_by(MCPContextIndex.chunk_order)
+    )
+
+    chunk_result = await session.execute(chunk_stmt)
+    all_chunks = chunk_result.scalars().all()
+
+    if not all_chunks:
+        logger.warning(
+            "chunks_marked_but_not_found",
+            product_id=product_id,
+            vision_doc_ids=[str(vid) for vid in vision_doc_ids],
+            operation="get_vision_document",
+        )
+        return {
+            "source": "vision_documents",
+            "depth": chunking,
+            "data": [],
+            "metadata": {
+                "product_id": product_id,
+                "tenant_key": tenant_key,
+                "total_chunks": 0,
+                "offset": offset,
+                "limit": limit or 0,
+                "returned_chunks": 0,
+                "has_more": False,
+                "next_offset": None,
+                "error": "chunks_not_found",
+            },
+        }
+
+    # Apply depth filtering with pagination (full depth only)
+    max_chunks = get_max_chunks(chunking) if limit is None else limit
+    max_tokens = get_max_tokens(chunking)
+    total_chunks = len(all_chunks)
+
+    # Apply pagination: skip offset chunks, take up to limit chunks
+    paginated_chunks = all_chunks[offset : offset + max_chunks] if offset < total_chunks else []
+
+    selected_chunks = []
+    total_tokens = 0
+
+    # Select chunks within budget
+    # Handover 0493: Use stored token_count (tiktoken) instead of chars/4 estimation
+    for chunk in paginated_chunks:
+        chunk_tokens = chunk.token_count if chunk.token_count else estimate_tokens(chunk.content)
+
+        if total_tokens + chunk_tokens > max_tokens:
+            logger.debug(
+                "token_budget_reached",
+                total_tokens=total_tokens,
+                max_tokens=max_tokens,
+                chunks_selected=len(selected_chunks),
+                operation="get_vision_document",
+            )
+            break
+
+        selected_chunks.append({"content": chunk.content, "chunk_order": chunk.chunk_order, "tokens": chunk_tokens})
+        total_tokens += chunk_tokens
+
+    # Calculate pagination metadata
+    has_more = (offset + len(selected_chunks)) < total_chunks
+    next_offset = offset + len(selected_chunks) if has_more else None
+
+    logger.info(
+        "vision_chunks_fetched",
+        product_id=product_id,
+        tenant_key=tenant_key,
+        depth=chunking,
+        offset=offset,
+        limit=max_chunks,
+        returned_chunks=len(selected_chunks),
+        total_chunks=total_chunks,
+        has_more=has_more,
+        total_tokens=total_tokens,
+        max_tokens=max_tokens,
+    )
+
+    # Build response data (Handover 0352: consistent format)
+    return {
+        "source": "vision_documents",
+        "depth": chunking,
+        "data": selected_chunks,
+        "pagination": {
+            "total_chunks": total_chunks,
+            "offset": offset,
+            "limit": max_chunks,
+            "has_more": has_more,
+            "next_offset": next_offset,
+        },
+    }
