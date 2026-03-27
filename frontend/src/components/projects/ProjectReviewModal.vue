@@ -323,14 +323,15 @@ const missionText = computed(() => {
 
 const statusColor = computed(() => {
   const s = projectData.value?.status
-  if (s === 'completed') return '#fff'
+  if (s === 'completed') return 'success'
+  if (s === 'active') return '#fff'
   if (s === 'terminated') return 'warning'
   if (s === 'cancelled') return 'grey'
   return 'primary'
 })
 
 const statusTextStyle = computed(() => {
-  if (projectData.value?.status === 'completed') return { color: '#333' }
+  if (projectData.value?.status === 'active') return { color: '#333' }
   return {}
 })
 
