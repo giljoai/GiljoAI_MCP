@@ -2525,7 +2525,7 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
             except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                 self._logger.warning(f"[WEBSOCKET] Failed to broadcast report_error: {ws_error}")
 
-            return ErrorReportResult(job_id=job_id, message="Error reported")
+            return ErrorReportResult(job_id=job_id, message="Error reported", status="blocked", block_reason=error)
         except (ValidationError, ResourceNotFoundError):
             raise
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
