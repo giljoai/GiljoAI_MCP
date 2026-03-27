@@ -146,6 +146,29 @@
             No vision documents attached
           </v-alert>
 
+          <!-- AI Analysis Result (Handover 0842d) -->
+          <v-alert
+            v-if="visionAnalysisResult"
+            type="success"
+            variant="tonal"
+            density="compact"
+            class="mt-3 mb-3"
+            closable
+            @click:close="visionAnalysisResult = null"
+          >
+            <div class="text-body-2">
+              AI populated {{ visionAnalysisResult.fields_written }} product fields —
+              <span
+                class="text-primary"
+                style="cursor: pointer"
+                role="button"
+                tabindex="0"
+                @click="$emit('refresh-product')"
+                @keydown.enter="$emit('refresh-product')"
+              >review in Product Info</span>
+            </div>
+          </v-alert>
+
           <!-- Aggregate Stats (only show if documents exist) -->
           <v-card v-if="visionDocuments.length > 0" variant="tonal" color="primary" class="mt-3">
             <v-card-text class="py-2">
@@ -397,7 +420,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import api from '@/services/api'
 import ProductTuningMenu from './ProductTuningMenu.vue'
 import ProductTuningReview from './ProductTuningReview.vue'
@@ -419,12 +442,43 @@ const props = defineProps({
     type: Object,
     default: () => ({ unresolved_tasks: 0, unfinished_projects: 0 }),
   },
+  autoExpandTuning: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'refresh-product'])
 
 // Context Tuning toggle (Handover 0831)
 const showTuningMenu = ref(false)
+
+// Vision analysis result (Handover 0842d)
+const visionAnalysisResult = ref(null)
+
+function handleVisionAnalysisComplete(event) {
+  if (event.detail?.product_id === props.product?.id) {
+    visionAnalysisResult.value = event.detail
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('vision-analysis-complete', handleVisionAnalysisComplete)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('vision-analysis-complete', handleVisionAnalysisComplete)
+})
+
+// Handover 0842d: Auto-expand tuning when opened via tune button
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (open && props.autoExpandTuning) {
+      showTuningMenu.value = true
+    }
+  },
+)
 
 const isOpen = computed({
   get: () => props.modelValue,
