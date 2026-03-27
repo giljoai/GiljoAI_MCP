@@ -412,6 +412,15 @@ export const EVENT_MAP = {
   },
 
   // =========================
+  // Vision Document Analysis (Handover 0842c)
+  // =========================
+  'vision:analysis_complete': {
+    handler: async (payload) => {
+      console.log('[vision:analysis_complete]', payload)
+    },
+  },
+
+  // =========================
   // Tasks (MCP tool creates — frontend needs refresh)
   // =========================
   'task:created': {
