@@ -11,34 +11,26 @@
   >
     <v-card>
       <!-- Header -->
-      <v-card-title id="review-modal-title" class="review-header pa-4">
-        <div class="d-flex align-center justify-space-between">
-          <div>
-            <div class="d-flex align-center">
-              <v-icon icon="mdi-eye" size="large" class="mr-2" color="white" />
-              <span class="text-h6 font-weight-bold">Project Review: <span class="review-project-name">{{ projectData?.name }}</span></span>
-            </div>
-            <div class="d-flex align-center mt-1 ml-9">
-              <v-tooltip location="bottom">
-                <template #activator="{ props: tp }">
-                  <code
-                    v-bind="tp"
-                    class="review-project-id"
-                    role="button"
-                    tabindex="0"
-                    @click="copyProjectId"
-                    @keydown.enter="copyProjectId"
-                  >{{ projectId }}</code>
-                </template>
-                <span>{{ copied ? 'Copied!' : 'Click to copy project ID' }}</span>
-              </v-tooltip>
-            </div>
-          </div>
-          <v-btn icon variant="text" color="white" aria-label="Close modal" @click="$emit('close')">
-            <v-icon icon="mdi-close" />
-          </v-btn>
-        </div>
+      <v-card-title id="review-modal-title" class="d-flex align-center">
+        <span>Project Review: {{ projectData?.name }}</span>
+        <v-spacer />
+        <v-btn icon="mdi-close" variant="text" aria-label="Close dialog" @click="$emit('close')" />
       </v-card-title>
+      <div class="text-caption text-medium-emphasis px-6 pb-2">
+        <v-tooltip location="bottom">
+          <template #activator="{ props: tp }">
+            <span
+              v-bind="tp"
+              class="review-project-id"
+              role="button"
+              tabindex="0"
+              @click="copyProjectId"
+              @keydown.enter="copyProjectId"
+            >{{ projectId }}</span>
+          </template>
+          <span>{{ copied ? 'Copied!' : 'Click to copy project ID' }}</span>
+        </v-tooltip>
+      </div>
 
       <v-divider />
 
@@ -358,27 +350,12 @@ function truncate(text, maxLen) {
 </script>
 
 <style scoped>
-.review-header {
-  background-color: #1565C0;
-  color: #fff;
-}
-.review-project-name {
-  color: #FFD54F;
-}
 .review-project-id {
   font-family: monospace;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #fff;
   cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.15);
   user-select: all;
-  transition: background 0.15s ease;
 }
-.review-project-id:hover,
-.review-project-id:focus-visible {
-  background: rgba(255, 255, 255, 0.3);
+.review-project-id:hover {
+  text-decoration: underline;
 }
 </style>
