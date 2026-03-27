@@ -85,9 +85,9 @@
       "title": "MCP Tools & Extraction Prompt",
       "handover": "handovers/0842c_VISION_DOC_ANALYSIS_MCP_TOOLS.md",
       "color": "#9C27B0",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
+      "status": "complete",
+      "started_at": "2026-03-27T14:00:00Z",
+      "completed_at": "2026-03-27T14:45:00Z",
       "agent_types": ["tdd-implementor"],
       "planned_tasks": [
         "Create vision_analysis.py with VISION_EXTRACTION_PROMPT + tool functions",
@@ -98,12 +98,24 @@
         "WebSocket vision:analysis_complete event emission",
         "TDD tests for both tools"
       ],
-      "tasks_completed": [],
-      "deviations": [],
+      "tasks_completed": [
+        "Created src/giljo_mcp/tools/vision_analysis.py with VISION_EXTRACTION_PROMPT, FIELD_MAP, gil_get_vision_doc, gil_write_product",
+        "Added get_vision_doc() and write_product_from_analysis() wrapper methods to ToolAccessor",
+        "Registered both tools in mcp_http.py: _TOOL_SCHEMA_PARAMS allowlist, _build_vision_analysis_tools() schema, handle_tools_list, tool_map dispatch",
+        "WebSocket vision:analysis_complete event emission from gil_write_product via EventFactory.tenant_envelope",
+        "Added vision:analysis_complete to frontend EVENT_MAP in websocketEventRouter.js",
+        "14 TDD tests passing in test_0842c_vision_analysis_tools.py"
+      ],
+      "deviations": [
+        "Skipped extracting shared field writer from ProductTuningService — the two code paths differ enough that forced sharing would add complexity without benefit"
+      ],
       "blockers_encountered": [],
-      "notes_for_next": null,
-      "cascading_impacts": [],
-      "summary": null
+      "notes_for_next": "MCP tool names as registered: 'gil_get_vision_doc' and 'gil_write_product'. WebSocket event type: 'vision:analysis_complete' with data: {product_id, fields_written, fields}. ToolAccessor methods: get_vision_doc() and write_product_from_analysis(). The frontend EVENT_MAP entry exists but only logs — 0842d should add the full UI handler. Both tools accept _test_session parameter for test isolation. The write tool uses **fields kwargs for all optional product fields. Summaries written via VisionDocumentRepository.create_summary() with source='ai' and Decimal ratios.",
+      "cascading_impacts": [
+        "0842d: vision:analysis_complete event handler in EVENT_MAP needs real UI logic (currently logs only)",
+        "0842e: Integration test should call gil_get_vision_doc then gil_write_product end-to-end and verify all 4 normalized tables + summaries"
+      ],
+      "summary": "Implemented gil_get_vision_doc and gil_write_product MCP tools with merge-write semantics, field name translations, AI summary persistence via VisionDocumentRepository, and vision:analysis_complete WebSocket emission. Registered both tools in mcp_http.py (schema, dispatch, allowlist) and ToolAccessor. 14 TDD tests pass. Commit: a24dbc4c."
     },
     {
       "session_id": "0842d",
