@@ -2,7 +2,7 @@
 
 **Purpose:** Central registry of all handovers - active, completed, and archived.
 
-**Last Updated:** 2026-03-26 (0838+0839+0840a-j archived, 0837a-d+0841 active)
+**Last Updated:** 2026-03-26 (0837+0838+0839+0840a-j archived, 0841 active only)
 
 ---
 
@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0828+0829+0830+0831+0832+0833+0834+0835+0836(a-e)+0838+0839+0840(a-j) COMPLETE. 0837(a-d) ACTIVE. 0841 NOT STARTED. 0800-0822 ALL COMPLETE. |
+| 0800+ | Enhancement & Feature Series | 0823+0823b+0824+0825+0825b+0826+0827+0828+0829+0830+0831+0832+0833+0834+0835+0836(a-e)+0837(a-d)+0838+0839+0840(a-j) ALL COMPLETE. 0841 NOT STARTED. 0800-0822 ALL COMPLETE. |
 
 ---
 
@@ -29,11 +29,6 @@
 
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
-| 0837 | Project Creation Taxonomy Fix (Parent) | Not Started | Critical | MCP create_project broken after first project per tenant — NULLS NOT DISTINCT constraint lockout. Auto-assign series_number, resolve type by label, audit all constraints. |
-| 0837a | Auto-Assign Series Number | Not Started | Critical | Root cause fix: auto-assign MAX+1 with FOR UPDATE lock when series_number not provided. |
-| 0837b | Type Resolution by Label + MCP Schema | Not Started | High | Accept optional `type` param ("Frontend" not UUID), resolve via project_types table. |
-| 0837c | Slash Command Template Updates | Not Started | Medium | Update /gil_add templates to pass type param for projects across all 3 platforms. |
-| 0837d | Multi-Tenant Constraint Audit | Not Started | High | Audit all UniqueConstraints for similar lockout patterns. 12 constraints to verify. |
 | 0841 | Slash Command Optimization (/gil_add) | Not Started | Low | Rewrite /gil_add from 343 lines (~3,500 tokens) to ~40 lines (~500 tokens). Keep local, remove verbose templates. |
 
 ### Deferred (Still in Root Folder)
@@ -47,6 +42,7 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0837 | Project Creation Taxonomy Fix (a-d) | 2026-03-25 | COMPLETE — Auto-assign series_number, type resolution by label, slash command updates, constraint audit. All 4 sub-handovers done. |
 | 0839 | Dashboard Analytics Redesign | 2026-03-25 | COMPLETE (`6ce7ece4`) — Product-aware dashboard with product selector, donut charts (status/taxonomy/agent roles), categorized stat rows. chart.js + vue-chartjs. |
 | 0838 | Multi-Platform Subagent Mode (Codex + Gemini) | 2026-03-25 | COMPLETE (`a0b320d6`) — Codex CLI and Gemini CLI subagent modes in staging page, platform-specific spawning syntax, project list UX polish. |
 | 0840a | Dead Column Cleanup (JSONB Normalization 1/6) | 2026-03-25 | COMPLETE — Dropped 7 dead meta_data columns, removed 6 ghost config keys, 1 migration. |
