@@ -69,11 +69,11 @@
     />
 
     <!-- Stats -->
-    <v-card variant="flat" class="mb-4 pa-4 stats-wrapper">
+    <v-card variant="flat" class="mb-4 pa-4 stats-wrapper smooth-border">
       <!-- Projects -->
       <div class="text-caption text-medium-emphasis mb-2">Projects</div>
       <div class="stats-grid mb-4">
-        <v-card v-for="s in projectStatCards" :key="s.label" variant="outlined" class="stat-card">
+        <v-card v-for="s in projectStatCards" :key="s.label" variant="flat" class="stat-card smooth-border">
           <div class="stat-card-inner">
             <div class="stat-icon-box">
               <v-icon size="20" color="yellow-darken-2">{{ s.icon }}</v-icon>
@@ -87,7 +87,7 @@
       <!-- Tasks -->
       <div class="text-caption text-medium-emphasis mb-2">Tasks</div>
       <div class="stats-grid mb-4">
-        <v-card v-for="s in taskStatCards" :key="s.label" variant="outlined" class="stat-card">
+        <v-card v-for="s in taskStatCards" :key="s.label" variant="flat" class="stat-card smooth-border">
           <div class="stat-card-inner">
             <div class="stat-icon-box">
               <v-icon size="20" color="yellow-darken-2">{{ s.icon }}</v-icon>
@@ -101,7 +101,7 @@
       <!-- Execution Modes -->
       <div class="text-caption text-medium-emphasis mb-2">Execution Modes</div>
       <div class="stats-grid mb-4">
-        <v-card v-for="s in executionModeCards" :key="s.label" variant="outlined" class="stat-card">
+        <v-card v-for="s in executionModeCards" :key="s.label" variant="flat" class="stat-card smooth-border">
           <div class="stat-card-inner">
             <div class="stat-icon-box">
               <img v-if="s.img" :src="s.img" :alt="s.label" class="stat-custom-icon" />
@@ -116,7 +116,7 @@
       <!-- Server (always global) -->
       <div class="text-caption text-medium-emphasis mb-2">Server</div>
       <div class="stats-grid">
-        <v-card v-for="s in serverStatCards" :key="s.label" variant="outlined" class="stat-card">
+        <v-card v-for="s in serverStatCards" :key="s.label" variant="flat" class="stat-card smooth-border">
           <div class="stat-card-inner">
             <div class="stat-icon-box">
               <img v-if="s.img" :src="s.img" :alt="s.label" class="stat-custom-icon" />
@@ -132,7 +132,7 @@
     <!-- Donut Charts -->
     <v-row class="mb-4">
       <v-col cols="12" md="4">
-        <v-card variant="flat" class="chart-card chart-card--shadow pa-4">
+        <v-card variant="flat" class="chart-card smooth-border pa-4">
           <DonutChart
             title="Status Distribution"
             :chart-data="statusChartData"
@@ -140,7 +140,7 @@
         </v-card>
       </v-col>
       <v-col cols="12" md="4">
-        <v-card variant="flat" class="chart-card pa-4">
+        <v-card variant="flat" class="chart-card smooth-border pa-4">
           <DonutChart
             title="Taxonomy Distribution"
             :chart-data="taxonomyChartData"
@@ -148,7 +148,7 @@
         </v-card>
       </v-col>
       <v-col cols="12" md="4">
-        <v-card variant="flat" class="chart-card pa-4">
+        <v-card variant="flat" class="chart-card smooth-border pa-4">
           <DonutChart
             title="Agent Role Distribution"
             :chart-data="agentRoleChartData"
@@ -158,17 +158,17 @@
     </v-row>
 
     <!-- Recent Activity Lists (stacked) -->
-    <v-card variant="flat" class="activity-card activity-card--shadow pa-4 mb-4">
+    <v-card variant="flat" class="activity-card smooth-border pa-4 mb-4">
       <div class="text-caption text-medium-emphasis mb-2">Recently Completed Projects</div>
       <RecentProjectsList :projects="dashboardData.recent_projects" />
     </v-card>
 
-    <v-card variant="flat" class="activity-card pa-4 mb-4">
+    <v-card variant="flat" class="activity-card smooth-border pa-4 mb-4">
       <div class="text-caption text-medium-emphasis mb-2">Recent 360 Memories</div>
       <RecentMemoriesList :memories="dashboardData.recent_memories" />
     </v-card>
 
-    <v-card variant="flat" class="activity-card pa-4">
+    <v-card variant="flat" class="activity-card smooth-border pa-4">
       <div class="text-caption text-medium-emphasis mb-2">Recent Git Commits (from 360 Memory)</div>
       <div v-if="recentCommits.length === 0" class="text-caption text-medium-emphasis pa-2">No commits captured in 360 memory yet</div>
       <v-list v-else density="compact" class="bg-transparent recent-list">
@@ -560,7 +560,6 @@ onUnmounted(() => {
 
 .stats-wrapper {
   background: #0e1c2d !important;
-  border: 1px solid #315074;
   border-radius: 12px !important;
 }
 
@@ -568,7 +567,6 @@ onUnmounted(() => {
   flex: 0 0 auto;
   border-radius: 8px !important;
   background: #182739 !important;
-  border-color: #315074 !important;
 }
 
 .stat-card-inner {
@@ -612,7 +610,6 @@ onUnmounted(() => {
 
 .chart-card {
   background: #182739 !important;
-  border: 1px solid #315074;
   border-radius: 12px !important;
   display: flex;
   align-items: center;
@@ -620,19 +617,8 @@ onUnmounted(() => {
   min-height: 300px;
 }
 
-.chart-card--shadow {
-  border: none;
-  box-shadow: inset 0 0 0 1px #315074;
-}
-
 .activity-card {
   background: #182739 !important;
-  border: 1px solid #315074;
   border-radius: 12px !important;
-}
-
-.activity-card--shadow {
-  border: none;
-  box-shadow: inset 0 0 0 1px #315074;
 }
 </style>

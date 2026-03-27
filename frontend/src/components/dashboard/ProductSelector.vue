@@ -57,7 +57,8 @@ defineEmits(['select'])
 
 .product-chip--inactive {
   background: transparent !important;
-  box-shadow: inset 0 0 0 2px #f9a825;
+  /* Uses global smooth-border-accent pattern (main.scss) */
+  box-shadow: inset 0 0 0 2px var(--color-accent-primary, #ffc300);
 }
 
 .product-chip:hover {

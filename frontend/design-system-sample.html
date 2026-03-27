@@ -1415,6 +1415,51 @@
         </div>
       </div>
     </div>
+
+    <!-- Smooth Borders (box-shadow inset) -->
+    <div class="card" style="margin-top: 24px;">
+      <h4>Smooth Borders (MANDATORY)</h4>
+      <p style="font-size: 0.75rem; color: #8f97b7; margin-bottom: 16px;">
+        <strong style="color: #ffc300;">NEVER use CSS <code>border</code> on rounded elements.</strong>
+        Use <code>box-shadow: inset</code> instead — it renders anti-aliased curves on all zoom levels
+        and Windows display scaling, avoiding the pixelated staircase effect of thin CSS borders.
+        Global utility classes are defined in <code>main.scss</code>.
+      </p>
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+        <div style="text-align: center;">
+          <div style="width: 120px; height: 72px; background: #1e3147; border-radius: 12px; box-shadow: inset 0 0 0 1px #315074; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 0.7rem; color: #8f97b7;">content</span>
+          </div>
+          <span class="spacing-label" style="margin-top: 6px;">.smooth-border<br>1px theme</span>
+          <code style="font-size: 0.6rem; color: #67bd6d; display: block; margin-top: 2px;">inset 0 0 0 1px #315074</code>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 120px; height: 72px; background: #1e3147; border-radius: 12px; box-shadow: inset 0 0 0 2px #315074; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 0.7rem; color: #8f97b7;">content</span>
+          </div>
+          <span class="spacing-label" style="margin-top: 6px;">.smooth-border-2<br>2px theme</span>
+          <code style="font-size: 0.6rem; color: #67bd6d; display: block; margin-top: 2px;">inset 0 0 0 2px #315074</code>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 120px; height: 72px; background: transparent; border-radius: 12px; box-shadow: inset 0 0 0 2px #ffc300; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 0.7rem; color: #e1e1e1;">content</span>
+          </div>
+          <span class="spacing-label" style="margin-top: 6px;">.smooth-border-accent<br>2px brand yellow</span>
+          <code style="font-size: 0.6rem; color: #67bd6d; display: block; margin-top: 2px;">inset 0 0 0 2px #ffc300</code>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 120px; height: 72px; background: #1e3147; border-radius: 12px; border: 1px solid #315074; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 0.7rem; color: #c6298c;">DO NOT USE</span>
+          </div>
+          <span class="spacing-label" style="margin-top: 6px; color: #c6298c;">CSS border<br>pixelated on zoom</span>
+          <code style="font-size: 0.6rem; color: #c6298c; display: block; margin-top: 2px;">border: 1px solid #315074</code>
+        </div>
+      </div>
+      <p style="font-size: 0.7rem; color: #8f97b7; margin-top: 16px;">
+        Custom color override: <code>style="--smooth-border-color: #hex"</code><br>
+        For chips/pills: use <code>box-shadow: inset 0 0 0 2px var(--color-accent-primary)</code> in scoped CSS with transparent background.
+      </p>
+    </div>
   </section>
 
   <!-- ============================================
