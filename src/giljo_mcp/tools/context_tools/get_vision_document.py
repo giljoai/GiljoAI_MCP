@@ -48,45 +48,18 @@ def estimate_tokens(data: Any) -> int:
 
 
 def get_max_tokens(chunking: str) -> int:
-    """Map chunking depth to max per-call token budget.
-
-    Handover 0493: light/medium use consolidated summaries (percentage-based, not
-    token-capped) delivered via _get_summary_response() with 24K pagination.
-    This function is only used by the "full" depth chunk loop.
-    """
-    # Backward compatibility mapping (Handover 0246b)
-    if chunking in {"moderate", "heavy"}:
-        chunking = "medium"
-
-    mapping = {
-        "none": 0,
-        # light/medium: routed to _get_summary_response() before this is called.
-        # Kept for defensive fallback only.
-        "light": VISION_DELIVERY_BUDGET,
-        "medium": VISION_DELIVERY_BUDGET,
-        "full": VISION_DELIVERY_BUDGET,
-    }
-    return mapping.get(chunking, VISION_DELIVERY_BUDGET)
+    """Max per-call token budget. Only called for 'full' depth (light/medium
+    are routed to _get_summary_response() before reaching the chunk loop)."""
+    if chunking == "none":
+        return 0
+    return VISION_DELIVERY_BUDGET
 
 
 def get_max_chunks(chunking: str) -> int:
-    """Map chunking depth to max chunk count per call.
-
-    Handover 0493: light/medium use consolidated summaries with their own
-    pagination, so these entries are defensive fallback only.
-    For full depth, effectively unlimited (agent keeps calling with offset).
-    """
-    # Backward compatibility mapping (Handover 0246b)
-    if chunking in {"moderate", "heavy"}:
-        chunking = "medium"
-
-    mapping = {
-        "none": 0,
-        "light": 100,
-        "medium": 100,
-        "full": 100,  # Agent pages through with offset until has_more=False
-    }
-    return mapping.get(chunking, 100)
+    """Max chunk count per call. Only called for 'full' depth."""
+    if chunking == "none":
+        return 0
+    return 100
 
 
 async def _build_aggregated_summary(

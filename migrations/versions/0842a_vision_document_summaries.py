@@ -94,5 +94,22 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table("vision_document_summaries")
-    op.drop_column("products", "extraction_custom_instructions")
+    conn = op.get_bind()
+
+    result = conn.execute(
+        sa.text(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_name = 'vision_document_summaries'"
+        )
+    )
+    if result.fetchone() is not None:
+        op.drop_table("vision_document_summaries")
+
+    result = conn.execute(
+        sa.text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'products' AND column_name = 'extraction_custom_instructions'"
+        )
+    )
+    if result.fetchone() is not None:
+        op.drop_column("products", "extraction_custom_instructions")
