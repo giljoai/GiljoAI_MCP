@@ -120,7 +120,7 @@
     </v-data-table>
 
     <!-- Create/Edit User Dialog -->
-    <v-dialog v-model="showUserDialog" max-width="600">
+    <v-dialog v-model="showUserDialog" max-width="600" persistent>
       <v-card v-draggable>
         <v-card-title>
           <v-icon class="mr-2">{{ isEditMode ? 'mdi-pencil' : 'mdi-account-plus' }}</v-icon>
@@ -193,7 +193,7 @@
     </v-dialog>
 
     <!-- Change Password Dialog -->
-    <v-dialog v-model="showPasswordDialog" max-width="500">
+    <v-dialog v-model="showPasswordDialog" max-width="500" persistent>
       <v-card v-draggable>
         <v-card-title>
           <v-icon class="mr-2">mdi-key-variant</v-icon>
