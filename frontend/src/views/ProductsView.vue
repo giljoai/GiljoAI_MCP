@@ -285,7 +285,6 @@
       :product="editingProduct"
       :is-edit="!!editingProduct && !autoSavedForAnalysis"
       :existing-vision-documents="existingVisionDocuments"
-      :auto-save-state="autoSave"
       :uploading-vision="uploadingVision"
       :upload-progress="uploadProgress"
       :vision-upload-error="visionUploadError"
@@ -340,12 +339,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useSettingsStore } from '@/stores/settings'
 import { useNotificationStore } from '@/stores/notifications'
 import { useToast } from '@/composables/useToast'
-import { useAutoSave } from '@/composables/useAutoSave'
 import api from '@/services/api'
 import ActivationWarningDialog from '@/components/products/ActivationWarningDialog.vue'
 import ProductDeleteDialog from '@/components/products/ProductDeleteDialog.vue'
@@ -378,7 +376,6 @@ const detailsVisionDocuments = ref([])
 const autoExpandTuning = ref(false)
 const cascadeImpact = ref(null)
 const loadingCascadeImpact = ref(false)
-const autoSave = ref(null) // Handover 0051: Auto-save composable instance
 
 // Handover 0050: Activation warning dialog state
 const showActivationWarning = ref(false)
@@ -392,23 +389,12 @@ const restoringProductId = ref(null)
 const purgingProductId = ref(null)
 const purgingAllProducts = ref(false)
 
-const productForm = ref({
-  name: '',
-  description: '',
-  projectPath: '',
-})
-
 // Sort options
 const sortOptions = [
   { label: 'Name (A-Z)', value: 'name' },
   { label: 'Date Created (Newest)', value: 'date-newest' },
   { label: 'Date Created (Oldest)', value: 'date-oldest' },
 ]
-
-// Handover 0051: Unsaved changes computed
-const hasUnsavedChanges = computed(() => {
-  return autoSave.value?.hasUnsavedChanges.value || false
-})
 
 // Computed
 const filteredProducts = computed(() => {
@@ -703,12 +689,6 @@ async function showProductTuning(product) {
 async function editProduct(product) {
   editingProduct.value = product
 
-  productForm.value = {
-    name: product.name,
-    description: product.description || '',
-    projectPath: product.project_path || '',
-  }
-
   // Fetch existing vision documents
   await loadExistingVisionDocuments(product.id)
 
@@ -765,11 +745,6 @@ async function saveProduct(payload) {
     // Product is now permanent — clear auto-save cleanup flag
     autoSavedForAnalysis.value = null
 
-    // Clear auto-save cache (Handover 0051)
-    if (autoSave.value) {
-      autoSave.value.clearCache()
-    }
-
     // Refresh products
     await loadProducts()
 
@@ -823,7 +798,6 @@ async function uploadVisionFilesOnAttach(payload) {
       productId = editingProduct.value.id
     } else {
       const product = await productStore.createProduct({ name: productName })
-      console.log('[ProductsView] Silent product creation result:', product)
       editingProduct.value = product
       autoSavedForAnalysis.value = product.id
       productId = product.id
@@ -953,14 +927,6 @@ function cancelDelete() {
 }
 
 async function closeDialog() {
-  // Handover 0051: Check for unsaved changes before closing
-  if (hasUnsavedChanges.value) {
-    const confirmed = confirm('You have unsaved changes. Close anyway?')
-    if (!confirmed) {
-      return // User cancelled - keep dialog open
-    }
-  }
-
   // Clean up auto-saved product if user never did a real save (404 = already gone, ignore)
   if (autoSavedForAnalysis.value) {
     try {
@@ -971,11 +937,6 @@ async function closeDialog() {
     autoSavedForAnalysis.value = null
   }
 
-  // Handover 0051: Clear auto-save cache
-  if (autoSave.value) {
-    autoSave.value.clearCache()
-  }
-
   showDialog.value = false
   editingProduct.value = null
   visionFiles.value = []
@@ -983,11 +944,6 @@ async function closeDialog() {
   uploadingVision.value = false
   uploadProgress.value = 0
   visionUploadError.value = null
-  productForm.value = {
-    name: '',
-    description: '',
-    projectPath: '',
-  }
 
   // Refresh product list on close
   loadProducts()
@@ -1115,48 +1071,6 @@ async function purgeAllDeletedProducts() {
   }
 }
 
-// Handover 0051: Watch for dialog open/close to initialize auto-save
-watch(showDialog, (isOpen) => {
-  if (isOpen) {
-    // Generate unique cache key based on edit mode
-    const cacheKey = editingProduct.value
-      ? `product_form_draft_${editingProduct.value.id}`
-      : 'product_form_draft_new'
-
-    // Initialize auto-save composable
-    autoSave.value = useAutoSave({
-      key: cacheKey,
-      data: productForm,
-      debounceMs: 500,
-      enableBackgroundSave: false, // LocalStorage only (no API saves during typing)
-    })
-
-    // Check for existing cache
-    const cached = autoSave.value.restoreFromCache()
-    if (cached) {
-      // Updated policy:
-      // - Editing existing product: DO NOT restore cached drafts at all. Always
-      //   trust the latest values loaded from the backend to avoid wiping valid
-      //   product fields when only one section was edited previously.
-      // - New product: still do not auto-restore (clean slate).
-      autoSave.value.clearCache()
-    }
-  } else {
-    // Dialog closed - cleanup auto-save
-    if (autoSave.value) {
-      autoSave.value = null
-    }
-  }
-})
-
-// Handover 0051: Browser beforeunload handler (warn on refresh/close with unsaved changes)
-function handleBeforeUnload(event) {
-  if (showDialog.value && hasUnsavedChanges.value) {
-    event.preventDefault()
-    event.returnValue = '' // Required for Chrome
-  }
-}
-
 onMounted(async () => {
   await loadProducts()
   // Load field toggle configuration (Handover 0049, 0820)
@@ -1165,14 +1079,6 @@ onMounted(async () => {
   } catch {
     // Field toggle config not available
   }
-  // Handover 0051: Add beforeunload listener
-  window.addEventListener('beforeunload', handleBeforeUnload)
-  // Product metrics updates via WebSocket (product:updated events)
-})
-
-onUnmounted(() => {
-  // Handover 0051: Remove beforeunload listener
-  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 </script>
 

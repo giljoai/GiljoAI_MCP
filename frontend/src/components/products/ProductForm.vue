@@ -6,55 +6,6 @@
         <span>{{ isEdit ? 'Edit Product' : 'Create New Product' }}</span>
         <v-spacer />
 
-        <!-- Auto-save Status Indicator -->
-        <v-chip
-          v-if="autoSaveState && autoSaveState.status === 'saving'"
-          color="info"
-          size="small"
-          variant="flat"
-          class="mr-2"
-          aria-live="polite"
-        >
-          <v-icon start size="small" class="mdi-spin">mdi-loading</v-icon>
-          Saving...
-        </v-chip>
-
-        <v-chip
-          v-else-if="autoSaveState && autoSaveState.status === 'unsaved'"
-          color="warning"
-          size="small"
-          variant="flat"
-          class="mr-2"
-          aria-live="polite"
-        >
-          <v-icon start size="small">mdi-content-save-alert</v-icon>
-          Unsaved changes
-        </v-chip>
-
-        <v-chip
-          v-else-if="autoSaveState && autoSaveState.status === 'saved'"
-          color="success"
-          size="small"
-          variant="flat"
-          class="mr-2"
-          aria-live="polite"
-        >
-          <v-icon start size="small">mdi-check</v-icon>
-          Saved
-        </v-chip>
-
-        <v-chip
-          v-else-if="autoSaveState && autoSaveState.status === 'error'"
-          color="error"
-          size="small"
-          variant="flat"
-          class="mr-2"
-          aria-live="assertive"
-        >
-          <v-icon start size="small">mdi-alert-circle</v-icon>
-          Error
-        </v-chip>
-
         <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="closeDialog" />
       </v-card-title>
 
@@ -725,10 +676,6 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  autoSaveState: {
-    type: Object,
-    default: () => ({ status: 'saved', enabled: true }),
-  },
   uploadingVision: {
     type: Boolean,
     default: false,
@@ -766,35 +713,38 @@ const analysisInProgress = ref(false)
 const analysisHintVisible = ref(false)
 let analysisHintTimer = null
 
-// Product form data
-const productForm = ref({
-  name: '',
-  description: '',
-  projectPath: '',
-  targetPlatforms: ['all'],
-  techStack: {
-    programming_languages: '',
-    frontend_frameworks: '',
-    backend_frameworks: '',
-    databases_storage: '',
-    infrastructure: '',
-    dev_tools: '',
-  },
-  architecture: {
-    primary_pattern: '',
-    design_patterns: '',
-    api_style: '',
-    architecture_notes: '',
-  },
-  coreFeatures: '',
-  testConfig: {
-    quality_standards: '',
-    test_strategy: 'TDD',
-    coverage_target: 80,
-    testing_frameworks: '',
-  },
-  extractionCustomInstructions: '',
-})
+// Product form data — single source of truth for the default shape
+function getDefaultFormState() {
+  return {
+    name: '',
+    description: '',
+    projectPath: '',
+    targetPlatforms: ['all'],
+    techStack: {
+      programming_languages: '',
+      frontend_frameworks: '',
+      backend_frameworks: '',
+      databases_storage: '',
+      infrastructure: '',
+    },
+    architecture: {
+      primary_pattern: '',
+      design_patterns: '',
+      api_style: '',
+      architecture_notes: '',
+    },
+    coreFeatures: '',
+    testConfig: {
+      quality_standards: '',
+      test_strategy: 'TDD',
+      coverage_target: 80,
+      testing_frameworks: '',
+    },
+    extractionCustomInstructions: '',
+  }
+}
+
+const productForm = ref(getDefaultFormState())
 
 // Testing strategies
 const testingStrategies = [
@@ -903,18 +853,6 @@ function deleteVisionDocument(doc) {
   emit('remove-vision', doc)
 }
 
-function formatFileSize(bytes) {
-  if (!bytes) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB']
-  let unitIndex = 0
-  let size = bytes
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024
-    unitIndex++
-  }
-  return `${size.toFixed(1)} ${units[unitIndex]}`
-}
-
 function formatDate(dateString) {
   if (!dateString) return 'N/A'
   return new Date(dateString).toLocaleDateString()
@@ -992,72 +930,43 @@ function validatePlatforms() {
   return true
 }
 
-// Load product data when editing
+// Load product data when editing, or reset to defaults
 function loadProductData() {
   if (props.isEdit && props.product) {
-    productForm.value.name = props.product.name || ''
-    productForm.value.description = props.product.description || ''
-    productForm.value.projectPath = props.product.project_path || ''
+    const p = props.product
+    const ts = p.tech_stack || {}
+    const arch = p.architecture || {}
+    const tc = p.test_config || {}
 
-    productForm.value.targetPlatforms = props.product.target_platforms || ['all']
-
-    const ts = props.product.tech_stack || {}
-    productForm.value.techStack = {
-      programming_languages: ts.programming_languages || '',
-      frontend_frameworks: ts.frontend_frameworks || '',
-      backend_frameworks: ts.backend_frameworks || '',
-      databases_storage: ts.databases_storage || '',
-      infrastructure: ts.infrastructure || '',
-      dev_tools: ts.dev_tools || '',
-    }
-
-    const arch = props.product.architecture || {}
-    productForm.value.architecture = {
-      primary_pattern: arch.primary_pattern || '',
-      design_patterns: arch.design_patterns || '',
-      api_style: arch.api_style || '',
-      architecture_notes: arch.architecture_notes || '',
-    }
-
-    productForm.value.coreFeatures = props.product.core_features || ''
-    productForm.value.extractionCustomInstructions = props.product.extraction_custom_instructions || ''
-
-    const tc = props.product.test_config || {}
-    productForm.value.testConfig = {
-      quality_standards: tc.quality_standards || '',
-      test_strategy: tc.test_strategy || 'TDD',
-      coverage_target: tc.coverage_target || 80,
-      testing_frameworks: tc.testing_frameworks || '',
-    }
-  } else {
     productForm.value = {
-      name: '',
-      description: '',
-      projectPath: '',
-      targetPlatforms: ['all'],
+      name: p.name || '',
+      description: p.description || '',
+      projectPath: p.project_path || '',
+      targetPlatforms: p.target_platforms || ['all'],
       techStack: {
-        programming_languages: '',
-        frontend_frameworks: '',
-        backend_frameworks: '',
-        databases_storage: '',
-        infrastructure: '',
-        dev_tools: '',
+        programming_languages: ts.programming_languages || '',
+        frontend_frameworks: ts.frontend_frameworks || '',
+        backend_frameworks: ts.backend_frameworks || '',
+        databases_storage: ts.databases_storage || '',
+        infrastructure: ts.infrastructure || '',
       },
       architecture: {
-        primary_pattern: '',
-        design_patterns: '',
-        api_style: '',
-        architecture_notes: '',
+        primary_pattern: arch.primary_pattern || '',
+        design_patterns: arch.design_patterns || '',
+        api_style: arch.api_style || '',
+        architecture_notes: arch.architecture_notes || '',
       },
-      coreFeatures: '',
+      coreFeatures: p.core_features || '',
       testConfig: {
-        quality_standards: '',
-        test_strategy: 'TDD',
-        coverage_target: 80,
-        testing_frameworks: '',
+        quality_standards: tc.quality_standards || '',
+        test_strategy: tc.test_strategy || 'TDD',
+        coverage_target: tc.coverage_target || 80,
+        testing_frameworks: tc.testing_frameworks || '',
       },
-      extractionCustomInstructions: '',
+      extractionCustomInstructions: p.extraction_custom_instructions || '',
     }
+  } else {
+    productForm.value = getDefaultFormState()
   }
 }
 
@@ -1113,38 +1022,36 @@ async function onVisionAnalysisComplete(event) {
     // Fetch updated product with AI-populated fields from the API
     const updated = await productStore.fetchProductById(productId)
     if (updated) {
-      // Populate form fields from the fresh product data
-      productForm.value.name = updated.name || productForm.value.name
-      productForm.value.description = updated.description || ''
-      productForm.value.projectPath = updated.project_path || ''
-      productForm.value.targetPlatforms = updated.target_platforms || ['all']
-
       const ts = updated.tech_stack || {}
-      productForm.value.techStack = {
-        programming_languages: ts.programming_languages || '',
-        frontend_frameworks: ts.frontend_frameworks || '',
-        backend_frameworks: ts.backend_frameworks || '',
-        databases_storage: ts.databases_storage || '',
-        infrastructure: ts.infrastructure || '',
-        dev_tools: ts.dev_tools || '',
-      }
-
       const arch = updated.architecture || {}
-      productForm.value.architecture = {
-        primary_pattern: arch.primary_pattern || '',
-        design_patterns: arch.design_patterns || '',
-        api_style: arch.api_style || '',
-        architecture_notes: arch.architecture_notes || '',
-      }
-
-      productForm.value.coreFeatures = updated.core_features || ''
-
       const tc = updated.test_config || {}
-      productForm.value.testConfig = {
-        quality_standards: tc.quality_standards || '',
-        test_strategy: tc.test_strategy || 'TDD',
-        coverage_target: tc.coverage_target || 80,
-        testing_frameworks: tc.testing_frameworks || '',
+
+      productForm.value = {
+        name: updated.name || productForm.value.name,
+        description: updated.description || '',
+        projectPath: updated.project_path || '',
+        targetPlatforms: updated.target_platforms || ['all'],
+        techStack: {
+          programming_languages: ts.programming_languages || '',
+          frontend_frameworks: ts.frontend_frameworks || '',
+          backend_frameworks: ts.backend_frameworks || '',
+          databases_storage: ts.databases_storage || '',
+          infrastructure: ts.infrastructure || '',
+        },
+        architecture: {
+          primary_pattern: arch.primary_pattern || '',
+          design_patterns: arch.design_patterns || '',
+          api_style: arch.api_style || '',
+          architecture_notes: arch.architecture_notes || '',
+        },
+        coreFeatures: updated.core_features || '',
+        testConfig: {
+          quality_standards: tc.quality_standards || '',
+          test_strategy: tc.test_strategy || 'TDD',
+          coverage_target: tc.coverage_target || 80,
+          testing_frameworks: tc.testing_frameworks || '',
+        },
+        extractionCustomInstructions: updated.extraction_custom_instructions || '',
       }
     }
 
