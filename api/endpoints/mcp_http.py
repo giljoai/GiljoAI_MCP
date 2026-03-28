@@ -951,7 +951,7 @@ def _build_vision_analysis_tools() -> list[dict[str, Any]]:
     return [
         {
             "name": "gil_get_vision_doc",
-            "description": "Retrieve a product's vision document(s) with an extraction prompt. Returns combined document content, token count, and a pre-built extraction instruction that tells the agent to call gil_write_product with extracted fields.",
+            "description": "Retrieve a product's vision document(s) as pre-chunked sections with extraction instructions. Returns chunks (list of {chunk_order, content, token_count}), total_chunks, total_tokens, extraction_instructions, and product metadata. Read ALL chunks before calling gil_write_product.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
