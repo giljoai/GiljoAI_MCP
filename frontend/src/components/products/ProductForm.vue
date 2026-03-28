@@ -71,34 +71,41 @@
           color="primary"
           class="mb-0"
         >
-          <v-btn value="basic">
+          <v-btn value="setup">
+            <v-icon start size="small">mdi-cog-outline</v-icon>
+            Product Setup
+          </v-btn>
+          <v-btn value="info" :disabled="analysisInProgress">
             <v-icon start size="small">mdi-information-outline</v-icon>
             Product Info
           </v-btn>
-          <v-btn value="vision">
-            <v-icon start size="small">mdi-file-document-outline</v-icon>
-            Vision Docs
-          </v-btn>
-          <v-btn value="tech">
+          <v-btn value="tech" :disabled="analysisInProgress">
             <v-icon start size="small">mdi-code-braces</v-icon>
             Tech Stack
           </v-btn>
-          <v-btn value="arch">
+          <v-btn value="arch" :disabled="analysisInProgress">
             <v-icon start size="small">mdi-sitemap</v-icon>
             Architecture
           </v-btn>
-          <v-btn value="features">
+          <v-btn value="features" :disabled="analysisInProgress">
             <v-icon start size="small">mdi-test-tube</v-icon>
             Testing
           </v-btn>
         </v-btn-toggle>
 
+        <v-alert v-if="analysisInProgress" type="info" variant="tonal" density="compact" class="mb-0 mt-2">
+          <div class="d-flex align-center">
+            <v-progress-circular indeterminate size="16" width="2" class="mr-2" />
+            <span class="text-body-2">Waiting for AI analysis... Paste the prompt in your coding tool.</span>
+          </div>
+        </v-alert>
+
         <div class="bordered-tabs-content">
           <v-form ref="formRef" v-model="formValid">
             <v-window v-model="dialogTab" class="global-tabs-window">
-            <!-- Product Info Tab -->
-            <v-window-item value="basic">
-              <div class="text-subtitle-1 mb-1">Product Information</div>
+            <!-- Product Setup Tab -->
+            <v-window-item value="setup">
+              <div class="text-subtitle-1 mb-1">Product Setup</div>
               <div class="text-caption text-warning mb-4">Always used as context source by orchestrator.</div>
 
               <!-- Product Name -->
@@ -125,40 +132,9 @@
                 class="mb-4"
               ></v-text-field>
 
-              <!-- Description -->
-              <v-textarea
-                v-model="productForm.description"
-                label="Product Description"
-                variant="outlined"
-                density="comfortable"
-                rows="6"
-                auto-grow
-                hint="Describe what this product does and its purpose"
-                persistent-hint
-                class="mb-4"
-              ></v-textarea>
-
-              <!-- Core Features -->
-              <v-textarea
-                v-model="productForm.coreFeatures"
-                hint="Main functionality and capabilities of this product"
-                persistent-hint
-                variant="outlined"
-                density="comfortable"
-                rows="4"
-                auto-grow
-                class="mb-4"
-              >
-                <template #label>
-                  <span>Core Product Features</span>
-                </template>
-              </v-textarea>
-            </v-window-item>
-
-            <!-- Vision Documents Tab -->
-            <v-window-item value="vision">
-              <div class="text-subtitle-1 mb-1">Vision Documents</div>
-              <div class="text-caption text-warning mb-4">
+              <!-- Vision Documents Section -->
+              <div class="text-subtitle-2 mt-2 mb-1">Vision Documents</div>
+              <div class="text-caption text-medium-emphasis mb-4">
                 Optionally included as context source by orchestrator.
                 <v-chip size="x-small" color="success" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
               </div>
@@ -293,9 +269,17 @@
                 </v-alert>
               </div>
 
+              <!-- Mode Selection -->
+              <div class="text-subtitle-2 mt-6 mb-2">How would you like to set up this product?</div>
+              <v-radio-group v-model="setupMode" hide-details class="mb-4">
+                <v-radio label="I'll fill in the details manually" value="manual" />
+                <v-radio label="I want my AI coding agent to analyze & fill" value="ai"
+                         :disabled="!isEdit || existingVisionDocuments.length === 0" />
+              </v-radio-group>
+
               <!-- Vision Analysis Prompt Banner (Handover 0842d) -->
               <v-alert
-                v-if="isEdit && existingVisionDocuments.length > 0 && !analysisBannerDismissed"
+                v-if="setupMode === 'ai' && isEdit && existingVisionDocuments.length > 0 && !analysisBannerDismissed"
                 type="info"
                 variant="tonal"
                 class="mt-4 mb-4"
@@ -334,6 +318,7 @@
 
               <!-- Custom Extraction Instructions (Handover 0842d) -->
               <v-textarea
+                v-if="setupMode === 'ai'"
                 v-model="productForm.extractionCustomInstructions"
                 label="Custom extraction instructions"
                 placeholder="Optional. Add domain-specific instructions for AI document analysis (e.g., 'This is a mobile-first app targeting iOS 17+')"
@@ -343,6 +328,41 @@
                 class="mt-4"
                 persistent-placeholder
               ></v-textarea>
+            </v-window-item>
+
+            <!-- Product Info Tab -->
+            <v-window-item value="info">
+              <div class="text-subtitle-1 mb-1">Product Information</div>
+              <div class="text-caption text-warning mb-4">Always used as context source by orchestrator.</div>
+
+              <!-- Description -->
+              <v-textarea
+                v-model="productForm.description"
+                label="Product Description"
+                variant="outlined"
+                density="comfortable"
+                rows="6"
+                auto-grow
+                hint="Describe what this product does and its purpose"
+                persistent-hint
+                class="mb-4"
+              ></v-textarea>
+
+              <!-- Core Features -->
+              <v-textarea
+                v-model="productForm.coreFeatures"
+                hint="Main functionality and capabilities of this product"
+                persistent-hint
+                variant="outlined"
+                density="comfortable"
+                rows="4"
+                auto-grow
+                class="mb-4"
+              >
+                <template #label>
+                  <span>Core Product Features</span>
+                </template>
+              </v-textarea>
             </v-window-item>
 
             <!-- Tech Stack Tab -->
@@ -736,12 +756,16 @@ const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'remove-vision'
 const saving = ref(false)
 const formValid = ref(false)
 const formRef = ref(null)
-const dialogTab = ref('basic')
+const dialogTab = ref('setup')
 const visionFiles = ref([])
 
 // Vision analysis prompt state (Handover 0842d)
 const analysisBannerDismissed = ref(false)
 const analysisPromptCopied = ref(false)
+
+// Setup mode and analysis state (Handover 0842i)
+const setupMode = ref('manual')
+const analysisInProgress = ref(false)
 
 // Product form data
 const productForm = ref({
@@ -814,7 +838,7 @@ const testingStrategies = [
 ]
 
 // Tab navigation
-const tabOrder = ['basic', 'vision', 'tech', 'arch', 'features']
+const tabOrder = ['setup', 'info', 'tech', 'arch', 'features']
 const isFirstTab = computed(() => tabOrder.indexOf(dialogTab.value) === 0)
 const isLastTab = computed(() => tabOrder.indexOf(dialogTab.value) === tabOrder.length - 1)
 
@@ -910,6 +934,7 @@ async function stageAnalysis() {
   try {
     await navigator.clipboard.writeText(prompt)
     analysisPromptCopied.value = true
+    analysisInProgress.value = true
     setTimeout(() => { analysisPromptCopied.value = false }, 3000)
   } catch {
     // Fallback: clipboard API unavailable in insecure contexts
@@ -1024,10 +1049,12 @@ watch(
   (newVal) => {
     if (newVal) {
       // Dialog opening — reset local state only (upload progress is owned by parent)
-      dialogTab.value = 'basic'
+      dialogTab.value = 'setup'
       visionFiles.value = []
       saving.value = false
       analysisBannerDismissed.value = false
+      setupMode.value = 'manual'
+      analysisInProgress.value = false
       loadProductData()
     }
   },
@@ -1043,6 +1070,13 @@ watch(
   },
   { deep: true },
 )
+
+// Reset analysis lock when switching back to manual mode (Handover 0842i)
+watch(setupMode, (newMode) => {
+  if (newMode === 'manual') {
+    analysisInProgress.value = false
+  }
+})
 </script>
 
 <style scoped>
