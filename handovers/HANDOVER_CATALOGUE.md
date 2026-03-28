@@ -32,6 +32,7 @@
 | 0841 | Slash Command Optimization (/gil_add) | Not Started | Low | Rewrite /gil_add from 343 lines (~3,500 tokens) to ~40 lines (~500 tokens). Keep local, remove verbose templates. |
 | 0842g | Per-Document AI Summary Badges | Not Started | Medium | Add AI summary badge row to vision doc cards (wireframe fidelity). Needs API extension. Follow-up to 0842d deviation. |
 | 0842h | Frontend Tests — Tuning Icon & Vision Analysis Banner | Not Started | Medium | 11 Vitest component tests for 0842d features. Follow-up to 0842d deviation (agent missed existing test framework). |
+| 0842i | Product Setup Wizard — Vision-First Flow Redesign | Not Started | High | Restructure wizard: merge vision upload into Tab 1, add manual/AI mode choice, tab locking during analysis. Single-file change (ProductForm.vue). |
 
 ### Deferred (Still in Root Folder)
 
