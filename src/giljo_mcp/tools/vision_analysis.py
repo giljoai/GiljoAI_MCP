@@ -171,16 +171,25 @@ async def gil_get_vision_doc(
             # Fallback: document exists but hasn't been chunked yet — use raw content
             logger.warning("No chunks found for product %s, falling back to raw document", product_id)
             raw_content = "\n\n".join(doc.vision_document or "" for doc in active_docs if doc.vision_document)
-            chunk_list = [{"chunk_order": 1, "content": raw_content, "token_count": len(raw_content.split())}]
+            raw_chunks = [raw_content]
         else:
-            chunk_list = [
-                {
-                    "chunk_order": c.chunk_order or i + 1,
-                    "content": c.content,
-                    "token_count": c.token_count or len(c.content.split()),
-                }
-                for i, c in enumerate(all_chunks)
-            ]
+            raw_chunks = [c.content for c in all_chunks]
+
+        # Sub-split any chunks >25K chars so each fits within MCP tool output limits
+        max_chars = 25000
+        chunk_list = []
+        for raw in raw_chunks:
+            if len(raw) <= max_chars:
+                chunk_list.append(raw)
+            else:
+                # Split on paragraph boundaries where possible
+                for i in range(0, len(raw), max_chars):
+                    segment = raw[i : i + max_chars]
+                    chunk_list.append(segment)
+
+        chunk_list = [
+            {"chunk_order": i + 1, "content": c, "token_count": len(c.split())} for i, c in enumerate(chunk_list)
+        ]
 
         total_chunks = len(chunk_list)
         total_tokens = sum(c["token_count"] for c in chunk_list)
