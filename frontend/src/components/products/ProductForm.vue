@@ -267,63 +267,67 @@
 
               <!-- Mode Selection -->
               <div class="text-subtitle-2 mt-6 mb-2">How would you like to set up this product?</div>
-              <v-radio-group v-model="setupMode" hide-details class="mb-4">
-                <v-radio label="I'll fill in the details manually" value="manual" />
-                <v-radio label="I want my AI coding agent to analyze & fill" value="ai"
-                         :disabled="existingVisionDocuments.length === 0 && (!visionFiles || visionFiles.length === 0)" />
-              </v-radio-group>
-
-              <!-- Vision Analysis Prompt Banner (Handover 0842d) -->
-              <v-alert
-                v-if="setupMode === 'ai' && (existingVisionDocuments.length > 0 || (visionFiles && visionFiles.length > 0)) && !analysisBannerDismissed"
-                type="info"
-                variant="tonal"
-                class="mt-4 mb-4"
-                :icon="false"
-              >
-                <div class="d-flex align-center mb-2">
-                  <v-icon class="mr-2">mdi-robot</v-icon>
-                  <span class="text-subtitle-2">Want AI to analyze this document?</span>
-                </div>
-                <div class="text-body-2 mb-3">
-                  Your AI coding agent will read the document and populate your product configuration fields
-                  (tech stack, architecture, testing, etc.) plus generate improved summaries.
-                </div>
-                <div class="d-flex ga-2 mb-2">
+              <v-radio-group v-model="setupMode" hide-details class="mb-2">
+                <v-radio label="Manually define product" value="manual" />
+                <div class="d-flex align-center">
+                  <v-radio label="Use AI coding agent" value="ai"
+                           :disabled="existingVisionDocuments.length === 0 && (!visionFiles || visionFiles.length === 0)" />
                   <v-btn
+                    v-if="setupMode === 'ai' && !analysisBannerDismissed"
                     color="primary"
                     variant="flat"
                     size="small"
+                    class="ml-2"
                     :prepend-icon="analysisPromptCopied ? 'mdi-check' : 'mdi-content-copy'"
                     @click="stageAnalysis"
                   >
                     {{ analysisPromptCopied ? 'Prompt Copied!' : 'Stage Analysis' }}
                   </v-btn>
-                  <v-btn
-                    variant="text"
-                    size="small"
-                    @click="analysisBannerDismissed = true"
-                  >
-                    No Thanks
-                  </v-btn>
                 </div>
-                <div class="text-caption text-medium-emphasis">
+              </v-radio-group>
+
+              <!-- Vision Analysis Info (below radio) -->
+              <v-alert
+                v-if="setupMode === 'ai' && (existingVisionDocuments.length > 0 || (visionFiles && visionFiles.length > 0)) && !analysisBannerDismissed"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mt-2 mb-2"
+                :icon="false"
+              >
+                <div class="d-flex align-center mb-1">
+                  <img src="/Giljo_gray_Face.svg" alt="GiljoAI" class="mr-2" style="width: 20px; height: 20px; opacity: 0.8;" />
+                  <span class="text-subtitle-2">Want AI to analyze this document?</span>
+                </div>
+                <div class="text-body-2">
+                  Your AI coding agent will read the document and populate your product configuration fields
+                  (tech stack, architecture, testing, etc.) plus generate improved summaries.
+                </div>
+                <div class="text-caption text-medium-emphasis mt-1">
                   Requires a connected AI coding agent (Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool).
                 </div>
               </v-alert>
 
-              <!-- Custom Extraction Instructions (Handover 0842d) -->
-              <v-textarea
-                v-if="setupMode === 'ai'"
-                v-model="productForm.extractionCustomInstructions"
-                label="Custom extraction instructions"
-                placeholder="Optional. Add domain-specific instructions for AI document analysis (e.g., 'This is a mobile-first app targeting iOS 17+')"
-                variant="outlined"
-                rows="3"
-                auto-grow
-                class="mt-4"
-                persistent-placeholder
-              ></v-textarea>
+              <!-- Custom Extraction Instructions (expandable) -->
+              <v-expansion-panels v-if="setupMode === 'ai'" variant="accordion" class="mt-2">
+                <v-expansion-panel>
+                  <v-expansion-panel-title class="text-body-2 py-2" style="min-height: 40px;">
+                    Custom extraction instructions (optional)
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <v-textarea
+                      v-model="productForm.extractionCustomInstructions"
+                      placeholder="Add domain-specific instructions for AI document analysis (e.g., 'This is a mobile-first app targeting iOS 17+')"
+                      variant="outlined"
+                      density="compact"
+                      rows="2"
+                      auto-grow
+                      hide-details
+                      persistent-placeholder
+                    ></v-textarea>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
             </v-window-item>
 
             <!-- Product Info Tab -->
