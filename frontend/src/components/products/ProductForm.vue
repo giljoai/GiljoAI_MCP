@@ -119,19 +119,6 @@
                 class="mb-4 mt-2"
               ></v-text-field>
 
-              <!-- Codebase Folder -->
-              <v-text-field
-                v-model="productForm.projectPath"
-                label="Codebase Folder (optional)"
-                variant="outlined"
-                density="comfortable"
-                placeholder="e.g., F:\Projects\MyApp or /home/user/myapp"
-                prepend-icon="mdi-folder-outline"
-                hint="Your local codebase path"
-                persistent-hint
-                class="mb-4"
-              ></v-text-field>
-
               <!-- Vision Documents Section -->
               <div class="text-subtitle-2 mt-2 mb-1">Vision Documents</div>
               <div class="text-caption text-medium-emphasis mb-4">
@@ -334,6 +321,19 @@
             <v-window-item value="info">
               <div class="text-subtitle-1 mb-1">Product Information</div>
               <div class="text-caption text-warning mb-4">Always used as context source by orchestrator.</div>
+
+              <!-- Codebase Folder -->
+              <v-text-field
+                v-model="productForm.projectPath"
+                label="Codebase Folder (optional)"
+                variant="outlined"
+                density="comfortable"
+                placeholder="e.g., F:\Projects\MyApp or /home/user/myapp"
+                prepend-icon="mdi-folder-outline"
+                hint="Your local codebase path"
+                persistent-hint
+                class="mb-4"
+              ></v-text-field>
 
               <!-- Description -->
               <v-textarea
