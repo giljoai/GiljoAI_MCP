@@ -290,8 +290,8 @@
                   Your AI coding agent will read the document and populate your product configuration fields
                   (tech stack, architecture, testing, etc.) plus generate improved summaries.
                 </div>
-                <div class="text-caption text-medium-emphasis mt-1">
-                  Requires a connected AI coding agent (Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool).
+                <div class="text-caption text-medium-emphasis mt-1 text-center">
+                  Uses your AI coding agent (Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool).
                 </div>
               </v-alert>
 
