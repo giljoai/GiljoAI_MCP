@@ -39,6 +39,7 @@ RULES:
 - Do NOT guess, invent, or infer information not present
 - Keep descriptions concise and factual, not promotional
 - product_description should be 2-3 sentences maximum
+- testing_strategy MUST be one of: TDD, BDD, Integration-First, E2E-First, Manual, Hybrid
 - For summaries: preserve technical specs, architecture decisions, and constraints
 - For summaries: remove marketing prose, user personas, and storytelling
 
