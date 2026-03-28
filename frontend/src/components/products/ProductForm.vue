@@ -222,14 +222,7 @@
 
               <!-- File List -->
               <div v-if="visionFiles && visionFiles.length > 0">
-                <div class="text-subtitle-2 mb-2 d-flex align-center">
-                  Files to Upload ({{ visionFiles.length }})
-                  <v-tooltip text="Files will be auto-chunked for context (25K token limit)" location="top">
-                    <template v-slot:activator="{ props }">
-                      <v-icon v-bind="props" size="16" class="ml-1 text-medium-emphasis">mdi-information-outline</v-icon>
-                    </template>
-                  </v-tooltip>
-                </div>
+                <div class="text-subtitle-2 mb-2">Files to Upload ({{ visionFiles.length }})</div>
 
                 <v-list density="compact" class="mb-3">
                   <v-list-item
