@@ -115,11 +115,11 @@ async def test_e2e_full_analysis_flow(
 
     assert get_result["product_id"] == product.id
     assert get_result["product_name"] == "E2E Test Product"
-    assert "mobile-first platform" in get_result["document_content"]
-    assert get_result["document_tokens"] > 0
+    all_content = " ".join(c["content"] for c in get_result["chunks"])
+    assert "mobile-first platform" in all_content
+    assert get_result["total_tokens"] > 0
     assert get_result["write_tool"] == "gil_write_product"
     assert "extraction_instructions" in get_result
-    assert "{document_content}" not in get_result["extraction_instructions"]
 
     # Step 2: Write fields spanning all 4 tables plus summaries
     mock_ws = AsyncMock()
@@ -508,5 +508,7 @@ async def test_e2e_custom_instructions(
     assert "{custom_instructions}" not in result_without["extraction_instructions"]
 
     # Step 3: Verify document content is still present in both cases
-    assert "mobile-first platform" in result_with["document_content"]
-    assert "mobile-first platform" in result_without["document_content"]
+    content_with = " ".join(c["content"] for c in result_with["chunks"])
+    content_without = " ".join(c["content"] for c in result_without["chunks"])
+    assert "mobile-first platform" in content_with
+    assert "mobile-first platform" in content_without
