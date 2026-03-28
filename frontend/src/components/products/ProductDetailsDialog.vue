@@ -691,8 +691,7 @@ async function regenerateConsolidation() {
     // Parent component should handle the refresh via event or refetch
     emit('refresh-product')
 
-    // Show success notification (parent component should implement this)
-    console.log('Consolidated summaries regenerated successfully')
+    // Success — parent refreshes via the refresh-product event above
   } catch (error) {
     console.error('Failed to regenerate summaries:', error)
     const message = error.response?.data?.detail || 'Failed to regenerate summaries'

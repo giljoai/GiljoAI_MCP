@@ -257,10 +257,6 @@ code {
   gap: 8px;
 }
 
-.gap-3 {
-  gap: 12px;
-}
-
 .manual-downloads-title {
   padding: 8px 0 !important;
   min-height: unset !important;
