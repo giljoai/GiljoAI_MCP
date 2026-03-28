@@ -115,11 +115,19 @@ async def test_e2e_full_analysis_flow(
 
     assert get_result["product_id"] == product.id
     assert get_result["product_name"] == "E2E Test Product"
-    all_content = " ".join(c["content"] for c in get_result["chunks"])
-    assert "mobile-first platform" in all_content
+    assert get_result["total_chunks"] >= 1
     assert get_result["total_tokens"] > 0
     assert get_result["write_tool"] == "gil_write_product"
     assert "extraction_instructions" in get_result
+
+    # Request chunk 1 for content verification
+    chunk1 = await gil_get_vision_doc(
+        product_id=product.id,
+        tenant_key=tenant_key,
+        chunk=1,
+        _test_session=db_session,
+    )
+    assert "mobile-first platform" in chunk1["content"]
 
     # Step 2: Write fields spanning all 4 tables plus summaries
     mock_ws = AsyncMock()
@@ -507,8 +515,12 @@ async def test_e2e_custom_instructions(
     # The placeholder should be replaced with empty string, not left as a template variable
     assert "{custom_instructions}" not in result_without["extraction_instructions"]
 
-    # Step 3: Verify document content is still present in both cases
-    content_with = " ".join(c["content"] for c in result_with["chunks"])
-    content_without = " ".join(c["content"] for c in result_without["chunks"])
-    assert "mobile-first platform" in content_with
-    assert "mobile-first platform" in content_without
+    # Step 3: Verify document content is still present in both cases (via chunk=1)
+    chunk_with = await gil_get_vision_doc(
+        product_id=product.id, tenant_key=tenant_key, chunk=1, _test_session=db_session,
+    )
+    chunk_without = await gil_get_vision_doc(
+        product_id=product.id, tenant_key=tenant_key, chunk=1, _test_session=db_session,
+    )
+    assert "mobile-first platform" in chunk_with["content"]
+    assert "mobile-first platform" in chunk_without["content"]
