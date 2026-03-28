@@ -184,11 +184,13 @@ async def test_get_vision_doc_happy_path(
 
     assert result["product_id"] == product_a.id
     assert result["product_name"] == "Test Product A"
-    assert "vision document content" in result["document_content"]
-    assert result["document_tokens"] > 0
+    assert result["total_chunks"] >= 1
+    assert result["total_tokens"] > 0
+    # Content is in chunks (fallback to raw if not chunked)
+    all_content = " ".join(c["content"] for c in result["chunks"])
+    assert "vision document content" in all_content
     assert result["write_tool"] == "gil_write_product"
     assert "extraction_instructions" in result
-    assert "{document_content}" not in result["extraction_instructions"]
     assert "{custom_instructions}" not in result["extraction_instructions"]
 
 
