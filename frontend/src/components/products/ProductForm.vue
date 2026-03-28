@@ -274,12 +274,12 @@
               <v-radio-group v-model="setupMode" hide-details class="mb-4">
                 <v-radio label="I'll fill in the details manually" value="manual" />
                 <v-radio label="I want my AI coding agent to analyze & fill" value="ai"
-                         :disabled="!isEdit || existingVisionDocuments.length === 0" />
+                         :disabled="existingVisionDocuments.length === 0 && (!visionFiles || visionFiles.length === 0)" />
               </v-radio-group>
 
               <!-- Vision Analysis Prompt Banner (Handover 0842d) -->
               <v-alert
-                v-if="setupMode === 'ai' && isEdit && existingVisionDocuments.length > 0 && !analysisBannerDismissed"
+                v-if="setupMode === 'ai' && (existingVisionDocuments.length > 0 || (visionFiles && visionFiles.length > 0)) && !analysisBannerDismissed"
                 type="info"
                 variant="tonal"
                 class="mt-4 mb-4"
