@@ -215,7 +215,7 @@
                 show-size
                 clearable
                 prepend-icon="mdi-folder-open"
-                hint="Select multiple files (Ctrl/Cmd + Click)"
+                hint="Upload product file(s), requirements, proposals, specifications (.md, .txt files)"
                 persistent-hint
                 class="mb-3"
               ></v-file-input>
