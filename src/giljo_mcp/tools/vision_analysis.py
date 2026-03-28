@@ -102,25 +102,25 @@ async def _session_scope(
 async def gil_get_vision_doc(
     product_id: str,
     tenant_key: str,
+    chunk: int | None = None,
     db_manager: DatabaseManager | None = None,
     _test_session: AsyncSession | None = None,
 ) -> dict[str, Any]:
     """
-    Retrieve vision document content as pre-chunked sections with extraction instructions.
+    Retrieve vision document content as paginated chunks with extraction instructions.
 
-    Returns pre-processed chunks from mcp_context_index (created during upload)
-    instead of the raw document blob. This keeps each chunk within token limits
-    and avoids exceeding MCP tool output size constraints.
+    Call with no chunk parameter to get metadata (total_chunks, extraction_instructions).
+    Then call with chunk=1, chunk=2, etc. to retrieve each chunk's content.
 
     Args:
         product_id: Target product UUID
         tenant_key: Tenant isolation key
+        chunk: 1-based chunk number to retrieve. Omit for metadata only.
         db_manager: Injected by ToolAccessor
 
     Returns:
-        Dict with chunks (list of {chunk_order, content, token_count}),
-        total_chunks, total_tokens, extraction_instructions,
-        write_tool, product_id, and product_name
+        Without chunk param: metadata (total_chunks, total_tokens, extraction_instructions, etc.)
+        With chunk param: single chunk content + metadata
 
     Raises:
         ResourceNotFoundError: If product not found or has no vision documents
@@ -165,37 +165,54 @@ async def gil_get_vision_doc(
             .order_by(MCPContextIndex.vision_document_id, MCPContextIndex.chunk_order)
         )
         chunk_result = await session.execute(chunk_stmt)
-        chunks = chunk_result.scalars().all()
+        all_chunks = chunk_result.scalars().all()
 
-        if not chunks:
+        if not all_chunks:
             # Fallback: document exists but hasn't been chunked yet — use raw content
             logger.warning("No chunks found for product %s, falling back to raw document", product_id)
             raw_content = "\n\n".join(doc.vision_document or "" for doc in active_docs if doc.vision_document)
             chunk_list = [{"chunk_order": 1, "content": raw_content, "token_count": len(raw_content.split())}]
-            total_tokens = chunk_list[0]["token_count"]
         else:
             chunk_list = [
                 {
-                    "chunk_order": chunk.chunk_order or i + 1,
-                    "content": chunk.content,
-                    "token_count": chunk.token_count or len(chunk.content.split()),
+                    "chunk_order": c.chunk_order or i + 1,
+                    "content": c.content,
+                    "token_count": c.token_count or len(c.content.split()),
                 }
-                for i, chunk in enumerate(chunks)
+                for i, c in enumerate(all_chunks)
             ]
-            total_tokens = sum(c["token_count"] for c in chunk_list)
+
+        total_chunks = len(chunk_list)
+        total_tokens = sum(c["token_count"] for c in chunk_list)
 
         custom_instructions = product.extraction_custom_instructions or ""
         extraction_instructions = VISION_EXTRACTION_PROMPT.replace("{custom_instructions}", custom_instructions)
 
-        return {
-            "chunks": chunk_list,
-            "total_chunks": len(chunk_list),
+        base = {
+            "total_chunks": total_chunks,
             "total_tokens": total_tokens,
             "extraction_instructions": extraction_instructions,
             "write_tool": "gil_write_product",
             "product_id": product_id,
             "product_name": product.name,
         }
+
+        if chunk is not None:
+            # Return a single chunk
+            if chunk < 1 or chunk > total_chunks:
+                raise ResourceNotFoundError(
+                    f"Chunk {chunk} not found (valid range: 1-{total_chunks})",
+                    context={"product_id": product_id, "chunk": chunk, "total_chunks": total_chunks},
+                )
+            selected = chunk_list[chunk - 1]
+            base["chunk"] = chunk
+            base["content"] = selected["content"]
+            base["chunk_token_count"] = selected["token_count"]
+        else:
+            # Metadata only — no content, agent should request chunks individually
+            base["usage"] = f"Call again with chunk=1 through chunk={total_chunks} to retrieve content"
+
+        return base
 
 
 async def gil_write_product(
