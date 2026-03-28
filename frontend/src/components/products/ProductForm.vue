@@ -139,10 +139,6 @@
                 <v-chip size="x-small" color="success" variant="tonal" class="ml-2">Activated in Context Manager</v-chip>
               </div>
 
-              <!-- Project path display -->
-              <div v-if="productForm.projectPath" class="project-path-hint mb-4">
-                Your configured project path: <code class="text-warning">{{ productForm.projectPath }}</code>
-              </div>
 
               <!-- Upload error alert -->
               <v-alert
@@ -1080,11 +1076,6 @@ watch(setupMode, (newMode) => {
 </script>
 
 <style scoped>
-.project-path-hint {
-  font-size: 1.125rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
 /* Card uses darker background color for layered effect */
 /* Header and footer inherit this dark background, content area is lighter */
 .product-form-card {
