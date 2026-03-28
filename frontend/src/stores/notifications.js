@@ -47,7 +47,7 @@ export const useNotificationStore = defineStore('notifications', () => {
   // Actions
   function addNotification(notification) {
     const newNotification = {
-      id: notification.id || crypto.randomUUID(),
+      id: notification.id || (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`),
       type: notification.type,
       title: notification.title,
       message: notification.message,
