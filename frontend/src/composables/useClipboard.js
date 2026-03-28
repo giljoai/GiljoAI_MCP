@@ -1,6 +1,10 @@
 /**
  * Clipboard Composable
- * Provides clipboard operations with fallback for unsupported browsers
+ * Provides clipboard operations with fallback for unsupported browsers.
+ *
+ * Works on all access modes: localhost, LAN IP, WAN IP, DNS, HTTP, HTTPS.
+ * Uses navigator.clipboard.writeText on secure contexts, falls back to
+ * synchronous document.execCommand('copy') on non-secure contexts.
  */
 
 import { ref } from 'vue'
@@ -19,7 +23,7 @@ export function useClipboard() {
     error.value = null
 
     try {
-      // Primary method: Clipboard API
+      // Primary method: Clipboard API (secure contexts)
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text)
         copied.value = true
@@ -27,7 +31,7 @@ export function useClipboard() {
         return true
       }
 
-      // Fallback method: Textarea copy
+      // Fallback method: Textarea copy (non-secure contexts)
       return fallbackCopy(text)
     } catch (err) {
       console.warn('[Clipboard] Primary method failed, using fallback:', err)
@@ -36,7 +40,8 @@ export function useClipboard() {
   }
 
   /**
-   * Fallback copy method using textarea element
+   * Fallback copy method using textarea element and execCommand.
+   * Works on all origins when called within a user gesture.
    * @param {string} text - Text to copy
    * @returns {boolean} - Success status
    */
@@ -44,15 +49,22 @@ export function useClipboard() {
     try {
       const textarea = document.createElement('textarea')
       textarea.value = text
+      textarea.setAttribute('readonly', '')
       textarea.style.position = 'fixed'
-      textarea.style.left = '-999999px'
-      textarea.style.top = '-999999px'
-      document.body.appendChild(textarea)
+      textarea.style.left = '-9999px'
+      textarea.style.top = '-9999px'
+      textarea.style.opacity = '0'
+
+      // Append inside the active Vuetify dialog/overlay if one exists,
+      // otherwise document.body. Vuetify dialogs with retain-focus steal
+      // focus from elements outside the dialog, breaking execCommand('copy').
+      const container = document.querySelector('.v-overlay--active .v-overlay__content') || document.body
+      container.appendChild(textarea)
       textarea.focus()
       textarea.select()
 
       const successful = document.execCommand('copy')
-      document.body.removeChild(textarea)
+      container.removeChild(textarea)
 
       if (successful) {
         copied.value = true
