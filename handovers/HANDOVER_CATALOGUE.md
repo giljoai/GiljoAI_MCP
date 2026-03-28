@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-j COMPLETE.** 0842g+0842h NOT STARTED. **0855a-g NOT STARTED.** |
+| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0855a-g NOT STARTED.** |
 
 ---
 
@@ -55,6 +55,7 @@
 | 0842f | Agent Lab — Chain Strategy Template Download | 2026-03-27 | COMPLETE (`a5a4c8e7`) — Chapter 3 in Agent Lab dialog, downloadable 220-line tool-agnostic chain strategy template. |
 | 0842i | Product Setup Wizard — Vision-First Flow Redesign | 2026-03-27 | COMPLETE (`d07a968c`) — Vision doc upload merged into Tab 1, manual/AI mode radio, tab locking during analysis, progress indicator. Single-file change. |
 | 0842j | Clipboard Copy Fix — All Origins + Dialog Compat | 2026-03-28 | COMPLETE — Fixed useClipboard composable: execCommand fallback appended textarea to document.body but Vuetify retain-focus stole focus. Fix: append inside active overlay. Works on localhost, LAN IP, WAN IP, HTTPS. Also fixed isEdit wizard flip and 404 ghost product deletes. |
+| 0842k | Paginated Vision Doc Chunk Delivery | 2026-03-28 | COMPLETE — gil_get_vision_doc now serves pre-chunked content from mcp_context_index one chunk at a time (pagination via `chunk` param). Dropped response from 289K→metadata-only. Also: testing_strategy enum, crypto.randomUUID fallback, WebSocket UI unlock, green toast. |
 | 0837 | Project Creation Taxonomy Fix (a-d) | 2026-03-25 | COMPLETE — Auto-assign series_number, type resolution by label, slash command updates, constraint audit. All 4 sub-handovers done. |
 | 0839 | Dashboard Analytics Redesign | 2026-03-25 | COMPLETE (`6ce7ece4`) — Product-aware dashboard with product selector, donut charts (status/taxonomy/agent roles), categorized stat rows. chart.js + vue-chartjs. |
 | 0838 | Multi-Platform Subagent Mode (Codex + Gemini) | 2026-03-25 | COMPLETE (`a0b320d6`) — Codex CLI and Gemini CLI subagent modes in staging page, platform-specific spawning syntax, project list UX polish. |
