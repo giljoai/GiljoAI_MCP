@@ -338,6 +338,7 @@ class VisionDocumentChunker:
             error_msg = f"No chunks generated for document {vision_document_id}"
             logger.warning(error_msg)
             return {
+                "success": True,
                 "document_id": vision_document_id,
                 "document_name": doc.document_name,
                 "chunks_created": 0,
@@ -373,6 +374,7 @@ class VisionDocumentChunker:
         )
 
         return {
+            "success": True,
             "document_id": vision_document_id,
             "document_name": doc.document_name,
             "chunks_created": len(chunks),
