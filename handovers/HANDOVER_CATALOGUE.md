@@ -30,11 +30,9 @@
 | ID | Title | Status | Priority | Notes |
 |----|-------|--------|----------|-------|
 | 0841 | Slash Command Optimization (/gil_add) | Not Started | Low | Rewrite /gil_add from 343 lines (~3,500 tokens) to ~40 lines (~500 tokens). Keep local, remove verbose templates. |
-| 0842a | Vision Doc Analysis — DB Migration & Sumy Wiring | Not Started | High | New `vision_document_summaries` table + `extraction_custom_instructions` column. Wire Sumy output to new table. |
-| 0842b | Vision Doc Analysis — Context Manager Summary Reads | Not Started | High | Context Manager reads from new summaries table, AI preferred over Sumy. Depends on 0842a. |
-| 0842c | Vision Doc Analysis — MCP Tools & Extraction Prompt | Not Started | High | `gil_get_vision_doc` + `gil_write_product` MCP tools + baked extraction prompt. Depends on 0842a. |
-| 0842d | Vision Doc Analysis — Frontend UI | Not Started | High | Analysis banner, Stage Analysis button, WebSocket notification, custom instructions textarea. Depends on 0842a+c. |
-| 0842e | Vision Doc Analysis — E2E Integration Test | Not Started | High | Full flow validation: upload → Sumy → MCP tools → Context Manager. Depends on 0842a-d. |
+| 0842f | Agent Lab — Chain Strategy Template Download | Not Started | Medium | Add Chapter 3 to Agent Lab dialog with downloadable chain strategy template (.md). Standalone. |
+| 0842g | Per-Document AI Summary Badges | Not Started | Medium | Add AI summary badge row to vision doc cards (wireframe fidelity). Needs API extension. Follow-up to 0842d deviation. |
+| 0842h | Frontend Tests — Tuning Icon & Vision Analysis Banner | Not Started | Medium | 11 Vitest component tests for 0842d features. Follow-up to 0842d deviation (agent missed existing test framework). |
 
 ### Deferred (Still in Root Folder)
 
@@ -47,6 +45,7 @@
 
 | ID | Title | Closed | How |
 |----|-------|--------|-----|
+| 0842a-e | Vision Document Analysis (5 sessions) | 2026-03-27 | COMPLETE — DB migration + Sumy wiring, Context Manager AI-preferred reads, MCP tools (gil_get_vision_doc + gil_write_product), frontend UI (tuning icon + analysis banner + custom instructions), E2E tests. 6 commits, 33 tests. Branch: feature/0842-vision-doc-analysis. |
 | 0837 | Project Creation Taxonomy Fix (a-d) | 2026-03-25 | COMPLETE — Auto-assign series_number, type resolution by label, slash command updates, constraint audit. All 4 sub-handovers done. |
 | 0839 | Dashboard Analytics Redesign | 2026-03-25 | COMPLETE (`6ce7ece4`) — Product-aware dashboard with product selector, donut charts (status/taxonomy/agent roles), categorized stat rows. chart.js + vue-chartjs. |
 | 0838 | Multi-Platform Subagent Mode (Codex + Gemini) | 2026-03-25 | COMPLETE (`a0b320d6`) — Codex CLI and Gemini CLI subagent modes in staging page, platform-specific spawning syntax, project list UX polish. |
