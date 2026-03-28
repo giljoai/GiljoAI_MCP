@@ -10,9 +10,7 @@
 import { ref } from 'vue'
 
 export function useClipboard() {
-  const isSupported = ref(!!navigator.clipboard)
   const copied = ref(false)
-  const error = ref(null)
 
   /**
    * Copy text to clipboard using Clipboard API with textarea fallback
@@ -20,8 +18,6 @@ export function useClipboard() {
    * @returns {Promise<boolean>} - Success status
    */
   const copy = async (text) => {
-    error.value = null
-
     try {
       // Primary method: Clipboard API (secure contexts)
       if (navigator.clipboard && window.isSecureContext) {
@@ -72,28 +68,15 @@ export function useClipboard() {
         return true
       }
 
-      error.value = 'Failed to copy to clipboard'
       return false
     } catch (err) {
       console.error('[Clipboard] Fallback method failed:', err)
-      error.value = err.message
       return false
     }
   }
 
-  /**
-   * Reset copied state
-   */
-  const reset = () => {
-    copied.value = false
-    error.value = null
-  }
-
   return {
-    isSupported,
     copied,
-    error,
     copy,
-    reset,
   }
 }
