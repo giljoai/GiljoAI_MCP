@@ -283,7 +283,7 @@
     <ProductForm
       v-model="showDialog"
       :product="editingProduct"
-      :is-edit="!!editingProduct"
+      :is-edit="!!editingProduct && !autoSavedForAnalysis"
       :existing-vision-documents="existingVisionDocuments"
       :auto-save-state="autoSave"
       :uploading-vision="uploadingVision"
@@ -735,12 +735,17 @@ async function confirmDelete(product) {
     const response = await api.products.getCascadeImpact(product.id)
     cascadeImpact.value = response.data
   } catch (error) {
-    console.error('Failed to get cascade impact:', error)
-    showToast({
-      message: 'Failed to load deletion impact',
-      type: 'error',
-      duration: 5000,
-    })
+    if (error?.response?.status === 404) {
+      // Product already gone from DB — let user confirm removal of ghost card
+      cascadeImpact.value = null
+    } else {
+      console.error('Failed to get cascade impact:', error)
+      showToast({
+        message: 'Failed to load deletion impact',
+        type: 'error',
+        duration: 5000,
+      })
+    }
   } finally {
     loadingCascadeImpact.value = false
   }
@@ -921,12 +926,21 @@ async function confirmDeleteProduct() {
       duration: 4000,
     })
   } catch (error) {
-    console.error('Failed to delete product:', error)
-    showToast({
-      message: 'Failed to move product to trash',
-      type: 'error',
-      duration: 5000,
-    })
+    if (error?.response?.status === 404) {
+      // Product already gone from DB (orphan card) — clean up UI
+      showDeleteDialog.value = false
+      const productName = deletingProduct.value?.name || 'Product'
+      deletingProduct.value = null
+      await loadProducts()
+      showToast({ message: `${productName} was already removed.`, type: 'info', duration: 3000 })
+    } else {
+      console.error('Failed to delete product:', error)
+      showToast({
+        message: 'Failed to move product to trash',
+        type: 'error',
+        duration: 5000,
+      })
+    }
   } finally {
     deleting.value = false
   }
@@ -947,12 +961,12 @@ async function closeDialog() {
     }
   }
 
-  // Clean up auto-saved product if user never did a real save
+  // Clean up auto-saved product if user never did a real save (404 = already gone, ignore)
   if (autoSavedForAnalysis.value) {
     try {
       await productStore.deleteProduct(autoSavedForAnalysis.value)
-    } catch (error) {
-      console.error('Failed to clean up auto-saved product:', error)
+    } catch {
+      // Silently ignore — product may already be deleted
     }
     autoSavedForAnalysis.value = null
   }
