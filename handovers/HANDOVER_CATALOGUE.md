@@ -19,7 +19,7 @@
 | 0601-0700 | Migration & Database | Complete |
 | 0700-0769 | Code Quality & Perfect Score (RESERVED) | 0700-0750 cleanup COMPLETE, 0760 proposal COMPLETE, 0765a-s sprint COMPLETE, 0766-0768 triage chains COMPLETE. **Range reserved for code quality work only.** |
 | 0770-0799 | Edition Strategy & SaaS Architecture | 0770 proposal COMPLETE, 0771 isolation architecture COMPLETE |
-| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0855a-g NOT STARTED.** |
+| 0800+ | Enhancement & Feature Series | 0800-0840j ALL COMPLETE. 0841 NOT STARTED. **0842a-f, 0842i-k COMPLETE.** 0842g+0842h NOT STARTED. **0842L AUDIT NOT STARTED.** **0855a-g NOT STARTED.** |
 
 ---
 
@@ -32,6 +32,7 @@
 | 0841 | Slash Command Optimization (/gil_add) | Not Started | Low | Rewrite /gil_add from 343 lines (~3,500 tokens) to ~40 lines (~500 tokens). Keep local, remove verbose templates. |
 | 0842g | Per-Document AI Summary Badges | Not Started | Medium | Add AI summary badge row to vision doc cards (wireframe fidelity). Needs API extension. Follow-up to 0842d deviation. |
 | 0842h | Frontend Tests — Tuning Icon & Vision Analysis Banner | Not Started | Medium | 11 Vitest component tests for 0842d features. Follow-up to 0842d deviation (agent missed existing test framework). |
+| 0842L | Post-Implementation Audit & Cleanup | Not Started | High | Quality audit of entire 0842 branch (50 files, 6860 insertions). Dead code, orphaned tests, secure-context audit, lint, WebSocket chain verification. Tests may be rewritten/deleted. Must pass before merge to master. |
 | 0855a | Setup Wizard — Backend Schema + API Endpoints | Not Started | High | User setup state columns (setup_complete, setup_selected_tools, setup_step_completed), PATCH endpoint, active API key lookup. Series: 0855a-g. |
 | 0855b | Setup Wizard — WebSocket Setup Events | Not Started | High | 3 new event types: setup:tool_connected, setup:commands_installed, setup:agents_downloaded. Parallel with 0855a. |
 | 0855c | Setup Wizard — Overlay Shell + Step 1 (Tool Selection) | Not Started | High | Full-screen overlay component, 4-step stepper, tool selection cards (Claude/Codex/Gemini). Depends on 0855a. |
