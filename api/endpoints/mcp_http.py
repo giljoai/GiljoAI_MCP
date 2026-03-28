@@ -306,6 +306,7 @@ _TOOL_SCHEMA_PARAMS: dict[str, set[str]] = {
     # Vision Document Analysis (Handover 0842c)
     "gil_get_vision_doc": {
         "product_id",
+        "chunk",
         "tenant_key",
     },
     "gil_write_product": {
@@ -951,11 +952,15 @@ def _build_vision_analysis_tools() -> list[dict[str, Any]]:
     return [
         {
             "name": "gil_get_vision_doc",
-            "description": "Retrieve a product's vision document(s) as pre-chunked sections with extraction instructions. Returns chunks (list of {chunk_order, content, token_count}), total_chunks, total_tokens, extraction_instructions, and product metadata. Read ALL chunks before calling gil_write_product.",
+            "description": "Retrieve a product's vision document with extraction instructions. Call WITHOUT chunk to get metadata (total_chunks, extraction_instructions). Then call WITH chunk=1, chunk=2, etc. to retrieve each chunk's content one at a time. Read ALL chunks before calling gil_write_product.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "product_id": {"type": "string", "description": "Product UUID to retrieve vision documents for"},
+                    "chunk": {
+                        "type": "integer",
+                        "description": "1-based chunk number to retrieve. Omit to get metadata and total_chunks count.",
+                    },
                     "tenant_key": {"type": "string", "description": "Tenant isolation key"},
                 },
                 "required": ["product_id"],

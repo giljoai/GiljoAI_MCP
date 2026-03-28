@@ -770,6 +770,7 @@ class ToolAccessor:
         self,
         product_id: str,
         tenant_key: str,
+        chunk: int | None = None,
     ) -> dict[str, Any]:
         """Retrieve vision document with extraction instructions (Handover 0842c)."""
         from giljo_mcp.tools.vision_analysis import gil_get_vision_doc as tool_func
@@ -777,6 +778,7 @@ class ToolAccessor:
         return await tool_func(
             product_id=product_id,
             tenant_key=tenant_key,
+            chunk=chunk,
             db_manager=self.db_manager,
         )
 

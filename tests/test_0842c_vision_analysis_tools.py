@@ -186,12 +186,21 @@ async def test_get_vision_doc_happy_path(
     assert result["product_name"] == "Test Product A"
     assert result["total_chunks"] >= 1
     assert result["total_tokens"] > 0
-    # Content is in chunks (fallback to raw if not chunked)
-    all_content = " ".join(c["content"] for c in result["chunks"])
-    assert "vision document content" in all_content
     assert result["write_tool"] == "gil_write_product"
     assert "extraction_instructions" in result
     assert "{custom_instructions}" not in result["extraction_instructions"]
+    # Metadata-only call should include usage hint, not content
+    assert "usage" in result
+
+    # Request chunk 1 to get actual content
+    chunk_result = await gil_get_vision_doc(
+        product_id=product_a.id,
+        tenant_key=tenant_a,
+        chunk=1,
+        _test_session=db_session,
+    )
+    assert "vision document content" in chunk_result["content"]
+    assert chunk_result["chunk"] == 1
 
 
 @pytest.mark.asyncio
