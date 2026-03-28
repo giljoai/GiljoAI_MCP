@@ -18,6 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from src.giljo_mcp.database import DatabaseManager
 from src.giljo_mcp.exceptions import ResourceNotFoundError
+from src.giljo_mcp.models.context import MCPContextIndex
 from src.giljo_mcp.models.products import (
     Product,
     ProductArchitecture,
@@ -34,7 +35,7 @@ VISION_EXTRACTION_PROMPT = """You are analyzing a product vision document for a 
 development orchestration platform. Extract structured information and generate summaries.
 
 RULES:
-- Extract ONLY information explicitly stated in the document
+- Extract ONLY information explicitly stated in the document chunks below
 - If a field cannot be determined from the document, OMIT it entirely
 - Do NOT guess, invent, or infer information not present
 - Keep descriptions concise and factual, not promotional
@@ -43,16 +44,12 @@ RULES:
 - For summaries: preserve technical specs, architecture decisions, and constraints
 - For summaries: remove marketing prose, user personas, and storytelling
 
-After reading the document, call the gil_write_product tool with all fields you were
+After reading ALL chunks, call the gil_write_product tool with all fields you were
 able to extract. Include summary_33 (concise ~33% executive summary focusing on what
 a developer needs to build this) and summary_66 (thorough ~66% technical summary
 preserving decisions, architecture, and feature descriptions).
 
-{custom_instructions}
-
-Here is the document to analyze:
-
-{document_content}"""
+{custom_instructions}"""
 
 
 # CROSS-REFERENCE: Two independent code paths write to these product fields.
@@ -109,10 +106,11 @@ async def gil_get_vision_doc(
     _test_session: AsyncSession | None = None,
 ) -> dict[str, Any]:
     """
-    Retrieve vision document content with extraction instructions.
+    Retrieve vision document content as pre-chunked sections with extraction instructions.
 
-    Validates product ownership, combines all active vision documents,
-    and builds the extraction prompt with optional custom instructions.
+    Returns pre-processed chunks from mcp_context_index (created during upload)
+    instead of the raw document blob. This keeps each chunk within token limits
+    and avoids exceeding MCP tool output size constraints.
 
     Args:
         product_id: Target product UUID
@@ -120,7 +118,8 @@ async def gil_get_vision_doc(
         db_manager: Injected by ToolAccessor
 
     Returns:
-        Dict with document_content, document_tokens, extraction_instructions,
+        Dict with chunks (list of {chunk_order, content, token_count}),
+        total_chunks, total_tokens, extraction_instructions,
         write_tool, product_id, and product_name
 
     Raises:
@@ -152,18 +151,46 @@ async def gil_get_vision_doc(
                 context={"product_id": product_id},
             )
 
-        combined_content = "\n\n".join(doc.vision_document or "" for doc in active_docs if doc.vision_document)
+        # Collect vision_document_ids for chunk lookup
+        doc_ids = [str(doc.id) for doc in active_docs]
 
-        token_count = len(combined_content.split())
+        # Query pre-chunked content from mcp_context_index, ordered by chunk_order
+        chunk_stmt = (
+            select(MCPContextIndex)
+            .where(
+                MCPContextIndex.product_id == product_id,
+                MCPContextIndex.tenant_key == tenant_key,
+                MCPContextIndex.vision_document_id.in_(doc_ids),
+            )
+            .order_by(MCPContextIndex.vision_document_id, MCPContextIndex.chunk_order)
+        )
+        chunk_result = await session.execute(chunk_stmt)
+        chunks = chunk_result.scalars().all()
+
+        if not chunks:
+            # Fallback: document exists but hasn't been chunked yet — use raw content
+            logger.warning("No chunks found for product %s, falling back to raw document", product_id)
+            raw_content = "\n\n".join(doc.vision_document or "" for doc in active_docs if doc.vision_document)
+            chunk_list = [{"chunk_order": 1, "content": raw_content, "token_count": len(raw_content.split())}]
+            total_tokens = chunk_list[0]["token_count"]
+        else:
+            chunk_list = [
+                {
+                    "chunk_order": chunk.chunk_order or i + 1,
+                    "content": chunk.content,
+                    "token_count": chunk.token_count or len(chunk.content.split()),
+                }
+                for i, chunk in enumerate(chunks)
+            ]
+            total_tokens = sum(c["token_count"] for c in chunk_list)
 
         custom_instructions = product.extraction_custom_instructions or ""
-        extraction_instructions = VISION_EXTRACTION_PROMPT.replace(
-            "{custom_instructions}", custom_instructions
-        ).replace("{document_content}", combined_content)
+        extraction_instructions = VISION_EXTRACTION_PROMPT.replace("{custom_instructions}", custom_instructions)
 
         return {
-            "document_content": combined_content,
-            "document_tokens": token_count,
+            "chunks": chunk_list,
+            "total_chunks": len(chunk_list),
+            "total_tokens": total_tokens,
             "extraction_instructions": extraction_instructions,
             "write_tool": "gil_write_product",
             "product_id": product_id,
