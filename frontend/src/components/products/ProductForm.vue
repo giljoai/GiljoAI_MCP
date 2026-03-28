@@ -296,7 +296,7 @@
                 :icon="false"
               >
                 <div class="d-flex align-center mb-1">
-                  <img src="/Giljo_gray_Face.svg" alt="GiljoAI" class="mr-2" style="width: 20px; height: 20px; opacity: 0.8;" />
+                  <img src="/Giljo_gray_Face.svg" alt="GiljoAI" class="mr-2" style="width: 40px; height: 40px; filter: brightness(0) invert(0.75);" />
                   <span class="text-subtitle-2">Want AI to analyze this document?</span>
                 </div>
                 <div class="text-body-2">
