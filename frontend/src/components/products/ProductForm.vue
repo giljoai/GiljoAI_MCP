@@ -241,6 +241,26 @@
                     </v-btn>
                   </div>
                 </v-radio-group>
+
+                <!-- Clipboard fallback — shown when browser blocks clipboard API -->
+                <v-alert
+                  v-if="promptFallbackText"
+                  type="warning"
+                  variant="tonal"
+                  density="compact"
+                  class="mt-2"
+                >
+                  <div class="text-body-2 mb-1">Clipboard unavailable — copy this prompt manually:</div>
+                  <v-textarea
+                    :model-value="promptFallbackText"
+                    variant="outlined"
+                    density="compact"
+                    rows="3"
+                    readonly
+                    hide-details
+                    @focus="$event.target.select()"
+                  />
+                </v-alert>
               </template>
 
               <!-- Vision Analysis Info (below radio) -->
@@ -735,6 +755,7 @@ const visionFiles = ref([])
 // Vision analysis prompt state (Handover 0842d)
 const analysisBannerDismissed = ref(false)
 const analysisPromptCopied = ref(false)
+const promptFallbackText = ref(null) // Shown when clipboard copy fails
 
 // Setup mode and analysis state (Handover 0842i)
 const setupMode = ref('manual')
@@ -907,11 +928,17 @@ async function stageAnalysis() {
   const productName = productForm.value.name || 'this product'
   const prompt = `Analyze the vision document for product "${productName}" and populate its configuration.\nUse the gil_get_vision_doc tool with product_id "${productId}" to read the document and extraction instructions, then call gil_write_product with the extracted fields.`
 
-  await copyToClipboard(prompt)
+  promptFallbackText.value = null
+  const didCopy = await copyToClipboard(prompt)
 
-  analysisPromptCopied.value = true
+  if (didCopy) {
+    analysisPromptCopied.value = true
+    setTimeout(() => { analysisPromptCopied.value = false }, 3000)
+  } else {
+    promptFallbackText.value = prompt
+  }
+
   analysisInProgress.value = true
-  setTimeout(() => { analysisPromptCopied.value = false }, 3000)
 
   // Start the "taking too long?" hint timer (60 seconds)
   analysisHintVisible.value = false
@@ -1048,11 +1075,12 @@ watch(
   },
 )
 
-// Also watch for product changes
+// Also watch for product changes (only reload in edit mode — during create, the
+// product prop is set by silent-save and we must not overwrite the user's form)
 watch(
   () => props.product,
   () => {
-    if (props.modelValue) {
+    if (props.modelValue && props.isEdit) {
       loadProductData()
     }
   },
