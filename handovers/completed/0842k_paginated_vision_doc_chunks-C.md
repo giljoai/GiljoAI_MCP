@@ -83,9 +83,29 @@ The `gil_write_product` tool accepted freetext for `testing_strategy`, but the U
 | `tests/test_0842c_vision_analysis_tools.py` | Updated for paginated response shape |
 | `tests/test_0842e_vision_doc_e2e.py` | Updated for paginated response shape |
 
+## Delivery-Time Sub-Splitting
+
+DB chunks are created during upload by `EnhancedChunker` at 24K **tokens** per chunk (~96K chars). This is too large for MCP tool output limits. At delivery time, `gil_get_vision_doc` sub-splits any chunk exceeding 25K **chars** into smaller segments.
+
+- **DB chunks (shown in frontend):** 2 chunks at ~62K chars each (token-budget sized for RAG/search)
+- **Delivery chunks (seen by agent):** 6 chunks at ~25K chars each (char-budget sized for MCP output)
+
+The DB data is unchanged — splitting is purely in the response assembly. This means re-uploading or re-chunking is not required.
+
+### Confirmed Test Results
+
+| Call | Result |
+|------|--------|
+| Metadata (no chunk) | `total_chunks: 6`, instructions, no content — fits inline |
+| chunk=1 | 3,058 tokens, rendered inline |
+| chunk=2 | 3,163 tokens, rendered inline |
+| chunks 3-6 | All render inline, no file overflow |
+| Agent parallel fetch | Two chunks in one round-trip — works |
+
 ## Commits
 
 - `63230b6d` — Initial chunked delivery (all chunks in one response)
 - `6bfb01c0` — WebSocket unlock, testing_strategy enum, crypto.randomUUID fallback
 - `7db49c25` — Green toast on Stage Analysis prompt copy
 - `e25ccadb` — Paginated chunk delivery (one chunk per call)
+- `ac1be36d` — Sub-split chunks >25K chars at delivery time
