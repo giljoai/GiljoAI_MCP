@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="showWizard" max-width="720">
+  <v-dialog v-model="showWizard" max-width="720" persistent>
     <template #activator="{ props }">
       <v-btn v-bind="props" color="primary" variant="flat">
         Configurator

@@ -98,6 +98,9 @@
             <v-progress-circular indeterminate size="16" width="2" class="mr-2" />
             <span class="text-body-2">Waiting for AI analysis... Paste the prompt in your coding tool.</span>
           </div>
+          <div v-if="analysisHintVisible" class="text-caption text-medium-emphasis mt-2">
+            Taking too long? Switch to "Manually define product" to continue.
+          </div>
         </v-alert>
 
         <div class="bordered-tabs-content">
@@ -150,7 +153,7 @@
               >
                 <div class="d-flex align-center mb-2">
                   <v-progress-circular indeterminate size="20" width="2" class="mr-2" />
-                  <span>Uploading vision documents...</span>
+                  <span>Uploading and processing documents...</span>
                 </div>
                 <v-progress-linear
                   :model-value="uploadProgress"
@@ -160,8 +163,8 @@
                 />
               </v-alert>
 
-              <!-- Existing Documents (Edit Mode Only) -->
-              <div v-if="isEdit && existingVisionDocuments.length > 0" class="mb-4">
+              <!-- Existing Documents (shown after upload) -->
+              <div v-if="existingVisionDocuments.length > 0" class="mb-4">
                 <div class="text-subtitle-2 mb-2">
                   Existing Documents ({{ existingVisionDocuments.length }})
                 </div>
@@ -213,62 +216,36 @@
                 prepend-icon="mdi-folder-open"
                 hint="Upload product file(s), requirements, proposals, specifications (.md, .txt files)"
                 persistent-hint
+                :disabled="!productForm.name?.trim()"
                 class="mb-3"
+                @update:model-value="onFilesAttached"
               ></v-file-input>
 
-              <!-- File List -->
-              <div v-if="visionFiles && visionFiles.length > 0">
-                <div class="text-subtitle-2 mb-2">Files to Upload ({{ visionFiles.length }})</div>
-
-                <v-list density="compact" class="mb-3">
-                  <v-list-item
-                    v-for="(file, index) in visionFiles"
-                    :key="index"
-                    class="border rounded mb-2"
-                  >
-                    <template v-slot:prepend>
-                      <v-icon color="primary">mdi-file-document</v-icon>
-                    </template>
-
-                    <v-list-item-title>{{ file.name }}</v-list-item-title>
-                    <v-list-item-subtitle>
-                      {{ formatFileSize(file.size) }}
-                    </v-list-item-subtitle>
-
-                    <template v-slot:append>
-                      <v-btn icon size="small" variant="text" @click="removeVisionFile(index)">
-                        <v-icon size="20">mdi-close</v-icon>
-                      </v-btn>
-                    </template>
-                  </v-list-item>
-                </v-list>
-
-              </div>
-
-              <!-- Mode Selection -->
-              <div class="text-subtitle-2 mt-6 mb-2">How would you like to set up this product?</div>
-              <v-radio-group v-model="setupMode" hide-details class="mb-2">
-                <v-radio label="Manually define product" value="manual" />
-                <div class="d-flex align-center">
-                  <v-radio label="Use AI coding agent" value="ai"
-                           :disabled="existingVisionDocuments.length === 0 && (!visionFiles || visionFiles.length === 0)" />
-                  <v-btn
-                    v-if="setupMode === 'ai' && !analysisBannerDismissed"
-                    color="primary"
-                    variant="flat"
-                    size="small"
-                    class="ml-2"
-                    :prepend-icon="analysisPromptCopied ? 'mdi-check' : 'mdi-content-copy'"
-                    @click="stageAnalysis"
-                  >
-                    {{ analysisPromptCopied ? 'Prompt Copied!' : 'Stage Analysis' }}
-                  </v-btn>
-                </div>
-              </v-radio-group>
+              <!-- Mode Selection (appears after vision docs are uploaded) -->
+              <template v-if="existingVisionDocuments.length > 0">
+                <div class="text-subtitle-2 mt-6 mb-2">How would you like to set up this product?</div>
+                <v-radio-group v-model="setupMode" hide-details class="mb-2">
+                  <v-radio label="Manually define product" value="manual" />
+                  <div class="d-flex align-center">
+                    <v-radio label="Use AI coding agent" value="ai" />
+                    <v-btn
+                      v-if="setupMode === 'ai'"
+                      color="primary"
+                      variant="flat"
+                      size="small"
+                      class="ml-2"
+                      :prepend-icon="analysisPromptCopied ? 'mdi-check' : 'mdi-content-copy'"
+                      @click.stop="stageAnalysis"
+                    >
+                      {{ analysisPromptCopied ? 'Prompt Copied!' : 'Stage Analysis' }}
+                    </v-btn>
+                  </div>
+                </v-radio-group>
+              </template>
 
               <!-- Vision Analysis Info (below radio) -->
               <v-alert
-                v-if="setupMode === 'ai' && (existingVisionDocuments.length > 0 || (visionFiles && visionFiles.length > 0)) && !analysisBannerDismissed"
+                v-if="setupMode === 'ai' && existingVisionDocuments.length > 0 && !analysisBannerDismissed"
                 type="info"
                 variant="tonal"
                 density="compact"
@@ -289,7 +266,7 @@
               </v-alert>
 
               <!-- Custom Extraction Instructions (expandable) -->
-              <v-expansion-panels v-if="setupMode === 'ai'" variant="accordion" class="mt-2">
+              <v-expansion-panels v-if="setupMode === 'ai' && existingVisionDocuments.length > 0" variant="accordion" class="mt-2">
                 <v-expansion-panel>
                   <v-expansion-panel-title class="text-body-2 py-2" style="min-height: 40px;">
                     Custom extraction instructions (optional)
@@ -694,7 +671,7 @@
         <v-btn
           color="primary"
           variant="flat"
-          :disabled="isEdit ? !formValid || saving : isLastTab ? !formValid || saving : saving"
+          :disabled="isEdit ? !formValid || saving : isLastTab ? !formValid || saving : saving || analysisInProgress"
           :loading="isEdit ? saving : isLastTab ? saving : false"
           @click="isEdit ? saveProduct() : isLastTab ? saveProduct() : goNextTab()"
         >
@@ -707,6 +684,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useClipboard } from '@/composables/useClipboard'
 
 const props = defineProps({
   modelValue: {
@@ -743,7 +721,9 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'remove-vision', 'clear-upload-error'])
+const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'remove-vision', 'clear-upload-error', 'upload-vision-files'])
+
+const { copy: copyToClipboard } = useClipboard()
 
 // State
 const saving = ref(false)
@@ -759,6 +739,8 @@ const analysisPromptCopied = ref(false)
 // Setup mode and analysis state (Handover 0842i)
 const setupMode = ref('manual')
 const analysisInProgress = ref(false)
+const analysisHintVisible = ref(false)
+let analysisHintTimer = null
 
 // Product form data
 const productForm = ref({
@@ -887,18 +869,14 @@ function saveProduct() {
     extraction_custom_instructions: productForm.value.extractionCustomInstructions,
   }
 
-  // Include visionFiles in save payload for parent to handle uploads
-  emit('save', { productData, visionFiles: visionFiles.value })
+  // Vision files are uploaded on attach, not on save
+  emit('save', { productData })
 
   // Note: Parent component should set saving = false after async operation completes
 }
 
 function deleteVisionDocument(doc) {
   emit('remove-vision', doc)
-}
-
-function removeVisionFile(index) {
-  visionFiles.value = visionFiles.value.filter((_, i) => i !== index)
 }
 
 function formatFileSize(bytes) {
@@ -918,21 +896,36 @@ function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString()
 }
 
-// Vision analysis prompt (Handover 0842d)
+// Vision analysis prompt — product must already be saved (UUID exists via upload-on-attach)
 async function stageAnalysis() {
+  const productId = props.product?.id
+  if (!productId) {
+    console.warn('[ProductForm] stageAnalysis called but no product ID available. product:', props.product)
+    return
+  }
+
   const productName = productForm.value.name || 'this product'
-  const productId = props.product?.id || ''
   const prompt = `Analyze the vision document for product "${productName}" and populate its configuration.\nUse the gil_get_vision_doc tool with product_id "${productId}" to read the document and extraction instructions, then call gil_write_product with the extracted fields.`
 
-  try {
-    await navigator.clipboard.writeText(prompt)
-    analysisPromptCopied.value = true
-    analysisInProgress.value = true
-    setTimeout(() => { analysisPromptCopied.value = false }, 3000)
-  } catch {
-    // Fallback: clipboard API unavailable in insecure contexts
-    analysisPromptCopied.value = false
-  }
+  await copyToClipboard(prompt)
+
+  analysisPromptCopied.value = true
+  analysisInProgress.value = true
+  setTimeout(() => { analysisPromptCopied.value = false }, 3000)
+
+  // Start the "taking too long?" hint timer (60 seconds)
+  analysisHintVisible.value = false
+  clearTimeout(analysisHintTimer)
+  analysisHintTimer = setTimeout(() => { analysisHintVisible.value = true }, 60000)
+}
+
+// Upload files immediately on attachment
+function onFilesAttached(files) {
+  if (!files || files.length === 0) return
+  if (!productForm.value.name?.trim()) return
+
+  emit('upload-vision-files', { productName: productForm.value.name, files: [...files] })
+  visionFiles.value = [] // Clear local files — parent handles upload
 }
 
 // Handover 0425: Platform selection handlers
@@ -1048,6 +1041,8 @@ watch(
       analysisBannerDismissed.value = false
       setupMode.value = 'manual'
       analysisInProgress.value = false
+      analysisHintVisible.value = false
+      clearTimeout(analysisHintTimer)
       loadProductData()
     }
   },
@@ -1068,6 +1063,8 @@ watch(
 watch(setupMode, (newMode) => {
   if (newMode === 'manual') {
     analysisInProgress.value = false
+    analysisHintVisible.value = false
+    clearTimeout(analysisHintTimer)
   }
 })
 </script>
