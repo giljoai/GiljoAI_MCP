@@ -705,6 +705,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useClipboard } from '@/composables/useClipboard'
+import { useToast } from '@/composables/useToast'
 import { useProductStore } from '@/stores/products'
 
 const props = defineProps({
@@ -745,6 +746,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'save', 'cancel', 'remove-vision', 'clear-upload-error', 'upload-vision-files'])
 
 const { copy: copyToClipboard } = useClipboard()
+const { showToast } = useToast()
 
 // State
 const saving = ref(false)
@@ -934,9 +936,11 @@ async function stageAnalysis() {
 
   if (didCopy) {
     analysisPromptCopied.value = true
+    showToast({ message: 'Analysis prompt copied — paste into your AI coding agent', type: 'success', duration: 4000 })
     setTimeout(() => { analysisPromptCopied.value = false }, 3000)
   } else {
     promptFallbackText.value = prompt
+    showToast({ message: 'Clipboard unavailable — copy the prompt manually below', type: 'warning', duration: 5000 })
   }
 
   analysisInProgress.value = true
