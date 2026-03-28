@@ -73,10 +73,30 @@ This ensures focus stays within the dialog's focus trap, and `execCommand('copy'
 
 3. **AgentExport.vue** — Consolidated duplicate clipboard implementation to use the shared composable.
 
+## Follow-up Fixes (commit `6bfb01c0`)
+
+4. **`crypto.randomUUID` crash on non-secure contexts** — `notifications.js` used `crypto.randomUUID()` which is unavailable on HTTP + non-localhost. The `vision:analysis_complete` WebSocket handler crashed in `addNotification()`, so `dispatchWindowEvent('vision-analysis-complete')` never fired and the UI stayed locked. Fixed with a `Date.now()` + `Math.random()` fallback.
+
+5. **WebSocket event wiring for analysis completion** — `ProductForm.vue` now listens for the `vision-analysis-complete` window event (dispatched by the WebSocket router when `vision:analysis_complete` arrives). On receipt, it fetches the updated product from the API, populates all form fields (tech stack, architecture, testing, etc.) with the AI-extracted data, and sets `analysisInProgress = false` to unlock the "Next" button and all tabs.
+
+6. **`testing_strategy` enum enforcement** — The `gil_write_product` MCP tool schema previously accepted freetext for `testing_strategy`, but the UI uses a dropdown with fixed values. Agents wrote long descriptive strings that didn't match any option (and hit the 50-char DB column limit). Fixed by adding `"enum": ["TDD", "BDD", "Integration-First", "E2E-First", "Manual", "Hybrid"]` to the tool schema and adding a rule to the extraction prompt listing valid values.
+
+## All Files Changed (both commits)
+
+| File | Changes |
+|------|---------|
+| `frontend/src/composables/useClipboard.js` | Append textarea inside active overlay; improved `readonly` attr and opacity |
+| `frontend/src/components/products/ProductForm.vue` | Check `copyToClipboard` return value; inline fallback textarea; product watcher skips `loadProductData()` during create; WebSocket listener for analysis completion |
+| `frontend/src/views/ProductsView.vue` | `isEdit` prop uses `&& !autoSavedForAnalysis` to preserve wizard flow; 404-safe delete |
+| `frontend/src/components/AgentExport.vue` | Replaced inline clipboard implementation with shared `useClipboard` composable |
+| `frontend/src/stores/notifications.js` | `crypto.randomUUID()` fallback for non-secure HTTP contexts |
+| `api/endpoints/mcp_http.py` | `testing_strategy` enum constraint in `gil_write_product` tool schema |
+| `src/giljo_mcp/tools/vision_analysis.py` | Added valid `testing_strategy` values to extraction prompt rules |
+
 ## Testing Notes
 
 - Verified on `localhost:7274` and `10.1.0.237:7274`
 - Stage Analysis button copies prompt with correct product UUID
 - Stage Project button still works (regression check)
 - Build passes (`vite build`)
-- No backend changes required
+- Backend restart required for MCP schema and extraction prompt changes
