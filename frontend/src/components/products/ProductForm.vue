@@ -703,8 +703,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useClipboard } from '@/composables/useClipboard'
+import { useProductStore } from '@/stores/products'
 
 const props = defineProps({
   modelValue: {
@@ -1094,6 +1095,66 @@ watch(setupMode, (newMode) => {
     analysisHintVisible.value = false
     clearTimeout(analysisHintTimer)
   }
+})
+
+// Listen for vision:analysis_complete WebSocket event to unlock the UI
+const productStore = useProductStore()
+
+async function onVisionAnalysisComplete(event) {
+  const productId = event.detail?.product_id
+  if (productId && productId === props.product?.id) {
+    analysisHintVisible.value = false
+    clearTimeout(analysisHintTimer)
+
+    // Fetch updated product with AI-populated fields from the API
+    const updated = await productStore.fetchProductById(productId)
+    if (updated) {
+      // Populate form fields from the fresh product data
+      productForm.value.name = updated.name || productForm.value.name
+      productForm.value.description = updated.description || ''
+      productForm.value.projectPath = updated.project_path || ''
+      productForm.value.targetPlatforms = updated.target_platforms || ['all']
+
+      const ts = updated.tech_stack || {}
+      productForm.value.techStack = {
+        programming_languages: ts.programming_languages || '',
+        frontend_frameworks: ts.frontend_frameworks || '',
+        backend_frameworks: ts.backend_frameworks || '',
+        databases_storage: ts.databases_storage || '',
+        infrastructure: ts.infrastructure || '',
+        dev_tools: ts.dev_tools || '',
+      }
+
+      const arch = updated.architecture || {}
+      productForm.value.architecture = {
+        primary_pattern: arch.primary_pattern || '',
+        design_patterns: arch.design_patterns || '',
+        api_style: arch.api_style || '',
+        architecture_notes: arch.architecture_notes || '',
+      }
+
+      productForm.value.coreFeatures = updated.core_features || ''
+
+      const tc = updated.test_config || {}
+      productForm.value.testConfig = {
+        quality_standards: tc.quality_standards || '',
+        test_strategy: tc.test_strategy || 'TDD',
+        coverage_target: tc.coverage_target || 80,
+        testing_frameworks: tc.testing_frameworks || '',
+      }
+    }
+
+    // Unlock the UI
+    analysisInProgress.value = false
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('vision-analysis-complete', onVisionAnalysisComplete)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('vision-analysis-complete', onVisionAnalysisComplete)
 })
 </script>
 

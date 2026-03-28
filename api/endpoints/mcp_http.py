@@ -987,7 +987,11 @@ def _build_vision_analysis_tools() -> list[dict[str, Any]]:
                     "api_style": {"type": "string", "description": "API style (REST, GraphQL, gRPC, etc.)"},
                     "architecture_notes": {"type": "string", "description": "Additional architecture notes"},
                     "quality_standards": {"type": "string", "description": "Quality standards and expectations"},
-                    "testing_strategy": {"type": "string", "description": "Testing strategy (TDD, BDD, etc.)"},
+                    "testing_strategy": {
+                        "type": "string",
+                        "enum": ["TDD", "BDD", "Integration-First", "E2E-First", "Manual", "Hybrid"],
+                        "description": "Testing strategy — must be one of the enum values",
+                    },
                     "testing_frameworks": {"type": "string", "description": "Testing frameworks used"},
                     "test_coverage_target": {"type": "integer", "description": "Test coverage target percentage"},
                     "summary_33": {"type": "string", "description": "Concise ~33% executive summary for developers"},
