@@ -69,11 +69,11 @@
             </template>
 
             <!-- Content -->
-            <v-list-item-title class="text-body-2 font-weight-medium mb-1">
+            <v-list-item-title class="text-body-1 font-weight-medium mb-1">
               {{ notification.title }}
             </v-list-item-title>
             <v-list-item-subtitle
-              :class="['text-caption', { 'message-truncated': !notification._expanded, 'text-wrap': notification._expanded }]"
+              :class="['text-body-2', { 'message-truncated': !notification._expanded, 'text-wrap': notification._expanded }]"
               @click.stop="toggleExpand(notification)"
             >
               {{ notification.message }}
