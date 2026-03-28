@@ -820,11 +820,12 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
         agent_display_name: str,
     ) -> tuple[str, Optional[str]]:
         """
-        Resolve template ID for multi-terminal mode.
+        Resolve template ID for agent job creation.
 
-        Handover 0825: In multi_terminal execution mode, look up the agent template
-        and capture its ID for later identity resolution at read time (get_agent_mission).
-        Template content is NO LONGER baked into the mission at spawn time.
+        Looks up the agent template by name and captures its ID on the AgentJob
+        for relational integrity (dashboard analytics, identity resolution).
+        In multi_terminal mode this enables read-time identity resolution;
+        in all modes it links executions to their template for accurate tracking.
 
         Args:
             session: Active database session
@@ -839,38 +840,27 @@ If you need more detail, call `mcp__giljo-mcp__get_agent_result(job_id="{predece
         """
         resolved_template_id = None
 
-        if project.execution_mode == "multi_terminal":
-            template_result = await session.execute(
-                select(AgentTemplate).where(
-                    and_(
-                        AgentTemplate.name == agent_name,
-                        AgentTemplate.tenant_key == tenant_key,
-                        AgentTemplate.is_active,
-                    )
+        template_result = await session.execute(
+            select(AgentTemplate).where(
+                and_(
+                    AgentTemplate.name == agent_name,
+                    AgentTemplate.tenant_key == tenant_key,
+                    AgentTemplate.is_active,
                 )
             )
-            template = template_result.scalar_one_or_none()
+        )
+        template = template_result.scalar_one_or_none()
 
-            if template:
-                resolved_template_id = template.id
-                self._logger.info(
-                    "[TEMPLATE_RESOLVE] Captured template_id for read-time identity resolution",
-                    extra={
-                        "agent_name": agent_name,
-                        "template_id": template.id,
-                        "execution_mode": project.execution_mode,
-                    },
-                )
-            else:
-                self._logger.warning(
-                    f"[TEMPLATE_RESOLVE] No template found for agent_name={agent_name} "
-                    f"in multi-terminal mode. Agent will have no identity context.",
-                    extra={
-                        "agent_name": agent_name,
-                        "execution_mode": project.execution_mode,
-                        "tenant_key": tenant_key,
-                    },
-                )
+        if template:
+            resolved_template_id = template.id
+            self._logger.info(
+                "[TEMPLATE_RESOLVE] Captured template_id for job",
+                extra={
+                    "agent_name": agent_name,
+                    "template_id": template.id,
+                    "execution_mode": project.execution_mode,
+                },
+            )
 
         return mission, resolved_template_id
 
