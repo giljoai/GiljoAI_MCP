@@ -201,10 +201,6 @@
               </div>
 
               <!-- File Upload Component -->
-              <div class="text-caption text-medium-emphasis mb-3">
-                Upload product requirements, proposals, specifications (.md, .txt files)
-              </div>
-
               <v-file-input
                 v-model="visionFiles"
                 accept=".txt,.md,.markdown"
