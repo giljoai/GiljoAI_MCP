@@ -118,30 +118,13 @@ import { useToast } from '@/composables/useToast'
 const { showToast } = useToast()
 
 /**
- * Copy text to clipboard. Tries Clipboard API first, falls back to textarea.
- * Both methods can fail on first click (gesture expired after async token fetches),
- * so errors are caught and re-thrown with a clear message.
+ * Copy text to clipboard using shared composable.
  */
+import { useClipboard } from '@/composables/useClipboard'
+const { copy: clipboardCopy } = useClipboard()
+
 async function copyToClipboard(text) {
-  // Try Clipboard API first
-  if (navigator.clipboard && window.isSecureContext) {
-    try {
-      await navigator.clipboard.writeText(text)
-      return true
-    } catch {
-      // Clipboard API rejected (gesture expired, no focus, permission denied) — fall through
-    }
-  }
-  // Fallback: hidden textarea + execCommand
-  const ta = document.createElement('textarea')
-  ta.value = text
-  ta.style.position = 'fixed'
-  ta.style.left = '-999999px'
-  document.body.appendChild(ta)
-  ta.focus()
-  ta.select()
-  const ok = document.execCommand('copy')
-  document.body.removeChild(ta)
+  const ok = await clipboardCopy(text)
   if (!ok) throw new Error('Clipboard copy failed — click the button again')
   return true
 }
