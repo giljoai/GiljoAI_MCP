@@ -30,7 +30,7 @@
 │  └─────────────────────┘              └──────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
            │                                         │
-           │ WebSocket/HTTP                          │ MCP JSON-RPC 2.0
+           │ WebSocket/HTTP                          │ MCP Streamable HTTP (SDK)
            ▼                                         ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              Client PC                                       │
@@ -59,7 +59,7 @@
 
 **Communication Channels**:
 - **Browser ↔ Server**: WebSocket for real-time UI updates, HTTP REST for CRUD operations
-- **Agents ↔ Server**: MCP JSON-RPC 2.0 protocol for all agent commands and messaging
+- **Agents ↔ Server**: MCP Streamable HTTP (SDK) protocol for all agent commands and messaging
 
 **Client PC** (User's Machine):
 - **Browser**: Web UI for project management, monitoring, and agent launch
