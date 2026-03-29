@@ -83,7 +83,7 @@ class UnifiedInstaller:
         self.settings.setdefault("pg_port", 5432)
         self.settings.setdefault("api_port", DEFAULT_API_PORT)
         self.settings.setdefault("dashboard_port", DEFAULT_FRONTEND_PORT)
-        self.settings.setdefault("bind", "0.0.0.0")  # v3.0: Always bind all interfaces
+        self.settings.setdefault("bind", "0.0.0.0")  # Bind address derived from install-time network choice (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
 
         # Paths
         self.install_dir = Path(self.settings["install_dir"])
@@ -809,7 +809,7 @@ class UnifiedInstaller:
                 "api_port": self.settings.get("api_port", DEFAULT_API_PORT),
                 "dashboard_port": self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT),
                 "install_dir": str(self.install_dir),
-                "bind": "0.0.0.0",
+                "bind": "0.0.0.0",  # Bind address derived from install-time network choice
                 "external_host": self.settings.get("external_host", "localhost"),
             }
 
@@ -859,7 +859,7 @@ class UnifiedInstaller:
                 "default_tenant_key": getattr(
                     self, "default_tenant_key", None
                 ),  # Pass generated tenant key (from seed_initial_data)
-                "bind": "0.0.0.0",  # v3.0: Always bind all interfaces
+                "bind": "0.0.0.0",  # Bind address derived from install-time network choice
             }
 
             # Create config manager

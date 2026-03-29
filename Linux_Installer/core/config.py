@@ -1,6 +1,6 @@
 """
 v3.0 Configuration file generation for .env and config.yaml
-Unified architecture: Always binds to 0.0.0.0, firewall controls access
+Bind address derived from install-time network choice (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
 Authentication always enabled with IP-based auto-login for localhost
 """
 
@@ -20,7 +20,7 @@ class ConfigManager:
 
     Key v3.0 principles:
     - No deployment modes (local/server/lan/wan)
-    - Always bind to 0.0.0.0 (firewall controls access)
+    - Bind address derived from install-time network choice (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
     - Database always on localhost (security principle)
     - Authentication always enabled (IP-based auto-login for 127.0.0.1)
     - deployment_context is metadata only (not a mode)
@@ -124,7 +124,7 @@ class ConfigManager:
         Generate .env file for v3.0 unified architecture.
 
         v3.0 changes:
-        - Always binds to 0.0.0.0 (no mode-based branching)
+        - Bind address derived from install-time network choice (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
         - DEPLOYMENT_CONTEXT is metadata only
         - Authentication always enabled
 
@@ -164,7 +164,7 @@ class ConfigManager:
             api_port = self.settings.get("api_port", 7272)
             frontend_port = self.settings.get("dashboard_port", 7274)
 
-            # v3.0: Always bind to 0.0.0.0 (firewall controls access)
+            # Bind address derived from install-time network choice (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
             bind_address = "0.0.0.0"
             api_url_host = "localhost"  # Default for frontend connections
             ssl_enabled = self.settings.get("ssl_enabled", False)
@@ -219,7 +219,7 @@ DATABASE_URL=postgresql://giljo_user:{user_password}@{pg_host}:{pg_port}/giljo_m
 # Deployment context (informational only - not a mode)
 DEPLOYMENT_CONTEXT=localhost
 
-# API Host (v3.0: Always binds to 0.0.0.0, firewall controls access)
+# API Host (bind address derived from install-time network choice)
 GILJO_API_HOST=0.0.0.0
 SERVICE_BIND=0.0.0.0
 
@@ -346,7 +346,7 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
         v3.0 changes:
         - No mode field anywhere
         - deployment_context is metadata only
-        - Always bind to 0.0.0.0
+        - Bind address derived from install-time network choice (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
         - Database always on localhost
         - Authentication always enabled
 
@@ -378,7 +378,7 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                     "version": "18",  # PostgreSQL 18
                     # CRITICAL: Database host is ALWAYS localhost (security principle)
                     # The database is co-located with the backend and NEVER exposed to network
-                    # Only the API layer is network-accessible (binds to 0.0.0.0)
+                    # Only the API layer is network-accessible (bind address from install-time network choice)
                     "host": "localhost",  # ALWAYS localhost (never changes)
                     "port": self.settings.get("pg_port", 5432),
                     "name": "giljo_mcp",
@@ -387,8 +387,8 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                     "pool_size": 5,  # v3.0: Fixed pool size (no mode-based scaling)
                 },
                 "server": {
-                    # v3.0: Always bind to 0.0.0.0 (all interfaces)
-                    # Firewall controls access (localhost-only by default)
+                    # Bind address derived from install-time network choice
+                    # (localhost=127.0.0.1/HTTP, LAN/WAN=0.0.0.0/HTTPS via mkcert)
                     "api_host": "0.0.0.0",
                     "api_port": api_port,
                     "dashboard_host": "0.0.0.0",
@@ -399,7 +399,7 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
                 },
                 "services": {
                     "api": {
-                        "host": "0.0.0.0",  # v3.0: Always bind all interfaces
+                        "host": "0.0.0.0",  # Bind address derived from install-time network choice
                         "port": api_port,
                         "unified_port": True,  # v2.0 uses single port for API+WebSocket
                         "description": "Main API server (REST + WebSocket + MCP)",

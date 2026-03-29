@@ -107,8 +107,8 @@ GiljoAI MCP is a multi-agent orchestration system that transforms AI coding assi
 - JWT-based session management
 
 **Network Binding**:
-- API always binds to 0.0.0.0 (all network interfaces)
-- OS firewall controls access (defense in depth)
+- Localhost installs: API binds to 127.0.0.1 (HTTP, no network exposure)
+- LAN/WAN installs: API binds to 0.0.0.0 with mandatory HTTPS (mkcert)
 - Database always on localhost (never exposed to network)
 
 **Multi-Tenant Isolation**:
@@ -181,7 +181,7 @@ python install.py
 - Both files are gitignored (local only)
 
 **5. Service Startup**:
-- Starts API server on port 7272 (binds to 0.0.0.0)
+- Starts API server on port 7272 (bind address from install config)
 - Starts frontend dev server on port 7274
 - Opens browser to `http://localhost:7274`
 
@@ -430,7 +430,7 @@ User Access (controlled by OS firewall):
 ```yaml
 services:
   api:
-    host: 0.0.0.0       # Always bind to all interfaces
+    host: 127.0.0.1     # localhost track; LAN/WAN uses 0.0.0.0 + HTTPS
     port: 7272
     external_host: localhost  # How clients connect
 

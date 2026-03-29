@@ -23,13 +23,13 @@
 
 ## v3.0 Unified Architecture Overview
 
-GiljoAI MCP v3.0 implements a **unified architecture** with no deployment modes. The system ALWAYS binds to all network interfaces while using OS firewall for access control, providing consistent behavior across localhost, LAN, and WAN deployments.
+GiljoAI MCP v3.0 implements a **unified architecture** with no deployment modes. The bind address and protocol are derived from the user's install-time network choice, providing the correct security posture for each context.
 
 ### Core Architectural Principles
 
-**Single Network Binding**:
-- API server ALWAYS binds to `0.0.0.0` (all network interfaces)
-- OS firewall controls actual access (defense in depth)
+**Conditional Network Binding** (Handover 0843):
+- **Localhost installs**: API binds to `127.0.0.1` (HTTP, no network exposure, no certs needed)
+- **LAN/WAN installs**: API binds to `0.0.0.0` with mandatory HTTPS via mkcert
 - Database ALWAYS on localhost (never exposed to network)
 - ONE authentication flow for ALL connections (localhost, LAN, WAN)
 
@@ -75,7 +75,7 @@ User Access (controlled by OS firewall):
 ```
 
 **Code Verification**:
-- **API Binding**: `api/app.py:532-538` - CORS middleware configured for 0.0.0.0 binding
+- **API Binding**: `api/app.py:532-538` - CORS middleware configured for conditional binding (127.0.0.1 or 0.0.0.0)
 - **Database Host**: `api/app.py:185` - `state.config.database.host` (always "localhost")
 - **Port Configuration**: `api/app.py:467-468` - Default ports 7272 (API), 7274 (frontend)
 
@@ -1423,7 +1423,7 @@ GiljoAI MCP v3.0 includes a complete refactoring of Admin Settings with improved
 #### SystemSettings.vue Structure (4 Tabs)
 
 **1. Network Tab** (Handover 0025):
-- v3.0 unified binding configuration (0.0.0.0 binding)
+- v3.0 unified binding configuration (conditional: 127.0.0.1 or 0.0.0.0 + HTTPS)
 - Removed deployment MODE selection (local/LAN/remote)
 - Removed localhost-specific messaging
 - Clean, single-architecture presentation
@@ -2099,7 +2099,7 @@ class PlatformHandler(ABC):
 - Generates `.env` file (database credentials, JWT secret)
 - Generates `config.yaml` (API/frontend ports, network config)
 - 100% platform-agnostic
-- v3.0 unified architecture (0.0.0.0 binding, firewall control)
+- v3.0 unified architecture (conditional binding + HTTPS for LAN/WAN)
 
 #### Benefits
 
@@ -2135,7 +2135,7 @@ class PlatformHandler(ABC):
 # config.yaml (production example)
 services:
   api:
-    host: 0.0.0.0      # ALWAYS bind to all interfaces
+    host: 0.0.0.0      # LAN/WAN track; localhost track uses 127.0.0.1
     port: 7272         # Standard API port
   frontend:
     port: 7274         # Standard frontend port
