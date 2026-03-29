@@ -446,6 +446,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(mcp_installer.router, prefix="/api/mcp-installer", tags=["MCP Integration"])
 
     # MCP SDK Streamable HTTP endpoint (Handover 0846 — replaces custom JSON-RPC 0032)
+    # Mount at root "" with streamable_http_path="/mcp" so the SDK route
+    # matches /mcp directly — no trailing-slash redirect.
     from api.endpoints.mcp_sdk_server import build_mcp_app
 
     app.mount("/mcp", build_mcp_app())
