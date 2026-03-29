@@ -114,6 +114,26 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <!-- Unsaved Changes Confirmation -->
+  <v-dialog v-model="showDiscardDialog" max-width="400" persistent z-index="2600">
+    <v-card>
+      <v-card-title class="bg-warning d-flex align-center">
+        <v-icon class="mr-2">mdi-alert</v-icon>
+        Unsaved Changes
+      </v-card-title>
+      <v-divider />
+      <v-card-text class="pt-4">
+        You have unsaved changes. Are you sure you want to close?
+      </v-card-text>
+      <v-divider />
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" @click="showDiscardDialog = false">Keep Editing</v-btn>
+        <v-btn color="warning" variant="flat" @click="discardAndClose">Discard</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup>
@@ -142,6 +162,7 @@ const missionText = ref('')
 const originalMission = ref('')
 const loading = ref(false)
 const error = ref(null)
+const showDiscardDialog = ref(false)
 
 // Computed
 const isOpen = computed({
@@ -233,12 +254,15 @@ function resetToOriginal() {
 
 function handleClose() {
   if (hasChanges.value) {
-    const confirmed = confirm('You have unsaved changes. Are you sure you want to close?')
-    if (!confirmed) {
-      return
-    }
-    resetToOriginal()
+    showDiscardDialog.value = true
+    return
   }
+  isOpen.value = false
+}
+
+function discardAndClose() {
+  showDiscardDialog.value = false
+  resetToOriginal()
   isOpen.value = false
 }
 </script>
