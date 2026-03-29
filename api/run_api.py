@@ -127,23 +127,16 @@ def get_port_from_sources() -> int:
 def get_default_host() -> str:
     """Get default host for API server binding.
 
-    v3.0 Unified Architecture:
-    - Server ALWAYS binds to 0.0.0.0 (all network interfaces)
-    - OS firewall controls access (defense in depth security model)
-    - No deployment mode logic (single unified codebase)
-    - Explicit user configuration can override default if needed
+    Bind address is derived from the install-time network choice:
+    - Localhost installs: 127.0.0.1 (HTTP, no network exposure)
+    - LAN/WAN installs: 0.0.0.0 (HTTPS via mkcert)
 
     Priority:
-    1. services.api.host from config.yaml (explicit user override)
-    2. Default: "0.0.0.0" (v3.0 unified architecture - bind to all interfaces)
+    1. services.api.host from config.yaml (set by installer)
+    2. Default: "0.0.0.0" (backward compat for pre-0843 installs)
 
     Returns:
-        Host to bind to (default: "0.0.0.0")
-
-    Note:
-        v3.0 removes mode-based binding logic. All deployments bind to 0.0.0.0
-        by default. Network access is controlled via OS firewall (Windows Defender
-        Firewall, iptables, etc.) for proper defense-in-depth security.
+        Host to bind to
     """
     try:
         from src.giljo_mcp._config_io import read_config
@@ -151,16 +144,14 @@ def get_default_host() -> str:
         config = read_config()
         configured_host = config.get("services", {}).get("api", {}).get("host")
         if configured_host:
-            logging.info(f"Using explicitly configured API host: {configured_host}")
+            logging.info(f"Using configured API host: {configured_host}")
             return configured_host
 
-        # v3.0 default: bind to all interfaces (firewall controls access)
-        logging.info("No host configured, using v3.0 default: 0.0.0.0 (all interfaces)")
+        logging.info("No host configured, defaulting to 0.0.0.0")
         return "0.0.0.0"
     except (OSError, ValueError, KeyError) as e:
-        logging.warning(f"Could not read config: {e}, using v3.0 default: 0.0.0.0")
+        logging.warning(f"Could not read config: {e}, defaulting to 0.0.0.0")
 
-    # v3.0 safe default: bind to all interfaces (firewall controls access)
     return "0.0.0.0"
 
 

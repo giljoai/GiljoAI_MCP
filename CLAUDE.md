@@ -27,7 +27,7 @@ Every handover MUST include: `**Edition Scope:** CE | SaaS | Both`
 - **Frontend:** Vue 3 (Composition API), Pinia, Vuetify 3, Vite
 - **Real-time:** WebSocket via PostgresNotifyBroker
 - **Auth:** JWT httpOnly cookies, CSRF double-submit
-- **Network:** Server binds 0.0.0.0, OS firewall controls access
+- **Network:** Localhost binds 127.0.0.1 (HTTP). LAN/WAN binds 0.0.0.0 with mandatory HTTPS (mkcert). Bind address derived from install-time network choice.
 - **Dev environment:** Windows
 
 ## Code Conventions

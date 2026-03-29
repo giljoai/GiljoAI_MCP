@@ -69,7 +69,7 @@ async def detect_ip(current_user: User = Depends(get_current_active_user)):
     # Create NetworkManager with minimal settings
     settings = {
         "mode": "server",  # Use server mode for network detection
-        "bind": "0.0.0.0",
+        "bind": "0.0.0.0",  # Network detection probe; actual bind address derived from install-time network choice
     }
 
     network_manager = NetworkManager(settings)

@@ -31,7 +31,7 @@ async def init_database(state: APIState) -> None:
         logger.info("Initializing configuration...")
         state.config = get_config()  # Use the singleton getter
         logger.info("Configuration loaded successfully")
-        # v3.0: DeploymentMode removed - server always binds 0.0.0.0, firewall controls access
+        # Bind address derived from install-time network choice (127.0.0.1 for localhost, 0.0.0.0 for LAN/WAN with HTTPS via mkcert)
     except Exception as e:  # Broad catch: database initialization resilience
         logger.error(
             "config_load_failed",

@@ -907,7 +907,8 @@ def run_database_migrations() -> bool:
 
 
 def run_startup(
-    check_only: bool = False, verbose: bool = False, no_browser: bool = False, no_migrations: bool = False
+    check_only: bool = False, verbose: bool = False, no_browser: bool = False,
+    no_migrations: bool = False, no_ssl: bool = False,
 ) -> int:
     """
     Main startup function.
@@ -917,6 +918,7 @@ def run_startup(
         verbose: If True, show console windows for API/frontend (Windows only)
         no_browser: If True, skip automatic browser launch
         no_migrations: If True, skip automatic database migrations
+        no_ssl: If True, force HTTP even if HTTPS is configured
 
     Returns:
         Exit code (0 for success, non-zero for failure)
@@ -982,7 +984,9 @@ def run_startup(
 
     # Step 6: Get ports and SSL config
     api_port, frontend_port = get_config_ports()
-    ssl_enabled = get_ssl_enabled()
+    ssl_enabled = get_ssl_enabled() and not no_ssl
+    if no_ssl and get_ssl_enabled():
+        print_warning("SSL disabled via --no-ssl flag (HTTP mode forced)")
     http_proto = "https" if ssl_enabled else "http"
     ws_proto = "wss" if ssl_enabled else "ws"
 
@@ -1165,8 +1169,9 @@ def stop_services() -> int:
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output (show console windows on Windows)")
 @click.option("--no-browser", is_flag=True, help="Skip automatic browser launch (show URLs instead)")
 @click.option("--no-migrations", is_flag=True, help="Skip automatic database migrations")
+@click.option("--no-ssl", is_flag=True, help="Force HTTP even if HTTPS is configured (for Docker/CI/reverse-proxy)")
 @click.option("--stop", is_flag=True, help="Stop all running GiljoAI services")
-def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool, stop: bool) -> None:
+def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool, no_ssl: bool, stop: bool) -> None:
     """
     GiljoAI MCP - Unified Startup Script
 
@@ -1179,7 +1184,8 @@ def main(check_only: bool, verbose: bool, no_browser: bool, no_migrations: bool,
             exit_code = stop_services()
         else:
             exit_code = run_startup(
-                check_only=check_only, verbose=verbose, no_browser=no_browser, no_migrations=no_migrations
+                check_only=check_only, verbose=verbose, no_browser=no_browser,
+                no_migrations=no_migrations, no_ssl=no_ssl,
             )
     except KeyboardInterrupt:
         print_info("\nStartup cancelled by user")
