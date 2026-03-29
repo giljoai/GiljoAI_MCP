@@ -108,6 +108,11 @@ class User(Base):
         Boolean, default=False, nullable=False, comment="Force user to set recovery PIN on next login (new users)"
     )
 
+    # Setup wizard state (Handover 0855a)
+    setup_complete = Column(Boolean, default=False, nullable=False, server_default="false")
+    setup_selected_tools = Column(JSONB, nullable=True)
+    setup_step_completed = Column(Integer, default=0, nullable=False, server_default="0")
+
     # System user flag (for auto-login localhost user)
     is_system_user = Column(Boolean, default=False, nullable=False)
 
