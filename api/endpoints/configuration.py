@@ -572,9 +572,9 @@ async def get_frontend_configuration():
     This endpoint does NOT expose sensitive data like passwords or API keys.
 
     Note:
-        v3.0 removes the 'mode' field from response. Server always binds to 0.0.0.0,
-        and the frontend connects via the configured external_host (set during installation).
-        OS firewall controls network access (defense in depth).
+        Localhost installs bind 127.0.0.1 (HTTP). LAN/WAN installs bind 0.0.0.0 with
+        HTTPS (mkcert). Bind address derived from install-time network choice.
+        The frontend connects via the configured external_host (set during installation).
     """
     from api.app import state
 

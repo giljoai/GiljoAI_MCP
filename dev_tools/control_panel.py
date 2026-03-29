@@ -1105,7 +1105,7 @@ class GiljoDevControlPanel:
 
             # Wait for API to start listening on port.
             # Uses connect() instead of bind() for detection - bind("127.0.0.1")
-            # can falsely succeed on Windows when a service binds to 0.0.0.0.
+            # can falsely succeed on Windows when a service binds a different address (e.g. 0.0.0.0).
             self.update_status_message(f"Waiting for backend on port {api_port}...")
             started = False
             for _ in range(30):  # Wait up to 15 seconds
@@ -1286,7 +1286,7 @@ class GiljoDevControlPanel:
 
             # Wait for frontend to start listening on port.
             # Uses connect() instead of bind() for detection - bind("127.0.0.1")
-            # can falsely succeed on Windows when a service binds to 0.0.0.0.
+            # can falsely succeed on Windows when a service binds a different address (e.g. 0.0.0.0).
             self.update_status_message(f"Waiting for frontend on port {frontend_port}...")
             started = False
             for _ in range(30):  # Wait up to 15 seconds (Vite is slow on Windows)

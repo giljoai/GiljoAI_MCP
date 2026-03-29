@@ -116,7 +116,7 @@ GiljoAI MCP v3.0 uses a **unified architecture** with no deployment modes:
 
 | Component      | Configuration                           | Access Control                        |
 | -------------- | --------------------------------------- | ------------------------------------- |
-| **API Server** | Always binds to `0.0.0.0` (all interfaces) | Controlled by OS firewall             |
+| **API Server** | Localhost: `127.0.0.1`. LAN/WAN: `0.0.0.0` + HTTPS | Bind address from install config |
 | **Database**   | Always on `localhost` (never exposed)   | Local socket only (maximum security)  |
 | **Auth**       | Always enabled                          | JWT authentication for all connections      |
 | **Network**    | Firewall controls access                | Localhost-only by default, configurable for LAN/WAN |
@@ -228,7 +228,7 @@ Use this when you want a Linux-first installation experience without relying on 
 **Modern, accessible admin interface**
 
 **Network Tab** (Handover 0025-0026):
-- v3.1 unified architecture (0.0.0.0 binding with firewall control)
+- v3.1 unified architecture (conditional binding + HTTPS for LAN/WAN)
 - External host configuration (localhost, LAN IP, or domain)
 - Port management (API: 7272, Dashboard: 7274)
 - WCAG 2.1 Level AA accessible
@@ -357,7 +357,7 @@ User Access (controlled by OS firewall):
 
 **Architecture Principles**:
 - Single unified architecture (no deployment modes)
-- API binds to 0.0.0.0, firewall controls access
+- API bind address from install config (localhost: 127.0.0.1, LAN/WAN: 0.0.0.0 + HTTPS)
 - Database always on localhost (maximum security)
 - ONE authentication flow for all connections
 - Multi-tenant isolation at database level
