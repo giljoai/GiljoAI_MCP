@@ -200,7 +200,8 @@ class UnifiedInstaller:
         self.settings.setdefault("pg_port", 5432)
         self.settings.setdefault("api_port", DEFAULT_API_PORT)
         self.settings.setdefault("dashboard_port", DEFAULT_FRONTEND_PORT)
-        self.settings.setdefault("bind", "0.0.0.0")  # v3.0: Always bind all interfaces
+        # Bind address derived from network choice: localhost → 127.0.0.1, LAN/WAN → 0.0.0.0
+        self.settings.setdefault("bind", "0.0.0.0")
 
         # Initialize platform handler (auto-detects Windows/Linux/macOS)
         self.platform = get_platform_handler()
@@ -354,9 +355,9 @@ class UnifiedInstaller:
                 return result
             result["steps"].append("frontend_dependencies_installed")
 
-            # Step 7.5: HTTPS setup (optional - uses mkcert for trusted local certs)
+            # Step 7.5: HTTPS setup (automatic for LAN/WAN, skipped for localhost)
             if not self.settings.get("headless"):
-                self._print_header("HTTPS Configuration (Optional)")
+                self._print_header("HTTPS Configuration")
                 https_result = self.setup_https()
                 if https_result.get("enabled"):
                     result["steps"].append("https_configured")
@@ -451,16 +452,18 @@ class UnifiedInstaller:
                     # Fallback if no adapters detected
                     self.settings["external_host"] = "localhost"
                     self.settings["network_mode"] = "localhost"
+                    self.settings["bind"] = "127.0.0.1"
                     self._print_warning("No network adapters detected, using localhost")
                 break
 
             try:
                 choice_num = int(choice)
                 if choice_num == 2:
-                    # Localhost mode
+                    # Localhost mode — bind 127.0.0.1 (HTTP only, no HTTPS needed)
                     self.settings["external_host"] = "localhost"
                     self.settings["network_mode"] = "localhost"
-                    self._print_info("Using localhost for frontend connections")
+                    self.settings["bind"] = "127.0.0.1"
+                    self._print_info("Using localhost for frontend connections (HTTP, bind 127.0.0.1)")
                     break
                 if 3 <= choice_num < custom_option:
                     # Specific adapter selected
@@ -945,7 +948,10 @@ class UnifiedInstaller:
 
     def setup_https(self) -> Dict[str, Any]:
         """
-        Optional HTTPS setup using mkcert for locally-trusted certificates.
+        HTTPS setup using mkcert for locally-trusted certificates.
+
+        Runs automatically for LAN/WAN installs (network_mode != localhost).
+        Skipped for localhost installs (browser grants secure context to localhost).
 
         mkcert creates a local Certificate Authority, installs it in the system
         trust store, and generates certificates signed by that CA. Browsers
@@ -956,21 +962,14 @@ class UnifiedInstaller:
         """
         result: Dict[str, Any] = {"enabled": False}
 
-        print(f"\n{Fore.CYAN}HTTPS encrypts all traffic between your browser and GiljoAI.{Style.RESET_ALL}")
-        print("Uses mkcert to generate locally-trusted certificates (no browser warnings).")
-        print(f"{Fore.YELLOW}Note: Some CLI tools (Gemini CLI) require extra certificate trust{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}configuration with self-signed HTTPS. HTTP is recommended for local/LAN use.{Style.RESET_ALL}")
-        print(f"{Fore.WHITE}You can always enable HTTPS later from Admin Settings > Network.{Style.RESET_ALL}")
-
-        print(
-            f"\n{Fore.YELLOW}Enable HTTPS? [y/N]: {Style.RESET_ALL}",
-            end="",
-            flush=True,
-        )
-        response = input().strip().lower()
-        if response not in ("y", "yes"):
-            self._print_info("Skipping HTTPS — can be enabled later from Admin Settings > Network")
+        # Localhost installs skip HTTPS — browsers grant localhost secure context
+        if self.settings.get("network_mode") == "localhost":
+            self._print_info("Localhost mode — HTTPS not needed (browsers trust localhost)")
             return result
+
+        print(f"\n{Fore.CYAN}Setting up HTTPS for LAN/WAN access...{Style.RESET_ALL}")
+        print("Uses mkcert to generate locally-trusted certificates (no browser warnings).")
+        print(f"{Fore.WHITE}HTTPS is required for clipboard and other browser APIs over the network.{Style.RESET_ALL}")
 
         # Check if mkcert is already installed
         mkcert_path = shutil.which("mkcert")
@@ -1736,7 +1735,7 @@ class UnifiedInstaller:
                 "api_port": self.settings.get("api_port", DEFAULT_API_PORT),
                 "dashboard_port": self.settings.get("dashboard_port", DEFAULT_FRONTEND_PORT),
                 "install_dir": str(self.install_dir),
-                "bind": "0.0.0.0",
+                "bind": self.settings.get("bind", "0.0.0.0"),
                 "external_host": self.settings.get("external_host", "localhost"),
                 "network_mode": self.settings.get("network_mode", "localhost"),
                 "selected_adapter": self.settings.get("selected_adapter"),
@@ -1791,7 +1790,7 @@ class UnifiedInstaller:
                 "default_tenant_key": getattr(
                     self, "default_tenant_key", None
                 ),  # Pass generated tenant key (from seed_initial_data)
-                "bind": "0.0.0.0",  # v3.0: Always bind all interfaces
+                "bind": self.settings.get("bind", "0.0.0.0"),
             }
 
             # Create config manager

@@ -19,11 +19,11 @@ from src.giljo_mcp.config_manager import ConfigManager, ConfigValidationError, g
 
 
 def init_local_config():
-    """Initialize configuration for local development (v3.0: mode removed, always uses defaults)"""
+    """Initialize configuration for local development (binds 127.0.0.1, HTTP)"""
 
     config = ConfigManager(auto_reload=False)
 
-    # Local defaults (v3.0: server always binds 0.0.0.0, firewall controls access)
+    # Local defaults (localhost binds 127.0.0.1 HTTP; bind address derived from install-time network choice)
     config.database.type = "postgresql"
     config.server.api_key = None
 
@@ -31,12 +31,12 @@ def init_local_config():
 
 
 def init_lan_config():
-    """Initialize configuration for LAN deployment (v3.0: mode removed, defaults to 0.0.0.0)"""
+    """Initialize configuration for LAN deployment (binds 0.0.0.0, HTTPS via mkcert)"""
 
     config = ConfigManager(auto_reload=False)
 
-    # LAN settings (v3.0: server always binds 0.0.0.0 by default)
-    # No need to explicitly set host values - they default to 0.0.0.0
+    # LAN settings (binds 0.0.0.0 with HTTPS via mkcert)
+    # Bind address derived from install-time network choice
 
     # Generate API key
     import secrets
@@ -50,12 +50,12 @@ def init_lan_config():
 
 
 def init_wan_config():
-    """Initialize configuration for WAN deployment (v3.0: mode removed, defaults to 0.0.0.0)"""
+    """Initialize configuration for WAN deployment (binds 0.0.0.0, HTTPS via mkcert)"""
 
     config = ConfigManager(auto_reload=False)
 
-    # WAN settings (v3.0: server always binds 0.0.0.0 by default)
-    # No need to explicitly set host values - they default to 0.0.0.0
+    # WAN settings (binds 0.0.0.0 with HTTPS via mkcert)
+    # Bind address derived from install-time network choice
 
     # Generate strong keys
     import secrets

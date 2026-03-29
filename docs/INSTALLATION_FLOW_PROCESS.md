@@ -715,7 +715,7 @@ def start_api_server(install_dir: Path, venv_python: Path):
     api_cmd = [
         str(venv_python),
         str(api_script),
-        '--host', '0.0.0.0',  # Always bind to all interfaces
+        '--host', bind_address,  # From install config: 127.0.0.1 (localhost) or 0.0.0.0 (LAN/WAN)
         '--port', str(DEFAULT_API_PORT)
     ]
     
