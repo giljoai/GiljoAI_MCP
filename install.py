@@ -1403,10 +1403,13 @@ class UnifiedInstaller:
             pip_executable = self.platform.get_venv_pip(self.venv_dir)
 
             # Upgrade pip to latest before installing packages
+            # Must use 'python -m pip' instead of pip.exe directly — on Windows,
+            # pip.exe cannot replace itself while running.
+            python_executable = self.platform.get_venv_python(self.venv_dir)
             self._print_info("Upgrading pip to latest version...")
             try:
                 subprocess.run(
-                    [str(pip_executable), "install", "--upgrade", "pip"],
+                    [str(python_executable), "-m", "pip", "install", "--upgrade", "pip"],
                     check=True,
                     capture_output=True,
                     timeout=60,
@@ -1425,7 +1428,7 @@ class UnifiedInstaller:
             print(f"{Fore.WHITE}You will see pip's progress output below...{Style.RESET_ALL}\n")
 
             subprocess.run(
-                [str(pip_executable), "install", "-r", str(self.requirements_file)],
+                [str(python_executable), "-m", "pip", "install", "-r", str(self.requirements_file)],
                 check=True,
                 text=True,
                 timeout=300,  # 5 minute timeout
